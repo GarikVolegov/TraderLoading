@@ -79,6 +79,44 @@ export function normalizeNewsSources(articles: NewsArticle[]): NewsArticle[] {
   });
 }
 
+export function sortNewsChronologically(articles: NewsArticle[]): NewsArticle[] {
+  // Newest first; articles without a parseable date sink to the bottom.
+  return [...articles].sort((a, b) => parseDate(b.publishedAt) - parseDate(a.publishedAt));
+}
+
+export interface NewsPage {
+  articles: NewsArticle[];
+  nextCursor: string | null;
+  totalCount: number;
+}
+
+export interface NewsPaginationOptions {
+  cursor?: string | null;
+  limit?: number;
+}
+
+export const DEFAULT_NEWS_PAGE_SIZE = 15;
+const MAX_NEWS_PAGE_SIZE = 50;
+
+export function parseNewsCursor(cursor: string | null | undefined): number {
+  const parsed = Number.parseInt(cursor ?? "0", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+export function paginateNews(articles: NewsArticle[], options: NewsPaginationOptions = {}): NewsPage {
+  const total = articles.length;
+  const offset = parseNewsCursor(options.cursor);
+  const rawLimit = Math.floor(options.limit ?? DEFAULT_NEWS_PAGE_SIZE);
+  const limit = Math.max(1, Math.min(MAX_NEWS_PAGE_SIZE, Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_NEWS_PAGE_SIZE));
+  const slice = articles.slice(offset, offset + limit);
+  const nextOffset = offset + limit;
+  return {
+    articles: slice,
+    nextCursor: nextOffset < total ? String(nextOffset) : null,
+    totalCount: total,
+  };
+}
+
 export function rankNewsForDisplay(articles: NewsArticle[], options: NewsRankingOptions = {}): NewsArticle[] {
   const limit = options.limit ?? DEFAULT_LIMIT;
   const maxPerSource = options.maxPerSource ?? DEFAULT_MAX_PER_SOURCE;

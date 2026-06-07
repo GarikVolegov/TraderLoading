@@ -8,7 +8,13 @@ import {
   newsCacheTtlMs,
   newsFreshnessWindowHours,
 } from "../services/newsHub/freshness.js";
-import { normalizeNewsSources, rankNewsForDisplay } from "../services/newsHub/ranking.js";
+import {
+  DEFAULT_NEWS_PAGE_SIZE,
+  normalizeNewsSources,
+  paginateNews,
+  rankNewsForDisplay,
+  sortNewsChronologically,
+} from "../services/newsHub/ranking.js";
 import { cleanNewsText, createTranslationMemo } from "../services/newsHub/contentQuality.js";
 
 const router: IRouter = Router();
@@ -57,7 +63,13 @@ interface NewsResponse {
   fallbackArticlesCount?: number;
   oldestFreshArticleAt?: string;
   freshnessWindowHours?: number;
+  nextCursor?: string | null;
+  totalCount?: number;
 }
+
+// Maximum number of articles kept in the chronological feed corpus that the
+// paginated endpoint and live websocket snapshot draw from.
+const NEWS_FEED_CORPUS_LIMIT = 80;
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
@@ -260,7 +272,7 @@ function buildGoogleNewsQueries(pairCurrencies: string[], pairsStr: string): str
     queries.add("global markets currencies commodities when:2d");
   }
 
-  return Array.from(queries).slice(0, 6);
+  return Array.from(queries).slice(0, 10);
 }
 
 async function fetchRSSNews(pairCurrencies: string[], pairsStr: string): Promise<NewsArticle[]> {
@@ -306,7 +318,7 @@ async function fetchRSSNews(pairCurrencies: string[], pairsStr: string): Promise
     return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
   });
 
-  return deduped.slice(0, 30);
+  return deduped.slice(0, 160);
 }
 
 // ─── Image helper ─────────────────────────────────────────────────────────────
@@ -656,10 +668,13 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
       agentSummary = heuristicAgentSummary(enriched, formattedPairs, lang);
     }
 
-    articles = rankNewsForDisplay(
+    // Dedupe + quality-score the relevant set (keeps a large corpus for the
+    // paginated feed), then order strictly newest-first for chronological scroll.
+    const deduped = rankNewsForDisplay(
       applyNewsFreshness(enrichAndFilterNews(articles, { pairs: pairsStr, lang }), { freshnessWindowHours }),
-      { limit: 20, maxPerSource: 3 },
+      { limit: NEWS_FEED_CORPUS_LIMIT, maxPerSource: 6 },
     );
+    articles = sortNewsChronologically(deduped);
     source = "ai";  // enrichment (euristico o Groq) conta come AI
     nextRefreshAt = new Date(Date.now() + cacheTtl).toISOString();
   } catch {
@@ -705,7 +720,19 @@ router.get("/news", async (req, res) => {
     pairs: (req.query.pairs as string) || "",
     lang: req.query.lang as string | undefined,
   });
-  res.json(result);
+
+  const limitParam = Number.parseInt((req.query.limit as string) ?? "", 10);
+  const page = paginateNews(result.articles, {
+    cursor: (req.query.cursor as string) ?? null,
+    limit: Number.isFinite(limitParam) ? limitParam : DEFAULT_NEWS_PAGE_SIZE,
+  });
+
+  res.json({
+    ...result,
+    articles: page.articles,
+    nextCursor: page.nextCursor,
+    totalCount: page.totalCount,
+  });
 });
 
 export default router;

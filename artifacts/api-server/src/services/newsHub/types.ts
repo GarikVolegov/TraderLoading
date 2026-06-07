@@ -47,6 +47,8 @@ export interface NewsResponse {
   fallbackArticlesCount?: number;
   oldestFreshArticleAt?: string;
   freshnessWindowHours?: number;
+  nextCursor?: string | null;
+  totalCount?: number;
 }
 
 export type NewsEvent =
