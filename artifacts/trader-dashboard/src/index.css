@@ -339,15 +339,16 @@
   }
 
   .dashboard-command-grid {
-    align-items: stretch;
+    align-items: start;
+    grid-auto-flow: dense;
   }
 
   .dashboard-widget-shell > * {
     height: 100%;
   }
 
-  .dashboard-widget-shell :is(.rounded-2xl, .rounded-\[1rem\]) {
-    border-radius: 0.875rem;
+  .dashboard-widget-shell :is(.rounded-2xl, .rounded-\[1rem\], .rounded-xl) {
+    border-radius: 0.625rem;
   }
 
   @media (min-width: 1024px) {

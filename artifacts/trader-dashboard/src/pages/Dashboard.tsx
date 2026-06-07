@@ -150,7 +150,7 @@ function SortableWidget({
     >
       {/* Widget content — hidden widgets become ghost placeholders in edit mode */}
       {isHidden && isEditing ? (
-        <div className="flex h-full w-full items-center justify-center gap-3 rounded-[1rem] border-2 border-dashed border-border/40 bg-background/20 opacity-50">
+        <div className="flex h-full w-full items-center justify-center gap-3 rounded-[0.625rem] border-2 border-dashed border-border/40 bg-background/20 opacity-50">
           <Icon className="w-4 h-4 text-muted-foreground/50" />
           <span className="text-xs font-bold text-muted-foreground/50 font-mono">{def.label}</span>
         </div>
@@ -169,7 +169,7 @@ function SortableWidget({
               ? "shadow-[0_0_0_2px_hsl(var(--primary)/0.25),0_4px_20px_rgba(0,0,0,0.3)]"
               : ""
           } ${isOpenable ? "cursor-pointer hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.3),0_18px_42px_rgba(0,0,0,0.25)]" : ""}`}
-          style={{ borderRadius: "1rem" }}
+          style={{ borderRadius: "0.625rem" }}
           role={isOpenable ? "button" : undefined}
           tabIndex={isOpenable ? 0 : undefined}
           aria-label={isOpenable ? `Apri ${def.label}` : undefined}
@@ -187,7 +187,7 @@ function SortableWidget({
           {/* Affordance "apri pagina" — appare solo all'hover, non occupa spazio */}
           {isOpenable && (
             <div
-              style={{ height: "1.75rem", width: "1.75rem" }}
+              style={{ height: "2.25rem", width: "2.25rem" }}
               className="pointer-events-none absolute bottom-2.5 right-2.5 z-[5] flex items-center justify-center rounded-full border border-primary/30 bg-card/85 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100"
             >
               <ArrowUpRight className="h-3.5 w-3.5" />
@@ -205,7 +205,7 @@ function SortableWidget({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className={`absolute inset-0 z-10 rounded-[1rem] flex items-start justify-between p-3 touch-none ${
+            className={`absolute inset-0 z-10 rounded-[0.625rem] flex items-start justify-between p-3 touch-none ${
               isHidden
                 ? "border-2 border-dashed border-border/30 bg-transparent cursor-default"
                 : "border-2 border-dashed border-primary/35 bg-background/60 backdrop-blur-[2px] cursor-grab active:cursor-grabbing"
@@ -223,7 +223,7 @@ function SortableWidget({
               <button
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); onToggleHide(def.id); }}
-                className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
+                className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
                   isHidden
                     ? "bg-border/30 text-muted-foreground/50 hover:bg-primary/20 hover:text-primary"
                     : "bg-primary/10 text-primary/70 hover:bg-primary/25 hover:text-primary"
@@ -250,7 +250,7 @@ function WidgetGhost({ def }: { def: WidgetDef }) {
   const Icon = def.icon;
   return (
     <div
-      className="rounded-[1rem] border-2 border-primary/40 bg-card/80 backdrop-blur-md shadow-2xl shadow-black/50 p-4 flex items-center gap-3 rotate-2"
+      className="rounded-[0.625rem] border-2 border-primary/40 bg-card/80 backdrop-blur-md shadow-2xl shadow-black/50 p-4 flex items-center gap-3 rotate-2"
       style={{ minWidth: 200 }}
     >
       <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
@@ -360,8 +360,15 @@ export default function Dashboard() {
   // Layout: in vista normale i widget si impacchettano a masonry (altezza naturale,
   // niente spazi vuoti); in modifica diventano una griglia uniforme per un drag&drop pulito.
   const containerClass = isEditing
-    ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start"
-    : "columns-1 sm:columns-2 xl:columns-3 [column-gap:1rem]";
+    ? "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+    : "dashboard-command-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12";
+
+  const getWidgetSpanClass = (id: string) => {
+    if (isEditing) return "min-h-[13rem]";
+    if (id === "checklist" || id === "calendar") return "xl:col-span-6";
+    if (id === "clock" || id === "account" || id === "routine") return "xl:col-span-4";
+    return "xl:col-span-3";
+  };
 
   return (
     <PageLayout>
@@ -464,7 +471,7 @@ export default function Dashboard() {
                     y: { delay: i * 0.03, duration: 0.24, ease: [0.22,1,0.36,1] },
                     layout: { duration: 0.28, ease: [0.22,1,0.36,1] },
                   }}
-                  className={isEditing ? "h-[200px]" : "mb-4 break-inside-avoid"}
+                  className={getWidgetSpanClass(id)}
                 >
                   <SortableWidget
                     def={def}
