@@ -22,6 +22,7 @@ import {
   type JournalEntry
 } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { fetchJournalTags, journalTagsQueryKey, type JournalTagSummary } from "@/lib/journalTagsApi";
 
 interface JournalEntryModalProps {
   isOpen: boolean;
@@ -32,11 +33,9 @@ interface JournalEntryModalProps {
 // ─── Saved tags hook ──────────────────────────────────────────────────────────
 
 function useSavedTags() {
-  return useQuery<{ tag: string; count: number }[]>({
-    queryKey: ["journal-tags"],
-    queryFn: () =>
-      fetch("api/journal/tags", { credentials: "include" })
-        .then(r => r.ok ? r.json() : []),
+  return useQuery<JournalTagSummary[]>({
+    queryKey: journalTagsQueryKey,
+    queryFn: () => fetchJournalTags(),
     staleTime: 30_000,
   });
 }
@@ -363,7 +362,7 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
 
       toast({ title: t("common.success"), description: t("journal_modal.saved") });
       queryClient.invalidateQueries({ queryKey: getGetJournalEntriesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: ["journal-tags"] });
+      queryClient.invalidateQueries({ queryKey: journalTagsQueryKey });
       onClose();
     } catch (err: any) {
       toast({

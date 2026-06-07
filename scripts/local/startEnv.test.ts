@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { buildFrontendDevEnv } from "./startEnv.js";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { buildFrontendDevArgs, buildFrontendDevEnv } from "./startEnv.js";
 
 const env = buildFrontendDevEnv({
   BASE_PATH: "/app",
@@ -21,5 +23,17 @@ const explicitViteKey = buildFrontendDevEnv({
 });
 
 assert.equal(explicitViteKey.VITE_CLERK_PUBLISHABLE_KEY, "pk_test_vite");
+
+assert.deepEqual(buildFrontendDevArgs(), [
+  "--filter",
+  "@workspace/trader-dashboard",
+  "run",
+  "dev",
+]);
+
+const dashboardPackage = JSON.parse(
+  readFileSync(path.resolve(import.meta.dirname, "../../artifacts/trader-dashboard/package.json"), "utf8"),
+);
+assert.match(dashboardPackage.scripts.dev, /--strictPort\b/);
 
 console.log("local start frontend env checks passed");

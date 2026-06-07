@@ -5,7 +5,10 @@ import { db, sessionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { AuthUser } from "@workspace/api-zod";
 
-export const ISSUER_URL = process.env.ISSUER_URL ?? "https://replit.com/oidc";
+type Env = Record<string, string | undefined>;
+
+export const DEFAULT_ISSUER_URL = "https://replit.com/oidc";
+export const ISSUER_URL = process.env.ISSUER_URL ?? DEFAULT_ISSUER_URL;
 export const SESSION_COOKIE = "sid";
 export const SESSION_TTL = 7 * 24 * 60 * 60 * 1000;
 
@@ -18,11 +21,42 @@ export interface SessionData {
 
 let oidcConfig: client.Configuration | null = null;
 
+export function getValidatedOidcSettings(env: Env = process.env) {
+  const issuerUrl = env.ISSUER_URL?.trim() || DEFAULT_ISSUER_URL;
+  let parsedIssuer: URL;
+
+  try {
+    parsedIssuer = new URL(issuerUrl);
+  } catch {
+    throw new Error("ISSUER_URL must be a valid URL.");
+  }
+
+  if (
+    parsedIssuer.protocol !== "https:" &&
+    parsedIssuer.hostname !== "localhost"
+  ) {
+    throw new Error("ISSUER_URL must use https unless it targets localhost.");
+  }
+
+  const clientId = (env.OIDC_CLIENT_ID ?? env.REPL_ID)?.trim();
+  if (!clientId) {
+    throw new Error(
+      "OIDC_CLIENT_ID or REPL_ID is required for Replit OIDC. Set OIDC_CLIENT_ID for generic OIDC providers or REPL_ID on Replit.",
+    );
+  }
+
+  return {
+    clientId,
+    issuerUrl: parsedIssuer.href.replace(/\/$/, ""),
+  };
+}
+
 export async function getOidcConfig(): Promise<client.Configuration> {
   if (!oidcConfig) {
+    const settings = getValidatedOidcSettings();
     oidcConfig = await client.discovery(
-      new URL(ISSUER_URL),
-      process.env.REPL_ID!,
+      new URL(settings.issuerUrl),
+      settings.clientId,
     );
   }
   return oidcConfig;
@@ -69,10 +103,7 @@ export async function deleteSession(sid: string): Promise<void> {
   await db.delete(sessionsTable).where(eq(sessionsTable.sid, sid));
 }
 
-export async function clearSession(
-  res: Response,
-  sid?: string,
-): Promise<void> {
+export async function clearSession(res: Response, sid?: string): Promise<void> {
   if (sid) await deleteSession(sid);
   res.clearCookie(SESSION_COOKIE, { path: "/" });
 }

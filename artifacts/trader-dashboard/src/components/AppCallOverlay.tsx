@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TrendingUp, X, AlarmClock, BellOff } from "lucide-react";
+import { reportClientError } from "@/lib/clientErrorReporter";
 
 export interface FiringAlarm {
   id: string;
@@ -18,11 +19,19 @@ interface AppCallOverlayProps {
 
 // ─── Web Audio Ringtones ──────────────────────────────────────────────────────
 
-function createRingtone(ctx: AudioContext, type: FiringAlarm["sound"]): () => void {
+function createRingtone(
+  ctx: AudioContext,
+  type: FiringAlarm["sound"],
+): () => void {
   let stopped = false;
   let timeouts: ReturnType<typeof setTimeout>[] = [];
 
-  const scheduleBeep = (delay: number, freq: number, dur: number, vol = 0.3) => {
+  const scheduleBeep = (
+    delay: number,
+    freq: number,
+    dur: number,
+    vol = 0.3,
+  ) => {
     const t = setTimeout(() => {
       if (stopped || ctx.state === "closed") return;
       const osc = ctx.createOscillator();
@@ -43,7 +52,7 @@ function createRingtone(ctx: AudioContext, type: FiringAlarm["sound"]): () => vo
   if (type === "digital") {
     const pattern = () => {
       if (stopped) return;
-      scheduleBeep(0,   880, 0.1);
+      scheduleBeep(0, 880, 0.1);
       scheduleBeep(120, 880, 0.1);
       scheduleBeep(240, 1100, 0.15);
       scheduleBeep(420, 880, 0.1);
@@ -56,9 +65,9 @@ function createRingtone(ctx: AudioContext, type: FiringAlarm["sound"]): () => vo
   } else if (type === "gentle") {
     const pattern = () => {
       if (stopped) return;
-      scheduleBeep(0,   523, 0.4, 0.2);
+      scheduleBeep(0, 523, 0.4, 0.2);
       scheduleBeep(500, 659, 0.4, 0.2);
-      scheduleBeep(1000,784, 0.6, 0.25);
+      scheduleBeep(1000, 784, 0.6, 0.25);
       const t = setTimeout(pattern, 2800);
       timeouts.push(t);
     };
@@ -66,7 +75,8 @@ function createRingtone(ctx: AudioContext, type: FiringAlarm["sound"]): () => vo
   } else {
     const pattern = () => {
       if (stopped) return;
-      for (let i = 0; i < 6; i++) scheduleBeep(i * 100, 440 + i * 30, 0.08, 0.2);
+      for (let i = 0; i < 6; i++)
+        scheduleBeep(i * 100, 440 + i * 30, 0.08, 0.2);
       const t = setTimeout(pattern, 1600);
       timeouts.push(t);
     };
@@ -94,7 +104,11 @@ function PulseRing({ delay = 0 }: { delay?: number }) {
 
 // ─── Main overlay ─────────────────────────────────────────────────────────────
 
-export function AppCallOverlay({ alarm, onDismiss, onSnooze }: AppCallOverlayProps) {
+export function AppCallOverlay({
+  alarm,
+  onDismiss,
+  onSnooze,
+}: AppCallOverlayProps) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const stopRingRef = useRef<(() => void) | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -103,7 +117,7 @@ export function AppCallOverlay({ alarm, onDismiss, onSnooze }: AppCallOverlayPro
     if (!alarm) return;
 
     setElapsed(0);
-    const ticker = setInterval(() => setElapsed(s => s + 1), 1000);
+    const ticker = setInterval(() => setElapsed((s) => s + 1), 1000);
 
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
@@ -112,7 +126,12 @@ export function AppCallOverlay({ alarm, onDismiss, onSnooze }: AppCallOverlayPro
     return () => {
       clearInterval(ticker);
       stopRingRef.current?.();
-      ctx.close().catch(() => {});
+      ctx.close().catch((error) =>
+        reportClientError(error, {
+          context: "alarm audio context close",
+          notify: false,
+        }),
+      );
       stopRingRef.current = null;
       audioCtxRef.current = null;
     };
@@ -128,7 +147,8 @@ export function AppCallOverlay({ alarm, onDismiss, onSnooze }: AppCallOverlayPro
     onSnooze(alarm!.snoozeMins);
   };
 
-  const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  const fmt = (s: number) =>
+    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   return (
     <AnimatePresence>
@@ -141,7 +161,8 @@ export function AppCallOverlay({ alarm, onDismiss, onSnooze }: AppCallOverlayPro
           transition={{ duration: 0.35 }}
           className="fixed inset-0 z-[9999] flex items-center justify-center"
           style={{
-            background: "radial-gradient(ellipse at center, rgba(0,20,10,0.97) 0%, rgba(0,0,0,0.99) 100%)",
+            background:
+              "radial-gradient(ellipse at center, rgba(0,20,10,0.97) 0%, rgba(0,0,0,0.99) 100%)",
             backdropFilter: "blur(12px)",
           }}
         >
@@ -156,7 +177,9 @@ export function AppCallOverlay({ alarm, onDismiss, onSnooze }: AppCallOverlayPro
               <span className="text-xs font-semibold tracking-[0.2em] uppercase text-primary/70">
                 TraderLoading
               </span>
-              <span className="text-sm text-muted-foreground">Sveglia attiva</span>
+              <span className="text-sm text-muted-foreground">
+                Sveglia attiva
+              </span>
             </motion.div>
 
             {/* Pulsing avatar */}
@@ -172,7 +195,11 @@ export function AppCallOverlay({ alarm, onDismiss, onSnooze }: AppCallOverlayPro
               <div className="relative w-28 h-28 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border-2 border-primary/50 flex items-center justify-center shadow-2xl shadow-primary/20">
                 <motion.div
                   animate={{ scale: [1, 1.08, 1] }}
-                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                  transition={{
+                    duration: 1.4,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
                 >
                   <TrendingUp className="w-12 h-12 text-primary" />
                 </motion.div>
@@ -223,12 +250,18 @@ export function AppCallOverlay({ alarm, onDismiss, onSnooze }: AppCallOverlayPro
                   >
                     <motion.div
                       animate={{ rotate: [0, -8, 8, -8, 8, 0] }}
-                      transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 1.5 }}
+                      transition={{
+                        duration: 0.6,
+                        repeat: Infinity,
+                        repeatDelay: 1.5,
+                      }}
                     >
                       <BellOff className="w-8 h-8 text-primary" />
                     </motion.div>
                   </button>
-                  <span className="text-xs text-muted-foreground">Snooze {alarm.snoozeMins}m</span>
+                  <span className="text-xs text-muted-foreground">
+                    Snooze {alarm.snoozeMins}m
+                  </span>
                 </div>
               )}
 

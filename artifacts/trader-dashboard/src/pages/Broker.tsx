@@ -1,9 +1,7 @@
-import { useState } from "react";
-import { Wallet, Plug, Building2 } from "lucide-react";
+import { Wallet, Settings2 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LocalAccountConnect } from "@/components/account-bridge/LocalAccountConnect";
+import { CloudAccountConnect } from "@/components/broker-hub/CloudAccountConnect";
 import { BrokerHubWorkspace } from "@/components/broker-hub/BrokerHubWorkspace";
 import type { BrokerHubTab } from "@/components/broker-hub/types";
 
@@ -15,40 +13,32 @@ function getInitialBrokerTab(): BrokerHubTab {
 }
 
 export default function Broker() {
-  // Se l'URL ha ?tab=<broker-hub-tab>, parti dal pannello Broker Hub.
-  const [topTab, setTopTab] = useState<"local" | "hub">(
-    new URLSearchParams(window.location.search).has("tab") ? "hub" : "local",
-  );
-
   return (
     <PageLayout fullWidth>
       <PageHeader
         icon={
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
-            <Wallet className="h-4.5 w-4.5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+            <Wallet className="h-4 w-4" />
           </div>
         }
         title="Broker Hub"
-        subtitle="Collega il tuo conto di trading e gestisci ordini e storico"
+        subtitle="Collega il tuo conto MetaTrader senza installare nulla"
       />
 
-      <Tabs value={topTab} onValueChange={(v) => setTopTab(v as "local" | "hub")} className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="local" className="gap-2">
-            <Plug className="h-3.5 w-3.5" /> Conto (socket locale)
-          </TabsTrigger>
-          <TabsTrigger value="hub" className="gap-2">
-            <Building2 className="h-3.5 w-3.5" /> Broker Hub
-          </TabsTrigger>
-        </TabsList>
+      <section className="grid gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(22rem,0.42fr)]">
+        <div className="min-w-0">
+          <CloudAccountConnect />
+        </div>
 
-        <TabsContent value="local">
-          <LocalAccountConnect />
-        </TabsContent>
-        <TabsContent value="hub">
-          <BrokerHubWorkspace initialTab={getInitialBrokerTab()} />
-        </TabsContent>
-      </Tabs>
+        <details className="tl-panel overflow-hidden">
+          <summary className="flex min-h-11 cursor-pointer select-none items-center gap-2 px-4 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground">
+            <Settings2 className="h-4 w-4" /> Opzioni avanzate
+          </summary>
+          <div className="border-t border-border/40 p-4">
+            <BrokerHubWorkspace initialTab={getInitialBrokerTab()} />
+          </div>
+        </details>
+      </section>
     </PageLayout>
   );
 }

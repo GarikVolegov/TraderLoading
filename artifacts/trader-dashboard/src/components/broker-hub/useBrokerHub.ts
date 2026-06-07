@@ -7,6 +7,37 @@ import type {
   BrokerProfileList,
   BrokerSnapshot,
 } from "./types";
+import {
+  closeBrokerPosition as closeBrokerPositionRequest,
+  completeBrokerConnectionIntent,
+  connectBrokerProfile as connectBrokerProfileRequest,
+  createCompanionPairing as createCompanionPairingRequest,
+  createBrokerHubUrl,
+  createBrokerConnectionIntent,
+  deleteBrokerProfile,
+  getCompanionStatus as fetchCompanionStatus,
+  getBrokerHistory,
+  getBrokerSnapshot,
+  getMt5SmartLinkDiagnostics as fetchMt5SmartLinkDiagnostics,
+  getMt5SmartLinkStatus as fetchMt5SmartLinkStatus,
+  importBrokerHistory as importBrokerHistoryRequest,
+  listBrokerProfiles,
+  loginMt5SmartLink as loginMt5SmartLinkRequest,
+  placeBrokerOrder,
+  saveBrokerProfile,
+  startMt5SmartLink as startMt5SmartLinkRequest,
+  stopMt5SmartLink as stopMt5SmartLinkRequest,
+  type BrokerHistoryImportPayload,
+  verifyBrokerConnectionIntent,
+  verifyBrokerConnectionIntentSoft,
+  type BrokerConnectionCompletePayload,
+  type BrokerConnectionCredentialsPayload,
+  type CompanionPairingPayload,
+  type Mt5SmartLinkLoginPayload,
+  type Mt5SmartLinkStartPayload,
+} from "./brokerHubApi";
+
+export type { Mt5SmartLinkDiagnosticCheck, Mt5SmartLinkStatus } from "./brokerHubApi";
 
 const EMPTY_SNAPSHOT: BrokerSnapshot = {
   profileId: "",
@@ -21,38 +52,7 @@ const EMPTY_SNAPSHOT: BrokerSnapshot = {
   lastUpdated: new Date(0).toISOString(),
 };
 
-export interface Mt5SmartLinkStatus {
-  profileId: string;
-  status: "starting" | "waiting_for_terminal" | "waiting_for_login" | "waiting_for_snapshot" | "connected" | "stopped" | "error";
-  connected: boolean;
-  terminalDetected: boolean;
-  terminalPath?: string;
-  message: string;
-}
-
-export interface Mt5SmartLinkDiagnosticCheck {
-  id: string;
-  label: string;
-  ok: boolean;
-  message: string;
-}
-
-function apiUrl(path: string): string {
-  const configured = import.meta.env.VITE_API_BASE as string | undefined;
-  const base = configured && configured.trim() ? configured : window.location.origin;
-  return new URL(`/api${path}`, base).toString();
-}
-
-async function readJson<T>(response: Response): Promise<T> {
-  const data = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(data.error ?? "Broker request failed");
-  return data;
-}
-
-async function readJsonSoft<T>(response: Response): Promise<{ ok: boolean; data: T & { error?: string } }> {
-  const data = (await response.json().catch(() => ({}))) as T & { error?: string };
-  return { ok: response.ok, data };
-}
+const apiUrl = createBrokerHubUrl;
 
 export function useBrokerHub() {
   const [profiles, setProfiles] = useState<BrokerProfileList>({ activeProfileId: null, profiles: [] });
@@ -65,14 +65,10 @@ export function useBrokerHub() {
   const refreshProfiles = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await readJson<BrokerProfileList>(
-        await fetch(apiUrl("/brokers/profiles"), { credentials: "include" }),
-      );
+      const list = await listBrokerProfiles();
       setProfiles(list);
       if (list.activeProfileId) {
-        const nextSnapshot = await readJson<BrokerSnapshot>(
-          await fetch(apiUrl(`/brokers/profiles/${list.activeProfileId}/snapshot`), { credentials: "include" }),
-        );
+        const nextSnapshot = await getBrokerSnapshot(list.activeProfileId);
         setSnapshot(nextSnapshot);
       }
       setMessage(null);
@@ -89,14 +85,7 @@ export function useBrokerHub() {
 
   const saveProfile = useCallback(
     async (raw: Partial<BrokerAccountProfile> & { accessToken?: string; bridgeToken?: string }) => {
-      const data = await readJson<{ profile: BrokerAccountProfile }>(
-        await fetch(apiUrl("/brokers/profiles"), {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(raw),
-        }),
-      );
+      const data = await saveBrokerProfile(raw);
       await refreshProfiles();
       setMessage("Profilo broker salvato");
       return data.profile;
@@ -105,28 +94,14 @@ export function useBrokerHub() {
   );
 
   const createConnectionIntent = useCallback(async (brokerName = "FP Trading") => {
-    const data = await readJson<{ intent: BrokerConnectionIntent }>(
-      await fetch(apiUrl("/brokers/connect-intents"), {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ brokerName }),
-      }),
-    );
+    const data = await createBrokerConnectionIntent(brokerName);
     setConnectionIntent(data.intent);
     setMessage(data.intent.displayStatus);
     return data.intent;
   }, []);
 
   const verifyConnectionIntent = useCallback(async (intentId: string) => {
-    const data = await readJson<{ intent: BrokerConnectionIntent; snapshot?: BrokerSnapshot }>(
-      await fetch(apiUrl(`/brokers/connect-intents/${intentId}/verify`), {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-      }),
-    );
+    const data = await verifyBrokerConnectionIntent(intentId);
     setConnectionIntent(data.intent);
     setMessage(data.intent.displayStatus);
     return data.intent;
@@ -135,16 +110,9 @@ export function useBrokerHub() {
   const verifyAccountCredentials = useCallback(
     async (
       intentId: string,
-      payload: { accountNumber: string; accountPassword: string; server?: string; tradingEnabled?: boolean },
+      payload: BrokerConnectionCredentialsPayload,
     ) => {
-      const result = await readJsonSoft<{ intent?: BrokerConnectionIntent; snapshot?: BrokerSnapshot }>(
-        await fetch(apiUrl(`/brokers/connect-intents/${intentId}/verify`), {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        }),
-      );
+      const result = await verifyBrokerConnectionIntentSoft(intentId, payload);
       const data = result.data;
       if (data.intent) setConnectionIntent(data.intent);
       if (data.snapshot) setSnapshot(data.snapshot);
@@ -158,35 +126,9 @@ export function useBrokerHub() {
   const completeConnectionIntent = useCallback(
     async (
       intentId: string,
-      payload: {
-        mode?: "demo" | "advanced" | "credentials" | "verified" | "authorization";
-        platform?: "api" | "mt5-vps";
-        accountNumber?: string;
-        accountPassword?: string;
-        server?: string;
-        accountLabel?: string;
-        accountId?: string;
-        host?: string;
-        port?: number;
-        bridgeToken?: string;
-        clientId?: string;
-        redirectUri?: string;
-        accessToken?: string;
-        tradingEnabled?: boolean;
-      },
+      payload: BrokerConnectionCompletePayload,
     ) => {
-      const result = await readJsonSoft<{
-        intent?: BrokerConnectionIntent;
-        profile?: BrokerAccountProfile;
-        snapshot?: BrokerSnapshot;
-      }>(
-        await fetch(apiUrl(`/brokers/connect-intents/${intentId}/complete`), {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        }),
-      );
+      const result = await completeBrokerConnectionIntent(intentId, payload);
       const data = result.data;
       if (data.intent) setConnectionIntent(data.intent);
       if (data.snapshot) setSnapshot(data.snapshot);
@@ -198,18 +140,8 @@ export function useBrokerHub() {
   );
 
   const createCompanionPairing = useCallback(
-    async (payload: { brokerName: string; tradingEnabled?: boolean }) => {
-      const data = await readJson<{
-        profile: BrokerAccountProfile;
-        pairing: { token: string; expiresAt: string; instructions: string[] };
-      }>(
-        await fetch(apiUrl("/brokers/companion/pairing"), {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        }),
-      );
+    async (payload: CompanionPairingPayload) => {
+      const data = await createCompanionPairingRequest(payload);
       await refreshProfiles();
       setMessage("Pairing Connector pronto");
       return data;
@@ -218,15 +150,8 @@ export function useBrokerHub() {
   );
 
   const startMt5SmartLink = useCallback(
-    async (payload: { brokerName: string; tradingEnabled?: boolean; profileId?: string }) => {
-      const data = await readJson<{ profile: BrokerAccountProfile; status: Mt5SmartLinkStatus; snapshot: BrokerSnapshot }>(
-        await fetch(apiUrl("/brokers/smartlink/mt5/start"), {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        }),
-      );
+    async (payload: Mt5SmartLinkStartPayload) => {
+      const data = await startMt5SmartLinkRequest(payload);
       setSnapshot(data.snapshot);
       await refreshProfiles();
       setMessage(data.status.message);
@@ -236,21 +161,12 @@ export function useBrokerHub() {
   );
 
   const getMt5SmartLinkStatus = useCallback(async (profileId: string) => {
-    return readJson<Mt5SmartLinkStatus>(
-      await fetch(apiUrl(`/brokers/smartlink/mt5/status?profileId=${encodeURIComponent(profileId)}`), { credentials: "include" }),
-    );
+    return fetchMt5SmartLinkStatus(profileId);
   }, []);
 
   const loginMt5SmartLink = useCallback(
-    async (payload: { profileId: string; accountNumber: string; password: string; server: string }) => {
-      const data = await readJson<{ profile: BrokerAccountProfile; status: Mt5SmartLinkStatus }>(
-        await fetch(apiUrl("/brokers/smartlink/mt5/login"), {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        }),
-      );
+    async (payload: Mt5SmartLinkLoginPayload) => {
+      const data = await loginMt5SmartLinkRequest(payload);
       await refreshProfiles();
       setMessage(data.status.message);
       return data;
@@ -260,14 +176,7 @@ export function useBrokerHub() {
 
   const stopMt5SmartLink = useCallback(
     async (profileId: string) => {
-      const data = await readJson<{ profile: BrokerAccountProfile; status: Mt5SmartLinkStatus }>(
-        await fetch(apiUrl("/brokers/smartlink/mt5/stop"), {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ profileId }),
-        }),
-      );
+      const data = await stopMt5SmartLinkRequest(profileId);
       await refreshProfiles();
       setMessage(data.status.message);
       return data;
@@ -276,32 +185,16 @@ export function useBrokerHub() {
   );
 
   const getMt5SmartLinkDiagnostics = useCallback(async (profileId: string) => {
-    return readJson<{ profileId: string; checks: Mt5SmartLinkDiagnosticCheck[] }>(
-      await fetch(apiUrl(`/brokers/smartlink/mt5/diagnostics?profileId=${encodeURIComponent(profileId)}`), { credentials: "include" }),
-    );
+    return fetchMt5SmartLinkDiagnostics(profileId);
   }, []);
 
   const getCompanionStatus = useCallback(async (profileId: string) => {
-    return readJson<{ profileId: string; health: string; connected: boolean; hasSnapshot: boolean; lastUpdated?: string; message: string }>(
-      await fetch(apiUrl(`/brokers/companion/status/${encodeURIComponent(profileId)}`), { credentials: "include" }),
-    );
+    return fetchCompanionStatus(profileId);
   }, []);
 
   const importBrokerHistory = useCallback(
-    async (payload: {
-      brokerName: string;
-      accountLabel?: string;
-      accountId?: string;
-      deals: Array<{ id?: string; symbol: string; side: "buy" | "sell"; volume: number; profit?: number }>;
-    }) => {
-      const data = await readJson<{ profile: BrokerAccountProfile; snapshot: BrokerSnapshot; imported: number }>(
-        await fetch(apiUrl("/brokers/import/history"), {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        }),
-      );
+    async (payload: BrokerHistoryImportPayload) => {
+      const data = await importBrokerHistoryRequest(payload);
       setSnapshot(data.snapshot);
       await refreshProfiles();
       setMessage(`${data.imported} trade importati`);
@@ -312,9 +205,7 @@ export function useBrokerHub() {
 
   const connectProfile = useCallback(
     async (id: string) => {
-      const result = await readJsonSoft<{ profile?: BrokerAccountProfile; snapshot?: BrokerSnapshot }>(
-        await fetch(apiUrl(`/brokers/profiles/${id}/connect`), { method: "POST", credentials: "include" }),
-      );
+      const result = await connectBrokerProfileRequest(id);
       const data = result.data;
       if (data.snapshot) setSnapshot(data.snapshot);
       await refreshProfiles();
@@ -329,8 +220,7 @@ export function useBrokerHub() {
 
   const deleteProfile = useCallback(
     async (id: string) => {
-      const response = await fetch(apiUrl(`/brokers/profiles/${id}`), { method: "DELETE", credentials: "include" });
-      if (!response.ok) throw new Error("Impossibile eliminare il profilo broker");
+      await deleteBrokerProfile(id);
       await refreshProfiles();
       setMessage("Profilo broker eliminato");
     },
@@ -339,19 +229,10 @@ export function useBrokerHub() {
 
   const placeOrder = useCallback(
     async (profileId: string, order: BrokerOrderDraft) => {
-      const response = await readJsonSoft<{ accepted?: boolean; reason?: string; orderId?: string }>(
-        await fetch(apiUrl(`/brokers/profiles/${profileId}/orders`), {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(order),
-        }),
-      );
+      const response = await placeBrokerOrder(profileId, order);
       const result = response.data;
       setMessage(result.accepted ? `Ordine inviato ${result.orderId ?? ""}`.trim() : result.reason ?? "Ordine rifiutato");
-      const nextSnapshot = await readJson<BrokerSnapshot>(
-        await fetch(apiUrl(`/brokers/profiles/${profileId}/snapshot`), { credentials: "include" }),
-      );
+      const nextSnapshot = await getBrokerSnapshot(profileId);
       setSnapshot(nextSnapshot);
       return result;
     },
@@ -359,25 +240,16 @@ export function useBrokerHub() {
   );
 
   const closePosition = useCallback(async (profileId: string, positionId: string) => {
-    const response = await readJsonSoft<{ accepted?: boolean; reason?: string; orderId?: string }>(
-      await fetch(apiUrl(`/brokers/profiles/${profileId}/positions/${encodeURIComponent(positionId)}/close`), {
-        method: "POST",
-        credentials: "include",
-      }),
-    );
+    const response = await closeBrokerPositionRequest(profileId, positionId);
     const result = response.data;
     setMessage(result.accepted ? `Chiusura inviata ${result.orderId ?? ""}`.trim() : result.reason ?? "Chiusura rifiutata");
-    const nextSnapshot = await readJson<BrokerSnapshot>(
-      await fetch(apiUrl(`/brokers/profiles/${profileId}/snapshot`), { credentials: "include" }),
-    );
+    const nextSnapshot = await getBrokerSnapshot(profileId);
     setSnapshot(nextSnapshot);
     return result;
   }, []);
 
   const refreshHistory = useCallback(async (profileId: string) => {
-    const data = await readJson<BrokerDeal[]>(
-      await fetch(apiUrl(`/brokers/profiles/${profileId}/history`), { credentials: "include" }),
-    );
+    const data = await getBrokerHistory(profileId);
     setHistory(data);
   }, []);
 

@@ -10,21 +10,110 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Image, Upload, X, LogIn, LogOut, UserPlus, RefreshCw, Type, Sun, TrendingUp, Target, Plus, Pencil, Trash2, Quote, Bell, ShieldAlert, Lock, Globe, Music, ChevronRight, Check, Shield, KeyRound, CheckSquare, ChevronDown, BarChart2, Library, HelpCircle, ExternalLink, Mail, MessageSquare, BookOpen, Zap, Star, Monitor, Smartphone, Tablet as TabletIcon, Clock, FileText, Scale, LifeBuoy, CircleHelp, ArrowRight, Trophy } from "lucide-react";
+import {
+  Image,
+  Upload,
+  X,
+  LogIn,
+  LogOut,
+  UserPlus,
+  RefreshCw,
+  Type,
+  Sun,
+  TrendingUp,
+  Target,
+  Plus,
+  Pencil,
+  Trash2,
+  Quote,
+  Bell,
+  ShieldAlert,
+  Lock,
+  Globe,
+  Music,
+  ChevronRight,
+  Check,
+  Shield,
+  KeyRound,
+  CheckSquare,
+  ChevronDown,
+  BarChart2,
+  Library,
+  HelpCircle,
+  ExternalLink,
+  Mail,
+  MessageSquare,
+  BookOpen,
+  Zap,
+  Star,
+  Monitor,
+  Smartphone,
+  Tablet as TabletIcon,
+  Clock,
+  FileText,
+  Scale,
+  LifeBuoy,
+  CircleHelp,
+  ArrowRight,
+  Trophy,
+} from "lucide-react";
 import { useGetProfile } from "@workspace/api-client-react";
-import { getUnlockedRewards, getNextMilestone, getMilestoneProgress, MILESTONES, REWARDS } from "@/lib/rewardsLibrary";
+import {
+  getUnlockedRewards,
+  getNextMilestone,
+  getMilestoneProgress,
+  MILESTONES,
+  REWARDS,
+} from "@/lib/rewardsLibrary";
 import { RewardCard } from "@/components/LevelRewardModal";
-import { useBackground, DEFAULT_TRADING_SESSIONS, DEFAULT_LOT_DIVISOR, type TradingSessionConfig } from "@/contexts/BackgroundContext";
-import { useGetUserSettings, useUpdateUserSettings, getGetUserSettingsQueryKey, useGetMissionTemplates, useCreateMissionTemplate, useUpdateMissionTemplate, useDeleteMissionTemplate, getGetMissionTemplatesQueryKey, useGetQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, getGetQuotesQueryKey, getGetRandomQuoteQueryKey, useGetChecklist, useCreateChecklistItem, useDeleteChecklistItem, getGetChecklistQueryKey, type UpdateUserSettingsRequestFontChoice } from "@workspace/api-client-react";
+import {
+  useBackground,
+  DEFAULT_TRADING_SESSIONS,
+  DEFAULT_LOT_DIVISOR,
+  type TradingSessionConfig,
+} from "@/contexts/BackgroundContext";
+import {
+  useGetUserSettings,
+  useUpdateUserSettings,
+  getGetUserSettingsQueryKey,
+  useGetMissionTemplates,
+  useCreateMissionTemplate,
+  useUpdateMissionTemplate,
+  useDeleteMissionTemplate,
+  getGetMissionTemplatesQueryKey,
+  useGetQuotes,
+  useCreateQuote,
+  useUpdateQuote,
+  useDeleteQuote,
+  getGetQuotesQueryKey,
+  getGetRandomQuoteQueryKey,
+  useGetChecklist,
+  useCreateChecklistItem,
+  useDeleteChecklistItem,
+  getGetChecklistQueryKey,
+  type UpdateUserSettingsRequestFontChoice,
+} from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePinLock } from "@/contexts/PinLockContext";
-import { useLanguage, LANGUAGES, type Language } from "@/contexts/LanguageContext";
+import {
+  useLanguage,
+  LANGUAGES,
+  type Language,
+} from "@/contexts/LanguageContext";
 import { getPairLabel } from "@workspace/pair-catalog";
 import { PairSelectionModal } from "@/components/PairSelectionModal";
-import { usePushNotifications, type NotificationPrefs } from "@/hooks/usePushNotifications";
-import { getNotificationCopy, NOTIFICATION_PREF_ORDER } from "@/lib/notifications";
+import {
+  usePushNotifications,
+  type NotificationPrefs,
+} from "@/hooks/usePushNotifications";
+import {
+  getNotificationCopy,
+  NOTIFICATION_PREF_ORDER,
+} from "@/lib/notifications";
+import { uploadBackgroundImage } from "@/lib/backgroundSettingsApi";
+import { reportClientError } from "@/lib/clientErrorReporter";
 import {
   detectTradingSessionOverlap,
   getLocalTimeZoneLabel,
@@ -36,11 +125,27 @@ import {
 
 const FONT_OPTIONS = [
   { value: "inter", label: "Inter", sample: "font-['Inter']" },
-  { value: "jetbrains", label: "JetBrains Mono", sample: "font-['JetBrains_Mono']" },
+  {
+    value: "jetbrains",
+    label: "JetBrains Mono",
+    sample: "font-['JetBrains_Mono']",
+  },
   { value: "roboto", label: "Roboto", sample: "font-['Roboto']" },
-  { value: "space-grotesk", label: "Space Grotesk", sample: "font-['Space_Grotesk']" },
-  { value: "ibm-plex", label: "IBM Plex Sans", sample: "font-['IBM_Plex_Sans']" },
-] as const satisfies readonly { value: UpdateUserSettingsRequestFontChoice; label: string; sample: string }[];
+  {
+    value: "space-grotesk",
+    label: "Space Grotesk",
+    sample: "font-['Space_Grotesk']",
+  },
+  {
+    value: "ibm-plex",
+    label: "IBM Plex Sans",
+    sample: "font-['IBM_Plex_Sans']",
+  },
+] as const satisfies readonly {
+  value: UpdateUserSettingsRequestFontChoice;
+  label: string;
+  sample: string;
+}[];
 
 function FontSettings() {
   const { fontChoice, setFontChoice } = useBackground();
@@ -48,14 +153,19 @@ function FontSettings() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const handleFontChange = async (value: UpdateUserSettingsRequestFontChoice) => {
+  const handleFontChange = async (
+    value: UpdateUserSettingsRequestFontChoice,
+  ) => {
     setFontChoice(value);
     try {
       await updateMutation.mutateAsync({ data: { fontChoice: value } });
       qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
       toast({ description: "Font aggiornato." });
     } catch {
-      toast({ description: "Errore nell'aggiornamento del font.", variant: "destructive" });
+      toast({
+        description: "Errore nell'aggiornamento del font.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -68,7 +178,7 @@ function FontSettings() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {FONT_OPTIONS.map(opt => (
+        {FONT_OPTIONS.map((opt) => (
           <motion.button
             key={opt.value}
             whileHover={{ scale: 1.01 }}
@@ -82,7 +192,9 @@ function FontSettings() {
           >
             <span style={{ fontFamily: opt.label }}>{opt.label}</span>
             {fontChoice === opt.value && (
-              <span className="text-xs bg-primary/20 px-2 py-0.5 rounded-full">Attivo</span>
+              <span className="text-xs bg-primary/20 px-2 py-0.5 rounded-full">
+                Attivo
+              </span>
             )}
           </motion.button>
         ))}
@@ -95,16 +207,25 @@ function DarknessSettings() {
   const { darkness, setDarkness } = useBackground();
   const updateMutation = useUpdateUserSettings();
   const qc = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   const handleChange = (value: number) => {
     setDarkness(value);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        await updateMutation.mutateAsync({ data: { backgroundDarkness: value } });
+        await updateMutation.mutateAsync({
+          data: { backgroundDarkness: value },
+        });
         qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
-      } catch {}
+      } catch (error) {
+        reportClientError(error, {
+          context: "background darkness autosave",
+          notify: false,
+        });
+      }
     }, 500);
   };
 
@@ -132,7 +253,10 @@ function DarknessSettings() {
         />
         <div className="rounded-lg overflow-hidden border border-border aspect-[3/1] relative">
           <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-accent/30" />
-          <div className="absolute inset-0 bg-background" style={{ opacity: darkness / 100 }} />
+          <div
+            className="absolute inset-0 bg-background"
+            style={{ opacity: darkness / 100 }}
+          />
           <div className="absolute inset-0 flex items-center justify-center text-xs text-foreground/70">
             Anteprima oscuramento
           </div>
@@ -152,28 +276,26 @@ function BackgroundSettings() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const isCustom = settings?.backgroundType === "custom" && settings?.backgroundUrl && !imgError;
+  const isCustom =
+    settings?.backgroundType === "custom" &&
+    settings?.backgroundUrl &&
+    !imgError;
   const previewUrl = backgroundUrl || settings?.backgroundUrl;
 
   const handleFileChange = async (file: File) => {
     setUploading(true);
     setImgError(false);
     try {
-      const form = new FormData();
-      form.append("image", file);
-      const res = await fetch("api/settings/background", {
-        method: "POST",
-        body: form,
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json() as { url: string };
+      const data = await uploadBackgroundImage(file);
       setBackgroundUrl(data.url);
       await refetch();
       qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
       toast({ description: "Sfondo aggiornato con successo." });
     } catch {
-      toast({ description: "Errore durante il caricamento.", variant: "destructive" });
+      toast({
+        description: "Errore durante il caricamento.",
+        variant: "destructive",
+      });
     } finally {
       setUploading(false);
     }
@@ -181,14 +303,19 @@ function BackgroundSettings() {
 
   const handleReset = async () => {
     try {
-      await updateMutation.mutateAsync({ data: { backgroundType: "default", backgroundUrl: null } });
+      await updateMutation.mutateAsync({
+        data: { backgroundType: "default", backgroundUrl: null },
+      });
       setBackgroundUrl(null);
       setImgError(false);
       await refetch();
       qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
       toast({ description: "Sfondo ripristinato." });
     } catch {
-      toast({ description: "Errore durante il ripristino.", variant: "destructive" });
+      toast({
+        description: "Errore durante il ripristino.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -210,7 +337,11 @@ function BackgroundSettings() {
               onError={() => setImgError(true)}
             />
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => fileRef.current?.click()}
+              >
                 <Upload className="w-4 h-4 mr-1" />
                 Cambia
               </Button>
@@ -227,7 +358,9 @@ function BackgroundSettings() {
           >
             <Image className="w-10 h-10 mb-3 opacity-30" />
             <p className="text-sm font-medium">Nessuno sfondo personalizzato</p>
-            <p className="text-xs opacity-60 mt-1">Clicca per selezionare un'immagine</p>
+            <p className="text-xs opacity-60 mt-1">
+              Clicca per selezionare un'immagine
+            </p>
           </div>
         )}
 
@@ -264,8 +397,15 @@ function BackgroundSettings() {
           </Button>
         )}
 
-        {(imgError || (settings?.backgroundType === "custom" && !settings?.backgroundUrl)) && (
-          <Button variant="outline" size="sm" onClick={handleReset} className="w-full">
+        {(imgError ||
+          (settings?.backgroundType === "custom" &&
+            !settings?.backgroundUrl)) && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            className="w-full"
+          >
             <RefreshCw className="w-4 h-4 mr-2" />
             Ripristina sfondo predefinito
           </Button>
@@ -280,18 +420,28 @@ function detectOverlap(sessions: TradingSessionConfig[]): string | null {
 }
 
 function TradingSettings() {
-  const { tradingSessions, setTradingSessions, lotDivisor, setLotDivisor } = useBackground();
+  const { tradingSessions, setTradingSessions, lotDivisor, setLotDivisor } =
+    useBackground();
   const updateMutation = useUpdateUserSettings();
   const qc = useQueryClient();
   const { toast } = useToast();
-  const [localSessions, setLocalSessions] = useState<TradingSessionConfig[]>(tradingSessions);
+  const [localSessions, setLocalSessions] =
+    useState<TradingSessionConfig[]>(tradingSessions);
   const [localDivisor, setLocalDivisor] = useState(String(lotDivisor));
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const localTimeZoneLabel = getLocalTimeZoneLabel();
 
-  useEffect(() => { setLocalSessions(tradingSessions); }, [tradingSessions]);
-  useEffect(() => { setLocalDivisor(String(lotDivisor)); }, [lotDivisor]);
-  useEffect(() => { return () => clearTimeout(debounceRef.current); }, []);
+  useEffect(() => {
+    setLocalSessions(tradingSessions);
+  }, [tradingSessions]);
+  useEffect(() => {
+    setLocalDivisor(String(lotDivisor));
+  }, [lotDivisor]);
+  useEffect(() => {
+    return () => clearTimeout(debounceRef.current);
+  }, []);
 
   const overlapError = detectOverlap(localSessions);
 
@@ -302,23 +452,39 @@ function TradingSettings() {
     debounceRef.current = setTimeout(async () => {
       const err = detectOverlap(sessions);
       if (err) {
-        toast({ description: `Sovrapposizione rilevata: ${err}`, variant: "destructive" });
+        toast({
+          description: `Sovrapposizione rilevata: ${err}`,
+          variant: "destructive",
+        });
         return;
       }
       try {
-        await updateMutation.mutateAsync({ data: { tradingSessions: sessions, lotDivisor: Number(localDivisor) || DEFAULT_LOT_DIVISOR } });
+        await updateMutation.mutateAsync({
+          data: {
+            tradingSessions: sessions,
+            lotDivisor: Number(localDivisor) || DEFAULT_LOT_DIVISOR,
+          },
+        });
         qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
         toast({ description: "Sessioni salvate." });
       } catch {
-        toast({ description: "Errore nel salvataggio.", variant: "destructive" });
+        toast({
+          description: "Errore nel salvataggio.",
+          variant: "destructive",
+        });
       }
     }, 800);
   };
 
-  const handleSessionChange = (idx: number, field: keyof TradingSessionConfig, value: string | boolean) => {
+  const handleSessionChange = (
+    idx: number,
+    field: keyof TradingSessionConfig,
+    value: string | boolean,
+  ) => {
     const updated = localSessions.map((s, i) => {
       if (i === idx) {
-        if (field === "openUTC" || field === "closeUTC") return { ...s, [field]: normalizeLocalSessionTime(value as string) };
+        if (field === "openUTC" || field === "closeUTC")
+          return { ...s, [field]: normalizeLocalSessionTime(value as string) };
         return { ...s, [field]: value };
       }
       return s;
@@ -332,7 +498,12 @@ function TradingSettings() {
       return {
         ...session,
         kind,
-        color: kind === "market_closed" ? "session-closed" : session.color === "session-closed" ? "session-ny" : session.color,
+        color:
+          kind === "market_closed"
+            ? "session-closed"
+            : session.color === "session-closed"
+              ? "session-ny"
+              : session.color,
       };
     });
     saveSessions(updated);
@@ -379,11 +550,16 @@ function TradingSettings() {
       clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(async () => {
         try {
-          await updateMutation.mutateAsync({ data: { lotDivisor: num, tradingSessions: localSessions } });
+          await updateMutation.mutateAsync({
+            data: { lotDivisor: num, tradingSessions: localSessions },
+          });
           qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
           toast({ description: "Divisore salvato." });
         } catch {
-          toast({ description: "Errore nel salvataggio.", variant: "destructive" });
+          toast({
+            description: "Errore nel salvataggio.",
+            variant: "destructive",
+          });
         }
       }, 800);
     }
@@ -395,7 +571,12 @@ function TradingSettings() {
     setLocalDivisor(String(DEFAULT_LOT_DIVISOR));
     setLotDivisor(DEFAULT_LOT_DIVISOR);
     try {
-      await updateMutation.mutateAsync({ data: { tradingSessions: DEFAULT_TRADING_SESSIONS, lotDivisor: DEFAULT_LOT_DIVISOR } });
+      await updateMutation.mutateAsync({
+        data: {
+          tradingSessions: DEFAULT_TRADING_SESSIONS,
+          lotDivisor: DEFAULT_LOT_DIVISOR,
+        },
+      });
       qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
       toast({ description: "Impostazioni trading ripristinate." });
     } catch {
@@ -415,9 +596,17 @@ function TradingSettings() {
         <div className="space-y-4">
           <div className="flex items-start justify-between">
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Sessioni di Trading</h4>
-              <p className="text-xs text-muted-foreground mt-1">Orari solo locali ({localTimeZoneLabel}). Nessuna conversione di fuso viene applicata.</p>
-              <p className="text-xs text-muted-foreground mt-1">Le righe "Mercato chiuso" sono informative: possono sovrapporsi alle sessioni operative e non inviano promemoria di apertura.</p>
+              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Sessioni di Trading
+              </h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Orari solo locali ({localTimeZoneLabel}). Nessuna conversione di
+                fuso viene applicata.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Le righe "Mercato chiuso" sono informative: possono sovrapporsi
+                alle sessioni operative e non inviano promemoria di apertura.
+              </p>
             </div>
           </div>
 
@@ -437,15 +626,21 @@ function TradingSettings() {
               <div className="flex items-center justify-between gap-3">
                 <Input
                   value={session.name}
-                  onChange={(e) => handleSessionChange(idx, "name", e.target.value)}
+                  onChange={(e) =>
+                    handleSessionChange(idx, "name", e.target.value)
+                  }
                   className="text-sm font-semibold flex-1 bg-secondary/40 border-border/30 rounded-lg"
                   placeholder="Nome sessione"
                 />
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-muted-foreground font-medium">Attiva</span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Attiva
+                  </span>
                   <Switch
                     checked={session.enabled}
-                    onCheckedChange={(checked) => handleSessionChange(idx, "enabled", checked)}
+                    onCheckedChange={(checked) =>
+                      handleSessionChange(idx, "enabled", checked)
+                    }
                   />
                   {localSessions.length > 1 && (
                     <button
@@ -460,10 +655,17 @@ function TradingSettings() {
               </div>
               <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Tipo sessione</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                    Tipo sessione
+                  </label>
                   <select
                     value={(session as MarketSessionConfig).kind ?? "trading"}
-                    onChange={(event) => handleSessionKindChange(idx, event.target.value as TradingSessionKind)}
+                    onChange={(event) =>
+                      handleSessionKindChange(
+                        idx,
+                        event.target.value as TradingSessionKind,
+                      )
+                    }
                     className="h-10 w-full rounded-lg border border-border/30 bg-secondary/40 px-3 text-sm text-foreground"
                   >
                     <option value="trading">Sessione operativa</option>
@@ -471,31 +673,43 @@ function TradingSettings() {
                   </select>
                 </div>
                 <div className="flex items-end">
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
-                    isMarketClosedSession(session as MarketSessionConfig)
-                      ? "bg-red-500/10 text-red-400 border border-red-500/30"
-                      : "bg-primary/10 text-primary border border-primary/25"
-                  }`}>
-                    {isMarketClosedSession(session as MarketSessionConfig) ? "Chiuso" : "Operativa"}
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
+                      isMarketClosedSession(session as MarketSessionConfig)
+                        ? "bg-red-500/10 text-red-400 border border-red-500/30"
+                        : "bg-primary/10 text-primary border border-primary/25"
+                    }`}
+                  >
+                    {isMarketClosedSession(session as MarketSessionConfig)
+                      ? "Chiuso"
+                      : "Operativa"}
                   </span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Apertura</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                    Apertura
+                  </label>
                   <Input
                     type="time"
                     value={normalizeLocalSessionTime(session.openUTC)}
-                    onChange={(e) => handleSessionChange(idx, "openUTC", e.target.value)}
+                    onChange={(e) =>
+                      handleSessionChange(idx, "openUTC", e.target.value)
+                    }
                     className="text-sm font-mono bg-secondary/40 border border-border/30 rounded-lg h-10 text-foreground"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Chiusura</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                    Chiusura
+                  </label>
                   <Input
                     type="time"
                     value={normalizeLocalSessionTime(session.closeUTC)}
-                    onChange={(e) => handleSessionChange(idx, "closeUTC", e.target.value)}
+                    onChange={(e) =>
+                      handleSessionChange(idx, "closeUTC", e.target.value)
+                    }
                     className="text-sm font-mono bg-secondary/40 border border-border/30 rounded-lg h-10 text-foreground"
                   />
                 </div>
@@ -521,7 +735,11 @@ function TradingSettings() {
           </Button>
         </div>
 
-        <Button variant="outline" className="w-full rounded-lg" onClick={handleReset}>
+        <Button
+          variant="outline"
+          className="w-full rounded-lg"
+          onClick={handleReset}
+        >
           <RefreshCw className="w-4 h-4 mr-2" />
           Ripristina valori predefiniti
         </Button>
@@ -551,7 +769,9 @@ function QuotesSettings() {
   const handleAdd = async () => {
     if (!newText.trim()) return;
     try {
-      await createMutation.mutateAsync({ data: { text: newText.trim(), author: newAuthor.trim() || undefined } });
+      await createMutation.mutateAsync({
+        data: { text: newText.trim(), author: newAuthor.trim() || undefined },
+      });
       setNewText("");
       setNewAuthor("");
       invalidate();
@@ -563,12 +783,18 @@ function QuotesSettings() {
 
   const handleUpdate = async (id: number) => {
     try {
-      await updateMutation.mutateAsync({ id, data: { text: editText, author: editAuthor } });
+      await updateMutation.mutateAsync({
+        id,
+        data: { text: editText, author: editAuthor },
+      });
       setEditingId(null);
       invalidate();
       toast({ description: "Citazione aggiornata." });
     } catch {
-      toast({ description: "Errore nell'aggiornamento.", variant: "destructive" });
+      toast({
+        description: "Errore nell'aggiornamento.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -578,11 +804,18 @@ function QuotesSettings() {
       invalidate();
       toast({ description: "Citazione eliminata." });
     } catch {
-      toast({ description: "Errore nell'eliminazione.", variant: "destructive" });
+      toast({
+        description: "Errore nell'eliminazione.",
+        variant: "destructive",
+      });
     }
   };
 
-  const startEdit = (q: { id: number; text: string; author?: string | null }) => {
+  const startEdit = (q: {
+    id: number;
+    text: string;
+    author?: string | null;
+  }) => {
     setEditingId(q.id);
     setEditText(q.text);
     setEditAuthor(q.author ?? "");
@@ -598,14 +831,29 @@ function QuotesSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          Aggiungi le tue citazioni preferite. Se non ne aggiungi, verranno mostrate quelle predefinite.
+          Aggiungi le tue citazioni preferite. Se non ne aggiungi, verranno
+          mostrate quelle predefinite.
         </p>
 
         <div className="space-y-2 rounded-lg border border-border p-3">
-          <Input placeholder="Citazione" value={newText} onChange={(e) => setNewText(e.target.value)} className="text-sm" />
+          <Input
+            placeholder="Citazione"
+            value={newText}
+            onChange={(e) => setNewText(e.target.value)}
+            className="text-sm"
+          />
           <div className="flex gap-2">
-            <Input placeholder="Autore" value={newAuthor} onChange={(e) => setNewAuthor(e.target.value)} className="text-sm flex-1" />
-            <Button onClick={handleAdd} disabled={!newText.trim() || createMutation.isPending} size="sm">
+            <Input
+              placeholder="Autore"
+              value={newAuthor}
+              onChange={(e) => setNewAuthor(e.target.value)}
+              className="text-sm flex-1"
+            />
+            <Button
+              onClick={handleAdd}
+              disabled={!newText.trim() || createMutation.isPending}
+              size="sm"
+            >
               <Plus className="w-4 h-4 mr-1" />
               Aggiungi
             </Button>
@@ -617,31 +865,69 @@ function QuotesSettings() {
             <div className="w-6 h-6 rounded-full border-4 border-primary border-t-transparent animate-spin" />
           </div>
         ) : !quotes || quotes.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-3">Nessuna citazione personalizzata. Verranno usate quelle predefinite.</p>
+          <p className="text-sm text-muted-foreground text-center py-3">
+            Nessuna citazione personalizzata. Verranno usate quelle predefinite.
+          </p>
         ) : (
           <div className="space-y-2">
             {quotes.map((q) => (
               <div key={q.id} className="rounded-lg border border-border p-3">
                 {editingId === q.id ? (
                   <div className="space-y-2">
-                    <Input value={editText} onChange={(e) => setEditText(e.target.value)} className="text-sm" />
+                    <Input
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      className="text-sm"
+                    />
                     <div className="flex gap-2">
-                      <Input value={editAuthor} onChange={(e) => setEditAuthor(e.target.value)} className="text-sm flex-1" />
-                      <Button size="sm" onClick={() => handleUpdate(q.id)} disabled={updateMutation.isPending}>Salva</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annulla</Button>
+                      <Input
+                        value={editAuthor}
+                        onChange={(e) => setEditAuthor(e.target.value)}
+                        className="text-sm flex-1"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => handleUpdate(q.id)}
+                        disabled={updateMutation.isPending}
+                      >
+                        Salva
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Annulla
+                      </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm italic truncate">&ldquo;{q.text}&rdquo;</p>
-                      {q.author && <p className="text-xs text-muted-foreground mt-0.5">— {q.author}</p>}
+                      <p className="text-sm italic truncate">
+                        &ldquo;{q.text}&rdquo;
+                      </p>
+                      {q.author && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          — {q.author}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => startEdit(q)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => startEdit(q)}
+                      >
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(q.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDelete(q.id)}
+                      >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
@@ -671,12 +957,19 @@ function MissionTemplatesSettings() {
   const [editDesc, setEditDesc] = useState("");
   const [editXp, setEditXp] = useState("");
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: getGetMissionTemplatesQueryKey() });
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: getGetMissionTemplatesQueryKey() });
 
   const handleAdd = async () => {
     if (!newTitle.trim() || !newDesc.trim()) return;
     try {
-      await createMutation.mutateAsync({ data: { title: newTitle.trim(), description: newDesc.trim(), xpReward: Number(newXp) || 50 } });
+      await createMutation.mutateAsync({
+        data: {
+          title: newTitle.trim(),
+          description: newDesc.trim(),
+          xpReward: Number(newXp) || 50,
+        },
+      });
       setNewTitle("");
       setNewDesc("");
       setNewXp("50");
@@ -689,12 +982,22 @@ function MissionTemplatesSettings() {
 
   const handleUpdate = async (id: number) => {
     try {
-      await updateMutation.mutateAsync({ id, data: { title: editTitle, description: editDesc, xpReward: Number(editXp) || 50 } });
+      await updateMutation.mutateAsync({
+        id,
+        data: {
+          title: editTitle,
+          description: editDesc,
+          xpReward: Number(editXp) || 50,
+        },
+      });
       setEditingId(null);
       invalidate();
       toast({ description: "Missione aggiornata." });
     } catch {
-      toast({ description: "Errore nell'aggiornamento.", variant: "destructive" });
+      toast({
+        description: "Errore nell'aggiornamento.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -704,11 +1007,19 @@ function MissionTemplatesSettings() {
       invalidate();
       toast({ description: "Missione eliminata." });
     } catch {
-      toast({ description: "Errore nell'eliminazione.", variant: "destructive" });
+      toast({
+        description: "Errore nell'eliminazione.",
+        variant: "destructive",
+      });
     }
   };
 
-  const startEdit = (t: { id: number; title: string; description: string; xpReward: number }) => {
+  const startEdit = (t: {
+    id: number;
+    title: string;
+    description: string;
+    xpReward: number;
+  }) => {
     setEditingId(t.id);
     setEditTitle(t.title);
     setEditDesc(t.description);
@@ -725,15 +1036,40 @@ function MissionTemplatesSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          Personalizza le missioni giornaliere. Se non ne aggiungi, verranno usate quelle predefinite.
+          Personalizza le missioni giornaliere. Se non ne aggiungi, verranno
+          usate quelle predefinite.
         </p>
 
         <div className="space-y-2 rounded-lg border border-border p-3">
-          <Input placeholder="Titolo missione" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="text-sm" />
-          <Input placeholder="Descrizione" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="text-sm" />
+          <Input
+            placeholder="Titolo missione"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            className="text-sm"
+          />
+          <Input
+            placeholder="Descrizione"
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+            className="text-sm"
+          />
           <div className="flex gap-2">
-            <Input type="number" min="1" placeholder="XP" value={newXp} onChange={(e) => setNewXp(e.target.value)} className="text-sm w-24" />
-            <Button onClick={handleAdd} disabled={!newTitle.trim() || !newDesc.trim() || createMutation.isPending} size="sm" className="flex-1">
+            <Input
+              type="number"
+              min="1"
+              placeholder="XP"
+              value={newXp}
+              onChange={(e) => setNewXp(e.target.value)}
+              className="text-sm w-24"
+            />
+            <Button
+              onClick={handleAdd}
+              disabled={
+                !newTitle.trim() || !newDesc.trim() || createMutation.isPending
+              }
+              size="sm"
+              className="flex-1"
+            >
               <Plus className="w-4 h-4 mr-1" />
               Aggiungi
             </Button>
@@ -745,35 +1081,79 @@ function MissionTemplatesSettings() {
             <div className="w-6 h-6 rounded-full border-4 border-primary border-t-transparent animate-spin" />
           </div>
         ) : !templates || templates.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-3">Nessuna missione personalizzata. Verranno usate le 5 predefinite.</p>
+          <p className="text-sm text-muted-foreground text-center py-3">
+            Nessuna missione personalizzata. Verranno usate le 5 predefinite.
+          </p>
         ) : (
           <div className="space-y-2">
             {templates.map((t) => (
               <div key={t.id} className="rounded-lg border border-border p-3">
                 {editingId === t.id ? (
                   <div className="space-y-2">
-                    <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm" />
-                    <Input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="text-sm" />
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="text-sm"
+                    />
+                    <Input
+                      value={editDesc}
+                      onChange={(e) => setEditDesc(e.target.value)}
+                      className="text-sm"
+                    />
                     <div className="flex gap-2">
-                      <Input type="number" min="1" value={editXp} onChange={(e) => setEditXp(e.target.value)} className="text-sm w-24" />
-                      <Button size="sm" onClick={() => handleUpdate(t.id)} disabled={updateMutation.isPending}>Salva</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Annulla</Button>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={editXp}
+                        onChange={(e) => setEditXp(e.target.value)}
+                        className="text-sm w-24"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => handleUpdate(t.id)}
+                        disabled={updateMutation.isPending}
+                      >
+                        Salva
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Annulla
+                      </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-semibold truncate">{t.title}</h4>
-                        <span className="text-xs font-mono text-accent bg-secondary/60 px-1.5 py-0.5 rounded">{t.xpReward} XP</span>
+                        <h4 className="text-sm font-semibold truncate">
+                          {t.title}
+                        </h4>
+                        <span className="text-xs font-mono text-accent bg-secondary/60 px-1.5 py-0.5 rounded">
+                          {t.xpReward} XP
+                        </span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{t.description}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {t.description}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => startEdit(t)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => startEdit(t)}
+                      >
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(t.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDelete(t.id)}
+                      >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
@@ -806,19 +1186,24 @@ function NotificationSettings() {
       saveError: "Errore nel salvataggio.",
       pushOff: "Notifiche push disattivate.",
       pushOn: "Notifiche push attivate.",
-      pushUnavailable: "Notifiche push non configurate sul server. Gli avvisi in-app restano attivi.",
-      deniedToast: "Permesso notifiche negato. Abilita dalle impostazioni del browser.",
+      pushUnavailable:
+        "Notifiche push non configurate sul server. Gli avvisi in-app restano attivi.",
+      deniedToast:
+        "Permesso notifiche negato. Abilita dalle impostazioni del browser.",
       title: "Notifiche Push",
       unsupported: "Le notifiche push non sono supportate da questo browser.",
-      denied: "Il permesso e stato negato. Abilita le notifiche dalle impostazioni del browser e ricarica la pagina.",
+      denied:
+        "Il permesso e stato negato. Abilita le notifiche dalle impostazioni del browser e ricarica la pagina.",
       background: "Notifiche in background",
       backgroundDesc: "Ricevi notifiche anche ad app chiusa.",
       choose: "Scegli cosa ricevere",
       alerts: "Promemoria e alert",
       dailyTime: "Orario promemoria giornaliero",
-      dailyDesc: "Ricevi ogni giorno una notifica con il riepilogo delle missioni.",
+      dailyDesc:
+        "Ricevi ogni giorno una notifica con il riepilogo delle missioni.",
       macroLead: "Anticipo alert eventi macro",
-      macroDesc: "Quanto prima ricevere la notifica per eventi ad alto impatto.",
+      macroDesc:
+        "Quanto prima ricevere la notifica per eventi ad alto impatto.",
       maxLoss: "Max loss giornaliero",
       maxLossDesc: "Ricevi un avviso alla sessione se hai impostato un limite.",
       maxLossPlaceholder: "es. 200",
@@ -829,11 +1214,14 @@ function NotificationSettings() {
       saveError: "Save error.",
       pushOff: "Push notifications disabled.",
       pushOn: "Push notifications enabled.",
-      pushUnavailable: "Push notifications are not configured on the server. In-app alerts remain active.",
-      deniedToast: "Notification permission denied. Enable it in browser settings.",
+      pushUnavailable:
+        "Push notifications are not configured on the server. In-app alerts remain active.",
+      deniedToast:
+        "Notification permission denied. Enable it in browser settings.",
       title: "Push Notifications",
       unsupported: "Push notifications are not supported by this browser.",
-      denied: "Permission was denied. Enable notifications in browser settings and reload the page.",
+      denied:
+        "Permission was denied. Enable notifications in browser settings and reload the page.",
       background: "Background notifications",
       backgroundDesc: "Receive notifications even when the app is closed.",
       choose: "Choose what to receive",
@@ -852,11 +1240,14 @@ function NotificationSettings() {
       saveError: "Error al guardar.",
       pushOff: "Notificaciones push desactivadas.",
       pushOn: "Notificaciones push activadas.",
-      pushUnavailable: "Las notificaciones push no estan configuradas en el servidor. Las alertas dentro de la app siguen activas.",
-      deniedToast: "Permiso de notificaciones denegado. Activalo en el navegador.",
+      pushUnavailable:
+        "Las notificaciones push no estan configuradas en el servidor. Las alertas dentro de la app siguen activas.",
+      deniedToast:
+        "Permiso de notificaciones denegado. Activalo en el navegador.",
       title: "Notificaciones Push",
       unsupported: "Este navegador no admite notificaciones push.",
-      denied: "Permiso denegado. Activa las notificaciones en el navegador y recarga la pagina.",
+      denied:
+        "Permiso denegado. Activa las notificaciones en el navegador y recarga la pagina.",
       background: "Notificaciones en segundo plano",
       backgroundDesc: "Recibe notificaciones incluso con la app cerrada.",
       choose: "Elige que recibir",
@@ -875,11 +1266,14 @@ function NotificationSettings() {
       saveError: "Erreur d'enregistrement.",
       pushOff: "Notifications push desactivees.",
       pushOn: "Notifications push activees.",
-      pushUnavailable: "Les notifications push ne sont pas configurees sur le serveur. Les alertes dans l'app restent actives.",
+      pushUnavailable:
+        "Les notifications push ne sont pas configurees sur le serveur. Les alertes dans l'app restent actives.",
       deniedToast: "Autorisation refusee. Activez-la dans le navigateur.",
       title: "Notifications Push",
-      unsupported: "Ce navigateur ne prend pas en charge les notifications push.",
-      denied: "Autorisation refusee. Activez les notifications dans le navigateur puis rechargez.",
+      unsupported:
+        "Ce navigateur ne prend pas en charge les notifications push.",
+      denied:
+        "Autorisation refusee. Activez les notifications dans le navigateur puis rechargez.",
       background: "Notifications en arriere-plan",
       backgroundDesc: "Recevez des notifications meme quand l'app est fermee.",
       choose: "Choisir quoi recevoir",
@@ -889,7 +1283,8 @@ function NotificationSettings() {
       macroLead: "Delai des evenements macro",
       macroDesc: "Quand recevoir les alertes a fort impact.",
       maxLoss: "Perte max quotidienne",
-      maxLossDesc: "Recevez un avertissement de session si une limite est definie.",
+      maxLossDesc:
+        "Recevez un avertissement de session si une limite est definie.",
       maxLossPlaceholder: "ex. 200",
       save: "Enregistrer",
     },
@@ -898,11 +1293,14 @@ function NotificationSettings() {
       saveError: "Fehler beim Speichern.",
       pushOff: "Push-Benachrichtigungen deaktiviert.",
       pushOn: "Push-Benachrichtigungen aktiviert.",
-      pushUnavailable: "Push-Benachrichtigungen sind auf dem Server nicht konfiguriert. In-App-Hinweise bleiben aktiv.",
-      deniedToast: "Benachrichtigungserlaubnis verweigert. Im Browser aktivieren.",
+      pushUnavailable:
+        "Push-Benachrichtigungen sind auf dem Server nicht konfiguriert. In-App-Hinweise bleiben aktiv.",
+      deniedToast:
+        "Benachrichtigungserlaubnis verweigert. Im Browser aktivieren.",
       title: "Push-Benachrichtigungen",
       unsupported: "Dieser Browser unterstuetzt keine Push-Benachrichtigungen.",
-      denied: "Erlaubnis verweigert. Aktiviere Benachrichtigungen im Browser und lade neu.",
+      denied:
+        "Erlaubnis verweigert. Aktiviere Benachrichtigungen im Browser und lade neu.",
       background: "Hintergrundbenachrichtigungen",
       backgroundDesc: "Erhalte Benachrichtigungen auch bei geschlossener App.",
       choose: "Auswaehlen, was du erhalten willst",
@@ -948,7 +1346,10 @@ function NotificationSettings() {
     } else {
       const ok = await push.subscribe();
       if (ok) toast({ description: ui.pushOn });
-      else if (push.permission === "denied" || ("Notification" in window && Notification.permission === "denied")) {
+      else if (
+        push.permission === "denied" ||
+        ("Notification" in window && Notification.permission === "denied")
+      ) {
         toast({ description: ui.deniedToast, variant: "destructive" });
       } else {
         toast({ description: ui.pushUnavailable, variant: "destructive" });
@@ -986,7 +1387,9 @@ function NotificationSettings() {
               <div className="flex items-center justify-between py-1">
                 <div>
                   <p className="text-sm font-medium">{ui.background}</p>
-                  <p className="text-xs text-muted-foreground">{ui.backgroundDesc}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ui.backgroundDesc}
+                  </p>
                 </div>
                 <Switch
                   checked={push.isSubscribed}
@@ -997,12 +1400,21 @@ function NotificationSettings() {
 
               {push.isSubscribed && push.prefs && (
                 <div className="space-y-1 pt-1 border-t border-border">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 pb-1">{ui.choose}</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 pb-1">
+                    {ui.choose}
+                  </p>
                   {NOTIFICATION_PREF_ORDER.map((key) => (
-                    <div key={key} className="flex items-center justify-between gap-3 py-2 px-1 rounded-lg hover:bg-muted/30 transition-colors">
+                    <div
+                      key={key}
+                      className="flex items-center justify-between gap-3 py-2 px-1 rounded-lg hover:bg-muted/30 transition-colors"
+                    >
                       <span className="min-w-0">
-                        <span className="block text-sm font-medium">{notificationCopy.prefs[key].label}</span>
-                        <span className="block truncate text-xs text-muted-foreground">{notificationCopy.prefs[key].description}</span>
+                        <span className="block text-sm font-medium">
+                          {notificationCopy.prefs[key].label}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {notificationCopy.prefs[key].description}
+                        </span>
                       </span>
                       <Switch
                         checked={push.prefs[key]}
@@ -1099,7 +1511,9 @@ function DeviceIcon({ device }: { device: string }) {
 }
 
 function LoginAccessSection() {
-  const { data, isLoading, refetch, isFetching } = useQuery<{ accesses: AccessEntry[] }>({
+  const { data, isLoading, refetch, isFetching } = useQuery<{
+    accesses: AccessEntry[];
+  }>({
     queryKey: ["login-access"],
     queryFn: async () => {
       const res = await fetch("/api/login-access", { credentials: "include" });
@@ -1126,7 +1540,9 @@ function LoginAccessSection() {
             disabled={isFetching}
             className="h-7 px-2 text-xs text-muted-foreground"
           >
-            <RefreshCw className={`w-3.5 h-3.5 mr-1 ${isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-3.5 h-3.5 mr-1 ${isFetching ? "animate-spin" : ""}`}
+            />
             Aggiorna
           </Button>
         </CardTitle>
@@ -1151,12 +1567,16 @@ function LoginAccessSection() {
                     : "border-border/40 bg-secondary/20"
                 }`}
               >
-                <div className={`mt-0.5 shrink-0 ${i === 0 ? "text-primary" : "text-muted-foreground"}`}>
+                <div
+                  className={`mt-0.5 shrink-0 ${i === 0 ? "text-primary" : "text-muted-foreground"}`}
+                >
                   <DeviceIcon device={a.device} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-mono font-medium">{a.ipAddress}</span>
+                    <span className="text-sm font-mono font-medium">
+                      {a.ipAddress}
+                    </span>
                     {i === 0 && (
                       <span className="text-[10px] font-semibold bg-primary/15 text-primary px-1.5 py-0.5 rounded-md border border-primary/30">
                         Attuale
@@ -1179,7 +1599,8 @@ function LoginAccessSection() {
               </div>
             ))}
             <p className="text-[11px] text-muted-foreground/50 text-center pt-1">
-              Gli IP vengono registrati al primo accesso ogni ora per dispositivo
+              Gli IP vengono registrati al primo accesso ogni ora per
+              dispositivo
             </p>
           </div>
         )}
@@ -1191,7 +1612,9 @@ function LoginAccessSection() {
 function PinSettings() {
   const { isPinSet, setPin, removePin, unlock } = usePinLock();
   const { toast } = useToast();
-  const [mode, setMode] = useState<"idle" | "set" | "change-old" | "change-new">("idle");
+  const [mode, setMode] = useState<
+    "idle" | "set" | "change-old" | "change-new"
+  >("idle");
   const [pin, setLocalPin] = useState("");
   const [confirm, setConfirm] = useState("");
   const [oldPin, setOldPin] = useState("");
@@ -1215,7 +1638,10 @@ function PinSettings() {
       return;
     }
     await setPin(pin);
-    toast({ title: "PIN impostato", description: "L'app è ora protetta da PIN." });
+    toast({
+      title: "PIN impostato",
+      description: "L'app è ora protetta da PIN.",
+    });
     handleReset();
   };
 
@@ -1231,8 +1657,14 @@ function PinSettings() {
   };
 
   const handleChangeNew = async () => {
-    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { setError("Il PIN deve essere di 4 cifre"); return; }
-    if (pin !== confirm) { setError("I PIN non coincidono"); return; }
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      setError("Il PIN deve essere di 4 cifre");
+      return;
+    }
+    if (pin !== confirm) {
+      setError("I PIN non coincidono");
+      return;
+    }
     await setPin(pin);
     toast({ title: "PIN aggiornato" });
     handleReset();
@@ -1240,7 +1672,10 @@ function PinSettings() {
 
   const handleRemove = () => {
     removePin();
-    toast({ title: "PIN rimosso", description: "L'app non richiede più autenticazione." });
+    toast({
+      title: "PIN rimosso",
+      description: "L'app non richiede più autenticazione.",
+    });
     handleReset();
   };
 
@@ -1248,29 +1683,53 @@ function PinSettings() {
     <div className="space-y-4">
       <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 border border-border">
         <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isPinSet ? "bg-primary/15 border border-primary/40" : "bg-secondary border border-border"}`}>
-            <Shield className={`w-5 h-5 ${isPinSet ? "text-primary" : "text-muted-foreground"}`} />
+          <div
+            className={`w-9 h-9 rounded-xl flex items-center justify-center ${isPinSet ? "bg-primary/15 border border-primary/40" : "bg-secondary border border-border"}`}
+          >
+            <Shield
+              className={`w-5 h-5 ${isPinSet ? "text-primary" : "text-muted-foreground"}`}
+            />
           </div>
           <div>
-            <p className="text-sm font-semibold">{isPinSet ? "PIN attivo" : "PIN non impostato"}</p>
-            <p className="text-xs text-muted-foreground">{isPinSet ? "L'app richiede PIN ad ogni avvio" : "Nessuna protezione PIN"}</p>
+            <p className="text-sm font-semibold">
+              {isPinSet ? "PIN attivo" : "PIN non impostato"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {isPinSet
+                ? "L'app richiede PIN ad ogni avvio"
+                : "Nessuna protezione PIN"}
+            </p>
           </div>
         </div>
-        <div className={`w-2 h-2 rounded-full ${isPinSet ? "bg-primary animate-pulse" : "bg-muted-foreground/30"}`} />
+        <div
+          className={`w-2 h-2 rounded-full ${isPinSet ? "bg-primary animate-pulse" : "bg-muted-foreground/30"}`}
+        />
       </div>
 
       {mode === "idle" && (
         <div className="grid grid-cols-1 gap-2">
           {!isPinSet ? (
-            <Button onClick={() => setMode("set")} className="w-full justify-start gap-3" variant="outline">
+            <Button
+              onClick={() => setMode("set")}
+              className="w-full justify-start gap-3"
+              variant="outline"
+            >
               <KeyRound className="w-4 h-4 text-primary" /> Imposta PIN
             </Button>
           ) : (
             <>
-              <Button onClick={() => setMode("change-old")} className="w-full justify-start gap-3" variant="outline">
+              <Button
+                onClick={() => setMode("change-old")}
+                className="w-full justify-start gap-3"
+                variant="outline"
+              >
                 <KeyRound className="w-4 h-4 text-primary" /> Cambia PIN
               </Button>
-              <Button onClick={handleRemove} className="w-full justify-start gap-3 text-destructive border-destructive/30 hover:bg-destructive/10" variant="outline">
+              <Button
+                onClick={handleRemove}
+                className="w-full justify-start gap-3 text-destructive border-destructive/30 hover:bg-destructive/10"
+                variant="outline"
+              >
                 <X className="w-4 h-4" /> Rimuovi PIN
               </Button>
             </>
@@ -1281,15 +1740,34 @@ function PinSettings() {
       {mode === "change-old" && (
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">PIN attuale</label>
-            <Input type="password" inputMode="numeric" maxLength={4} placeholder="••••" value={oldPin} onChange={(e) => { setOldPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setError(""); }} className="font-mono text-center tracking-[0.5em] text-lg" />
+            <label className="text-xs text-muted-foreground mb-1 block">
+              PIN attuale
+            </label>
+            <Input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="••••"
+              value={oldPin}
+              onChange={(e) => {
+                setOldPin(e.target.value.replace(/\D/g, "").slice(0, 4));
+                setError("");
+              }}
+              className="font-mono text-center tracking-[0.5em] text-lg"
+            />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
-            <Button onClick={handleVerifyOld} className="flex-1" disabled={oldPin.length < 4}>
+            <Button
+              onClick={handleVerifyOld}
+              className="flex-1"
+              disabled={oldPin.length < 4}
+            >
               <ChevronRight className="w-4 h-4 mr-2" /> Avanti
             </Button>
-            <Button variant="outline" onClick={handleReset} className="flex-1">Annulla</Button>
+            <Button variant="outline" onClick={handleReset} className="flex-1">
+              Annulla
+            </Button>
           </div>
         </div>
       )}
@@ -1297,19 +1775,51 @@ function PinSettings() {
       {(mode === "set" || mode === "change-new") && (
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Nuovo PIN (4 cifre)</label>
-            <Input type="password" inputMode="numeric" maxLength={4} placeholder="••••" value={pin} onChange={(e) => { setLocalPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setError(""); }} className="font-mono text-center tracking-[0.5em] text-lg" />
+            <label className="text-xs text-muted-foreground mb-1 block">
+              Nuovo PIN (4 cifre)
+            </label>
+            <Input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="••••"
+              value={pin}
+              onChange={(e) => {
+                setLocalPin(e.target.value.replace(/\D/g, "").slice(0, 4));
+                setError("");
+              }}
+              className="font-mono text-center tracking-[0.5em] text-lg"
+            />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Conferma PIN</label>
-            <Input type="password" inputMode="numeric" maxLength={4} placeholder="••••" value={confirm} onChange={(e) => { setConfirm(e.target.value.replace(/\D/g, "").slice(0, 4)); setError(""); }} className="font-mono text-center tracking-[0.5em] text-lg" />
+            <label className="text-xs text-muted-foreground mb-1 block">
+              Conferma PIN
+            </label>
+            <Input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="••••"
+              value={confirm}
+              onChange={(e) => {
+                setConfirm(e.target.value.replace(/\D/g, "").slice(0, 4));
+                setError("");
+              }}
+              className="font-mono text-center tracking-[0.5em] text-lg"
+            />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
-            <Button onClick={mode === "set" ? handleSet : handleChangeNew} className="flex-1" disabled={pin.length < 4 || confirm.length < 4}>
+            <Button
+              onClick={mode === "set" ? handleSet : handleChangeNew}
+              className="flex-1"
+              disabled={pin.length < 4 || confirm.length < 4}
+            >
               <Check className="w-4 h-4 mr-2" /> Conferma
             </Button>
-            <Button variant="outline" onClick={handleReset} className="flex-1">Annulla</Button>
+            <Button variant="outline" onClick={handleReset} className="flex-1">
+              Annulla
+            </Button>
           </div>
         </div>
       )}
@@ -1336,9 +1846,16 @@ function LanguageSettings() {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Seleziona la lingua dell'interfaccia</p>
+      <p className="text-sm text-muted-foreground">
+        Seleziona la lingua dell'interfaccia
+      </p>
       <div className="grid grid-cols-1 gap-2">
-        {(Object.entries(LANGUAGES) as [Language, typeof LANGUAGES[Language]][]).map(([code, lang]) => (
+        {(
+          Object.entries(LANGUAGES) as [
+            Language,
+            (typeof LANGUAGES)[Language],
+          ][]
+        ).map(([code, lang]) => (
           <button
             key={code}
             onClick={() => handleSelect(code)}
@@ -1377,7 +1894,9 @@ function ChecklistSettings() {
   const handleAdd = async () => {
     if (!newText.trim()) return;
     try {
-      await createMutation.mutateAsync({ data: { text: newText.trim(), completed: false } });
+      await createMutation.mutateAsync({
+        data: { text: newText.trim(), completed: false },
+      });
       setNewText("");
       qc.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
       toast({ title: "Elemento aggiunto" });
@@ -1398,7 +1917,9 @@ function ChecklistSettings() {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <label className="text-xs text-muted-foreground font-medium">Aggiungi elemento</label>
+        <label className="text-xs text-muted-foreground font-medium">
+          Aggiungi elemento
+        </label>
         <div className="flex gap-2">
           <Input
             placeholder="Es. Analizza timeframe superiore..."
@@ -1414,7 +1935,9 @@ function ChecklistSettings() {
       </div>
 
       {isLoading ? (
-        <div className="text-center text-sm text-muted-foreground py-4">Caricamento...</div>
+        <div className="text-center text-sm text-muted-foreground py-4">
+          Caricamento...
+        </div>
       ) : items && items.length > 0 ? (
         <div className="space-y-2">
           {items.map((item) => (
@@ -1457,7 +1980,8 @@ function AuthSection({ login }: { login: () => void }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Hai già un account? Accedi per sincronizzare i tuoi dati. Sei nuovo? Registrati per iniziare.
+          Hai già un account? Accedi per sincronizzare i tuoi dati. Sei nuovo?
+          Registrati per iniziare.
         </p>
         <div className="grid grid-cols-2 gap-3">
           <Button onClick={login} className="w-full">
@@ -1484,7 +2008,10 @@ function PairPreferencesSettings() {
   const removePair = async (symbol: string) => {
     const newPairs = selectedPairs.filter((p) => p !== symbol);
     if (newPairs.length === 0) {
-      toast({ description: "Devi avere almeno un pair selezionato.", variant: "destructive" });
+      toast({
+        description: "Devi avere almeno un pair selezionato.",
+        variant: "destructive",
+      });
       return;
     }
     setSelectedPairs(newPairs);
@@ -1555,8 +2082,12 @@ function PairPreferencesSettings() {
           ) : (
             <div className="flex flex-col items-center justify-center py-6 rounded-xl border border-dashed border-border/50 bg-secondary/20 text-center gap-2">
               <BarChart2 className="w-8 h-8 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground/60">Nessun pair selezionato</p>
-              <p className="text-xs text-muted-foreground/40">Aggiungine almeno uno per personalizzare la dashboard</p>
+              <p className="text-sm text-muted-foreground/60">
+                Nessun pair selezionato
+              </p>
+              <p className="text-xs text-muted-foreground/40">
+                Aggiungine almeno uno per personalizzare la dashboard
+              </p>
             </div>
           )}
 
@@ -1566,7 +2097,9 @@ function PairPreferencesSettings() {
             className="w-full flex items-center justify-center gap-2 h-11 rounded-xl border border-dashed border-primary/30 text-sm font-medium text-primary hover:bg-primary/8 hover:border-primary/50 active:scale-[0.98] transition-all"
           >
             <Plus className="w-4 h-4" />
-            {selectedPairs.length > 0 ? "Modifica pair selezionati" : "Scegli i tuoi pair"}
+            {selectedPairs.length > 0
+              ? "Modifica pair selezionati"
+              : "Scegli i tuoi pair"}
           </button>
         </CardContent>
       </Card>
@@ -1605,10 +2138,13 @@ function RewardsLibrarySection() {
           </div>
           {nextMilestone ? (
             <span className="text-xs text-muted-foreground">
-              Prossimo sblocco al livello <span className="text-primary font-bold">{nextMilestone}</span>
+              Prossimo sblocco al livello{" "}
+              <span className="text-primary font-bold">{nextMilestone}</span>
             </span>
           ) : (
-            <span className="text-xs text-primary font-semibold">Tutti i contenuti sbloccati!</span>
+            <span className="text-xs text-primary font-semibold">
+              Tutti i contenuti sbloccati!
+            </span>
           )}
         </div>
         {nextMilestone && (
@@ -1620,7 +2156,9 @@ function RewardsLibrarySection() {
               />
             </div>
             <p className="text-[11px] text-muted-foreground mt-1.5">
-              {level} / {nextMilestone} livelli — ancora {nextMilestone - level} livello{nextMilestone - level !== 1 ? "i" : ""} per sbloccare nuovi contenuti
+              {level} / {nextMilestone} livelli — ancora {nextMilestone - level}{" "}
+              livello{nextMilestone - level !== 1 ? "i" : ""} per sbloccare
+              nuovi contenuti
             </p>
           </>
         )}
@@ -1636,12 +2174,16 @@ function RewardsLibrarySection() {
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/15 border border-primary/30 rounded-full">
                     <Zap className="w-3 h-3 text-primary" />
-                    <span className="text-xs font-bold text-primary">Livello {m}</span>
+                    <span className="text-xs font-bold text-primary">
+                      Livello {m}
+                    </span>
                   </div>
                   <div className="h-px flex-1 bg-border/50" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {mRewards.map((r) => <RewardCard key={r.id} reward={r} />)}
+                  {mRewards.map((r) => (
+                    <RewardCard key={r.id} reward={r} />
+                  ))}
                 </div>
               </div>
             );
@@ -1689,7 +2231,9 @@ function RewardsLibrarySection() {
         <div className="text-center py-8 text-muted-foreground">
           <Library className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm font-medium">Raggiungi il livello 5</p>
-          <p className="text-xs mt-1">Il tuo primo contenuto si sbloccherà al livello 5</p>
+          <p className="text-xs mt-1">
+            Il tuo primo contenuto si sbloccherà al livello 5
+          </p>
         </div>
       )}
     </div>
@@ -1733,14 +2277,39 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
 ];
 
-const FEATURE_GUIDES: { icon: React.ReactNode; title: string; desc: string }[] = [
-  { icon: <BookOpen className="w-4 h-4" />, title: "Diario di Trading", desc: "Registra ogni trade con riflessioni, tag emotivi e immagini. Analizza i pattern del tuo comportamento nel tempo." },
-  { icon: <Target className="w-4 h-4" />, title: "Missioni & Streak", desc: "Completa le missioni giornaliere per guadagnare XP. La streak si azzera se salti un giorno — mantienila per bonus crescenti." },
-  { icon: <TrendingUp className="w-4 h-4" />, title: "Sessioni & Check-in", desc: "Configura le sessioni di trading. Il check-in apre la sessione con una riflessione mentale e registra il tuo stato emotivo." },
-  { icon: <Zap className="w-4 h-4" />, title: "Backtest Visuale", desc: "Allenati su grafici storici in modalità replay. Simula operazioni, gestisci lo stop loss e tieni statistiche precise." },
-  { icon: <MessageSquare className="w-4 h-4" />, title: "Chat & Storie", desc: "Connettiti con altri trader. Invia messaggi, vocali, immagini. Pubblica storie quotidiane e rispondi con emoji o testo." },
-  { icon: <Library className="w-4 h-4" />, title: "Biblioteca Premi", desc: "Ogni 5 livelli sblocchi contenuti formativi esclusivi: video su mindset, PDF di analisi tecnica, presentazioni avanzate." },
-];
+const FEATURE_GUIDES: { icon: React.ReactNode; title: string; desc: string }[] =
+  [
+    {
+      icon: <BookOpen className="w-4 h-4" />,
+      title: "Diario di Trading",
+      desc: "Registra ogni trade con riflessioni, tag emotivi e immagini. Analizza i pattern del tuo comportamento nel tempo.",
+    },
+    {
+      icon: <Target className="w-4 h-4" />,
+      title: "Missioni & Streak",
+      desc: "Completa le missioni giornaliere per guadagnare XP. La streak si azzera se salti un giorno — mantienila per bonus crescenti.",
+    },
+    {
+      icon: <TrendingUp className="w-4 h-4" />,
+      title: "Sessioni & Check-in",
+      desc: "Configura le sessioni di trading. Il check-in apre la sessione con una riflessione mentale e registra il tuo stato emotivo.",
+    },
+    {
+      icon: <Zap className="w-4 h-4" />,
+      title: "Backtest Visuale",
+      desc: "Allenati su grafici storici in modalità replay. Simula operazioni, gestisci lo stop loss e tieni statistiche precise.",
+    },
+    {
+      icon: <MessageSquare className="w-4 h-4" />,
+      title: "Chat & Storie",
+      desc: "Connettiti con altri trader. Invia messaggi, vocali, immagini. Pubblica storie quotidiane e rispondi con emoji o testo.",
+    },
+    {
+      icon: <Library className="w-4 h-4" />,
+      title: "Biblioteca Premi",
+      desc: "Ogni 5 livelli sblocchi contenuti formativi esclusivi: video su mindset, PDF di analisi tecnica, presentazioni avanzate.",
+    },
+  ];
 
 function SupportSection() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -1763,7 +2332,9 @@ function SupportSection() {
               </div>
               <div>
                 <p className="text-sm font-semibold">{g.title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{g.desc}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  {g.desc}
+                </p>
               </div>
             </div>
           ))}
@@ -1777,7 +2348,10 @@ function SupportSection() {
         </h3>
         <div className="space-y-2">
           {FAQ_ITEMS.map((item, i) => (
-            <div key={i} className="border border-border/40 rounded-xl overflow-hidden">
+            <div
+              key={i}
+              className="border border-border/40 rounded-xl overflow-hidden"
+            >
               <button
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-secondary/30 transition-colors"
@@ -1824,7 +2398,9 @@ function SupportSection() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold">Scrivi al supporto</p>
-              <p className="text-xs text-muted-foreground">support@traderloading.app</p>
+              <p className="text-xs text-muted-foreground">
+                support@traderloading.app
+              </p>
             </div>
             <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </a>
@@ -1838,7 +2414,9 @@ function SupportSection() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold">Invia un feedback</p>
-              <p className="text-xs text-muted-foreground">Suggerimenti, idee, miglioramenti</p>
+              <p className="text-xs text-muted-foreground">
+                Suggerimenti, idee, miglioramenti
+              </p>
             </div>
             <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </a>
@@ -1847,7 +2425,9 @@ function SupportSection() {
 
       {/* Version info */}
       <div className="pt-2 border-t border-border/30 text-center">
-        <p className="text-xs text-muted-foreground/50 font-mono">TraderLOADING · v1.0 · Fatto con ♥ per i trader disciplinati</p>
+        <p className="text-xs text-muted-foreground/50 font-mono">
+          TraderLOADING · v1.0 · Fatto con ♥ per i trader disciplinati
+        </p>
       </div>
     </div>
   );
@@ -1856,30 +2436,81 @@ function SupportSection() {
 // ─── Help Section ─────────────────────────────────────────────────────────────
 
 const QUICK_STEPS = [
-  { n: "1", title: "Crea il tuo profilo", desc: "Scegli un username, carica un avatar e imposta il tuo obiettivo di trading settimanale." },
-  { n: "2", title: "Configura le sessioni", desc: "Vai in Trading → Sessioni e imposta gli orari nel tuo fuso locale per le sessioni che segui (Londra, New York, Asia…)." },
-  { n: "3", title: "Apri il tuo primo check-in", desc: "Prima di fare trading usa il pulsante sessione nel dashboard per registrare il tuo stato mentale." },
-  { n: "4", title: "Compila il diario", desc: "Dopo ogni trade vai in Diario → Nuovo Trade. Tieni traccia di setup, risultato e riflessioni." },
-  { n: "5", title: "Completa le missioni", desc: "Ogni giorno hai missioni disponibili. Completarle ti dà XP per salire di livello." },
-  { n: "6", title: "Attiva le notifiche", desc: "In Notifiche abilita le push per ricevere avvisi all'apertura delle sessioni di trading." },
+  {
+    n: "1",
+    title: "Crea il tuo profilo",
+    desc: "Scegli un username, carica un avatar e imposta il tuo obiettivo di trading settimanale.",
+  },
+  {
+    n: "2",
+    title: "Configura le sessioni",
+    desc: "Vai in Trading → Sessioni e imposta gli orari nel tuo fuso locale per le sessioni che segui (Londra, New York, Asia…).",
+  },
+  {
+    n: "3",
+    title: "Apri il tuo primo check-in",
+    desc: "Prima di fare trading usa il pulsante sessione nel dashboard per registrare il tuo stato mentale.",
+  },
+  {
+    n: "4",
+    title: "Compila il diario",
+    desc: "Dopo ogni trade vai in Diario → Nuovo Trade. Tieni traccia di setup, risultato e riflessioni.",
+  },
+  {
+    n: "5",
+    title: "Completa le missioni",
+    desc: "Ogni giorno hai missioni disponibili. Completarle ti dà XP per salire di livello.",
+  },
+  {
+    n: "6",
+    title: "Attiva le notifiche",
+    desc: "In Notifiche abilita le push per ricevere avvisi all'apertura delle sessioni di trading.",
+  },
 ];
 
 const SHORTCUT_ITEMS = [
-  { keys: ["Impostazioni", "→", "Sicurezza"], action: "Imposta PIN di protezione" },
+  {
+    keys: ["Impostazioni", "→", "Sicurezza"],
+    action: "Imposta PIN di protezione",
+  },
   { keys: ["Impostazioni", "→", "Aspetto"], action: "Cambia sfondo e font" },
-  { keys: ["Impostazioni", "→", "Pairs"], action: "Seleziona i tuoi pair preferiti" },
+  {
+    keys: ["Impostazioni", "→", "Pairs"],
+    action: "Seleziona i tuoi pair preferiti",
+  },
   { keys: ["Diario", "→", "Recap"], action: "Analisi settimanale / mensile" },
-  { keys: ["Tools", "→", "Backtest"], action: "Allenamento su grafici storici" },
+  {
+    keys: ["Tools", "→", "Backtest"],
+    action: "Allenamento su grafici storici",
+  },
   { keys: ["Zen"], action: "Mood tracking e meditazione" },
 ];
 
 const HELP_FAQS = [
-  { q: "Come resetto la mia streak?", a: "La streak si azzera automaticamente se non esegui almeno un'azione di completamento (check-in, diario, missione) entro la giornata. Non c'è un reset manuale." },
-  { q: "Come faccio a cambiare la lingua?", a: "Vai in Impostazioni → Lingua e seleziona la lingua desiderata. Il cambio è immediato e si applica a tutta l'interfaccia." },
-  { q: "Posso usare l'app su più dispositivi?", a: "Sì. I dati sono sincronizzati tramite il tuo account. Accedi con le stesse credenziali su qualsiasi dispositivo e troverai tutto aggiornato." },
-  { q: "Come esporto i miei trade?", a: "Dal Diario puoi esportare le sessioni in formato ICS (calendario). L'export CSV completo è in arrivo nei prossimi aggiornamenti." },
-  { q: "Come funziona il calcolo del lot size?", a: "In Tools → Calcolatore imposti il tuo capitale, il rischio percentuale e lo stop loss in pips. Il sistema calcola automaticamente il lot size corretto per il pair selezionato." },
-  { q: "Cosa succede se cambio il PIN e lo dimentico?", a: "Il PIN è memorizzato localmente. Se lo dimentichi puoi resettarlo dalla pagina delle impostazioni usando l'opzione «Rimuovi PIN» (richiede di conoscere quello attuale)." },
+  {
+    q: "Come resetto la mia streak?",
+    a: "La streak si azzera automaticamente se non esegui almeno un'azione di completamento (check-in, diario, missione) entro la giornata. Non c'è un reset manuale.",
+  },
+  {
+    q: "Come faccio a cambiare la lingua?",
+    a: "Vai in Impostazioni → Lingua e seleziona la lingua desiderata. Il cambio è immediato e si applica a tutta l'interfaccia.",
+  },
+  {
+    q: "Posso usare l'app su più dispositivi?",
+    a: "Sì. I dati sono sincronizzati tramite il tuo account. Accedi con le stesse credenziali su qualsiasi dispositivo e troverai tutto aggiornato.",
+  },
+  {
+    q: "Come esporto i miei trade?",
+    a: "Dal Diario puoi esportare le sessioni in formato ICS (calendario). L'export CSV completo è in arrivo nei prossimi aggiornamenti.",
+  },
+  {
+    q: "Come funziona il calcolo del lot size?",
+    a: "In Tools → Calcolatore imposti il tuo capitale, il rischio percentuale e lo stop loss in pips. Il sistema calcola automaticamente il lot size corretto per il pair selezionato.",
+  },
+  {
+    q: "Cosa succede se cambio il PIN e lo dimentico?",
+    a: "Il PIN è memorizzato localmente. Se lo dimentichi puoi resettarlo dalla pagina delle impostazioni usando l'opzione «Rimuovi PIN» (richiede di conoscere quello attuale).",
+  },
 ];
 
 function HelpSection() {
@@ -1887,7 +2518,6 @@ function HelpSection() {
 
   return (
     <div className="space-y-8">
-
       {/* Quick start */}
       <div>
         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">
@@ -1895,13 +2525,18 @@ function HelpSection() {
         </h3>
         <div className="space-y-3">
           {QUICK_STEPS.map((s) => (
-            <div key={s.n} className="flex gap-4 p-4 rounded-xl border border-border/40 bg-secondary/20">
+            <div
+              key={s.n}
+              className="flex gap-4 p-4 rounded-xl border border-border/40 bg-secondary/20"
+            >
               <div className="shrink-0 w-8 h-8 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-primary font-bold text-sm font-mono">
                 {s.n}
               </div>
               <div>
                 <p className="text-sm font-semibold">{s.title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{s.desc}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  {s.desc}
+                </p>
               </div>
             </div>
           ))}
@@ -1915,7 +2550,10 @@ function HelpSection() {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {SHORTCUT_ITEMS.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 p-3 rounded-xl border border-border/30 bg-secondary/10">
+            <div
+              key={i}
+              className="flex items-center gap-2 p-3 rounded-xl border border-border/30 bg-secondary/10"
+            >
               <div className="flex items-center gap-1 flex-wrap min-w-0">
                 {item.keys.map((k, ki) => (
                   <span key={ki} className="flex items-center gap-1">
@@ -1928,7 +2566,9 @@ function HelpSection() {
                   </span>
                 ))}
               </div>
-              <span className="text-xs text-muted-foreground ml-auto shrink-0 text-right">{item.action}</span>
+              <span className="text-xs text-muted-foreground ml-auto shrink-0 text-right">
+                {item.action}
+              </span>
             </div>
           ))}
         </div>
@@ -1941,13 +2581,18 @@ function HelpSection() {
         </h3>
         <div className="space-y-2">
           {HELP_FAQS.map((item, i) => (
-            <div key={i} className="border border-border/40 rounded-xl overflow-hidden">
+            <div
+              key={i}
+              className="border border-border/40 rounded-xl overflow-hidden"
+            >
               <button
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-secondary/30 transition-colors"
               >
                 <span className="text-sm font-medium pr-4">{item.q}</span>
-                <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${openFaq === i ? "rotate-180" : ""}`} />
+                <ChevronDown
+                  className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${openFaq === i ? "rotate-180" : ""}`}
+                />
               </button>
               <AnimatePresence>
                 {openFaq === i && (
@@ -1983,7 +2628,9 @@ function HelpSection() {
           </div>
           <div className="flex-1">
             <p className="text-sm font-semibold">Contatta il supporto</p>
-            <p className="text-xs text-muted-foreground">support@traderloading.app</p>
+            <p className="text-xs text-muted-foreground">
+              support@traderloading.app
+            </p>
           </div>
           <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-purple-400 transition-colors" />
         </a>
@@ -1996,7 +2643,13 @@ function HelpSection() {
 
 const TERMS_UPDATED = "2 maggio 2025";
 
-function TermsBlock({ title, children }: { title: string; children: React.ReactNode }) {
+function TermsBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -2013,94 +2666,113 @@ function TermsBlock({ title, children }: { title: string; children: React.ReactN
 function TermsSection() {
   return (
     <div className="space-y-8">
-
       {/* Header banner */}
       <div className="flex items-start gap-3 p-4 rounded-xl border border-pink-500/20 bg-pink-500/5">
         <FileText className="w-5 h-5 text-pink-400 mt-0.5 shrink-0" />
         <div>
-          <p className="text-sm font-semibold text-foreground">Termini di utilizzo · TraderLOADING</p>
+          <p className="text-sm font-semibold text-foreground">
+            Termini di utilizzo · TraderLOADING
+          </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Ultimo aggiornamento: {TERMS_UPDATED}. Utilizzando l'app accetti i termini descritti di seguito.
+            Ultimo aggiornamento: {TERMS_UPDATED}. Utilizzando l'app accetti i
+            termini descritti di seguito.
           </p>
         </div>
       </div>
 
       <div className="space-y-6">
-
         <TermsBlock title="Scopo dell'applicazione">
           <p>
-            TraderLOADING è uno strumento di supporto alla disciplina e all'organizzazione personale per trader.
-            Non fornisce consigli finanziari, segnali di trading o raccomandazioni di investimento di alcun tipo.
+            TraderLOADING è uno strumento di supporto alla disciplina e
+            all'organizzazione personale per trader. Non fornisce consigli
+            finanziari, segnali di trading o raccomandazioni di investimento di
+            alcun tipo.
           </p>
           <p>
-            Qualsiasi decisione di acquisto o vendita di strumenti finanziari è esclusiva responsabilità dell'utente.
+            Qualsiasi decisione di acquisto o vendita di strumenti finanziari è
+            esclusiva responsabilità dell'utente.
           </p>
         </TermsBlock>
 
         <TermsBlock title="Disclaimer finanziario">
           <p>
-            Il trading su mercati finanziari comporta un rischio elevato di perdita del capitale. I risultati passati
-            non garantiscono risultati futuri. Le funzionalità dell'app (calcolatore, backtest, diario) sono strumenti
-            educativi e organizzativi, non sistemi di trading automatico.
+            Il trading su mercati finanziari comporta un rischio elevato di
+            perdita del capitale. I risultati passati non garantiscono risultati
+            futuri. Le funzionalità dell'app (calcolatore, backtest, diario)
+            sono strumenti educativi e organizzativi, non sistemi di trading
+            automatico.
           </p>
           <p className="text-xs bg-secondary/40 border border-border/40 rounded-lg p-3 font-mono">
-            ⚠️ Non siamo responsabili per perdite finanziarie derivanti dall'utilizzo dell'app.
+            ⚠️ Non siamo responsabili per perdite finanziarie derivanti
+            dall'utilizzo dell'app.
           </p>
         </TermsBlock>
 
         <TermsBlock title="Raccolta e uso dei dati">
-          <p>L'app raccoglie e archivia i seguenti dati personali dell'utente:</p>
+          <p>
+            L'app raccoglie e archivia i seguenti dati personali dell'utente:
+          </p>
           <ul className="list-disc list-inside space-y-0.5 text-xs">
             <li>Indirizzo email e nome (tramite sistema di autenticazione)</li>
             <li>Dati del diario di trading inseriti volontariamente</li>
-            <li>Indirizzo IP al momento dell'accesso (visibile in Sicurezza → Accessi recenti)</li>
+            <li>
+              Indirizzo IP al momento dell'accesso (visibile in Sicurezza →
+              Accessi recenti)
+            </li>
             <li>User-agent del browser / dispositivo</li>
             <li>Preferenze e impostazioni dell'app</li>
           </ul>
           <p>
-            I dati sono archiviati in database sicuri. Non vengono venduti né condivisi con terze parti
-            per scopi commerciali. Possono essere utilizzati in forma anonima e aggregata per migliorare l'app.
+            I dati sono archiviati in database sicuri. Non vengono venduti né
+            condivisi con terze parti per scopi commerciali. Possono essere
+            utilizzati in forma anonima e aggregata per migliorare l'app.
           </p>
         </TermsBlock>
 
         <TermsBlock title="Account e sicurezza">
           <p>
-            L'utente è responsabile della sicurezza delle proprie credenziali. In caso di accesso non
-            autorizzato è necessario contattare il supporto immediatamente. Il PIN locale è uno strumento
-            aggiuntivo di privacy sul dispositivo e non sostituisce la password dell'account.
+            L'utente è responsabile della sicurezza delle proprie credenziali.
+            In caso di accesso non autorizzato è necessario contattare il
+            supporto immediatamente. Il PIN locale è uno strumento aggiuntivo di
+            privacy sul dispositivo e non sostituisce la password dell'account.
           </p>
         </TermsBlock>
 
         <TermsBlock title="Proprietà intellettuale">
           <p>
-            Tutti i contenuti dell'app (interfaccia, testi, grafica, logiche di gamification, contenuti
-            formativi della Biblioteca) sono di proprietà esclusiva di TraderLOADING. È vietata la
-            riproduzione, copia o ridistribuzione senza autorizzazione scritta.
+            Tutti i contenuti dell'app (interfaccia, testi, grafica, logiche di
+            gamification, contenuti formativi della Biblioteca) sono di
+            proprietà esclusiva di TraderLOADING. È vietata la riproduzione,
+            copia o ridistribuzione senza autorizzazione scritta.
           </p>
           <p>
-            I dati inseriti dall'utente (diario, note, obiettivi) rimangono di proprietà dell'utente.
+            I dati inseriti dall'utente (diario, note, obiettivi) rimangono di
+            proprietà dell'utente.
           </p>
         </TermsBlock>
 
         <TermsBlock title="Limitazione di responsabilità">
           <p>
-            L'app è fornita «così com'è». Non garantiamo la disponibilità continua del servizio né
-            l'assenza di bug. Non siamo responsabili per perdite di dati causate da eventi eccezionali
-            (guasti hardware, disastri naturali, attacchi informatici).
+            L'app è fornita «così com'è». Non garantiamo la disponibilità
+            continua del servizio né l'assenza di bug. Non siamo responsabili
+            per perdite di dati causate da eventi eccezionali (guasti hardware,
+            disastri naturali, attacchi informatici).
           </p>
         </TermsBlock>
 
         <TermsBlock title="Modifiche ai termini">
           <p>
-            Ci riserviamo il diritto di aggiornare questi termini in qualsiasi momento. Le modifiche
-            saranno comunicate tramite notifica in-app. L'uso continuato dell'app dopo la notifica
-            costituisce accettazione dei nuovi termini.
+            Ci riserviamo il diritto di aggiornare questi termini in qualsiasi
+            momento. Le modifiche saranno comunicate tramite notifica in-app.
+            L'uso continuato dell'app dopo la notifica costituisce accettazione
+            dei nuovi termini.
           </p>
         </TermsBlock>
 
         <TermsBlock title="Contatti legali">
           <p>
-            Per richieste relative a privacy, cancellazione dati o questioni legali:
+            Per richieste relative a privacy, cancellazione dati o questioni
+            legali:
           </p>
           <a
             href="mailto:legal@traderloading.app"
@@ -2111,7 +2783,6 @@ function TermsSection() {
             <ExternalLink className="w-3 h-3" />
           </a>
         </TermsBlock>
-
       </div>
 
       <div className="pt-2 border-t border-border/30 text-center">
@@ -2123,7 +2794,24 @@ function TermsSection() {
   );
 }
 
-type TileId = "profilo" | "pairs" | "audio" | "aspetto" | "notifiche" | "sicurezza" | "lingua" | "trading" | "missioni" | "citazioni" | "checklist" | "account" | "biblioteca" | "traguardi" | "supporto" | "aiuto" | "termini";
+type TileId =
+  | "profilo"
+  | "pairs"
+  | "audio"
+  | "aspetto"
+  | "notifiche"
+  | "sicurezza"
+  | "lingua"
+  | "trading"
+  | "missioni"
+  | "citazioni"
+  | "checklist"
+  | "account"
+  | "biblioteca"
+  | "traguardi"
+  | "supporto"
+  | "aiuto"
+  | "termini";
 
 interface SettingsTile {
   id: TileId;
@@ -2139,7 +2827,8 @@ export default function Settings() {
   const { isPinSet } = usePinLock();
   const { language, t } = useLanguage();
   const [, navigate] = useLocation();
-  const [activeDesktopSection, setActiveDesktopSection] = useState<TileId>("audio");
+  const [activeDesktopSection, setActiveDesktopSection] =
+    useState<TileId>("audio");
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     pairs: false,
     audio: false,
@@ -2160,26 +2849,153 @@ export default function Settings() {
   });
 
   const tiles: SettingsTile[] = [
-    { id: "profilo", icon: <UserPlus className="w-6 h-6" />, label: t("settings.tile.profile"), subtitle: t("settings.tile.profile_sub"), color: "text-primary", glow: "group-hover:shadow-primary/20" },
-    { id: "pairs", icon: <BarChart2 className="w-6 h-6" />, label: t("settings.tile.pairs"), subtitle: t("settings.tile.pairs_sub"), color: "text-indigo-400", glow: "group-hover:shadow-indigo-400/20" },
-    { id: "audio", icon: <Music className="w-6 h-6" />, label: t("settings.tile.audio"), subtitle: t("settings.tile.audio_sub"), color: "text-blue-400", glow: "group-hover:shadow-blue-400/20" },
-    { id: "aspetto", icon: <Sun className="w-6 h-6" />, label: t("settings.tile.appearance"), subtitle: t("settings.tile.appearance_sub"), color: "text-yellow-400", glow: "group-hover:shadow-yellow-400/20" },
-    { id: "notifiche", icon: <Bell className="w-6 h-6" />, label: t("settings.tile.notifications"), subtitle: t("settings.tile.notifications_sub"), color: "text-orange-400", glow: "group-hover:shadow-orange-400/20" },
-    { id: "sicurezza", icon: <Lock className="w-6 h-6" />, label: t("settings.tile.security"), subtitle: isPinSet ? t("settings.tile.security_active") : t("settings.tile.security_inactive"), color: "text-emerald-400", glow: "group-hover:shadow-emerald-400/20" },
-    { id: "lingua", icon: <Globe className="w-6 h-6" />, label: t("settings.tile.language"), subtitle: `${LANGUAGES[language].flag} ${LANGUAGES[language].name}`, color: "text-cyan-400", glow: "group-hover:shadow-cyan-400/20" },
-    { id: "trading", icon: <TrendingUp className="w-6 h-6" />, label: t("settings.tile.trading"), subtitle: t("settings.tile.trading_sub"), color: "text-violet-400", glow: "group-hover:shadow-violet-400/20" },
-    { id: "missioni", icon: <Target className="w-6 h-6" />, label: t("settings.tile.missions"), subtitle: t("settings.tile.missions_sub"), color: "text-rose-400", glow: "group-hover:shadow-rose-400/20" },
-    { id: "citazioni", icon: <Quote className="w-6 h-6" />, label: t("settings.tile.quotes"), subtitle: t("settings.tile.quotes_sub"), color: "text-amber-400", glow: "group-hover:shadow-amber-400/20" },
-    { id: "checklist", icon: <CheckSquare className="w-6 h-6" />, label: t("settings.tile.checklist"), subtitle: t("settings.tile.checklist_sub"), color: "text-teal-400", glow: "group-hover:shadow-teal-400/20" },
-    { id: "biblioteca", icon: <Library className="w-6 h-6" />, label: t("settings.tile.library"), subtitle: t("settings.tile.library_sub"), color: "text-primary", glow: "group-hover:shadow-primary/20" },
-    { id: "traguardi", icon: <Trophy className="w-6 h-6" />, label: t("nav.milestones"), subtitle: "Certificati NFT e livelli sbloccati", color: "text-yellow-400", glow: "group-hover:shadow-yellow-400/20" },
-    { id: "supporto", icon: <HelpCircle className="w-6 h-6" />, label: t("settings.tile.support"), subtitle: t("settings.tile.support_sub"), color: "text-sky-400", glow: "group-hover:shadow-sky-400/20" },
-    { id: "aiuto", icon: <LifeBuoy className="w-6 h-6" />, label: "Aiuto", subtitle: "Guida rapida e tutorial", color: "text-purple-400", glow: "group-hover:shadow-purple-400/20" },
-    { id: "termini", icon: <FileText className="w-6 h-6" />, label: "Termini & Condizioni", subtitle: "Privacy, licenza e disclaimer", color: "text-pink-400", glow: "group-hover:shadow-pink-400/20" },
-    { id: "account", icon: isAuthenticated ? <LogOut className="w-6 h-6" /> : <LogIn className="w-6 h-6" />, label: t("settings.tile.account"), subtitle: isAuthenticated ? t("settings.tile.account_active") : t("settings.tile.account_inactive"), color: "text-slate-400", glow: "group-hover:shadow-slate-400/20" },
+    {
+      id: "profilo",
+      icon: <UserPlus className="w-6 h-6" />,
+      label: t("settings.tile.profile"),
+      subtitle: t("settings.tile.profile_sub"),
+      color: "text-primary",
+      glow: "group-hover:shadow-primary/20",
+    },
+    {
+      id: "pairs",
+      icon: <BarChart2 className="w-6 h-6" />,
+      label: t("settings.tile.pairs"),
+      subtitle: t("settings.tile.pairs_sub"),
+      color: "text-indigo-400",
+      glow: "group-hover:shadow-indigo-400/20",
+    },
+    {
+      id: "audio",
+      icon: <Music className="w-6 h-6" />,
+      label: t("settings.tile.audio"),
+      subtitle: t("settings.tile.audio_sub"),
+      color: "text-blue-400",
+      glow: "group-hover:shadow-blue-400/20",
+    },
+    {
+      id: "aspetto",
+      icon: <Sun className="w-6 h-6" />,
+      label: t("settings.tile.appearance"),
+      subtitle: t("settings.tile.appearance_sub"),
+      color: "text-yellow-400",
+      glow: "group-hover:shadow-yellow-400/20",
+    },
+    {
+      id: "notifiche",
+      icon: <Bell className="w-6 h-6" />,
+      label: t("settings.tile.notifications"),
+      subtitle: t("settings.tile.notifications_sub"),
+      color: "text-orange-400",
+      glow: "group-hover:shadow-orange-400/20",
+    },
+    {
+      id: "sicurezza",
+      icon: <Lock className="w-6 h-6" />,
+      label: t("settings.tile.security"),
+      subtitle: isPinSet
+        ? t("settings.tile.security_active")
+        : t("settings.tile.security_inactive"),
+      color: "text-emerald-400",
+      glow: "group-hover:shadow-emerald-400/20",
+    },
+    {
+      id: "lingua",
+      icon: <Globe className="w-6 h-6" />,
+      label: t("settings.tile.language"),
+      subtitle: `${LANGUAGES[language].flag} ${LANGUAGES[language].name}`,
+      color: "text-cyan-400",
+      glow: "group-hover:shadow-cyan-400/20",
+    },
+    {
+      id: "trading",
+      icon: <TrendingUp className="w-6 h-6" />,
+      label: t("settings.tile.trading"),
+      subtitle: t("settings.tile.trading_sub"),
+      color: "text-violet-400",
+      glow: "group-hover:shadow-violet-400/20",
+    },
+    {
+      id: "missioni",
+      icon: <Target className="w-6 h-6" />,
+      label: t("settings.tile.missions"),
+      subtitle: t("settings.tile.missions_sub"),
+      color: "text-rose-400",
+      glow: "group-hover:shadow-rose-400/20",
+    },
+    {
+      id: "citazioni",
+      icon: <Quote className="w-6 h-6" />,
+      label: t("settings.tile.quotes"),
+      subtitle: t("settings.tile.quotes_sub"),
+      color: "text-amber-400",
+      glow: "group-hover:shadow-amber-400/20",
+    },
+    {
+      id: "checklist",
+      icon: <CheckSquare className="w-6 h-6" />,
+      label: t("settings.tile.checklist"),
+      subtitle: t("settings.tile.checklist_sub"),
+      color: "text-teal-400",
+      glow: "group-hover:shadow-teal-400/20",
+    },
+    {
+      id: "biblioteca",
+      icon: <Library className="w-6 h-6" />,
+      label: t("settings.tile.library"),
+      subtitle: t("settings.tile.library_sub"),
+      color: "text-primary",
+      glow: "group-hover:shadow-primary/20",
+    },
+    {
+      id: "traguardi",
+      icon: <Trophy className="w-6 h-6" />,
+      label: t("nav.milestones"),
+      subtitle: "Certificati NFT e livelli sbloccati",
+      color: "text-yellow-400",
+      glow: "group-hover:shadow-yellow-400/20",
+    },
+    {
+      id: "supporto",
+      icon: <HelpCircle className="w-6 h-6" />,
+      label: t("settings.tile.support"),
+      subtitle: t("settings.tile.support_sub"),
+      color: "text-sky-400",
+      glow: "group-hover:shadow-sky-400/20",
+    },
+    {
+      id: "aiuto",
+      icon: <LifeBuoy className="w-6 h-6" />,
+      label: "Aiuto",
+      subtitle: "Guida rapida e tutorial",
+      color: "text-purple-400",
+      glow: "group-hover:shadow-purple-400/20",
+    },
+    {
+      id: "termini",
+      icon: <FileText className="w-6 h-6" />,
+      label: "Termini & Condizioni",
+      subtitle: "Privacy, licenza e disclaimer",
+      color: "text-pink-400",
+      glow: "group-hover:shadow-pink-400/20",
+    },
+    {
+      id: "account",
+      icon: isAuthenticated ? (
+        <LogOut className="w-6 h-6" />
+      ) : (
+        <LogIn className="w-6 h-6" />
+      ),
+      label: t("settings.tile.account"),
+      subtitle: isAuthenticated
+        ? t("settings.tile.account_active")
+        : t("settings.tile.account_inactive"),
+      color: "text-slate-400",
+      glow: "group-hover:shadow-slate-400/20",
+    },
   ];
-  
-  const collapsibleSections = tiles.filter(tile => tile.id !== "profilo");
+
+  const collapsibleSections = tiles.filter((tile) => tile.id !== "profilo");
 
   const tileContent: Record<TileId, React.ReactNode> = {
     profilo: <ProfileWidget />,
@@ -2211,19 +3027,32 @@ export default function Settings() {
     termini: <TermsSection />,
     account: isAuthenticated ? (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">{t("settings.account.logged_in")}</p>
-        <Button onClick={logout} variant="outline" className="w-full border-destructive/50 text-destructive hover:bg-destructive/10">
+        <p className="text-sm text-muted-foreground">
+          {t("settings.account.logged_in")}
+        </p>
+        <Button
+          onClick={logout}
+          variant="outline"
+          className="w-full border-destructive/50 text-destructive hover:bg-destructive/10"
+        >
           <LogOut className="w-4 h-4 mr-2" /> {t("settings.account.logout")}
         </Button>
       </div>
+    ) : !isLoading ? (
+      <AuthSection login={login} />
     ) : (
-      !isLoading ? <AuthSection login={login} /> : <p className="text-sm text-muted-foreground">{t("settings.account.loading")}</p>
+      <p className="text-sm text-muted-foreground">
+        {t("settings.account.loading")}
+      </p>
     ),
   };
 
   return (
     <PageLayout>
-      <PageHeader title="Impostazioni" subtitle="Configura il tuo ambiente di trading" />
+      <PageHeader
+        title="Impostazioni"
+        subtitle="Configura il tuo ambiente di trading"
+      />
       <div className="space-y-6 max-w-5xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -2241,19 +3070,30 @@ export default function Settings() {
               {collapsibleSections.map((tile) => (
                 <button
                   key={tile.id}
-                  onClick={() => tile.id === "traguardi" ? navigate("/milestones") : setActiveDesktopSection(tile.id)}
+                  onClick={() =>
+                    tile.id === "traguardi"
+                      ? navigate("/milestones")
+                      : setActiveDesktopSection(tile.id)
+                  }
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${
                     activeDesktopSection === tile.id
                       ? "bg-primary/10 text-primary border border-primary/30"
                       : "text-muted-foreground hover:bg-card/80 hover:text-foreground border border-transparent"
                   }`}
                 >
-                  <div className={`${activeDesktopSection === tile.id ? tile.color : "text-muted-foreground"} shrink-0`}>
-                    {React.cloneElement(tile.icon as React.ReactElement<{ className?: string }>, { className: "w-4 h-4" })}
+                  <div
+                    className={`${activeDesktopSection === tile.id ? tile.color : "text-muted-foreground"} shrink-0`}
+                  >
+                    {React.cloneElement(
+                      tile.icon as React.ReactElement<{ className?: string }>,
+                      { className: "w-4 h-4" },
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{tile.label}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{tile.subtitle}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {tile.subtitle}
+                    </p>
                   </div>
                 </button>
               ))}
@@ -2271,12 +3111,26 @@ export default function Settings() {
               >
                 <div className="bg-card/60 backdrop-blur-sm border border-border rounded-2xl p-5 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className={tiles.find(t => t.id === activeDesktopSection)?.color}>
-                      {tiles.find(t => t.id === activeDesktopSection)?.icon}
+                    <div
+                      className={
+                        tiles.find((t) => t.id === activeDesktopSection)?.color
+                      }
+                    >
+                      {tiles.find((t) => t.id === activeDesktopSection)?.icon}
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold">{tiles.find(t => t.id === activeDesktopSection)?.label}</h2>
-                      <p className="text-xs text-muted-foreground">{tiles.find(t => t.id === activeDesktopSection)?.subtitle}</p>
+                      <h2 className="text-lg font-bold">
+                        {
+                          tiles.find((t) => t.id === activeDesktopSection)
+                            ?.label
+                        }
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {
+                          tiles.find((t) => t.id === activeDesktopSection)
+                            ?.subtitle
+                        }
+                      </p>
                     </div>
                   </div>
                   {tileContent[activeDesktopSection]}
@@ -2296,16 +3150,27 @@ export default function Settings() {
               className="space-y-2"
             >
               <button
-                onClick={() => tile.id === "traguardi" ? navigate("/milestones") : setOpenSections(prev => ({ ...prev, [tile.id]: !prev[tile.id] }))}
+                onClick={() =>
+                  tile.id === "traguardi"
+                    ? navigate("/milestones")
+                    : setOpenSections((prev) => ({
+                        ...prev,
+                        [tile.id]: !prev[tile.id],
+                      }))
+                }
                 className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card/60 backdrop-blur-sm hover:border-primary/30 hover:bg-card transition-all group"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`${tile.color} transition-transform duration-200 group-hover:scale-110`}>
+                  <div
+                    className={`${tile.color} transition-transform duration-200 group-hover:scale-110`}
+                  >
                     {tile.icon}
                   </div>
                   <div className="text-left">
                     <h2 className="text-base font-bold">{tile.label}</h2>
-                    <p className="text-xs text-muted-foreground">{tile.subtitle}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {tile.subtitle}
+                    </p>
                   </div>
                 </div>
                 {tile.id === "traguardi" ? (

@@ -7,6 +7,7 @@ import {
   LogoutMobileSessionResponse,
 } from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
+import logger from "../lib/logger";
 import {
   clearSession,
   getOidcConfig,
@@ -16,37 +17,45 @@ import {
   SESSION_COOKIE,
   SESSION_TTL,
   ISSUER_URL,
+  getValidatedOidcSettings,
   type SessionData,
 } from "../lib/auth";
+
+export { getValidatedOidcSettings } from "../lib/auth";
 
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
 const router: IRouter = Router();
 
-function isHttpsRequest(req: Request): boolean {
-  const forwardedProto = req.headers["x-forwarded-proto"];
-  const proto =
-    typeof forwardedProto === "string"
-      ? forwardedProto.split(",")[0]?.trim()
-      : Array.isArray(forwardedProto)
-        ? forwardedProto[0]
-        : undefined;
+function firstHeader(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value?.split(",")[0]?.trim();
+}
 
-  return proto === "https" || req.secure || process.env.NODE_ENV === "production";
+function isHttpsRequest(req: Request): boolean {
+  const protocol = typeof req.protocol === "string" ? req.protocol : undefined;
+  const forwardedProto = firstHeader(req.headers["x-forwarded-proto"]);
+  return (
+    protocol === "https" ||
+    forwardedProto === "https" ||
+    req.secure ||
+    process.env.NODE_ENV === "production"
+  );
 }
 
 export function getOrigin(req: Request): string {
-  const forwardedProto = req.headers["x-forwarded-proto"];
+  const rawProtocol =
+    typeof req.protocol === "string" ? req.protocol : undefined;
+  const fallbackProtocol = isHttpsRequest(req) ? "https" : "http";
   const proto =
-    typeof forwardedProto === "string"
-      ? forwardedProto.split(",")[0]?.trim()
-      : Array.isArray(forwardedProto)
-        ? forwardedProto[0]
-        : isHttpsRequest(req)
-          ? "https"
-          : "http";
-  const host =
-    req.headers["x-forwarded-host"] || req.headers["host"] || "localhost";
+    rawProtocol === "http" || rawProtocol === "https"
+      ? rawProtocol
+      : fallbackProtocol;
+  const forwardedHost = firstHeader(req.headers["x-forwarded-host"]);
+  const rawHost =
+    typeof req.host === "string" ? req.host : firstHeader(req.headers["host"]);
+  const host = forwardedHost || rawHost || "localhost";
+  if (!/^[A-Za-z0-9.-]+(?::\d+)?$/.test(host)) return `${proto}://localhost`;
   return `${proto}://${host}`;
 }
 
@@ -76,17 +85,57 @@ function setSessionCookie(req: Request, res: Response, sid: string) {
   });
 }
 
-function setOidcCookie(req: Request, res: Response, name: string, value: string) {
+function setOidcCookie(
+  req: Request,
+  res: Response,
+  name: string,
+  value: string,
+) {
   res.cookie(name, value, {
     ...createOidcCookieOptions(req),
   });
 }
 
-function getSafeReturnTo(value: unknown): string {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
+export function getSafeReturnTo(value: unknown): string {
+  if (
+    typeof value !== "string" ||
+    !value.startsWith("/") ||
+    value.startsWith("//")
+  ) {
     return "/";
   }
   return value;
+}
+
+export function isAllowedMobileRedirectUri(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+
+  if (
+    url.protocol === "traderloadings:" &&
+    url.hostname === "auth" &&
+    url.pathname === "/callback"
+  ) {
+    return true;
+  }
+
+  if (
+    process.env.NODE_ENV !== "production" &&
+    (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+    (url.protocol === "http:" || url.protocol === "https:")
+  ) {
+    return true;
+  }
+
+  const allowed = (process.env.MOBILE_REDIRECT_URIS ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return allowed.includes(value);
 }
 
 async function upsertUser(claims: Record<string, unknown>) {
@@ -178,7 +227,8 @@ router.get("/callback", async (req: Request, res: Response) => {
       expectedState,
       idTokenExpected: true,
     });
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, "OIDC callback exchange failed");
     res.redirect("/api/login");
     return;
   }
@@ -196,9 +246,7 @@ router.get("/callback", async (req: Request, res: Response) => {
     return;
   }
 
-  const dbUser = await upsertUser(
-    claims as unknown as Record<string, unknown>,
-  );
+  const dbUser = await upsertUser(claims as unknown as Record<string, unknown>);
 
   const now = Math.floor(Date.now() / 1000);
   const sessionData: SessionData = {
@@ -222,12 +270,13 @@ router.get("/callback", async (req: Request, res: Response) => {
 router.get("/logout", async (req: Request, res: Response) => {
   const config = await getOidcConfig();
   const origin = getOrigin(req);
+  const oidcSettings = getValidatedOidcSettings();
 
   const sid = getSessionId(req);
   await clearSession(res, sid);
 
   const endSessionUrl = oidc.buildEndSessionUrl(config, {
-    client_id: process.env.REPL_ID!,
+    client_id: oidcSettings.clientId,
     post_logout_redirect_uri: origin,
   });
 
@@ -244,6 +293,10 @@ router.post(
     }
 
     const { code, code_verifier, redirect_uri, state, nonce } = parsed.data;
+    if (!isAllowedMobileRedirectUri(redirect_uri)) {
+      res.status(400).json({ error: "Unsupported redirect URI" });
+      return;
+    }
 
     try {
       const config = await getOidcConfig();
@@ -287,7 +340,7 @@ router.post(
       const sid = await createSession(sessionData);
       res.json(ExchangeMobileAuthorizationCodeResponse.parse({ token: sid }));
     } catch (err) {
-      console.error("Mobile token exchange error:", err);
+      logger.warn({ err }, "Mobile token exchange failed");
       res.status(500).json({ error: "Token exchange failed" });
     }
   },

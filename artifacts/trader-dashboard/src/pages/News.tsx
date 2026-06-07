@@ -20,59 +20,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { useLanguage, useDateLocale } from "@/contexts/LanguageContext";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Article {
-  title: string;
-  summary: string;
-  originalTitle?: string;
-  originalSummary?: string;
-  source: string;
-  sources?: string[];
-  citationUrls?: string[];
-  verified?: boolean;
-  publishedAt?: string | null;
-  url?: string | null;
-  resolvedUrl?: string | null;
-  sourceUrl?: string | null;
-  sentiment?: string | null;
-  imageUrl?: string | null;
-  affectedPairs?: string[];
-  impactScore?: number;
-  impactReason?: string;
-  primaryAssets?: string[];
-  impactDirection?: "bullish" | "bearish" | "mixed" | "neutral";
-  relevanceReason?: string;
-  matchConfidence?: number;
-  freshnessTier?: "live" | "fresh" | "fallback" | "stale";
-  ageMinutes?: number;
-  isFallback?: boolean;
-  qualityScore?: number;
-}
-
-interface NewsData {
-  articles: Article[];
-  fetchedAt: string;
-  hasApiKey: boolean;
-  source?: string;
-  agentSummary?: string;
-  watchedPairs?: string[];
-  nextRefreshAt?: string;
-  providerStatuses?: NewsProviderStatus[];
-  freshArticlesCount?: number;
-  fallbackArticlesCount?: number;
-  oldestFreshArticleAt?: string;
-  freshnessWindowHours?: number;
-}
-
-interface NewsProviderStatus {
-  provider: string;
-  status: "connected" | "connecting" | "polling" | "disabled" | "error";
-  transport: "websocket" | "polling" | "rest" | "none";
-  message?: string;
-  lastUpdated: string;
-}
+import {
+  createNewsQueryKey,
+  createNewsRefreshMessage,
+  createNewsSubscribeMessage,
+  fetchNews,
+  type Article,
+  type NewsData,
+  type NewsProviderStatus,
+  type NewsSocketMessage,
+} from "@/lib/newsApi";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -333,7 +290,7 @@ function ArticleCard({ article, idx, isAI, onOpen }: { article: Article; idx: nu
             onOpen(article);
           }
         }}
-        className="bg-card/60 backdrop-blur-sm border-border/30 hover:border-primary/40 transition-all duration-200 group h-full flex flex-col overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        className="flex h-full cursor-pointer flex-col overflow-hidden border-border/35 bg-card/70 transition-colors duration-200 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
       >
         {/* Impact score header strip (AI only) */}
         {isAI && article.impactScore && (
@@ -467,8 +424,7 @@ export default function News() {
   const qc = useQueryClient();
   const { selectedPairs } = useBackground();
   const selectedPairsKey = selectedPairs.join(",");
-  const pairsParam = selectedPairs.length > 0 ? `&pairs=${selectedPairsKey}` : "";
-  const queryKey = useMemo(() => ["macro-news", selectedPairsKey, language] as const, [language, selectedPairsKey]);
+  const queryKey = useMemo(() => createNewsQueryKey(selectedPairsKey, language), [language, selectedPairsKey]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "fallback" | "error">("connecting");
   const [providerStatuses, setProviderStatuses] = useState<NewsProviderStatus[]>([]);
@@ -477,11 +433,7 @@ export default function News() {
 
   const { data, isLoading, isFetching } = useQuery<NewsData>({
     queryKey,
-    queryFn: async () => {
-      const res = await fetch(`api/news?_=1${pairsParam}&lang=${language}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch news");
-      return res.json();
-    },
+    queryFn: () => fetchNews({ selectedPairsKey, language }),
     staleTime: 90 * 1000,
     refetchInterval: 2 * 60 * 1000,
     refetchIntervalInBackground: false,  // solo se la tab è attiva
@@ -495,16 +447,13 @@ export default function News() {
     socket.addEventListener("open", () => {
       if (closed) return;
       setLiveStatus("live");
-      socket.send(JSON.stringify({ type: "subscribe", pairs: selectedPairsKey, lang: language }));
+      socket.send(JSON.stringify(createNewsSubscribeMessage(selectedPairsKey, language)));
     });
 
     socket.addEventListener("message", (event) => {
       if (closed) return;
       const message = JSON.parse(String(event.data)) as
-        | { type: "news_snapshot"; snapshot: NewsData }
-        | { type: "news_article"; article: Article }
-        | { type: "news_provider_status"; status: NewsProviderStatus }
-        | { type: "news_error"; message: string };
+        NewsSocketMessage;
 
       if (message.type === "news_snapshot") {
         qc.setQueryData<NewsData>(queryKey, (current) => updateNewsIfChanged(current, message.snapshot));
@@ -567,13 +516,14 @@ export default function News() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch(`api/news?nocache=1${pairsParam}&lang=${language}`, { credentials: "include" });
-      if (res.ok) {
-        const freshData = await res.json();
+      try {
+        const freshData = await fetchNews({ selectedPairsKey, language, noCache: true });
         qc.setQueryData<NewsData>(queryKey, (current) => updateNewsIfChanged(current, freshData));
+      } catch {
+        // The live socket refresh below is still useful when the HTTP fallback is unavailable.
       }
       if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ type: "refresh", pairs: selectedPairsKey, lang: language, force: true }));
+        socketRef.current.send(JSON.stringify(createNewsRefreshMessage(selectedPairsKey, language)));
       }
     } finally {
       setIsRefreshing(false);
@@ -604,7 +554,7 @@ export default function News() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex gap-3"
+            className="tl-panel flex gap-3 border-primary/20 bg-primary/5 p-4"
           >
             <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
               <Bot className="w-4 h-4 text-primary" />
@@ -696,7 +646,7 @@ export default function News() {
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-48 rounded-2xl animate-pulse bg-white/5 border border-white/5" />
+            <div key={i} className="h-48 animate-pulse rounded-lg border border-border/30 bg-secondary/40" />
           ))}
         </div>
       ) : newsData?.articles && newsData.articles.length > 0 ? (
@@ -730,7 +680,7 @@ export default function News() {
           )}
         </div>
       ) : (
-        <Card className="bg-card/60 backdrop-blur-sm border-border/30">
+        <Card className="border-border/40 bg-card/70">
           <CardContent className="p-16 text-center">
             <Newspaper className="w-14 h-14 mx-auto mb-5 opacity-15" />
             <h3 className="text-xl font-bold mb-2">{t("news.empty")}</h3>

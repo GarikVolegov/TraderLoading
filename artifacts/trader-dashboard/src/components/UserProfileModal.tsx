@@ -2,6 +2,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, UserPlus, UserMinus, UserCheck, Heart, Lock, Loader2, User } from "lucide-react";
+import { apiJSON } from "@/lib/apiFetch";
+import { formatCompactItalianRelativeTime } from "@/lib/relativeTime";
 
 interface SocialUser {
   userId: string;
@@ -25,23 +27,6 @@ interface ProfileData {
   isFollowing: boolean;
   isMutual: boolean;
   isOwnProfile: boolean;
-}
-
-function apiJSON(path: string, opts?: RequestInit) {
-  const base = (import.meta as any).env?.BASE_URL ?? "/";
-  const url = `${base}${path}`.replace(/\/+/g, "/");
-  return fetch(url, { credentials: "include", ...opts }).then(async (r) => {
-    if (!r.ok) throw new Error(await r.text());
-    return r.json();
-  });
-}
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const h = Math.floor(diff / 3_600_000);
-  if (h < 1) return "poco fa";
-  if (h < 24) return `${h}h fa`;
-  return `${Math.floor(h / 24)}g fa`;
 }
 
 function Avatar({ name, avatarUrl, size = "md" }: { name: string; avatarUrl?: string | null; size?: "sm" | "md" | "lg" }) {
@@ -203,7 +188,7 @@ export function UserProfileModal({
                       <span className="flex items-center gap-1">
                         <Heart className="w-3 h-3" /> {p.likesCount}
                       </span>
-                      <span>{timeAgo(p.createdAt)}</span>
+                      <span>{formatCompactItalianRelativeTime(p.createdAt)}</span>
                     </div>
                   </div>
                 ))}

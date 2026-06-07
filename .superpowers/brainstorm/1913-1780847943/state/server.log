@@ -1,0 +1,6 @@
+{"type":"owner-pid-invalid","pid":1,"reason":"dead at startup"}
+{"type":"server-started","port":49599,"host":"0.0.0.0","url_host":"localhost","url":"http://localhost:49599","screen_dir":"c:\\Users\\osman\\Desktop\\TraderLoadingsLOCALE\\.superpowers\\brainstorm\\1913-1780847943\\content","state_dir":"c:\\Users\\osman\\Desktop\\TraderLoadingsLOCALE\\.superpowers\\brainstorm\\1913-1780847943\\state"}
+{"type":"screen-added","file":"c:\\Users\\osman\\Desktop\\TraderLoadingsLOCALE\\.superpowers\\brainstorm\\1913-1780847943\\content\\tool-filters-layout.html"}
+{"type":"screen-updated","file":"c:\\Users\\osman\\Desktop\\TraderLoadingsLOCALE\\.superpowers\\brainstorm\\1913-1780847943\\content\\tool-filters-layout.html"}
+{"type":"screen-added","file":"c:\\Users\\osman\\Desktop\\TraderLoadingsLOCALE\\.superpowers\\brainstorm\\1913-1780847943\\content\\waiting-after-filter-design.html"}
+{"type":"server-stopped","reason":"idle timeout"}

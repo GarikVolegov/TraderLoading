@@ -6,6 +6,7 @@ import { useBackground, DEFAULT_BACKGROUND_PRESETS, type BackgroundPreset } from
 import { useUpdateUserSettings, getGetUserSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { uploadBackgroundImage } from "@/lib/backgroundSettingsApi";
 
 export function BackgroundPresetsManager() {
   const { backgroundUrl, backgroundPresets, setBackgroundUrl, setBackgroundPresets } = useBackground();
@@ -27,15 +28,7 @@ export function BackgroundPresetsManager() {
     }
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("image", file);
-      const res = await fetch("api/settings/background", {
-        method: "POST",
-        body: form,
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json() as { url: string };
+      const data = await uploadBackgroundImage(file);
       
       const newPreset: BackgroundPreset = {
         id: `custom-${Date.now()}`,

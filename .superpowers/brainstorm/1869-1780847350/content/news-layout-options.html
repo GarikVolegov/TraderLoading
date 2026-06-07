@@ -1,0 +1,100 @@
+<h2>News feed: quale struttura deve diventare la base?</h2>
+<p class="subtitle">Scope fissato: solo strumenti preferiti dell'utente. Scegli pensando a desktop prima, poi mobile.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A - Pagina feed unica</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1fr;gap:10px">
+            <div style="height:42px;border-radius:8px;background:#162033;border:1px solid #334155"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div style="width:70px;height:26px;border-radius:7px;background:#243047"></div>
+              <div style="width:70px;height:26px;border-radius:7px;background:#243047"></div>
+              <div style="width:70px;height:26px;border-radius:7px;background:#243047"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+              <div style="height:94px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+              <div style="height:94px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+              <div style="height:94px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+              <div style="height:94px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+              <div style="height:94px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+              <div style="height:94px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Feed unico a griglia</h3>
+      <p>Molto semplice: filtri in alto, card sotto, click articolo apre dettaglio nella stessa pagina o esterno.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B - Raccomandato: Inbox + lettura</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:230px 1fr 300px;gap:8px;min-height:240px">
+            <div style="border-radius:8px;background:#111827;border:1px solid #334155;padding:8px">
+              <div style="height:24px;border-radius:6px;background:#243047;margin-bottom:8px"></div>
+              <div style="height:20px;border-radius:6px;background:#1d2a3d;margin-bottom:6px"></div>
+              <div style="height:20px;border-radius:6px;background:#1d2a3d;margin-bottom:6px"></div>
+              <div style="height:20px;border-radius:6px;background:#1d2a3d"></div>
+            </div>
+            <div style="display:grid;gap:7px">
+              <div style="height:36px;border-radius:8px;background:#162033;border:1px solid #334155"></div>
+              <div style="height:54px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+              <div style="height:54px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+              <div style="height:54px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+            </div>
+            <div style="border-radius:8px;background:#111827;border:1px solid #334155;padding:10px">
+              <div style="height:20px;border-radius:6px;background:#f59e0b;margin-bottom:10px;width:44%"></div>
+              <div style="height:52px;border-radius:6px;background:#243047;margin-bottom:8px"></div>
+              <div style="height:10px;border-radius:5px;background:#334155;margin-bottom:6px"></div>
+              <div style="height:10px;border-radius:5px;background:#334155;margin-bottom:6px;width:85%"></div>
+              <div style="height:10px;border-radius:5px;background:#334155;width:70%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Inbox + pannello lettura</h3>
+      <p>Desktop ricco: sidebar strumenti, lista centrale, dettaglio articolo a destra. Su mobile diventa tab/stack.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C - Macro e feed separati</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:240px">
+            <div style="border-radius:8px;background:#111827;border:1px solid #334155;padding:8px">
+              <div style="height:28px;border-radius:7px;background:#f59e0b;margin-bottom:10px;width:55%"></div>
+              <div style="height:62px;border-radius:8px;background:#0f172a;border:1px solid #334155;margin-bottom:8px"></div>
+              <div style="height:62px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+            </div>
+            <div style="border-radius:8px;background:#111827;border:1px solid #334155;padding:8px">
+              <div style="height:28px;border-radius:7px;background:#8b5cf6;margin-bottom:10px;width:55%"></div>
+              <div style="height:62px;border-radius:8px;background:#0f172a;border:1px solid #334155;margin-bottom:8px"></div>
+              <div style="height:62px;border-radius:8px;background:#0f172a;border:1px solid #334155"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Due viste affiancate</h3>
+      <p>Una zona per briefing macro e una per news grezze/enriched. Potente, ma rischia più rumore e duplicazione.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Raccomandazione</h3>
+  <p>Io sceglierei <strong>B</strong>: elimina la sheet desktop, trasforma /news nella destinazione principale, usa meglio lo spazio informativo e resta efficiente perché carica/ranka solo gli strumenti preferiti.</p>
+</div>

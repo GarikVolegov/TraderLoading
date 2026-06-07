@@ -1,9 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { ShieldCheck, ArrowRight, RotateCcw, AlertTriangle } from "lucide-react";
+import {
+  ShieldCheck,
+  ArrowRight,
+  RotateCcw,
+  AlertTriangle,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useGetChecklist } from "@workspace/api-client-react";
+import { reportClientError } from "@/lib/clientErrorReporter";
 
 const STORAGE_KEY = "tl_confirmation_session";
 
@@ -15,10 +21,17 @@ function loadChecked(itemIds: number[]): Set<number> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return new Set();
-    const { date, checked } = JSON.parse(raw) as { date: string; checked: number[] };
+    const { date, checked } = JSON.parse(raw) as {
+      date: string;
+      checked: number[];
+    };
     if (date !== todayKey()) return new Set();
     return new Set(checked.filter((id) => itemIds.includes(id)));
-  } catch {
+  } catch (error) {
+    reportClientError(error, {
+      context: "checklist confirmation load",
+      notify: false,
+    });
     return new Set();
   }
 }
@@ -27,9 +40,14 @@ function saveChecked(checked: Set<number>) {
   try {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ date: todayKey(), checked: [...checked] })
+      JSON.stringify({ date: todayKey(), checked: [...checked] }),
     );
-  } catch {}
+  } catch (error) {
+    reportClientError(error, {
+      context: "checklist confirmation save",
+      notify: false,
+    });
+  }
 }
 
 export function ChecklistDashboardWidget() {
@@ -69,21 +87,25 @@ export function ChecklistDashboardWidget() {
   const statusColor = isGo
     ? "text-emerald-400"
     : isWarn
-    ? "text-yellow-400"
-    : "text-muted-foreground";
+      ? "text-yellow-400"
+      : "text-muted-foreground";
 
   const barColor = isGo
     ? "bg-emerald-500"
     : isWarn
-    ? "bg-yellow-500"
-    : "bg-primary";
+      ? "bg-yellow-500"
+      : "bg-primary";
 
   return (
     <Card className="h-full relative overflow-hidden bg-card/60 backdrop-blur-sm border-border/30">
       <CardHeader className="pb-2 px-3 sm:px-5 pt-3 sm:pt-5 border-b border-border/30">
         <div className="flex items-center gap-2">
-          <ShieldCheck className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${isGo ? "text-emerald-400" : "text-primary"}`} />
-          <CardTitle className="text-sm sm:text-base flex-1">Conferme d'Entrata</CardTitle>
+          <ShieldCheck
+            className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${isGo ? "text-emerald-400" : "text-primary"}`}
+          />
+          <CardTitle className="text-sm sm:text-base flex-1">
+            Conferme d'Entrata
+          </CardTitle>
 
           {total > 0 && (
             <div className="flex items-center gap-2">
@@ -136,8 +158,8 @@ export function ChecklistDashboardWidget() {
               {isGo
                 ? "Tutti i criteri confermati — trade validato"
                 : confirmed === 0
-                ? "Spunta i criteri prima di entrare"
-                : `${confirmed} di ${total} criteri confermati`}
+                  ? "Spunta i criteri prima di entrare"
+                  : `${confirmed} di ${total} criteri confermati`}
             </p>
           </div>
         )}
@@ -154,7 +176,9 @@ export function ChecklistDashboardWidget() {
             className="w-full py-6 flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group"
           >
             <ShieldCheck className="w-10 h-10 opacity-15 group-hover:opacity-30 transition-opacity" />
-            <p className="text-xs font-medium text-center">Nessun criterio di conferma</p>
+            <p className="text-xs font-medium text-center">
+              Nessun criterio di conferma
+            </p>
             <span className="text-xs flex items-center gap-1 text-primary">
               Configura la checklist
               <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
@@ -199,17 +223,25 @@ export function ChecklistDashboardWidget() {
                           fill="none"
                           className="w-2.5 h-2"
                         >
-                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          <path
+                            d="M1 4L3.5 6.5L9 1"
+                            stroke="white"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </motion.svg>
                       )}
                     </AnimatePresence>
                   </motion.span>
 
-                  <span className={`text-xs flex-1 leading-snug transition-all ${
-                    isChecked
-                      ? "text-emerald-400/90 line-through decoration-emerald-500/40"
-                      : "text-foreground/80"
-                  }`}>
+                  <span
+                    className={`text-xs flex-1 leading-snug transition-all ${
+                      isChecked
+                        ? "text-emerald-400/90 line-through decoration-emerald-500/40"
+                        : "text-foreground/80"
+                    }`}
+                  >
                     {item.text}
                   </span>
                 </motion.button>
@@ -224,7 +256,11 @@ export function ChecklistDashboardWidget() {
               >
                 <AlertTriangle className="w-3 h-3 text-yellow-500/70 shrink-0" />
                 <p className="text-[10px] text-yellow-500/70">
-                  {total - confirmed} {total - confirmed === 1 ? "criterio mancante" : "criteri mancanti"} — non entrare ancora
+                  {total - confirmed}{" "}
+                  {total - confirmed === 1
+                    ? "criterio mancante"
+                    : "criteri mancanti"}{" "}
+                  — non entrare ancora
                 </p>
               </motion.div>
             )}

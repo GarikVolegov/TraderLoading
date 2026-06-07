@@ -7,3 +7,7 @@ export function buildFrontendDevEnv(source: NodeJS.ProcessEnv = process.env): No
     VITE_CLERK_PROXY_URL: source["VITE_CLERK_PROXY_URL"],
   };
 }
+
+export function buildFrontendDevArgs(): string[] {
+  return ["--filter", "@workspace/trader-dashboard", "run", "dev"];
+}
