@@ -1,0 +1,98 @@
+Port 5432 is already occupied; using managed TraderLoadings Postgres on 127.0.0.1:55432.
+
+> ensuring Docker Postgres container
+Postgres is already reachable on 127.0.0.1:55432; reusing it.
+
+> waiting for TCP 127.0.0.1:55432
+
+> pnpm install
+Scope: all 12 workspace projects
+Already up to date
+Done in 418ms using pnpm v11.0.9
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 11.0.9 → 11.5.2.    │
+   │   Changelog: https://pnpm.io/v/11.5.2   │
+   │    To update, run: pnpm add -g pnpm     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+
+> pnpm --filter @workspace/db run push
+Reading config file 'C:\Users\osman\Desktop\TraderLoadingsLOCALE\lib\db\drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[2K[1G[⣯] Pulling schema from database...
+[2K[1G[⣟] Pulling schema from database...
+[2K[1G[⡿] Pulling schema from database...
+[2K[1G[⢿] Pulling schema from database...
+[2K[1G[⣻] Pulling schema from database...
+[2K[1G[⣽] Pulling schema from database...
+[2K[1G[⣷] Pulling schema from database...
+[2K[1G[⣯] Pulling schema from database...
+[2K[1G[⣟] Pulling schema from database...
+[2K[1G[⡿] Pulling schema from database...
+[2K[1G[⢿] Pulling schema from database...
+[2K[1G[✓] Pulling schema from database...
+[i] No changes detected
+
+> starting API on http://127.0.0.1:3001
+[tools/cot] Fetching CFTC data...
+Server listening on port 3001
+[push] VAPID keys missing — session scheduler disabled
+[brain-scan] disabilitato (BRAIN_SCAN_ENABLED != 'true')
+
+> starting frontend on http://127.0.0.1:5173
+[2026-06-07 01:09:22.758 +0200] [32mINFO[39m (17956): [36m→ GET /api/healthz[39m
+    [35mrequestId[39m: "a5e1e37d-fa5a-46e8-8bea-b1e435208d93"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.start"
+[2026-06-07 01:09:22.775 +0200] [32mINFO[39m (17956): [36m← GET /api/healthz 200 (18ms)[39m
+    [35mrequestId[39m: "a5e1e37d-fa5a-46e8-8bea-b1e435208d93"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 18
+[tools/cot] deafut.txt OK — 7 markets, history: 1 weeks
+
+  [32m[1mVITE[22m v7.3.2[39m  [2mready in [0m[1m645[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.20.10.4:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.22.32.1:[1m5173[22m/[39m
+
+TraderLoadings is running at http://localhost:5173
+[tools/cot] OK — 7 live (12wk hist) + 2 fallback, total 9
+[2026-06-07 01:09:37.033 +0200] [32mINFO[39m (17956): [36m→ GET /api/healthz[39m
+    [35mrequestId[39m: "94127743-698e-410c-af60-73f272c016d8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.start"
+[2026-06-07 01:09:37.039 +0200] [32mINFO[39m (17956): [36m← GET /api/healthz 200 (6ms)[39m
+    [35mrequestId[39m: "94127743-698e-410c-af60-73f272c016d8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 6
+[2026-06-07 01:09:50.765 +0200] [32mINFO[39m (17956): [36m→ GET /api/healthz[39m
+    [35mrequestId[39m: "d826428a-2aea-4830-90ee-75c0c848f189"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.start"
+[2026-06-07 01:09:50.766 +0200] [32mINFO[39m (17956): [36m← GET /api/healthz 200 (1ms)[39m
+    [35mrequestId[39m: "d826428a-2aea-4830-90ee-75c0c848f189"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 1
+C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\trader-dashboard:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @workspace/trader-dashboard@0.0.0 dev: `vite --config vite.config.ts --host 0.0.0.0`
+Exit status 4294967295
+undefined
+C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 4294967295: tsx ./src/index.ts

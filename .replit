@@ -1,0 +1,41 @@
+modules = ["nodejs-24", "python-3.11"]
+
+[[artifacts]]
+id = "artifacts/api-server"
+
+[[artifacts]]
+id = "artifacts/mockup-sandbox"
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+MYFXBOOK_EMAIL = "volegovgarik9@gmail.com"
+MYFXBOOK_PASSWORD = "kAwven-fuptop-4bibge"
+VAPID_PUBLIC_KEY = "BGBlpH50sqUWWZaEjH0S4myX7zWbq2pmvtqT9yEujDVBE4zUTKuCotEMnHgzowFTNg6n_j8_hdPm87yEKSOQk10"
+VAPID_PRIVATE_KEY = "U-ODVglMZQq4RfgErat8DaLq_1vfwcPh4deg7YXbyeM"
+VAPID_EMAIL = "mailto:noreply@traderloading.app"
+VITE_CLERK_PUBLISHABLE_KEY = "pk_test_ZW5kbGVzcy1jb3lvdGUtMzIuY2xlcmsuYWNjb3VudHMuZGV2JA"
+PLATFORM_ADMIN_IDS = "Garik"
+
+[nix]
+packages = ["hol"]
+channel = "stable-25_05"

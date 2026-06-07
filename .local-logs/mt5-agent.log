@@ -1,0 +1,20 @@
+[mt5-agent] in ascolto su http://127.0.0.1:8766 — credenziali solo in locale, mai salvate.
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 65007)
+Traceback (most recent call last):
+  File "C:\Users\osman\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\socketserver.py", line 691, in process_request_thread
+    self.finish_request(request, client_address)
+  File "C:\Users\osman\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\socketserver.py", line 361, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "C:\Users\osman\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\socketserver.py", line 755, in __init__
+    self.handle()
+  File "C:\Users\osman\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\http\server.py", line 440, in handle
+    self.handle_one_request()
+  File "C:\Users\osman\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\http\server.py", line 428, in handle_one_request
+    method()
+  File "C:\Users\osman\Desktop\TraderLoadingsLOCALE\scripts\account-agent\mt5_agent.py", line 316, in do_GET
+    self.wfile.write(data.encode())
+  File "C:\Users\osman\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\Lib\socketserver.py", line 834, in write
+    self._sock.sendall(b)
+ConnectionAbortedError: [WinError 10053] Connessione interrotta dal software del computer host
+----------------------------------------

@@ -1,0 +1,15 @@
+packages:
+  "react-dropzone": "For elegant image drag and drop uploads in the journal form"
+  "date-fns": "For formatting trade dates"
+  "lucide-react": "For UI icons"
+  "framer-motion": "For page transitions and list animations"
+
+images:
+  - path: "artifacts/trader-dashboard/public/images/journal-empty.png"
+    description: "A dark, sleek illustration of a futuristic digital ledger or notebook with glowing neon green accents, minimalist 3d isometric style, suitable for a trading dashboard empty state"
+    aspect_ratio: "16:9"
+
+notes:
+  - Using generated Orval hooks from @workspace/api-client-react
+  - Journal entry images are uploaded using multipart/form-data
+  - Reusing existing dark mode and neon glow styles

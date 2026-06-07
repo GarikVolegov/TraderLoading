@@ -1,0 +1,9 @@
+$ pnpm --filter ./scripts exec tsx local/start.ts
+$ drizzle-kit push --config ./drizzle.config.ts
+$ vite --config vite.config.ts --host 0.0.0.0
+[tools/macro-news] Groq failed, falling back to RSS: GROQ_API_KEY not set
+[tools/sentiment] No credentials
+[tools/sentiment] No credentials
+[tools/sentiment] No credentials
+[tools/sentiment] No credentials
+[RUNTIME_ERROR]{"type":"runtime-error","timestamp":1780792518070,"name":"Error","message":"Rendered more hooks than during the previous render.","stack":"\n\n\n\n    at useBrokerHub C:/Users/osman/Desktop/TraderLoadingsLOCALE/artifacts/trader-dashboard/src/components/broker-hub/useBrokerHub.ts:340:22\n    at BrokerHubWidget C:/Users/osman/Desktop/TraderLoadingsLOCALE/artifacts/trader-dashboard/src/components/broker-hub/BrokerHubWidget.tsx:19:39\n\n\n\n","loc":{"line":340,"column":22,"file":"C:/Users/osman/Desktop/TraderLoadingsLOCALE/artifacts/trader-dashboard/src/components/broker-hub/useBrokerHub.ts"},"frame":"338|    );\n339|  \n340|    const placeOrder = useCallback(\n   |                       ^\n341|      async (profileId: string, order: BrokerOrderDraft) => {\n342|        const response = await readJsonSoft<{ accepted?: boolean; reason?: string; orderId?: string }>("}

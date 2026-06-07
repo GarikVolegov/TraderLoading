@@ -1,0 +1,597 @@
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+Error: Failed query: select "id", "text", "completed", "order", "user_id", "created_at" from "checklist_items" where "checklist_items"."user_id" = $1 order by "checklist_items"."order" asc, "checklist_items"."created_at" asc
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\checklist.ts:14:17)
+[tools/macro-news] Groq failed, falling back to RSS: GROQ_API_KEY not set
+Error: Failed query: select "id", "title", "description", "xp_reward", "completed", "completed_at", "mission_date", "user_id", "created_at" from "missions" where ("missions"."mission_date" = $1 and "missions"."user_id" = $2)
+params: 2026-06-06,user_3DrhamMSMhZSyS2DtR356YYgh2A
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async ensureTodayMissions (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\missions.ts:22:20)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\missions.ts:59:20)
+Error: Failed query: select "id", "type", "content", "completed", "reminder_time", "cadence", "recurrence", "importance", "deadline_date", "user_id", "created_at" from "ideas" where "ideas"."user_id" = $1 order by "ideas"."created_at" desc
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\ideas.ts:14:17)
+Error: Failed query: select "id", "name", "avatar_url", "xp", "level", "streak", "last_active_date", "user_id", "years_experience", "updated_at" from "profile" where "profile"."user_id" = $1 limit $2
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,1
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async getOrCreateProfile (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\profile.ts:145:20)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\profile.ts:177:19)
+Error: Failed query: select "id", "background_url", "background_type", "font_choice", "background_darkness", "user_id", "trading_sessions", "lot_divisor", "calendar_currencies", "calendar_impacts", "daily_reminder_time", "pre_macro_minutes", "max_daily_loss", "selected_pairs", "notification_prefs", "alarm_configs" from "user_settings" where "user_settings"."user_id" = $1 limit $2
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,1
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async getOrCreateSettings (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:27:22)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:40:20)
+[tools/sentiment] No credentials
+Error: Failed query: select "id", "text", "author", "user_id", "created_at" from "quotes" where "quotes"."user_id" = $1
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\quotes.ts:38:22)
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+Error: Failed query: select "id", "text", "author", "user_id", "created_at" from "quotes" where "quotes"."user_id" = $1
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\quotes.ts:38:22)
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+Error: Failed query: select "id", "name", "avatar_url", "xp", "level", "streak", "last_active_date", "user_id", "years_experience", "updated_at" from "profile" where "profile"."user_id" = $1 limit $2
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,1
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async getOrCreateProfile (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\profile.ts:145:20)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\profile.ts:177:19)
+Error: Failed query: select "id", "text", "completed", "order", "user_id", "created_at" from "checklist_items" where "checklist_items"."user_id" = $1 order by "checklist_items"."order" asc, "checklist_items"."created_at" asc
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\checklist.ts:14:17)
+Error: Failed query: select "id", "type", "content", "completed", "reminder_time", "cadence", "recurrence", "importance", "deadline_date", "user_id", "created_at" from "ideas" where "ideas"."user_id" = $1 order by "ideas"."created_at" desc
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\ideas.ts:14:17)
+Error: Failed query: select "id", "title", "description", "xp_reward", "completed", "completed_at", "mission_date", "user_id", "created_at" from "missions" where ("missions"."mission_date" = $1 and "missions"."user_id" = $2)
+params: 2026-06-06,user_3DrhamMSMhZSyS2DtR356YYgh2A
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async ensureTodayMissions (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\missions.ts:22:20)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\missions.ts:59:20)
+[tools/sentiment] No credentials
+chat/unread error: DrizzleQueryError: Failed query: select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,false
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+  query: 'select count(*)::int from "chat_messages" where ("chat_messages"."receiver_id" = $1 and "chat_messages"."read" = $2)',
+  params: [ 'user_3DrhamMSMhZSyS2DtR356YYgh2A', 'false' ],
+  cause: error: autenticazione con password fallita per l'utente "trader"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\chat.ts:207:20) {
+    length: 112,
+    severity: 'FATALE',
+    code: '28P01',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'auth.c',
+    line: '334',
+    routine: 'auth_failed'
+  }
+}
+Error: Failed query: select "id", "background_url", "background_type", "font_choice", "background_darkness", "user_id", "trading_sessions", "lot_divisor", "calendar_currencies", "calendar_impacts", "daily_reminder_time", "pre_macro_minutes", "max_daily_loss", "selected_pairs", "notification_prefs", "alarm_configs" from "user_settings" where "user_settings"."user_id" = $1 limit $2
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A,1
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async getOrCreateSettings (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:27:22)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:40:20)
+Error: Failed query: select "id", "text", "author", "user_id", "created_at" from "quotes" where "quotes"."user_id" = $1
+params: user_3DrhamMSMhZSyS2DtR356YYgh2A
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\quotes.ts:38:22)

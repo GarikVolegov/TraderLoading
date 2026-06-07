@@ -1,0 +1,33 @@
+{
+  "name": "TraderLOADING",
+  "short_name": "TraderLOADING",
+  "description": "Trading dashboard with AI-powered macro news, volatility analysis, and advanced trading tools",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0a0e27",
+  "background_color": "#0a0e27",
+  "icons": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["finance", "productivity"],
+  "screenshots": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
+  ]
+}

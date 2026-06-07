@@ -1,0 +1,22 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "preinstall": "node -e \"const fs=require('node:fs'); for (const file of ['package-lock.json','yarn.lock']) fs.rmSync(file,{force:true}); const ua=process.env.npm_config_user_agent||''; const execPath=process.env.npm_execpath||''; if (!ua.startsWith('pnpm/') && !execPath.includes('pnpm')) { console.error('Use pnpm instead'); process.exit(1); }\"",
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "typecheck:libs": "tsc --build --force",
+    "typecheck": "pnpm --filter ./scripts exec tsx local/typecheck.ts",
+    "codegen": "pnpm --filter @workspace/api-spec run codegen",
+    "test": "pnpm --filter ./scripts exec tsx local/run-tests.ts",
+    "verify": "pnpm --filter ./scripts exec tsx local/verify.ts",
+    "verify:runtime": "pnpm --filter ./scripts exec tsx local/verify-runtime.ts",
+    "smoke:runtime": "pnpm --filter ./scripts exec tsx local/runtime-smoke.ts",
+    "start:local": "pnpm --filter ./scripts exec tsx local/start.ts"
+  },
+  "private": true,
+  "devDependencies": {
+    "typescript": "~5.9.2",
+    "prettier": "^3.8.1"
+  }
+}

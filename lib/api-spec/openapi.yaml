@@ -1,0 +1,2350 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: TraderLoading API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: Auth
+    description: Browser and mobile authentication endpoints.
+  - name: profile
+    description: User profile operations
+  - name: missions
+    description: Daily missions operations
+  - name: journal
+    description: Trading journal operations
+  - name: ideas
+    description: Ideas and goals
+  - name: checklist
+    description: Checklist operations
+  - name: news
+    description: Macro news
+  - name: settings
+    description: User settings
+  - name: calendar
+    description: Economic calendar
+  - name: friends
+    description: Friendship management
+  - name: chat
+    description: E2E encrypted chat
+  - name: backtest
+    description: Backtesting sessions and trades
+  - name: quotes
+    description: Custom trading quotes
+  - name: checkins
+    description: Daily session check-ins
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '200':
+          description: Auth status resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+  /login:
+    get:
+      tags: [Auth]
+      operationId: beginBrowserLogin
+      summary: Start the browser OIDC login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the OIDC authorization endpoint.
+  /callback:
+    get:
+      tags: [Auth]
+      operationId: handleBrowserLoginCallback
+      summary: Complete the browser OIDC login flow
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: iss
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uri
+      responses:
+        '302':
+          description: Redirect after login.
+  /logout:
+    get:
+      tags: [Auth]
+      operationId: logoutBrowserSession
+      summary: Clear the session and begin OIDC logout
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '302':
+          description: Redirect to the OIDC provider logout URL.
+  /mobile-auth/token-exchange:
+    post:
+      tags: [Auth]
+      operationId: exchangeMobileAuthorizationCode
+      summary: Exchange a mobile OIDC code for a session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+      responses:
+        '200':
+          description: Session created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Token did not contain usable claims.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Token exchange failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /mobile-auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutMobileSession
+      summary: Delete a mobile session token
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+      responses:
+        '200':
+          description: Logout processed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    put:
+      operationId: updateProfile
+      tags: [profile]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /profile/check-name:
+    get:
+      operationId: checkProfileName
+      tags: [profile]
+      summary: Check if a profile name is available
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Name availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckNameResponse"
+
+  /profile/avatar:
+    post:
+      operationId: uploadProfileAvatar
+      tags: [profile]
+      summary: Upload a profile avatar image
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+              required:
+                - image
+      responses:
+        "200":
+          description: Uploaded avatar URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvatarResponse"
+
+  /profile/avatar/generate:
+    post:
+      operationId: generateProfileAvatar
+      tags: [profile]
+      summary: Generate a unique AI avatar
+      responses:
+        "200":
+          description: Generated avatar URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvatarResponse"
+        "500":
+          description: Generation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /mission-templates:
+    get:
+      operationId: getMissionTemplates
+      tags: [missions]
+      summary: Get user mission templates
+      responses:
+        "200":
+          description: List of mission templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MissionTemplate"
+    post:
+      operationId: createMissionTemplate
+      tags: [missions]
+      summary: Create a mission template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMissionTemplateRequest"
+      responses:
+        "201":
+          description: Created template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissionTemplate"
+
+  /mission-templates/{id}:
+    put:
+      operationId: updateMissionTemplate
+      tags: [missions]
+      summary: Update a mission template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMissionTemplateRequest"
+      responses:
+        "200":
+          description: Updated template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissionTemplate"
+    delete:
+      operationId: deleteMissionTemplate
+      tags: [missions]
+      summary: Delete a mission template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /quotes:
+    get:
+      operationId: getQuotes
+      tags: [quotes]
+      summary: Get user quotes
+      responses:
+        "200":
+          description: List of quotes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quote"
+    post:
+      operationId: createQuote
+      tags: [quotes]
+      summary: Create a quote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuoteRequest"
+      responses:
+        "201":
+          description: Created quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+
+  /quotes/{id}:
+    put:
+      operationId: updateQuote
+      tags: [quotes]
+      summary: Update a quote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuoteRequest"
+      responses:
+        "200":
+          description: Updated quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+    delete:
+      operationId: deleteQuote
+      tags: [quotes]
+      summary: Delete a quote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /quotes/random:
+    get:
+      operationId: getRandomQuote
+      tags: [quotes]
+      summary: Get a random quote (user or default)
+      responses:
+        "200":
+          description: A random quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+
+  /checkins/today:
+    get:
+      operationId: getTodayCheckin
+      tags: [checkins]
+      summary: Get today's session check-in (null if not yet done)
+      responses:
+        "200":
+          description: Today's check-in or null
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checkin"
+                nullable: true
+
+  /checkins:
+    post:
+      operationId: createCheckin
+      tags: [checkins]
+      summary: Create a session check-in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckinRequest"
+      responses:
+        "201":
+          description: Created check-in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checkin"
+
+  /missions:
+    get:
+      operationId: getMissions
+      tags: [missions]
+      summary: Get daily missions
+      responses:
+        "200":
+          description: List of missions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Mission"
+
+  /missions/{id}/complete:
+    post:
+      operationId: completeMission
+      tags: [missions]
+      summary: Mark a mission as complete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated mission and profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompleteMissionResponse"
+
+  /journal:
+    get:
+      operationId: getJournalEntries
+      tags: [journal]
+      summary: Get all journal entries
+      responses:
+        "200":
+          description: List of journal entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JournalEntry"
+    post:
+      operationId: createJournalEntry
+      tags: [journal]
+      summary: Create a new journal entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJournalEntryRequest"
+      responses:
+        "201":
+          description: Created journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /journal/{id}:
+    get:
+      operationId: getJournalEntry
+      tags: [journal]
+      summary: Get a single journal entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+    put:
+      operationId: updateJournalEntry
+      tags: [journal]
+      summary: Update a journal entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJournalEntryRequest"
+      responses:
+        "200":
+          description: Updated journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+    delete:
+      operationId: deleteJournalEntry
+      tags: [journal]
+      summary: Delete a journal entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /journal/{id}/images:
+    post:
+      operationId: uploadJournalImage
+      tags: [journal]
+      summary: Upload an image for a journal entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+              required:
+                - image
+      responses:
+        "200":
+          description: Uploaded image URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadImageResponse"
+
+  /journal/{id}/images/{imageId}:
+    delete:
+      operationId: deleteJournalImage
+      tags: [journal]
+      summary: Remove an image from a journal entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /ideas:
+    get:
+      operationId: getIdeas
+      tags: [ideas]
+      summary: Get ideas and goals
+      responses:
+        "200":
+          description: List of ideas and goals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Idea"
+    post:
+      operationId: createIdea
+      tags: [ideas]
+      summary: Create an idea or goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIdeaRequest"
+      responses:
+        "201":
+          description: Created idea/goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Idea"
+
+  /ideas/{id}:
+    put:
+      operationId: updateIdea
+      tags: [ideas]
+      summary: Update an idea or goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIdeaRequest"
+      responses:
+        "200":
+          description: Updated idea/goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Idea"
+    delete:
+      operationId: deleteIdea
+      tags: [ideas]
+      summary: Delete an idea or goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /checklist:
+    get:
+      operationId: getChecklist
+      tags: [checklist]
+      summary: Get all checklist items for today
+      responses:
+        "200":
+          description: Checklist items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChecklistItem"
+    post:
+      operationId: createChecklistItem
+      tags: [checklist]
+      summary: Create a checklist item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChecklistItemRequest"
+      responses:
+        "201":
+          description: Created item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistItem"
+
+  /checklist/{id}:
+    put:
+      operationId: updateChecklistItem
+      tags: [checklist]
+      summary: Update a checklist item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChecklistItemRequest"
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistItem"
+    delete:
+      operationId: deleteChecklistItem
+      tags: [checklist]
+      summary: Delete a checklist item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /news:
+    get:
+      operationId: getMacroNews
+      tags: [news]
+      summary: Get macro economic news affecting gold/dollar
+      responses:
+        "200":
+          description: News list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsResponse"
+
+  /calendar:
+    get:
+      operationId: getEconomicCalendar
+      tags: [calendar]
+      summary: Get weekly economic calendar events
+      parameters:
+        - name: nocache
+          in: query
+          schema:
+            type: string
+            enum: ["1"]
+          required: false
+          description: Set to 1 to bypass server cache
+      responses:
+        "200":
+          description: Calendar events list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalendarEvent"
+
+  /backtest/sessions:
+    get:
+      operationId: getBacktestSessions
+      tags: [backtest]
+      summary: Get all backtest sessions
+      responses:
+        "200":
+          description: List of backtest sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BacktestSession"
+    post:
+      operationId: createBacktestSession
+      tags: [backtest]
+      summary: Create a backtest session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBacktestSessionRequest"
+      responses:
+        "200":
+          description: Created session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacktestSession"
+
+  /backtest/sessions/{id}:
+    delete:
+      operationId: deleteBacktestSession
+      tags: [backtest]
+      summary: Delete a backtest session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /backtest/sessions/{id}/trades:
+    get:
+      operationId: getBacktestTrades
+      tags: [backtest]
+      summary: Get trades for a backtest session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of trades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BacktestTrade"
+    post:
+      operationId: createBacktestTrade
+      tags: [backtest]
+      summary: Add a trade to a backtest session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBacktestTradeRequest"
+      responses:
+        "200":
+          description: Created trade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacktestTrade"
+
+  /backtest/trades/{id}:
+    delete:
+      operationId: deleteBacktestTrade
+      tags: [backtest]
+      summary: Delete a backtest trade
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /settings:
+    get:
+      operationId: getUserSettings
+      tags: [settings]
+      summary: Get user settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+    put:
+      operationId: updateUserSettings
+      tags: [settings]
+      summary: Update user settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserSettingsRequest"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [profile]
+      summary: Get trader leaderboard ranked by XP
+      responses:
+        "200":
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GetLeaderboardResponseItem"
+
+  /friends/search:
+    get:
+      operationId: searchUsers
+      tags: [friends]
+      summary: Search users by name
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSearchResult"
+
+  /friends/request:
+    post:
+      operationId: sendFriendRequest
+      tags: [friends]
+      summary: Send a friend request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FriendRequestBody"
+      responses:
+        "201":
+          description: Friend request sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendshipRecord"
+        "409":
+          description: Request already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /friends/requests:
+    get:
+      operationId: getPendingFriendRequests
+      tags: [friends]
+      summary: Get pending friend requests
+      responses:
+        "200":
+          description: Pending requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendingFriendRequest"
+
+  /friends/requests/{id}:
+    patch:
+      operationId: respondToFriendRequest
+      tags: [friends]
+      summary: Accept or reject a friend request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FriendRequestAction"
+      responses:
+        "200":
+          description: Request handled
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/FriendshipRecord"
+                  - $ref: "#/components/schemas/DeleteResponse"
+
+  /friends:
+    get:
+      operationId: getFriends
+      tags: [friends]
+      summary: Get friend list
+      responses:
+        "200":
+          description: Friends
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FriendListItem"
+
+  /friends/{id}:
+    delete:
+      operationId: removeFriend
+      tags: [friends]
+      summary: Remove a friend
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /chat/keys:
+    post:
+      operationId: savePublicKey
+      tags: [chat]
+      summary: Save user public key for E2EE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavePublicKeyBody"
+      responses:
+        "200":
+          description: Key saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicKeyRecord"
+
+  /chat/keys/{userId}:
+    get:
+      operationId: getPublicKey
+      tags: [chat]
+      summary: Get a user public key
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicKeyResponse"
+        "404":
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /chat/messages:
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send an encrypted message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageBody"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageRecord"
+        "403":
+          description: Not friends
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /chat/messages/{friendId}:
+    get:
+      operationId: getChatMessages
+      tags: [chat]
+      summary: Get messages with a friend
+      parameters:
+        - name: friendId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessagesResponse"
+
+  /chat/unread:
+    get:
+      operationId: getUnreadCount
+      tags: [chat]
+      summary: Get unread message count
+      responses:
+        "200":
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnreadCountResponse"
+
+  /settings/background:
+    post:
+      operationId: uploadBackground
+      tags: [settings]
+      summary: Upload a custom background image
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+              required:
+                - image
+      responses:
+        "200":
+          description: Uploaded background
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadBackgroundResponse"
+
+components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Opaque session token — `Bearer <sid>`.
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      description: Browser session cookie.
+      schema:
+        type: string
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, 'null']
+          format: email
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        profileImageUrl:
+          type: [string, 'null']
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+          format: uri
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+    MobileTokenExchangeSuccess:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          const: true
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        xp:
+          type: integer
+        level:
+          type: integer
+        xpToNextLevel:
+          type: integer
+        streak:
+          type: integer
+        levelName:
+          type: string
+        yearsExperience:
+          type: integer
+          nullable: true
+        winRate:
+          type: number
+          nullable: true
+          description: "Win rate percentage computed from journal entries (0-100)"
+        totalTrades:
+          type: integer
+          nullable: true
+      required:
+        - id
+        - name
+        - xp
+        - level
+        - xpToNextLevel
+        - streak
+        - levelName
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        yearsExperience:
+          type: integer
+          nullable: true
+      required:
+        - name
+
+    CheckNameResponse:
+      type: object
+      properties:
+        available:
+          type: boolean
+      required:
+        - available
+
+    AvatarResponse:
+      type: object
+      properties:
+        avatarUrl:
+          type: string
+      required:
+        - avatarUrl
+
+    Mission:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        xpReward:
+          type: integer
+        completed:
+          type: boolean
+        completedAt:
+          type: string
+          nullable: true
+      required:
+        - id
+        - title
+        - description
+        - xpReward
+        - completed
+
+    MissionTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        xpReward:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - title
+        - description
+        - xpReward
+
+    CreateMissionTemplateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        xpReward:
+          type: integer
+      required:
+        - title
+        - description
+        - xpReward
+
+    Quote:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        author:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - text
+        - createdAt
+
+    CreateQuoteRequest:
+      type: object
+      properties:
+        text:
+          type: string
+        author:
+          type: string
+      required:
+        - text
+
+    CompleteMissionResponse:
+      type: object
+      properties:
+        mission:
+          $ref: "#/components/schemas/Mission"
+        profile:
+          $ref: "#/components/schemas/UserProfile"
+        levelUp:
+          type: boolean
+      required:
+        - mission
+        - profile
+        - levelUp
+
+    JournalImage:
+      type: object
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+      required:
+        - id
+        - url
+
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        tradeDate:
+          type: string
+        result:
+          type: string
+          enum: [win, loss, breakeven, none]
+        tags:
+          type: string
+          nullable: true
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/JournalImage"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - title
+        - content
+        - tradeDate
+        - result
+        - images
+        - createdAt
+        - updatedAt
+
+    CreateJournalEntryRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        tradeDate:
+          type: string
+        result:
+          type: string
+          enum: [win, loss, breakeven, none]
+        tags:
+          type: string
+          nullable: true
+      required:
+        - title
+        - content
+        - tradeDate
+        - result
+
+    UpdateJournalEntryRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        tradeDate:
+          type: string
+        result:
+          type: string
+          enum: [win, loss, breakeven, none]
+        tags:
+          type: string
+          nullable: true
+      required:
+        - title
+        - content
+        - tradeDate
+        - result
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    UploadImageResponse:
+      type: object
+      properties:
+        image:
+          $ref: "#/components/schemas/JournalImage"
+      required:
+        - image
+
+    Idea:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [idea, goal]
+        content:
+          type: string
+        completed:
+          type: boolean
+        reminderTime:
+          type: string
+          nullable: true
+        cadence:
+          type: string
+          enum: [daily, weekly, monthly]
+          nullable: true
+        recurrence:
+          type: boolean
+        createdAt:
+          type: string
+        deadlineDate:
+          type: string
+          nullable: true
+          description: "YYYY-MM-DD deadline date for goals"
+        importance:
+          type: string
+          enum: [low, medium, high]
+          nullable: true
+      required:
+        - id
+        - type
+        - content
+        - completed
+        - recurrence
+        - createdAt
+
+    CreateIdeaRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [idea, goal]
+        content:
+          type: string
+        deadlineDate:
+          type: string
+          nullable: true
+          description: "YYYY-MM-DD deadline date for goals"
+        importance:
+          type: string
+          enum: [low, medium, high]
+          nullable: true
+      required:
+        - type
+        - content
+
+    UpdateIdeaRequest:
+      type: object
+      properties:
+        content:
+          type: string
+        completed:
+          type: boolean
+        reminderTime:
+          type: string
+          nullable: true
+        cadence:
+          type: string
+          enum: [daily, weekly, monthly]
+          nullable: true
+        recurrence:
+          type: boolean
+        deadlineDate:
+          type: string
+          nullable: true
+          description: "YYYY-MM-DD deadline date for goals"
+        importance:
+          type: string
+          enum: [low, medium, high]
+          nullable: true
+
+    Checkin:
+      type: object
+      properties:
+        id:
+          type: integer
+        mood:
+          type: string
+        sessionName:
+          type: string
+        note:
+          type: string
+          nullable: true
+        date:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - mood
+        - sessionName
+        - date
+        - createdAt
+
+    CreateCheckinRequest:
+      type: object
+      properties:
+        mood:
+          type: string
+        sessionName:
+          type: string
+        note:
+          type: string
+          nullable: true
+      required:
+        - mood
+        - sessionName
+
+    ChecklistItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        completed:
+          type: boolean
+        order:
+          type: integer
+      required:
+        - id
+        - text
+        - completed
+        - order
+
+    CreateChecklistItemRequest:
+      type: object
+      properties:
+        text:
+          type: string
+        completed:
+          type: boolean
+      required:
+        - text
+
+    UpdateChecklistItemRequest:
+      type: object
+      properties:
+        text:
+          type: string
+        completed:
+          type: boolean
+      required:
+        - text
+        - completed
+
+    NewsArticle:
+      type: object
+      properties:
+        title:
+          type: string
+        summary:
+          type: string
+        source:
+          type: string
+        publishedAt:
+          type: string
+          nullable: true
+        url:
+          type: string
+          nullable: true
+        sentiment:
+          type: string
+          enum: [bullish, bearish, neutral]
+          nullable: true
+      required:
+        - title
+        - summary
+        - source
+
+    NewsResponse:
+      type: object
+      properties:
+        articles:
+          type: array
+          items:
+            $ref: "#/components/schemas/NewsArticle"
+        fetchedAt:
+          type: string
+        hasApiKey:
+          type: boolean
+      required:
+        - articles
+        - fetchedAt
+        - hasApiKey
+
+    TradingSessionConfig:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        openUTC:
+          type: string
+          description: "Legacy field name. Stores local HH:MM time, not UTC."
+        closeUTC:
+          type: string
+          description: "Legacy field name. Stores local HH:MM time, not UTC."
+        color:
+          type: string
+        kind:
+          type: string
+          enum:
+            - trading
+            - market_closed
+          description: "Session kind. Missing means trading for backward compatibility."
+        enabled:
+          type: boolean
+      required:
+        - id
+        - name
+        - openUTC
+        - closeUTC
+        - color
+        - enabled
+
+    UserSettings:
+      type: object
+      properties:
+        id:
+          type: integer
+        backgroundUrl:
+          type: string
+          nullable: true
+        backgroundType:
+          type: string
+          enum: [default, custom]
+        fontChoice:
+          type: string
+          enum: [inter, jetbrains, roboto, space-grotesk, ibm-plex]
+        backgroundDarkness:
+          type: integer
+          minimum: 0
+          maximum: 90
+        language:
+          type: string
+          enum: [it, en, es, fr, de]
+        tradingSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TradingSessionConfig"
+          nullable: true
+        lotDivisor:
+          type: integer
+          minimum: 1
+        calendarCurrencies:
+          type: array
+          items:
+            type: string
+          nullable: true
+        calendarImpacts:
+          type: array
+          items:
+            type: string
+          nullable: true
+        dailyReminderTime:
+          type: string
+          nullable: true
+        preMacroMinutes:
+          type: integer
+          minimum: 0
+        maxDailyLoss:
+          type: integer
+          nullable: true
+        selectedPairs:
+          type: array
+          items:
+            type: string
+          nullable: true
+        backgroundPresets:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              url:
+                type: string
+              isDefault:
+                type: boolean
+            required:
+              - id
+              - name
+              - url
+              - isDefault
+          nullable: true
+      required:
+        - id
+        - backgroundType
+        - fontChoice
+        - backgroundDarkness
+        - language
+        - lotDivisor
+        - preMacroMinutes
+
+    UpdateUserSettingsRequest:
+      type: object
+      properties:
+        backgroundUrl:
+          type: string
+          nullable: true
+        backgroundType:
+          type: string
+          enum: [default, custom]
+        fontChoice:
+          type: string
+          enum: [inter, jetbrains, roboto, space-grotesk, ibm-plex]
+        backgroundDarkness:
+          type: integer
+          minimum: 0
+          maximum: 90
+        language:
+          type: string
+          enum: [it, en, es, fr, de]
+        tradingSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TradingSessionConfig"
+          nullable: true
+        lotDivisor:
+          type: integer
+          minimum: 1
+        calendarCurrencies:
+          type: array
+          items:
+            type: string
+          nullable: true
+        calendarImpacts:
+          type: array
+          items:
+            type: string
+          nullable: true
+        dailyReminderTime:
+          type: string
+          nullable: true
+        preMacroMinutes:
+          type: integer
+          minimum: 0
+        maxDailyLoss:
+          type: integer
+          nullable: true
+        selectedPairs:
+          type: array
+          items:
+            type: string
+          nullable: true
+        backgroundPresets:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              url:
+                type: string
+              isDefault:
+                type: boolean
+            required:
+              - id
+              - name
+              - url
+              - isDefault
+          nullable: true
+
+    UploadBackgroundResponse:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    UserSearchResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        userId:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+
+    FriendRequestBody:
+      type: object
+      properties:
+        friendUserId:
+          type: string
+      required:
+        - friendUserId
+
+    FriendshipRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        friendId:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - friendId
+        - status
+
+    PendingFriendRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        friendId:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+        senderName:
+          type: string
+          nullable: true
+        senderAvatar:
+          type: string
+          nullable: true
+      required:
+        - id
+        - userId
+        - friendId
+        - status
+
+    FriendRequestAction:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [accept, reject]
+      required:
+        - action
+
+    FriendListItem:
+      type: object
+      properties:
+        friendshipId:
+          type: integer
+        friendUserId:
+          type: string
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        online:
+          type: boolean
+      required:
+        - friendshipId
+        - friendUserId
+        - name
+        - online
+
+    SavePublicKeyBody:
+      type: object
+      properties:
+        publicKeyJwk:
+          type: object
+      required:
+        - publicKeyJwk
+
+    PublicKeyRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        publicKeyJwk:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - publicKeyJwk
+
+    PublicKeyResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        publicKeyJwk:
+          type: object
+      required:
+        - userId
+        - publicKeyJwk
+
+    SendMessageBody:
+      type: object
+      properties:
+        receiverId:
+          type: string
+        ciphertext:
+          type: string
+        iv:
+          type: string
+      required:
+        - receiverId
+        - ciphertext
+        - iv
+
+    ChatMessageRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        senderId:
+          type: string
+        receiverId:
+          type: string
+        ciphertext:
+          type: string
+        iv:
+          type: string
+        read:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - senderId
+        - receiverId
+        - ciphertext
+        - iv
+        - createdAt
+
+    ChatMessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessageRecord"
+        nextCursor:
+          type: integer
+          nullable: true
+      required:
+        - messages
+
+    UnreadCountResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+      required:
+        - count
+
+    GetLeaderboardResponseItem:
+      type: object
+      properties:
+        position:
+          type: integer
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        level:
+          type: integer
+        xp:
+          type: integer
+      required:
+        - position
+        - name
+        - level
+        - xp
+
+    CalendarEvent:
+      type: object
+      properties:
+        title:
+          type: string
+        country:
+          type: string
+        date:
+          type: string
+        impact:
+          type: string
+          enum: [High, Medium, Low, Holiday]
+        forecast:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+      required:
+        - title
+        - country
+        - date
+        - impact
+
+    BacktestSession:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        pair:
+          type: string
+        timeframe:
+          type: string
+        strategy:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        userId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - pair
+        - timeframe
+        - createdAt
+
+    CreateBacktestSessionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        pair:
+          type: string
+        timeframe:
+          type: string
+        strategy:
+          type: string
+        notes:
+          type: string
+      required:
+        - name
+        - pair
+
+    BacktestTrade:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        direction:
+          type: string
+          enum: [buy, sell]
+        entryPrice:
+          type: string
+        exitPrice:
+          type: string
+        stopLoss:
+          type: string
+          nullable: true
+        takeProfit:
+          type: string
+          nullable: true
+        lotSize:
+          type: string
+        result:
+          type: string
+          enum: [win, loss, breakeven]
+        pips:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        tradeDate:
+          type: string
+        userId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - sessionId
+        - direction
+        - entryPrice
+        - exitPrice
+        - lotSize
+        - result
+        - tradeDate
+        - createdAt
+
+    CreateBacktestTradeRequest:
+      type: object
+      properties:
+        direction:
+          type: string
+          enum: [buy, sell]
+        entryPrice:
+          type: string
+        exitPrice:
+          type: string
+        stopLoss:
+          type: string
+        takeProfit:
+          type: string
+        lotSize:
+          type: string
+        result:
+          type: string
+          enum: [win, loss, breakeven]
+        pips:
+          type: string
+        notes:
+          type: string
+        tradeDate:
+          type: string
+      required:
+        - direction
+        - entryPrice
+        - exitPrice
+        - result
+        - tradeDate

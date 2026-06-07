@@ -1,0 +1,2120 @@
+Port 5432 is already occupied; using managed TraderLoadings Postgres on 127.0.0.1:55432.
+
+> ensuring Docker Postgres container
+Postgres is already reachable on 127.0.0.1:55432; reusing it.
+
+> waiting for TCP 127.0.0.1:55432
+
+> pnpm install
+Scope: all 12 workspace projects
+Already up to date
+Done in 476ms using pnpm v11.0.9
+
+> pnpm --filter @workspace/db run push
+Reading config file 'C:\Users\osman\Desktop\TraderLoadingsLOCALE\lib\db\drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[2K[1G[⣯] Pulling schema from database...
+[2K[1G[⣟] Pulling schema from database...
+[2K[1G[⡿] Pulling schema from database...
+[2K[1G[⢿] Pulling schema from database...
+[2K[1G[⣻] Pulling schema from database...
+[2K[1G[⣽] Pulling schema from database...
+[2K[1G[⣷] Pulling schema from database...
+[2K[1G[⣯] Pulling schema from database...
+[2K[1G[⣟] Pulling schema from database...
+[2K[1G[⡿] Pulling schema from database...
+[2K[1G[✓] Pulling schema from database...
+[i] No changes detected
+
+> starting API on http://127.0.0.1:3001
+[tools/cot] Fetching CFTC data...
+Server listening on port 3001
+[push] VAPID keys missing — session scheduler disabled
+[brain-scan] disabilitato (BRAIN_SCAN_ENABLED != 'true')
+
+> starting frontend on http://127.0.0.1:5173
+[tools/cot] deafut.txt OK — 7 markets, history: 1 weeks
+[2026-06-07 02:19:32.644 +0200] [32mINFO[39m (44068): [36m→ GET /api/healthz[39m
+    [35mrequestId[39m: "2a30c7e7-1c91-419f-954e-166b876ff9b7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:19:32.655 +0200] [32mINFO[39m (44068): [36m← GET /api/healthz 200 (11ms)[39m
+    [35mrequestId[39m: "2a30c7e7-1c91-419f-954e-166b876ff9b7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 11
+[2026-06-07 02:19:33.106 +0200] [32mINFO[39m (44068): [36m→ GET /api/healthz[39m
+    [35mrequestId[39m: "c7c08926-0193-4579-b73d-21ff0977217c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:19:33.108 +0200] [32mINFO[39m (44068): [36m← GET /api/healthz 200 (2ms)[39m
+    [35mrequestId[39m: "c7c08926-0193-4579-b73d-21ff0977217c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 2
+[tools/cot] OK — 7 live (12wk hist) + 2 fallback, total 9
+
+  [32m[1mVITE[22m v7.3.2[39m  [2mready in [0m[1m532[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.20.10.4:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.22.32.1:[1m5173[22m/[39m
+
+TraderLoadings is running at http://localhost:5173
+[2026-06-07 02:19:51.032 +0200] [32mINFO[39m (44068): [36m→ GET /api/healthz[39m
+    [35mrequestId[39m: "bbfa42a1-9c1f-4956-b673-5e00899c105a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:19:51.034 +0200] [32mINFO[39m (44068): [36m← GET /api/healthz 200 (2ms)[39m
+    [35mrequestId[39m: "bbfa42a1-9c1f-4956-b673-5e00899c105a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 2
+[2026-06-07 02:20:06.980 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "6c89c3c7-118f-4d7b-9e4d-95c38e0c882e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.571 +0200] [32mINFO[39m (44068): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "077c297b-dd78-45d1-971e-a7ab46b01511"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.572 +0200] [32mINFO[39m (44068): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "97519b53-5554-4cce-8024-608216cc7aa6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.575 +0200] [32mINFO[39m (44068): [36m→ GET /api/ideas[39m
+    [35mrequestId[39m: "7bed06f8-7149-4f67-8b4a-61cd992765bd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.584 +0200] [32mINFO[39m (44068): [36m→ GET /api/settings[39m
+    [35mrequestId[39m: "50ffe55a-45e4-4dee-b1d9-5b917cf4a4f6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.590 +0200] [32mINFO[39m (44068): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "0892c9b9-378c-4b29-b768-0101cbb3ab20"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.592 +0200] [32mINFO[39m (44068): [36m→ GET /api/profile[39m
+    [35mrequestId[39m: "44766c53-be8c-4125-8d87-b89ae33cfdf1"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.600 +0200] [32mINFO[39m (44068): [36m← GET /api/checklist 304 (29ms)[39m
+    [35mrequestId[39m: "077c297b-dd78-45d1-971e-a7ab46b01511"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 29
+[2026-06-07 02:20:08.601 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "518ba1dc-463d-4129-a8e7-996145388cf5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.623 +0200] [32mINFO[39m (44068): [36m← GET /api/ideas 304 (48ms)[39m
+    [35mrequestId[39m: "7bed06f8-7149-4f67-8b4a-61cd992765bd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 48
+[2026-06-07 02:20:08.625 +0200] [32mINFO[39m (44068): [36m← GET /api/settings 304 (41ms)[39m
+    [35mrequestId[39m: "50ffe55a-45e4-4dee-b1d9-5b917cf4a4f6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 41
+[2026-06-07 02:20:08.629 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/macro-news?currencies=USD%2CXAU&lang=it[39m
+    [35mrequestId[39m: "749201bd-8ac7-494b-9397-e47fa1522f18"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.636 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "ddf6708d-dc21-41b4-b412-73153b5cc286"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.664 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (63ms)[39m
+    [35mrequestId[39m: "518ba1dc-463d-4129-a8e7-996145388cf5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 63
+[2026-06-07 02:20:08.673 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 200 (37ms)[39m
+    [35mrequestId[39m: "ddf6708d-dc21-41b4-b412-73153b5cc286"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 37
+[2026-06-07 02:20:08.734 +0200] [32mINFO[39m (44068): [36m← GET /api/missions 304 (162ms)[39m
+    [35mrequestId[39m: "97519b53-5554-4cce-8024-608216cc7aa6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 162
+[2026-06-07 02:20:08.743 +0200] [32mINFO[39m (44068): [36m← GET /api/profile 304 (151ms)[39m
+    [35mrequestId[39m: "44766c53-be8c-4125-8d87-b89ae33cfdf1"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 151
+[2026-06-07 02:20:08.759 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot[39m
+    [35mrequestId[39m: "f0da9ee7-53aa-4ea4-8bf2-b84686e83009"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:08.767 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot 200 (8ms)[39m
+    [35mrequestId[39m: "f0da9ee7-53aa-4ea4-8bf2-b84686e83009"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 8
+[2026-06-07 02:20:09.534 +0200] [32mINFO[39m (44068): [36m← GET /api/calendar 304 (944ms)[39m
+    [35mrequestId[39m: "0892c9b9-378c-4b29-b768-0101cbb3ab20"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 944
+[2026-06-07 02:20:09.960 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/macro-news?currencies=USD%2CXAU&lang=it 200 (1331ms)[39m
+    [35mrequestId[39m: "749201bd-8ac7-494b-9397-e47fa1522f18"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 1331
+[2026-06-07 02:20:12.844 +0200] [32mINFO[39m (44068): [36m→ OPTIONS /api/brokers/connect-intents[39m
+    [35mrequestId[39m: "b04db9b6-54e4-4b7b-bb0d-b52e0519ef3e"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:12.845 +0200] [32mINFO[39m (44068): [36m← OPTIONS /api/brokers/connect-intents 204 (1ms)[39m
+    [35mrequestId[39m: "b04db9b6-54e4-4b7b-bb0d-b52e0519ef3e"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 204
+    [35mdurationMs[39m: 1
+[2026-06-07 02:20:12.846 +0200] [32mINFO[39m (44068): [36m→ POST /api/brokers/connect-intents[39m
+    [35mrequestId[39m: "029df59b-bd53-4f6c-8b80-e208a21bb942"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:12.928 +0200] [32mINFO[39m (44068): [36m← POST /api/brokers/connect-intents 201 (82ms)[39m
+    [35mrequestId[39m: "029df59b-bd53-4f6c-8b80-e208a21bb942"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 201
+    [35mdurationMs[39m: 82
+[2026-06-07 02:20:13.765 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "308b93dd-5b88-4a77-b711-28d9dbb8a78a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:13.780 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (15ms)[39m
+    [35mrequestId[39m: "308b93dd-5b88-4a77-b711-28d9dbb8a78a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 15
+[2026-06-07 02:20:17.993 +0200] [32mINFO[39m (44068): [36m→ GET /api/quotes/random[39m
+    [35mrequestId[39m: "c5f67d94-ff20-498b-9d48-fef52a050e82"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/quotes/random"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:17.998 +0200] [32mINFO[39m (44068): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "87902b3e-a3d2-4198-b317-e1ca44920b71"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:17.999 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "874b52cf-b5d4-4518-b0cc-7821f9e52f50"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:18.003 +0200] [32mINFO[39m (44068): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "e8473c0a-4a99-4a44-a827-02062805ea08"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:18.004 +0200] [32mINFO[39m (44068): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "73a599b5-e95b-4f66-8052-901c9a014694"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:18.004 +0200] [32mINFO[39m (44068): [36m← GET /api/quotes/random 200 (11ms)[39m
+    [35mrequestId[39m: "c5f67d94-ff20-498b-9d48-fef52a050e82"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/quotes/random"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 11
+[2026-06-07 02:20:18.012 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/sentiment[39m
+    [35mrequestId[39m: "d4c2ae24-815c-443f-af6e-95862fd8e109"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/sentiment"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:18.013 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/volatility?pair=XAUUSD[39m
+    [35mrequestId[39m: "7a1d90f5-e103-4270-8985-6ef6529b13dd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:18.017 +0200] [32mINFO[39m (44068): [36m← GET /api/calendar 304 (13ms)[39m
+    [35mrequestId[39m: "73a599b5-e95b-4f66-8052-901c9a014694"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 13
+[2026-06-07 02:20:18.020 +0200] [32mINFO[39m (44068): [36m← GET /api/checklist 304 (22ms)[39m
+    [35mrequestId[39m: "87902b3e-a3d2-4198-b317-e1ca44920b71"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 22
+[2026-06-07 02:20:18.020 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/cot[39m
+    [35mrequestId[39m: "d3ebdf48-852f-41cb-a000-561f95b2a896"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/cot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:18.026 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/sentiment 304 (14ms)[39m
+    [35mrequestId[39m: "d4c2ae24-815c-443f-af6e-95862fd8e109"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/sentiment"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 14
+[2026-06-07 02:20:18.032 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (33ms)[39m
+    [35mrequestId[39m: "874b52cf-b5d4-4518-b0cc-7821f9e52f50"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 33
+[2026-06-07 02:20:18.035 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/cot 200 (14ms)[39m
+    [35mrequestId[39m: "d3ebdf48-852f-41cb-a000-561f95b2a896"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/cot"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 14
+[2026-06-07 02:20:18.037 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "3f614b05-35ef-4ccc-86a4-8589902aa3a7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:18.040 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (3ms)[39m
+    [35mrequestId[39m: "3f614b05-35ef-4ccc-86a4-8589902aa3a7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 3
+[2026-06-07 02:20:18.040 +0200] [32mINFO[39m (44068): [36m← GET /api/missions 304 (37ms)[39m
+    [35mrequestId[39m: "e8473c0a-4a99-4a44-a827-02062805ea08"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 37
+[2026-06-07 02:20:18.148 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot[39m
+    [35mrequestId[39m: "f7879182-2e18-4e45-94c7-7c0e6e9e72e5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:18.151 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot 200 (3ms)[39m
+    [35mrequestId[39m: "f7879182-2e18-4e45-94c7-7c0e6e9e72e5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 3
+[2026-06-07 02:20:18.152 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot[39m
+    [35mrequestId[39m: "e6a9b702-efb0-4137-a4f3-70ecdd5b83af"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:18.155 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot 200 (3ms)[39m
+    [35mrequestId[39m: "e6a9b702-efb0-4137-a4f3-70ecdd5b83af"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 3
+[2026-06-07 02:20:18.389 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/volatility?pair=XAUUSD 304 (376ms)[39m
+    [35mrequestId[39m: "7a1d90f5-e103-4270-8985-6ef6529b13dd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 376
+[2026-06-07 02:20:18.805 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "595695e8-216d-4913-bbaa-fbf85105db5a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:18.813 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (8ms)[39m
+    [35mrequestId[39m: "595695e8-216d-4913-bbaa-fbf85105db5a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-07 02:20:23.874 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "02a1da63-bacc-4c17-a2f3-aa62f006bf83"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:23.881 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (7ms)[39m
+    [35mrequestId[39m: "02a1da63-bacc-4c17-a2f3-aa62f006bf83"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-07 02:20:24.976 +0200] [32mINFO[39m (44068): [36m→ OPTIONS /api/brokers/connect-intents[39m
+    [35mrequestId[39m: "7c406ff6-d488-46b7-8660-13d1815c2005"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:24.976 +0200] [32mINFO[39m (44068): [36m← OPTIONS /api/brokers/connect-intents 204 (1ms)[39m
+    [35mrequestId[39m: "7c406ff6-d488-46b7-8660-13d1815c2005"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 204
+    [35mdurationMs[39m: 1
+[2026-06-07 02:20:24.979 +0200] [32mINFO[39m (44068): [36m→ POST /api/brokers/connect-intents[39m
+    [35mrequestId[39m: "6b4f754c-22a1-4bb2-a17c-1572c5e5d4f0"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:24.990 +0200] [32mINFO[39m (44068): [36m← POST /api/brokers/connect-intents 201 (11ms)[39m
+    [35mrequestId[39m: "6b4f754c-22a1-4bb2-a17c-1572c5e5d4f0"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 201
+    [35mdurationMs[39m: 11
+[2026-06-07 02:20:24.996 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "dbba0941-ffc1-412a-bf15-e3f279c2e55f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:24.998 +0200] [32mINFO[39m (44068): [36m→ POST /api/brokers/connect-intents[39m
+    [35mrequestId[39m: "b363f4da-157c-468e-a8f9-94106662010f"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:25.000 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (4ms)[39m
+    [35mrequestId[39m: "dbba0941-ffc1-412a-bf15-e3f279c2e55f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 4
+[2026-06-07 02:20:25.002 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "af9f8af7-4d62-4bcf-a19d-a7a190d5bd1f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:25.004 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (2ms)[39m
+    [35mrequestId[39m: "af9f8af7-4d62-4bcf-a19d-a7a190d5bd1f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 2
+[2026-06-07 02:20:25.012 +0200] [32mINFO[39m (44068): [36m← POST /api/brokers/connect-intents 201 (14ms)[39m
+    [35mrequestId[39m: "b363f4da-157c-468e-a8f9-94106662010f"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 201
+    [35mdurationMs[39m: 14
+[2026-06-07 02:20:25.043 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot[39m
+    [35mrequestId[39m: "dd1b0506-ee35-4b63-80d7-87b866bafe58"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:25.045 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot 200 (2ms)[39m
+    [35mrequestId[39m: "dd1b0506-ee35-4b63-80d7-87b866bafe58"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 2
+[2026-06-07 02:20:25.046 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot[39m
+    [35mrequestId[39m: "19956697-c7d6-455d-a427-4eea0e90c009"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:25.048 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot 200 (2ms)[39m
+    [35mrequestId[39m: "19956697-c7d6-455d-a427-4eea0e90c009"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 2
+[2026-06-07 02:20:28.897 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "f9d1aaaf-4288-4c28-96d0-b4efa9282f26"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:28.905 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (8ms)[39m
+    [35mrequestId[39m: "f9d1aaaf-4288-4c28-96d0-b4efa9282f26"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-07 02:20:30.765 +0200] [32mINFO[39m (44068): [36m→ OPTIONS /api/brokers/connect-intents[39m
+    [35mrequestId[39m: "602e6a5e-683f-4309-a502-4e1a81739548"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:30.766 +0200] [32mINFO[39m (44068): [36m← OPTIONS /api/brokers/connect-intents 204 (1ms)[39m
+    [35mrequestId[39m: "602e6a5e-683f-4309-a502-4e1a81739548"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 204
+    [35mdurationMs[39m: 1
+[2026-06-07 02:20:30.767 +0200] [32mINFO[39m (44068): [36m→ POST /api/brokers/connect-intents[39m
+    [35mrequestId[39m: "72532dd7-843c-41f7-8e59-c7cd6012f038"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:30.775 +0200] [32mINFO[39m (44068): [36m← POST /api/brokers/connect-intents 201 (8ms)[39m
+    [35mrequestId[39m: "72532dd7-843c-41f7-8e59-c7cd6012f038"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 201
+    [35mdurationMs[39m: 8
+[2026-06-07 02:20:33.922 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "37555aaf-3b9b-4110-8ca2-e4498bbe1057"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:33.935 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (13ms)[39m
+    [35mrequestId[39m: "37555aaf-3b9b-4110-8ca2-e4498bbe1057"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 13
+[2026-06-07 02:20:35.969 +0200] [32mINFO[39m (44068): [36m→ OPTIONS /api/brokers/connect-intents/81a59942-2a51-4f60-8c89-6d97280e8ba8/verify[39m
+    [35mrequestId[39m: "ce1d2c3c-82ac-4707-b303-a9ddc14483fd"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/connect-intents/81a59942-2a51-4f60-8c89-6d97280e8ba8/verify"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:35.969 +0200] [32mINFO[39m (44068): [36m← OPTIONS /api/brokers/connect-intents/81a59942-2a51-4f60-8c89-6d97280e8ba8/verify 204 (0ms)[39m
+    [35mrequestId[39m: "ce1d2c3c-82ac-4707-b303-a9ddc14483fd"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/connect-intents/81a59942-2a51-4f60-8c89-6d97280e8ba8/verify"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 204
+    [35mdurationMs[39m: 0
+[2026-06-07 02:20:35.971 +0200] [32mINFO[39m (44068): [36m→ POST /api/brokers/connect-intents/81a59942-2a51-4f60-8c89-6d97280e8ba8/verify[39m
+    [35mrequestId[39m: "b6d77630-3b8a-4459-b9cc-4dd4dc7762ea"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents/81a59942-2a51-4f60-8c89-6d97280e8ba8/verify"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:35.977 +0200] [31mERROR[39m (44068): [36m← POST /api/brokers/connect-intents/81a59942-2a51-4f60-8c89-6d97280e8ba8/verify 500 (5ms)[39m
+    [35mrequestId[39m: "b6d77630-3b8a-4459-b9cc-4dd4dc7762ea"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents/81a59942-2a51-4f60-8c89-6d97280e8ba8/verify"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 500
+    [35mdurationMs[39m: 5
+[2026-06-07 02:20:38.948 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "b058578b-0a85-41f0-aefc-43cf6bb6e7b0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:38.957 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (9ms)[39m
+    [35mrequestId[39m: "b058578b-0a85-41f0-aefc-43cf6bb6e7b0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 9
+[2026-06-07 02:20:41.196 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "dd186a36-4337-4b0e-8cf8-ef93602c9bfd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:41.198 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (2ms)[39m
+    [35mrequestId[39m: "dd186a36-4337-4b0e-8cf8-ef93602c9bfd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 2
+[2026-06-07 02:20:41.210 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot[39m
+    [35mrequestId[39m: "26447fc8-7fce-41c1-bf56-69737898de4a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:41.212 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot 200 (2ms)[39m
+    [35mrequestId[39m: "26447fc8-7fce-41c1-bf56-69737898de4a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/e1e92aec-b324-48fe-82f2-c436da737b22/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 2
+[2026-06-07 02:20:43.967 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "386e5465-831c-4a75-9aa5-d5b9d5f46cf2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:43.974 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (7ms)[39m
+    [35mrequestId[39m: "386e5465-831c-4a75-9aa5-d5b9d5f46cf2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-07 02:20:48.988 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "5b514a86-502e-4f23-9d5a-ba52339fa044"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:48.994 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (6ms)[39m
+    [35mrequestId[39m: "5b514a86-502e-4f23-9d5a-ba52339fa044"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 6
+[2026-06-07 02:20:54.012 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "15c5d872-f2b7-451f-abb8-838800eadfe6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:54.019 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (7ms)[39m
+    [35mrequestId[39m: "15c5d872-f2b7-451f-abb8-838800eadfe6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-07 02:20:54.393 +0200] [32mINFO[39m (44068): [36m→ OPTIONS /api/brokers/connect-intents[39m
+    [35mrequestId[39m: "7d77e466-a696-40d9-b385-79cfb23081e1"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:54.393 +0200] [32mINFO[39m (44068): [36m← OPTIONS /api/brokers/connect-intents 204 (0ms)[39m
+    [35mrequestId[39m: "7d77e466-a696-40d9-b385-79cfb23081e1"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 204
+    [35mdurationMs[39m: 0
+[2026-06-07 02:20:54.395 +0200] [32mINFO[39m (44068): [36m→ POST /api/brokers/connect-intents[39m
+    [35mrequestId[39m: "ef71a1d5-43c7-42e7-87cb-5b5bd41a1a93"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:54.412 +0200] [32mINFO[39m (44068): [36m← POST /api/brokers/connect-intents 201 (14ms)[39m
+    [35mrequestId[39m: "ef71a1d5-43c7-42e7-87cb-5b5bd41a1a93"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/connect-intents"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 201
+    [35mdurationMs[39m: 14
+[2026-06-07 02:20:57.004 +0200] [32mINFO[39m (44068): [36m→ OPTIONS /api/brokers/companion/pairing[39m
+    [35mrequestId[39m: "7c1e84f3-aa24-43b4-9c25-7683d717169a"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/companion/pairing"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:57.005 +0200] [32mINFO[39m (44068): [36m← OPTIONS /api/brokers/companion/pairing 204 (1ms)[39m
+    [35mrequestId[39m: "7c1e84f3-aa24-43b4-9c25-7683d717169a"
+    [35mmethod[39m: "OPTIONS"
+    [35mpath[39m: "/api/brokers/companion/pairing"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 204
+    [35mdurationMs[39m: 1
+[2026-06-07 02:20:57.008 +0200] [32mINFO[39m (44068): [36m→ POST /api/brokers/companion/pairing[39m
+    [35mrequestId[39m: "b3a23b4f-6f2c-4b98-9a5e-99ca07c96e41"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/companion/pairing"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:57.027 +0200] [32mINFO[39m (44068): [36m← POST /api/brokers/companion/pairing 201 (19ms)[39m
+    [35mrequestId[39m: "b3a23b4f-6f2c-4b98-9a5e-99ca07c96e41"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/brokers/companion/pairing"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 201
+    [35mdurationMs[39m: 19
+[2026-06-07 02:20:57.033 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "8bd26eb3-8e77-406a-a178-abc92251b9da"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:57.037 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 200 (4ms)[39m
+    [35mrequestId[39m: "8bd26eb3-8e77-406a-a178-abc92251b9da"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 4
+[2026-06-07 02:20:57.040 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "8709a224-30ec-4629-89ed-15782ce61679"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:57.046 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (6ms)[39m
+    [35mrequestId[39m: "8709a224-30ec-4629-89ed-15782ce61679"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 6
+[2026-06-07 02:20:59.038 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "addac679-c364-47ca-8e8d-88a9c35b9c3a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:20:59.044 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (6ms)[39m
+    [35mrequestId[39m: "addac679-c364-47ca-8e8d-88a9c35b9c3a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 6
+[2026-06-07 02:23:14.060 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "42492864-4b90-4151-adcf-81b7d1de9731"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:23:14.095 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (35ms)[39m
+    [35mrequestId[39m: "42492864-4b90-4151-adcf-81b7d1de9731"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 35
+[2026-06-07 02:23:58.615 +0200] [32mINFO[39m (44068): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "df2bf996-288b-49bf-9143-f68806bb92a7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:23:58.652 +0200] [32mINFO[39m (44068): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "c2c823ae-d44d-4c68-a4c6-a2dfd7c2fd5b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:23:58.654 +0200] [32mINFO[39m (44068): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "8e4345ff-4189-499f-9356-cceac7711ebc"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:23:58.713 +0200] [32mINFO[39m (44068): [36m← GET /api/calendar 304 (61ms)[39m
+    [35mrequestId[39m: "c2c823ae-d44d-4c68-a4c6-a2dfd7c2fd5b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 61
+[2026-06-07 02:23:58.721 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "02ca5cbe-9e87-45dc-a7e9-362c5e543ed2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:23:58.741 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (20ms)[39m
+    [35mrequestId[39m: "02ca5cbe-9e87-45dc-a7e9-362c5e543ed2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 20
+[2026-06-07 02:23:58.748 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "e3083f0d-135e-476b-be31-33d8431b14cd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:23:58.762 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (14ms)[39m
+    [35mrequestId[39m: "e3083f0d-135e-476b-be31-33d8431b14cd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 14
+[2026-06-07 02:23:58.780 +0200] [32mINFO[39m (44068): [36m← GET /api/checklist 304 (165ms)[39m
+    [35mrequestId[39m: "df2bf996-288b-49bf-9143-f68806bb92a7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 165
+[2026-06-07 02:23:58.808 +0200] [32mINFO[39m (44068): [36m← GET /api/missions 304 (154ms)[39m
+    [35mrequestId[39m: "8e4345ff-4189-499f-9356-cceac7711ebc"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 154
+[2026-06-07 02:23:58.950 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "63fb4cd4-812b-42dd-a5cd-881bc665c76c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:23:58.962 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (12ms)[39m
+    [35mrequestId[39m: "63fb4cd4-812b-42dd-a5cd-881bc665c76c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 12
+[2026-06-07 02:23:58.967 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "132797b1-74a7-4add-bc90-0cdf71a001b7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:23:58.980 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (13ms)[39m
+    [35mrequestId[39m: "132797b1-74a7-4add-bc90-0cdf71a001b7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 13
+[2026-06-07 02:23:59.135 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "65857cfc-9deb-46b4-aa65-6f34dce79e6f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:23:59.141 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (6ms)[39m
+    [35mrequestId[39m: "65857cfc-9deb-46b4-aa65-6f34dce79e6f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 6
+[2026-06-07 02:24:04.168 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "b5fd4fab-26f1-4e8c-b624-d360dc58d5b0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:24:04.178 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (10ms)[39m
+    [35mrequestId[39m: "b5fd4fab-26f1-4e8c-b624-d360dc58d5b0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 10
+[2026-06-07 02:24:09.195 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "08cb68f2-b4bc-4217-b1f7-eeca9ad7291f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:24:09.203 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (8ms)[39m
+    [35mrequestId[39m: "08cb68f2-b4bc-4217-b1f7-eeca9ad7291f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-07 02:24:14.219 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "3dde33a2-234c-4259-a356-c37778bd5021"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:24:14.226 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (7ms)[39m
+    [35mrequestId[39m: "3dde33a2-234c-4259-a356-c37778bd5021"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-07 02:24:19.246 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "65a888e6-b6c7-4b50-b6e9-f8a902641ef1"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:24:19.254 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (8ms)[39m
+    [35mrequestId[39m: "65a888e6-b6c7-4b50-b6e9-f8a902641ef1"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-07 02:24:24.273 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "20fa97be-33d5-466c-89d8-1e8fa865eef2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:24:24.283 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (10ms)[39m
+    [35mrequestId[39m: "20fa97be-33d5-466c-89d8-1e8fa865eef2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 10
+[2m02:24:39[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Dashboard.tsx[22m
+[2m02:25:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2026-06-07 02:26:02.641 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "706a0270-4288-46a7-9cc9-8e77dac3c940"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:02.643 +0200] [32mINFO[39m (44068): [36m→ GET /api/quotes/random[39m
+    [35mrequestId[39m: "4de7144b-a117-4b3e-a95c-2ddd3a8908f6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/quotes/random"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:02.646 +0200] [32mINFO[39m (44068): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "2de721c4-efcb-4795-85a5-a33e0d46631b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:02.650 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 200 (9ms)[39m
+    [35mrequestId[39m: "706a0270-4288-46a7-9cc9-8e77dac3c940"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 9
+[2026-06-07 02:26:02.656 +0200] [32mINFO[39m (44068): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "50c5908a-0eba-4b3b-a3b3-4b19bd9b9627"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:02.660 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/sentiment[39m
+    [35mrequestId[39m: "6264fef5-d303-442e-ac52-467a04790266"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/sentiment"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:02.664 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/sentiment 200 (4ms)[39m
+    [35mrequestId[39m: "6264fef5-d303-442e-ac52-467a04790266"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/sentiment"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 4
+[2026-06-07 02:26:02.665 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/volatility?pair=EURUSD[39m
+    [35mrequestId[39m: "5b71ac51-8a0a-4884-873c-cb9fcd4d5190"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:02.672 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/cot[39m
+    [35mrequestId[39m: "16eb83ca-9c55-4b18-90bd-ff856cb6504b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/cot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:02.674 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/cot 200 (2ms)[39m
+    [35mrequestId[39m: "16eb83ca-9c55-4b18-90bd-ff856cb6504b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/cot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 2
+[2026-06-07 02:26:02.675 +0200] [32mINFO[39m (44068): [36m← GET /api/quotes/random 200 (32ms)[39m
+    [35mrequestId[39m: "4de7144b-a117-4b3e-a95c-2ddd3a8908f6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/quotes/random"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 32
+[2026-06-07 02:26:02.699 +0200] [32mINFO[39m (44068): [36m← GET /api/checklist 200 (43ms)[39m
+    [35mrequestId[39m: "50c5908a-0eba-4b3b-a3b3-4b19bd9b9627"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 43
+[2026-06-07 02:26:02.700 +0200] [32mINFO[39m (44068): [36m← GET /api/missions 200 (54ms)[39m
+    [35mrequestId[39m: "2de721c4-efcb-4795-85a5-a33e0d46631b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 54
+[2026-06-07 02:26:02.874 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "26e17b8c-0ff9-48bc-a540-13a6f119f4a3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:02.878 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (4ms)[39m
+    [35mrequestId[39m: "26e17b8c-0ff9-48bc-a540-13a6f119f4a3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 4
+[2026-06-07 02:26:02.991 +0200] [32mINFO[39m (44068): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "a97b43b7-4743-4c2f-abdd-f0f9304a51f8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:02.991 +0200] [32mINFO[39m (44068): [36m→ GET /api/settings[39m
+    [35mrequestId[39m: "e607d0f3-eb60-432b-993f-33f8cd988c6b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:02.992 +0200] [32mINFO[39m (44068): [36m← GET /api/calendar 200 (1ms)[39m
+    [35mrequestId[39m: "a97b43b7-4743-4c2f-abdd-f0f9304a51f8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 1
+[2026-06-07 02:26:03.004 +0200] [32mINFO[39m (44068): [36m← GET /api/settings 200 (13ms)[39m
+    [35mrequestId[39m: "e607d0f3-eb60-432b-993f-33f8cd988c6b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 13
+[2026-06-07 02:26:03.087 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/volatility?pair=EURUSD 200 (422ms)[39m
+    [35mrequestId[39m: "5b71ac51-8a0a-4884-873c-cb9fcd4d5190"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 422
+[2026-06-07 02:26:29.310 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "6704c7fd-affa-403f-9f08-9bffb1aa5bbf"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:29.816 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (506ms)[39m
+    [35mrequestId[39m: "6704c7fd-affa-403f-9f08-9bffb1aa5bbf"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 506
+[2026-06-07 02:26:34.838 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "8c27e50b-64a3-47a0-99db-7912180253d2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:34.907 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (69ms)[39m
+    [35mrequestId[39m: "8c27e50b-64a3-47a0-99db-7912180253d2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 69
+[2026-06-07 02:26:39.941 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "85397c6b-9718-4009-a717-2e3fa94eee73"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:39.990 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (48ms)[39m
+    [35mrequestId[39m: "85397c6b-9718-4009-a717-2e3fa94eee73"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 48
+[2026-06-07 02:26:45.015 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "a4eb4a91-df9c-4679-91b6-5c1bc570d3ff"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:45.031 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (16ms)[39m
+    [35mrequestId[39m: "a4eb4a91-df9c-4679-91b6-5c1bc570d3ff"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 16
+[2026-06-07 02:26:50.070 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "d4bace8e-3506-4271-aedc-e19af40e6a14"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:50.081 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (11ms)[39m
+    [35mrequestId[39m: "d4bace8e-3506-4271-aedc-e19af40e6a14"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 11
+[2026-06-07 02:26:55.139 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "a5f92269-a215-4bab-8d3f-53fbcc04a9fb"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:26:55.162 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (23ms)[39m
+    [35mrequestId[39m: "a5f92269-a215-4bab-8d3f-53fbcc04a9fb"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 23
+[2m02:27:45[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2026-06-07 02:31:20.185 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "7b7910fe-0cbb-4ebd-874c-7399cf04547d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:20.221 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (36ms)[39m
+    [35mrequestId[39m: "7b7910fe-0cbb-4ebd-874c-7399cf04547d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 36
+[2026-06-07 02:31:26.490 +0200] [32mINFO[39m (44068): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "c0f5a6f1-0447-4d0d-bb75-d7543bb25d6b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.491 +0200] [32mINFO[39m (44068): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "84b8d48f-2cda-408b-bb9d-fe0328b0dde9"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.498 +0200] [32mINFO[39m (44068): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "19b8c467-1765-4853-a3fe-c49a2d030c5a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.500 +0200] [32mINFO[39m (44068): [36m→ GET /api/ideas[39m
+    [35mrequestId[39m: "40130000-5fa3-462c-9c34-94ad64da82ff"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.501 +0200] [32mINFO[39m (44068): [36m→ GET /api/settings[39m
+    [35mrequestId[39m: "4e708b02-4e51-481c-bdcc-7dbd2b7f1a68"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.504 +0200] [32mINFO[39m (44068): [36m→ GET /api/profile[39m
+    [35mrequestId[39m: "32512c62-b6ce-4569-8c5c-7606ac2c7353"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.504 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "e5f28a3e-062b-4df1-9993-058d58e8bfb4"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.505 +0200] [32mINFO[39m (44068): [36m← GET /api/checklist 304 (15ms)[39m
+    [35mrequestId[39m: "c0f5a6f1-0447-4d0d-bb75-d7543bb25d6b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 15
+[2026-06-07 02:31:26.509 +0200] [32mINFO[39m (44068): [36m← GET /api/calendar 304 (11ms)[39m
+    [35mrequestId[39m: "19b8c467-1765-4853-a3fe-c49a2d030c5a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 11
+[2026-06-07 02:31:26.516 +0200] [32mINFO[39m (44068): [36m← GET /api/ideas 304 (16ms)[39m
+    [35mrequestId[39m: "40130000-5fa3-462c-9c34-94ad64da82ff"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 16
+[2026-06-07 02:31:26.518 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/macro-news?currencies=USD%2CXAU&lang=it[39m
+    [35mrequestId[39m: "542978c4-9366-45ee-9617-766cfdb3dd42"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.519 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "7e8e2c3e-4f32-4281-8127-45087e1e75a3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.526 +0200] [32mINFO[39m (44068): [36m→ GET /api/quotes/random[39m
+    [35mrequestId[39m: "93d06e0e-7e69-4aee-8837-277e8463eb1f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/quotes/random"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.528 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/macro-news?currencies=USD%2CXAU&lang=it 304 (10ms)[39m
+    [35mrequestId[39m: "542978c4-9366-45ee-9617-766cfdb3dd42"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 10
+[2026-06-07 02:31:26.534 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (30ms)[39m
+    [35mrequestId[39m: "e5f28a3e-062b-4df1-9993-058d58e8bfb4"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 30
+[2026-06-07 02:31:26.537 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/sentiment[39m
+    [35mrequestId[39m: "1c5670bd-e6bc-47c7-b7a5-77aed4dab4e5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/sentiment"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.542 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/sentiment 304 (5ms)[39m
+    [35mrequestId[39m: "1c5670bd-e6bc-47c7-b7a5-77aed4dab4e5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/sentiment"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 5
+[2026-06-07 02:31:26.544 +0200] [32mINFO[39m (44068): [36m← GET /api/profile 304 (40ms)[39m
+    [35mrequestId[39m: "32512c62-b6ce-4569-8c5c-7606ac2c7353"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 40
+[2026-06-07 02:31:26.549 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/volatility?pair=EURUSD[39m
+    [35mrequestId[39m: "c62ae62e-e760-44ce-bd60-f79ee1a437fe"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.550 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/cot[39m
+    [35mrequestId[39m: "cb4c79c1-cdc4-408e-8d8a-e14444c5ed76"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/cot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.558 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/cot 304 (8ms)[39m
+    [35mrequestId[39m: "cb4c79c1-cdc4-408e-8d8a-e14444c5ed76"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/cot"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-07 02:31:26.560 +0200] [32mINFO[39m (44068): [36m← GET /api/settings 304 (59ms)[39m
+    [35mrequestId[39m: "4e708b02-4e51-481c-bdcc-7dbd2b7f1a68"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 59
+[2026-06-07 02:31:26.565 +0200] [32mINFO[39m (44068): [36m← GET /api/missions 304 (74ms)[39m
+    [35mrequestId[39m: "84b8d48f-2cda-408b-bb9d-fe0328b0dde9"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 74
+[2026-06-07 02:31:26.568 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (49ms)[39m
+    [35mrequestId[39m: "7e8e2c3e-4f32-4281-8127-45087e1e75a3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 49
+[2026-06-07 02:31:26.573 +0200] [32mINFO[39m (44068): [36m← GET /api/quotes/random 200 (47ms)[39m
+    [35mrequestId[39m: "93d06e0e-7e69-4aee-8837-277e8463eb1f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/quotes/random"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 47
+[2026-06-07 02:31:26.628 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "43c91cb0-d25d-4623-9c8c-058522b35cd8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:26.632 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (4ms)[39m
+    [35mrequestId[39m: "43c91cb0-d25d-4623-9c8c-058522b35cd8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 4
+[2026-06-07 02:31:26.894 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/volatility?pair=EURUSD 304 (345ms)[39m
+    [35mrequestId[39m: "c62ae62e-e760-44ce-bd60-f79ee1a437fe"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 345
+[2026-06-07 02:31:26.916 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/volatility?pair=XAUUSD[39m
+    [35mrequestId[39m: "f42f0692-012d-41ca-bd27-966f5d99ff58"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:27.101 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/volatility?pair=XAUUSD 304 (185ms)[39m
+    [35mrequestId[39m: "f42f0692-012d-41ca-bd27-966f5d99ff58"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 185
+[2026-06-07 02:31:31.642 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "9377366f-ba07-4f5a-be38-a3cf5df60409"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:32.075 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (433ms)[39m
+    [35mrequestId[39m: "9377366f-ba07-4f5a-be38-a3cf5df60409"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 433
+[2026-06-07 02:31:37.091 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "b5bad8d0-5deb-4fec-881a-470b42c93bb2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:37.098 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (7ms)[39m
+    [35mrequestId[39m: "b5bad8d0-5deb-4fec-881a-470b42c93bb2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-07 02:31:42.114 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "6796c4ea-844c-4dc8-b076-d62598935be3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:42.122 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (8ms)[39m
+    [35mrequestId[39m: "6796c4ea-844c-4dc8-b076-d62598935be3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-07 02:31:47.134 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "258af7be-934c-49f9-b7dd-c5825db89afa"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:47.144 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (10ms)[39m
+    [35mrequestId[39m: "258af7be-934c-49f9-b7dd-c5825db89afa"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 10
+[2026-06-07 02:31:48.496 +0200] [32mINFO[39m (44068): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "84c57881-792a-4dc9-9072-e7f423cc5a0c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:48.498 +0200] [32mINFO[39m (44068): [36m→ GET /api/ideas[39m
+    [35mrequestId[39m: "c6b588e6-fa76-4e82-89e1-3a3e3c863062"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:48.503 +0200] [32mINFO[39m (44068): [36m← GET /api/calendar 304 (7ms)[39m
+    [35mrequestId[39m: "84c57881-792a-4dc9-9072-e7f423cc5a0c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-07 02:31:48.508 +0200] [32mINFO[39m (44068): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "1fb651ee-8269-4086-ab1d-baa48c57b273"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:48.509 +0200] [32mINFO[39m (44068): [36m→ GET /api/journal[39m
+    [35mrequestId[39m: "b0dd68c7-a2f4-4fc3-9d33-e3c565f9c3f5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/journal"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:48.509 +0200] [32mINFO[39m (44068): [36m→ GET /api/news[39m
+    [35mrequestId[39m: "a0d3ce98-22dc-4fbc-8bef-0c8a65c64202"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/news"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:48.536 +0200] [32mINFO[39m (44068): [36m← GET /api/ideas 304 (38ms)[39m
+    [35mrequestId[39m: "c6b588e6-fa76-4e82-89e1-3a3e3c863062"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 38
+[2026-06-07 02:31:48.572 +0200] [32mINFO[39m (44068): [36m← GET /api/journal 304 (63ms)[39m
+    [35mrequestId[39m: "b0dd68c7-a2f4-4fc3-9d33-e3c565f9c3f5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/journal"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 63
+[2026-06-07 02:31:48.574 +0200] [32mINFO[39m (44068): [36m← GET /api/missions 304 (66ms)[39m
+    [35mrequestId[39m: "1fb651ee-8269-4086-ab1d-baa48c57b273"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 66
+[2026-06-07 02:31:49.622 +0200] [32mINFO[39m (44068): [36m← GET /api/news 200 (1113ms)[39m
+    [35mrequestId[39m: "a0d3ce98-22dc-4fbc-8bef-0c8a65c64202"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/news"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 1113
+[2026-06-07 02:31:52.164 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "df2c87d2-c3da-4474-aab6-3b564af1895b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:52.173 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (9ms)[39m
+    [35mrequestId[39m: "df2c87d2-c3da-4474-aab6-3b564af1895b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 9
+[2026-06-07 02:31:57.189 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "2e073e91-06c0-4be1-beb7-a1c1c15c2a07"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:31:57.197 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (8ms)[39m
+    [35mrequestId[39m: "2e073e91-06c0-4be1-beb7-a1c1c15c2a07"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-07 02:32:02.285 +0200] [32mINFO[39m (44068): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "730c6b15-149a-41f9-89e9-70468b48d5cd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:02.289 +0200] [32mINFO[39m (44068): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "2e137262-a73c-46f6-a8c6-37d26860505e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:02.289 +0200] [32mINFO[39m (44068): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "9952fdc8-2361-4a3c-802f-1f9024046ff2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:02.309 +0200] [32mINFO[39m (44068): [36m← GET /api/calendar 304 (20ms)[39m
+    [35mrequestId[39m: "9952fdc8-2361-4a3c-802f-1f9024046ff2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 20
+[2026-06-07 02:32:02.310 +0200] [32mINFO[39m (44068): [36m← GET /api/checklist 304 (25ms)[39m
+    [35mrequestId[39m: "730c6b15-149a-41f9-89e9-70468b48d5cd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 25
+[2026-06-07 02:32:02.338 +0200] [32mINFO[39m (44068): [36m← GET /api/missions 304 (49ms)[39m
+    [35mrequestId[39m: "2e137262-a73c-46f6-a8c6-37d26860505e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 49
+[2026-06-07 02:32:02.364 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "a73ae711-b528-4950-b43d-5e9de3047c02"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:02.371 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (6ms)[39m
+    [35mrequestId[39m: "a73ae711-b528-4950-b43d-5e9de3047c02"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 6
+[2026-06-07 02:32:02.371 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "48617393-ab33-4951-ad2c-f1cf1ec38c1a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:02.373 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (2ms)[39m
+    [35mrequestId[39m: "48617393-ab33-4951-ad2c-f1cf1ec38c1a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 2
+[2026-06-07 02:32:02.595 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "b2305839-1714-4f09-ac13-5cd2d7fd05b7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:02.605 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (10ms)[39m
+    [35mrequestId[39m: "b2305839-1714-4f09-ac13-5cd2d7fd05b7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 10
+[2026-06-07 02:32:02.609 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "ecba2d00-c7d9-4742-9cfc-ad7a94d11b83"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:02.612 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (3ms)[39m
+    [35mrequestId[39m: "ecba2d00-c7d9-4742-9cfc-ad7a94d11b83"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 3
+[2026-06-07 02:32:02.613 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "3b1107d9-6148-4318-84cc-18d8665e4000"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:02.616 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (3ms)[39m
+    [35mrequestId[39m: "3b1107d9-6148-4318-84cc-18d8665e4000"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 3
+[2026-06-07 02:32:07.739 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "7560e871-fb9c-444d-a43b-ec6aeb5e75f1"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:07.749 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (10ms)[39m
+    [35mrequestId[39m: "7560e871-fb9c-444d-a43b-ec6aeb5e75f1"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 10
+[2026-06-07 02:32:12.767 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "93ff7527-11ae-4953-911b-7c2595ea6e77"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:12.779 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (12ms)[39m
+    [35mrequestId[39m: "93ff7527-11ae-4953-911b-7c2595ea6e77"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 12
+[2026-06-07 02:32:42.810 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "1f632785-a0ff-4eb2-b1ec-261afc90899d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:42.842 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (32ms)[39m
+    [35mrequestId[39m: "1f632785-a0ff-4eb2-b1ec-261afc90899d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 32
+[2026-06-07 02:32:47.857 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "da14f050-575d-47f1-b770-d27bf41bde2b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:47.864 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (7ms)[39m
+    [35mrequestId[39m: "da14f050-575d-47f1-b770-d27bf41bde2b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-07 02:32:52.002 +0200] [32mINFO[39m (44068): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "21555d98-21e9-4620-b418-7ffc392289ee"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:52.002 +0200] [32mINFO[39m (44068): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "75c4d3c9-8888-4667-aab4-c509022d54b9"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:52.003 +0200] [32mINFO[39m (44068): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "03985f69-e2be-4b86-a286-2f12bcd4f229"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:52.017 +0200] [32mINFO[39m (44068): [36m← GET /api/calendar 304 (14ms)[39m
+    [35mrequestId[39m: "03985f69-e2be-4b86-a286-2f12bcd4f229"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 14
+[2026-06-07 02:32:52.019 +0200] [32mINFO[39m (44068): [36m← GET /api/checklist 304 (17ms)[39m
+    [35mrequestId[39m: "21555d98-21e9-4620-b418-7ffc392289ee"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 17
+[2026-06-07 02:32:52.051 +0200] [32mINFO[39m (44068): [36m← GET /api/missions 304 (49ms)[39m
+    [35mrequestId[39m: "75c4d3c9-8888-4667-aab4-c509022d54b9"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 49
+[2026-06-07 02:32:52.159 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "98627b04-8914-4a21-8c5f-013f928302e0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:52.163 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (5ms)[39m
+    [35mrequestId[39m: "98627b04-8914-4a21-8c5f-013f928302e0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 5
+[2026-06-07 02:32:52.164 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "931e6f7b-79b6-4994-91dd-1658c675ee9c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:52.171 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (7ms)[39m
+    [35mrequestId[39m: "931e6f7b-79b6-4994-91dd-1658c675ee9c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-07 02:32:52.172 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "3780986a-1d6e-4840-a8cb-9942ee769117"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:52.176 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (4ms)[39m
+    [35mrequestId[39m: "3780986a-1d6e-4840-a8cb-9942ee769117"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 4
+[2026-06-07 02:32:52.712 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "4a6743b3-a819-4b90-8a86-95e85834d4f6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:52.717 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (5ms)[39m
+    [35mrequestId[39m: "4a6743b3-a819-4b90-8a86-95e85834d4f6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 5
+[2026-06-07 02:32:52.719 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "ce84b29f-7102-4f8d-8a3b-30898580e3ea"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:52.727 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (8ms)[39m
+    [35mrequestId[39m: "ce84b29f-7102-4f8d-8a3b-30898580e3ea"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 8
+[2026-06-07 02:32:52.729 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "fb7ead9c-2548-4d66-b599-63e7db31775a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:52.732 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (3ms)[39m
+    [35mrequestId[39m: "fb7ead9c-2548-4d66-b599-63e7db31775a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 3
+[2026-06-07 02:32:52.913 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "dae267c8-6297-4be3-ae41-81f7e95ccbd7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:52.921 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (8ms)[39m
+    [35mrequestId[39m: "dae267c8-6297-4be3-ae41-81f7e95ccbd7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-07 02:32:58.084 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "2c073384-5562-4854-b312-32d784bc77da"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:32:58.100 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (18ms)[39m
+    [35mrequestId[39m: "2c073384-5562-4854-b312-32d784bc77da"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 18
+[2026-06-07 02:33:03.116 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "640dae35-a6c2-4815-b8ea-eff251c6a581"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:33:03.127 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (11ms)[39m
+    [35mrequestId[39m: "640dae35-a6c2-4815-b8ea-eff251c6a581"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 11
+[2026-06-07 02:34:24.227 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "50c9f206-60a0-4205-ba0c-a6eee7cd7c00"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:24.332 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (105ms)[39m
+    [35mrequestId[39m: "50c9f206-60a0-4205-ba0c-a6eee7cd7c00"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 105
+[2026-06-07 02:34:56.274 +0200] [32mINFO[39m (44068): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "e81bc526-0c8e-4147-a135-30d451d8b99e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.283 +0200] [32mINFO[39m (44068): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "fdf46e22-be26-4591-8009-fa2a87b9cc35"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.285 +0200] [32mINFO[39m (44068): [36m→ GET /api/ideas[39m
+    [35mrequestId[39m: "68b8f0b0-6f9a-465f-940e-b14174905d76"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.286 +0200] [32mINFO[39m (44068): [36m→ GET /api/settings[39m
+    [35mrequestId[39m: "24f75412-c175-4e1f-80c8-d943e7054d29"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.303 +0200] [32mINFO[39m (44068): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "f6c803ed-3e37-4aa6-a3d4-1ea6d838b905"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.317 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "f9ffcacd-9c8a-46c1-836a-2d01c6463486"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.334 +0200] [32mINFO[39m (44068): [36m← GET /api/calendar 304 (31ms)[39m
+    [35mrequestId[39m: "f6c803ed-3e37-4aa6-a3d4-1ea6d838b905"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 31
+[2026-06-07 02:34:56.342 +0200] [32mINFO[39m (44068): [36m→ GET /api/profile[39m
+    [35mrequestId[39m: "cf66a094-d041-416b-8549-497a5755632b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.362 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/macro-news?currencies=USD%2CXAU&lang=it[39m
+    [35mrequestId[39m: "d27c3572-8bbd-4edf-85c6-7175ee2ae936"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.372 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/macro-news?currencies=USD%2CXAU&lang=it 304 (10ms)[39m
+    [35mrequestId[39m: "d27c3572-8bbd-4edf-85c6-7175ee2ae936"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 10
+[2026-06-07 02:34:56.378 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (61ms)[39m
+    [35mrequestId[39m: "f9ffcacd-9c8a-46c1-836a-2d01c6463486"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 61
+[2026-06-07 02:34:56.385 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "f133468b-5cd3-485c-a1ec-e8ddc58d29d7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.407 +0200] [32mINFO[39m (44068): [36m← GET /api/checklist 304 (133ms)[39m
+    [35mrequestId[39m: "e81bc526-0c8e-4147-a135-30d451d8b99e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 133
+[2026-06-07 02:34:56.425 +0200] [32mINFO[39m (44068): [36m→ GET /api/quotes/random[39m
+    [35mrequestId[39m: "e594b64e-6bb0-4122-841c-2a46823350ae"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/quotes/random"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.434 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "ec70a10d-30fe-43f0-9ea9-46c929034dbf"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.443 +0200] [32mINFO[39m (44068): [36m← GET /api/ideas 304 (158ms)[39m
+    [35mrequestId[39m: "68b8f0b0-6f9a-465f-940e-b14174905d76"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 158
+[2026-06-07 02:34:56.448 +0200] [32mINFO[39m (44068): [36m← GET /api/quotes/random 200 (23ms)[39m
+    [35mrequestId[39m: "e594b64e-6bb0-4122-841c-2a46823350ae"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/quotes/random"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 23
+[2026-06-07 02:34:56.449 +0200] [32mINFO[39m (44068): [36m← GET /api/settings 304 (163ms)[39m
+    [35mrequestId[39m: "24f75412-c175-4e1f-80c8-d943e7054d29"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 163
+[2026-06-07 02:34:56.459 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/sentiment[39m
+    [35mrequestId[39m: "6c0ca369-a276-48dc-9599-f9f6dfc4a4e0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/sentiment"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.462 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/volatility?pair=EURUSD[39m
+    [35mrequestId[39m: "da8ed0a2-dfb9-4986-bd48-0550af261b66"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.467 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/cot[39m
+    [35mrequestId[39m: "6bd611e6-fcbe-4942-a8a9-4417304c4271"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/cot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.481 +0200] [32mINFO[39m (44068): [36m← GET /api/missions 304 (198ms)[39m
+    [35mrequestId[39m: "fdf46e22-be26-4591-8009-fa2a87b9cc35"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 198
+[2026-06-07 02:34:56.490 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/sentiment 304 (31ms)[39m
+    [35mrequestId[39m: "6c0ca369-a276-48dc-9599-f9f6dfc4a4e0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/sentiment"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 31
+[2026-06-07 02:34:56.505 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/cot 304 (41ms)[39m
+    [35mrequestId[39m: "6bd611e6-fcbe-4942-a8a9-4417304c4271"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/cot"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 41
+[2026-06-07 02:34:56.511 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (126ms)[39m
+    [35mrequestId[39m: "f133468b-5cd3-485c-a1ec-e8ddc58d29d7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 126
+[2026-06-07 02:34:56.524 +0200] [32mINFO[39m (44068): [36m← GET /api/profile 304 (181ms)[39m
+    [35mrequestId[39m: "cf66a094-d041-416b-8549-497a5755632b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 181
+[2026-06-07 02:34:56.525 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (91ms)[39m
+    [35mrequestId[39m: "ec70a10d-30fe-43f0-9ea9-46c929034dbf"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 91
+[2026-06-07 02:34:56.741 +0200] [32mINFO[39m (44068): [36m→ GET /api/tools/volatility?pair=XAUUSD[39m
+    [35mrequestId[39m: "a7b926d5-c748-462c-8638-add5897491a4"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:34:56.871 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/volatility?pair=EURUSD 304 (409ms)[39m
+    [35mrequestId[39m: "da8ed0a2-dfb9-4986-bd48-0550af261b66"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 409
+[2026-06-07 02:34:57.087 +0200] [32mINFO[39m (44068): [36m← GET /api/tools/volatility?pair=XAUUSD 304 (346ms)[39m
+    [35mrequestId[39m: "a7b926d5-c748-462c-8638-add5897491a4"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 346
+[2m02:35:17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/broker-hub/BrokerHubWidget.tsx, /src/components/broker-hub/BrokerHubWorkspace.tsx[22m
+[2m02:36:02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/broker-hub/ConnectAccountWizard.tsx[22m
+[2m02:37:51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/broker-hub/ConnectAccountWizard.tsx[22m
+[2026-06-07 02:37:51.685 +0200] [32mINFO[39m (44068): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "7ce7976b-26c4-4f1b-862c-462eb7dda249"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:37:51.689 +0200] [32mINFO[39m (44068): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "d3dfd4f9-f683-4e60-8883-b19138981eae"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:37:51.690 +0200] [32mINFO[39m (44068): [36m→ GET /api/profile[39m
+    [35mrequestId[39m: "0246f43b-a25f-4332-8cbd-501993df532f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:37:51.690 +0200] [32mINFO[39m (44068): [36m→ GET /api/ideas[39m
+    [35mrequestId[39m: "bd55cc25-ddb3-4f12-af39-7e784eaeb260"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:37:51.691 +0200] [32mINFO[39m (44068): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "6e269985-8cbb-478d-87ad-69537aae8f9d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:37:51.692 +0200] [32mINFO[39m (44068): [36m→ GET /api/settings[39m
+    [35mrequestId[39m: "4439fbba-f998-4cfe-8eff-18e68e2af7e7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:37:51.758 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "60a272b7-e2ed-45ee-ae1c-3638b2b4dddc"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:37:51.760 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles 304 (2ms)[39m
+    [35mrequestId[39m: "60a272b7-e2ed-45ee-ae1c-3638b2b4dddc"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 2
+[2026-06-07 02:37:51.975 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot[39m
+    [35mrequestId[39m: "f5d819dc-258b-4065-bef4-a59a3ad4270d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:37:51.977 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot 200 (2ms)[39m
+    [35mrequestId[39m: "f5d819dc-258b-4065-bef4-a59a3ad4270d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/2c07966e-7c28-4eb5-8008-40a804b89336/snapshot"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 2
+[2026-06-07 02:37:52.358 +0200] [32mINFO[39m (44068): [36m← GET /api/calendar 304 (667ms)[39m
+    [35mrequestId[39m: "6e269985-8cbb-478d-87ad-69537aae8f9d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 667
+[2026-06-07 02:37:52.371 +0200] [32mINFO[39m (44068): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "202ddef1-b95d-406f-85aa-28072f56a426"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:37:52.392 +0200] [32mINFO[39m (44068): [36m← GET /api/ideas 304 (702ms)[39m
+    [35mrequestId[39m: "bd55cc25-ddb3-4f12-af39-7e784eaeb260"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 702
+[2026-06-07 02:37:52.393 +0200] [32mINFO[39m (44068): [36m← GET /api/settings 304 (701ms)[39m
+    [35mrequestId[39m: "4439fbba-f998-4cfe-8eff-18e68e2af7e7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 701
+[2026-06-07 02:37:52.398 +0200] [32mINFO[39m (44068): [36m← GET /api/checklist 304 (709ms)[39m
+    [35mrequestId[39m: "d3dfd4f9-f683-4e60-8883-b19138981eae"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 709
+[2026-06-07 02:37:52.403 +0200] [32mINFO[39m (44068): [36m← GET /api/profile 304 (713ms)[39m
+    [35mrequestId[39m: "0246f43b-a25f-4332-8cbd-501993df532f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 713
+[2026-06-07 02:37:52.405 +0200] [32mINFO[39m (44068): [36m← GET /api/missions 304 (720ms)[39m
+    [35mrequestId[39m: "7ce7976b-26c4-4f1b-862c-462eb7dda249"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 720
+[2026-06-07 02:37:52.411 +0200] [32mINFO[39m (44068): [36m← GET /api/chat/unread 304 (40ms)[39m
+    [35mrequestId[39m: "202ddef1-b95d-406f-85aa-28072f56a426"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 40
+[2026-06-07 02:45:59.253 +0200] [32mINFO[39m (44068): [36m→ GET /api/health[39m
+    [35mrequestId[39m: "0e7e091d-501a-4d8a-82cc-daff2b124dfe"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/health"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:45:59.258 +0200] [33mWARN[39m (44068): [36m← GET /api/health 404 (5ms)[39m
+    [35mrequestId[39m: "0e7e091d-501a-4d8a-82cc-daff2b124dfe"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/health"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 404
+    [35mdurationMs[39m: 5
+[2026-06-07 02:45:59.341 +0200] [32mINFO[39m (44068): [36m→ GET /api/brokers/catalog[39m
+    [35mrequestId[39m: "570574c9-bb78-4a39-81bd-e4fab48960f8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/catalog"
+    [35mevent[39m: "request.start"
+[2026-06-07 02:45:59.343 +0200] [32mINFO[39m (44068): [36m← GET /api/brokers/catalog 200 (2ms)[39m
+    [35mrequestId[39m: "570574c9-bb78-4a39-81bd-e4fab48960f8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/catalog"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 2
+C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\trader-dashboard:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @workspace/trader-dashboard@0.0.0 dev: `vite --config vite.config.ts --host 0.0.0.0`
+Exit status 4294967295
+undefined
+C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 4294967295: tsx ./src/index.ts
