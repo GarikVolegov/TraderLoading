@@ -22,6 +22,7 @@ The chosen interface direction is a vertical toolbar over the left side of the c
   - rectangle fill opacity;
   - Fibonacci visible levels.
 - Add an automatic SVP daily volume-profile indicator.
+- Add an automatic Asian session indicator.
 - Persist drawings and tool settings per backtest session.
 - Keep replay behavior intact:
   - all timeframes still start from 120 visible candles;
@@ -47,6 +48,7 @@ The chart area gets a compact vertical toolbar pinned to the left edge. Buttons 
 - arrow;
 - line;
 - SVP toggle;
+- Asian session toggle;
 - delete selected;
 - clear all;
 - undo for the last local drawing action.
@@ -61,6 +63,7 @@ Selecting a drawing opens a small contextual properties panel near the toolbar o
 - rectangle: fill opacity;
 - Fibonacci: level visibility and color;
 - SVP: rows, value-area percent, opacity, POC color, VAH/VAL color, side preference.
+- Asian session: fill color, opacity, border visibility, label visibility.
 
 The panel should not cover core replay controls or trade buttons.
 
@@ -81,6 +84,7 @@ Use a chart overlay layer above the lightweight-charts container:
 
 - `lightweight-charts` continues to render candles, built-in volume histogram, trade markers, SL/TP lines, and time/price scales.
 - A positioned SVG overlay renders manual drawings and SVP graphics.
+- The same overlay renders automatic session indicators.
 - Pointer events are routed to drawing interactions only when a drawing tool is active or an object is selected.
 - Normal chart/trade interactions remain available when the select tool is inactive or no drawing action is in progress.
 
@@ -143,6 +147,27 @@ Default settings:
 
 If a candle has no volume value, the SVP skips that candle. If the daily session has too little usable volume data, the indicator shows no profile rather than rendering misleading values.
 
+## Asian Session Indicator
+
+The Asian session is an automatic indicator, not a manual drawing.
+
+When enabled, the replay highlights the European-time Asian session for each visible day:
+
+- session start: 00:00 Europe/Rome;
+- session end: 08:00 Europe/Rome;
+- daylight-saving transitions are respected;
+- the highlighted range updates as the replay advances and as visible candles change.
+
+The indicator renders a subtle background zone over the session range, with optional vertical boundary lines at 00:00 and 08:00 Europe/Rome and an optional "Asia" label. It must remain behind manual drawings, trade markers, and SVP graphics so it does not obscure analysis.
+
+Default settings:
+
+- enabled: off by default;
+- fill opacity: subtle;
+- label: on;
+- boundary lines: on;
+- color: a distinct session color that remains readable on the dark chart.
+
 ## Persistence
 
 Per-session replay persistence is extended to include:
@@ -150,6 +175,7 @@ Per-session replay persistence is extended to include:
 - drawing objects;
 - drawing style defaults;
 - SVP settings and enabled/disabled state.
+- Asian session settings and enabled/disabled state.
 
 Persistence remains local to the browser, keyed by the existing replay persistence key. Existing persisted replay sessions must parse safely if they do not include drawing data.
 
@@ -160,6 +186,7 @@ Recommended new modules:
 - `chartDrawingTypes.ts`: drawing object and style types.
 - `chartDrawingPersistence.ts`: serialize/parse drawing state safely.
 - `chartDrawingGeometry.ts`: coordinate conversion helpers and hit-testing.
+- `chartSessionTime.ts`: Europe/Rome session boundary helpers for daily SVP and Asian session overlays.
 - `chartVolumeProfile.ts`: daily Europe/Rome session selection and SVP bucket calculations.
 - `ChartDrawingOverlay.tsx`: SVG overlay renderer and pointer interaction controller.
 - `ChartDrawingToolbar.tsx`: vertical toolbar and active-tool controls.
@@ -171,7 +198,7 @@ Recommended new modules:
 
 1. `ChartReplay` loads candles and computes replay/visible candle state.
 2. `ChartReplay` passes visible candles, all candles, chart dimensions, and active interval to the overlay.
-3. The overlay renders persisted drawings and, if enabled, the current Europe/Rome daily SVP.
+3. The overlay renders persisted drawings, enabled session indicators, and, if enabled, the current Europe/Rome daily SVP.
 4. User interactions create/update drawing objects in chart-domain coordinates.
 5. Updated drawing state is persisted with the replay session.
 6. Replay advancement or timeframe changes trigger overlay recalculation and rerendering.
@@ -181,6 +208,7 @@ Recommended new modules:
 - Malformed persisted drawing state is ignored and replaced with an empty drawing state.
 - SVP silently skips missing or invalid volume values.
 - If all volume values are missing for a daily session, no SVP is rendered for that session.
+- Asian session rendering skips days with no visible candles in the 00:00-08:00 Europe/Rome window.
 - Drawing interactions should not throw if a pointer maps outside the chart bounds.
 
 ## Testing
@@ -191,6 +219,7 @@ Unit tests:
 - drawing geometry maps domain values consistently enough for overlay rendering;
 - Fibonacci levels are generated in expected order;
 - Europe/Rome daily session boundaries include the correct candles;
+- Europe/Rome Asian session boundaries cover 00:00-08:00 and respect daylight-saving transitions;
 - SVP buckets volume by price and identifies POC/VAH/VAL;
 - missing volume data is handled safely.
 
@@ -198,6 +227,7 @@ Component/static tests:
 
 - `ChartReplay` exposes the drawing toolbar;
 - SVP settings are included in replay persistence;
+- Asian session settings are included in replay persistence;
 - existing replay progress and 120-candle start behavior remain covered.
 
 Manual QA:
@@ -206,10 +236,12 @@ Manual QA:
 - advance and rewind replay and confirm drawings stay anchored;
 - change timeframe and confirm drawings remain anchored to the same timestamp and price values;
 - enable SVP and confirm it updates when crossing Europe/Rome midnight;
+- enable Asian session and confirm it highlights 00:00-08:00 Europe/Rome for visible days;
 - refresh the page and confirm drawings/settings persist.
 
 ## Open Decisions Resolved
 
 - Toolbar layout: vertical toolbar on chart left side.
 - SVP range: automatic Europe/Rome midnight-to-midnight daily session.
+- Asian session range: automatic Europe/Rome 00:00-to-08:00 session.
 - Timezone: Europe/Rome.
