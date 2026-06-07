@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   TrendingUp, TrendingDown, Activity, BarChart2, BarChart3, FileText, Newspaper, FlaskConical,
-  RefreshCw, ChevronDown, AlertCircle, Loader2,
+  RefreshCw, ChevronDown, AlertCircle, Loader2, Filter,
   ArrowUp, ArrowDown, Minus, Plus, Trash2, ArrowLeft, Play,
 } from "lucide-react";
 import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
@@ -29,6 +29,7 @@ import { calculateManualBacktestTradeResult } from "@/lib/backtestTradeResult";
 import { useToast } from "@/hooks/use-toast";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { getPairLabel } from "@workspace/pair-catalog";
+import { deriveEffectiveFilterItems, type EffectiveFilterItems } from "@/lib/toolPairFilters";
 import {
   useGetBacktestSessions,
   useCreateBacktestSession,
@@ -156,6 +157,60 @@ function LoadingCard() {
       <p className="text-sm">{t("tools.loading")}</p>
     </div>
   );
+}
+
+function ReadOnlyToolFilterPanel({
+  open,
+  title,
+  items,
+  summary,
+  note,
+}: {
+  open: boolean;
+  title: string;
+  items: string[];
+  summary?: string;
+  note?: string;
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="overflow-hidden"
+        >
+          <div className="p-3 rounded-xl border border-border bg-secondary/20 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{title}</p>
+              {summary && <span className="text-[11px] text-muted-foreground">{summary}</span>}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {items.map((item) => (
+                <span key={item} className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold border bg-primary/10 text-primary border-primary/30">
+                  {item}
+                </span>
+              ))}
+            </div>
+            {note && <p className="text-[11px] text-muted-foreground leading-relaxed">{note}</p>}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function formatFilterSummary(filter: EffectiveFilterItems): string {
+  if (!filter.hasUserSelection) return "Default";
+  return `${filter.supportedCount}/${filter.requestedCount} supportati`;
+}
+
+function formatFilterNote(filter: EffectiveFilterItems, itemName: string): string | undefined {
+  if (!filter.hasUserSelection) return `Nessun pair selezionato: uso il default ${itemName}.`;
+  if (filter.isFallback) return `Nessuno dei tuoi ${itemName} e' supportato da questo strumento: uso il default disponibile.`;
+  if (filter.unsupportedItems.length > 0) return `Non supportati qui: ${filter.unsupportedItems.join(", ")}.`;
+  return undefined;
 }
 
 // ─── 1. MONTE CARLO ───────────────────────────────────────────────────────────
@@ -357,31 +412,23 @@ function SentimentTool() {
   });
 
   const allPairs = data?.symbols?.map((s) => s.name) ?? [];
-  const [selectedPairs, setSelectedPairs] = useState<string[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const sortedSymbols = useMemo(() => {
+  const sentimentFilter = useMemo(
+    () =>
+      deriveEffectiveFilterItems({
+        requestedItems: userPairs,
+        supportedItems: allPairs,
+        defaultItems: allPairs,
+      }),
+    [allPairs, userPairs],
+  );
+
+  const visibleSymbols = useMemo(() => {
     if (!data?.symbols) return [];
-    if (userPairs.length === 0) return data.symbols;
-    const userSet = new Set(userPairs);
-    return [...data.symbols].sort((a, b) => {
-      const aUser = userSet.has(a.name) ? 0 : 1;
-      const bUser = userSet.has(b.name) ? 0 : 1;
-      return aUser - bUser;
-    });
-  }, [data?.symbols, userPairs]);
-
-  const effectiveSelected = selectedPairs.length > 0 ? selectedPairs : allPairs;
-  const visibleSymbols = sortedSymbols.filter((s) => effectiveSelected.includes(s.name));
-
-  const togglePair = (name: string) => {
-    setSelectedPairs((prev) =>
-      prev.includes(name) ? prev.filter((p) => p !== name) : [...prev, name]
-    );
-  };
-
-  const selectAll = () => setSelectedPairs([]);
-  const selectNone = () => setSelectedPairs(allPairs.slice(0, 1));
+    const selectedSet = new Set(sentimentFilter.items);
+    return data.symbols.filter((symbol) => selectedSet.has(symbol.name));
+  }, [data?.symbols, sentimentFilter.items]);
 
   const avgLong = visibleSymbols.length
     ? visibleSymbols.reduce((s, sym) => s + sym.longPercentage, 0) / visibleSymbols.length
@@ -409,8 +456,9 @@ function SentimentTool() {
             onClick={() => setFilterOpen((v) => !v)}
             className={`gap-1.5 transition-colors ${filterOpen ? "bg-primary/10 text-primary border-primary/30" : ""}`}
           >
+            <Filter className="w-3.5 h-3.5" />
+            Filtri {sentimentFilter.items.length > 0 && `(${sentimentFilter.items.length})`}
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filterOpen ? "rotate-180" : ""}`} />
-            Filtri {selectedPairs.length > 0 && `(${selectedPairs.length})`}
           </Button>
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-2">
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
@@ -438,7 +486,7 @@ function SentimentTool() {
 
       {/* Filtro pair richiudibile */}
       <AnimatePresence>
-        {filterOpen && allPairs.length > 0 && (
+        {filterOpen && sentimentFilter.items.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -447,31 +495,23 @@ function SentimentTool() {
           >
             <div className="p-3 rounded-xl border border-border bg-secondary/20 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Filtra Pair</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Filtri dai tuoi pair</p>
                 <div className="flex gap-2">
-                  <button onClick={selectAll} className="text-[11px] text-primary hover:underline">Tutti</button>
+                  <span className="text-[11px] text-muted-foreground">{formatFilterSummary(sentimentFilter)}</span>
                   <span className="text-muted-foreground text-[11px]">·</span>
-                  <button onClick={selectNone} className="text-[11px] text-muted-foreground hover:text-foreground hover:underline">Nessuno</button>
+                  <span className="text-[11px] text-muted-foreground">read-only</span>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {allPairs.map((name) => {
-                  const active = selectedPairs.length === 0 || selectedPairs.includes(name);
-                  return (
-                    <button
-                      key={name}
-                      onClick={() => togglePair(name)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all border ${
-                        active
-                          ? "bg-primary/15 text-primary border-primary/40"
-                          : "bg-secondary/50 text-muted-foreground border-border hover:border-primary/20 hover:text-foreground"
-                      }`}
-                    >
-                      {name}
-                    </button>
-                  );
-                })}
+                {sentimentFilter.items.map((name) => (
+                  <span key={name} className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold border bg-primary/15 text-primary border-primary/40">
+                    {name}
+                  </span>
+                ))}
               </div>
+              {formatFilterNote(sentimentFilter, "pair") && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">{formatFilterNote(sentimentFilter, "pair")}</p>
+              )}
             </div>
           </motion.div>
         )}
@@ -556,14 +596,19 @@ const ALL_VOL_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD
 
 function VolatilityTool() {
   const { selectedPairs: userPairs } = useBackground();
-  const volPairs = useMemo(() => {
-    if (userPairs.length === 0) return ALL_VOL_PAIRS;
-    const supported = new Set(ALL_VOL_PAIRS);
-    const filtered = userPairs.filter((p) => supported.has(p));
-    return filtered.length > 0 ? filtered : ALL_VOL_PAIRS;
-  }, [userPairs]);
+  const volatilityFilter = useMemo(
+    () =>
+      deriveEffectiveFilterItems({
+        requestedItems: userPairs,
+        supportedItems: ALL_VOL_PAIRS,
+        defaultItems: ALL_VOL_PAIRS,
+      }),
+    [userPairs],
+  );
+  const volPairs = volatilityFilter.items;
   const [selectedPair, setSelectedPair] = useState(volPairs[0] || "EURUSD");
   const [open, setOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const defaultAppliedRef = useRef(false);
 
   useEffect(() => {
@@ -632,7 +677,25 @@ function VolatilityTool() {
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="ml-auto">
           <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setFilterOpen((v) => !v)}
+          className={`gap-1.5 ${filterOpen ? "bg-primary/10 text-primary border-primary/30" : ""}`}
+        >
+          <Filter className="w-3.5 h-3.5" />
+          Filtri
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filterOpen ? "rotate-180" : ""}`} />
+        </Button>
       </div>
+
+      <ReadOnlyToolFilterPanel
+        open={filterOpen}
+        title="Pair disponibili"
+        items={volatilityFilter.items}
+        summary={formatFilterSummary(volatilityFilter)}
+        note={formatFilterNote(volatilityFilter, "pair")}
+      />
 
       {isLoading && <LoadingCard />}
       {isError && <ErrorCard message={(error as Error).message} />}
@@ -773,14 +836,24 @@ function CotTool() {
     refetchInterval: 60 * 60_000,
   });
 
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [selected, setSelected] = useState<CotReport | null>(null);
+  const cotFilter = useMemo(
+    () =>
+      deriveEffectiveFilterItems({
+        requestedItems: selectedCurrencies,
+        supportedItems: data?.reports?.map((report) => report.currency) ?? [],
+        defaultItems: data?.reports?.map((report) => report.currency) ?? [],
+      }),
+    [data?.reports, selectedCurrencies],
+  );
+
   const filteredReports = useMemo(() => {
     if (!data?.reports) return [];
-    if (selectedCurrencies.length === 0) return data.reports;
-    const userCurrSet = new Set(selectedCurrencies);
+    const userCurrSet = new Set(cotFilter.items);
     return data.reports.filter((r) => userCurrSet.has(r.currency));
-  }, [data?.reports, selectedCurrencies]);
+  }, [cotFilter.items, data?.reports]);
 
-  const [selected, setSelected] = useState<CotReport | null>(null);
 
   return (
     <div className="space-y-4">
@@ -792,10 +865,30 @@ function CotTool() {
             Fonte: CFTC.gov • {data?.fetchedAt ? `Aggiornato: ${new Date(data.fetchedAt).toLocaleDateString("it-IT")}` : "Aggiornato ogni venerdì"}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-1.5">
-          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-1.5">
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFilterOpen((v) => !v)}
+            className={`gap-1.5 ${filterOpen ? "bg-primary/10 text-primary border-primary/30" : ""}`}
+          >
+            <Filter className="w-3.5 h-3.5" />
+            Filtri
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filterOpen ? "rotate-180" : ""}`} />
+          </Button>
+        </div>
       </div>
+
+      <ReadOnlyToolFilterPanel
+        open={filterOpen}
+        title="Valute dai tuoi pair"
+        items={cotFilter.items}
+        summary={formatFilterSummary(cotFilter)}
+        note={formatFilterNote(cotFilter, "valute")}
+      />
 
       {/* Prossimo aggiornamento */}
       {data?.nextUpdate && (
