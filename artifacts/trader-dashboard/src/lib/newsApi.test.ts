@@ -64,6 +64,24 @@ try {
   }
 
   {
+    const calls = mockFetch(() =>
+      Response.json({
+        articles: [],
+        fetchedAt: "2026-06-07T10:00:00.000Z",
+        hasApiKey: true,
+        nextCursor: "30",
+        totalCount: 80,
+      }),
+    );
+
+    const result = await fetchNews({ selectedPairsKey: "XAUUSD", language: "it", cursor: "15", limit: 15, basePath: "/" });
+
+    assert.equal(calls[0]?.url, "/api/news?_=1&pairs=XAUUSD&lang=it&cursor=15&limit=15");
+    assert.equal(result.nextCursor, "30");
+    assert.equal(result.totalCount, 80);
+  }
+
+  {
     mockFetch(() => new Response("", { status: 503 }));
 
     await assert.rejects(fetchNews({ selectedPairsKey: "", language: "en", basePath: "/" }), /Failed to fetch news/);

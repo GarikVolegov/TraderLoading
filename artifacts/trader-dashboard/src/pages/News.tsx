@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { useLanguage, useDateLocale } from "@/contexts/LanguageContext";
@@ -129,24 +129,73 @@ function newsWsUrl(): string {
   return base.toString();
 }
 
-function mergeArticle(list: Article[], article: Article): Article[] {
-  const key = article.url ? `url:${article.url}` : `title:${article.title.toLowerCase().slice(0, 160)}`;
-  const exists = list.some((item) => (item.url ? `url:${item.url}` : `title:${item.title.toLowerCase().slice(0, 160)}`) === key);
-  if (exists) return list;
-  return [article, ...list].slice(0, 30);
+const NEWS_PAGE_SIZE = 15;
+
+function articleKey(article: Pick<Article, "url" | "title">): string {
+  return article.url ? `url:${article.url}` : `title:${article.title.toLowerCase().slice(0, 160)}`;
 }
 
-function newsSignature(data?: NewsData): string {
-  return (data?.articles ?? [])
-    .map((article) => `${article.url ?? article.title}|${article.publishedAt ?? ""}|${article.qualityScore ?? ""}`)
-    .join("::");
+function articleTime(article: Article | undefined): number {
+  if (!article) return 0;
+  if (!article.publishedAt) return Date.now();
+  const ts = new Date(article.publishedAt).getTime();
+  return Number.isNaN(ts) ? Date.now() : ts;
 }
 
-function updateNewsIfChanged(current: NewsData | undefined, next: NewsData): NewsData {
-  if (!current) return next;
-  return newsSignature(current) === newsSignature(next)
-    ? { ...current, fetchedAt: next.fetchedAt, nextRefreshAt: next.nextRefreshAt, providerStatuses: next.providerStatuses }
-    : next;
+// Flatten paginated pages into a single chronological list, dropping duplicates
+// that can appear when the cached corpus shifts between page fetches.
+function flattenNewsPages(data: InfiniteData<NewsData> | undefined): Article[] {
+  const seen = new Set<string>();
+  const out: Article[] = [];
+  for (const page of data?.pages ?? []) {
+    for (const article of page.articles) {
+      const key = articleKey(article);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(article);
+    }
+  }
+  return out;
+}
+
+// Prepend only genuinely-newer live articles to the first page so the live
+// socket never reshuffles or duplicates the chronological history below.
+function prependLiveArticles(
+  current: InfiniteData<NewsData> | undefined,
+  incoming: Article[],
+): InfiniteData<NewsData> | undefined {
+  if (!current || current.pages.length === 0) return current;
+  const loaded = new Set<string>();
+  for (const page of current.pages) for (const article of page.articles) loaded.add(articleKey(article));
+  const topTime = articleTime(current.pages[0].articles[0]);
+  const fresh = incoming
+    .filter((article) => !loaded.has(articleKey(article)) && articleTime(article) >= topTime)
+    .sort((a, b) => articleTime(b) - articleTime(a));
+  if (fresh.length === 0) return current;
+  const [first, ...rest] = current.pages;
+  return { ...current, pages: [{ ...first, articles: [...fresh, ...first.articles] }, ...rest] };
+}
+
+// Merge live snapshot metadata into the first page without touching the loaded
+// article history (which is owned by pagination).
+function mergeSnapshotMeta(
+  current: InfiniteData<NewsData> | undefined,
+  snapshot: NewsData,
+): InfiniteData<NewsData> | undefined {
+  if (!current || current.pages.length === 0) return current;
+  const [first, ...rest] = current.pages;
+  const merged: NewsData = {
+    ...first,
+    fetchedAt: snapshot.fetchedAt,
+    nextRefreshAt: snapshot.nextRefreshAt ?? first.nextRefreshAt,
+    agentSummary: snapshot.agentSummary ?? first.agentSummary,
+    watchedPairs: snapshot.watchedPairs ?? first.watchedPairs,
+    providerStatuses: snapshot.providerStatuses ?? first.providerStatuses,
+    source: snapshot.source ?? first.source,
+    freshArticlesCount: snapshot.freshArticlesCount ?? first.freshArticlesCount,
+    freshnessWindowHours: snapshot.freshnessWindowHours ?? first.freshnessWindowHours,
+  };
+  return { ...current, pages: [merged, ...rest] };
 }
 
 function preferredArticleUrl(article: Pick<Article, "url" | "resolvedUrl">): string | null {
@@ -277,7 +326,7 @@ function ArticleCard({ article, idx, isAI, onOpen }: { article: Article; idx: nu
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: idx * 0.05 }}
+      transition={{ delay: Math.min(idx, 10) * 0.04 }}
       className="h-full"
     >
       <Card
@@ -430,14 +479,33 @@ export default function News() {
   const [providerStatuses, setProviderStatuses] = useState<NewsProviderStatus[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const { data, isLoading, isFetching } = useQuery<NewsData>({
-    queryKey,
-    queryFn: () => fetchNews({ selectedPairsKey, language }),
-    staleTime: 90 * 1000,
-    refetchInterval: 2 * 60 * 1000,
-    refetchIntervalInBackground: false,  // solo se la tab è attiva
-  });
+  const { data, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useInfiniteQuery<NewsData>({
+      queryKey,
+      queryFn: ({ pageParam }) =>
+        fetchNews({ selectedPairsKey, language, cursor: (pageParam as string) ?? "0", limit: NEWS_PAGE_SIZE }),
+      initialPageParam: "0",
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      staleTime: 90 * 1000,
+    });
+
+  const articles = useMemo(() => flattenNewsPages(data), [data]);
+
+  // Load the next page when the sentinel near the bottom scrolls into view.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasNextPage) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) void fetchNextPage();
+      },
+      { rootMargin: "600px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, articles.length]);
 
   useEffect(() => {
     let closed = false;
@@ -456,16 +524,14 @@ export default function News() {
         NewsSocketMessage;
 
       if (message.type === "news_snapshot") {
-        qc.setQueryData<NewsData>(queryKey, (current) => updateNewsIfChanged(current, message.snapshot));
+        qc.setQueryData<InfiniteData<NewsData>>(queryKey, (current) =>
+          mergeSnapshotMeta(prependLiveArticles(current, message.snapshot.articles), message.snapshot),
+        );
         setProviderStatuses(message.snapshot.providerStatuses ?? []);
         setLiveStatus("live");
       }
       if (message.type === "news_article") {
-        qc.setQueryData<NewsData>(queryKey, (current) =>
-          current
-            ? { ...current, articles: mergeArticle(current.articles, message.article), fetchedAt: new Date().toISOString() }
-            : { articles: [message.article], fetchedAt: new Date().toISOString(), hasApiKey: true, source: "ai" },
-        );
+        qc.setQueryData<InfiniteData<NewsData>>(queryKey, (current) => prependLiveArticles(current, [message.article]));
       }
       if (message.type === "news_provider_status") {
         setProviderStatuses((current) => {
@@ -490,7 +556,7 @@ export default function News() {
     };
   }, [language, qc, queryKey, selectedPairsKey]);
 
-  const newsData = data;
+  const newsData = data?.pages?.[0];
   const isAI = newsData?.source === "ai";
   const visibleProviderStatuses = providerStatuses.length > 0 ? providerStatuses : newsData?.providerStatuses ?? [];
   const liveLabel =
@@ -498,33 +564,25 @@ export default function News() {
     liveStatus === "connecting" ? "Connessione live" :
     liveStatus === "fallback" ? "Fallback HTTP" :
     "Live non disponibile";
-  const freshArticles = newsData?.articles?.filter((article) => !article.isFallback) ?? [];
-  const fallbackArticles = newsData?.articles?.filter((article) => article.isFallback) ?? [];
-  const hasFallback = fallbackArticles.length > 0;
+  const hasFreshArticles = (newsData?.freshArticlesCount ?? articles.filter((article) => !article.isFallback).length) > 0;
   const primarySource = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const article of newsData?.articles ?? []) counts.set(article.source, (counts.get(article.source) ?? 0) + 1);
+    for (const article of articles) counts.set(article.source, (counts.get(article.source) ?? 0) + 1);
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
-  }, [newsData?.articles]);
-  const freshnessLabel =
-    (newsData?.freshArticlesCount ?? freshArticles.length) > 0
-      ? `Ultime ${newsData?.freshnessWindowHours ?? 48}h`
-      : hasFallback
-        ? "Fallback storico"
-        : "Aggiornato ora";
+  }, [articles]);
+  const freshnessLabel = hasFreshArticles
+    ? `Ultime ${newsData?.freshnessWindowHours ?? 48}h`
+    : articles.length > 0
+      ? "Archivio storico"
+      : "Aggiornato ora";
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      try {
-        const freshData = await fetchNews({ selectedPairsKey, language, noCache: true });
-        qc.setQueryData<NewsData>(queryKey, (current) => updateNewsIfChanged(current, freshData));
-      } catch {
-        // The live socket refresh below is still useful when the HTTP fallback is unavailable.
-      }
       if (socketRef.current?.readyState === WebSocket.OPEN) {
         socketRef.current.send(JSON.stringify(createNewsRefreshMessage(selectedPairsKey, language)));
       }
+      await qc.invalidateQueries({ queryKey });
     } finally {
       setIsRefreshing(false);
     }
@@ -649,34 +707,26 @@ export default function News() {
             <div key={i} className="h-48 animate-pulse rounded-lg border border-border/30 bg-secondary/40" />
           ))}
         </div>
-      ) : newsData?.articles && newsData.articles.length > 0 ? (
-        <div className="space-y-6">
-          {freshArticles.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground/80">Notizie recenti</h2>
-                <span className="text-xs text-muted-foreground/60">{freshArticles.length} entro {newsData.freshnessWindowHours ?? 48}h</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {freshArticles.map((article, idx) => (
-                  <ArticleCard key={article.url ?? `${article.title}-${idx}`} article={article} idx={idx} isAI={isAI} onOpen={setSelectedArticle} />
-                ))}
-              </div>
-            </section>
-          )}
+      ) : articles.length > 0 ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {articles.map((article, idx) => (
+              <ArticleCard key={`${articleKey(article)}-${idx}`} article={article} idx={idx} isAI={isAI} onOpen={setSelectedArticle} />
+            ))}
+          </div>
 
-          {fallbackArticles.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center justify-between gap-3 border-t border-border/30 pt-4">
-                <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground/80">Archivio utile</h2>
-                <span className="text-xs text-muted-foreground/60">{fallbackArticles.length} notizie meno recenti</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-85">
-                {fallbackArticles.map((article, idx) => (
-                  <ArticleCard key={article.url ?? `${article.title}-${idx}`} article={article} idx={idx} isAI={isAI} onOpen={setSelectedArticle} />
-                ))}
-              </div>
-            </section>
+          {/* Infinite scroll sentinel + status */}
+          <div ref={sentinelRef} className="h-px w-full" aria-hidden />
+          {isFetchingNextPage && (
+            <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground/70">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              Caricamento altre notizie…
+            </div>
+          )}
+          {!hasNextPage && (
+            <p className="py-4 text-center text-xs text-muted-foreground/40">
+              Hai raggiunto la fine delle notizie disponibili.
+            </p>
           )}
         </div>
       ) : (

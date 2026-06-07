@@ -41,6 +41,8 @@ export interface NewsData {
   fallbackArticlesCount?: number;
   oldestFreshArticleAt?: string;
   freshnessWindowHours?: number;
+  nextCursor?: string | null;
+  totalCount?: number;
 }
 
 export interface NewsProviderStatus {
@@ -63,6 +65,8 @@ export type FetchNewsInput = RelativeApiOptions & {
   selectedPairsKey: string;
   language: string;
   noCache?: boolean;
+  cursor?: string | null;
+  limit?: number;
 };
 
 export function createNewsQueryKey(selectedPairsKey: string, language: string): NewsQueryKey {
@@ -82,6 +86,8 @@ function createNewsUrl(input: FetchNewsInput): string {
   params.set(input.noCache ? "nocache" : "_", "1");
   if (input.selectedPairsKey) params.set("pairs", input.selectedPairsKey);
   params.set("lang", input.language);
+  if (input.cursor) params.set("cursor", input.cursor);
+  if (typeof input.limit === "number") params.set("limit", String(input.limit));
   return `${createApiUrl("news", input.basePath)}?${params.toString()}`;
 }
 
