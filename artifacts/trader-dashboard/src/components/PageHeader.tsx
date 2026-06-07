@@ -12,7 +12,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, action, badge, icon }: PageHeaderProps) {
   return (
     <motion.div
-      className="flex items-start sm:items-center justify-between gap-3 pb-2"
+      className="flex flex-col gap-3 pb-1 sm:flex-row sm:items-end sm:justify-between"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
@@ -20,7 +20,7 @@ export function PageHeader({ title, subtitle, action, badge, icon }: PageHeaderP
       <div className="min-w-0 flex items-start sm:items-center gap-3">
         {/* Accent bar */}
         <motion.div
-          className="w-1 h-8 sm:h-9 lg:h-10 rounded-full bg-gradient-to-b from-primary to-primary/30 shrink-0 mt-0.5 sm:mt-0"
+          className="mt-0.5 h-8 w-0.5 shrink-0 rounded-full bg-primary sm:h-9"
           initial={{ scaleY: 0, opacity: 0 }}
           animate={{ scaleY: 1, opacity: 1 }}
           transition={{ delay: 0.08, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
@@ -33,7 +33,7 @@ export function PageHeader({ title, subtitle, action, badge, icon }: PageHeaderP
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.05, duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-              className="text-2xl sm:text-3xl lg:text-3xl font-bold font-mono tracking-tight leading-tight"
+              className="text-xl font-bold leading-tight sm:text-2xl lg:text-[1.65rem]"
             >
               {title}
             </motion.h2>
@@ -52,7 +52,7 @@ export function PageHeader({ title, subtitle, action, badge, icon }: PageHeaderP
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.3 }}
-              className="text-xs sm:text-sm text-muted-foreground/80 mt-0.5 leading-snug"
+              className="mt-1 max-w-3xl text-sm leading-snug text-muted-foreground"
             >
               {subtitle}
             </motion.p>

@@ -46,7 +46,7 @@ function NavItem({
           href={href}
           title={label}
           aria-label={label}
-          className={`relative mx-auto flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 group ${
+          className={`group relative mx-auto flex h-11 w-11 items-center justify-center rounded-lg transition-colors duration-200 ${
             isActive
               ? "bg-primary/10 text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_10px_26px_hsl(var(--primary)/0.08)]"
               : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
@@ -131,7 +131,7 @@ function NavItem({
   return (
     <Link
       href={href}
-      className="flex flex-col items-center justify-center gap-0.5 flex-1 py-2.5 sm:py-3 relative"
+      className="relative flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 py-2"
     >
       <AnimatePresence>
         {isActive && (
@@ -216,7 +216,7 @@ export function BottomNav() {
         initial={{ x: -60, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.05 }}
-        className="hidden lg:flex fixed left-0 top-0 bottom-0 z-50 w-20 flex-col bg-card/92 backdrop-blur-2xl border-r border-border/45 shadow-[2px_0_26px_rgba(0,0,0,0.32)]"
+        className="fixed bottom-0 left-0 top-0 z-50 hidden w-20 flex-col border-r border-border/45 bg-card/90 shadow-[2px_0_24px_rgba(0,0,0,0.28)] backdrop-blur-xl lg:flex"
       >
         {/* Logo */}
         <div className="px-3 py-4 border-b border-border/30">
@@ -226,7 +226,7 @@ export function BottomNav() {
             transition={{ delay: 0.18, duration: 0.4 }}
             className="flex items-center justify-center"
           >
-            <div className="w-11 h-11 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
+            <div className="w-11 h-11 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
               <div className="w-3.5 h-3.5 rounded-md bg-primary" />
             </div>
           </motion.div>
