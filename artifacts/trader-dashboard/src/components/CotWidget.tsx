@@ -7,6 +7,7 @@ import { FileText, ArrowRight, Loader2, AlertCircle, ArrowUp, ArrowDown, Refresh
 import { AreaChart, Area, ResponsiveContainer, ReferenceLine, Tooltip, CartesianGrid, XAxis } from "recharts";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
+import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
 
 interface CotReport {
   market: string;
@@ -35,12 +36,21 @@ export function CotWidget() {
     refetchInterval: 60 * 60_000,
   });
 
+  const cotFilter = useMemo(
+    () =>
+      deriveEffectiveFilterItems({
+        requestedItems: selectedCurrencies,
+        supportedItems: data?.reports?.map((report) => report.currency) ?? [],
+        defaultItems: data?.reports?.map((report) => report.currency) ?? [],
+      }),
+    [data?.reports, selectedCurrencies],
+  );
+
   const filteredReports = useMemo(() => {
     if (!data?.reports) return [];
-    if (selectedCurrencies.length === 0) return data.reports;
-    const userCurrSet = new Set(selectedCurrencies);
+    const userCurrSet = new Set(cotFilter.items);
     return data.reports.filter((r) => userCurrSet.has(r.currency));
-  }, [data?.reports, selectedCurrencies]);
+  }, [cotFilter.items, data?.reports]);
 
   return (
     <Card className="relative overflow-hidden bg-card/60 backdrop-blur-sm border-border/30 flex flex-col">
@@ -83,6 +93,19 @@ export function CotWidget() {
 
         {data?.reports && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {cotFilter.items.map((currency) => (
+                <span key={currency} className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-primary/10 text-primary border border-primary/25">
+                  {currency}
+                </span>
+              ))}
+              {cotFilter.hasUserSelection && cotFilter.unsupportedItems.length > 0 && (
+                <span className="text-[9px] text-muted-foreground">
+                  {cotFilter.supportedCount}/{cotFilter.requestedCount} valute supportate
+                </span>
+              )}
+            </div>
+
             <div className="grid grid-cols-4 gap-1.5">
               {filteredReports.map((r) => {
                 const trend =

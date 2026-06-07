@@ -10,6 +10,7 @@ import {
 import { BarChart, Bar, Cell, ResponsiveContainer, ReferenceLine, Tooltip } from "recharts";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
+import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
 
 interface VolatilityResult {
   pair: string; currentPrice: number; todayPips: number;
@@ -24,12 +25,17 @@ export function VolatilityWidget() {
   const { selectedPairs: userPairs } = useBackground();
   const [open, setOpen] = useState(false);
 
-  const volPairs = useMemo(() => {
-    if (userPairs.length === 0) return ALL_VOL_PAIRS;
-    const supported = new Set(ALL_VOL_PAIRS);
-    const filtered = userPairs.filter(p => supported.has(p));
-    return filtered.length > 0 ? filtered : ALL_VOL_PAIRS;
-  }, [userPairs]);
+  const volatilityFilter = useMemo(
+    () =>
+      deriveEffectiveFilterItems({
+        requestedItems: userPairs,
+        supportedItems: ALL_VOL_PAIRS,
+        defaultItems: ALL_VOL_PAIRS,
+      }),
+    [userPairs],
+  );
+
+  const volPairs = volatilityFilter.items;
 
   const [selectedPair, setSelectedPair] = useState(volPairs[0] || "EURUSD");
   const defaultAppliedRef = useRef(false);
@@ -132,6 +138,12 @@ export function VolatilityWidget() {
             )}
           </AnimatePresence>
         </div>
+
+        {volatilityFilter.hasUserSelection && volatilityFilter.unsupportedItems.length > 0 && (
+          <p className="text-[9px] text-muted-foreground">
+            {volatilityFilter.supportedCount}/{volatilityFilter.requestedCount} pair supportati
+          </p>
+        )}
 
         {isLoading && (
           <div className="flex items-center justify-center py-8">

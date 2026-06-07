@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Activity, ArrowRight, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
+import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
 
 interface SentimentSymbol {
   name: string;
@@ -83,14 +84,21 @@ export function SentimentWidget() {
     refetchInterval: 10 * 60_000,
   });
 
+  const sentimentFilter = useMemo(
+    () =>
+      deriveEffectiveFilterItems({
+        requestedItems: userPairs,
+        supportedItems: data?.symbols?.map((symbol) => symbol.name) ?? [],
+        defaultItems: data?.symbols?.slice(0, 6).map((symbol) => symbol.name) ?? [],
+      }),
+    [data?.symbols, userPairs],
+  );
+
   const sortedSymbols = useMemo(() => {
     if (!data?.symbols) return [];
-    if (userPairs.length === 0) return data.symbols.slice(0, 6);
-    const userSet = new Set(userPairs);
-    return [...data.symbols]
-      .sort((a, b) => (userSet.has(a.name) ? 0 : 1) - (userSet.has(b.name) ? 0 : 1))
-      .slice(0, 6);
-  }, [data?.symbols, userPairs]);
+    const selectedSet = new Set(sentimentFilter.items);
+    return data.symbols.filter((symbol) => selectedSet.has(symbol.name)).slice(0, 6);
+  }, [data?.symbols, sentimentFilter.items]);
 
   const avgLong = sortedSymbols.length
     ? sortedSymbols.reduce((s, sym) => s + sym.longPercentage, 0) / sortedSymbols.length
@@ -145,6 +153,19 @@ export function SentimentWidget() {
         {data?.symbols && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
             <FearGreedArc score={avgLong} />
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {sentimentFilter.items.map((pair) => (
+                <span key={pair} className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-primary/10 text-primary border border-primary/25">
+                  {pair}
+                </span>
+              ))}
+              {sentimentFilter.hasUserSelection && sentimentFilter.unsupportedItems.length > 0 && (
+                <span className="text-[9px] text-muted-foreground">
+                  {sentimentFilter.supportedCount}/{sentimentFilter.requestedCount} supportati
+                </span>
+              )}
+            </div>
 
             <div className="space-y-2">
               {sortedSymbols.map((sym) => {
