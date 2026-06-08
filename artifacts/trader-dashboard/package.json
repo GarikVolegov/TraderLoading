@@ -47,6 +47,7 @@
     "@workspace/api-client-react": "workspace:*",
     "@workspace/pair-catalog": "workspace:*",
     "@workspace/replit-auth-web": "workspace:*",
+    "@xyflow/react": "^12.11.0",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",

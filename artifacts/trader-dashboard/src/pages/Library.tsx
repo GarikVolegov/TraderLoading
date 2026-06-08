@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
+import { MindMapEditor, MindMapView, isMindMapData, type MindMapData } from "@/components/MindMapEditor";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type ContentType = "document" | "mindmap" | "video";
@@ -37,6 +38,7 @@ interface Content {
   fileSize: number;
   mimeType: string | null;
   embedUrl: string | null;
+  mindmap?: MindMapData | null;
   tags: string;
   requiredLevel: number;
   orderIndex: number;
@@ -102,14 +104,16 @@ function ContentViewer({ content, onClose }: { content: Content; onClose: () => 
         )}
 
         {content.type === "mindmap" && (
-          embed ? (
+          isMindMapData(content.mindmap) ? (
+            <MindMapView data={content.mindmap} />
+          ) : embed ? (
             <div className="h-[60vh] w-full overflow-hidden rounded-lg border border-border/40">
               <iframe src={embed} title={content.title} className="w-full h-full" allowFullScreen />
             </div>
           ) : (
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-6 text-center text-sm text-muted-foreground">
               <Network className="w-8 h-8 mx-auto mb-2 text-primary/60" />
-              Editor mappe mentali interattivo in arrivo. Per ora puoi incorporarne una via link (Markmap, Miro, Whimsical…).
+              Mappa mentale vuota.
             </div>
           )
         )}
@@ -215,6 +219,7 @@ function ContentForm({ collectionId, initial, onClose }: { collectionId: number;
     title: initial?.title ?? "", description: initial?.description ?? "",
     bodyMarkdown: initial?.bodyMarkdown ?? "", embedUrl: initial?.embedUrl ?? "",
     fileUrl: initial?.fileUrl ?? "", fileName: initial?.fileName ?? "", fileSize: initial?.fileSize ?? 0, mimeType: initial?.mimeType ?? "",
+    mindmap: (initial?.mindmap ?? null) as MindMapData | null,
     tags: parseTags(initial?.tags ?? "[]").join(", "),
     requiredLevel: initial?.requiredLevel ?? 0, orderIndex: initial?.orderIndex ?? 0, published: initial?.published ?? false,
   });
@@ -263,7 +268,7 @@ function ContentForm({ collectionId, initial, onClose }: { collectionId: number;
             <input className="tl-input" placeholder="Link YouTube / Vimeo" value={form.embedUrl} onChange={(e) => setForm({ ...form, embedUrl: e.target.value })} />
           )}
           {form.type === "mindmap" && (
-            <input className="tl-input" placeholder="Link mappa (Markmap/Miro/Whimsical) — editor nativo in arrivo" value={form.embedUrl} onChange={(e) => setForm({ ...form, embedUrl: e.target.value })} />
+            <MindMapEditor initial={form.mindmap} onChange={(d) => setForm((f) => ({ ...f, mindmap: d }))} />
           )}
           {form.type === "document" && (
             <>
