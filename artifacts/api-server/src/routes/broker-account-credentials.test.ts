@@ -25,7 +25,7 @@ try {
 
   const app = express();
   app.use(express.json());
-  app.use("/api", createBrokersRouter(runtime, { intentStore }));
+  app.use("/api", createBrokersRouter(runtime, { intentStore, enableLegacyConnectionRoutes: true }));
   const server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();

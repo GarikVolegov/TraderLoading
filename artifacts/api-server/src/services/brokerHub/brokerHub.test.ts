@@ -93,9 +93,26 @@ try {
     port: 8765,
     bridgeTokenRef: "mt5-token",
   });
+  const fxBlueProfile = await store.saveProfile({
+    label: "FX Blue account",
+    brokerName: "FX Blue",
+    kind: "fxblue-account-sync",
+    providerKind: "fxblue-account-sync",
+    providerUserId: "trader-one",
+    accountId: "123456",
+    environment: "live",
+    tradingEnabled: true,
+    investorPassword: "must-not-persist",
+  });
+  assert.equal(fxBlueProfile.kind, "fxblue-account-sync");
+  assert.equal(fxBlueProfile.route, "fxblue_account_sync");
+  assert.equal(fxBlueProfile.health, "waiting_for_fxblue_sync");
+  assert.equal(fxBlueProfile.tradingEnabled, true);
+  assert.equal(fxBlueProfile.capabilities.placeOrders, false);
+  assert.equal("investorPassword" in (fxBlueProfile as object), false);
 
   const profiles = await store.listProfiles();
-  assert.equal(profiles.profiles.length, 2);
+  assert.equal(profiles.profiles.length, 3);
   assert.equal("password" in (profiles.profiles[0] as object), false);
   assert.equal(profiles.profiles[1]?.kind, "mt5-vps-bridge");
   assert.equal(profiles.profiles[1]?.host, "100.64.1.2");

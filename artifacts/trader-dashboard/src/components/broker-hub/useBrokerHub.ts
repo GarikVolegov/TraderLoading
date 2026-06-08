@@ -9,9 +9,11 @@ import type {
 } from "./types";
 import {
   closeBrokerPosition as closeBrokerPositionRequest,
+  completeFxBlueSetupIntent as completeFxBlueSetupIntentRequest,
   completeBrokerConnectionIntent,
   connectBrokerProfile as connectBrokerProfileRequest,
   createCompanionPairing as createCompanionPairingRequest,
+  createFxBlueSetupIntent as createFxBlueSetupIntentRequest,
   createBrokerHubUrl,
   createBrokerConnectionIntent,
   deleteBrokerProfile,
@@ -29,10 +31,13 @@ import {
   stopMt5SmartLink as stopMt5SmartLinkRequest,
   type BrokerHistoryImportPayload,
   verifyBrokerConnectionIntent,
+  verifyFxBlueProfile as verifyFxBlueProfileRequest,
   verifyBrokerConnectionIntentSoft,
   type BrokerConnectionCompletePayload,
   type BrokerConnectionCredentialsPayload,
   type CompanionPairingPayload,
+  type FxBlueSetupPayload,
+  type FxBlueVerifyPayload,
   type Mt5SmartLinkLoginPayload,
   type Mt5SmartLinkStartPayload,
 } from "./brokerHubApi";
@@ -99,6 +104,32 @@ export function useBrokerHub() {
     setMessage(data.intent.displayStatus);
     return data.intent;
   }, []);
+
+  const createFxBlueSetupIntent = useCallback(async (payload: FxBlueSetupPayload) => {
+    const data = await createFxBlueSetupIntentRequest(payload);
+    setMessage(data.intent.displayStatus);
+    return data;
+  }, []);
+
+  const verifyFxBlueProfile = useCallback(async (intentId: string, payload: FxBlueVerifyPayload) => {
+    const result = await verifyFxBlueProfileRequest(intentId, payload);
+    const data = result.data;
+    if (data.snapshot) setSnapshot(data.snapshot);
+    setMessage(data.intent?.displayStatus ?? data.error ?? "Profilo FX Blue non verificato");
+    return data;
+  }, []);
+
+  const completeFxBlueSetupIntent = useCallback(
+    async (intentId: string) => {
+      const result = await completeFxBlueSetupIntentRequest(intentId);
+      const data = result.data;
+      if (data.snapshot) setSnapshot(data.snapshot);
+      await refreshProfiles();
+      setMessage(data.intent?.displayStatus ?? data.error ?? "Account Sync FX Blue non completato");
+      return data;
+    },
+    [refreshProfiles],
+  );
 
   const verifyConnectionIntent = useCallback(async (intentId: string) => {
     const data = await verifyBrokerConnectionIntent(intentId);
@@ -277,6 +308,9 @@ export function useBrokerHub() {
       refreshProfiles,
       saveProfile,
       createConnectionIntent,
+      createFxBlueSetupIntent,
+      verifyFxBlueProfile,
+      completeFxBlueSetupIntent,
       verifyConnectionIntent,
       verifyAccountCredentials,
       completeConnectionIntent,
@@ -305,6 +339,9 @@ export function useBrokerHub() {
       refreshProfiles,
       saveProfile,
       createConnectionIntent,
+      createFxBlueSetupIntent,
+      verifyFxBlueProfile,
+      completeFxBlueSetupIntent,
       verifyConnectionIntent,
       verifyAccountCredentials,
       completeConnectionIntent,

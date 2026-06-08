@@ -54,6 +54,7 @@ function readKind(value: unknown): BrokerKind {
     value === "snaptrade-brokerage" ||
     value === "ctrader-open-api" ||
     value === "mt5-vps-bridge" ||
+    value === "fxblue-account-sync" ||
     value === "demo"
     ? value
     : "demo";
@@ -75,6 +76,7 @@ function defaultRoute(kind: BrokerProviderKind): ConnectorRoute {
   if (kind === "ctrader-open-api") return "official_oauth";
   if (kind === "snaptrade-brokerage") return "broker_portal";
   if (kind === "metaapi-metatrader") return "optional_cloud";
+  if (kind === "fxblue-account-sync") return "fxblue_account_sync";
   if (kind === "demo") return "manual";
   return "local_companion";
 }
@@ -87,16 +89,25 @@ function readRoute(value: unknown, kind: BrokerProviderKind): ConnectorRoute {
     value === "file_import" ||
     value === "manual" ||
     value === "optional_cloud" ||
-    value === "advanced_ea"
+    value === "advanced_ea" ||
+    value === "fxblue_account_sync"
     ? value
     : defaultRoute(kind);
 }
 
 function readHealth(value: unknown, route: ConnectorRoute, connectionStatus: BrokerAccountProfile["connectionStatus"]): ConnectionHealth {
-  if (value === "connected" || value === "stale" || value === "waiting_for_companion" || value === "import_only" || value === "error") {
+  if (
+    value === "connected" ||
+    value === "stale" ||
+    value === "waiting_for_companion" ||
+    value === "waiting_for_fxblue_sync" ||
+    value === "import_only" ||
+    value === "error"
+  ) {
     return value;
   }
   if (route === "smartlink_mt5" || route === "local_companion") return connectionStatus === "connected" ? "connected" : "waiting_for_companion";
+  if (route === "fxblue_account_sync") return connectionStatus === "connected" ? "connected" : "waiting_for_fxblue_sync";
   if (route === "file_import" || route === "manual") return "import_only";
   return connectionStatus === "connected" ? "connected" : "stale";
 }
@@ -114,6 +125,7 @@ function isProfile(value: unknown): value is BrokerAccountProfile {
       profile.kind === "snaptrade-brokerage" ||
       profile.kind === "ctrader-open-api" ||
       profile.kind === "mt5-vps-bridge" ||
+      profile.kind === "fxblue-account-sync" ||
       profile.kind === "demo")
   );
 }
@@ -122,7 +134,7 @@ function defaultCapabilities(kind: BrokerProviderKind): BrokerCapabilities {
   if (kind === "demo") {
     return { readAccount: true, readPositions: true, readHistory: true, placeOrders: true, closePositions: true, realtimeUpdates: false, requiresTerminal: false };
   }
-  if (kind === "snaptrade-brokerage") {
+  if (kind === "snaptrade-brokerage" || kind === "fxblue-account-sync") {
     return { readAccount: true, readPositions: true, readHistory: true, placeOrders: false, closePositions: false, realtimeUpdates: false, requiresTerminal: false };
   }
   if (kind === "traderloading-mt5-smartlink" || kind === "metatrader-local-companion") {

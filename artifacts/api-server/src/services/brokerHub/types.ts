@@ -5,6 +5,7 @@ export type BrokerProviderKind =
   | "snaptrade-brokerage"
   | "ctrader-open-api"
   | "mt5-vps-bridge"
+  | "fxblue-account-sync"
   | "demo";
 export type BrokerKind = BrokerProviderKind;
 export type BrokerEnvironment = "demo" | "live";
@@ -17,7 +18,8 @@ export type ConnectorRoute =
   | "file_import"
   | "manual"
   | "optional_cloud"
-  | "advanced_ea";
+  | "advanced_ea"
+  | "fxblue_account_sync";
 export type ConnectionCapability =
   | "readAccount"
   | "readPositions"
@@ -26,7 +28,13 @@ export type ConnectionCapability =
   | "closePositions"
   | "realtimeUpdates"
   | "requiresTerminal";
-export type ConnectionHealth = "connected" | "stale" | "waiting_for_companion" | "import_only" | "error";
+export type ConnectionHealth =
+  | "connected"
+  | "stale"
+  | "waiting_for_companion"
+  | "waiting_for_fxblue_sync"
+  | "import_only"
+  | "error";
 export type BrokerConnectionIntentStatus = "created" | "verification_required" | "ready_to_complete" | "completed" | "error";
 export type BrokerConnectionRequiredAction =
   | "start_authorization"

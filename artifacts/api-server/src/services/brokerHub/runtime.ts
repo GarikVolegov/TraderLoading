@@ -2,6 +2,7 @@ import { createBrokerAuditLog, type BrokerAuditLog } from "./auditLog.js";
 import { createBrokerVault, type BrokerVault } from "./brokerVault.js";
 import { createCTraderBrokerConnector } from "./cTraderConnector.js";
 import { createDemoBrokerConnector } from "./demoConnector.js";
+import { createFxBlueBrokerConnector } from "./fxBlueConnector.js";
 import { createMetaApiBrokerConnector } from "./metaApiConnector.js";
 import { createMt5VpsBrokerConnector } from "./mt5VpsConnector.js";
 import { companionStore, type CompanionStore } from "./companionStore.js";
@@ -61,6 +62,9 @@ function createConnector(profile: BrokerAccountProfile, vault: BrokerVault, loca
   if (profile.providerKind === "snaptrade-brokerage" || profile.kind === "snaptrade-brokerage") return createSnapTradeBrokerConnector(profile, vault);
   if (profile.providerKind === "mt5-vps-bridge" || profile.kind === "mt5-vps-bridge") return createMt5VpsBrokerConnector(profile, vault);
   if (profile.providerKind === "ctrader-open-api" || profile.kind === "ctrader-open-api") return createCTraderBrokerConnector(profile, vault);
+  if (profile.providerKind === "fxblue-account-sync" || profile.kind === "fxblue-account-sync" || profile.route === "fxblue_account_sync") {
+    return createFxBlueBrokerConnector(profile);
+  }
   return createDemoBrokerConnector(profile);
 }
 

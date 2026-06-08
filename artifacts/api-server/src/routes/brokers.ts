@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { brokerHubRuntime, type BrokerHubRuntime } from "../services/brokerHub/runtime.js";
@@ -14,6 +14,11 @@ import {
   createDefaultBrokerProviderRegistry,
   type BrokerProviderRegistry,
 } from "../services/brokerHub/providerRegistry.js";
+import { parseFxBlueProfileRef } from "../services/brokerHub/fxBlueConnector.js";
+import {
+  createFxBlueSetupIntentStore,
+  type FxBlueSetupIntentStore,
+} from "../services/brokerHub/fxBlueSetupIntentStore.js";
 import type {
   BrokerAccount,
   BrokerCapabilities,
@@ -33,6 +38,27 @@ interface BrokersRouterOptions {
   providerRegistry?: BrokerProviderRegistry;
   companionStore?: CompanionStore;
   smartLinkService?: Mt5SmartLinkService;
+  fxBlueSetupIntentStore?: FxBlueSetupIntentStore;
+  enableLegacyConnectionRoutes?: boolean;
+}
+
+const FXBLUE_ONLY_CONNECTION_ERROR = "Il Broker Hub collega nuovi conti solo tramite FX Blue Account Sync.";
+
+const FXBLUE_ONLY_CATALOG = [
+  {
+    id: "fxblue-account-sync",
+    displayName: "FX Blue Account Sync",
+    defaultAccountLabel: "FX Blue Account Sync",
+    category: "metatrader",
+    primaryProviderKind: "fxblue-account-sync",
+    recommendedRoute: "fxblue_account_sync",
+    availableRoutes: ["fxblue_account_sync"],
+    userFields: ["platform", "brokerName", "server", "accountNumber", "environment", "investorPassword"],
+  },
+];
+
+function blockLegacyConnectionRoute(_req: Request, res: Response): void {
+  res.status(410).json({ error: FXBLUE_ONLY_CONNECTION_ERROR });
 }
 
 function numberFrom(value: unknown, fallback: number): number {
@@ -181,10 +207,13 @@ export function createBrokersRouter(
   const providerRegistry = options.providerRegistry ?? createDefaultBrokerProviderRegistry();
   const companionStore = options.companionStore ?? defaultCompanionStore;
   const smartLinkService = options.smartLinkService ?? defaultMt5SmartLinkService;
+  const fxBlueSetupIntentStore = options.fxBlueSetupIntentStore ?? createFxBlueSetupIntentStore();
+  const legacyConnectionRoutesEnabled = options.enableLegacyConnectionRoutes === true;
 
   router.get("/brokers/catalog", (_req, res) => {
+    const catalog = legacyConnectionRoutesEnabled ? BROKER_CATALOG : FXBLUE_ONLY_CATALOG;
     res.json({
-      brokers: BROKER_CATALOG.map((broker) => ({
+      brokers: catalog.map((broker) => ({
         id: broker.id,
         displayName: broker.displayName,
         defaultAccountLabel: broker.defaultAccountLabel,
@@ -195,6 +224,129 @@ export function createBrokersRouter(
         userFields: broker.userFields,
       })),
     });
+  });
+
+  if (!legacyConnectionRoutesEnabled) {
+    router.post("/brokers/connect-intents", blockLegacyConnectionRoute);
+    router.get("/brokers/connect-intents/:id", blockLegacyConnectionRoute);
+    router.post("/brokers/connect-intents/:id/verify", blockLegacyConnectionRoute);
+    router.post("/brokers/connect-intents/:id/complete", blockLegacyConnectionRoute);
+    router.post("/brokers/smartlink/mt5/start", blockLegacyConnectionRoute);
+    router.post("/brokers/smartlink/mt5/login", blockLegacyConnectionRoute);
+    router.post("/brokers/companion/pairing", blockLegacyConnectionRoute);
+    router.post("/brokers/import/history", blockLegacyConnectionRoute);
+  }
+
+  router.post("/brokers/fxblue/setup-intents", async (req, res) => {
+    try {
+      const intent = await fxBlueSetupIntentStore.createIntent({
+        platform: req.body?.platform,
+        brokerName: req.body?.brokerName,
+        server: req.body?.server,
+        accountNumber: req.body?.accountNumber,
+        environment: req.body?.environment,
+        investorPassword: req.body?.investorPassword,
+      });
+      res.status(201).json({
+        intent,
+        fxBlueUrl: "https://diagnostics.fxblue.com/accountsync.aspx",
+        instructions: [
+          "Accedi o registrati su FX Blue.",
+          "Seleziona Account Sync e scegli MT4 o MT5.",
+          "Inserisci numero conto, server e password investor/read-only.",
+          "Avvia la raccolta e torna nel Broker Hub.",
+        ],
+      });
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
+  });
+
+  router.post("/brokers/fxblue/setup-intents/:id/verify-profile", async (req, res) => {
+    try {
+      const intent = await fxBlueSetupIntentStore.getIntent(req.params.id);
+      if (!intent) {
+        res.status(404).json({ error: "FX Blue setup intent non trovato." });
+        return;
+      }
+      const fxBlueProfileRef = parseFxBlueProfileRef(readString(req.body?.fxBlueProfileRef));
+      const tempProfile = await runtime.saveProfile({
+        label: `${intent.brokerName} FX Blue`,
+        brokerName: intent.brokerName,
+        kind: "fxblue-account-sync",
+        providerKind: "fxblue-account-sync",
+        providerUserId: fxBlueProfileRef,
+        providerAccountId: fxBlueProfileRef,
+        accountId: intent.accountNumber,
+        environment: intent.environment,
+        route: "fxblue_account_sync",
+        health: "waiting_for_fxblue_sync",
+        tradingEnabled: false,
+        capabilities: {
+          readAccount: true,
+          readPositions: true,
+          readHistory: true,
+          placeOrders: false,
+          closePositions: false,
+          realtimeUpdates: false,
+          requiresTerminal: false,
+        },
+        connectionStatus: "offline",
+        setupProgress: "fxblue_profile_verifying",
+        server: intent.server,
+      });
+      const connected = await runtime.connectProfile(tempProfile.id);
+      const verified = await fxBlueSetupIntentStore.updateIntent(intent.id, {
+        status: connected.snapshot.status === "connected" ? "profile_verified" : "waiting_for_sync",
+        fxBlueProfileRef,
+        profileId: tempProfile.id,
+        displayStatus:
+          connected.snapshot.status === "connected"
+            ? "Profilo FX Blue verificato."
+            : connected.snapshot.error ?? "In attesa del primo sync FX Blue.",
+      });
+      res.json({ intent: verified, profile: connected.profile, snapshot: connected.snapshot });
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
+  });
+
+  router.post("/brokers/fxblue/setup-intents/:id/complete", async (req, res) => {
+    try {
+      const intent = await fxBlueSetupIntentStore.getIntent(req.params.id);
+      if (!intent) {
+        res.status(404).json({ error: "FX Blue setup intent non trovato." });
+        return;
+      }
+      if (!intent.profileId || !intent.fxBlueProfileRef) {
+        res.status(400).json({ error: "Verifica prima il profilo FX Blue." });
+        return;
+      }
+      const connected = await runtime.connectProfile(intent.profileId);
+      const completed = await fxBlueSetupIntentStore.updateIntent(intent.id, {
+        status: "completed",
+        displayStatus: "Account Sync FX Blue collegato al Broker Hub.",
+        profileId: intent.profileId,
+      });
+      const profile = await runtime.saveProfile({
+        ...connected.profile,
+        tradingEnabled: false,
+        capabilities: {
+          ...connected.profile.capabilities,
+          placeOrders: false,
+          closePositions: false,
+          realtimeUpdates: false,
+          requiresTerminal: false,
+        },
+        health: connected.snapshot.status === "connected" ? "connected" : "waiting_for_fxblue_sync",
+        setupProgress: connected.snapshot.status === "connected" ? "fxblue_connected" : "waiting_for_fxblue_sync",
+        lastSnapshotAt: connected.snapshot.lastUpdated,
+        connectionStatus: connected.snapshot.status,
+      });
+      res.status(201).json({ intent: completed, profile, snapshot: connected.snapshot });
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
   });
 
   router.post("/brokers/connect-intents", async (req, res) => {

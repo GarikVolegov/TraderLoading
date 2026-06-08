@@ -1,7 +1,6 @@
-import { Wallet, Settings2 } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
-import { CloudAccountConnect } from "@/components/broker-hub/CloudAccountConnect";
 import { BrokerHubWorkspace } from "@/components/broker-hub/BrokerHubWorkspace";
 import type { BrokerHubTab } from "@/components/broker-hub/types";
 
@@ -22,23 +21,10 @@ export default function Broker() {
           </div>
         }
         title="Broker Hub"
-        subtitle="Collega il tuo conto MetaTrader senza installare nulla"
+        subtitle="Collega il conto solo tramite FX Blue Account Sync"
       />
 
-      <section className="grid gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(22rem,0.42fr)]">
-        <div className="min-w-0">
-          <CloudAccountConnect />
-        </div>
-
-        <details className="tl-panel overflow-hidden">
-          <summary className="flex min-h-11 cursor-pointer select-none items-center gap-2 px-4 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground">
-            <Settings2 className="h-4 w-4" /> Opzioni avanzate
-          </summary>
-          <div className="border-t border-border/40 p-4">
-            <BrokerHubWorkspace initialTab={getInitialBrokerTab()} />
-          </div>
-        </details>
-      </section>
+      <BrokerHubWorkspace initialTab={getInitialBrokerTab()} />
     </PageLayout>
   );
 }

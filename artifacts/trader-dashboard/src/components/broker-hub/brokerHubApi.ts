@@ -51,6 +51,41 @@ export type BrokerConnectionSoftResponse = {
   snapshot?: BrokerSnapshot;
 };
 
+export type FxBlueSetupIntent = {
+  id: string;
+  platform: "MT4" | "MT5";
+  brokerName: string;
+  server: string;
+  accountNumber: string;
+  environment: "demo" | "live";
+  status: "created" | "profile_verified" | "waiting_for_sync" | "completed" | "error";
+  displayStatus: string;
+  fxBlueProfileRef?: string;
+  profileId?: string;
+  lastError?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FxBlueSetupPayload = {
+  platform: "MT4" | "MT5";
+  brokerName: string;
+  server: string;
+  accountNumber: string;
+  environment: "demo" | "live";
+  investorPassword: string;
+};
+
+export type FxBlueSetupIntentResponse = {
+  intent: FxBlueSetupIntent;
+  fxBlueUrl: string;
+  instructions: string[];
+};
+
+export type FxBlueVerifyPayload = {
+  fxBlueProfileRef: string;
+};
+
 export type CompanionPairingPayload = {
   brokerName: string;
   tradingEnabled?: boolean;
@@ -208,6 +243,37 @@ export async function createBrokerConnectionIntent(
 ): Promise<{ intent: BrokerConnectionIntent }> {
   return readJson<{ intent: BrokerConnectionIntent }>(
     await fetch(createBrokerHubUrl("/brokers/connect-intents", options), jsonPost({ brokerName })),
+  );
+}
+
+export async function createFxBlueSetupIntent(
+  payload: FxBlueSetupPayload,
+  options?: BrokerHubApiOptions,
+): Promise<FxBlueSetupIntentResponse> {
+  return readJson<FxBlueSetupIntentResponse>(
+    await fetch(createBrokerHubUrl("/brokers/fxblue/setup-intents", options), jsonPost(payload)),
+  );
+}
+
+export async function verifyFxBlueProfile(
+  intentId: string,
+  payload: FxBlueVerifyPayload,
+  options?: BrokerHubApiOptions,
+): Promise<{ ok: boolean; data: BrokerConnectionSoftResponse & { intent?: FxBlueSetupIntent; error?: string } }> {
+  return readJsonSoft<BrokerConnectionSoftResponse & { intent?: FxBlueSetupIntent }>(
+    await fetch(createBrokerHubUrl(`/brokers/fxblue/setup-intents/${encodeURIComponent(intentId)}/verify-profile`, options), jsonPost(payload)),
+  );
+}
+
+export async function completeFxBlueSetupIntent(
+  intentId: string,
+  options?: BrokerHubApiOptions,
+): Promise<{ ok: boolean; data: BrokerConnectionSoftResponse & { intent?: FxBlueSetupIntent; error?: string } }> {
+  return readJsonSoft<BrokerConnectionSoftResponse & { intent?: FxBlueSetupIntent }>(
+    await fetch(createBrokerHubUrl(`/brokers/fxblue/setup-intents/${encodeURIComponent(intentId)}/complete`, options), {
+      method: "POST",
+      credentials: "include",
+    }),
   );
 }
 
