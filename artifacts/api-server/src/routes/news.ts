@@ -560,11 +560,17 @@ async function enrichWithLLM(
   const formattedPairs = formatPairsForPrompt(pairsStr);
   const currencyFocus = pairCurrencies.length > 0 ? pairCurrencies.join(", ") : "USD, EUR, XAU";
 
-  const enrichedById = new Map<number, LlmEnrichItem>();
-  let agentSummary = "";
   const limit = Math.min(LLM_ENRICH_MAX, articles.length);
 
-  for (let start = 0; start < limit; start += LLM_ENRICH_CHUNK) {
+  const chunkStarts: number[] = [];
+  for (let start = 0; start < limit; start += LLM_ENRICH_CHUNK) chunkStarts.push(start);
+
+  // Enrich each chunk independently and in parallel. The previous serial loop
+  // stacked two slow free-model round-trips back to back, which was the main
+  // cause of the /api/news serverless timeout. Each chunk fails soft.
+  const enrichChunk = async (
+    start: number,
+  ): Promise<{ start: number; items: LlmEnrichItem[]; agentSummary?: string } | null> => {
     const slice = articles.slice(start, start + LLM_ENRICH_CHUNK);
     const batch = slice.map((a, i) => ({ id: start + i, title: a.title, summary: a.summary.slice(0, 200) }));
     try {
@@ -599,24 +605,36 @@ sentiment MUST be one of: "bullish", "bearish", "neutral". Return one object per
 
       const raw = completion.choices[0]?.message?.content ?? "";
       const jsonMatch = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim().match(/\{[\s\S]*\}/);
-      if (!jsonMatch) { console.warn("[news/llm] risposta non-JSON, salto chunk"); continue; }
+      if (!jsonMatch) { console.warn("[news/llm] risposta non-JSON, salto chunk"); return null; }
       const parsed = JSON.parse(jsonMatch[0]) as LlmEnrichResult;
-      if (start === 0 && typeof parsed.agentSummary === "string") agentSummary = parsed.agentSummary;
-      if (Array.isArray(parsed.articles)) {
-        parsed.articles.forEach((item, i) => {
-          const id = typeof item.id === "number" ? item.id : start + i;
-          enrichedById.set(id, item);
-        });
-      }
+      return {
+        start,
+        items: Array.isArray(parsed.articles) ? parsed.articles : [],
+        agentSummary: typeof parsed.agentSummary === "string" ? parsed.agentSummary : undefined,
+      };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("401") || msg.includes("403") || msg.includes("429")) {
         markKeyInvalid();
         console.warn("[news/llm] chiave non valida o rate limit — fallback euristico");
-        break;
+      } else {
+        console.warn("[news/llm] errore:", msg);
       }
-      console.warn("[news/llm] errore:", msg);
+      return null;
     }
+  };
+
+  const chunkResults = await Promise.all(chunkStarts.map(enrichChunk));
+
+  const enrichedById = new Map<number, LlmEnrichItem>();
+  let agentSummary = "";
+  for (const result of chunkResults) {
+    if (!result) continue;
+    if (result.start === 0 && result.agentSummary) agentSummary = result.agentSummary;
+    result.items.forEach((item, i) => {
+      const id = typeof item.id === "number" ? item.id : result.start + i;
+      enrichedById.set(id, item);
+    });
   }
 
   if (enrichedById.size === 0) return null;
@@ -649,21 +667,89 @@ function isUsdMacroArticle(article: NewsArticle): boolean {
   );
 }
 
-// ─── Route ────────────────────────────────────────────────────────────────────
+// ─── Snapshot cache (stale-while-revalidate over Postgres) ────────────────────
 
-export async function getNewsData(input: { noCache?: boolean; pairs?: string; lang?: string } = {}): Promise<NewsResponse> {
-  const noCache    = input.noCache === true;
+// Serve a stored snapshot without rebuilding while it is younger than this.
+const NEWS_SNAPSHOT_FRESH_MS = (() => {
+  const raw = Number(process.env.NEWS_SNAPSHOT_FRESH_MS ?? 10 * 60_000);
+  return Number.isFinite(raw) && raw > 0 ? raw : 10 * 60_000;
+})();
+
+// Hard ceiling for the LLM enrichment step so a build never approaches the
+// serverless function timeout. Falls back to the heuristic when exceeded.
+const NEWS_LLM_BUDGET_MS = (() => {
+  const raw = Number(process.env.NEWS_LLM_BUDGET_MS ?? 18_000);
+  return Number.isFinite(raw) && raw > 0 ? raw : 18_000;
+})();
+
+// Translate/enrich at most this many RSS candidates — the corpus is trimmed to
+// NEWS_FEED_CORPUS_LIMIT anyway, so processing the whole RSS haul is wasted time.
+const NEWS_BUILD_CANDIDATE_LIMIT = 90;
+
+function newsCacheKey(input: { pairs?: string; lang?: string }): { cacheKey: string; pairsStr: string; lang: string } {
+  const pairsStr = input.pairs || "";
+  const lang = sanitizeNewsLang(input.lang);
+  const pairCurrencies = pairsToCurrencies(pairsStr);
+  const baseCacheKey = pairCurrencies.length > 0 ? pairCurrencies.sort().join(",") : "all";
+  return { cacheKey: `${baseCacheKey}:${lang}`, pairsStr, lang };
+}
+
+// Resolve to `fallback` if `promise` has not settled within `ms`. The underlying
+// work keeps running but its late result is ignored.
+function withBudget<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) { settled = true; resolve(fallback); }
+    }, ms);
+    promise.then(
+      (value) => { if (!settled) { settled = true; clearTimeout(timer); resolve(value); } },
+      () => { if (!settled) { settled = true; clearTimeout(timer); resolve(fallback); } },
+    );
+  });
+}
+
+// DB is imported lazily so loading this module never requires DATABASE_URL
+// (tests, RSS-only contexts). When unavailable the snapshot cache is skipped and
+// the feed is simply built inline.
+async function readNewsSnapshot(cacheKey: string): Promise<{ payload: NewsResponse; updatedAt: Date } | null> {
+  try {
+    const { db, newsSnapshotsTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const rows = await db
+      .select()
+      .from(newsSnapshotsTable)
+      .where(eq(newsSnapshotsTable.cacheKey, cacheKey))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    const updatedAt = row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt as unknown as string);
+    return { payload: row.payload as NewsResponse, updatedAt };
+  } catch (err) {
+    console.warn("[news] snapshot read skipped:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+async function writeNewsSnapshot(cacheKey: string, payload: NewsResponse): Promise<void> {
+  try {
+    const { db, newsSnapshotsTable } = await import("@workspace/db");
+    const now = new Date();
+    await db
+      .insert(newsSnapshotsTable)
+      .values({ cacheKey, payload, fetchedAt: now, updatedAt: now })
+      .onConflictDoUpdate({ target: newsSnapshotsTable.cacheKey, set: { payload, updatedAt: now } });
+  } catch (err) {
+    console.warn("[news] snapshot write skipped:", err instanceof Error ? err.message : err);
+  }
+}
+
+// ─── Feed build (heavy pipeline: RSS + translation + enrichment) ──────────────
+
+async function buildNewsData(input: { pairs?: string; lang?: string } = {}): Promise<NewsResponse> {
   const pairsStr   = input.pairs || "";
   const lang       = sanitizeNewsLang(input.lang);
   const pairCurrencies = pairsToCurrencies(pairsStr);
-  const baseCacheKey   = pairCurrencies.length > 0 ? pairCurrencies.sort().join(",") : "all";
-  const cacheKey       = `${baseCacheKey}:${lang}`;
-
-  // Check request-scoped cache.
-  if (!noCache) {
-    const cached = NEWS_CACHE.get(cacheKey);
-    if (cached) return cached;
-  }
 
   let articles: NewsArticle[] = [];
   let source: "ai" | "rss" = "rss";
@@ -676,12 +762,14 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
   // 1. Fetch RSS (sempre attivo, gratuito)
   try {
     const rssArticles = await fetchRSSNews(pairCurrencies.length > 0 ? pairCurrencies : ["USD", "XAU"], pairsStr);
-    const withImages = normalizeNewsSources(rssArticles).map((a, i) => ({
-      ...a,
-      originalTitle: a.originalTitle ?? a.title,
-      originalSummary: a.originalSummary ?? a.summary,
-      imageUrl: a.imageUrl ?? buildNewsImageUrl(undefined, a.sentiment, i),
-    }));
+    const withImages = normalizeNewsSources(rssArticles)
+      .slice(0, NEWS_BUILD_CANDIDATE_LIMIT)
+      .map((a, i) => ({
+        ...a,
+        originalTitle: a.originalTitle ?? a.title,
+        originalSummary: a.originalSummary ?? a.summary,
+        imageUrl: a.imageUrl ?? buildNewsImageUrl(undefined, a.sentiment, i),
+      }));
     const translated = lang !== "en"
       ? await Promise.all(
           withImages.map(async (a) => {
@@ -695,8 +783,14 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
     const enriched = enrichHeuristically(translated, pairCurrencies, pairsStr, lang);
 
     // 3. LLM enrichment — REAL sentiment via the configured provider (OpenRouter
-    //    by default). Falls back to the heuristic when the LLM is unavailable.
-    const llmResult = await enrichWithLLM(enriched, pairCurrencies, pairsStr, lang);
+    //    by default). Bounded by NEWS_LLM_BUDGET_MS and falls back to the
+    //    heuristic when the LLM is slow/unavailable, so the build stays well
+    //    under the serverless timeout.
+    const llmResult = await withBudget(
+      enrichWithLLM(enriched, pairCurrencies, pairsStr, lang),
+      NEWS_LLM_BUDGET_MS,
+      null,
+    );
     if (llmResult && llmResult.articles.length > 0) {
       articles = llmResult.articles;
       agentSummary = llmResult.agentSummary || heuristicAgentSummary(llmResult.articles, formattedPairs, lang);
@@ -764,8 +858,46 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
     freshnessWindowHours,
   };
 
-  NEWS_CACHE.set(cacheKey, result);
   return result;
+}
+
+// ─── Public accessor (stale-while-revalidate over the snapshot cache) ─────────
+
+export async function getNewsData(input: { noCache?: boolean; pairs?: string; lang?: string } = {}): Promise<NewsResponse> {
+  const noCache = input.noCache === true;
+  const { cacheKey, pairsStr, lang } = newsCacheKey(input);
+
+  // L1: in-process cache (only helps a warm instance).
+  if (!noCache) {
+    const cached = NEWS_CACHE.get(cacheKey);
+    if (cached) return cached;
+  }
+
+  // L2: shared Postgres snapshot. Serve it directly while still fresh — this is
+  // the fast path that keeps /api/news well under the serverless timeout and
+  // gives every invocation the same stable corpus (so pagination cannot
+  // duplicate or drop articles between pages).
+  const snapshot = await readNewsSnapshot(cacheKey);
+  if (snapshot && !noCache && Date.now() - snapshot.updatedAt.getTime() <= NEWS_SNAPSHOT_FRESH_MS) {
+    NEWS_CACHE.set(cacheKey, snapshot.payload);
+    return snapshot.payload;
+  }
+
+  // Stale, missing, or forced: rebuild (internally time-bounded) and persist.
+  try {
+    const fresh = await buildNewsData({ pairs: pairsStr, lang });
+    NEWS_CACHE.set(cacheKey, fresh);
+    void writeNewsSnapshot(cacheKey, fresh);
+    return fresh;
+  } catch (err) {
+    console.warn("[news] build failed:", err instanceof Error ? err.message : err);
+    // Better stale than a 504: fall back to the last stored snapshot if present.
+    if (snapshot) {
+      NEWS_CACHE.set(cacheKey, snapshot.payload);
+      return snapshot.payload;
+    }
+    throw err;
+  }
 }
 
 router.get("/news", async (req, res) => {

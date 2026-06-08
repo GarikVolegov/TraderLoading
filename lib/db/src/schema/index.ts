@@ -11,3 +11,4 @@ export * from "./milestones";
 export * from "./brain";
 export * from "./account";
 export * from "./routines";
+export * from "./news";
