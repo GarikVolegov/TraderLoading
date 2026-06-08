@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import {
   createFxBlueBrokerConnector,
+  parseFxBlueOverviewScript,
   parseFxBlueProfileRef,
+  parseFxBlueRss,
   type FxBlueFetchPayload,
 } from "./fxBlueConnector.js";
 import type { BrokerAccountProfile } from "./types.js";
@@ -37,6 +39,30 @@ assert.equal(parseFxBlueProfileRef("trader-one"), "trader-one");
 assert.equal(parseFxBlueProfileRef(" https://www.fxblue.com/users/trader-one/stats "), "trader-one");
 assert.equal(parseFxBlueProfileRef("https://www.fxblue.com/users/trader-one,other/publication"), "trader-one");
 assert.throws(() => parseFxBlueProfileRef("https://example.com/users/trader-one"), /Inserisci username o URL FX Blue valido/);
+
+const overview = parseFxBlueOverviewScript(`if (!document.MTIntelligenceAccounts) document.MTIntelligenceAccounts = new Array();
+document.MTIntelligenceAccounts.push({
+"userid": "example","balance": 5232.54,"equity": 5232.54,"closedProfit": 232.54,"floatingProfit": 0,"freeMargin": 5232.54,"dailyBankedGrowth": 0.02,"totalOpenPositions": 0,"openAndPendingOrders": []});`, "example");
+assert.equal(overview.metrics?.balance, 5232.54);
+assert.equal(overview.metrics?.equity, 5232.54);
+assert.equal(overview.metrics?.freeMargin, 5232.54);
+assert.equal(overview.metrics?.dailyProfit, 0);
+
+const rss = parseFxBlueRss(`<?xml version="1.0" encoding="iso-8859-1"?><rss version="2.0" xmlns:position="http://www.fxblue.com/positionrss" xmlns:account="http://www.fxblue.com/accountrss"><channel>
+<item><title>Account summary</title><description><![CDATA[<table><tr><td>Balance:</td><td>AUD 2,264.22</td></tr></table>]]></description><account:balance>2264.22</account:balance><account:equity>2231.92</account:equity><account:floatingProfit>-32.3</account:floatingProfit><account:closedProfit>-2735.78</account:closedProfit><account:freeMargin>1416.06</account:freeMargin></item>
+<item><title>Ticket #25038968: Buy 0.03 AUDCHF @ 0.74708 (open)</title><position:ticket>25038968</position:ticket><position:type>Open position</position:type><position:action>Buy</position:action><position:lots>0.03</position:lots><position:symbol>AUDCHF</position:symbol><position:openPrice>0.74708</position:openPrice><position:closePrice>0.74114</position:closePrice><position:openTime>Tue 16 Aug 2016 03:02:01</position:openTime><position:closeTime>Thu 1 Jan 1970 00:00:00</position:closeTime><position:profit>-24.04</position:profit><position:totalProfit>-24.04</position:totalProfit></item>
+<item><title>Ticket #25038969: Sell 0.02 EURUSD @ 1.12000 (closed)</title><position:ticket>25038969</position:ticket><position:type>Closed position</position:type><position:action>Sell</position:action><position:lots>0.02</position:lots><position:symbol>EURUSD</position:symbol><position:openPrice>1.12</position:openPrice><position:closePrice>1.11</position:closePrice><position:openTime>Tue 16 Aug 2016 03:02:01</position:openTime><position:closeTime>Tue 16 Aug 2016 04:02:01</position:closeTime><position:profit>20</position:profit><position:totalProfit>20</position:totalProfit></item>
+</channel></rss>`, "signalstart");
+assert.equal(rss.account?.id, "signalstart");
+assert.equal(rss.metrics?.currency, "AUD");
+assert.equal(rss.metrics?.balance, 2264.22);
+assert.equal(rss.positions?.length, 1);
+assert.equal(rss.positions?.[0]?.symbol, "AUDCHF");
+assert.equal(rss.positions?.[0]?.side, "buy");
+assert.equal(rss.positions?.[0]?.markPrice, 0.74114);
+assert.equal(rss.deals?.length, 1);
+assert.equal(rss.deals?.[0]?.symbol, "EURUSD");
+assert.equal(rss.deals?.[0]?.side, "sell");
 
 const payload: FxBlueFetchPayload = {
   account: {

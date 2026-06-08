@@ -65,8 +65,30 @@ export function parseFxBlueProfileRef(value: string): string {
   throw new Error("Inserisci username o URL FX Blue valido.");
 }
 
+function readTag(xml: string, tagName: string): string {
+  const escaped = tagName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = xml.match(new RegExp(`<${escaped}[^>]*>([\\s\\S]*?)<\\/${escaped}>`, "i"));
+  return decodeXml(match?.[1] ?? "");
+}
+
+function decodeXml(value: string): string {
+  return value
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+}
+
 function num(value: unknown, fallback = 0): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/,/g, "").trim());
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
 }
 
 function str(value: unknown, fallback = ""): string {
@@ -75,6 +97,139 @@ function str(value: unknown, fallback = ""): string {
 
 function side(value: unknown): "buy" | "sell" {
   return String(value).toLowerCase() === "sell" ? "sell" : "buy";
+}
+
+function currencyFromSummary(xml: string): string {
+  const description = decodeXml(readTag(xml, "description"));
+  const match = description.match(/Balance:\s*<\/td>\s*<td>\s*([^0-9+\-.<]+)/i);
+  const raw = (match?.[1] ?? "").replace(/\s/g, "");
+  if (/^[A-Z]{3}$/.test(raw)) return raw;
+  if (raw === "€") return "EUR";
+  if (raw === "£") return "GBP";
+  if (raw === "$" || raw === "US$") return "USD";
+  return "USD";
+}
+
+function isEpochPlaceholder(value: string): boolean {
+  return !value || /1 Jan 1970/i.test(value);
+}
+
+function mergeFxBluePayloads(left: FxBlueFetchPayload, right: FxBlueFetchPayload): FxBlueFetchPayload {
+  return {
+    account: { ...(left.account ?? {}), ...(right.account ?? {}) },
+    metrics: { ...(left.metrics ?? {}), ...(right.metrics ?? {}) },
+    positions: right.positions ?? left.positions,
+    orders: right.orders ?? left.orders,
+    deals: right.deals ?? left.deals,
+  };
+}
+
+export function parseFxBlueOverviewScript(script: string, username: string): FxBlueFetchPayload {
+  const match = script.match(/MTIntelligenceAccounts\.push\(\s*(\{[\s\S]*?\})\s*\)\s*;?/i);
+  if (!match?.[1]) return { status: "waiting" };
+  let data: Record<string, unknown>;
+  try {
+    data = JSON.parse(match[1]);
+  } catch {
+    return { status: "error", error: "Overview FX Blue non leggibile." };
+  }
+  return {
+    account: {
+      id: str(data.userid, username),
+      label: `FX Blue ${str(data.userid, username)}`,
+      brokerName: "FX Blue",
+    },
+    metrics: {
+      balance: num(data.balance),
+      equity: num(data.equity),
+      margin: 0,
+      freeMargin: num(data.freeMargin),
+      dailyProfit: num(data.floatingProfit),
+    },
+  };
+}
+
+export function parseFxBlueRss(xml: string, username: string): FxBlueFetchPayload {
+  const items = xml.match(/<item\b[\s\S]*?<\/item>/gi) ?? [];
+  const summary = items.find((item) => /Account summary/i.test(readTag(item, "title"))) ?? "";
+  const currency = summary ? currencyFromSummary(summary) : "USD";
+  const payload: FxBlueFetchPayload = {
+    account: {
+      id: username,
+      label: `FX Blue ${username}`,
+      brokerName: "FX Blue",
+      currency,
+      environment: "live",
+    },
+    metrics: {
+      balance: num(readTag(summary, "account:balance")),
+      equity: num(readTag(summary, "account:equity")),
+      margin: 0,
+      freeMargin: num(readTag(summary, "account:freeMargin")),
+      currency,
+      dailyProfit: num(readTag(summary, "account:floatingProfit")),
+    },
+    positions: [],
+    orders: [],
+    deals: [],
+  };
+
+  for (const item of items) {
+    const ticket = readTag(item, "position:ticket");
+    if (!ticket) continue;
+    const type = readTag(item, "position:type").toLowerCase();
+    const action = readTag(item, "position:action");
+    const symbol = readTag(item, "position:symbol");
+    const lots = num(readTag(item, "position:lots"));
+    const openPrice = num(readTag(item, "position:openPrice"));
+    const closePrice = num(readTag(item, "position:closePrice"));
+    const openTime = readTag(item, "position:openTime");
+    const closeTime = readTag(item, "position:closeTime");
+    const profit = num(readTag(item, "position:totalProfit"), num(readTag(item, "position:profit")));
+
+    if (type.includes("open") || isEpochPlaceholder(closeTime)) {
+      payload.positions?.push({
+        id: ticket,
+        brokerPositionId: ticket,
+        symbol,
+        side: side(action),
+        volume: lots,
+        entryPrice: openPrice,
+        markPrice: closePrice,
+        profit,
+        openedAt: openTime,
+      });
+      continue;
+    }
+
+    if (type.includes("pending")) {
+      payload.orders?.push({
+        id: ticket,
+        brokerOrderId: ticket,
+        symbol: symbol.toUpperCase(),
+        side: side(action),
+        type: "limit",
+        volume: lots,
+        status: "pending",
+        createdAt: openTime || new Date(0).toISOString(),
+      });
+      continue;
+    }
+
+    payload.deals?.push({
+      id: ticket,
+      symbol,
+      side: side(action),
+      volume: lots,
+      entryPrice: openPrice,
+      exitPrice: closePrice,
+      profit,
+      openedAt: openTime,
+      closedAt: closeTime,
+    });
+  }
+
+  return payload;
 }
 
 function accountFrom(profile: BrokerAccountProfile, payload: FxBlueFetchPayload): BrokerAccount {
@@ -176,12 +331,38 @@ function snapshotFrom(profile: BrokerAccountProfile, payload: FxBlueFetchPayload
   };
 }
 
-async function defaultFetchProfile(username: string): Promise<FxBlueFetchPayload> {
-  const url = `https://www.fxblue.com/users/${encodeURIComponent(username)}`;
+type FxBlueFetchResult =
+  | { kind: "ok"; text: string }
+  | { kind: "waiting" }
+  | { kind: "private" }
+  | { kind: "error"; error: string };
+
+async function fetchFxBlueText(url: string): Promise<FxBlueFetchResult> {
   const response = await fetch(url, { headers: { accept: "text/html,application/json" } });
-  if (response.status === 404) return { status: "waiting" };
-  if (response.status === 401 || response.status === 403) return { status: "private" };
-  if (!response.ok) return { status: "error", error: `FX Blue HTTP ${response.status}` };
+  if (response.status === 404) return { kind: "waiting" };
+  if (response.status === 401 || response.status === 403) return { kind: "private" };
+  if (!response.ok) return { kind: "error", error: `FX Blue HTTP ${response.status}` };
+  return { kind: "ok", text: await response.text() };
+}
+
+async function defaultFetchProfile(username: string): Promise<FxBlueFetchPayload> {
+  const baseUrl = `https://www.fxblue.com/users/${encodeURIComponent(username)}`;
+  const [overviewResult, rssResult] = await Promise.allSettled([
+    fetchFxBlueText(`${baseUrl}/overviewscript`),
+    fetchFxBlueText(`${baseUrl}/rss`),
+  ]);
+  const results = [overviewResult, rssResult].map((result): FxBlueFetchResult =>
+    result.status === "fulfilled" ? result.value : { kind: "error", error: result.reason instanceof Error ? result.reason.message : "FX Blue non raggiungibile." },
+  );
+  const payloads: FxBlueFetchPayload[] = [];
+  const [overview, rss] = results;
+  if (overview.kind === "ok") payloads.push(parseFxBlueOverviewScript(overview.text, username));
+  if (rss.kind === "ok") payloads.push(parseFxBlueRss(rss.text, username));
+  const readable = payloads.filter((payload) => payload.status !== "waiting" && payload.status !== "error" && payload.status !== "private");
+  if (readable.length > 0) return readable.reduce(mergeFxBluePayloads);
+  if (results.some((result) => result.kind === "private")) return { status: "private" };
+  const error = results.find((result): result is Extract<FxBlueFetchResult, { kind: "error" }> => result.kind === "error");
+  if (error) return { status: "error", error: error.error };
   return { status: "waiting" };
 }
 
