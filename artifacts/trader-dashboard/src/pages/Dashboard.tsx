@@ -49,6 +49,7 @@ interface WidgetDef {
   icon: React.ElementType;
   /** Rotta della pagina dedicata aperta al click. Assente = widget non cliccabile. */
   route?: string;
+  bodyHandlesOwnClicks?: boolean;
   component: React.ComponentType;
 }
 
@@ -60,7 +61,7 @@ const WIDGET_DEFS: WidgetDef[] = [
   { id: "missions",   label: "Missioni Giornaliere", icon: Target,         route: "/missions",               component: MissionsWidget },
   { id: "checklist",  label: "Checklist Pre-Trade",  icon: ClipboardCheck, route: "/checklist",              component: ChecklistDashboardWidget },
   { id: "journal",    label: "Diario Trading",       icon: BookOpen,       route: "/journal",                component: JournalWidget },
-  { id: "calendar",   label: "Calendario Avanzato",  icon: CalendarDays,   route: "/calendar",               component: CalendarWidget },
+  { id: "calendar",   label: "Calendario Avanzato",  icon: CalendarDays,   route: "/calendar",               component: CalendarWidget, bodyHandlesOwnClicks: true },
   { id: "sentiment",  label: "Sentiment di Mercato", icon: BarChart2,      route: "/tools?tab=sentiment",    component: SentimentWidget },
   { id: "volatility", label: "Volatilita & ADR",     icon: TrendingUp,     route: "/tools?tab=volatility",   component: VolatilityWidget },
   { id: "cot",        label: "COT Report",           icon: BookMarked,     route: "/tools?tab=cot",          component: CotWidget },
@@ -142,9 +143,10 @@ function SortableWidget({
 
   const Icon = def.icon;
   const isOpenable = !isEditing && !isHidden && !isDragActive && !!def.route;
+  const isBodyOpenable = isOpenable && !def.bodyHandlesOwnClicks;
 
   const handleOpen = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!isOpenable) return;
+    if (!isBodyOpenable) return;
     const target = event.target as HTMLElement;
     if (target.closest("button,a,input,select,textarea,label")) return;
     onOpen(def.id);
@@ -176,14 +178,14 @@ function SortableWidget({
             isEditing && !isDragging
               ? "shadow-[0_0_0_2px_hsl(var(--primary)/0.25),0_4px_20px_rgba(0,0,0,0.3)]"
               : ""
-          } ${isOpenable ? "cursor-pointer hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.3),0_18px_42px_rgba(0,0,0,0.25)]" : ""}`}
+          } ${isBodyOpenable ? "cursor-pointer hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.3),0_18px_42px_rgba(0,0,0,0.25)]" : ""}`}
           style={{ borderRadius: "0.625rem" }}
-          role={isOpenable ? "button" : undefined}
-          tabIndex={isOpenable ? 0 : undefined}
-          aria-label={isOpenable ? `Apri ${def.label}` : undefined}
+          role={isBodyOpenable ? "button" : undefined}
+          tabIndex={isBodyOpenable ? 0 : undefined}
+          aria-label={isBodyOpenable ? `Apri ${def.label}` : undefined}
           onClick={handleOpen}
           onKeyDown={(event) => {
-            if (!isOpenable) return;
+            if (!isBodyOpenable) return;
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
               onOpen(def.id);
@@ -194,12 +196,18 @@ function SortableWidget({
 
           {/* Affordance "apri pagina" — appare solo all'hover, non occupa spazio */}
           {isOpenable && (
-            <div
+            <button
+              type="button"
               style={{ height: "2.25rem", width: "2.25rem" }}
-              className="pointer-events-none absolute bottom-2.5 right-2.5 z-[5] flex items-center justify-center rounded-full border border-primary/30 bg-card/85 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100"
+              className="absolute bottom-2.5 right-2.5 z-[5] flex items-center justify-center rounded-full border border-primary/30 bg-card/85 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-primary/10 group-hover:opacity-100"
+              aria-label={`Apri pagina ${def.label}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen(def.id);
+              }}
             >
               <ArrowUpRight className="h-3.5 w-3.5" />
-            </div>
+            </button>
           )}
         </motion.div>
       )}
