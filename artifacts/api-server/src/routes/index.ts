@@ -26,6 +26,7 @@ import brainRouter from "./brain.js";
 import accountBridgeRouter from "./account-bridge.js";
 import brokersRouter from "./brokers.js";
 import routinesRouter from "./routines.js";
+import libraryRouter from "./library.js";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(brainRouter);
 router.use(accountBridgeRouter);
 router.use(brokersRouter);
 router.use(routinesRouter);
+router.use(libraryRouter);
 
 export default router;
