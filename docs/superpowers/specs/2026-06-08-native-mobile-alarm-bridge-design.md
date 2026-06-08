@@ -2,7 +2,7 @@
 
 ## Goal
 
-Upgrade scheduled calls from browser-only reminders into mobile-aware alarms. Android should be able to wake the screen and show a custom full-screen alarm/call surface. iOS 26+ should behave like a real alarm by using AlarmKit, with a dedicated TraderLOADING alarm presentation on system surfaces and the existing custom call overlay when the app opens.
+Upgrade scheduled calls from browser-only reminders into mobile-aware alarms. Android should be able to wake the screen and show a custom full-screen alarm/call surface. iOS 26+ should behave like a real alarm by using AlarmKit, with a dedicated TraderLOADING alarm presentation on system surfaces. When the app is closed, iOS should show only the native alarm experience, not the React application.
 
 These reminders are not real VoIP calls. The implementation must not use iOS PushKit or CallKit to fake incoming phone calls.
 
@@ -28,7 +28,7 @@ References:
 
 Add a native mobile bridge around the existing React scheduled-call feature.
 
-Use the current web/PWA implementation as the fallback and configuration layer. The React app remains responsible for the editor, preview, stored configuration, and in-app overlay. Native mobile code becomes responsible for device-level delivery, wake behavior, and platform-specific permissions.
+Use the current web/PWA implementation as the fallback and configuration layer. The React app remains responsible for the editor, preview, stored configuration, and optional in-app detail screen. Native mobile code becomes responsible for device-level delivery, wake behavior, and platform-specific alarm presentation.
 
 This keeps one product model while letting each platform use the strongest compliant behavior it actually supports.
 
@@ -43,7 +43,7 @@ Add a delivery status area that explains device capability:
 - iOS fallback alerts: Time Sensitive available, Critical Alerts available, or permission disabled.
 - Web push fallback: available or blocked.
 
-The copy should be direct and platform-specific. On iOS 26+ it should say alarms use the native iOS alarm system with TraderLOADING presentation. On older iOS versions it must say that only alert-style fallback delivery is available and the full custom call surface appears after opening the alert.
+The copy should be direct and platform-specific. On iOS 26+ it should say alarms use the native iOS alarm system with TraderLOADING presentation. On older iOS versions it must say that only alert-style fallback delivery is available.
 
 Add a device test action:
 
@@ -113,8 +113,10 @@ The AlarmKit implementation should:
 - map configured weekdays and local time to AlarmKit schedules;
 - configure alarm presentation metadata with TraderLOADING title, subtitle, accent, icon, and button labels;
 - support stop and snooze through AlarmKit actions;
-- expose a native open action that launches the app into `ScheduledCallOverlay`;
+- optionally expose a native open/details action that launches the app only when the user explicitly asks for more detail;
 - keep alarm identifiers synced with saved scheduled-call ids so edits, disables, and deletes update the native schedule.
+
+When the iOS app is closed, the alarm experience should remain entirely native. It should not auto-open the app, keep a hidden web view alive, or depend on the React overlay being mounted. The reminder should feel like a dedicated call-shaped alarm, but it is still an AlarmKit alarm controlled by iOS.
 
 The dedicated iOS graphics should use native AlarmKit/SwiftUI surfaces, not a React view embedded directly in the Lock Screen. The goal is a clear TraderLOADING alarm identity within Apple's allowed presentation system:
 
@@ -130,7 +132,7 @@ Older iOS fallback should use `UNUserNotificationCenter`:
 - use Critical Alert sound only when the entitlement and user permission are present;
 - include scheduled-call payload data for app routing;
 - optionally use a Notification Content Extension for richer branded notification detail when the user expands the alert;
-- open the React overlay immediately when the user taps the alert;
+- open app detail only when the user taps the alert;
 - support snooze by scheduling a follow-up local notification from native code.
 
 iOS must not:
@@ -156,14 +158,14 @@ Mobile app:
 2. Reports capabilities to the frontend.
 3. Mirrors saved scheduled calls into native schedules.
 4. Receives remote alarm payloads when server-side delivery is needed.
-5. Opens the appropriate native or React surface.
+5. Keeps closed-app alarm presentation native unless the user explicitly opens the app.
 
 React app:
 
 1. Keeps the scheduled-call editor and preview.
 2. Shows capability and permission state.
 3. Calls the mobile bridge after create, update, disable, delete, snooze, and test actions.
-4. Routes opened alarm payloads to `ScheduledCallOverlay`.
+4. Routes explicitly opened alarm detail payloads to the app detail screen or `ScheduledCallOverlay`.
 5. Keeps browser push support for web users.
 
 ## Backend Changes
@@ -216,7 +218,7 @@ Add focused tests for:
 - iOS AlarmKit bridge maps `ScheduledCallConfig` to one-time and repeating alarm schedules;
 - iOS fallback payload uses Time Sensitive by default and Critical only when available;
 - React settings copy accurately distinguishes iOS AlarmKit from older iOS fallback behavior;
-- opened native payload routes to `ScheduledCallOverlay`.
+- explicitly opened native payload routes to the app detail surface.
 
 Manual QA:
 
@@ -224,9 +226,10 @@ Manual QA:
 - Android full-screen permission disabled falls back and shows settings CTA.
 - iOS 26+ locked device receives an AlarmKit alarm with TraderLOADING presentation.
 - iOS 26+ snooze and stop work from the alarm surface.
-- iOS 26+ open action launches the custom React overlay.
+- iOS 26+ closed-app alarm does not auto-open or display the React app.
+- iOS 26+ optional open/details action launches the app detail surface only after user action.
 - Older iOS locked device receives Time Sensitive alert.
-- Older iOS opens directly into the custom overlay after tapping the alert.
+- Older iOS opens app detail only after tapping the alert.
 - iOS Critical Alert path is tested only on a build/profile with approved entitlement.
 - Web browser push still opens the existing overlay.
 
@@ -236,6 +239,8 @@ This project will not make iOS show arbitrary React UI on the Lock Screen. iOS l
 
 This project will not use CallKit or PushKit for fake calls.
 
+This project will not keep the iOS app open in the background or auto-open it when an alarm fires.
+
 This project will not guarantee delivery when the operating system, user permissions, Focus settings, notification settings, or push providers block alerts.
 
 ## Approval Summary
@@ -244,4 +249,4 @@ Approved direction: reminders/sveglie, not VoIP calls.
 
 Android target behavior: full-screen alarm with wake-screen behavior.
 
-iOS target behavior: AlarmKit is the primary path on iOS 26+ so reminders behave like real alarms with dedicated native TraderLOADING presentation. Time Sensitive and optional Critical Alerts remain fallback paths for older iOS versions or unavailable AlarmKit permission.
+iOS target behavior: AlarmKit is the primary path on iOS 26+ so reminders behave like real alarms with dedicated native TraderLOADING presentation. When the app is closed, the user sees only the native alarm experience. Time Sensitive and optional Critical Alerts remain fallback paths for older iOS versions or unavailable AlarmKit permission.
