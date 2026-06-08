@@ -71,6 +71,11 @@ interface NewsResponse {
 // paginated endpoint and live websocket snapshot draw from.
 const NEWS_FEED_CORPUS_LIMIT = 80;
 
+// Drop articles older than this so the feed stays "as recent as possible".
+// Undated and clearly-stale items are excluded (with a floor so the feed is
+// never emptied on a quiet news day).
+const NEWS_MAX_AGE_HOURS = 96;
+
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
 const NEWS_CACHE = createNewsCache<NewsResponse>({ ttlMs: newsCacheTtlMs() });
@@ -211,8 +216,10 @@ const PAIR_KEYWORDS: Record<string, string[]> = {
 function buildKeywordsRegex(pairCurrencies: string[]): RegExp {
   const baseKeywords = ["inflation", "gdp", "cpi", "rate\\s*(cut|hike|decision)", "central\\s*bank", "monetary\\s*policy", "yield"];
   const pairKw: string[] = [];
-  for (const c of pairCurrencies) {
-    const kws = PAIR_KEYWORDS[c.toUpperCase()];
+  // Always include USD (+ XAU) keywords so dollar/Fed macro passes the filter
+  // regardless of the user's selected pairs.
+  for (const c of [...new Set([...pairCurrencies.map((cur) => cur.toUpperCase()), "USD", "XAU"])]) {
+    const kws = PAIR_KEYWORDS[c];
     if (kws) pairKw.push(...kws);
   }
   const allKw = [...new Set([...baseKeywords, ...pairKw])];
@@ -249,6 +256,12 @@ function googleNewsUrl(query: string): string {
 function buildGoogleNewsQueries(pairCurrencies: string[], pairsStr: string): string[] {
   const normalizedPairs = pairsStr.split(",").map((pair) => pair.trim().toUpperCase()).filter(Boolean);
   const queries = new Set<string>();
+
+  // Baseline: always fetch fresh USD/Fed macro (relevant to every FX/gold trader),
+  // so dollar news is present regardless of the user's selected pairs.
+  queries.add("US dollar DXY Federal Reserve when:1d");
+  queries.add("Federal Reserve interest rate decision when:2d");
+  queries.add("US inflation CPI jobs payrolls when:2d");
 
   for (const pair of normalizedPairs) {
     if (pair === "XAUUSD" || pair === "XAU/USD") {
@@ -613,6 +626,18 @@ Return exactly ${batch.length} objects in articles[], same order as input.`,
   }
 }
 
+// ─── USD / dollar macro detection (always surfaced in the feed) ───────────────
+// Matches English + Italian stems so it works on both original and translated
+// text. "dollar" also matches the Italian "dollaro".
+const USD_MACRO_RE =
+  /\bfed\b|\bfomc\b|powell|federal\s+reserve|non[-\s]?farm|\bnfp\b|payroll|\bcpi\b|\bppi\b|inflation|inflazione|treasur|\byields?\b|rendiment|\bdxy\b|dollar|greenback|rate\s+(cut|hike|decision)|interest\s+rate|tassi/i;
+
+function isUsdMacroArticle(article: NewsArticle): boolean {
+  return USD_MACRO_RE.test(
+    `${article.title} ${article.summary} ${article.originalTitle ?? ""} ${article.originalSummary ?? ""}`,
+  );
+}
+
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 export async function getNewsData(input: { noCache?: boolean; pairs?: string; lang?: string } = {}): Promise<NewsResponse> {
@@ -668,13 +693,25 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
       agentSummary = heuristicAgentSummary(enriched, formattedPairs, lang);
     }
 
-    // Dedupe + quality-score the relevant set (keeps a large corpus for the
+    // Relevant set for the user's selected pairs (or a generic fallback when
+    // no pairs are selected).
+    const relevant = enrichAndFilterNews(articles, { pairs: pairsStr, lang });
+    // USD/dollar macro (Fed, FOMC, CPI, NFP, Treasury yields, DXY…) is relevant
+    // to virtually every FX/gold trader, so always surface it even when the
+    // selected pairs don't include USD. rankNewsForDisplay dedupes the overlap.
+    const usdMacro = articles.filter(isUsdMacroArticle);
+    // Dedupe + quality-score the combined set (keeps a large corpus for the
     // paginated feed), then order strictly newest-first for chronological scroll.
     const deduped = rankNewsForDisplay(
-      applyNewsFreshness(enrichAndFilterNews(articles, { pairs: pairsStr, lang }), { freshnessWindowHours }),
+      applyNewsFreshness([...relevant, ...usdMacro], { freshnessWindowHours }),
       { limit: NEWS_FEED_CORPUS_LIMIT, maxPerSource: 6 },
     );
-    articles = sortNewsChronologically(deduped);
+    const sorted = sortNewsChronologically(deduped);
+    // Keep the feed fresh: drop stale/undated items, but never empty the feed.
+    const maxAgeMs = NEWS_MAX_AGE_HOURS * 60 * 60 * 1000;
+    const nowMs = Date.now();
+    const recent = sorted.filter((a) => a.publishedAt && nowMs - new Date(a.publishedAt).getTime() <= maxAgeMs);
+    articles = recent.length > 0 ? recent : sorted.slice(0, 12);
     source = "ai";  // enrichment (euristico o Groq) conta come AI
     nextRefreshAt = new Date(Date.now() + cacheTtl).toISOString();
   } catch {
