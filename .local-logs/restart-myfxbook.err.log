@@ -1,0 +1,59 @@
+$ pnpm --filter ./scripts exec tsx local/start.ts
+$ orval --config ./orval.config.ts
+$ drizzle-kit push --config ./drizzle.config.ts
+$ vite --config vite.config.ts --host 0.0.0.0 --strictPort
+[RUNTIME_ERROR]{"type":"runtime-error","timestamp":1780887024576,"name":"Error","message":"(unknown runtime error)","stack":"\n"}
+[2m05:16:00[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /@fs/C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/generated/api.schemas.ts (resolved id: C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/generated/api.schemas.ts) in C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/index.ts. Does the file exist?
+[2m05:16:00[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /@fs/C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/generated/api.ts (resolved id: C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/generated/api.ts) in C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/index.ts. Does the file exist?
+
+<--- Last few GCs --->
+
+[56064:000002073B16C000]  4645644 ms: Scavenge 104.4 (148.7) -> 79.3 (142.1) MB, pooled: 0 MB, 8.12 / 0.03 ms  (average mu = 0.999, current mu = 0.958) task; 
+[56064:000002073B16C000]  4645976 ms: Scavenge 107.5 (142.1) -> 85.2 (146.8) MB, pooled: 0 MB, 21.36 / 0.02 ms  (average mu = 0.999, current mu = 0.958) task; 
+
+FATAL ERROR: Zone Allocation failed - process out of memory
+----- Native stack trace -----
+
+
+<--- Last few GCs --->
+
+[56064:000002073B16C000]  4645644 ms: Scavenge 104.4 (148.7) -> 79.3 (142.1) MB, pooled: 0 MB, 8.12 / 0.03 ms  (average mu = 0.999, current mu = 0.958) task; 
+[56064:000002073B16C000]  4645976 ms: Scavenge 107.5 (142.1) -> 85.2 (146.8) MB, pooled: 0 MB, 21.36 / 0.02 ms  (average mu = 0.999, current mu = 0.958) task; 
+
+FATAL ERROR: Zone Allocation failed - process out of memory
+----- Native stack trace -----
+
+ 1: 00007FF79049403F 
+ 1: 00007FF79049403F 
+ 2: 00007FF7910DFAA7 
+ 3: 00007FF790A59986 
+ 4: 00007FF790883A52 
+ 5: 00007FF790883A24 
+ 2: 00007FF7910DFAA7 
+ 6: 00007FF790883A12 
+ 3: 00007FF790A59986 
+ 7: 00007FF790883A12 
+ 4: 00007FF791A7F9D0 
+ 8: 00007FF790883A12 
+ 9: 00007FF790883A12 
+10: 00007FF790883A24 
+11: 00007FF790883A24 
+ 5: 00007FF791898ED9 
+12: 00007FF790883A24 
+ 6: 00007FF791AD5E24 
+13: 00007FF790883913 
+ 7: 00007FF791AD2B51 
+14: 00007FF79088385D 
+ 8: 00007FF791AD2608 
+15: 00007FF79087DD74 
+ 9: 00007FF791063E06 
+16: 00007FF790885E2E 
+10: 00007FF79105CA28 
+17: 00007FF790885BA3 
+11: 00007FF79105DECA 
+12: 00007FF790ADFF01 
+18: 00007FF7908E90D4 
+13: 00007FF790ADE06F 
+19: 00007FF7908E8D07 
+14: 00000207738775FA 
+20: 00007FF7908E7A87 

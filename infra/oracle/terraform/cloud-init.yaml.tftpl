@@ -1,0 +1,22 @@
+#cloud-config
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - ufw
+
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker ubuntu
+  - ufw allow OpenSSH
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw --force enable
+  - mkdir -p /opt/traderloadings
+  - chown ubuntu:ubuntu /opt/traderloadings
+  - su - ubuntu -c 'git clone ${repo_url} /opt/traderloadings/app || true'
+  - su - ubuntu -c 'cd /opt/traderloadings/app && git pull --ff-only || true'
+  - su - ubuntu -c 'cd /opt/traderloadings/app && bash deploy/oracle/bootstrap-ubuntu.sh || true'
+
+final_message: "TraderLoadings Oracle VM base setup finished for ${app_domain}. Create /opt/traderloadings/app/.env.oracle, then run bash deploy/oracle/deploy.sh."

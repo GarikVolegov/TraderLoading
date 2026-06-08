@@ -24,6 +24,11 @@ const news: NewsResponse = {
       primaryAssets: ["XAU", "USD"],
       freshnessTier: "fresh",
       qualityScore: 0.91,
+      deepDive: {
+        whatHappened: "Spot gold rises while the dollar softens.",
+        whyItMatters: "I rendimenti e il dollaro influenzano direttamente XAU/USD.",
+        possibleImpact: "Potrebbe sostenere XAU/USD se il dollaro resta debole.",
+      },
     },
   ],
   fetchedAt: "2026-06-07T11:00:00.000Z",
@@ -42,6 +47,9 @@ assert.equal(macro.articles[0]?.originalTitle, "Gold jumps as Treasury yields re
 assert.equal(macro.articles[0]?.originalSummary, "Spot gold rises while the dollar softens.");
 assert.equal(macro.articles[0]?.timestamp, "2026-06-07T10:55:00.000Z");
 assert.equal(macro.articles[0]?.url, "https://example.com/gold");
+assert.equal(macro.articles[0]?.deepDive?.whatHappened, "Spot gold rises while the dollar softens.");
+assert.equal(macro.articles[0]?.deepDive?.whyItMatters, "I rendimenti e il dollaro influenzano direttamente XAU/USD.");
+assert.equal(macro.articles[0]?.deepDive?.possibleImpact, "Potrebbe sostenere XAU/USD se il dollaro resta debole.");
 assert.equal(macro.sentiment, "risk-on");
 assert.equal(macro.summary, "Gold is being driven by USD and yields.");
 

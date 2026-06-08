@@ -8,7 +8,9 @@ import { getUserNotificationLanguage, sendPushToUser } from "./push.js";
 import { getServerNotificationCopy } from "../services/notifications/notificationCopy.js";
 
 const POST_IMAGES_DIR = path.join(process.cwd(), "uploads", "post-images");
+const CHAT_FILES_DIR = path.join(process.cwd(), "uploads", "chat-files");
 if (!fs.existsSync(POST_IMAGES_DIR)) fs.mkdirSync(POST_IMAGES_DIR, { recursive: true });
+if (!fs.existsSync(CHAT_FILES_DIR)) fs.mkdirSync(CHAT_FILES_DIR, { recursive: true });
 
 const postImageStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, POST_IMAGES_DIR),
@@ -27,6 +29,39 @@ const postImageUpload = multer({
     const ext = path.extname(file.originalname).toLowerCase();
     if (ALLOWED_TYPES.has(file.mimetype) && ALLOWED_EXT.has(ext)) cb(null, true);
     else cb(new Error("Solo immagini JPG, PNG, WebP e GIF"));
+  },
+});
+
+const BLOCKED_CHAT_FILE_EXT = new Set([
+  ".exe",
+  ".bat",
+  ".cmd",
+  ".com",
+  ".scr",
+  ".ps1",
+  ".sh",
+  ".js",
+  ".mjs",
+  ".html",
+  ".htm",
+  ".svg",
+]);
+
+const chatFileStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, CHAT_FILES_DIR),
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `chat-${unique}${path.extname(file.originalname).toLowerCase()}`);
+  },
+});
+
+const chatFileUpload = multer({
+  storage: chatFileStorage,
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (BLOCKED_CHAT_FILE_EXT.has(ext)) cb(new Error("Tipo file non consentito"));
+    else cb(null, true);
   },
 });
 
@@ -195,6 +230,21 @@ router.post("/social/upload-image", (req: any, res: any, next: any) => {
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
     const imageUrl = `/api/uploads/post-images/${req.file.filename}`;
     res.json({ imageUrl });
+  });
+});
+
+router.post("/social/upload-file", (req: any, res: any) => {
+  const userId = req.user?.id;
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  chatFileUpload.single("file")(req, res, (err: any) => {
+    if (err) { res.status(400).json({ error: err.message ?? "Upload fallito" }); return; }
+    if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
+    res.json({
+      fileUrl: `/api/uploads/chat-files/${req.file.filename}`,
+      fileName: req.file.originalname,
+      mimeType: req.file.mimetype || "application/octet-stream",
+      size: req.file.size,
+    });
   });
 });
 

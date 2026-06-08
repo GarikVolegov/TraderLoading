@@ -995,6 +995,10 @@ export const SearchUsersResponseItem = zod.object({
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   userId: zod.string().nullish(),
+  relationshipStatus: zod
+    .enum(["none", "pending_sent", "pending_received", "accepted"])
+    .optional()
+    .describe("Friendship state between the current user and this result."),
 });
 export const SearchUsersResponse = zod.array(SearchUsersResponseItem);
 

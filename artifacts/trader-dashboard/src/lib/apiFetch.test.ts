@@ -60,6 +60,7 @@ try {
     assert.equal(createApiUrl("social/upload-image", "/"), "/api/social/upload-image");
     assert.equal(createApiUrl("/social/upload-image", "/trader/"), "/trader/api/social/upload-image");
     assert.equal(createApiUrl("milestones/3/files", ""), "/api/milestones/3/files");
+    assert.equal(createApiUrl("api/social/profile/user-1", "/"), "/api/social/profile/user-1");
   }
 
   {

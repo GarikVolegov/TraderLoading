@@ -25,9 +25,12 @@ assert.deepEqual(normalizeNotificationPrefs({ sessions: false, brain: false }), 
   brain: false,
 });
 
+assert.equal(DEFAULT_NOTIFICATION_PREFS.scheduledCalls, true);
 assert.equal(getNotificationCopy("it").prefs.brain.label, "Brain AI");
+assert.equal(getNotificationCopy("it").prefs.scheduledCalls.label, "Chiamate programmate");
 assert.equal(getNotificationCopy("it").titles.sessionOpen("Londra"), "Sessione Londra aperta");
 assert.equal(getNotificationCopy("en").prefs.dailyReminder.label, "Daily reminder");
+assert.equal(getNotificationCopy("en").prefs.scheduledCalls.label, "Scheduled calls");
 assert.equal(getNotificationCopy("en").titles.sessionOpen("London"), "London session is open");
 assert.equal(getNotificationCopy("es").titles.goalReminder, "Recordatorio de objetivo");
 

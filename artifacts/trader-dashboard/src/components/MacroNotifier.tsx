@@ -53,7 +53,7 @@ export function MacroNotifier() {
         if ("Notification" in window && Notification.permission === "granted") {
           new Notification(copy.titles.macroAlert, {
             body,
-            icon: "/favicon.ico",
+            icon: "/app-icon-192.png",
             tag: `macro-${eventKey(event)}`,
           });
         } else {

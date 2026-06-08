@@ -1,35 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AccountConnectionList, AccountConnectionProfile } from "./types";
-
-type ProfileDraft = Partial<
-  Pick<
-    AccountConnectionProfile,
-    | "id"
-    | "label"
-    | "adapter"
-    | "mode"
-    | "host"
-    | "port"
-    | "terminalPath"
-    | "importJournal"
-    | "orderEnabled"
-    | "orderAckTimeoutMs"
-  >
->;
-
-function apiUrl(path: string): string {
-  const configured = import.meta.env.VITE_API_BASE as string | undefined;
-  const base = configured && configured.trim() ? configured : window.location.origin;
-  return new URL(`/api${path}`, base).toString();
-}
-
-async function readJson<T>(response: Response): Promise<T> {
-  const data = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) {
-    throw new Error(data.error ?? "Account connection request failed");
-  }
-  return data;
-}
+import {
+  activateAccountConnection,
+  createAccountConnection,
+  deleteAccountConnection,
+  listAccountConnections,
+  testAccountConnection,
+  type AccountConnectionDraft,
+} from "./accountConnectionsApi";
 
 export function useAccountConnections() {
   const [connections, setConnections] = useState<AccountConnectionList>({ activeProfileId: null, profiles: [] });
@@ -39,9 +17,7 @@ export function useAccountConnections() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await readJson<AccountConnectionList>(
-        await fetch(apiUrl("/account/connections"), { credentials: "include" }),
-      );
+      const data = await listAccountConnections();
       setConnections(data);
       setMessage(null);
     } catch (error) {
@@ -56,15 +32,8 @@ export function useAccountConnections() {
   }, [refresh]);
 
   const saveProfile = useCallback(
-    async (draft: ProfileDraft): Promise<AccountConnectionProfile> => {
-      const data = await readJson<{ profile: AccountConnectionProfile }>(
-        await fetch(apiUrl("/account/connections"), {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(draft),
-        }),
-      );
+    async (draft: AccountConnectionDraft): Promise<AccountConnectionProfile> => {
+      const data = await createAccountConnection(draft);
       await refresh();
       setMessage("Profilo conto salvato");
       return data.profile;
@@ -74,12 +43,7 @@ export function useAccountConnections() {
 
   const activateProfile = useCallback(
     async (id: string) => {
-      await readJson(
-        await fetch(apiUrl(`/account/connections/${id}/activate`), {
-          method: "POST",
-          credentials: "include",
-        }),
-      );
+      await activateAccountConnection(id);
       await refresh();
       setMessage("Profilo conto attivato");
     },
@@ -88,11 +52,7 @@ export function useAccountConnections() {
 
   const deleteProfile = useCallback(
     async (id: string) => {
-      const response = await fetch(apiUrl(`/account/connections/${id}`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Impossibile eliminare il profilo");
+      await deleteAccountConnection(id);
       await refresh();
       setMessage("Profilo conto eliminato");
     },
@@ -100,12 +60,7 @@ export function useAccountConnections() {
   );
 
   const testProfile = useCallback(async (id: string): Promise<string> => {
-    const data = await readJson<{ reachable: boolean; message: string }>(
-      await fetch(apiUrl(`/account/connections/${id}/test`), {
-        method: "POST",
-        credentials: "include",
-      }),
-    );
+    const data = await testAccountConnection(id);
     const nextMessage = data.reachable ? data.message : `Non raggiungibile: ${data.message}`;
     setMessage(nextMessage);
     return nextMessage;

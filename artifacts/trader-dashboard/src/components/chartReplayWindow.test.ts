@@ -43,6 +43,14 @@ const m15Candles = Array.from({ length: 160 }, (_, index) => ({ time: (base + in
 const h1ToM15 = resolveReplayWindowForCloseAnchor(m15Candles, h1CloseAnchor, "M15", 20);
 assert.equal(m15Candles[h1ToM15.startIndex + h1ToM15.revealedCount - 1].time, h1OpenTime + 45 * 60);
 
+const progressedH1ToM15 = resolveReplayWindowForCloseAnchor(
+  m15Candles,
+  h1CloseAnchor,
+  "M15",
+  DEFAULT_REPLAY_VISIBLE_CANDLES + 40,
+);
+assert.equal(progressedH1ToM15.revealedCount, DEFAULT_REPLAY_VISIBLE_CANDLES);
+
 const m15CloseAnchor = h1OpenTime + 45 * 60 + getReplayIntervalSeconds("M15");
 const h1Candles = Array.from({ length: 60 }, (_, index) => ({ time: (base + index * 60 * 60) as Time }));
 const m15ToH1 = resolveReplayWindowForCloseAnchor(h1Candles, m15CloseAnchor, "H1", 20);

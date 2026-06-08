@@ -1,0 +1,18 @@
+tenancy_ocid     = "ocid1.tenancy.oc1..example"
+user_ocid        = "ocid1.user.oc1..example"
+fingerprint      = "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"
+private_key_path = "~/.oci/oci_api_key.pem"
+region           = "eu-frankfurt-1"
+
+compartment_ocid    = "ocid1.compartment.oc1..example"
+availability_domain = "example:EU-FRANKFURT-1-AD-1"
+image_ocid          = "ocid1.image.oc1.eu-frankfurt-1.example"
+ssh_public_key      = "ssh-ed25519 AAAA... your-key"
+
+repo_url   = "https://github.com/your-user/TraderLoadingsLOCALE.git"
+app_domain = "app.example.com"
+
+instance_shape = "VM.Standard.A1.Flex"
+ocpus          = 1
+memory_in_gbs  = 6
+ssh_cidr       = "0.0.0.0/0"

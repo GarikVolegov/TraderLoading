@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, friendshipsTable, profileTable } from "@workspace/db";
-import { eq, or, and, sql, ilike } from "drizzle-orm";
+import { eq, or, and, sql, ilike, inArray } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -11,6 +11,32 @@ function requireAuth(req: any, res: any): string | null {
     return null;
   }
   return userId;
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function isFriendActiveToday(lastActiveDate: string | null | undefined, referenceDate = todayKey()): boolean {
+  return lastActiveDate === referenceDate;
+}
+
+export type FriendRelationshipStatus = "none" | "pending_sent" | "pending_received" | "accepted";
+
+export function getFriendRelationshipStatus(
+  currentUserId: string,
+  targetUserId: string,
+  friendship: { userId: string; friendId: string; status: string } | null | undefined,
+): FriendRelationshipStatus {
+  if (!friendship) return "none";
+  if (friendship.status === "accepted") return "accepted";
+  if (friendship.status === "pending" && friendship.userId === currentUserId && friendship.friendId === targetUserId) {
+    return "pending_sent";
+  }
+  if (friendship.status === "pending" && friendship.userId === targetUserId && friendship.friendId === currentUserId) {
+    return "pending_received";
+  }
+  return "none";
 }
 
 router.get("/friends/search", async (req, res) => {
@@ -29,6 +55,7 @@ router.get("/friends/search", async (req, res) => {
         id: profileTable.id,
         name: profileTable.name,
         avatarUrl: profileTable.avatarUrl,
+        lastActiveDate: profileTable.lastActiveDate,
         userId: profileTable.userId,
       })
       .from(profileTable)
@@ -41,7 +68,34 @@ router.get("/friends/search", async (req, res) => {
       )
       .limit(20);
 
-    res.json(results);
+    const resultUserIds = results.map((result) => result.userId).filter((id): id is string => !!id);
+    const relationships = resultUserIds.length === 0
+      ? []
+      : await db
+          .select({
+            userId: friendshipsTable.userId,
+            friendId: friendshipsTable.friendId,
+            status: friendshipsTable.status,
+          })
+          .from(friendshipsTable)
+          .where(
+            or(
+              and(eq(friendshipsTable.userId, userId), inArray(friendshipsTable.friendId, resultUserIds)),
+              and(eq(friendshipsTable.friendId, userId), inArray(friendshipsTable.userId, resultUserIds))
+            )
+          );
+
+    res.json(results.map((result) => ({
+      ...result,
+      relationshipStatus: getFriendRelationshipStatus(
+        userId,
+        result.userId ?? "",
+        relationships.find((relationship) =>
+          (relationship.userId === userId && relationship.friendId === result.userId) ||
+          (relationship.friendId === userId && relationship.userId === result.userId)
+        ),
+      ),
+    })));
   } catch (err) {
     console.error("friends/search error:", err);
     res.status(500).json({ error: "Errore interno" });
@@ -203,6 +257,7 @@ router.get("/friends", async (req, res) => {
         id: profileTable.id,
         name: profileTable.name,
         avatarUrl: profileTable.avatarUrl,
+        lastActiveDate: profileTable.lastActiveDate,
         userId: profileTable.userId,
       })
       .from(profileTable)
@@ -216,7 +271,7 @@ router.get("/friends", async (req, res) => {
         friendUserId,
         name: profile?.name ?? "Unknown",
         avatarUrl: profile?.avatarUrl ?? null,
-        online: false,
+        online: isFriendActiveToday(profile?.lastActiveDate),
       };
     });
 

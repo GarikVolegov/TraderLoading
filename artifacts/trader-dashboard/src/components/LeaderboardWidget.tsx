@@ -5,24 +5,12 @@ import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useGetProfile } from "@workspace/api-client-react";
 import { UserProfileModal } from "@/components/UserProfileModal";
-
-interface LeaderboardEntry {
-  position: number;
-  userId?: string | null;
-  name: string;
-  avatarUrl: string | null;
-  level: number;
-  xp: number;
-}
+import { fetchLeaderboard, leaderboardQueryKey, type LeaderboardEntry } from "@/lib/leaderboardApi";
 
 function useLeaderboard() {
   return useQuery<LeaderboardEntry[]>({
-    queryKey: ["/api/leaderboard"],
-    queryFn: async () => {
-      const res = await fetch("api/leaderboard", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch leaderboard");
-      return res.json();
-    },
+    queryKey: leaderboardQueryKey,
+    queryFn: () => fetchLeaderboard(),
   });
 }
 

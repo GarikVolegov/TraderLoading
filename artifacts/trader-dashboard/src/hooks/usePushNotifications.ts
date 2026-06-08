@@ -4,8 +4,14 @@ import {
   normalizeNotificationPrefs,
   type NotificationPrefs,
 } from "@/lib/notifications";
-
-const API_BASE = "/api";
+import {
+  fetchPushPreferences,
+  fetchVapidPublicKey,
+  registerPushSubscription,
+  unregisterPushSubscription,
+  updatePushPreferences,
+} from "@/lib/pushNotificationsApi";
+import { reportClientError } from "@/lib/clientErrorReporter";
 
 export type { NotificationPrefs };
 
@@ -20,8 +26,12 @@ export function usePushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
   );
-  const [subscription, setSubscription] = useState<PushSubscription | null>(null);
-  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
+  const [subscription, setSubscription] = useState<PushSubscription | null>(
+    null,
+  );
+  const [prefs, setPrefs] = useState<NotificationPrefs>(
+    DEFAULT_NOTIFICATION_PREFS,
+  );
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -40,12 +50,23 @@ export function usePushNotifications() {
     const subscriptionPromise = navigator.serviceWorker.ready
       .then((reg) => reg.pushManager.getSubscription())
       .then(setSubscription)
-      .catch(() => {});
-    const prefsPromise = fetch(`${API_BASE}/push/preferences`, { credentials: "include" })
-      .then((r) => r.json())
+      .catch((error) =>
+        reportClientError(error, {
+          context: "push subscription lookup",
+          notify: false,
+        }),
+      );
+    const prefsPromise = fetchPushPreferences()
       .then((data) => setPrefs(normalizeNotificationPrefs(data)))
-      .catch(() => {});
-    Promise.allSettled([subscriptionPromise, prefsPromise]).finally(() => setReady(true));
+      .catch((error) =>
+        reportClientError(error, {
+          context: "push preferences fetch",
+          notify: false,
+        }),
+      );
+    Promise.allSettled([subscriptionPromise, prefsPromise]).finally(() =>
+      setReady(true),
+    );
   }, [isSupported]);
 
   const subscribe = useCallback(async (): Promise<boolean> => {
@@ -56,23 +77,19 @@ export function usePushNotifications() {
       setPermission(permResult);
       if (permResult !== "granted") return false;
 
-      const keyRes = await fetch(`${API_BASE}/push/vapid-public-key`, { credentials: "include" });
-      const { publicKey } = await keyRes.json();
+      const publicKey = await fetchVapidPublicKey();
       if (!publicKey) return false;
 
       const reg = await navigator.serviceWorker.ready;
       const existing = await reg.pushManager.getSubscription();
-      const sub = existing ?? await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      });
+      const sub =
+        existing ??
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        }));
 
-      await fetch(`${API_BASE}/push/subscribe`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(sub.toJSON()),
-      });
+      await registerPushSubscription(sub.toJSON());
 
       setSubscription(sub);
       return true;
@@ -88,12 +105,7 @@ export function usePushNotifications() {
     if (!subscription) return;
     setLoading(true);
     try {
-      await fetch(`${API_BASE}/push/unsubscribe`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ endpoint: subscription.endpoint }),
-      });
+      await unregisterPushSubscription(subscription.endpoint);
       await subscription.unsubscribe();
       setSubscription(null);
     } catch (err) {
@@ -103,20 +115,23 @@ export function usePushNotifications() {
     }
   }, [subscription]);
 
-  const updatePref = useCallback(async (key: keyof NotificationPrefs, value: boolean) => {
-    const updated = { ...normalizeNotificationPrefs(prefs), [key]: value };
-    setPrefs(updated);
-    const response = await fetch(`${API_BASE}/push/preferences`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ [key]: value }),
-    }).catch(() => null);
-    if (response?.ok) {
-      const data = await response.json().catch(() => null);
-      setPrefs(normalizeNotificationPrefs(data));
-    }
-  }, [prefs]);
+  const updatePref = useCallback(
+    async (key: keyof NotificationPrefs, value: boolean) => {
+      const updated = { ...normalizeNotificationPrefs(prefs), [key]: value };
+      setPrefs(updated);
+      try {
+        const data = await updatePushPreferences({ [key]: value });
+        setPrefs(normalizeNotificationPrefs(data));
+      } catch (error) {
+        reportClientError(error, {
+          context: "push preference update",
+          notify: false,
+        });
+        // Keep the optimistic local preference if the server is temporarily unavailable.
+      }
+    },
+    [prefs],
+  );
 
   return {
     isSupported,

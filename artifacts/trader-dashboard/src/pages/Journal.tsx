@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths, addWeeks, addMonths, isWithinInterval } from "date-fns";
 import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw } from "lucide-react";
@@ -8,9 +8,10 @@ import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { JournalEntryModal } from "@/components/JournalEntryModal";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useGetJournalEntries,
   useDeleteJournalEntry,
@@ -25,6 +26,14 @@ import {
 } from "@workspace/api-client-react";
 import { downloadICS } from "@/utils/icsExport";
 import { useLanguage, useDateLocale } from "@/contexts/LanguageContext";
+import { getJournalRecapPeriod, isJournalRecapEditable } from "@/lib/journalRecapPeriods";
+import {
+  emptyJournalRecapFields,
+  fetchJournalRecap,
+  journalRecapQueryKey,
+  saveJournalRecap,
+  type JournalRecapFields,
+} from "@/lib/journalRecapsApi";
 
 type Tab = "trades" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
 
@@ -623,30 +632,84 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
   );
 }
 
-function RecapTab({ mode }: { mode: "week" | "month" }) {
+const RECAP_FIELDS: Array<{ key: keyof JournalRecapFields; labelKey: string; rows: number }> = [
+  { key: "overallJudgment", labelKey: "journal.recap.overall_judgment", rows: 3 },
+  { key: "wentWell", labelKey: "journal.recap.went_well", rows: 3 },
+  { key: "wentWrong", labelKey: "journal.recap.went_wrong", rows: 3 },
+  { key: "improvements", labelKey: "journal.recap.improvements", rows: 3 },
+  { key: "patterns", labelKey: "journal.recap.patterns", rows: 3 },
+  { key: "focusAreas", labelKey: "journal.recap.focus_areas", rows: 3 },
+  { key: "nextPeriodExpectations", labelKey: "journal.recap.next_expectations", rows: 3 },
+  { key: "nextPeriodGoals", labelKey: "journal.recap.next_goals", rows: 3 },
+];
+
+function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
   const { t } = useLanguage();
   const dateLocale = useDateLocale();
+  const { toast } = useToast();
+  const qc = useQueryClient();
   const { data: entries, isLoading } = useGetJournalEntries();
   const [offset, setOffset] = useState(0);
 
   const periodInfo = useMemo(() => {
-    const base = mode === "week"
-      ? (offset === 0 ? new Date() : (offset > 0 ? addWeeks(new Date(), offset) : subWeeks(new Date(), Math.abs(offset))))
-      : (offset === 0 ? new Date() : (offset > 0 ? addMonths(new Date(), offset) : subMonths(new Date(), Math.abs(offset))));
+    const base = offset === 0
+      ? new Date()
+      : (mode === "weekly" ? addWeeks(new Date(), offset) : addWeeks(new Date(), offset * 4));
 
-    const start = mode === "week"
-      ? startOfWeek(base, { weekStartsOn: 1 })
-      : startOfMonth(base);
-    const end = mode === "week"
-      ? endOfWeek(base, { weekStartsOn: 1 })
-      : endOfMonth(base);
-
-    const label = mode === "week"
+    const recapPeriod = getJournalRecapPeriod(mode, base);
+    const start = parseISO(recapPeriod.periodStart);
+    const end = parseISO(recapPeriod.periodEnd);
+    const label = mode === "weekly"
       ? `${format(start, "d MMM", { locale: dateLocale })} - ${format(end, "d MMM yyyy", { locale: dateLocale })}`
-      : format(start, "MMMM yyyy", { locale: dateLocale });
+      : `${format(start, "d MMM", { locale: dateLocale })} - ${format(end, "d MMM yyyy", { locale: dateLocale })}`;
 
-    return { start, end, label };
+    return { start, end, label, recapPeriod };
   }, [mode, offset, dateLocale]);
+
+  const recapPeriod = periodInfo.recapPeriod;
+  const recapEditable = isJournalRecapEditable(recapPeriod);
+  const recapWindow = recapPeriod;
+  const recapWindowLabel = `${format(parseISO(recapWindow.editWindowStart), "d MMM", { locale: dateLocale })} - ${format(parseISO(recapWindow.editWindowEnd), "d MMM yyyy", { locale: dateLocale })}`;
+  const [recapDraft, setRecapDraft] = useState<JournalRecapFields>(emptyJournalRecapFields);
+
+  const recapQuery = useQuery({
+    queryKey: journalRecapQueryKey(recapPeriod),
+    queryFn: () => fetchJournalRecap(recapPeriod),
+  });
+
+  const recapMutation = useMutation({
+    mutationFn: () => saveJournalRecap({
+      kind: recapPeriod.kind,
+      periodStart: recapPeriod.periodStart,
+      periodEnd: recapPeriod.periodEnd,
+      ...recapDraft,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: journalRecapQueryKey(recapPeriod) });
+      toast({ description: t("journal.recap.saved") });
+    },
+    onError: () => {
+      toast({ description: t("journal.error"), variant: "destructive" });
+    },
+  });
+
+  useEffect(() => {
+    const recap = recapQuery.data;
+    setRecapDraft(recap ? {
+      overallJudgment: recap.overallJudgment,
+      wentWell: recap.wentWell,
+      wentWrong: recap.wentWrong,
+      improvements: recap.improvements,
+      patterns: recap.patterns,
+      focusAreas: recap.focusAreas,
+      nextPeriodExpectations: recap.nextPeriodExpectations,
+      nextPeriodGoals: recap.nextPeriodGoals,
+    } : { ...emptyJournalRecapFields });
+  }, [recapQuery.data]);
+
+  const patchRecapDraft = (key: keyof JournalRecapFields, value: string) => {
+    setRecapDraft((draft) => ({ ...draft, [key]: value }));
+  };
 
   const stats = useMemo(() => {
     if (!entries) return null;
@@ -716,15 +779,16 @@ function RecapTab({ mode }: { mode: "week" | "month" }) {
         </Button>
       </div>
 
-      {!stats || stats.total === 0 ? (
-        <Card className="border-dashed border-white/10">
-          <CardContent className="p-10 text-center">
-            <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-20" />
-            <p className="text-muted-foreground">{t("journal.no_trades_period")}</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
+      <>
+        {!stats || stats.total === 0 ? (
+          <Card className="border-dashed border-white/10">
+            <CardContent className="p-10 text-center">
+              <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-20" />
+              <p className="text-muted-foreground">{t("journal.no_trades_period")}</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatCard label={t("journal.total_trades")} value={stats.total} icon={<BarChart3 className="w-4 h-4" />} color="text-foreground" />
             <StatCard label={t("journal.wins")} value={stats.wins} icon={<TrendingUp className="w-4 h-4" />} color="text-green-400" />
@@ -824,8 +888,51 @@ function RecapTab({ mode }: { mode: "week" | "month" }) {
               </div>
             </div>
           )}
-        </>
-      )}
+          </>
+        )}
+
+        <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-5">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t("journal.recap.title")}</p>
+              <h4 className="text-base font-bold">{periodInfo.label}</h4>
+            </div>
+            <div className={`text-xs rounded-lg px-3 py-2 border ${recapEditable ? "border-primary/25 bg-primary/10 text-primary" : "border-white/10 bg-white/5 text-muted-foreground"}`}>
+              {recapEditable ? t("journal.recap.open") : t("journal.recap.window", { dates: recapWindowLabel })}
+            </div>
+          </div>
+
+          {!recapEditable && !recapQuery.data && (
+            <p className="mb-4 text-sm text-muted-foreground">{t("journal.recap.locked")}</p>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {RECAP_FIELDS.map((field) => (
+              <label key={field.key} className="space-y-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {t(field.labelKey)}
+                </span>
+                <Textarea
+                  value={recapDraft[field.key]}
+                  onChange={(event) => patchRecapDraft(field.key, event.target.value)}
+                  disabled={!recapEditable || recapMutation.isPending || recapQuery.isLoading}
+                  rows={field.rows}
+                  className="resize-y bg-background/70"
+                />
+              </label>
+            ))}
+          </div>
+
+          {recapEditable && (
+            <div className="mt-5 flex justify-end">
+              <Button onClick={() => recapMutation.mutate()} disabled={recapMutation.isPending}>
+                {recapMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                {t("journal.recap.save")}
+              </Button>
+            </div>
+          )}
+        </div>
+      </>
     </div>
   );
 }
@@ -849,7 +956,7 @@ export default function Journal() {
   const tabs: { id: Tab; labelKey: string; icon: typeof BookOpen }[] = [
     { id: "trades", labelKey: "journal.tab.trades", icon: BookOpen },
     { id: "recap-settimanale", labelKey: "journal.tab.weekly", icon: BarChart3 },
-    { id: "recap-mensile", labelKey: "journal.tab.monthly", icon: Calendar },
+    { id: "recap-mensile", labelKey: "journal.tab.four_week", icon: Calendar },
     { id: "idee", labelKey: "journal.tab.ideas", icon: Lightbulb },
     { id: "obiettivi", labelKey: "journal.tab.goals", icon: Target },
   ];
@@ -887,8 +994,8 @@ export default function Journal() {
           transition={{ duration: 0.2 }}
         >
           {tab === "trades" && <TradesTab />}
-          {tab === "recap-settimanale" && <RecapTab mode="week" />}
-          {tab === "recap-mensile" && <RecapTab mode="month" />}
+          {tab === "recap-settimanale" && <RecapTab mode="weekly" />}
+          {tab === "recap-mensile" && <RecapTab mode="four_week" />}
           {tab === "idee" && <IdeasTab type="idea" />}
           {tab === "obiettivi" && <IdeasTab type="goal" />}
         </motion.div>

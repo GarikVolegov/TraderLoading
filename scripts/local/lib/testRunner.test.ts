@@ -20,9 +20,14 @@ assert.deepEqual(plan.map((item) => item.displayPath), [
   "scripts/local/lib/health.test.ts",
   "artifacts/trader-dashboard/src/components/ChartReplay.mobile-layout.test.ts",
 ]);
+assert.deepEqual(plan.map((item) => item.command), ["node", "node"]);
+assert.equal(plan[0]?.args[0], "--import");
+assert.match(plan[0]?.args[1] ?? "", /^file:\/\/\/.*tsx.*loader\.mjs$/);
+assert.equal(plan[1]?.args[0], "--import");
+assert.equal(plan[1]?.args[1], plan[0]?.args[1]);
 assert.deepEqual(plan.map((item) => item.args), [
-  ["exec", "tsx", "local/lib/health.test.ts"],
-  ["exec", "tsx", "src/components/ChartReplay.mobile-layout.test.ts"],
+  ["--import", plan[0]?.args[1], "local/lib/health.test.ts"],
+  ["--import", plan[0]?.args[1], "src/components/ChartReplay.mobile-layout.test.ts"],
 ]);
 assert.equal(plan[0]?.cwd, path.join(repoRoot, "scripts"));
 assert.equal(plan[1]?.cwd, path.join(repoRoot, "artifacts", "trader-dashboard"));

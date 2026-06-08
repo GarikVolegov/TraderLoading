@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useGetEconomicCalendar, getGetEconomicCalendarQueryKey, useUpdateUserSettings, useGetMissions } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBackground } from "@/contexts/BackgroundContext";
+import { refreshEconomicCalendar } from "@/lib/calendarApi";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "CNY"] as const;
 
@@ -75,7 +76,7 @@ export function CalendarWidget() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await fetch("/api/calendar?nocache=1");
+      await refreshEconomicCalendar();
       await queryClient.invalidateQueries({ queryKey: getGetEconomicCalendarQueryKey() });
     } finally {
       setIsRefreshing(false);

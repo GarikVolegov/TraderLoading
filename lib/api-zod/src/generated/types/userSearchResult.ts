@@ -5,10 +5,13 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
+import type { UserSearchResultRelationshipStatus } from "./userSearchResultRelationshipStatus";
 
 export interface UserSearchResult {
   id: number;
   name: string;
   avatarUrl?: string | null;
   userId?: string | null;
+  /** Friendship state between the current user and this result. */
+  relationshipStatus?: UserSearchResultRelationshipStatus;
 }

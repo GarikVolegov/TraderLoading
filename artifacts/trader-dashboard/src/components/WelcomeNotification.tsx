@@ -52,7 +52,7 @@ export function WelcomeNotification() {
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("TraderLoading", {
         body: lines.join("\n"),
-        icon: "/favicon.ico",
+        icon: "/app-icon-192.png",
         tag: "welcome-summary",
       });
       return;

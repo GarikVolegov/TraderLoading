@@ -64,3 +64,375 @@ $ vite --config vite.config.ts --host 0.0.0.0
 [tools/sentiment] No credentials
 [2m16:26:41[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /@fs/C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/generated/api.ts (resolved id: C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/generated/api.ts) in C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/index.ts. Does the file exist?
 [2m16:26:41[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to load url /@fs/C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/generated/api.schemas.ts (resolved id: C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/generated/api.schemas.ts) in C:/Users/osman/Desktop/TraderLoadingsLOCALE/lib/api-client-react/src/index.ts. Does the file exist?
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+[tools/macro-news] Groq failed, falling back to RSS: GROQ_API_KEY not set
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+[tools/macro-news] Groq failed, falling back to RSS: GROQ_API_KEY not set
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[news] Feed Google News failed: [TypeError: fetch failed] {
+  [cause]: Error: connect ECONNABORTED 172.217.23.78:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+    errno: -4079,
+    code: 'ECONNABORTED',
+    syscall: 'connect',
+    address: '172.217.23.78',
+    port: 443
+  }
+}
+[news] Feed Google News failed: [TypeError: fetch failed] {
+  [cause]: Error: connect ECONNABORTED 172.217.23.78:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+    errno: -4079,
+    code: 'ECONNABORTED',
+    syscall: 'connect',
+    address: '172.217.23.78',
+    port: 443
+  }
+}
+[news] Feed Google News failed: [TypeError: fetch failed] {
+  [cause]: Error: connect ECONNABORTED 172.217.23.78:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+    errno: -4079,
+    code: 'ECONNABORTED',
+    syscall: 'connect',
+    address: '172.217.23.78',
+    port: 443
+  }
+}
+[news] Feed Google News failed: [TypeError: fetch failed] {
+  [cause]: Error: connect ECONNABORTED 172.217.23.78:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+    errno: -4079,
+    code: 'ECONNABORTED',
+    syscall: 'connect',
+    address: '172.217.23.78',
+    port: 443
+  }
+}
+[news] Feed Google News failed: [TypeError: fetch failed] {
+  [cause]: Error: connect ECONNABORTED 172.217.23.78:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+    errno: -4079,
+    code: 'ECONNABORTED',
+    syscall: 'connect',
+    address: '172.217.23.78',
+    port: 443
+  }
+}
+[news] Feed Google News failed: [TypeError: fetch failed] {
+  [cause]: Error: connect ECONNABORTED 172.217.23.78:443
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16) {
+    errno: -4079,
+    code: 'ECONNABORTED',
+    syscall: 'connect',
+    address: '172.217.23.78',
+    port: 443
+  }
+}
+[news] Feed Seeking Alpha – Gold failed: [TypeError: fetch failed] {
+  [cause]: AggregateError [ETIMEDOUT]: 
+      at internalConnectMultiple (node:net:1193:18)
+      at afterConnectMultiple (node:net:1783:7) {
+    code: 'ETIMEDOUT',
+    [errors]: [ [Error], [Error], [Error], [Error] ]
+  }
+}
+[news] Feed Seeking Alpha – Forex failed: [TypeError: fetch failed] {
+  [cause]: AggregateError [ETIMEDOUT]: 
+      at internalConnectMultiple (node:net:1193:18)
+      at afterConnectMultiple (node:net:1783:7) {
+    code: 'ETIMEDOUT',
+    [errors]: [ [Error], [Error], [Error], [Error] ]
+  }
+}
+[news] Feed CNBC Markets failed: [DOMException [TimeoutError]: The operation was aborted due to timeout]
+[news] Feed CNBC Finance failed: [DOMException [TimeoutError]: The operation was aborted due to timeout]
+[news] Feed Google News failed: [TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND news.google.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'news.google.com'
+  }
+}
+[news] Feed Google News failed: [TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND news.google.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'news.google.com'
+  }
+}
+[news] Feed Google News failed: [TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND news.google.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'news.google.com'
+  }
+}
+[news] Feed Seeking Alpha – Gold failed: [TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND seekingalpha.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'seekingalpha.com'
+  }
+}
+[news] Feed Seeking Alpha – Forex failed: [TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND seekingalpha.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'seekingalpha.com'
+  }
+}
+[news] Feed CNBC Markets failed: [TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND www.cnbc.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'www.cnbc.com'
+  }
+}
+[news] Feed CNBC Finance failed: [TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND www.cnbc.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'www.cnbc.com'
+  }
+}
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "nan",
+    "path": [
+      "id"
+    ],
+    "message": "Expected number, received nan"
+  }
+]
+    at get error (file:///C:/Users/osman/Desktop/TraderLoadingsLOCALE/node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/Users/osman/Desktop/TraderLoadingsLOCALE/node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\journal.ts:159:40)
+    at Layer.handleRequest (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\layer.js:152:17)
+    at next (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\route.js:117:3)
+    at handle (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\layer.js:152:17)
+    at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:295:15
+    at param (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:600:14)
+[tools/sentiment] No credentials
+[tools/sentiment] No credentials
+ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "nan",
+    "path": [
+      "id"
+    ],
+    "message": "Expected number, received nan"
+  }
+]
+    at get error (file:///C:/Users/osman/Desktop/TraderLoadingsLOCALE/node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/Users/osman/Desktop/TraderLoadingsLOCALE/node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\journal.ts:159:40)
+    at Layer.handleRequest (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\layer.js:152:17)
+    at next (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\route.js:117:3)
+    at handle (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\layer.js:152:17)
+    at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:295:15
+    at param (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:600:14)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Error: No values to set
+    at mapUpdateSet (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\utils.ts:128:9)
+    at PgUpdateBuilder.set (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\query-builders\update.ts:98:4)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\settings.ts:89:6)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[tools/sentiment] No credentials
+ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "nan",
+    "path": [
+      "id"
+    ],
+    "message": "Expected number, received nan"
+  }
+]
+    at get error (file:///C:/Users/osman/Desktop/TraderLoadingsLOCALE/node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/Users/osman/Desktop/TraderLoadingsLOCALE/node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\journal.ts:159:40)
+    at Layer.handleRequest (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\layer.js:152:17)
+    at next (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\route.js:117:3)
+    at handle (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\layer.js:152:17)
+    at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:295:15
+    at param (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:600:14)

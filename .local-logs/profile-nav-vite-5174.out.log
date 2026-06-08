@@ -1,0 +1,3 @@
+C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\trader-dashboard:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @workspace/trader-dashboard@0.0.0 dev: `vite --config vite.config.ts --host 0.0.0.0 --strictPort "--" "--port" "5174"`
+Exit status 1

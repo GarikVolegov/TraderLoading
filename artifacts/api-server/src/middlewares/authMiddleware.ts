@@ -3,7 +3,7 @@ import { type Request, type Response, type NextFunction } from "express";
 import type { AuthUser } from "@workspace/api-zod";
 import { db, loginAccessTable } from "@workspace/db";
 import { and, eq, gte } from "drizzle-orm";
-import { requestContext, type RequestContext } from "../lib/logger";
+import logger, { requestContext, type RequestContext } from "../lib/logger";
 import { getSession, getSessionId, type SessionData } from "../lib/auth";
 
 declare global {
@@ -26,14 +26,14 @@ const recentAccess = new Map<string, number>();
 const DEDUP_TTL = 60 * 60 * 1000; // 1 hour
 
 function getClientIp(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string") {
-    return forwarded.split(",")[0].trim();
-  }
-  return req.socket?.remoteAddress ?? "unknown";
+  return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
-async function recordAccess(userId: string, ip: string, userAgent: string | undefined) {
+async function recordAccess(
+  userId: string,
+  ip: string,
+  userAgent: string | undefined,
+) {
   const key = `${userId}:${ip}`;
   const now = Date.now();
   const last = recentAccess.get(key);
@@ -64,11 +64,16 @@ async function recordAccess(userId: string, ip: string, userAgent: string | unde
   }
 }
 
-    // ── Inietta userId nel contesto AsyncLocalStorage per il logging distribuito ──
+// ── Inietta userId nel contesto AsyncLocalStorage per il logging distribuito ──
 type AuthMiddlewareDeps = {
   getClerkUserId?: (req: Request) => string | null | undefined;
   getStoredSession?: (sid: string) => Promise<SessionData | null>;
-  recordAccess?: (userId: string, ip: string, userAgent: string | undefined) => Promise<void>;
+  recordAccess?: (
+    userId: string,
+    ip: string,
+    userAgent: string | undefined,
+  ) => Promise<void>;
+  warn?: (error: unknown, message: string) => void;
 };
 
 function setAuthenticatedUser(req: Request, user: AuthUser) {
@@ -81,9 +86,15 @@ function setAuthenticatedUser(req: Request, user: AuthUser) {
 }
 
 export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
-  const getClerkUserId = deps.getClerkUserId ?? ((req: Request) => getAuth(req).userId);
+  const getClerkUserId =
+    deps.getClerkUserId ?? ((req: Request) => getAuth(req).userId);
   const getStoredSession = deps.getStoredSession ?? getSession;
   const recordLoginAccess = deps.recordAccess ?? recordAccess;
+  const warn =
+    deps.warn ??
+    ((error: unknown, message: string) => {
+      logger.warn({ err: error }, message);
+    });
 
   return async function authMiddleware(
     req: Request,
@@ -94,7 +105,13 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
       return this.user != null;
     } as Request["isAuthenticated"];
 
-    const clerkUserId = getClerkUserId(req);
+    let clerkUserId: string | null | undefined;
+    try {
+      clerkUserId = getClerkUserId(req);
+    } catch (error) {
+      warn(error, "Clerk auth lookup failed");
+    }
+
     if (clerkUserId) {
       setAuthenticatedUser(req, {
         id: clerkUserId,
@@ -105,7 +122,13 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
       });
     } else {
       const sid = getSessionId(req);
-      const storedSession = sid ? await getStoredSession(sid) : null;
+      let storedSession: SessionData | null = null;
+      try {
+        storedSession = sid ? await getStoredSession(sid) : null;
+      } catch (error) {
+        warn(error, "Stored session lookup failed");
+      }
+
       if (storedSession) {
         setAuthenticatedUser(req, storedSession.user);
       }
@@ -114,7 +137,9 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
     if (req.user) {
       const ip = getClientIp(req);
       const ua = req.headers["user-agent"];
-      recordLoginAccess(req.user.id, ip, ua).catch(() => {});
+      recordLoginAccess(req.user.id, ip, ua).catch((error) => {
+        warn(error, "Login access logging failed");
+      });
     }
 
     next();

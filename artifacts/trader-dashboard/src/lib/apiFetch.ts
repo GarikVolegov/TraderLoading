@@ -1,6 +1,6 @@
 export const API_BASE = "/api";
 
-type RelativeApiOptions = {
+export type RelativeApiOptions = {
   basePath?: string;
 };
 
@@ -10,7 +10,7 @@ function getDefaultBasePath(): string {
 
 export function createApiUrl(path: string, basePath = getDefaultBasePath()): string {
   const normalizedBase = basePath.replace(/\/$/, "");
-  const normalizedPath = path.replace(/^\/+/, "");
+  const normalizedPath = path.replace(/^\/+/, "").replace(/^api\//, "");
   return `${normalizedBase}/api/${normalizedPath}`;
 }
 

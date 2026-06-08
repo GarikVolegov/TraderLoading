@@ -3,7 +3,7 @@ import { loadEnvLocal, repoRoot } from "./lib/env.js";
 import { checkTcp, describePortOwners, waitForHttp, waitForTcp } from "./lib/health.js";
 import { runCommand, spawnLongRunning } from "./lib/process.js";
 import { resolveDatabaseTarget, type DatabaseTarget } from "./startDatabase.js";
-import { buildFrontendDevEnv } from "./startEnv.js";
+import { buildApiDevEnv, buildFrontendDevArgs, buildFrontendDevEnv } from "./startEnv.js";
 
 const containerName = "traderloadings-db";
 const postgresEnv = ["POSTGRES_USER=trader", "POSTGRES_PASSWORD=trader", "POSTGRES_DB=traderloadings"];
@@ -127,13 +127,13 @@ try {
   console.log("\n> starting API on http://127.0.0.1:3001");
   api = spawnLongRunning("pnpm", ["--filter", "@workspace/api-server", "exec", "tsx", "./src/index.ts"], {
     cwd: repoRoot,
-    env: { BASE_PATH: "/", DATABASE_URL: database.url, NODE_ENV: "development", PORT: "3001" },
+    env: buildApiDevEnv(process.env, database.url),
     label: "api server",
   });
   await waitForHttp("http://127.0.0.1:3001/api/healthz", 30_000);
 
   console.log("\n> starting frontend on http://127.0.0.1:5173");
-  frontend = spawnLongRunning("pnpm", ["--filter", "@workspace/trader-dashboard", "run", "dev"], {
+  frontend = spawnLongRunning("pnpm", buildFrontendDevArgs(), {
     cwd: repoRoot,
     env: buildFrontendDevEnv({ ...process.env, BASE_PATH: "/", PORT: "5173" }),
     label: "frontend dev server",

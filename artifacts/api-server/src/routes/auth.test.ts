@@ -3,7 +3,14 @@ import assert from "node:assert/strict";
 process.env.DATABASE_URL ??= "postgres://user:pass@127.0.0.1:5432/test";
 
 const originalNodeEnv = process.env.NODE_ENV;
-const { createOidcCookieOptions, createSessionCookieOptions, getOrigin } = await import("./auth.js");
+const {
+  createOidcCookieOptions,
+  createSessionCookieOptions,
+  getOrigin,
+  getSafeReturnTo,
+  getValidatedOidcSettings,
+  isAllowedMobileRedirectUri,
+} = await import("./auth.js");
 
 try {
   process.env.NODE_ENV = "development";
@@ -31,8 +38,13 @@ try {
 
   assert.equal(
     createSessionCookieOptions({
-      headers: { "x-forwarded-proto": "https" },
+      headers: {
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "app.example.com",
+      },
       secure: false,
+      protocol: "https",
+      host: "app.example.com",
     } as any).secure,
     true,
   );
@@ -45,10 +57,51 @@ try {
   );
   assert.equal(
     getOrigin({
-      headers: { "x-forwarded-proto": "https", "x-forwarded-host": "app.example.com" },
+      headers: {
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "app.example.com",
+      },
       secure: false,
+      protocol: "https",
+      host: "app.example.com",
     } as any),
     "https://app.example.com",
+  );
+
+  assert.equal(getSafeReturnTo("/dashboard?tab=1"), "/dashboard?tab=1");
+  assert.equal(getSafeReturnTo("https://evil.example/phish"), "/");
+  assert.equal(getSafeReturnTo("//evil.example/phish"), "/");
+
+  assert.deepEqual(
+    getValidatedOidcSettings({
+      OIDC_CLIENT_ID: "client-123",
+      ISSUER_URL: "https://replit.com/oidc",
+    }),
+    {
+      clientId: "client-123",
+      issuerUrl: "https://replit.com/oidc",
+    },
+  );
+  assert.throws(
+    () => getValidatedOidcSettings({ ISSUER_URL: "not-a-url" }),
+    /ISSUER_URL must be a valid URL/,
+  );
+  assert.throws(
+    () => getValidatedOidcSettings({ ISSUER_URL: "https://replit.com/oidc" }),
+    /OIDC_CLIENT_ID or REPL_ID/,
+  );
+
+  assert.equal(
+    isAllowedMobileRedirectUri("traderloadings://auth/callback"),
+    true,
+  );
+  assert.equal(
+    isAllowedMobileRedirectUri("http://localhost:5173/auth/callback"),
+    true,
+  );
+  assert.equal(
+    isAllowedMobileRedirectUri("https://evil.example/auth/callback"),
+    false,
   );
 
   process.env.NODE_ENV = "production";

@@ -1,0 +1,78 @@
+<h2>Come devono vivere i filtri degli strumenti?</h2>
+<p class="subtitle">Tutti partono dalle scelte pair dell'utente. La differenza e' quanto spazio dare al controllo dentro ogni tool.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Volatilita & ADR</div>
+        <div class="mockup-body">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+            <strong>EURUSD</strong>
+            <button class="mock-button">Aggiorna</button>
+          </div>
+          <div class="placeholder" style="height:96px">Grafico + metriche</div>
+          <p style="font-size:12px;color:#7c8798;margin-top:10px">Filtri applicati automaticamente dai tuoi pair</p>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Nascosto totale</h3>
+      <p>Il tool usa solo i pair utente. Nessun filtro visibile finche' non esiste un override specifico.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Volatilita & ADR</div>
+        <div class="mockup-body">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+            <strong>EURUSD</strong>
+            <button class="mock-button">Filtro</button>
+          </div>
+          <div style="border:1px solid #2d3748;border-radius:8px;padding:8px;margin-bottom:10px;background:#111827">
+            <div style="font-size:11px;color:#9ca3af;margin-bottom:6px">Pair utente</div>
+            <span style="font:700 11px monospace;border:1px solid #2563eb;color:#93c5fd;border-radius:6px;padding:3px 6px">EURUSD</span>
+            <span style="font:700 11px monospace;border:1px solid #2563eb;color:#93c5fd;border-radius:6px;padding:3px 6px">XAUUSD</span>
+          </div>
+          <div class="placeholder" style="height:70px">Grafico + metriche</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Mini pannello richiudibile</h3>
+      <p>Piccolo box dentro la sezione filtro del tool. Mostra i pair derivati, senza permettere modifiche locali.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Volatilita & ADR</div>
+        <div class="mockup-body">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+            <strong>EURUSD</strong>
+            <button class="mock-button">Filtro</button>
+          </div>
+          <div style="border:1px solid #2d3748;border-radius:8px;padding:8px;margin-bottom:10px;background:#111827">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;color:#9ca3af">Pair utente</span>
+              <span style="font-size:10px;color:#64748b">Override non attivo</span>
+            </div>
+          </div>
+          <div class="placeholder" style="height:70px">Grafico + metriche</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Override predisposto</h3>
+      <p>La UI ha gia' lo spazio per scelte specifiche per strumento, ma resta disattivata fino a richiesta futura.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Raccomandazione</h3>
+  <p>Sceglierei B: mantiene i filtri piccoli e racchiusi, rende chiaro che arrivano dai tuoi pair, e non introduce ancora scelte locali per singolo strumento.</p>
+</div>

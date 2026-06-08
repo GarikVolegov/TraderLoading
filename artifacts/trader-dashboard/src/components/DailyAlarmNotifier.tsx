@@ -36,7 +36,7 @@ export function DailyAlarmNotifier() {
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification(copy.titles.dailyReminder, {
           body,
-          icon: "/favicon.ico",
+          icon: "/app-icon-192.png",
           tag: "daily-alarm",
         });
       } else {

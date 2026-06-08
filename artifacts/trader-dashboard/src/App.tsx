@@ -18,6 +18,7 @@ import { DailyAlarmNotifier } from "./components/DailyAlarmNotifier";
 import { MacroNotifier } from "./components/MacroNotifier";
 import { SessionStartNotifier } from "./components/SessionStartNotifier";
 import { SessionCheckinModal } from "./components/SessionCheckinModal";
+import { ScheduledCallRuntime } from "./components/ScheduledCallRuntime";
 import { LevelRewardModal } from "./components/LevelRewardModal";
 import { PinLockScreen } from "./components/PinLockScreen";
 import { ChecklistSetupModal } from "./components/ChecklistSetupModal";
@@ -73,7 +74,7 @@ const clerkAppearance = {
   options: {
     logoPlacement: "inside" as const,
     logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    logoImageUrl: `${window.location.origin}${basePath}/app-icon-192.png`,
     socialButtonsVariant: "blockButton" as const,
   },
   variables: {
@@ -248,6 +249,7 @@ function AuthenticatedShell() {
       <WelcomeNotification />
       <GoalReminders />
       <DailyAlarmNotifier />
+      <ScheduledCallRuntime />
       <MacroNotifier />
       <SessionStartNotifier />
       <LanguageServerSync />

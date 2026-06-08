@@ -1,0 +1,85 @@
+diff --git a/artifacts/trader-dashboard/src/components/ChartReplay.mobile-layout.test.ts b/artifacts/trader-dashboard/src/components/ChartReplay.mobile-layout.test.ts
+index 16ef6a8..c032682 100644
+--- a/artifacts/trader-dashboard/src/components/ChartReplay.mobile-layout.test.ts
++++ b/artifacts/trader-dashboard/src/components/ChartReplay.mobile-layout.test.ts
+@@ -11,6 +11,8 @@ assert.match(chartReplay, /flex-col sm:flex-row/);
+ assert.match(chartReplay, /grid-cols-2 sm:grid-cols-4/);
+ assert.match(chartReplay, /group\/trade/);
+ assert.doesNotMatch(chartReplay, /getPipDollarValue\(trade\.direction/);
++assert.match(chartReplay, /aria-label="Progresso replay"/);
++assert.match(chartReplay, /Progresso replay/);
+ 
+ assert.match(backtestPage, /min-w-0 overflow-hidden/);
+ assert.match(backtestPage, /grid-cols-1 min-\[420px\]:grid-cols-2 sm:grid-cols-3/);
+diff --git a/artifacts/trader-dashboard/src/components/ChartReplay.tsx b/artifacts/trader-dashboard/src/components/ChartReplay.tsx
+index ce59afc..64342b1 100644
+--- a/artifacts/trader-dashboard/src/components/ChartReplay.tsx
++++ b/artifacts/trader-dashboard/src/components/ChartReplay.tsx
+@@ -860,14 +860,26 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
+ 
+         {!loading && !error && (
+           <div className="px-3 py-2 border-t border-border/30 space-y-2">
+-            <div className="flex items-center gap-2">
+-              <div className="flex-1 h-1.5 rounded-full bg-secondary/40 overflow-hidden">
++            <div
++              className="space-y-1"
++              role="progressbar"
++              aria-label="Progresso replay"
++              aria-valuemin={0}
++              aria-valuemax={100}
++              aria-valuenow={progress}
++            >
++              <div className="flex items-center justify-between gap-3 text-[10px] font-mono">
++                <span className="font-semibold uppercase text-muted-foreground">Progresso replay</span>
++                <span className="text-foreground">
++                  {revealedCount}/{replayCandles.length} candele - {progress}%
++                </span>
++              </div>
++              <div className="h-2 rounded-full bg-secondary/50 overflow-hidden">
+                 <div
+-                  className="h-full bg-primary/60 transition-all duration-200"
++                  className="h-full rounded-full bg-primary transition-all duration-200"
+                   style={{ width: `${progress}%` }}
+                 />
+               </div>
+-              <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">{progress}%</span>
+             </div>
+ 
+             <div className="flex items-center justify-center gap-1 flex-wrap">
+diff --git a/artifacts/trader-dashboard/src/components/chartReplayWindow.test.ts b/artifacts/trader-dashboard/src/components/chartReplayWindow.test.ts
+index 7681d10..4390bc1 100644
+--- a/artifacts/trader-dashboard/src/components/chartReplayWindow.test.ts
++++ b/artifacts/trader-dashboard/src/components/chartReplayWindow.test.ts
+@@ -43,6 +43,14 @@ const m15Candles = Array.from({ length: 160 }, (_, index) => ({ time: (base + in
+ const h1ToM15 = resolveReplayWindowForCloseAnchor(m15Candles, h1CloseAnchor, "M15", 20);
+ assert.equal(m15Candles[h1ToM15.startIndex + h1ToM15.revealedCount - 1].time, h1OpenTime + 45 * 60);
+ 
++const progressedH1ToM15 = resolveReplayWindowForCloseAnchor(
++  m15Candles,
++  h1CloseAnchor,
++  "M15",
++  DEFAULT_REPLAY_VISIBLE_CANDLES + 40,
++);
++assert.equal(progressedH1ToM15.revealedCount, DEFAULT_REPLAY_VISIBLE_CANDLES);
++
+ const m15CloseAnchor = h1OpenTime + 45 * 60 + getReplayIntervalSeconds("M15");
+ const h1Candles = Array.from({ length: 60 }, (_, index) => ({ time: (base + index * 60 * 60) as Time }));
+ const m15ToH1 = resolveReplayWindowForCloseAnchor(h1Candles, m15CloseAnchor, "H1", 20);
+diff --git a/artifacts/trader-dashboard/src/components/chartReplayWindow.ts b/artifacts/trader-dashboard/src/components/chartReplayWindow.ts
+index 002c712..46f36b5 100644
+--- a/artifacts/trader-dashboard/src/components/chartReplayWindow.ts
++++ b/artifacts/trader-dashboard/src/components/chartReplayWindow.ts
+@@ -59,7 +59,12 @@ export function resolveReplayWindowForCloseAnchor(
+   let anchorIndex = candles.findIndex((c) => ((c.time as number) + intervalSeconds) >= anchorCloseTime);
+   if (anchorIndex === -1) anchorIndex = candles.length - 1;
+ 
+-  const revealedCount = Math.min(Math.max(1, visibleCount), anchorIndex + 1, candles.length);
++  const revealedCount = Math.min(
++    Math.max(1, visibleCount),
++    DEFAULT_REPLAY_VISIBLE_CANDLES,
++    anchorIndex + 1,
++    candles.length,
++  );
+   const startIndex = Math.max(0, anchorIndex - revealedCount + 1);
+   return { startIndex, revealedCount };
+ }

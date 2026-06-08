@@ -7,6 +7,10 @@ export type RuntimeSmokeService = {
   name: "api" | "frontend";
 };
 
+export type PostCodegenSettleInput = {
+  frontendReachableBeforeCodegen: boolean;
+};
+
 export function createRuntimeSmokePlan(reachability: RuntimeSmokeReachability): RuntimeSmokeService[] {
   const services: RuntimeSmokeService[] = [];
 
@@ -19,4 +23,8 @@ export function createRuntimeSmokePlan(reachability: RuntimeSmokeReachability): 
   }
 
   return services;
+}
+
+export function getPostCodegenSettleDelayMs(input: PostCodegenSettleInput): number {
+  return input.frontendReachableBeforeCodegen ? 1_500 : 0;
 }

@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  GripVertical, LayoutGrid, Check, RotateCcw,
+  GripVertical, Check, RotateCcw,
   Clock, BookOpen, Sunrise, Target, ClipboardCheck,
   CalendarDays, BarChart2, TrendingUp, BookMarked,
   Eye, EyeOff, Wallet, ArrowUpRight,
@@ -37,6 +37,7 @@ import { SentimentWidget } from "@/components/SentimentWidget";
 import { VolatilityWidget } from "@/components/VolatilityWidget";
 import { CotWidget } from "@/components/CotWidget";
 import { RoutineWidget } from "@/components/RoutineWidget";
+import { JournalWidget } from "@/components/JournalWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -58,6 +59,7 @@ const WIDGET_DEFS: WidgetDef[] = [
   { id: "routine",    label: "Routine Giornaliera",  icon: Sunrise,        route: "/routine",                component: RoutineWidget },
   { id: "missions",   label: "Missioni Giornaliere", icon: Target,         route: "/missions",               component: MissionsWidget },
   { id: "checklist",  label: "Checklist Pre-Trade",  icon: ClipboardCheck, route: "/checklist",              component: ChecklistDashboardWidget },
+  { id: "journal",    label: "Diario Trading",       icon: BookOpen,       route: "/journal",                component: JournalWidget },
   { id: "calendar",   label: "Calendario Avanzato",  icon: CalendarDays,   route: "/calendar",               component: CalendarWidget },
   { id: "sentiment",  label: "Sentiment di Mercato", icon: BarChart2,      route: "/tools?tab=sentiment",    component: SentimentWidget },
   { id: "volatility", label: "Volatilita & ADR",     icon: TrendingUp,     route: "/tools?tab=volatility",   component: VolatilityWidget },
@@ -71,6 +73,7 @@ const DEFAULT_ORDER = [
   "missions",
   "routine",
   "checklist",
+  "journal",
   "sentiment",
   "volatility",
   "cot",
@@ -104,6 +107,11 @@ function loadVisibility(): Record<string, boolean> {
 
 function saveVisibility(v: Record<string, boolean>) {
   localStorage.setItem(VISIBILITY_KEY, JSON.stringify(v));
+}
+
+function shouldStartLayoutEditing() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("layout") === "edit";
 }
 
 // ─── Sortable widget wrapper ───────────────────────────────────────────────────
@@ -150,7 +158,7 @@ function SortableWidget({
     >
       {/* Widget content — hidden widgets become ghost placeholders in edit mode */}
       {isHidden && isEditing ? (
-        <div className="flex h-full w-full items-center justify-center gap-3 rounded-[1rem] border-2 border-dashed border-border/40 bg-background/20 opacity-50">
+        <div className="flex h-full w-full items-center justify-center gap-3 rounded-[0.625rem] border-2 border-dashed border-border/40 bg-background/20 opacity-50">
           <Icon className="w-4 h-4 text-muted-foreground/50" />
           <span className="text-xs font-bold text-muted-foreground/50 font-mono">{def.label}</span>
         </div>
@@ -169,7 +177,7 @@ function SortableWidget({
               ? "shadow-[0_0_0_2px_hsl(var(--primary)/0.25),0_4px_20px_rgba(0,0,0,0.3)]"
               : ""
           } ${isOpenable ? "cursor-pointer hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.3),0_18px_42px_rgba(0,0,0,0.25)]" : ""}`}
-          style={{ borderRadius: "1rem" }}
+          style={{ borderRadius: "0.625rem" }}
           role={isOpenable ? "button" : undefined}
           tabIndex={isOpenable ? 0 : undefined}
           aria-label={isOpenable ? `Apri ${def.label}` : undefined}
@@ -187,7 +195,7 @@ function SortableWidget({
           {/* Affordance "apri pagina" — appare solo all'hover, non occupa spazio */}
           {isOpenable && (
             <div
-              style={{ height: "1.75rem", width: "1.75rem" }}
+              style={{ height: "2.25rem", width: "2.25rem" }}
               className="pointer-events-none absolute bottom-2.5 right-2.5 z-[5] flex items-center justify-center rounded-full border border-primary/30 bg-card/85 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100"
             >
               <ArrowUpRight className="h-3.5 w-3.5" />
@@ -205,7 +213,7 @@ function SortableWidget({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className={`absolute inset-0 z-10 rounded-[1rem] flex items-start justify-between p-3 touch-none ${
+            className={`absolute inset-0 z-10 rounded-[0.625rem] flex items-start justify-between p-3 touch-none ${
               isHidden
                 ? "border-2 border-dashed border-border/30 bg-transparent cursor-default"
                 : "border-2 border-dashed border-primary/35 bg-background/60 backdrop-blur-[2px] cursor-grab active:cursor-grabbing"
@@ -223,7 +231,7 @@ function SortableWidget({
               <button
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); onToggleHide(def.id); }}
-                className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
+                className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
                   isHidden
                     ? "bg-border/30 text-muted-foreground/50 hover:bg-primary/20 hover:text-primary"
                     : "bg-primary/10 text-primary/70 hover:bg-primary/25 hover:text-primary"
@@ -250,7 +258,7 @@ function WidgetGhost({ def }: { def: WidgetDef }) {
   const Icon = def.icon;
   return (
     <div
-      className="rounded-[1rem] border-2 border-primary/40 bg-card/80 backdrop-blur-md shadow-2xl shadow-black/50 p-4 flex items-center gap-3 rotate-2"
+      className="rounded-[0.625rem] border-2 border-primary/40 bg-card/80 backdrop-blur-md shadow-2xl shadow-black/50 p-4 flex items-center gap-3 rotate-2"
       style={{ minWidth: 200 }}
     >
       <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
@@ -272,7 +280,7 @@ export default function Dashboard() {
   const [, navigate]                = useLocation();
   const [order, setOrder]           = useState<string[]>(loadOrder);
   const [hidden, setHidden]         = useState<Record<string, boolean>>(loadVisibility);
-  const [isEditing, setIsEditing]   = useState(false);
+  const [isEditing, setIsEditing]   = useState(shouldStartLayoutEditing);
   const [activeId, setActiveId]     = useState<string | null>(null);
   const prevOrderRef = useRef<string[]>(order);
 
@@ -318,13 +326,8 @@ export default function Dashboard() {
     if (route) navigate(route);
   }, [defMap, navigate]);
 
-  const handleEditToggle = () => {
-    if (isEditing) {
-      setIsEditing(false);
-    } else {
-      prevOrderRef.current = order;
-      setIsEditing(true);
-    }
+  const handleFinishEditing = () => {
+    setIsEditing(false);
   };
 
   const handleReset = () => {
@@ -347,6 +350,13 @@ export default function Dashboard() {
     return () => window.removeEventListener("tl-open-dashboard-workspace", handleOpenWorkspace);
   }, [navigate]);
 
+  useEffect(() => {
+    if (!shouldStartLayoutEditing()) return;
+    prevOrderRef.current = order;
+    setIsEditing(true);
+    window.history.replaceState(null, "", window.location.pathname || "/");
+  }, [order]);
+
   const activeWidget = activeId ? defMap[activeId] : null;
 
   // In edit mode: show all widgets (visible + hidden as ghost).
@@ -354,8 +364,6 @@ export default function Dashboard() {
   const displayOrder = isEditing
     ? order
     : order.filter((id) => !hidden[id]);
-
-  const hiddenCount = Object.values(hidden).filter(Boolean).length;
 
   // Layout: in vista normale i widget si impacchettano a masonry (altezza naturale,
   // niente spazi vuoti); in modifica diventano una griglia uniforme per un drag&drop pulito.
@@ -374,47 +382,27 @@ export default function Dashboard() {
             Command Center
           </span>
         }
-        action={
+        action={isEditing ? (
           <div className="flex items-center gap-2">
-            {isEditing && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                onClick={handleReset}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border/40 text-xs text-muted-foreground/60 hover:text-muted-foreground/90 hover:border-border/70 transition-all"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Reset
-              </motion.button>
-            )}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={handleReset}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border/40 text-xs text-muted-foreground/60 hover:text-muted-foreground/90 hover:border-border/70 transition-all"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset
+            </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={handleEditToggle}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
-                isEditing
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                  : "border border-border/50 text-muted-foreground/80 hover:border-primary/40 hover:text-primary hover:bg-primary/5"
-              }`}
+              onClick={handleFinishEditing}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold shadow-lg shadow-primary/25 transition-all duration-200"
             >
-              {isEditing ? (
-                <>
-                  <Check className="w-4 h-4" strokeWidth={3} />
-                  Fatto
-                </>
-              ) : (
-                <>
-                  <LayoutGrid className="w-4 h-4" />
-                  Layout
-                  {hiddenCount > 0 && (
-                    <span className="ml-0.5 w-4 h-4 rounded-full bg-primary/20 text-primary text-[10px] font-mono flex items-center justify-center">
-                      {hiddenCount}
-                    </span>
-                  )}
-                </>
-              )}
+              <Check className="w-4 h-4" strokeWidth={3} />
+              Fatto
             </motion.button>
           </div>
-        }
+        ) : undefined}
       />
 
       {/* Edit-mode banner */}

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
-import OpenAI from "openai";
+import { getTextClient, markKeyInvalid } from "../services/llmClient.js";
 import { enrichAndFilterNews } from "../services/newsHub/intelligence.js";
 import {
   applyNewsFreshness,
@@ -8,12 +8,25 @@ import {
   newsCacheTtlMs,
   newsFreshnessWindowHours,
 } from "../services/newsHub/freshness.js";
-import { normalizeNewsSources, rankNewsForDisplay } from "../services/newsHub/ranking.js";
+import {
+  DEFAULT_NEWS_PAGE_SIZE,
+  normalizeNewsSources,
+  paginateNews,
+  rankNewsForDisplay,
+  sortNewsChronologically,
+} from "../services/newsHub/ranking.js";
 import { cleanNewsText, createTranslationMemo } from "../services/newsHub/contentQuality.js";
+import { buildNewsDeepDive } from "../services/newsHub/deepDive.js";
 
 const router: IRouter = Router();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface NewsDeepDive {
+  whatHappened: string;
+  whyItMatters: string;
+  possibleImpact: string;
+}
 
 interface NewsArticle {
   title: string;
@@ -38,6 +51,7 @@ interface NewsArticle {
   ageMinutes?: number;
   isFallback?: boolean;
   qualityScore?: number;
+  deepDive?: NewsDeepDive;
   // AI agent fields
   affectedPairs?: string[];
   impactScore?: number;       // 1–10
@@ -57,27 +71,23 @@ interface NewsResponse {
   fallbackArticlesCount?: number;
   oldestFreshArticleAt?: string;
   freshnessWindowHours?: number;
+  nextCursor?: string | null;
+  totalCount?: number;
 }
+
+// Maximum number of articles kept in the chronological feed corpus that the
+// paginated endpoint and live websocket snapshot draw from.
+const NEWS_FEED_CORPUS_LIMIT = 80;
+
+// Drop articles older than this so the feed stays "as recent as possible".
+// Undated and clearly-stale items are excluded (with a floor so the feed is
+// never emptied on a quiet news day).
+const NEWS_MAX_AGE_HOURS = 96;
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
 const NEWS_CACHE = createNewsCache<NewsResponse>({ ttlMs: newsCacheTtlMs() });
 const TRANSLATION_MEMO = createTranslationMemo<{ title: string; summary: string }>();
-
-// ─── Groq client (free tier — llama-3.1-8b-instant) ──────────────────────────
-// Signup gratuito senza carta di credito: https://console.groq.com
-// Imposta GROQ_API_KEY come secret per attivare l'analisi AI avanzata.
-// Senza chiave il sistema usa l'enrichment euristico gratuito (sempre attivo).
-let _groqKeyInvalidUntil = 0;
-let _groqClient: OpenAI | null = null;
-function getGroqClient(): OpenAI | null {
-  if (Date.now() < _groqKeyInvalidUntil) return null;
-  if (_groqClient) return _groqClient;
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return null;
-  _groqClient = new OpenAI({ baseURL: "https://api.groq.com/openai/v1", apiKey });
-  return _groqClient;
-}
 
 // ─── RSS helpers ──────────────────────────────────────────────────────────────
 
@@ -199,8 +209,10 @@ const PAIR_KEYWORDS: Record<string, string[]> = {
 function buildKeywordsRegex(pairCurrencies: string[]): RegExp {
   const baseKeywords = ["inflation", "gdp", "cpi", "rate\\s*(cut|hike|decision)", "central\\s*bank", "monetary\\s*policy", "yield"];
   const pairKw: string[] = [];
-  for (const c of pairCurrencies) {
-    const kws = PAIR_KEYWORDS[c.toUpperCase()];
+  // Always include USD (+ XAU) keywords so dollar/Fed macro passes the filter
+  // regardless of the user's selected pairs.
+  for (const c of [...new Set([...pairCurrencies.map((cur) => cur.toUpperCase()), "USD", "XAU"])]) {
+    const kws = PAIR_KEYWORDS[c];
     if (kws) pairKw.push(...kws);
   }
   const allKw = [...new Set([...baseKeywords, ...pairKw])];
@@ -238,6 +250,12 @@ function buildGoogleNewsQueries(pairCurrencies: string[], pairsStr: string): str
   const normalizedPairs = pairsStr.split(",").map((pair) => pair.trim().toUpperCase()).filter(Boolean);
   const queries = new Set<string>();
 
+  // Baseline: always fetch fresh USD/Fed macro (relevant to every FX/gold trader),
+  // so dollar news is present regardless of the user's selected pairs.
+  queries.add("US dollar DXY Federal Reserve when:1d");
+  queries.add("Federal Reserve interest rate decision when:2d");
+  queries.add("US inflation CPI jobs payrolls when:2d");
+
   for (const pair of normalizedPairs) {
     if (pair === "XAUUSD" || pair === "XAU/USD") {
       queries.add("gold price when:2d");
@@ -260,7 +278,7 @@ function buildGoogleNewsQueries(pairCurrencies: string[], pairsStr: string): str
     queries.add("global markets currencies commodities when:2d");
   }
 
-  return Array.from(queries).slice(0, 6);
+  return Array.from(queries).slice(0, 10);
 }
 
 async function fetchRSSNews(pairCurrencies: string[], pairsStr: string): Promise<NewsArticle[]> {
@@ -306,7 +324,7 @@ async function fetchRSSNews(pairCurrencies: string[], pairsStr: string): Promise
     return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
   });
 
-  return deduped.slice(0, 30);
+  return deduped.slice(0, 160);
 }
 
 // ─── Image helper ─────────────────────────────────────────────────────────────
@@ -503,48 +521,65 @@ function heuristicAgentSummary(articles: NewsArticle[], formattedPairs: string, 
     : `Watch these high-impact events for ${formattedPairs}: ${titles}. Manage risk with appropriate stops.`;
 }
 
-// ─── Groq AI Enrichment (opzionale — free tier, nessuna carta di credito) ─────
-// 1. Vai su https://console.groq.com  → crea account gratuito
-// 2. Genera un'API key
-// 3. Aggiungila come secret GROQ_API_KEY in questo progetto
+// ─── LLM enrichment (REAL sentiment) ──────────────────────────────────────────
+// Uses the shared brain LLM client (OpenRouter by default; configurable via
+// BRAIN_LLM_PROVIDER / BRAIN_TEXT_MODEL). Produces genuine per-article sentiment
+// + impact for the most recent articles, in batches. The keyword heuristic is
+// kept only as a fallback for the tail and on any LLM failure.
 
-interface GroqEnrichItem {
-  impactScore: number;
-  impactReason: string;
-  affectedPairs: string[];
-  sentiment: string;
+interface LlmEnrichItem {
+  id?: number;
+  impactScore?: number;
+  impactReason?: string;
+  affectedPairs?: string[];
+  sentiment?: string;
 }
-interface GroqEnrichResult { agentSummary: string; articles: GroqEnrichItem[] }
+interface LlmEnrichResult { agentSummary?: string; articles?: LlmEnrichItem[] }
 
-async function enrichWithGroq(
+const LLM_ENRICH_MAX = 30;    // articles sent for real sentiment per refresh
+const LLM_ENRICH_CHUNK = 15;  // articles per LLM call
+
+function normalizeSentiment(value: unknown): NewsArticle["sentiment"] {
+  const s = typeof value === "string" ? value.toLowerCase() : "";
+  if (s.includes("bull") || s.includes("rialz") || s.includes("positiv")) return "bullish";
+  if (s.includes("bear") || s.includes("ribass") || s.includes("negativ")) return "bearish";
+  if (s.includes("neutr")) return "neutral";
+  return null;
+}
+
+async function enrichWithLLM(
   articles: NewsArticle[],
   pairCurrencies: string[],
   pairsStr: string,
   lang: string,
 ): Promise<{ articles: NewsArticle[]; agentSummary: string } | null> {
-  const client = getGroqClient();
-  if (!client) return null;
+  const llm = getTextClient();
+  if (!llm) return null;
 
   const langName = NEWS_LANG_NAMES[lang] ?? "Italian";
   const formattedPairs = formatPairsForPrompt(pairsStr);
   const currencyFocus = pairCurrencies.length > 0 ? pairCurrencies.join(", ") : "USD, EUR, XAU";
-  const batch = articles.slice(0, 8).map((a, i) => ({
-    id: i, title: a.title, summary: a.summary.slice(0, 200),
-  }));
 
-  try {
-    const completion = await client.chat.completions.create({
-      model: "llama-3.1-8b-instant",
-      max_tokens: 2000,
-      temperature: 0.1,
-      messages: [
-        {
-          role: "system",
-          content: `You are a professional forex and commodities market analyst. Analyze news articles and return structured market impact data. Respond ONLY with valid JSON. All text fields MUST be in ${langName}.`,
-        },
-        {
-          role: "user",
-          content: `Trading pairs: ${formattedPairs}. Key currencies: ${currencyFocus}.
+  const enrichedById = new Map<number, LlmEnrichItem>();
+  let agentSummary = "";
+  const limit = Math.min(LLM_ENRICH_MAX, articles.length);
+
+  for (let start = 0; start < limit; start += LLM_ENRICH_CHUNK) {
+    const slice = articles.slice(start, start + LLM_ENRICH_CHUNK);
+    const batch = slice.map((a, i) => ({ id: start + i, title: a.title, summary: a.summary.slice(0, 200) }));
+    try {
+      const completion = await llm.client.chat.completions.create({
+        model: llm.model,
+        max_tokens: 2000,
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional forex and commodities market analyst. For each news article, judge the market sentiment for the affected assets (bullish = price likely up, bearish = price likely down, neutral = unclear/mixed). Respond ONLY with valid JSON. All text fields MUST be in ${langName}.`,
+          },
+          {
+            role: "user",
+            content: `Trading pairs: ${formattedPairs}. Key currencies: ${currencyFocus}.
 
 Articles to analyze:
 ${JSON.stringify(batch, null, 2)}
@@ -553,52 +588,65 @@ Return ONLY this JSON (no markdown, no extra text):
 {
   "agentSummary": "2-3 sentence macro overview in ${langName} for ${formattedPairs}",
   "articles": [
-    {
-      "impactScore": 7,
-      "impactReason": "1 sentence in ${langName} why this matters for these specific pairs",
-      "affectedPairs": ["EUR/USD"],
-      "sentiment": "bullish|bearish|neutral"
-    }
+    { "id": 0, "impactScore": 7, "impactReason": "1 sentence in ${langName}", "affectedPairs": ["EUR/USD"], "sentiment": "bullish" }
   ]
 }
 
-Return exactly ${batch.length} objects in articles[], same order as input.`,
-        },
-      ],
-    });
+sentiment MUST be one of: "bullish", "bearish", "neutral". Return one object per input article, echoing its "id".`,
+          },
+        ],
+      });
 
-    const raw = completion.choices[0]?.message?.content ?? "";
-    const jsonMatch = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim().match(/\{[\s\S]*\}/);
-    if (!jsonMatch) { console.warn("[news/groq] Risposta non-JSON"); return null; }
-    const parsed = JSON.parse(jsonMatch[0]) as GroqEnrichResult;
-    if (!Array.isArray(parsed.articles)) return null;
-
-    const enriched = articles.map((a, i) => {
-      const ai = parsed.articles[i];
-      if (!ai) return a;
-      return {
-        ...a,
-        impactScore: typeof ai.impactScore === "number" ? Math.min(10, Math.max(1, Math.round(ai.impactScore))) : a.impactScore,
-        impactReason: typeof ai.impactReason === "string" ? ai.impactReason : a.impactReason,
-        affectedPairs: Array.isArray(ai.affectedPairs) && ai.affectedPairs.length > 0 ? ai.affectedPairs : a.affectedPairs,
-        sentiment: typeof ai.sentiment === "string" ? ai.sentiment : a.sentiment,
-      };
-    });
-
-    console.info(`[news/groq] OK — ${enriched.length} articoli arricchiti con Llama`);
-    return { articles: enriched, agentSummary: parsed.agentSummary ?? "" };
-
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("401") || msg.includes("403")) {
-      _groqKeyInvalidUntil = Date.now() + 60 * 60 * 1000;
-      _groqClient = null;
-      console.warn("[news/groq] Chiave non valida — solo enrichment euristico");
-    } else {
-      console.warn("[news/groq] Errore:", msg);
+      const raw = completion.choices[0]?.message?.content ?? "";
+      const jsonMatch = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim().match(/\{[\s\S]*\}/);
+      if (!jsonMatch) { console.warn("[news/llm] risposta non-JSON, salto chunk"); continue; }
+      const parsed = JSON.parse(jsonMatch[0]) as LlmEnrichResult;
+      if (start === 0 && typeof parsed.agentSummary === "string") agentSummary = parsed.agentSummary;
+      if (Array.isArray(parsed.articles)) {
+        parsed.articles.forEach((item, i) => {
+          const id = typeof item.id === "number" ? item.id : start + i;
+          enrichedById.set(id, item);
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("401") || msg.includes("403") || msg.includes("429")) {
+        markKeyInvalid();
+        console.warn("[news/llm] chiave non valida o rate limit — fallback euristico");
+        break;
+      }
+      console.warn("[news/llm] errore:", msg);
     }
-    return null;
   }
+
+  if (enrichedById.size === 0) return null;
+
+  const enriched = articles.map((a, i) => {
+    const ai = enrichedById.get(i);
+    if (!ai) return a;
+    return {
+      ...a,
+      impactScore: typeof ai.impactScore === "number" ? Math.min(10, Math.max(1, Math.round(ai.impactScore))) : a.impactScore,
+      impactReason: typeof ai.impactReason === "string" && ai.impactReason ? ai.impactReason : a.impactReason,
+      affectedPairs: Array.isArray(ai.affectedPairs) && ai.affectedPairs.length > 0 ? ai.affectedPairs : a.affectedPairs,
+      sentiment: normalizeSentiment(ai.sentiment) ?? a.sentiment,
+    };
+  });
+
+  console.info(`[news/llm] OK — ${enrichedById.size} articoli con sentiment reale (${llm.model})`);
+  return { articles: enriched, agentSummary };
+}
+
+// ─── USD / dollar macro detection (always surfaced in the feed) ───────────────
+// Matches English + Italian stems so it works on both original and translated
+// text. "dollar" also matches the Italian "dollaro".
+const USD_MACRO_RE =
+  /\bfed\b|\bfomc\b|powell|federal\s+reserve|non[-\s]?farm|\bnfp\b|payroll|\bcpi\b|\bppi\b|inflation|inflazione|treasur|\byields?\b|rendiment|\bdxy\b|dollar|greenback|rate\s+(cut|hike|decision)|interest\s+rate|tassi/i;
+
+function isUsdMacroArticle(article: NewsArticle): boolean {
+  return USD_MACRO_RE.test(
+    `${article.title} ${article.summary} ${article.originalTitle ?? ""} ${article.originalSummary ?? ""}`,
+  );
 }
 
 // ─── Route ────────────────────────────────────────────────────────────────────
@@ -646,20 +694,36 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
     // 2. Enrichment euristico (sempre gratuito — impact score, pair detection, sentiment)
     const enriched = enrichHeuristically(translated, pairCurrencies, pairsStr, lang);
 
-    // 3. Groq AI enhancement (opzionale — free tier con GROQ_API_KEY)
-    const groqResult = await enrichWithGroq(enriched, pairCurrencies, pairsStr, lang);
-    if (groqResult && groqResult.articles.length > 0) {
-      articles = groqResult.articles;
-      agentSummary = groqResult.agentSummary;
+    // 3. LLM enrichment — REAL sentiment via the configured provider (OpenRouter
+    //    by default). Falls back to the heuristic when the LLM is unavailable.
+    const llmResult = await enrichWithLLM(enriched, pairCurrencies, pairsStr, lang);
+    if (llmResult && llmResult.articles.length > 0) {
+      articles = llmResult.articles;
+      agentSummary = llmResult.agentSummary || heuristicAgentSummary(llmResult.articles, formattedPairs, lang);
     } else {
       articles = enriched;
       agentSummary = heuristicAgentSummary(enriched, formattedPairs, lang);
     }
 
-    articles = rankNewsForDisplay(
-      applyNewsFreshness(enrichAndFilterNews(articles, { pairs: pairsStr, lang }), { freshnessWindowHours }),
-      { limit: 20, maxPerSource: 3 },
+    // Relevant set for the user's selected pairs (or a generic fallback when
+    // no pairs are selected).
+    const relevant = enrichAndFilterNews(articles, { pairs: pairsStr, lang });
+    // USD/dollar macro (Fed, FOMC, CPI, NFP, Treasury yields, DXY…) is relevant
+    // to virtually every FX/gold trader, so always surface it even when the
+    // selected pairs don't include USD. rankNewsForDisplay dedupes the overlap.
+    const usdMacro = articles.filter(isUsdMacroArticle);
+    // Dedupe + quality-score the combined set (keeps a large corpus for the
+    // paginated feed), then order strictly newest-first for chronological scroll.
+    const deduped = rankNewsForDisplay(
+      applyNewsFreshness([...relevant, ...usdMacro], { freshnessWindowHours }),
+      { limit: NEWS_FEED_CORPUS_LIMIT, maxPerSource: 6 },
     );
+    const sorted = sortNewsChronologically(deduped);
+    // Keep the feed fresh: drop stale/undated items, but never empty the feed.
+    const maxAgeMs = NEWS_MAX_AGE_HOURS * 60 * 60 * 1000;
+    const nowMs = Date.now();
+    const recent = sorted.filter((a) => a.publishedAt && nowMs - new Date(a.publishedAt).getTime() <= maxAgeMs);
+    articles = recent.length > 0 ? recent : sorted.slice(0, 12);
     source = "ai";  // enrichment (euristico o Groq) conta come AI
     nextRefreshAt = new Date(Date.now() + cacheTtl).toISOString();
   } catch {
@@ -673,6 +737,11 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
         return s.length === 6 ? `${s.slice(0, 3)}/${s.slice(3)}` : s;
       }).filter(Boolean)
     : [];
+
+  articles = articles.map((article) => ({
+    ...article,
+    deepDive: article.deepDive ?? buildNewsDeepDive(article, { lang }),
+  }));
 
   const freshArticles = articles.filter((article) => !article.isFallback);
   const fallbackArticles = articles.filter((article) => article.isFallback);
@@ -705,7 +774,19 @@ router.get("/news", async (req, res) => {
     pairs: (req.query.pairs as string) || "",
     lang: req.query.lang as string | undefined,
   });
-  res.json(result);
+
+  const limitParam = Number.parseInt((req.query.limit as string) ?? "", 10);
+  const page = paginateNews(result.articles, {
+    cursor: (req.query.cursor as string) ?? null,
+    limit: Number.isFinite(limitParam) ? limitParam : DEFAULT_NEWS_PAGE_SIZE,
+  });
+
+  res.json({
+    ...result,
+    articles: page.articles,
+    nextCursor: page.nextCursor,
+    totalCount: page.totalCount,
+  });
 });
 
 export default router;

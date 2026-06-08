@@ -4,6 +4,7 @@ import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
 import { getNewsData } from "./news.js";
 import { cleanNewsText } from "../services/newsHub/contentQuality.js";
 import { macroNewsFromNewsHub, pairsFromMacroCurrencies } from "../services/newsHub/macroNewsAdapter.js";
+import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
 
 const router = Router();
 
@@ -151,55 +152,6 @@ router.post("/tools/montecarlo", (req, res) => {
 });
 
 // ─── 2. MYFXBOOK SENTIMENT ────────────────────────────────────────────────────
-
-interface MyfxbookSymbol {
-  name: string;
-  longPercentage: number;
-  shortPercentage: number;
-  longVolume: number;
-  shortVolume: number;
-  longPositions: number;
-  shortPositions: number;
-}
-
-let _mfxSession: { token: string; expiresAt: number } | null = null;
-
-async function getMyfxbookSession(): Promise<string | null> {
-  if (_mfxSession && Date.now() < _mfxSession.expiresAt) {
-    return _mfxSession.token;
-  }
-  const email = process.env.MYFXBOOK_EMAIL;
-  const password = process.env.MYFXBOOK_PASSWORD;
-  if (!email || !password) return null;
-
-  const url = `https://www.myfxbook.com/api/login.json?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-  if (!res.ok) throw new Error(`Myfxbook login HTTP ${res.status}`);
-  const data = await res.json() as { error: boolean; message?: string; session: string };
-  if (data.error || !data.session) throw new Error(data.message ?? "Login fallito");
-
-  _mfxSession = { token: data.session, expiresAt: Date.now() + 55 * 60 * 1000 };
-  console.log("[myfxbook] Sessione ottenuta");
-  return _mfxSession.token;
-}
-
-async function fetchMyfxbookOutlook(): Promise<MyfxbookSymbol[]> {
-  const session = await getMyfxbookSession();
-  if (!session) throw new Error("No credentials");
-
-  const url = `https://www.myfxbook.com/api/get-community-outlook.json?session=${session}`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0" },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) throw new Error(`Myfxbook outlook HTTP ${res.status}`);
-  const data = await res.json() as { error: boolean; message?: string; symbols?: MyfxbookSymbol[] };
-  if (data.error) {
-    _mfxSession = null;
-    throw new Error(data.message ?? "Outlook error");
-  }
-  return data.symbols ?? [];
-}
 
 const FALLBACK_SYMBOLS: MyfxbookSymbol[] = [
   { name: "EURUSD", longPercentage: 58, shortPercentage: 42, longPositions: 58000, shortPositions: 42000, longVolume: 58, shortVolume: 42 },

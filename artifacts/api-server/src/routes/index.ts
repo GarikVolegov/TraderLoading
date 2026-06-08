@@ -25,6 +25,7 @@ import milestonesRouter from "./milestones.js";
 import brainRouter from "./brain.js";
 import accountBridgeRouter from "./account-bridge.js";
 import brokersRouter from "./brokers.js";
+import routinesRouter from "./routines.js";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(milestonesRouter);
 router.use(brainRouter);
 router.use(accountBridgeRouter);
 router.use(brokersRouter);
+router.use(routinesRouter);
 
 export default router;

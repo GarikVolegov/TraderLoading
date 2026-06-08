@@ -98,6 +98,7 @@ export * from "./uploadJournalImageBody";
 export * from "./uploadProfileAvatarBody";
 export * from "./userProfile";
 export * from "./userSearchResult";
+export * from "./userSearchResultRelationshipStatus";
 export * from "./userSettings";
 export * from "./userSettingsBackgroundPresetsItem";
 export * from "./userSettingsBackgroundType";

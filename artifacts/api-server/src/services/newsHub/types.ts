@@ -1,3 +1,9 @@
+export interface NewsDeepDive {
+  whatHappened: string;
+  whyItMatters: string;
+  possibleImpact: string;
+}
+
 export interface NewsArticle {
   title: string;
   summary: string;
@@ -24,6 +30,7 @@ export interface NewsArticle {
   ageMinutes?: number;
   isFallback?: boolean;
   qualityScore?: number;
+  deepDive?: NewsDeepDive;
 }
 
 export interface NewsProviderStatus {
@@ -47,6 +54,8 @@ export interface NewsResponse {
   fallbackArticlesCount?: number;
   oldestFreshArticleAt?: string;
   freshnessWindowHours?: number;
+  nextCursor?: string | null;
+  totalCount?: number;
 }
 
 export type NewsEvent =

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fetchReplayCandles, type ReplayCandleRaw } from "@/lib/replayCandlesApi";
 import {
   applyFormingCandleForAnchor,
   DEFAULT_REPLAY_VISIBLE_CANDLES,
@@ -32,8 +33,6 @@ import {
 } from "./chartReplayWindow";
 import { createReplayStorageKey, parsePersistedReplayState, serializeReplayState } from "./chartReplayPersistence";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "";
-
 const START_BALANCE = 10_000;
 const LOT_SIZES = ["0.01", "0.05", "0.10", "0.25", "0.50", "1.00"];
 
@@ -43,15 +42,6 @@ function getPipDollarValue(symbol: string, lotSize: number): number {
   if (s.includes("BTC") || s.includes("ETH")) return lotSize * 1;
   if (s === "XAUUSD") return lotSize * 10;
   return lotSize * 10;
-}
-
-interface CandleRaw {
-  time: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume?: number;
 }
 
 interface ReplayTrade {
@@ -179,13 +169,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
     playingRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    fetch(`${API_BASE}/api/backtest/candles?symbol=${s}&interval=${activeInterval}`, {
-      signal: controller.signal,
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<{ candles: CandleRaw[] }>;
-      })
+    fetchReplayCandles({ symbol: s, interval: activeInterval }, { signal: controller.signal })
       .then((data) => {
         if (controller.signal.aborted) return;
         const candles: CandlestickData<Time>[] = data.candles.map((c) => ({
@@ -196,8 +180,8 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
           close: c.close,
         }));
         const volumes = data.candles
-          .filter((c: CandleRaw) => c.volume != null)
-          .map((c: CandleRaw) => ({
+          .filter((c: ReplayCandleRaw) => c.volume != null)
+          .map((c: ReplayCandleRaw) => ({
             time: c.time as Time,
             value: c.volume!,
             color: c.close >= c.open ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)",

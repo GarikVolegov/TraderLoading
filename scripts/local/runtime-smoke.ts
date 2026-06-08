@@ -4,7 +4,7 @@ import path from "node:path";
 import { loadEnvLocal, repoRoot } from "./lib/env.js";
 import { checkHttp, waitForHttp } from "./lib/health.js";
 import { scanRuntimeErrorsSince } from "./lib/runtimeLogs.js";
-import { createRuntimeSmokePlan, type RuntimeSmokeService } from "./lib/runtimeSmoke.js";
+import { createRuntimeSmokePlan, getPostCodegenSettleDelayMs, type RuntimeSmokeService } from "./lib/runtimeSmoke.js";
 import { runCommand } from "./lib/process.js";
 import { buildFrontendDevEnv } from "./startEnv.js";
 
@@ -82,8 +82,15 @@ async function main(): Promise<void> {
   mkdirSync(logsDir, { recursive: true });
   loadEnvLocal();
 
+  const frontendReachableBeforeCodegen = (await checkHttp("http://127.0.0.1:5173")).ok;
+
   console.log("> pnpm --filter @workspace/api-spec run codegen");
   await runCommand("pnpm", ["--filter", "@workspace/api-spec", "run", "codegen"]);
+
+  const settleDelayMs = getPostCodegenSettleDelayMs({ frontendReachableBeforeCodegen });
+  if (settleDelayMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, settleDelayMs));
+  }
 
   const startedAtMs = Date.now();
   writeFileSync(markerPath, JSON.stringify({ startedAtMs, startedAt: new Date(startedAtMs).toISOString() }, null, 2));

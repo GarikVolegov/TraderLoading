@@ -1,13 +1,19 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Settings, Volume2, VolumeX, Bell } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
 import { useAudio } from "@/contexts/AudioContext";
 import { MacroNewsTicker } from "@/components/MacroNewsTicker";
-import { UserButton } from "@clerk/react";
+import { useGetProfile } from "@workspace/api-client-react";
 
 export function TopNav() {
   const { mode, setMode } = useAudio();
+  const { data: profile } = useGetProfile();
   const isPlaying = mode !== "off";
+  const avatarSrc =
+    profile && profile.avatarUrl
+      ? profile.avatarUrl
+      : `${import.meta.env.BASE_URL}images/avatar-default.png`;
+  const profileName = profile?.name ?? "Trader";
 
   return (
     <motion.header
@@ -17,7 +23,7 @@ export function TopNav() {
       className="fixed top-0 left-0 right-0 z-40 lg:left-20"
     >
       <div className="bg-background/80 backdrop-blur-2xl border-b border-border/40 shadow-[0_1px_0_0_rgba(255,255,255,0.03)]">
-          <div className="max-w-[1760px] mx-auto px-3 sm:px-5 lg:px-5 xl:px-7 flex items-center gap-2 sm:gap-3 h-[3.25rem]">
+          <div className="mx-auto flex h-14 max-w-[1760px] items-center gap-2 px-3 sm:gap-3 sm:px-5 lg:px-5 xl:px-7">
 
           {/* Brand — mobile/tablet only */}
           <motion.div
@@ -55,42 +61,39 @@ export function TopNav() {
           >
             {/* Audio toggle */}
             <motion.button
+              type="button"
+              aria-label={isPlaying ? "Disattiva audio focus" : "Attiva audio focus"}
               whileTap={{ scale: 0.88 }}
               onClick={() => setMode(isPlaying ? "off" : "deepfocus")}
-              className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all ${
+              className={`flex h-11 w-11 items-center justify-center rounded-lg border transition-colors ${
                 isPlaying
-                  ? "bg-primary/15 text-primary border border-primary/30 shadow-[0_0_12px_rgba(0,204,102,0.15)]"
-                  : "bg-card/60 text-muted-foreground border border-border/60 hover:border-border hover:text-foreground"
+                  ? "border-primary/30 bg-primary/15 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.15)]"
+                  : "border-border/55 bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-primary"
               }`}
               title={isPlaying ? "Audio on" : "Audio off"}
             >
               {isPlaying ? (
-                <Volume2 className="w-3.5 h-3.5" />
+                <Volume2 className="h-4 w-4" />
               ) : (
-                <VolumeX className="w-3.5 h-3.5" />
+                <VolumeX className="h-4 w-4" />
               )}
             </motion.button>
 
-            {/* Settings */}
-            <motion.div whileTap={{ scale: 0.88 }}>
+            {/* User avatar */}
+            <motion.div whileTap={{ scale: 0.88 }} className="flex items-center">
               <Link
                 href="/settings"
-                className="flex items-center justify-center w-8 h-8 rounded-lg bg-card/60 text-muted-foreground border border-border/60 hover:border-border hover:text-foreground transition-all"
+                aria-label="Apri impostazioni profilo"
+                title="Impostazioni profilo"
+                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-primary/45 bg-card/60 p-0.5 shadow-[0_0_12px_hsl(var(--primary)/0.1)] transition-colors hover:border-primary hover:bg-primary/10"
               >
-                <Settings className="w-3.5 h-3.5" />
+                <img
+                  src={avatarSrc}
+                  alt={`Profilo di ${profileName}`}
+                  className="h-full w-full rounded-[6px] object-cover"
+                />
               </Link>
             </motion.div>
-
-            {/* User avatar */}
-            <div className="flex items-center">
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: "w-8 h-8 rounded-lg border border-border/60",
-                  },
-                }}
-              />
-            </div>
           </motion.div>
         </div>
       </div>
