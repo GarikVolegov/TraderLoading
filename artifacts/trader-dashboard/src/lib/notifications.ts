@@ -6,6 +6,7 @@ export interface NotificationPrefs {
   social: boolean;
   goals: boolean;
   dailyReminder: boolean;
+  scheduledCalls: boolean;
   macroEvents: boolean;
   brain: boolean;
 }
@@ -18,6 +19,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   social: true,
   goals: true,
   dailyReminder: true,
+  scheduledCalls: true,
   macroEvents: true,
   brain: true,
 };
@@ -25,6 +27,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
 export const NOTIFICATION_PREF_ORDER: NotificationPrefKey[] = [
   "sessions",
   "dailyReminder",
+  "scheduledCalls",
   "goals",
   "macroEvents",
   "brain",
@@ -55,6 +58,7 @@ const IT: NotificationCopy = {
   prefs: {
     sessions: { label: "Sessioni di trading", description: "Avvisi quando una sessione operativa si apre." },
     dailyReminder: { label: "Promemoria giornaliero", description: "Riepilogo missioni e routine della giornata." },
+    scheduledCalls: { label: "Chiamate programmate", description: "Chiamate push personalizzate nei giorni e orari scelti." },
     goals: { label: "Obiettivi e scadenze", description: "Promemoria sugli obiettivi impostati nel diario." },
     macroEvents: { label: "Eventi macro", description: "Alert prima delle notizie ad alto impatto." },
     brain: { label: "Brain AI", description: "Setup e analisi rilevanti generati dal cervello." },
@@ -82,6 +86,7 @@ const COPIES: Record<Language, NotificationCopy> = {
     prefs: {
       sessions: { label: "Trading sessions", description: "Alerts when an active trading session opens." },
       dailyReminder: { label: "Daily reminder", description: "Summary of today's missions and routine." },
+      scheduledCalls: { label: "Scheduled calls", description: "Custom push calls on selected days and times." },
       goals: { label: "Goals and deadlines", description: "Reminders for goals saved in the journal." },
       macroEvents: { label: "Macro events", description: "Alerts before high-impact market events." },
       brain: { label: "Brain AI", description: "Relevant setups and analysis from the AI brain." },
@@ -106,6 +111,7 @@ const COPIES: Record<Language, NotificationCopy> = {
     prefs: {
       sessions: { label: "Sesiones de trading", description: "Avisos cuando se abre una sesion operativa." },
       dailyReminder: { label: "Recordatorio diario", description: "Resumen de misiones y rutina del dia." },
+      scheduledCalls: { label: "Llamadas programadas", description: "Llamadas push personalizadas en dias y horas elegidos." },
       goals: { label: "Objetivos y fechas", description: "Recordatorios de objetivos del diario." },
       macroEvents: { label: "Eventos macro", description: "Alertas antes de noticias de alto impacto." },
       brain: { label: "Brain AI", description: "Setups y analisis relevantes del cerebro AI." },
@@ -130,6 +136,7 @@ const COPIES: Record<Language, NotificationCopy> = {
     prefs: {
       sessions: { label: "Sessions de trading", description: "Alertes quand une session active s'ouvre." },
       dailyReminder: { label: "Rappel quotidien", description: "Resume des missions et de la routine du jour." },
+      scheduledCalls: { label: "Appels programmes", description: "Appels push personnalises aux jours et heures choisis." },
       goals: { label: "Objectifs et echeances", description: "Rappels des objectifs du journal." },
       macroEvents: { label: "Evenements macro", description: "Alertes avant les nouvelles a fort impact." },
       brain: { label: "Brain AI", description: "Setups et analyses pertinents du cerveau AI." },
@@ -154,6 +161,7 @@ const COPIES: Record<Language, NotificationCopy> = {
     prefs: {
       sessions: { label: "Trading-Sitzungen", description: "Hinweise, wenn eine aktive Sitzung startet." },
       dailyReminder: { label: "Tageserinnerung", description: "Zusammenfassung der heutigen Missionen und Routine." },
+      scheduledCalls: { label: "Geplante Anrufe", description: "Individuelle Push-Anrufe an ausgewaehlten Tagen und Zeiten." },
       goals: { label: "Ziele und Fristen", description: "Erinnerungen an Ziele aus dem Journal." },
       macroEvents: { label: "Makroereignisse", description: "Alerts vor wichtigen Marktnachrichten." },
       brain: { label: "Brain AI", description: "Relevante Setups und Analysen des AI-Brains." },

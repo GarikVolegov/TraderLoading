@@ -494,11 +494,26 @@ export interface UploadBackgroundResponse {
   url: string;
 }
 
+/**
+ * Friendship state between the current user and this result.
+ */
+export type UserSearchResultRelationshipStatus =
+  (typeof UserSearchResultRelationshipStatus)[keyof typeof UserSearchResultRelationshipStatus];
+
+export const UserSearchResultRelationshipStatus = {
+  none: "none",
+  pending_sent: "pending_sent",
+  pending_received: "pending_received",
+  accepted: "accepted",
+} as const;
+
 export interface UserSearchResult {
   id: number;
   name: string;
   avatarUrl?: string | null;
   userId?: string | null;
+  /** Friendship state between the current user and this result. */
+  relationshipStatus?: UserSearchResultRelationshipStatus;
 }
 
 export interface FriendRequestBody {

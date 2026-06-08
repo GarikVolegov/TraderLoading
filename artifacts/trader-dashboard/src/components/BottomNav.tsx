@@ -1,9 +1,8 @@
 import { Link, useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { LayoutDashboard, BookOpen, MessageCircle, Wrench, Brain, BrainCircuit, Settings, FlaskConical, Sunrise } from "lucide-react";
-import { getGetUnreadCountQueryKey, useGetUnreadCount } from "@workspace/api-client-react";
+import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { UserButton } from "@clerk/react";
 
 const NAV_ITEMS = [
   { href: "/",        icon: LayoutDashboard, labelKey: "nav.home",    isChat: false },
@@ -184,7 +183,13 @@ function NavItem({
 export function BottomNav() {
   const { t } = useLanguage();
   const { data: unreadData } = useGetUnreadCount({ query: { queryKey: getGetUnreadCountQueryKey(), refetchInterval: 5000 } });
+  const { data: profile } = useGetProfile();
   const unreadCount = unreadData?.count ?? 0;
+  const avatarSrc =
+    profile && profile.avatarUrl
+      ? profile.avatarUrl
+      : `${import.meta.env.BASE_URL}images/avatar-default.png`;
+  const profileName = profile?.name ?? "Trader";
 
   return (
     <>
@@ -226,8 +231,12 @@ export function BottomNav() {
             transition={{ delay: 0.18, duration: 0.4 }}
             className="flex items-center justify-center"
           >
-            <div className="w-11 h-11 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
-              <div className="w-3.5 h-3.5 rounded-md bg-primary" />
+            <div className="w-11 h-11 rounded-lg border border-primary/25 flex items-center justify-center shrink-0 overflow-hidden bg-background shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
+              <img
+                src={`${import.meta.env.BASE_URL}app-icon-192.png`}
+                alt="TraderLOADING"
+                className="h-full w-full object-cover"
+              />
             </div>
           </motion.div>
         </div>
@@ -281,15 +290,18 @@ export function BottomNav() {
           transition={{ delay: 0.45 }}
           className="px-3 py-3 border-t border-border/30"
         >
-          <div className="flex items-center justify-center rounded-xl py-1.5 hover:bg-white/5 transition-colors cursor-pointer group">
-            <UserButton
-              appearance={{
-                elements: {
-                  avatarBox: "w-9 h-9 rounded-xl border border-border/60",
-                },
-              }}
+          <Link
+            href="/settings"
+            aria-label="Apri impostazioni profilo"
+            title="Impostazioni profilo"
+            className="mx-auto flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-primary/35 bg-card/70 p-0.5 shadow-[0_0_14px_hsl(var(--primary)/0.08)] transition-colors hover:border-primary hover:bg-primary/10"
+          >
+            <img
+              src={avatarSrc}
+              alt={`Profilo di ${profileName}`}
+              className="h-full w-full rounded-[10px] object-cover"
             />
-          </div>
+          </Link>
         </motion.div>
       </motion.nav>
     </>

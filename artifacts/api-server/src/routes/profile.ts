@@ -175,11 +175,8 @@ async function isNameTaken(name: string, excludeProfileId: number, userId: strin
 router.get("/profile", async (req, res) => {
   const userId = getUserId(req);
   const profile = await getOrCreateProfile(userId);
-  const { newStreak } = await updateStreak(profile.id);
-  const freshXp = profile.xp;
-  const [fresh] = await db.select({ xp: profileTable.xp, streak: profileTable.streak }).from(profileTable).where(eq(profileTable.id, profile.id)).limit(1);
-  const xp = fresh?.xp ?? freshXp;
-  const streak = fresh?.streak ?? newStreak;
+  const xp = profile.xp;
+  const streak = profile.streak;
   const { level, xpToNextLevel } = computeLevel(xp);
   const { winRate, totalTrades } = await computeWinRate(userId);
 

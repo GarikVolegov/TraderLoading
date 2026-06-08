@@ -10,3 +10,4 @@ export * from "./community";
 export * from "./milestones";
 export * from "./brain";
 export * from "./account";
+export * from "./routines";

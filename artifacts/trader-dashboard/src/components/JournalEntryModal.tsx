@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import {
   useCreateJournalEntry,
   useUpdateJournalEntry,
@@ -22,7 +22,7 @@ import {
   type JournalEntry
 } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { fetchJournalTags, journalTagsQueryKey, type JournalTagSummary } from "@/lib/journalTagsApi";
+import { fetchJournalTags, journalTagsQueryKey, saveJournalTag, type JournalTagSummary } from "@/lib/journalTagsApi";
 
 interface JournalEntryModalProps {
   isOpen: boolean;
@@ -45,10 +45,11 @@ function useSavedTags() {
 interface SmartTagInputProps {
   value: string[];
   onChange: (tags: string[]) => void;
+  onSaveTag?: (tag: string) => void;
   savedTags: { tag: string; count: number }[];
 }
 
-function SmartTagInput({ value, onChange, savedTags }: SmartTagInputProps) {
+function SmartTagInput({ value, onChange, onSaveTag, savedTags }: SmartTagInputProps) {
   const [inputVal, setInputVal] = useState("");
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +66,7 @@ function SmartTagInput({ value, onChange, savedTags }: SmartTagInputProps) {
     const t = tag.trim();
     if (!t || value.includes(t)) return;
     onChange([...value, t]);
+    onSaveTag?.(t);
     setInputVal("");
     inputRef.current?.focus();
   };
@@ -269,6 +271,10 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
   const uploadImageMutation = useUploadJournalImage();
   const deleteImageMutation = useDeleteJournalImage();
   const { data: savedTagsData = [] } = useSavedTags();
+  const saveTagMutation = useMutation({
+    mutationFn: (tag: string) => saveJournalTag(tag),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: journalTagsQueryKey }),
+  });
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -328,6 +334,13 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
   const removeExistingImage = (imageId: number) => {
     setExistingImages(prev => prev.filter(img => img.id !== imageId));
     setPendingDeletes(prev => [...prev, imageId]);
+  };
+
+  const addTagFromPanel = (tag: string) => {
+    const normalized = tag.trim();
+    if (!normalized || tagList.includes(normalized)) return;
+    setTagList(prev => [...prev, normalized]);
+    saveTagMutation.mutate(normalized);
   };
 
   const handleSave = async () => {
@@ -441,11 +454,12 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
             <SmartTagInput
               value={tagList}
               onChange={setTagList}
+              onSaveTag={(tag) => saveTagMutation.mutate(tag)}
               savedTags={savedTagsData}
             />
             <ChecklistTagPanel
               activeTags={tagList}
-              onAdd={(tag) => { if (!tagList.includes(tag)) setTagList(prev => [...prev, tag]); }}
+              onAdd={addTagFromPanel}
             />
           </div>
 

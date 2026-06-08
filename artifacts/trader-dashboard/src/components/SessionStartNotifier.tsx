@@ -54,7 +54,7 @@ export function SessionStartNotifier() {
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification(title, {
           body,
-          icon: "/favicon.ico",
+          icon: "/app-icon-192.png",
           tag: `session-open-${session.id ?? session.name}`,
         });
       } else {

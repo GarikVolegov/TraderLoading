@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { fetchJournalTags, journalTagsQueryKey } from "./journalTagsApi.js";
+import { fetchJournalTags, journalTagsQueryKey, saveJournalTag } from "./journalTagsApi.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -30,6 +30,24 @@ try {
     assert.equal(calls[0]?.url, "/trader/api/journal/tags");
     assert.equal(calls[0]?.init?.credentials, "include");
     assert.deepEqual(tags, [{ tag: "breakout", count: 3 }]);
+  }
+
+  {
+    mockFetch(() => Response.json([{ tag: "London", count: 0 }]));
+
+    assert.deepEqual(await fetchJournalTags({ basePath: "/" }), [{ tag: "London", count: 0 }]);
+  }
+
+  {
+    const calls = mockFetch(() => Response.json({ tag: "London", count: 0 }));
+
+    const tag = await saveJournalTag("London", { basePath: "/trader/" });
+
+    assert.equal(calls[0]?.url, "/trader/api/journal/tags");
+    assert.equal(calls[0]?.init?.method, "POST");
+    assert.equal(calls[0]?.init?.credentials, "include");
+    assert.equal(calls[0]?.init?.body, JSON.stringify({ tag: "London" }));
+    assert.deepEqual(tag, { tag: "London", count: 0 });
   }
 
   {

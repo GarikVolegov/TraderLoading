@@ -1,0 +1,4 @@
+$ pnpm --filter ./scripts exec tsx local/start.ts
+$ orval --config ./orval.config.ts
+$ drizzle-kit push --config ./drizzle.config.ts
+$ vite --config vite.config.ts --host 0.0.0.0 --strictPort

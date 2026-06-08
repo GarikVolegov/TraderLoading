@@ -35,6 +35,12 @@ import { reportClientError } from "@/lib/clientErrorReporter";
 
 const API = "/api";
 
+interface MacroArticleDeepDive {
+  whatHappened: string;
+  whyItMatters: string;
+  possibleImpact: string;
+}
+
 interface MacroArticle {
   title: string;
   summary: string;
@@ -53,6 +59,7 @@ interface MacroArticle {
   timestamp?: string;
   imageUrl?: string | null;
   url?: string | null;
+  deepDive?: MacroArticleDeepDive;
 }
 
 interface MacroNewsData {
@@ -205,6 +212,11 @@ function MacroNewsDetailDialog({
 }) {
   if (!article) return null;
   const detailUrl = preferredMacroArticleUrl(article);
+  const deepDive = article.deepDive ?? {
+    whatHappened: article.summary || article.title,
+    whyItMatters: `La notizia riguarda ${article.currency} e puo' modificare aspettative, flussi o volatilita' sull'asset monitorato.`,
+    possibleImpact: `Impatto ${article.impact} su ${article.currency}. Direzione stimata: ${article.direction}.`,
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[720px] bg-card/95 backdrop-blur-xl border-border max-h-[88vh] overflow-y-auto">
@@ -254,14 +266,21 @@ function MacroNewsDetailDialog({
             {article.summary}
           </p>
 
-          <div className="rounded-lg border border-primary/15 bg-primary/5 p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">
-              Lettura mercato
-            </p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Impatto {article.impact} su {article.currency}. Direzione stimata:{" "}
-              {article.direction}.
-            </p>
+          <div className="grid gap-3">
+            {[
+              ["Cosa e' successo", deepDive.whatHappened],
+              ["Perche' influenza l'asset", deepDive.whyItMatters],
+              ["Come puo' impattare", deepDive.possibleImpact],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-primary/15 bg-primary/5 p-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">
+                  {label}
+                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {value}
+                </p>
+              </div>
+            ))}
           </div>
 
           {(article.originalTitle || article.originalSummary) && (

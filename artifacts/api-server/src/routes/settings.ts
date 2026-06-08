@@ -27,6 +27,94 @@ function readLanguageFromSettings(settings: { notificationPrefs?: string | null 
   return normalizeLanguage(parseNotificationPrefs(settings.notificationPrefs ?? null).__language);
 }
 
+type SettingsRecord = {
+  notificationPrefs?: string | null;
+  tradingSessions?: string | null;
+  calendarCurrencies?: string | null;
+  calendarImpacts?: string | null;
+  selectedPairs?: string | null;
+  alarmConfigs?: string | null;
+};
+
+export function serializeSettings(settings: SettingsRecord): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...settings };
+  result.language = readLanguageFromSettings(settings);
+  if (settings.tradingSessions) {
+    try { result.tradingSessions = JSON.parse(settings.tradingSessions); } catch { result.tradingSessions = null; }
+  }
+  if (settings.calendarCurrencies) {
+    try { result.calendarCurrencies = JSON.parse(settings.calendarCurrencies); } catch { result.calendarCurrencies = null; }
+  }
+  if (settings.calendarImpacts) {
+    try { result.calendarImpacts = JSON.parse(settings.calendarImpacts); } catch { result.calendarImpacts = null; }
+  }
+  if (settings.selectedPairs) {
+    try { result.selectedPairs = JSON.parse(settings.selectedPairs); } catch { result.selectedPairs = null; }
+  }
+  if (settings.alarmConfigs) {
+    try { result.alarmConfigs = JSON.parse(settings.alarmConfigs); } catch { result.alarmConfigs = null; }
+  }
+  return result;
+}
+
+export function buildSettingsUpdateData(
+  body: Record<string, unknown>,
+  settings: SettingsRecord,
+): { updateData: Record<string, unknown>; error?: string } {
+  const {
+    backgroundUrl,
+    backgroundType,
+    fontChoice,
+    backgroundDarkness,
+    language,
+    tradingSessions,
+    lotDivisor,
+    calendarCurrencies,
+    calendarImpacts,
+    dailyReminderTime,
+    preMacroMinutes,
+    maxDailyLoss,
+    selectedPairs,
+    alarmConfigs,
+  } = body;
+
+  const updateData: Record<string, unknown> = {};
+  if (backgroundUrl !== undefined) updateData.backgroundUrl = backgroundUrl ?? null;
+  if (backgroundType !== undefined) updateData.backgroundType = backgroundType || "default";
+  if (fontChoice !== undefined) updateData.fontChoice = fontChoice;
+  if (backgroundDarkness !== undefined) updateData.backgroundDarkness = Math.min(90, Math.max(0, Number(backgroundDarkness)));
+  if (tradingSessions !== undefined) updateData.tradingSessions = tradingSessions ? JSON.stringify(tradingSessions) : null;
+  if (lotDivisor !== undefined) {
+    const parsedDivisor = Number(lotDivisor);
+    if (isNaN(parsedDivisor) || parsedDivisor < 1) {
+      return { updateData, error: "lotDivisor must be a number >= 1" };
+    }
+    updateData.lotDivisor = parsedDivisor;
+  }
+  if (calendarCurrencies !== undefined) {
+    updateData.calendarCurrencies = Array.isArray(calendarCurrencies) ? JSON.stringify(calendarCurrencies) : null;
+  }
+  if (calendarImpacts !== undefined) {
+    updateData.calendarImpacts = Array.isArray(calendarImpacts) ? JSON.stringify(calendarImpacts) : null;
+  }
+  if (dailyReminderTime !== undefined) updateData.dailyReminderTime = dailyReminderTime || null;
+  if (preMacroMinutes !== undefined) updateData.preMacroMinutes = Math.max(0, Number(preMacroMinutes));
+  if (maxDailyLoss !== undefined) updateData.maxDailyLoss = maxDailyLoss ? Math.abs(Number(maxDailyLoss)) : null;
+  if (selectedPairs !== undefined) {
+    updateData.selectedPairs = Array.isArray(selectedPairs) ? JSON.stringify(selectedPairs) : null;
+  }
+  if (alarmConfigs !== undefined) {
+    updateData.alarmConfigs = alarmConfigs ? JSON.stringify(alarmConfigs) : null;
+  }
+  if (language !== undefined) {
+    updateData.notificationPrefs = JSON.stringify({
+      ...parseNotificationPrefs(settings.notificationPrefs ?? null),
+      __language: normalizeLanguage(language),
+    });
+  }
+  return { updateData };
+}
+
 const UPLOADS_DIR = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -57,80 +145,28 @@ async function getOrCreateSettings(userId: string | null) {
 router.get("/settings", async (req, res) => {
   const userId = getUserId(req);
   const settings = await getOrCreateSettings(userId);
-  const result: Record<string, unknown> = { ...settings };
-  result.language = readLanguageFromSettings(settings);
-  if (settings.tradingSessions) {
-    try { result.tradingSessions = JSON.parse(settings.tradingSessions); } catch { result.tradingSessions = null; }
-  }
-  if (settings.calendarCurrencies) {
-    try { result.calendarCurrencies = JSON.parse(settings.calendarCurrencies); } catch { result.calendarCurrencies = null; }
-  }
-  if (settings.calendarImpacts) {
-    try { result.calendarImpacts = JSON.parse(settings.calendarImpacts); } catch { result.calendarImpacts = null; }
-  }
-  if (settings.selectedPairs) {
-    try { result.selectedPairs = JSON.parse(settings.selectedPairs); } catch { result.selectedPairs = null; }
-  }
-  res.json(result);
+  res.json(serializeSettings(settings));
 });
 
 router.put("/settings", async (req, res) => {
   const userId = getUserId(req);
-  const { backgroundUrl, backgroundType, fontChoice, backgroundDarkness, language, tradingSessions, lotDivisor, calendarCurrencies, calendarImpacts, dailyReminderTime, preMacroMinutes, maxDailyLoss, selectedPairs } = req.body;
   const settings = await getOrCreateSettings(userId);
 
-  const updateData: Record<string, unknown> = {};
-  if (backgroundUrl !== undefined) updateData.backgroundUrl = backgroundUrl ?? null;
-  if (backgroundType !== undefined) updateData.backgroundType = backgroundType || "default";
-  if (fontChoice !== undefined) updateData.fontChoice = fontChoice;
-  if (backgroundDarkness !== undefined) updateData.backgroundDarkness = Math.min(90, Math.max(0, Number(backgroundDarkness)));
-  if (tradingSessions !== undefined) updateData.tradingSessions = tradingSessions ? JSON.stringify(tradingSessions) : null;
-  if (lotDivisor !== undefined) {
-    const parsedDivisor = Number(lotDivisor);
-    if (isNaN(parsedDivisor) || parsedDivisor < 1) {
-      res.status(400).json({ error: "lotDivisor must be a number >= 1" });
-      return;
-    }
-    updateData.lotDivisor = parsedDivisor;
+  const { updateData, error } = buildSettingsUpdateData(req.body, settings);
+  if (error) {
+    res.status(400).json({ error });
+    return;
   }
-  if (calendarCurrencies !== undefined) {
-    updateData.calendarCurrencies = Array.isArray(calendarCurrencies) ? JSON.stringify(calendarCurrencies) : null;
-  }
-  if (calendarImpacts !== undefined) {
-    updateData.calendarImpacts = Array.isArray(calendarImpacts) ? JSON.stringify(calendarImpacts) : null;
-  }
-  if (dailyReminderTime !== undefined) updateData.dailyReminderTime = dailyReminderTime || null;
-  if (preMacroMinutes !== undefined) updateData.preMacroMinutes = Math.max(0, Number(preMacroMinutes));
-  if (maxDailyLoss !== undefined) updateData.maxDailyLoss = maxDailyLoss ? Math.abs(Number(maxDailyLoss)) : null;
-  if (selectedPairs !== undefined) {
-    updateData.selectedPairs = Array.isArray(selectedPairs) ? JSON.stringify(selectedPairs) : null;
-  }
-  if (language !== undefined) {
-    updateData.notificationPrefs = JSON.stringify({
-      ...parseNotificationPrefs(settings.notificationPrefs),
-      __language: normalizeLanguage(language),
-    });
+  if (Object.keys(updateData).length === 0) {
+    res.json(serializeSettings(settings));
+    return;
   }
   const [updated] = await db.update(userSettingsTable)
     .set(updateData)
     .where(eq(userSettingsTable.id, settings.id))
     .returning();
   
-  const result: Record<string, unknown> = { ...updated };
-  result.language = readLanguageFromSettings(updated);
-  if (updated.tradingSessions) {
-    try { result.tradingSessions = JSON.parse(updated.tradingSessions); } catch { result.tradingSessions = null; }
-  }
-  if (updated.calendarCurrencies) {
-    try { result.calendarCurrencies = JSON.parse(updated.calendarCurrencies); } catch { result.calendarCurrencies = null; }
-  }
-  if (updated.calendarImpacts) {
-    try { result.calendarImpacts = JSON.parse(updated.calendarImpacts); } catch { result.calendarImpacts = null; }
-  }
-  if (updated.selectedPairs) {
-    try { result.selectedPairs = JSON.parse(updated.selectedPairs); } catch { result.selectedPairs = null; }
-  }
-  res.json(result);
+  res.json(serializeSettings(updated));
 });
 
 router.post("/settings/background", upload.single("image"), async (req, res) => {

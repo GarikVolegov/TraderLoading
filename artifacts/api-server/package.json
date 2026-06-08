@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx ./src/index.ts",
+    "start": "node ./dist/index.cjs",
     "build": "tsx ./build.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

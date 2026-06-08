@@ -56,6 +56,7 @@ import {
   CircleHelp,
   ArrowRight,
   Trophy,
+  LayoutGrid,
 } from "lucide-react";
 import { useGetProfile } from "@workspace/api-client-react";
 import {
@@ -95,7 +96,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useAuth, useClerk } from "@clerk/react";
 import { usePinLock } from "@/contexts/PinLockContext";
 import {
   useLanguage,
@@ -104,6 +105,7 @@ import {
 } from "@/contexts/LanguageContext";
 import { getPairLabel } from "@workspace/pair-catalog";
 import { PairSelectionModal } from "@/components/PairSelectionModal";
+import { ScheduledCallsSettings } from "@/components/ScheduledCallsSettings";
 import {
   usePushNotifications,
   type NotificationPrefs,
@@ -1428,6 +1430,8 @@ function NotificationSettings() {
           )}
         </CardContent>
       </Card>
+
+      <ScheduledCallsSettings />
 
       {/* Reminder & alert settings */}
       <Card>
@@ -2823,10 +2827,17 @@ interface SettingsTile {
 }
 
 export default function Settings() {
-  const { isAuthenticated, isLoading, login, logout } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
+  const { signOut } = useClerk();
   const { isPinSet } = usePinLock();
   const { language, t } = useLanguage();
   const [, navigate] = useLocation();
+  const isAuthenticated = !!isSignedIn;
+  const isLoading = !isLoaded;
+  const login = () => navigate("/sign-in");
+  const logout = () => {
+    void signOut({ redirectUrl: "/" });
+  };
   const [activeDesktopSection, setActiveDesktopSection] =
     useState<TileId>("audio");
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -3006,6 +3017,14 @@ export default function Settings() {
         <FontSettings />
         <DarknessSettings />
         <BackgroundPresetsManager />
+        <Button
+          variant="outline"
+          className="w-full justify-start"
+          onClick={() => navigate("/?layout=edit")}
+        >
+          <LayoutGrid className="w-4 h-4" />
+          Modifica layout dashboard
+        </Button>
       </div>
     ),
     notifiche: <NotificationSettings />,

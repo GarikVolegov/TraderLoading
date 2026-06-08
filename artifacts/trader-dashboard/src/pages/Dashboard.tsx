@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  GripVertical, LayoutGrid, Check, RotateCcw,
+  GripVertical, Check, RotateCcw,
   Clock, BookOpen, Sunrise, Target, ClipboardCheck,
   CalendarDays, BarChart2, TrendingUp, BookMarked,
   Eye, EyeOff, Wallet, ArrowUpRight,
@@ -37,6 +37,7 @@ import { SentimentWidget } from "@/components/SentimentWidget";
 import { VolatilityWidget } from "@/components/VolatilityWidget";
 import { CotWidget } from "@/components/CotWidget";
 import { RoutineWidget } from "@/components/RoutineWidget";
+import { JournalWidget } from "@/components/JournalWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -58,6 +59,7 @@ const WIDGET_DEFS: WidgetDef[] = [
   { id: "routine",    label: "Routine Giornaliera",  icon: Sunrise,        route: "/routine",                component: RoutineWidget },
   { id: "missions",   label: "Missioni Giornaliere", icon: Target,         route: "/missions",               component: MissionsWidget },
   { id: "checklist",  label: "Checklist Pre-Trade",  icon: ClipboardCheck, route: "/checklist",              component: ChecklistDashboardWidget },
+  { id: "journal",    label: "Diario Trading",       icon: BookOpen,       route: "/journal",                component: JournalWidget },
   { id: "calendar",   label: "Calendario Avanzato",  icon: CalendarDays,   route: "/calendar",               component: CalendarWidget },
   { id: "sentiment",  label: "Sentiment di Mercato", icon: BarChart2,      route: "/tools?tab=sentiment",    component: SentimentWidget },
   { id: "volatility", label: "Volatilita & ADR",     icon: TrendingUp,     route: "/tools?tab=volatility",   component: VolatilityWidget },
@@ -71,6 +73,7 @@ const DEFAULT_ORDER = [
   "missions",
   "routine",
   "checklist",
+  "journal",
   "sentiment",
   "volatility",
   "cot",
@@ -104,6 +107,11 @@ function loadVisibility(): Record<string, boolean> {
 
 function saveVisibility(v: Record<string, boolean>) {
   localStorage.setItem(VISIBILITY_KEY, JSON.stringify(v));
+}
+
+function shouldStartLayoutEditing() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("layout") === "edit";
 }
 
 // ─── Sortable widget wrapper ───────────────────────────────────────────────────
@@ -272,7 +280,7 @@ export default function Dashboard() {
   const [, navigate]                = useLocation();
   const [order, setOrder]           = useState<string[]>(loadOrder);
   const [hidden, setHidden]         = useState<Record<string, boolean>>(loadVisibility);
-  const [isEditing, setIsEditing]   = useState(false);
+  const [isEditing, setIsEditing]   = useState(shouldStartLayoutEditing);
   const [activeId, setActiveId]     = useState<string | null>(null);
   const prevOrderRef = useRef<string[]>(order);
 
@@ -318,13 +326,8 @@ export default function Dashboard() {
     if (route) navigate(route);
   }, [defMap, navigate]);
 
-  const handleEditToggle = () => {
-    if (isEditing) {
-      setIsEditing(false);
-    } else {
-      prevOrderRef.current = order;
-      setIsEditing(true);
-    }
+  const handleFinishEditing = () => {
+    setIsEditing(false);
   };
 
   const handleReset = () => {
@@ -347,6 +350,13 @@ export default function Dashboard() {
     return () => window.removeEventListener("tl-open-dashboard-workspace", handleOpenWorkspace);
   }, [navigate]);
 
+  useEffect(() => {
+    if (!shouldStartLayoutEditing()) return;
+    prevOrderRef.current = order;
+    setIsEditing(true);
+    window.history.replaceState(null, "", window.location.pathname || "/");
+  }, [order]);
+
   const activeWidget = activeId ? defMap[activeId] : null;
 
   // In edit mode: show all widgets (visible + hidden as ghost).
@@ -355,20 +365,11 @@ export default function Dashboard() {
     ? order
     : order.filter((id) => !hidden[id]);
 
-  const hiddenCount = Object.values(hidden).filter(Boolean).length;
-
   // Layout: in vista normale i widget si impacchettano a masonry (altezza naturale,
   // niente spazi vuoti); in modifica diventano una griglia uniforme per un drag&drop pulito.
   const containerClass = isEditing
-    ? "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
-    : "dashboard-command-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12";
-
-  const getWidgetSpanClass = (id: string) => {
-    if (isEditing) return "min-h-[13rem]";
-    if (id === "checklist" || id === "calendar") return "xl:col-span-6";
-    if (id === "clock" || id === "account" || id === "routine") return "xl:col-span-4";
-    return "xl:col-span-3";
-  };
+    ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start"
+    : "columns-1 sm:columns-2 xl:columns-3 [column-gap:1rem]";
 
   return (
     <PageLayout>
@@ -381,47 +382,27 @@ export default function Dashboard() {
             Command Center
           </span>
         }
-        action={
+        action={isEditing ? (
           <div className="flex items-center gap-2">
-            {isEditing && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                onClick={handleReset}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border/40 text-xs text-muted-foreground/60 hover:text-muted-foreground/90 hover:border-border/70 transition-all"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Reset
-              </motion.button>
-            )}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={handleReset}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border/40 text-xs text-muted-foreground/60 hover:text-muted-foreground/90 hover:border-border/70 transition-all"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset
+            </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={handleEditToggle}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
-                isEditing
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                  : "border border-border/50 text-muted-foreground/80 hover:border-primary/40 hover:text-primary hover:bg-primary/5"
-              }`}
+              onClick={handleFinishEditing}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold shadow-lg shadow-primary/25 transition-all duration-200"
             >
-              {isEditing ? (
-                <>
-                  <Check className="w-4 h-4" strokeWidth={3} />
-                  Fatto
-                </>
-              ) : (
-                <>
-                  <LayoutGrid className="w-4 h-4" />
-                  Layout
-                  {hiddenCount > 0 && (
-                    <span className="ml-0.5 w-4 h-4 rounded-full bg-primary/20 text-primary text-[10px] font-mono flex items-center justify-center">
-                      {hiddenCount}
-                    </span>
-                  )}
-                </>
-              )}
+              <Check className="w-4 h-4" strokeWidth={3} />
+              Fatto
             </motion.button>
           </div>
-        }
+        ) : undefined}
       />
 
       {/* Edit-mode banner */}
@@ -471,7 +452,7 @@ export default function Dashboard() {
                     y: { delay: i * 0.03, duration: 0.24, ease: [0.22,1,0.36,1] },
                     layout: { duration: 0.28, ease: [0.22,1,0.36,1] },
                   }}
-                  className={getWidgetSpanClass(id)}
+                  className={isEditing ? "h-[200px]" : "mb-4 break-inside-avoid"}
                 >
                   <SortableWidget
                     def={def}

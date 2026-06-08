@@ -1,5 +1,11 @@
 import { createApiUrl, type RelativeApiOptions } from "./apiFetch";
 
+export interface ArticleDeepDive {
+  whatHappened: string;
+  whyItMatters: string;
+  possibleImpact: string;
+}
+
 export interface Article {
   title: string;
   summary: string;
@@ -26,6 +32,7 @@ export interface Article {
   ageMinutes?: number;
   isFallback?: boolean;
   qualityScore?: number;
+  deepDive?: ArticleDeepDive;
 }
 
 export interface NewsData {

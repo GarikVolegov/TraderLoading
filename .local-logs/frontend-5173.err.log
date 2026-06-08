@@ -1,0 +1,19 @@
+/ : Termine '/' non riconosciuto come nome di cmdlet, funzione, programma eseguibile o file script. Controllare 
+l'ortografia del nome o verificare che il percorso sia incluso e corretto, quindi riprovare.
+In riga:1 car:32
++ $env:PORT=5173; $env:BASE_PATH=/; $env:VITE_API_BASE=http://127.0.0.1 ...
++                                ~
+    + CategoryInfo          : ObjectNotFound: (/:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+http://127.0.0.1:3001 : Termine 'http://127.0.0.1:3001' non riconosciuto come nome di cmdlet, funzione, programma 
+eseguibile o file script. Controllare l'ortografia del nome o verificare che il percorso sia incluso e corretto, 
+quindi riprovare.
+In riga:1 car:54
++ ... 3; $env:BASE_PATH=/; $env:VITE_API_BASE=http://127.0.0.1:3001; pnpm r ...
++                                             ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (http://127.0.0.1:3001:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+$ vite --config vite.config.ts --host 0.0.0.0 --strictPort
+[RUNTIME_ERROR]{"type":"runtime-error","timestamp":1780890078068,"name":"Error","message":"signal is aborted without reason","stack":"\n\n\n\n\n\n\n\n\n"}

@@ -1,4 +1,4 @@
-import type { NewsArticle, NewsResponse } from "./types.js";
+import type { NewsArticle, NewsDeepDive, NewsResponse } from "./types.js";
 
 export interface MacroNewsArticle {
   title: string;
@@ -19,6 +19,7 @@ export interface MacroNewsArticle {
   timestamp?: string | null;
   imageUrl?: string | null;
   imageKeywords?: string[];
+  deepDive?: NewsDeepDive;
 }
 
 export interface MacroNewsResultLike {
@@ -96,6 +97,7 @@ export function macroNewsFromNewsHub(news: NewsResponse): MacroNewsResultLike {
     timestamp: article.publishedAt,
     imageUrl: article.imageUrl,
     imageKeywords: article.primaryAssets,
+    deepDive: article.deepDive,
   }));
 
   return {

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Check, ChevronDown, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -108,40 +109,40 @@ export function PairSelectionModal({
     if (selected.length > 0) onConfirm(selected);
   };
 
-  if (!open) return null;
-
-  return (
+  const modal = (
     <AnimatePresence>
-      {/* Backdrop */}
-      <motion.div
-        key="backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
-        onClick={() => { if (dismissible) onClose?.(); }}
-      />
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm"
+            onClick={() => { if (dismissible) onClose?.(); }}
+          />
 
-      {/* Panel */}
-      <motion.div
-        key="panel"
-        initial={{ opacity: 0, y: 80 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 80 }}
-        transition={{ type: "spring", damping: 30, stiffness: 340 }}
-        className={[
-          "fixed z-50 bg-card border border-border/60 shadow-2xl flex flex-col",
-          /* Mobile: full-width bottom sheet */
-          "bottom-0 left-0 right-0 rounded-t-3xl",
-          "max-h-[92dvh]",
-          /* Tablet+: centered modal */
-          "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2",
-          "sm:rounded-2xl sm:w-[560px] sm:max-h-[88vh]",
-          /* Desktop: slightly wider */
-          "lg:w-[680px]",
-        ].join(" ")}
-        onClick={(e) => e.stopPropagation()}
-      >
+          {/* Panel */}
+          <motion.div
+            key="panel"
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 80 }}
+            transition={{ type: "spring", damping: 30, stiffness: 340 }}
+            className={[
+              "fixed z-[100] bg-card border border-border/60 shadow-2xl flex flex-col",
+              /* Mobile: full-width bottom sheet */
+              "bottom-0 left-0 right-0 rounded-t-3xl",
+              "max-h-[92dvh]",
+              /* Tablet+: centered modal */
+              "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2",
+              "sm:rounded-2xl sm:w-[560px] sm:max-h-[88vh]",
+              /* Desktop: slightly wider */
+              "lg:w-[680px]",
+            ].join(" ")}
+            onClick={(e) => e.stopPropagation()}
+          >
         {/* Drag handle (mobile only) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0" aria-hidden>
           <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
@@ -364,7 +365,15 @@ export function PairSelectionModal({
             {selected.length === 0 ? "Seleziona un pair" : "Conferma →"}
           </Button>
         </div>
-      </motion.div>
+          </motion.div>
+        </>
+      )}
     </AnimatePresence>
   );
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(modal, document.body);
 }

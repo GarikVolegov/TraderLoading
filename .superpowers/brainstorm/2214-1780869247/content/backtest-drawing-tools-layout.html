@@ -1,0 +1,90 @@
+<h2>Strumenti personalizzabili per il backtest</h2>
+<p class="subtitle">Scegli la direzione della UI per disegnare sul grafico: rettangolo, Fibonacci, frecce, linee rette e SVP volume profile.</p>
+
+<div class="cards">
+  <div class="card" data-choice="left-toolbar" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:260px;background:#0b1020;border:1px solid rgba(255,255,255,.12);border-radius:8px;display:grid;grid-template-columns:42px 1fr;overflow:hidden">
+        <div style="background:#111827;border-right:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;gap:8px;align-items:center;padding:10px 6px">
+          <div style="width:28px;height:28px;border-radius:6px;background:#22c55e;color:#03130a;display:grid;place-items:center;font-weight:800">R</div>
+          <div style="width:28px;height:28px;border-radius:6px;background:#1f2937;display:grid;place-items:center">F</div>
+          <div style="width:28px;height:28px;border-radius:6px;background:#1f2937;display:grid;place-items:center">↗</div>
+          <div style="width:28px;height:28px;border-radius:6px;background:#1f2937;display:grid;place-items:center">/</div>
+          <div style="width:28px;height:28px;border-radius:6px;background:#1f2937;display:grid;place-items:center">VP</div>
+        </div>
+        <div style="position:relative;background:linear-gradient(180deg,#101827,#080d18);padding:18px">
+          <div style="position:absolute;left:82px;top:62px;width:126px;height:74px;border:2px solid #22c55e;background:rgba(34,197,94,.08)"></div>
+          <div style="position:absolute;left:235px;top:54px;width:1px;height:130px;background:#f59e0b;transform:rotate(33deg);transform-origin:top"></div>
+          <div style="position:absolute;right:26px;top:44px;width:92px;height:150px;display:flex;flex-direction:column;justify-content:center;gap:3px">
+            <div style="height:8px;width:76px;background:rgba(59,130,246,.45)"></div>
+            <div style="height:8px;width:52px;background:rgba(59,130,246,.34)"></div>
+            <div style="height:8px;width:88px;background:rgba(59,130,246,.55)"></div>
+            <div style="height:8px;width:44px;background:rgba(59,130,246,.30)"></div>
+            <div style="height:8px;width:68px;background:rgba(59,130,246,.42)"></div>
+          </div>
+          <div style="position:absolute;left:58px;right:150px;top:120px;border-top:1px dashed rgba(255,255,255,.28)"></div>
+          <div style="position:absolute;left:58px;right:150px;top:170px;border-top:1px dashed rgba(255,255,255,.18)"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Toolbar verticale sul grafico</h3>
+      <p>Consigliata: strumenti sempre a portata, grafico libero, pannello proprietà solo quando selezioni un oggetto.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="top-toolbar" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:260px;background:#0b1020;border:1px solid rgba(255,255,255,.12);border-radius:8px;display:grid;grid-template-rows:42px 1fr;overflow:hidden">
+        <div style="background:#111827;border-bottom:1px solid rgba(255,255,255,.12);display:flex;gap:8px;align-items:center;padding:6px 10px">
+          <span style="padding:6px 10px;border-radius:6px;background:#22c55e;color:#03130a;font-weight:800">Rettangolo</span>
+          <span style="padding:6px 10px;border-radius:6px;background:#1f2937">Fib</span>
+          <span style="padding:6px 10px;border-radius:6px;background:#1f2937">Freccia</span>
+          <span style="padding:6px 10px;border-radius:6px;background:#1f2937">Linea</span>
+          <span style="padding:6px 10px;border-radius:6px;background:#1f2937">SVP</span>
+        </div>
+        <div style="position:relative;background:linear-gradient(180deg,#101827,#080d18);padding:18px">
+          <div style="position:absolute;left:82px;top:56px;width:126px;height:74px;border:2px solid #22c55e;background:rgba(34,197,94,.08)"></div>
+          <div style="position:absolute;right:28px;top:42px;width:92px;height:150px;display:flex;flex-direction:column;justify-content:center;gap:3px">
+            <div style="height:8px;width:76px;background:rgba(59,130,246,.45)"></div>
+            <div style="height:8px;width:52px;background:rgba(59,130,246,.34)"></div>
+            <div style="height:8px;width:88px;background:rgba(59,130,246,.55)"></div>
+            <div style="height:8px;width:44px;background:rgba(59,130,246,.30)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Toolbar alta compatta</h3>
+      <p>Più semplice da implementare, ma su mobile occupa spazio sopra il grafico e cresce male quando aggiungiamo opzioni.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="drawer" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:260px;background:#0b1020;border:1px solid rgba(255,255,255,.12);border-radius:8px;display:grid;grid-template-columns:1fr 138px;overflow:hidden">
+        <div style="position:relative;background:linear-gradient(180deg,#101827,#080d18);padding:18px">
+          <div style="position:absolute;left:64px;top:72px;width:126px;height:74px;border:2px solid #22c55e;background:rgba(34,197,94,.08)"></div>
+          <div style="position:absolute;left:210px;top:54px;width:1px;height:130px;background:#f59e0b;transform:rotate(33deg);transform-origin:top"></div>
+        </div>
+        <div style="background:#111827;border-left:1px solid rgba(255,255,255,.12);padding:12px;display:flex;flex-direction:column;gap:8px">
+          <strong style="font-size:12px">Strumenti</strong>
+          <button class="mock-button">Rettangolo</button>
+          <button class="mock-button">Fibonacci</button>
+          <button class="mock-button">Freccia</button>
+          <button class="mock-button">Linea</button>
+          <button class="mock-button">SVP</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Drawer strumenti/proprietà</h3>
+      <p>Ottimo per personalizzazione dettagliata, ma restringe il grafico e rende più lente le operazioni frequenti.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Raccomandazione</h3>
+  <p>Partirei da A: toolbar verticale con icone e tooltip, più un pannello proprietà contestuale per colore, spessore, riempimento, livelli Fibonacci e impostazioni SVP.</p>
+</div>

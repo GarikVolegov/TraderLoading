@@ -52,11 +52,16 @@ assert.deepEqual(
     limit: 300,
   },
 );
+assert.deepEqual(getRateLimitConfig({ NODE_ENV: "development" }), {
+  windowMs: 15 * 60 * 1000,
+  limit: 5000,
+});
 
 assert.equal(isAllowedUploadPath("/post-images/post-1.png"), true);
 assert.equal(isAllowedUploadPath("/bg-1.png"), true);
 assert.equal(isAllowedUploadPath("/voice/voice-1.webm"), true);
 assert.equal(isAllowedUploadPath("/community-files/cfile-1.pdf"), true);
+assert.equal(isAllowedUploadPath("/chat-files/chat-1.pdf"), true);
 assert.equal(isAllowedUploadPath("/../.env"), false);
 assert.equal(isAllowedUploadPath("/post-images/.secret"), false);
 assert.equal(isAllowedUploadPath("/post-images/malware.exe"), false);

@@ -1,0 +1,12 @@
+[tools/cot] Fetching CFTC data...
+Server listening on port 4113
+[push] VAPID keys missing - session scheduler disabled
+[brain-scan] disabled (BRAIN_SCAN_ENABLED != 'true')
+[tools/cot] deafut.txt OK — 7 markets, history: 1 weeks
+[tools/cot] OK — 7 live (12wk hist) + 2 fallback, total 9
+{"level":"info","time":1780881597485,"pid":52812,"hostname":"Kedo","requestId":"81237dc8-a200-4e83-a0fb-a9acc6bdfa26","method":"GET","path":"/api/healthz","event":"request.start","msg":"→ GET /api/healthz"}
+{"level":"info","time":1780881597497,"pid":52812,"hostname":"Kedo","requestId":"81237dc8-a200-4e83-a0fb-a9acc6bdfa26","method":"GET","path":"/api/healthz","event":"request.end","statusCode":200,"durationMs":13,"msg":"← GET /api/healthz 200 (13ms)"}
+{"level":"info","time":1780881597661,"pid":52812,"hostname":"Kedo","requestId":"967ac8a5-9a74-4aa2-ac35-b1f693dcbb61","method":"GET","path":"/","event":"request.start","msg":"→ GET /"}
+{"level":"info","time":1780881597678,"pid":52812,"hostname":"Kedo","requestId":"967ac8a5-9a74-4aa2-ac35-b1f693dcbb61","method":"GET","path":"/","event":"request.end","statusCode":200,"durationMs":17,"msg":"← GET / 200 (17ms)"}
+{"level":"info","time":1780881597711,"pid":52812,"hostname":"Kedo","requestId":"cdcaf9b7-7db9-40c8-83d5-f4b6b5728868","method":"GET","path":"/sw.js","event":"request.start","msg":"→ GET /sw.js"}
+{"level":"info","time":1780881597717,"pid":52812,"hostname":"Kedo","requestId":"cdcaf9b7-7db9-40c8-83d5-f4b6b5728868","method":"GET","path":"/sw.js","event":"request.end","statusCode":200,"durationMs":6,"msg":"← GET /sw.js 200 (6ms)"}

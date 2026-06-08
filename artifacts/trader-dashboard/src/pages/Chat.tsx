@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
@@ -15,8 +15,18 @@ import {
   useGetUnreadCount,
   useGetProfile,
   getGetChatMessagesQueryKey,
+  getGetFriendsQueryKey,
+  getGetPendingFriendRequestsQueryKey,
   getGetPublicKeyQueryKey,
+  getSearchUsersQueryKey,
   getGetUnreadCountQueryKey,
+  useGetFriends,
+  useGetPendingFriendRequests,
+  useRespondToFriendRequest,
+  useSearchUsers,
+  useSendFriendRequest,
+  type FriendListItem,
+  type UserSearchResult,
 } from "@workspace/api-client-react";
 import {
   Send,
@@ -95,9 +105,12 @@ function fmtDur(s: number) {
 interface DecryptedMsg {
   id: number;
   senderId: string;
-  type: "text" | "image" | "voice";
+  type: "text" | "image" | "voice" | "video" | "file";
   content: string;
   createdAt: string;
+  fileName?: string;
+  mimeType?: string;
+  size?: number;
 }
 
 interface Post {
@@ -273,6 +286,20 @@ function useSocialSearch(q: string) {
     queryKey: ["social/search", q],
     queryFn: () => apiJSON(`social/search?q=${encodeURIComponent(q)}`),
     enabled: q.length >= 2,
+  });
+}
+
+type FriendRelationshipStatus = "none" | "pending_sent" | "pending_received" | "accepted";
+type FriendSearchResult = UserSearchResult & {
+  relationshipStatus?: FriendRelationshipStatus;
+};
+
+function useFriendSearch(q: string) {
+  return useSearchUsers({ q }, {
+    query: {
+      queryKey: getSearchUsersQueryKey({ q }),
+      enabled: q.length >= 2,
+    },
   });
 }
 
@@ -1410,7 +1437,36 @@ function SocialTab({
   const [searchQ, setSearchQ] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const { data: searchResults = [] } = useSocialSearch(searchQ);
+  const { data: friendSearchResults = [] } = useFriendSearch(searchQ);
+  const { data: pendingFriendRequests = [] } = useGetPendingFriendRequests();
   const qc = useQueryClient();
+  const friendStatusByUserId = useMemo(() => {
+    return new Map(
+      (friendSearchResults as FriendSearchResult[])
+        .filter((result) => result.userId)
+        .map((result) => [result.userId!, result.relationshipStatus ?? "none"]),
+    );
+  }, [friendSearchResults]);
+
+  const refreshFriendQueries = () => {
+    qc.invalidateQueries({ queryKey: getSearchUsersQueryKey({ q: searchQ }) });
+    qc.invalidateQueries({ queryKey: getGetPendingFriendRequestsQueryKey() });
+    qc.invalidateQueries({ queryKey: getGetFriendsQueryKey() });
+    qc.invalidateQueries({ queryKey: ["social/mutual-followers"] });
+  };
+
+  const sendFriendRequestMutation = useSendFriendRequest({
+    mutation: {
+      onSuccess: refreshFriendQueries,
+      onError: refreshFriendQueries,
+    },
+  });
+
+  const respondToFriendRequestMutation = useRespondToFriendRequest({
+    mutation: {
+      onSuccess: refreshFriendQueries,
+    },
+  });
 
   const follow = useMutation({
     mutationFn: (uid: string) =>
@@ -1499,6 +1555,42 @@ function SocialTab({
                           Mutual
                         </span>
                       )}
+                      {(() => {
+                        const relationshipStatus = friendStatusByUserId.get(u.userId!) ?? "none";
+                        if (relationshipStatus === "accepted") {
+                          return (
+                            <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-1">
+                              Gia' amico
+                            </span>
+                          );
+                        }
+                        if (relationshipStatus === "pending_sent") {
+                          return (
+                            <span className="text-[10px] bg-secondary/60 text-muted-foreground border border-border rounded-full px-2 py-1">
+                              Richiesta inviata
+                            </span>
+                          );
+                        }
+                        if (relationshipStatus === "pending_received") {
+                          return (
+                            <button
+                              onClick={() => setShowSearch(false)}
+                              className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20 transition-colors"
+                            >
+                              Rispondi
+                            </button>
+                          );
+                        }
+                        return (
+                          <button
+                            onClick={() => sendFriendRequestMutation.mutate({ data: { friendUserId: u.userId! } })}
+                            disabled={sendFriendRequestMutation.isPending}
+                            className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20 disabled:opacity-50 transition-colors"
+                          >
+                            Aggiungi amico
+                          </button>
+                        );
+                      })()}
                       {u.isFollowing ? (
                         <button
                           onClick={() => unfollow.mutate(u.userId!)}
@@ -1526,6 +1618,60 @@ function SocialTab({
           </div>
         ) : (
           <>
+            {pendingFriendRequests.length > 0 && (
+              <div className="p-4 border-b border-border">
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                  Richieste amicizia
+                </p>
+                <div className="space-y-2">
+                  {pendingFriendRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="flex items-center gap-3 p-3 bg-card/40 rounded-xl border border-border"
+                    >
+                      <Avatar
+                        name={request.senderName ?? "Trader"}
+                        avatarUrl={request.senderAvatar}
+                        size="sm"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">
+                          {request.senderName ?? "Trader"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Vuole aggiungerti agli amici
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          respondToFriendRequestMutation.mutate({
+                            id: request.id,
+                            data: { action: "accept" },
+                          })
+                        }
+                        disabled={respondToFriendRequestMutation.isPending}
+                        className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 disabled:opacity-50 transition-colors"
+                      >
+                        Accetta
+                      </button>
+                      <button
+                        onClick={() =>
+                          respondToFriendRequestMutation.mutate({
+                            id: request.id,
+                            data: { action: "reject" },
+                          })
+                        }
+                        disabled={respondToFriendRequestMutation.isPending}
+                        className="px-3 py-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-xs font-medium disabled:opacity-50 transition-colors"
+                      >
+                        Rifiuta
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {storyGroups.length > 0 && (
               <div className="p-4 border-b border-border shrink-0">
                 <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
@@ -1694,6 +1840,23 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const { data: mutualFollowers = [], isLoading } = useMutualFollowers();
+  const { data: acceptedFriends = [], isLoading: friendsLoading } = useGetFriends();
+  const messageContacts = useMemo<SocialUser[]>(() => {
+    const contacts = new Map<string, SocialUser>();
+    for (const user of mutualFollowers as SocialUser[]) {
+      if (user.userId) contacts.set(user.userId, { ...user, isMutual: true });
+    }
+    for (const friend of acceptedFriends as FriendListItem[]) {
+      contacts.set(friend.friendUserId, {
+        userId: friend.friendUserId,
+        name: friend.name,
+        avatarUrl: friend.avatarUrl ?? null,
+        hasKey: true,
+        isMutual: contacts.get(friend.friendUserId)?.isMutual,
+      });
+    }
+    return Array.from(contacts.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [acceptedFriends, mutualFollowers]);
   const { data: unreadData } = useGetUnreadCount({
     query: { queryKey: getGetUnreadCountQueryKey(), refetchInterval: 5000 },
   });
@@ -1743,6 +1906,9 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
                 senderId: msg.senderId,
                 type: obj.type ?? "text",
                 content: obj.content ?? obj.url ?? raw,
+                fileName: obj.fileName,
+                mimeType: obj.mimeType,
+                size: obj.size,
                 createdAt: msg.createdAt,
               };
             } catch {
@@ -1775,6 +1941,9 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
       content?: string;
       url?: string;
       duration?: number;
+      fileName?: string;
+      mimeType?: string;
+      size?: number;
     }) => {
       if (
         !selectedFriend?.userId ||
@@ -1815,23 +1984,43 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
     }
   }, [messageInput, sendE2EE]);
 
-  // Image DM
-  const handleDmImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Attachment DM
+  const handleDmAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setDmImgUploading(true);
     try {
       const fd = new FormData();
-      fd.append("image", file);
-      const res = await apiFetch("social/upload-image", {
-        method: "POST",
-        body: fd,
-      });
-      if (!res.ok) throw new Error("Upload fallito");
-      const { imageUrl } = await res.json();
-      await sendE2EE({ type: "image", url: imageUrl });
+      if (file.type.startsWith("image/")) {
+        fd.append("image", file);
+        const res = await apiFetch("social/upload-image", {
+          method: "POST",
+          body: fd,
+        });
+        if (!res.ok) throw new Error("Upload fallito");
+        const { imageUrl } = await res.json();
+        await sendE2EE({ type: "image", url: imageUrl });
+      } else {
+        fd.append("file", file);
+        const res = await apiFetch("social/upload-file", {
+          method: "POST",
+          body: fd,
+        });
+        if (!res.ok) throw new Error("Upload fallito");
+        const { fileUrl, fileName, mimeType, size } = await res.json();
+        await sendE2EE({
+          type: file.type.startsWith("video/") ? "video" : "file",
+          url: fileUrl,
+          fileName,
+          mimeType,
+          size,
+        });
+      }
     } catch (err) {
-      console.error("DM image error:", err);
+      reportClientError(err, {
+        context: "DM attachment upload",
+        notify: false,
+      });
     } finally {
       setDmImgUploading(false);
       if (dmFileInputRef.current) dmFileInputRef.current.value = "";
@@ -2001,7 +2190,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
     if (!pendingOffer) return;
     const { sdp: rawSdp, callId: cid, from } = pendingOffer;
     const peer =
-      (mutualFollowers as SocialUser[]).find((u) => u.userId === from) ??
+      messageContacts.find((u) => u.userId === from) ??
       ({ userId: from, name: "Trader", avatarUrl: null } as SocialUser);
     setCallId(cid);
     setCallPeer(peer);
@@ -2150,13 +2339,59 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
       );
     if (msg.type === "voice")
       return (
-        <div className={`${base} px-3 py-2.5`}>
+        <div className={`${base} min-w-[260px] px-3 py-2.5`}>
           <audio
+            aria-label="Messaggio vocale"
             controls
             src={msg.content}
-            className="h-8 max-w-[200px] w-full"
+            className="h-9 w-full"
             style={{ accentColor: "currentColor" }}
           />
+          {timeEl}
+        </div>
+      );
+    if (msg.type === "video")
+      return (
+        <div className={`${base} overflow-hidden p-0 min-w-[260px]`}>
+          {msg.fileName && (
+            <p className="px-3 pt-2 text-xs font-medium truncate">
+              {msg.fileName}
+            </p>
+          )}
+          <video
+            aria-label={msg.fileName ?? "Video allegato"}
+            controls
+            src={msg.content}
+            className="max-w-[320px] max-h-64 w-full bg-black"
+          />
+          <div className="px-3 py-1.5">{timeEl}</div>
+        </div>
+      );
+    if (msg.type === "file")
+      return (
+        <div className={`${base} min-w-[260px] px-3 py-2.5`}>
+          <div className="flex items-center gap-3">
+            {fileIcon(msg.mimeType ?? "")}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">
+                {msg.fileName ?? "File allegato"}
+              </p>
+              <p className="text-[11px] opacity-70 truncate">
+                {(msg.mimeType || "file").split(";")[0]}
+                {typeof msg.size === "number" ? ` · ${formatFileSize(msg.size)}` : ""}
+              </p>
+            </div>
+            <a
+              href={msg.content}
+              target="_blank"
+              rel="noreferrer"
+              download={msg.fileName}
+              className="p-2 rounded-lg bg-black/10 hover:bg-black/20 transition-colors"
+              title="Apri o scarica"
+            >
+              <Download className="w-4 h-4" />
+            </a>
+          </div>
           {timeEl}
         </div>
       );
@@ -2255,7 +2490,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
     );
 
   const list = (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Lock className="w-4 h-4 text-primary" />
@@ -2277,12 +2512,12 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
           )}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto">
-        {isLoading ? (
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {isLoading || friendsLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : (mutualFollowers as SocialUser[]).length === 0 ? (
+        ) : messageContacts.length === 0 ? (
           <div className="text-center py-12 px-4 text-muted-foreground space-y-3">
             <UserCheck className="w-12 h-12 mx-auto opacity-20" />
             <p className="font-medium text-sm">Nessun contatto disponibile</p>
@@ -2293,7 +2528,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
           </div>
         ) : (
           <div className="p-2 space-y-1">
-            {(mutualFollowers as SocialUser[]).map((u) => (
+            {messageContacts.map((u) => (
               <div
                 key={u.userId}
                 onClick={() => handleSelect(u)}
@@ -2303,7 +2538,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{u.name}</p>
                   <p className="text-xs text-primary flex items-center gap-1">
-                    <UserCheck className="w-3 h-3" /> Mutual
+                    <UserCheck className="w-3 h-3" /> {u.isMutual ? "Mutual" : "Amico"}
                   </p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -2316,7 +2551,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
   );
 
   const chatArea = (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden relative">
       {callOverlay}
       {selectedFriend ? (
         <>
@@ -2362,7 +2597,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
             {decryptedMessages.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm py-12">
                 <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -2449,13 +2684,13 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
               <button
                 onClick={() => dmFileInputRef.current?.click()}
                 disabled={dmImgUploading}
-                title="Allega immagine"
+                title="Allega file"
                 className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
               >
                 {dmImgUploading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <ImageIcon className="w-4 h-4" />
+                  <Paperclip className="w-4 h-4" />
                 )}
               </button>
               <button
@@ -2494,9 +2729,9 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
             <input
               ref={dmFileInputRef}
               type="file"
-              accept="image/*"
+              accept="*"
               className="hidden"
-              onChange={handleDmImage}
+              onChange={handleDmAttachment}
             />
           </div>
         </>
@@ -2513,12 +2748,12 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
   );
 
   return (
-    <div className="h-full">
-      <div className="hidden lg:grid grid-cols-[280px_1fr] h-full">
+    <div className="h-full min-h-0">
+      <div className="hidden lg:grid grid-cols-[280px_1fr] h-full min-h-0">
         <div className="border-r border-border">{list}</div>
-        <div className="relative">{chatArea}</div>
+        <div className="relative min-h-0 overflow-hidden">{chatArea}</div>
       </div>
-      <div className="lg:hidden h-full relative">
+      <div className="lg:hidden h-full min-h-0 relative overflow-hidden">
         {mobileView === "list" ? list : chatArea}
       </div>
     </div>
@@ -4080,8 +4315,8 @@ export default function Chat() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-card/30 backdrop-blur-md border border-border rounded-2xl overflow-hidden flex flex-col"
-        style={{ height: "calc(100vh - 180px)" }}
+        className="bg-card/30 backdrop-blur-md border border-border rounded-2xl overflow-hidden flex flex-col min-h-0"
+        style={{ height: "calc(100dvh - 180px)" }}
       >
         <div className="flex border-b border-border shrink-0 overflow-x-auto">
           {tabs.map((tab) => (
@@ -4096,7 +4331,7 @@ export default function Chat() {
           ))}
         </div>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === "social" && (
             <SocialTab
               currentUserId={user?.id ?? ""}

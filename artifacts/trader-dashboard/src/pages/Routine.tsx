@@ -1,19 +1,36 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import confetti from "canvas-confetti";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { getRoutineStartProgram } from "./Routine.helpers";
+import {
+  appendRoutineCompletion,
+  createCustomRoutine,
+  getRoutineMetrics,
+  loadCustomRoutines,
+  loadRoutineCompletions,
+  type CustomRoutine,
+} from "./Routine.storage";
+import {
+  fetchRoutineCompetition,
+  recordRoutineCompletion,
+  routineCompetitionQueryKey,
+  type RoutineCompetitionEntry,
+} from "@/lib/routineApi";
 import {
   Sunrise, Moon, X, ChevronRight, ChevronLeft, Wind,
   Smile, Heart, Star, CheckCircle2, Target, RotateCcw,
   Flame, Clock, Play, SkipForward, Check, TrendingUp,
   Eye, ClipboardCheck, CalendarDays, Zap, BookOpen,
+  Plus, BarChart3, Layers, Activity, Crown, Trophy, User,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Program = "morning" | "evening";
+export type Program = "morning" | "evening";
 type StepType =
   | "emotion-quiz"
   | "breathing"
@@ -34,7 +51,14 @@ interface SessionStep {
   skippable?: boolean;
 }
 
-type Answers = Record<string, unknown>;
+export type Answers = Record<string, unknown>;
+
+interface ActiveRoutineSession {
+  program: Program;
+  routineId: string;
+  routineTitle: string;
+  markDailyProgram: boolean;
+}
 
 // ─── Program step definitions ─────────────────────────────────────────────────
 
@@ -73,11 +97,28 @@ function loadCompletion(p: Program): boolean {
   } catch { return false; }
 }
 
-function saveCompletion(p: Program, answers: Answers) {
-  localStorage.setItem(
-    `tl_session_${p}_v2`,
-    JSON.stringify({ date: todayKey(), answers }),
-  );
+export function saveRoutineCompletion(
+  p: Program,
+  answers: Answers,
+  options: {
+    routineId?: string;
+    routineTitle?: string;
+    markDailyProgram?: boolean;
+  } = {},
+) {
+  if (options.markDailyProgram !== false) {
+    localStorage.setItem(
+      `tl_session_${p}_v2`,
+      JSON.stringify({ date: todayKey(), answers }),
+    );
+  }
+
+  appendRoutineCompletion({
+    routineId: options.routineId ?? p,
+    routineTitle: options.routineTitle ?? (p === "morning" ? "Programma Mattutino" : "Programma Serale"),
+    template: p,
+    answers,
+  });
 }
 
 // ─── Emotion Quiz Step ────────────────────────────────────────────────────────
@@ -866,7 +907,7 @@ function CompleteStep({ program, answers }: { program: Program; answers: Answers
 
 // ─── Session Modal ────────────────────────────────────────────────────────────
 
-function SessionModal({
+export function SessionModal({
   program,
   onClose,
   onComplete,
@@ -1246,22 +1287,443 @@ function ProgramCard({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+function formatRoutineDate(value: string | null): string {
+  if (!value) return "Mai";
+  try {
+    return new Date(value).toLocaleDateString("it-IT", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "Dato non valido";
+  }
+}
+
+function RoutineStatsPanel({
+  metrics,
+}: {
+  metrics: ReturnType<typeof getRoutineMetrics>;
+}) {
+  const stats = [
+    { label: "Completamenti", value: metrics.totalCompletions, icon: CheckCircle2, color: "text-primary" },
+    { label: "Streak routine", value: `${metrics.currentStreakDays}d`, icon: Flame, color: "text-amber-400" },
+    { label: "Routine create", value: metrics.customRoutineCount, icon: Layers, color: "text-sky-300" },
+    { label: "Ultima sessione", value: formatRoutineDate(metrics.lastCompletedAt), icon: Clock, color: "text-muted-foreground" },
+  ];
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.24 }}
+      className="rounded-3xl border border-border/30 bg-card/35 p-4 sm:p-5"
+    >
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary/80">Dettagli progressi</p>
+          <h2 className="mt-1 text-xl font-bold font-mono tracking-tight">Metriche salvate</h2>
+        </div>
+        <p className="text-xs text-muted-foreground/50">Storico reale di tutte le routine svolte</p>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {stats.map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className="rounded-2xl border border-border/25 bg-background/25 p-3">
+            <Icon className={`h-4 w-4 ${color}`} />
+            <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/45">{label}</p>
+            <p className="mt-1 truncate font-mono text-lg font-bold">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-2xl border border-border/25">
+        {metrics.byRoutine.length === 0 ? (
+          <div className="px-4 py-6 text-center text-sm text-muted-foreground/50">
+            Completa una routine per iniziare a vedere le metriche dettagliate.
+          </div>
+        ) : (
+          metrics.byRoutine.map((routine) => (
+            <div
+              key={routine.routineId}
+              className="flex items-center justify-between gap-3 border-b border-border/20 px-4 py-3 last:border-b-0"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold">{routine.routineTitle}</p>
+                <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/45">
+                  {routine.template === "morning" ? "Template mattutino" : "Template serale"} · ultima:{" "}
+                  {formatRoutineDate(routine.lastCompletedAt)}
+                </p>
+              </div>
+              <div className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 font-mono text-xs font-bold text-primary">
+                {routine.completions}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </motion.section>
+  );
+}
+
+function CreateRoutinePanel({
+  open,
+  onToggle,
+  onCreate,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  onCreate: (input: Pick<CustomRoutine, "title" | "description" | "template" | "timeLabel">) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [template, setTemplate] = useState<Program>("morning");
+  const [timeLabel, setTimeLabel] = useState("");
+  const canCreate = title.trim().length >= 3;
+
+  const submit = () => {
+    if (!canCreate) return;
+    onCreate({
+      title,
+      description,
+      template,
+      timeLabel: timeLabel || (template === "morning" ? "Mattina" : "Sera"),
+    });
+    setTitle("");
+    setDescription("");
+    setTemplate("morning");
+    setTimeLabel("");
+  };
+
+  return (
+    <div className="rounded-3xl border border-border/30 bg-card/35 p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary/80">Nuove routine</p>
+          <h2 className="mt-1 text-xl font-bold font-mono tracking-tight">Routine personalizzate</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/25 bg-primary/10 px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/15"
+        >
+          <Plus className="h-4 w-4" />
+          Crea routine
+        </button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-4 grid gap-3 rounded-2xl border border-border/25 bg-background/25 p-3 sm:grid-cols-2">
+              <label className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">Nome</span>
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Es. Pre market focus"
+                  className="h-10 w-full rounded-xl border border-border/35 bg-background/40 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/35 focus:border-primary/45"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">Orario</span>
+                <input
+                  value={timeLabel}
+                  onChange={(event) => setTimeLabel(event.target.value)}
+                  placeholder="Es. 14:00"
+                  className="h-10 w-full rounded-xl border border-border/35 bg-background/40 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/35 focus:border-primary/45"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">Base</span>
+                <select
+                  value={template}
+                  onChange={(event) => setTemplate(event.target.value as Program)}
+                  className="h-10 w-full rounded-xl border border-border/35 bg-background/40 px-3 text-sm outline-none transition-colors focus:border-primary/45"
+                >
+                  <option value="morning">Programma mattutino</option>
+                  <option value="evening">Programma serale</option>
+                </select>
+              </label>
+              <label className="space-y-1.5 sm:col-span-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">Descrizione</span>
+                <textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="Focus, obiettivo o contesto della routine"
+                  className="min-h-20 w-full resize-none rounded-xl border border-border/35 bg-background/40 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/35 focus:border-primary/45"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!canCreate}
+                className="sm:col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity disabled:opacity-40"
+              >
+                <Check className="h-4 w-4" />
+                Salva nuova routine
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function CustomRoutineCard({
+  routine,
+  metric,
+  onStart,
+}: {
+  routine: CustomRoutine;
+  metric?: ReturnType<typeof getRoutineMetrics>["byRoutine"][number];
+  onStart: () => void;
+}) {
+  const isMorning = routine.template === "morning";
+  const accentColor = isMorning ? "#f59e0b" : "#818cf8";
+  const Icon = isMorning ? Sunrise : Moon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-3xl border border-border/30 bg-card/30 p-4"
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+          style={{ backgroundColor: `${accentColor}18`, color: accentColor }}
+        >
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-bold">{routine.title}</p>
+          <p className="mt-1 text-xs text-muted-foreground/50">
+            {routine.timeLabel} · {isMorning ? "mattutina" : "serale"} · {metric?.completions ?? 0} completamenti
+          </p>
+        </div>
+      </div>
+      {routine.description && (
+        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground/60">{routine.description}</p>
+      )}
+      <button
+        type="button"
+        onClick={onStart}
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-white transition-transform active:scale-[0.98]"
+        style={{ backgroundColor: accentColor }}
+      >
+        <Play className="h-4 w-4" />
+        Avvia routine
+      </button>
+    </motion.div>
+  );
+}
+
+function FriendRankBadge({ rank }: { rank: number }) {
+  if (rank === 1) {
+    return (
+      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-yellow-500/45 bg-yellow-500/15 text-yellow-300">
+        <Crown className="h-4 w-4" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border/35 bg-background/35">
+      <span className="font-mono text-xs font-bold text-muted-foreground">#{rank}</span>
+    </div>
+  );
+}
+
+function FriendCompetitionPanel({
+  rows,
+  loading,
+}: {
+  rows: RoutineCompetitionEntry[];
+  loading: boolean;
+}) {
+  const leader = rows[0] ?? null;
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.28 }}
+      className="rounded-3xl border border-border/30 bg-card/35 p-4 sm:p-5"
+    >
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary/80">Sfida amici</p>
+          <h2 className="mt-1 text-xl font-bold font-mono tracking-tight">Chi sta vincendo</h2>
+        </div>
+        <p className="text-xs text-muted-foreground/50">Rispetto routine, streak e qualità degli step</p>
+      </div>
+
+      {loading ? (
+        <div className="mt-4 grid gap-2">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="h-16 animate-pulse rounded-2xl border border-border/20 bg-background/25" />
+          ))}
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-border/30 bg-background/20 px-4 py-6 text-sm text-muted-foreground/50">
+          Nessun amico in classifica per ora.
+        </div>
+      ) : (
+        <>
+          <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/8 p-4">
+            <div className="flex items-center gap-3">
+              <Trophy className="h-5 w-5 text-primary" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold">
+                  {leader?.isCurrentUser ? "Stai vincendo tu" : `${leader?.name ?? "Un amico"} sta vincendo`}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground/55">
+                  Score {leader?.score ?? 0} · {leader?.totalCompletions ?? 0} routine · qualità {leader?.avgQualityScore ?? 0}%
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 overflow-hidden rounded-2xl border border-border/25">
+            {rows.slice(0, 6).map((row) => (
+              <div
+                key={`${row.rank}-${row.userId ?? row.name}`}
+                className={`flex items-center gap-3 border-b border-border/20 px-4 py-3 last:border-b-0 ${
+                  row.isCurrentUser ? "bg-primary/8" : "bg-background/15"
+                }`}
+              >
+                <FriendRankBadge rank={row.rank} />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/40 bg-secondary">
+                  {row.avatarUrl ? (
+                    <img src={row.avatarUrl} alt={row.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <User className="h-4 w-4 text-muted-foreground/60" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">
+                    {row.name}
+                    {row.isCurrentUser && <span className="ml-1.5 text-[10px] text-primary/80">(tu)</span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground/50">
+                    {row.totalCompletions} routine · streak {row.currentStreakDays}g · qualità {row.avgQualityScore}%
+                  </p>
+                </div>
+                <div className="shrink-0 rounded-full border border-border/30 bg-secondary/55 px-3 py-1 font-mono text-xs font-bold">
+                  {row.score} pts
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </motion.section>
+  );
+}
+
 export default function Routine() {
-  const [activeSession, setActiveSession] = useState<Program | null>(null);
+  const queryClient = useQueryClient();
+  const [activeSession, setActiveSession] = useState<ActiveRoutineSession | null>(null);
   const [now, setNow] = useState(new Date());
+  const [location, setLocation] = useLocation();
+  const [customRoutines, setCustomRoutines] = useState<CustomRoutine[]>(() => loadCustomRoutines());
+  const [completionHistory, setCompletionHistory] = useState(() => loadRoutineCompletions());
+  const [createOpen, setCreateOpen] = useState(false);
+  const { data: friendCompetitionRows = [], isLoading: friendCompetitionLoading } = useQuery<RoutineCompetitionEntry[]>({
+    queryKey: routineCompetitionQueryKey,
+    queryFn: () => fetchRoutineCompetition(),
+  });
+
+  const refreshRoutineData = useCallback(() => {
+    setCustomRoutines(loadCustomRoutines());
+    setCompletionHistory(loadRoutineCompletions());
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    refreshRoutineData();
+    window.addEventListener("storage", refreshRoutineData);
+    window.addEventListener("tl_routine_history_updated", refreshRoutineData);
+    return () => {
+      window.removeEventListener("storage", refreshRoutineData);
+      window.removeEventListener("tl_routine_history_updated", refreshRoutineData);
+    };
+  }, [refreshRoutineData]);
+
+  useEffect(() => {
+    const requested = getRoutineStartProgram(location) ?? getRoutineStartProgram(window.location.search);
+    if (!requested) return;
+
+    setActiveSession({
+      program: requested,
+      routineId: requested,
+      routineTitle: requested === "morning" ? "Programma Mattutino" : "Programma Serale",
+      markDailyProgram: true,
+    });
+    setLocation("/routine", { replace: true });
+  }, [location, setLocation]);
+
   const hour = now.getHours();
   const isMorningActive = hour >= 4 && hour < 13;
   const isEveningActive = hour >= 16 && hour < 24;
 
-  const handleComplete = (program: Program, answers: Answers) => {
-    saveCompletion(program, answers);
-    window.dispatchEvent(new Event(`tl_routine_${program}_done`));
+  const metrics = getRoutineMetrics(completionHistory, customRoutines);
+
+  const startBaseProgram = (program: Program) => {
+    setActiveSession({
+      program,
+      routineId: program,
+      routineTitle: program === "morning" ? "Programma Mattutino" : "Programma Serale",
+      markDailyProgram: true,
+    });
+  };
+
+  const startCustomRoutine = (routine: CustomRoutine) => {
+    setActiveSession({
+      program: routine.template,
+      routineId: routine.id,
+      routineTitle: routine.title,
+      markDailyProgram: false,
+    });
+  };
+
+  const handleCreateRoutine = (input: Pick<CustomRoutine, "title" | "description" | "template" | "timeLabel">) => {
+    createCustomRoutine(input);
+    refreshRoutineData();
+    setCreateOpen(false);
+  };
+
+  const handleComplete = (session: ActiveRoutineSession, answers: Answers) => {
+    saveRoutineCompletion(session.program, answers, {
+      routineId: session.routineId,
+      routineTitle: session.routineTitle,
+      markDailyProgram: session.markDailyProgram,
+    });
+    void recordRoutineCompletion({
+      routineId: session.routineId,
+      routineTitle: session.routineTitle,
+      template: session.program,
+      answers,
+    })
+      .then(() => queryClient.invalidateQueries({ queryKey: routineCompetitionQueryKey }))
+      .catch(() => {});
+    window.dispatchEvent(new Event("tl_routine_history_updated"));
+    if (session.markDailyProgram) {
+      window.dispatchEvent(new Event(`tl_routine_${session.program}_done`));
+    }
+    refreshRoutineData();
     setActiveSession(null);
   };
 
@@ -1361,7 +1823,7 @@ export default function Routine() {
             borderActiveClass="border-amber-500/20"
             icon={Sunrise}
             delay={0.14}
-            onStart={() => setActiveSession("morning")}
+            onStart={() => startBaseProgram("morning")}
           />
           <ProgramCard
             program="evening"
@@ -1375,8 +1837,35 @@ export default function Routine() {
             borderActiveClass="border-indigo-500/20"
             icon={Moon}
             delay={0.2}
-            onStart={() => setActiveSession("evening")}
+            onStart={() => startBaseProgram("evening")}
           />
+        </div>
+
+        <RoutineStatsPanel metrics={metrics} />
+
+        <FriendCompetitionPanel rows={friendCompetitionRows} loading={friendCompetitionLoading} />
+
+        <CreateRoutinePanel
+          open={createOpen}
+          onToggle={() => setCreateOpen((open) => !open)}
+          onCreate={handleCreateRoutine}
+        />
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {customRoutines.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-border/30 bg-card/20 p-5 text-sm text-muted-foreground/50 sm:col-span-2 xl:col-span-3">
+              Nessuna routine personalizzata salvata. Crea una routine per aggiungerla alla tua libreria.
+            </div>
+          ) : (
+            customRoutines.map((routine) => (
+              <CustomRoutineCard
+                key={routine.id}
+                routine={routine}
+                metric={metrics.byRoutine.find((item) => item.routineId === routine.id)}
+                onStart={() => startCustomRoutine(routine)}
+              />
+            ))
+          )}
         </div>
 
         {/* Footer quote */}
@@ -1394,7 +1883,7 @@ export default function Routine() {
       <AnimatePresence>
         {activeSession && (
           <SessionModal
-            program={activeSession}
+            program={activeSession.program}
             onClose={() => setActiveSession(null)}
             onComplete={(answers) => handleComplete(activeSession, answers)}
           />

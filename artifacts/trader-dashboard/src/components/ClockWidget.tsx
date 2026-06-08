@@ -89,6 +89,7 @@ export function ClockWidget() {
     : isWeekend
     ? "Mercato chiuso"
     : "Mercato aperto";
+  const compactBadgeLabel = badgeLabel === "Conferma Vol." ? "Conferma" : badgeLabel;
 
   const badgeDotClass = activeSession
     ? cn(activeColors?.bg, "animate-pulse shadow-[0_0_8px_currentColor]")
@@ -111,47 +112,38 @@ export function ClockWidget() {
     : "border-green-500/30 bg-green-500/10";
 
   return (
-    <Card className="relative overflow-hidden border-t-4 border-t-primary/50">
-      <div className="pointer-events-none absolute right-0 top-0 select-none p-32 opacity-5">
-        <div className="h-64 w-64 rounded-full bg-primary blur-[100px]" />
-      </div>
+    <Card className="relative h-16 overflow-hidden rounded-[0.625rem] border border-[#11192c] bg-[#070e1f] shadow-[var(--tl-shadow-panel)] backdrop-blur-md">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-primary shadow-[0_0_16px_hsl(var(--primary)/0.8)]" />
 
-      <CardContent className="z-10 px-4 py-3 sm:px-5 sm:py-4">
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-4 sm:gap-6">
-          <div className="tabular-nums slashed-zero">
-            <div className="text-2xl font-bold tracking-tighter text-foreground drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] sm:text-4xl md:text-5xl">
+      <CardContent className="relative z-10 h-full p-0">
+        <div className="absolute inset-x-3 top-1/2 grid -translate-y-1/2 grid-cols-[minmax(9rem,1fr)_1px_minmax(3.4rem,4.2rem)_minmax(6.6rem,0.72fr)] items-center">
+          <div className="min-w-0 pl-2 pr-5 tabular-nums">
+            <div className="truncate text-left font-sans text-[1.84rem] font-bold leading-none tracking-normal text-foreground drop-shadow-[0_0_10px_rgba(255,255,255,0.12)] sm:text-[2rem]">
               {format(time, "HH:mm:ss")}
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-[2px] text-center">
-            <p className="text-xs font-medium uppercase leading-none tracking-widest text-muted-foreground sm:text-sm">
+          <div className="h-[1.875rem] bg-[#132035]" />
+
+          <div className="flex min-w-0 flex-col items-center justify-center gap-[0.18rem] px-2 text-center">
+            <p className="font-sans text-[0.78rem] font-bold uppercase leading-none tracking-normal text-foreground/90 sm:text-[0.84rem]">
               {format(time, "d")}
             </p>
-            <p className="text-[9px] font-medium uppercase leading-none tracking-widest text-muted-foreground sm:text-xs">
+            <p className="max-w-full truncate text-[0.36rem] font-bold uppercase leading-none tracking-normal text-muted-foreground/70 sm:text-[0.4rem]">
               {format(time, "EEEE", { locale: it })}
-            </p>
-            <p
-              className={cn(
-                "max-w-[120px] truncate pt-1 text-[9px] leading-none sm:text-[10px]",
-                countdownText ? "text-muted-foreground" : "invisible select-none",
-              )}
-              aria-hidden={!countdownText}
-            >
-              {countdownText || "placeholder"}
             </p>
           </div>
 
           <div
             className={cn(
-              "flex min-w-[8rem] items-center gap-2 rounded-md border bg-secondary/80 px-3 py-2 sm:min-w-[9.5rem]",
+              "ml-3 mr-2 flex h-[1.875rem] w-[5.9rem] min-w-0 items-center justify-center gap-[0.35rem] justify-self-end rounded-md border border-[#1d2740] bg-[#151b31] px-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]",
               activeColors?.glow ?? "",
               !activeSession && badgeBorderClass,
             )}
           >
-            <div className={cn("h-2.5 w-2.5 shrink-0 rounded-full", badgeDotClass)} />
-            <span className={cn("truncate text-sm font-bold tracking-wide sm:text-base", badgeTextClass)}>
-              {badgeLabel}
+            <div className={cn("h-[0.4rem] w-[0.4rem] shrink-0 rounded-full", badgeDotClass)} />
+            <span className={cn("truncate text-[0.59rem] font-bold leading-none tracking-normal sm:text-[0.64rem]", badgeTextClass)}>
+              {compactBadgeLabel}
             </span>
           </div>
         </div>

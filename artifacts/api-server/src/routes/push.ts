@@ -5,6 +5,12 @@ import { eq, isNull } from "drizzle-orm";
 import { getUserId } from "./profile.js";
 import { shouldSendPushNotification } from "../services/notifications/pushDedupe.js";
 import { getNotificationLanguage, getServerNotificationCopy, pickSessionQuote } from "../services/notifications/notificationCopy.js";
+import {
+  buildScheduledCallDedupeKey,
+  buildScheduledCallPayload,
+  isServerScheduledCallDue,
+  parseScheduledCallConfigs,
+} from "../services/notifications/scheduledCalls.js";
 
 const router: IRouter = Router();
 
@@ -26,6 +32,7 @@ export interface NotificationPrefs {
   dailyReminder: boolean;
   macroEvents: boolean;
   brain: boolean;
+  scheduledCalls: boolean;
 }
 
 export const DEFAULT_NOTIF_PREFS: NotificationPrefs = {
@@ -36,6 +43,7 @@ export const DEFAULT_NOTIF_PREFS: NotificationPrefs = {
   dailyReminder: true,
   macroEvents: true,
   brain: true,
+  scheduledCalls: true,
 };
 
 interface TradingSessionConfig {
@@ -82,7 +90,17 @@ async function getUserPrefs(userId: string | null): Promise<NotificationPrefs> {
 
 export async function sendPushToUser(
   targetUserId: string | null,
-  payload: { title: string; body: string; tag?: string; data?: Record<string, unknown> },
+  payload: {
+    title: string;
+    body: string;
+    tag?: string;
+    icon?: string;
+    badge?: string;
+    requireInteraction?: boolean;
+    vibrate?: number[];
+    actions?: Array<{ action: string; title: string }>;
+    data?: Record<string, unknown>;
+  },
   prefKey?: keyof NotificationPrefs,
 ): Promise<void> {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
@@ -164,6 +182,23 @@ async function checkSessionsForUser(
   }
 }
 
+async function checkScheduledCallsForUser(
+  userId: string,
+  rawAlarmConfigs: string | null | undefined,
+  now: Date,
+): Promise<void> {
+  const calls = parseScheduledCallConfigs(rawAlarmConfigs ?? null);
+  for (const call of calls) {
+    if (!isServerScheduledCallDue(call, now)) continue;
+
+    const dedupeKey = buildScheduledCallDedupeKey(userId, call, now);
+    if (_sentToday.get(dedupeKey) === "sent") continue;
+    _sentToday.set(dedupeKey, "sent");
+
+    await sendPushToUser(userId, buildScheduledCallPayload(call, "/"), "scheduledCalls");
+  }
+}
+
 export function startSessionScheduler(): void {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
     console.log("[push] VAPID keys missing - session scheduler disabled");
@@ -188,7 +223,10 @@ export function startSessionScheduler(): void {
           if (!userId) return;
           const where = eq(userSettingsTable.userId, userId);
           const [settings] = await db
-            .select({ tradingSessions: userSettingsTable.tradingSessions })
+            .select({
+              tradingSessions: userSettingsTable.tradingSessions,
+              alarmConfigs: userSettingsTable.alarmConfigs,
+            })
             .from(userSettingsTable)
             .where(where)
             .limit(1);
@@ -200,8 +238,8 @@ export function startSessionScheduler(): void {
             return;
           }
 
-          if (sessions.length === 0) return;
-          await checkSessionsForUser(userId, sessions, nowH, nowM, today);
+          if (sessions.length > 0) await checkSessionsForUser(userId, sessions, nowH, nowM, today);
+          await checkScheduledCallsForUser(userId, settings?.alarmConfigs, now);
         }),
       );
     } catch (err) {

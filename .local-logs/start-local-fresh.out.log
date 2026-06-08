@@ -1,0 +1,150 @@
+Port 5432 is already occupied; using managed TraderLoadings Postgres on 127.0.0.1:55432.
+
+> ensuring Docker Postgres container
+Postgres is already reachable on 127.0.0.1:55432; reusing it.
+
+> waiting for TCP 127.0.0.1:55432
+
+> pnpm install
+Scope: all 12 workspace projects
+Already up to date
+Done in 453ms using pnpm v11.0.9
+
+> pnpm --filter @workspace/api-spec run codegen
+🍻 orval v8.5.3 - A swagger client generator for typescript
+api-client-react Cleaning output folder
+🎉 api-client-react - Your OpenAPI spec has been converted into ready to use orval!
+zod Cleaning output folder
+🎉 zod - Your OpenAPI spec has been converted into ready to use orval!
+
+> pnpm --filter @workspace/db run push
+Reading config file 'C:\Users\osman\Desktop\TraderLoadingsLOCALE\lib\db\drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[2K[1G[⣯] Pulling schema from database...
+[2K[1G[⣟] Pulling schema from database...
+[2K[1G[⡿] Pulling schema from database...
+[2K[1G[⢿] Pulling schema from database...
+[2K[1G[⣻] Pulling schema from database...
+[2K[1G[⣽] Pulling schema from database...
+[2K[1G[⣷] Pulling schema from database...
+[2K[1G[⣯] Pulling schema from database...
+[2K[1G[⣟] Pulling schema from database...
+[2K[1G[⡿] Pulling schema from database...
+[2K[1G[⢿] Pulling schema from database...
+[2K[1G[✓] Pulling schema from database...
+[i] No changes detected
+
+> starting API on http://127.0.0.1:3001
+[tools/cot] Fetching CFTC data...
+Server listening on port 3001
+[push] Session scheduler started
+[brain-scan] disabled (BRAIN_SCAN_ENABLED != 'true')
+
+> starting frontend on http://127.0.0.1:5173
+[tools/cot] deafut.txt OK — 7 markets, history: 1 weeks
+[2026-06-08 05:47:48.108 +0200] [32mINFO[39m (52868): [36m→ GET /api/healthz[39m
+    [35mrequestId[39m: "00dfc1c1-9b5d-4ef4-9cdf-0a510739e3df"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:47:48.115 +0200] [32mINFO[39m (52868): [36m← GET /api/healthz 200 (8ms)[39m
+    [35mrequestId[39m: "00dfc1c1-9b5d-4ef4-9cdf-0a510739e3df"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 8
+[tools/cot] OK — 7 live (12wk hist) + 2 fallback, total 9
+[brain] LLM client pronto (provider=openrouter, vision=google/gemma-4-31b-it:free)
+
+  [32m[1mVITE[22m v7.3.2[39m  [2mready in [0m[1m590[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.20.10.4:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.22.32.1:[1m5173[22m/[39m
+
+TraderLoadings is running at http://localhost:5173
+[2026-06-08 05:48:10.235 +0200] [32mINFO[39m (52868): [36m→ GET /api/healthz[39m
+    [35mrequestId[39m: "e5b25cc7-4504-4c9a-9ea4-10b991290a29"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:48:10.237 +0200] [32mINFO[39m (52868): [36m← GET /api/healthz 200 (2ms)[39m
+    [35mrequestId[39m: "e5b25cc7-4504-4c9a-9ea4-10b991290a29"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 2
+[2026-06-08 05:48:26.899 +0200] [32mINFO[39m (52868): [36m→ GET /api/login?returnTo=%2F[39m
+    [35mrequestId[39m: "247fbe36-e767-4b7d-91f3-0e5ebd08adac"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/login"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:48:27.512 +0200] [31mERROR[39m (52868): [36mUnhandled API error[39m
+    [35mrequestId[39m: "247fbe36-e767-4b7d-91f3-0e5ebd08adac"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/login"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    err: {
+      "type": "Error",
+      "message": "OIDC_CLIENT_ID or REPL_ID is required for Replit OIDC. Set OIDC_CLIENT_ID for generic OIDC providers or REPL_ID on Replit.",
+      "stack":
+          Error: OIDC_CLIENT_ID or REPL_ID is required for Replit OIDC. Set OIDC_CLIENT_ID for generic OIDC providers or REPL_ID on Replit.
+              at getValidatedOidcSettings (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\lib\auth.ts:43:11)
+              at getOidcConfig (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\lib\auth.ts:56:22)
+              at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\auth.ts:175:24)
+              at Layer.handleRequest (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\layer.js:152:17)
+              at next (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\route.js:157:13)
+              at Route.dispatch (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\route.js:117:3)
+              at handle (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:435:11)
+              at Layer.handleRequest (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\layer.js:152:17)
+              at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:295:15
+              at processParams (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:582:12)
+    }
+[2026-06-08 05:48:27.515 +0200] [31mERROR[39m (52868): [36m← GET /api/login?returnTo=%2F 500 (616ms)[39m
+    [35mrequestId[39m: "247fbe36-e767-4b7d-91f3-0e5ebd08adac"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/login"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 500
+    [35mdurationMs[39m: 616
+[2026-06-08 05:48:33.090 +0200] [32mINFO[39m (52868): [36m→ GET /api/healthz[39m
+    [35mrequestId[39m: "d4584304-81b5-43a0-9f27-82e1f50aecc0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:48:33.091 +0200] [32mINFO[39m (52868): [36m← GET /api/healthz 200 (1ms)[39m
+    [35mrequestId[39m: "d4584304-81b5-43a0-9f27-82e1f50aecc0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/healthz"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 1
+[2026-06-08 05:48:53.086 +0200] [32mINFO[39m (52868): [36m→ POST /api/social/upload-file[39m
+    [35mrequestId[39m: "c6b95f42-66aa-478c-8fe9-ff97fcb774c6"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/social/upload-file"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:48:53.089 +0200] [33mWARN[39m (52868): [36m← POST /api/social/upload-file 401 (3ms)[39m
+    [35mrequestId[39m: "c6b95f42-66aa-478c-8fe9-ff97fcb774c6"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/social/upload-file"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 401
+    [35mdurationMs[39m: 3
+[2026-06-08 05:48:53.936 +0200] [32mINFO[39m (52868): [36m→ GET /api/uploads/chat-files/chat-static-test.txt[39m
+    [35mrequestId[39m: "3b838a35-d118-4ba6-9551-ac235c99ffe5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/uploads/chat-files/chat-static-test.txt"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:48:53.941 +0200] [32mINFO[39m (52868): [36m← GET /api/uploads/chat-files/chat-static-test.txt 200 (5ms)[39m
+    [35mrequestId[39m: "3b838a35-d118-4ba6-9551-ac235c99ffe5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/uploads/chat-files/chat-static-test.txt"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 5
+[news/llm] OK — 30 articoli con sentiment reale (openai/gpt-oss-120b:free)

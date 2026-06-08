@@ -12,7 +12,11 @@
     "verify": "pnpm --filter ./scripts exec tsx local/verify.ts",
     "verify:runtime": "pnpm --filter ./scripts exec tsx local/verify-runtime.ts",
     "smoke:runtime": "pnpm --filter ./scripts exec tsx local/runtime-smoke.ts",
-    "start:local": "pnpm --filter ./scripts exec tsx local/start.ts"
+    "start:local": "pnpm --filter ./scripts exec tsx local/start.ts",
+    "build:railway": "pnpm --filter @workspace/trader-dashboard build && pnpm --filter @workspace/api-server build",
+    "start:railway": "pnpm --filter @workspace/api-server start",
+    "db:push": "pnpm --filter @workspace/db push",
+    "push:vapid": "pnpm --filter @workspace/api-server exec web-push generate-vapid-keys"
   },
   "private": true,
   "devDependencies": {

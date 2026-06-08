@@ -21,6 +21,7 @@ import {
   parseTrustProxy,
   publicUploadGuard,
 } from "./lib/security";
+import healthRouter from "./routes/health";
 import router from "./routes";
 
 const app: Express = express();
@@ -41,6 +42,10 @@ app.use(cors(createCorsOptions()));
 app.use(cookieParser());
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+
+app.use("/api", healthRouter);
+
+serveFrontendApp(app);
 
 app.use(
   clerkMiddleware((req) => ({
@@ -73,6 +78,43 @@ app.use(
     maxAge: "1d",
   }),
 );
+
+function serveFrontendApp(expressApp: Express) {
+  const frontendDir = path.resolve(
+    process.cwd(),
+    process.env.FRONTEND_DIST_DIR ?? "../trader-dashboard/dist/public",
+  );
+  const indexFile = path.join(frontendDir, "index.html");
+
+  if (!fs.existsSync(indexFile)) {
+    logger.warn({ frontendDir }, "Frontend build not found; API-only mode enabled");
+    return;
+  }
+
+  expressApp.use(
+    express.static(frontendDir, {
+      immutable: true,
+      maxAge: "1y",
+      setHeaders(res, filePath) {
+        if (filePath.endsWith("index.html") || filePath.endsWith("sw.js")) {
+          res.setHeader("Cache-Control", "no-store");
+        }
+      },
+    }),
+  );
+
+  expressApp.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      next();
+      return;
+    }
+    if (req.path.startsWith("/api")) {
+      next();
+      return;
+    }
+    res.sendFile(indexFile);
+  });
+}
 
 app.use(
   (

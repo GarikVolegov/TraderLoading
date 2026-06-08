@@ -10,6 +10,7 @@ const DEV_ORIGINS = [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/];
 const ALLOWED_UPLOAD_DIRS = new Set([
   "post-images",
   "voice",
+  "chat-files",
   "community-files",
   "milestone-files",
   "avatars",
@@ -85,10 +86,11 @@ export function getRateLimitConfig(env: SecurityEnv = process.env): {
 } {
   const windowMs = Number(env.RATE_LIMIT_WINDOW_MS);
   const limit = Number(env.RATE_LIMIT_MAX);
+  const defaultLimit = env.NODE_ENV === "development" ? 5000 : 300;
   return {
     windowMs:
       Number.isFinite(windowMs) && windowMs > 0 ? windowMs : 15 * 60 * 1000,
-    limit: Number.isFinite(limit) && limit > 0 ? limit : 300,
+    limit: Number.isFinite(limit) && limit > 0 ? limit : defaultLimit,
   };
 }
 

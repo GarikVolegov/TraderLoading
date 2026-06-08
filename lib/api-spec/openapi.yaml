@@ -1998,6 +1998,10 @@ components:
         userId:
           type: string
           nullable: true
+        relationshipStatus:
+          type: string
+          enum: [none, pending_sent, pending_received, accepted]
+          description: Friendship state between the current user and this result.
       required:
         - id
         - name

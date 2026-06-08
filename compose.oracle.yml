@@ -1,0 +1,67 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file:
+      - ${ORACLE_ENV_FILE:-.env.oracle}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/oracle/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_started
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.oracle
+      args:
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+        VITE_CLERK_PROXY_URL: ${VITE_CLERK_PROXY_URL:-}
+        VITE_API_BASE: ${VITE_API_BASE:-}
+    restart: unless-stopped
+    env_file:
+      - ${ORACLE_ENV_FILE:-.env.oracle}
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL}
+      FRONTEND_DIST_DIR: /app/artifacts/trader-dashboard/dist/public
+    volumes:
+      - trader_uploads:/app/artifacts/api-server/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - ${ORACLE_ENV_FILE:-.env.oracle}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-traderloading}
+      POSTGRES_USER: ${POSTGRES_USER:-traderloading}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - trader_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-traderloading} -d ${POSTGRES_DB:-traderloading}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  caddy_data:
+  caddy_config:
+  trader_uploads:
+  trader_postgres:

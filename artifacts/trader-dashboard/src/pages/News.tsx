@@ -237,6 +237,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
   const explanation = article ? article.relevanceReason ?? article.impactReason : undefined;
   if (!article) return null;
   const detailUrl = preferredArticleUrl(article);
+  const deepDive = article.deepDive;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -266,7 +267,20 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-foreground/90">{article.summary}</p>
 
-          {explanation && (
+          {deepDive ? (
+            <div className="grid gap-3">
+              {[
+                ["Cosa e' successo", deepDive.whatHappened],
+                ["Perche' influenza l'asset", deepDive.whyItMatters],
+                ["Come puo' impattare", deepDive.possibleImpact],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-primary/15 bg-primary/5 p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">{label}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{value}</p>
+                </div>
+              ))}
+            </div>
+          ) : explanation && (
             <div className="rounded-lg border border-primary/15 bg-primary/5 p-3">
               <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">Impatto per il trading</p>
               <p className="text-sm text-muted-foreground leading-relaxed">{explanation}</p>

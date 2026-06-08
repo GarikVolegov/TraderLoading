@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { buildFrontendDevArgs, buildFrontendDevEnv } from "./startEnv.js";
+import { buildApiDevEnv, buildFrontendDevArgs, buildFrontendDevEnv } from "./startEnv.js";
 
 const env = buildFrontendDevEnv({
   BASE_PATH: "/app",
@@ -23,6 +23,23 @@ const explicitViteKey = buildFrontendDevEnv({
 });
 
 assert.equal(explicitViteKey.VITE_CLERK_PUBLISHABLE_KEY, "pk_test_vite");
+
+const apiEnv = buildApiDevEnv(
+  {
+    DATABASE_URL: "postgres://from-source",
+    MYFXBOOK_EMAIL: "trader@example.test",
+    MYFXBOOK_PASSWORD: "secret",
+    PORT: "9999",
+  },
+  "postgres://from-runtime-db",
+);
+
+assert.equal(apiEnv.MYFXBOOK_EMAIL, "trader@example.test");
+assert.equal(apiEnv.MYFXBOOK_PASSWORD, "secret");
+assert.equal(apiEnv.DATABASE_URL, "postgres://from-runtime-db");
+assert.equal(apiEnv.BASE_PATH, "/");
+assert.equal(apiEnv.NODE_ENV, "development");
+assert.equal(apiEnv.PORT, "3001");
 
 assert.deepEqual(buildFrontendDevArgs(), [
   "--filter",

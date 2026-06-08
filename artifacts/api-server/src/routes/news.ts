@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
-import OpenAI from "openai";
+import { getTextClient, markKeyInvalid } from "../services/llmClient.js";
 import { enrichAndFilterNews } from "../services/newsHub/intelligence.js";
 import {
   applyNewsFreshness,
@@ -16,10 +16,17 @@ import {
   sortNewsChronologically,
 } from "../services/newsHub/ranking.js";
 import { cleanNewsText, createTranslationMemo } from "../services/newsHub/contentQuality.js";
+import { buildNewsDeepDive } from "../services/newsHub/deepDive.js";
 
 const router: IRouter = Router();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface NewsDeepDive {
+  whatHappened: string;
+  whyItMatters: string;
+  possibleImpact: string;
+}
 
 interface NewsArticle {
   title: string;
@@ -44,6 +51,7 @@ interface NewsArticle {
   ageMinutes?: number;
   isFallback?: boolean;
   qualityScore?: number;
+  deepDive?: NewsDeepDive;
   // AI agent fields
   affectedPairs?: string[];
   impactScore?: number;       // 1–10
@@ -80,21 +88,6 @@ const NEWS_MAX_AGE_HOURS = 96;
 
 const NEWS_CACHE = createNewsCache<NewsResponse>({ ttlMs: newsCacheTtlMs() });
 const TRANSLATION_MEMO = createTranslationMemo<{ title: string; summary: string }>();
-
-// ─── Groq client (free tier — llama-3.1-8b-instant) ──────────────────────────
-// Signup gratuito senza carta di credito: https://console.groq.com
-// Imposta GROQ_API_KEY come secret per attivare l'analisi AI avanzata.
-// Senza chiave il sistema usa l'enrichment euristico gratuito (sempre attivo).
-let _groqKeyInvalidUntil = 0;
-let _groqClient: OpenAI | null = null;
-function getGroqClient(): OpenAI | null {
-  if (Date.now() < _groqKeyInvalidUntil) return null;
-  if (_groqClient) return _groqClient;
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return null;
-  _groqClient = new OpenAI({ baseURL: "https://api.groq.com/openai/v1", apiKey });
-  return _groqClient;
-}
 
 // ─── RSS helpers ──────────────────────────────────────────────────────────────
 
@@ -528,48 +521,65 @@ function heuristicAgentSummary(articles: NewsArticle[], formattedPairs: string, 
     : `Watch these high-impact events for ${formattedPairs}: ${titles}. Manage risk with appropriate stops.`;
 }
 
-// ─── Groq AI Enrichment (opzionale — free tier, nessuna carta di credito) ─────
-// 1. Vai su https://console.groq.com  → crea account gratuito
-// 2. Genera un'API key
-// 3. Aggiungila come secret GROQ_API_KEY in questo progetto
+// ─── LLM enrichment (REAL sentiment) ──────────────────────────────────────────
+// Uses the shared brain LLM client (OpenRouter by default; configurable via
+// BRAIN_LLM_PROVIDER / BRAIN_TEXT_MODEL). Produces genuine per-article sentiment
+// + impact for the most recent articles, in batches. The keyword heuristic is
+// kept only as a fallback for the tail and on any LLM failure.
 
-interface GroqEnrichItem {
-  impactScore: number;
-  impactReason: string;
-  affectedPairs: string[];
-  sentiment: string;
+interface LlmEnrichItem {
+  id?: number;
+  impactScore?: number;
+  impactReason?: string;
+  affectedPairs?: string[];
+  sentiment?: string;
 }
-interface GroqEnrichResult { agentSummary: string; articles: GroqEnrichItem[] }
+interface LlmEnrichResult { agentSummary?: string; articles?: LlmEnrichItem[] }
 
-async function enrichWithGroq(
+const LLM_ENRICH_MAX = 30;    // articles sent for real sentiment per refresh
+const LLM_ENRICH_CHUNK = 15;  // articles per LLM call
+
+function normalizeSentiment(value: unknown): NewsArticle["sentiment"] {
+  const s = typeof value === "string" ? value.toLowerCase() : "";
+  if (s.includes("bull") || s.includes("rialz") || s.includes("positiv")) return "bullish";
+  if (s.includes("bear") || s.includes("ribass") || s.includes("negativ")) return "bearish";
+  if (s.includes("neutr")) return "neutral";
+  return null;
+}
+
+async function enrichWithLLM(
   articles: NewsArticle[],
   pairCurrencies: string[],
   pairsStr: string,
   lang: string,
 ): Promise<{ articles: NewsArticle[]; agentSummary: string } | null> {
-  const client = getGroqClient();
-  if (!client) return null;
+  const llm = getTextClient();
+  if (!llm) return null;
 
   const langName = NEWS_LANG_NAMES[lang] ?? "Italian";
   const formattedPairs = formatPairsForPrompt(pairsStr);
   const currencyFocus = pairCurrencies.length > 0 ? pairCurrencies.join(", ") : "USD, EUR, XAU";
-  const batch = articles.slice(0, 8).map((a, i) => ({
-    id: i, title: a.title, summary: a.summary.slice(0, 200),
-  }));
 
-  try {
-    const completion = await client.chat.completions.create({
-      model: "llama-3.1-8b-instant",
-      max_tokens: 2000,
-      temperature: 0.1,
-      messages: [
-        {
-          role: "system",
-          content: `You are a professional forex and commodities market analyst. Analyze news articles and return structured market impact data. Respond ONLY with valid JSON. All text fields MUST be in ${langName}.`,
-        },
-        {
-          role: "user",
-          content: `Trading pairs: ${formattedPairs}. Key currencies: ${currencyFocus}.
+  const enrichedById = new Map<number, LlmEnrichItem>();
+  let agentSummary = "";
+  const limit = Math.min(LLM_ENRICH_MAX, articles.length);
+
+  for (let start = 0; start < limit; start += LLM_ENRICH_CHUNK) {
+    const slice = articles.slice(start, start + LLM_ENRICH_CHUNK);
+    const batch = slice.map((a, i) => ({ id: start + i, title: a.title, summary: a.summary.slice(0, 200) }));
+    try {
+      const completion = await llm.client.chat.completions.create({
+        model: llm.model,
+        max_tokens: 2000,
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional forex and commodities market analyst. For each news article, judge the market sentiment for the affected assets (bullish = price likely up, bearish = price likely down, neutral = unclear/mixed). Respond ONLY with valid JSON. All text fields MUST be in ${langName}.`,
+          },
+          {
+            role: "user",
+            content: `Trading pairs: ${formattedPairs}. Key currencies: ${currencyFocus}.
 
 Articles to analyze:
 ${JSON.stringify(batch, null, 2)}
@@ -578,52 +588,53 @@ Return ONLY this JSON (no markdown, no extra text):
 {
   "agentSummary": "2-3 sentence macro overview in ${langName} for ${formattedPairs}",
   "articles": [
-    {
-      "impactScore": 7,
-      "impactReason": "1 sentence in ${langName} why this matters for these specific pairs",
-      "affectedPairs": ["EUR/USD"],
-      "sentiment": "bullish|bearish|neutral"
-    }
+    { "id": 0, "impactScore": 7, "impactReason": "1 sentence in ${langName}", "affectedPairs": ["EUR/USD"], "sentiment": "bullish" }
   ]
 }
 
-Return exactly ${batch.length} objects in articles[], same order as input.`,
-        },
-      ],
-    });
+sentiment MUST be one of: "bullish", "bearish", "neutral". Return one object per input article, echoing its "id".`,
+          },
+        ],
+      });
 
-    const raw = completion.choices[0]?.message?.content ?? "";
-    const jsonMatch = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim().match(/\{[\s\S]*\}/);
-    if (!jsonMatch) { console.warn("[news/groq] Risposta non-JSON"); return null; }
-    const parsed = JSON.parse(jsonMatch[0]) as GroqEnrichResult;
-    if (!Array.isArray(parsed.articles)) return null;
-
-    const enriched = articles.map((a, i) => {
-      const ai = parsed.articles[i];
-      if (!ai) return a;
-      return {
-        ...a,
-        impactScore: typeof ai.impactScore === "number" ? Math.min(10, Math.max(1, Math.round(ai.impactScore))) : a.impactScore,
-        impactReason: typeof ai.impactReason === "string" ? ai.impactReason : a.impactReason,
-        affectedPairs: Array.isArray(ai.affectedPairs) && ai.affectedPairs.length > 0 ? ai.affectedPairs : a.affectedPairs,
-        sentiment: typeof ai.sentiment === "string" ? ai.sentiment : a.sentiment,
-      };
-    });
-
-    console.info(`[news/groq] OK — ${enriched.length} articoli arricchiti con Llama`);
-    return { articles: enriched, agentSummary: parsed.agentSummary ?? "" };
-
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("401") || msg.includes("403")) {
-      _groqKeyInvalidUntil = Date.now() + 60 * 60 * 1000;
-      _groqClient = null;
-      console.warn("[news/groq] Chiave non valida — solo enrichment euristico");
-    } else {
-      console.warn("[news/groq] Errore:", msg);
+      const raw = completion.choices[0]?.message?.content ?? "";
+      const jsonMatch = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim().match(/\{[\s\S]*\}/);
+      if (!jsonMatch) { console.warn("[news/llm] risposta non-JSON, salto chunk"); continue; }
+      const parsed = JSON.parse(jsonMatch[0]) as LlmEnrichResult;
+      if (start === 0 && typeof parsed.agentSummary === "string") agentSummary = parsed.agentSummary;
+      if (Array.isArray(parsed.articles)) {
+        parsed.articles.forEach((item, i) => {
+          const id = typeof item.id === "number" ? item.id : start + i;
+          enrichedById.set(id, item);
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("401") || msg.includes("403") || msg.includes("429")) {
+        markKeyInvalid();
+        console.warn("[news/llm] chiave non valida o rate limit — fallback euristico");
+        break;
+      }
+      console.warn("[news/llm] errore:", msg);
     }
-    return null;
   }
+
+  if (enrichedById.size === 0) return null;
+
+  const enriched = articles.map((a, i) => {
+    const ai = enrichedById.get(i);
+    if (!ai) return a;
+    return {
+      ...a,
+      impactScore: typeof ai.impactScore === "number" ? Math.min(10, Math.max(1, Math.round(ai.impactScore))) : a.impactScore,
+      impactReason: typeof ai.impactReason === "string" && ai.impactReason ? ai.impactReason : a.impactReason,
+      affectedPairs: Array.isArray(ai.affectedPairs) && ai.affectedPairs.length > 0 ? ai.affectedPairs : a.affectedPairs,
+      sentiment: normalizeSentiment(ai.sentiment) ?? a.sentiment,
+    };
+  });
+
+  console.info(`[news/llm] OK — ${enrichedById.size} articoli con sentiment reale (${llm.model})`);
+  return { articles: enriched, agentSummary };
 }
 
 // ─── USD / dollar macro detection (always surfaced in the feed) ───────────────
@@ -683,11 +694,12 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
     // 2. Enrichment euristico (sempre gratuito — impact score, pair detection, sentiment)
     const enriched = enrichHeuristically(translated, pairCurrencies, pairsStr, lang);
 
-    // 3. Groq AI enhancement (opzionale — free tier con GROQ_API_KEY)
-    const groqResult = await enrichWithGroq(enriched, pairCurrencies, pairsStr, lang);
-    if (groqResult && groqResult.articles.length > 0) {
-      articles = groqResult.articles;
-      agentSummary = groqResult.agentSummary;
+    // 3. LLM enrichment — REAL sentiment via the configured provider (OpenRouter
+    //    by default). Falls back to the heuristic when the LLM is unavailable.
+    const llmResult = await enrichWithLLM(enriched, pairCurrencies, pairsStr, lang);
+    if (llmResult && llmResult.articles.length > 0) {
+      articles = llmResult.articles;
+      agentSummary = llmResult.agentSummary || heuristicAgentSummary(llmResult.articles, formattedPairs, lang);
     } else {
       articles = enriched;
       agentSummary = heuristicAgentSummary(enriched, formattedPairs, lang);
@@ -725,6 +737,11 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
         return s.length === 6 ? `${s.slice(0, 3)}/${s.slice(3)}` : s;
       }).filter(Boolean)
     : [];
+
+  articles = articles.map((article) => ({
+    ...article,
+    deepDive: article.deepDive ?? buildNewsDeepDive(article, { lang }),
+  }));
 
   const freshArticles = articles.filter((article) => !article.isFallback);
   const fallbackArticles = articles.filter((article) => article.isFallback);

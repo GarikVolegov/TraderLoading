@@ -59,7 +59,12 @@ export function resolveReplayWindowForCloseAnchor(
   let anchorIndex = candles.findIndex((c) => ((c.time as number) + intervalSeconds) >= anchorCloseTime);
   if (anchorIndex === -1) anchorIndex = candles.length - 1;
 
-  const revealedCount = Math.min(Math.max(1, visibleCount), anchorIndex + 1, candles.length);
+  const revealedCount = Math.min(
+    Math.max(1, visibleCount),
+    DEFAULT_REPLAY_VISIBLE_CANDLES,
+    anchorIndex + 1,
+    candles.length,
+  );
   const startIndex = Math.max(0, anchorIndex - revealedCount + 1);
   return { startIndex, revealedCount };
 }

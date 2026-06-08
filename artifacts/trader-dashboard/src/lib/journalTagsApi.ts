@@ -12,3 +12,14 @@ export async function fetchJournalTags(options?: RelativeApiOptions): Promise<Jo
   if (!response.ok) return [];
   return response.json() as Promise<JournalTagSummary[]>;
 }
+
+export async function saveJournalTag(tag: string, options?: RelativeApiOptions): Promise<JournalTagSummary> {
+  const response = await apiRequest("journal/tags", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tag }),
+  }, options);
+
+  if (!response.ok) throw new Error(`Failed to save journal tag: ${response.status}`);
+  return response.json() as Promise<JournalTagSummary>;
+}

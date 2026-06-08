@@ -1,3 +1,13 @@
+export function buildApiDevEnv(source: NodeJS.ProcessEnv = process.env, databaseUrl: string): NodeJS.ProcessEnv {
+  return {
+    ...source,
+    BASE_PATH: "/",
+    DATABASE_URL: databaseUrl,
+    NODE_ENV: "development",
+    PORT: "3001",
+  };
+}
+
 export function buildFrontendDevEnv(source: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   return {
     BASE_PATH: source["BASE_PATH"] ?? "/",

@@ -1,13 +1,19 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Settings, Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
 import { useAudio } from "@/contexts/AudioContext";
 import { MacroNewsTicker } from "@/components/MacroNewsTicker";
-import { UserButton } from "@clerk/react";
+import { useGetProfile } from "@workspace/api-client-react";
 
 export function TopNav() {
   const { mode, setMode } = useAudio();
+  const { data: profile } = useGetProfile();
   const isPlaying = mode !== "off";
+  const avatarSrc =
+    profile && profile.avatarUrl
+      ? profile.avatarUrl
+      : `${import.meta.env.BASE_URL}images/avatar-default.png`;
+  const profileName = profile?.name ?? "Trader";
 
   return (
     <motion.header
@@ -73,27 +79,21 @@ export function TopNav() {
               )}
             </motion.button>
 
-            {/* Settings */}
-            <motion.div whileTap={{ scale: 0.88 }}>
+            {/* User avatar */}
+            <motion.div whileTap={{ scale: 0.88 }} className="flex items-center">
               <Link
                 href="/settings"
-                aria-label="Apri impostazioni"
-                className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/55 bg-card/60 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                aria-label="Apri impostazioni profilo"
+                title="Impostazioni profilo"
+                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-primary/45 bg-card/60 p-0.5 shadow-[0_0_12px_hsl(var(--primary)/0.1)] transition-colors hover:border-primary hover:bg-primary/10"
               >
-                <Settings className="h-4 w-4" />
+                <img
+                  src={avatarSrc}
+                  alt={`Profilo di ${profileName}`}
+                  className="h-full w-full rounded-[6px] object-cover"
+                />
               </Link>
             </motion.div>
-
-            {/* User avatar */}
-            <div className="flex items-center">
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: "h-11 w-11 rounded-lg border border-border/60",
-                  },
-                }}
-              />
-            </div>
           </motion.div>
         </div>
       </div>

@@ -36,7 +36,7 @@ export function GoalReminders() {
         if ("Notification" in window && Notification.permission === "granted") {
           new Notification(copy.titles.goalReminder, {
             body: goal.content,
-            icon: "/favicon.ico",
+            icon: "/app-icon-192.png",
             tag: `goal-reminder-${goal.id}`,
           });
         } else {
