@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
 import { dark } from "@clerk/themes";
@@ -210,32 +210,36 @@ function LanguageServerSync() {
 function AppRouter() {
   const [location] = useLocation();
 
+  // Entrance-only page transition. No AnimatePresence: there is no exit
+  // animation, so AnimatePresence served no purpose — and its sync mode kept the
+  // previous page mounted (stacked under the new one, each min-h-screen), which
+  // showed as duplicated content when scrolling after navigation. Rendering a
+  // keyed motion.div directly unmounts the old page immediately while still
+  // playing the entrance animation on each route change.
   return (
-    <AnimatePresence mode="sync" initial={false}>
-      <motion.div key={location} {...pageTransition}>
-        <Suspense fallback={<PageFallback />}>
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/journal" component={Journal} />
-            <Route path="/checklist" component={Checklist} />
-            <Route path="/news" component={News} />
-            <Route path="/chat" component={Chat} />
-            <Route path="/backtest" component={Backtest} />
-            <Route path="/tools" component={Tools} />
-            <Route path="/brain" component={Brain} />
-            <Route path="/zen" component={Zen} />
-            <Route path="/milestones" component={Milestones} />
-            <Route path="/routine" component={Routine} />
-            <Route path="/missions" component={Missions} />
-            <Route path="/clock" component={Clock} />
-            <Route path="/calendar" component={Calendar} />
-            <Route path="/broker" component={Broker} />
-            <Route path="/settings" component={Settings} />
-            <Route component={NotFound} />
-          </Switch>
-        </Suspense>
-      </motion.div>
-    </AnimatePresence>
+    <motion.div key={location} {...pageTransition}>
+      <Suspense fallback={<PageFallback />}>
+        <Switch>
+          <Route path="/" component={Dashboard} />
+          <Route path="/journal" component={Journal} />
+          <Route path="/checklist" component={Checklist} />
+          <Route path="/news" component={News} />
+          <Route path="/chat" component={Chat} />
+          <Route path="/backtest" component={Backtest} />
+          <Route path="/tools" component={Tools} />
+          <Route path="/brain" component={Brain} />
+          <Route path="/zen" component={Zen} />
+          <Route path="/milestones" component={Milestones} />
+          <Route path="/routine" component={Routine} />
+          <Route path="/missions" component={Missions} />
+          <Route path="/clock" component={Clock} />
+          <Route path="/calendar" component={Calendar} />
+          <Route path="/broker" component={Broker} />
+          <Route path="/settings" component={Settings} />
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
+    </motion.div>
   );
 }
 
