@@ -6,6 +6,7 @@ import { db, followsTable, postsTable, postLikesTable, postCommentsTable, profil
 import { eq, and, or, desc, asc, sql, inArray, gt, isNull } from "drizzle-orm";
 import { getUserNotificationLanguage, sendPushToUser } from "./push.js";
 import { getServerNotificationCopy } from "../services/notifications/notificationCopy.js";
+import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 
 const POST_IMAGES_DIR = path.join(process.cwd(), "uploads", "post-images");
 const CHAT_FILES_DIR = path.join(process.cwd(), "uploads", "chat-files");
@@ -576,29 +577,34 @@ router.post("/social/story-reply/:storyId", (req: any, res: any) => {
   res.json({ ok: true });
 });
 
-// ─── WebRTC Signaling (HTTP polling) ─────────────────────────────────────────
-interface CallSignal { callId: string; from: string; to: string; type: string; data: string; ts: number; }
-const callSignalQueues = new Map<string, CallSignal[]>();
+// ─── WebRTC Signaling (HTTP polling, Postgres-backed) ────────────────────────
+// Stored in the DB so the sender and the polling recipient can be served by
+// different serverless instances and still exchange offers/answers/ICE.
 
-router.post("/social/calls/signal", (req: any, res: any) => {
+router.post("/social/calls/signal", async (req: any, res: any) => {
   const from = req.user?.id;
   if (!from) { res.status(401).json({ error: "Non autorizzato" }); return; }
   const { to, type, data, callId } = req.body;
   if (!to || !type) { res.status(400).json({ error: "Parametri mancanti" }); return; }
-  const arr = callSignalQueues.get(to) ?? [];
-  const cutoff = Date.now() - 30000;
-  const filtered = arr.filter((s: CallSignal) => s.ts > cutoff);
-  filtered.push({ callId: callId ?? `call-${Date.now()}`, from, to, type, data: data ?? "", ts: Date.now() });
-  callSignalQueues.set(to, filtered);
-  res.json({ ok: true });
+  try {
+    await pushSignal({ scope: "call", to, from, type, data: data ?? "", callId: callId ?? `call-${Date.now()}` });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("social/calls/signal error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
 });
 
-router.get("/social/calls/signals", (req: any, res: any) => {
+router.get("/social/calls/signals", async (req: any, res: any) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Non autorizzato" }); return; }
-  const signals = callSignalQueues.get(userId) ?? [];
-  callSignalQueues.delete(userId);
-  res.json({ signals });
+  try {
+    const signals = await consumeSignals("call", userId);
+    res.json({ signals });
+  } catch (err) {
+    console.error("social/calls/signals error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
 });
 
 export default router;
