@@ -3,13 +3,21 @@ import { getGetRandomQuoteQueryKey, useGetRandomQuote } from "@workspace/api-cli
 import { Quote } from "lucide-react";
 
 export function QuoteWidget() {
-  const { data: quote } = useGetRandomQuote({ query: { queryKey: getGetRandomQuoteQueryKey(), staleTime: 3600_000 } });
+  // Rotate to a fresh random quote every 8s (paused automatically while the tab
+  // is hidden). The backend now returns a genuinely random quote per call.
+  const { data: quote } = useGetRandomQuote({
+    query: {
+      queryKey: getGetRandomQuoteQueryKey(),
+      staleTime: 0,
+      refetchInterval: 8000,
+    },
+  });
 
   return (
     <AnimatePresence mode="wait">
       {quote ? (
         <motion.div
-          key={quote.id ?? quote.text}
+          key={quote.text}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
