@@ -148,3 +148,1459 @@ TraderLoadings is running at http://localhost:5173
     [35mstatusCode[39m: 200
     [35mdurationMs[39m: 5
 [news/llm] OK — 30 articoli con sentiment reale (openai/gpt-oss-120b:free)
+[news/llm] OK — 30 articoli con sentiment reale (openai/gpt-oss-120b:free)
+[2m05:50:14[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m05:50:14[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2026-06-08 05:50:16.769 +0200] [32mINFO[39m (52868): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "7cfc4c6e-143e-4913-be87-9fc485da1060"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:16.769 +0200] [32mINFO[39m (52868): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "d1e45b76-ef68-4804-a524-81342db56e0b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:16.770 +0200] [32mINFO[39m (52868): [36m→ GET /api/ideas[39m
+    [35mrequestId[39m: "df4a2822-231e-4153-abc4-9e944facfc41"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:16.773 +0200] [32mINFO[39m (52868): [36m→ GET /api/push/preferences[39m
+    [35mrequestId[39m: "4a2f091a-8b86-4e85-a77d-1cebfe58fb92"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:16.774 +0200] [32mINFO[39m (52868): [36m→ GET /api/settings[39m
+    [35mrequestId[39m: "17304077-79a6-4323-900a-c7abe264c347"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:16.820 +0200] [32mINFO[39m (52868): [36m← GET /api/push/preferences 200 (47ms)[39m
+    [35mrequestId[39m: "4a2f091a-8b86-4e85-a77d-1cebfe58fb92"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 47
+[2026-06-08 05:50:16.838 +0200] [32mINFO[39m (52868): [36m← GET /api/ideas 200 (68ms)[39m
+    [35mrequestId[39m: "df4a2822-231e-4153-abc4-9e944facfc41"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 68
+[2026-06-08 05:50:16.840 +0200] [32mINFO[39m (52868): [36m← GET /api/settings 200 (66ms)[39m
+    [35mrequestId[39m: "17304077-79a6-4323-900a-c7abe264c347"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 66
+[2026-06-08 05:50:16.841 +0200] [32mINFO[39m (52868): [36m← GET /api/checklist 200 (72ms)[39m
+    [35mrequestId[39m: "7cfc4c6e-143e-4913-be87-9fc485da1060"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 72
+[2026-06-08 05:50:16.846 +0200] [32mINFO[39m (52868): [36m← GET /api/missions 200 (77ms)[39m
+    [35mrequestId[39m: "d1e45b76-ef68-4804-a524-81342db56e0b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 77
+[2026-06-08 05:50:17.134 +0200] [32mINFO[39m (52868): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "6839e575-47b3-489a-851f-45ce6f7b6872"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:17.642 +0200] [32mINFO[39m (52868): [36m→ GET /api/profile[39m
+    [35mrequestId[39m: "628ed375-bba6-4d4e-97da-bdda40b35de8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:17.643 +0200] [32mINFO[39m (52868): [36m→ GET /api/tools/macro-news?lang=it[39m
+    [35mrequestId[39m: "4241b02c-4e02-4363-9e51-6a1ad51ee66d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:17.644 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "ce054bfe-ee85-451d-82e6-9f66784631b0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:17.675 +0200] [32mINFO[39m (52868): [36m← GET /api/profile 200 (33ms)[39m
+    [35mrequestId[39m: "628ed375-bba6-4d4e-97da-bdda40b35de8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 33
+[2026-06-08 05:50:17.677 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 200 (33ms)[39m
+    [35mrequestId[39m: "ce054bfe-ee85-451d-82e6-9f66784631b0"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 33
+[2026-06-08 05:50:17.754 +0200] [32mINFO[39m (52868): [36m→ GET /api/push/preferences[39m
+    [35mrequestId[39m: "e572f855-4156-4bc0-991c-f3377626b60b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:17.754 +0200] [32mINFO[39m (52868): [36m→ PUT /api/settings[39m
+    [35mrequestId[39m: "017790df-80b7-4da0-bc1d-56fdddf4c513"
+    [35mmethod[39m: "PUT"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:17.791 +0200] [32mINFO[39m (52868): [36m← GET /api/calendar 200 (657ms)[39m
+    [35mrequestId[39m: "6839e575-47b3-489a-851f-45ce6f7b6872"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 657
+[2026-06-08 05:50:17.797 +0200] [32mINFO[39m (52868): [36m← GET /api/push/preferences 304 (43ms)[39m
+    [35mrequestId[39m: "e572f855-4156-4bc0-991c-f3377626b60b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 43
+[2026-06-08 05:50:17.806 +0200] [32mINFO[39m (52868): [36m← PUT /api/settings 200 (52ms)[39m
+    [35mrequestId[39m: "017790df-80b7-4da0-bc1d-56fdddf4c513"
+    [35mmethod[39m: "PUT"
+    [35mpath[39m: "/api/settings"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 52
+[2026-06-08 05:50:18.013 +0200] [32mINFO[39m (52868): [36m→ GET /api/tools/macro-news?currencies=USD%2CXAU&lang=it[39m
+    [35mrequestId[39m: "e9e32eac-bd6c-4815-8441-60eb1c7006d2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.108 +0200] [32mINFO[39m (52868): [36m→ GET /api/push/preferences[39m
+    [35mrequestId[39m: "1a729e59-69db-488f-9f22-dbaaef3218cb"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.109 +0200] [32mINFO[39m (52868): [36m→ GET /api/settings[39m
+    [35mrequestId[39m: "4141d2e3-b940-434b-8c4d-6a0e17e073d7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.137 +0200] [32mINFO[39m (52868): [36m← GET /api/push/preferences 304 (29ms)[39m
+    [35mrequestId[39m: "1a729e59-69db-488f-9f22-dbaaef3218cb"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 29
+[2026-06-08 05:50:18.138 +0200] [32mINFO[39m (52868): [36m← GET /api/settings 200 (29ms)[39m
+    [35mrequestId[39m: "4141d2e3-b940-434b-8c4d-6a0e17e073d7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 29
+[2026-06-08 05:50:18.143 +0200] [32mINFO[39m (52868): [36m→ GET /api/push/preferences[39m
+    [35mrequestId[39m: "76dda782-caa4-4a99-a6b1-16ae15069c7d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.150 +0200] [32mINFO[39m (52868): [36m← GET /api/push/preferences 304 (7ms)[39m
+    [35mrequestId[39m: "76dda782-caa4-4a99-a6b1-16ae15069c7d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-08 05:50:18.498 +0200] [32mINFO[39m (52868): [36m→ GET /api/brokers/profiles[39m
+    [35mrequestId[39m: "be7892ea-e696-457f-8e68-f6fdb136b714"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.500 +0200] [32mINFO[39m (52868): [36m→ GET /api/quotes/random[39m
+    [35mrequestId[39m: "aefede6f-1cb5-419d-bd18-5fe46ca40613"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/quotes/random"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.512 +0200] [32mINFO[39m (52868): [36m← GET /api/brokers/profiles 200 (14ms)[39m
+    [35mrequestId[39m: "be7892ea-e696-457f-8e68-f6fdb136b714"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 14
+[2026-06-08 05:50:18.515 +0200] [32mINFO[39m (52868): [36m← GET /api/quotes/random 200 (15ms)[39m
+    [35mrequestId[39m: "aefede6f-1cb5-419d-bd18-5fe46ca40613"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/quotes/random"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 15
+[2026-06-08 05:50:18.663 +0200] [32mINFO[39m (52868): [36m→ GET /api/brokers/profiles/9620fef2-0886-4f58-839a-a9533c324da5/snapshot[39m
+    [35mrequestId[39m: "fe5c64ae-8659-4764-947b-75e0f6fa78ec"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/9620fef2-0886-4f58-839a-a9533c324da5/snapshot"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.672 +0200] [32mINFO[39m (52868): [36m← GET /api/brokers/profiles/9620fef2-0886-4f58-839a-a9533c324da5/snapshot 200 (9ms)[39m
+    [35mrequestId[39m: "fe5c64ae-8659-4764-947b-75e0f6fa78ec"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brokers/profiles/9620fef2-0886-4f58-839a-a9533c324da5/snapshot"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 9
+[2026-06-08 05:50:18.732 +0200] [32mINFO[39m (52868): [36m← GET /api/tools/macro-news?lang=it 200 (1089ms)[39m
+    [35mrequestId[39m: "4241b02c-4e02-4363-9e51-6a1ad51ee66d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 1089
+[2026-06-08 05:50:18.822 +0200] [32mINFO[39m (52868): [36m→ GET /api/friends[39m
+    [35mrequestId[39m: "5e85592d-a37c-46a7-80f9-a8709ec0dd11"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/friends"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.823 +0200] [32mINFO[39m (52868): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "39a08a6a-1c47-44a4-a366-d3ecf679ab64"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.823 +0200] [32mINFO[39m (52868): [36m→ GET /api/journal/tags[39m
+    [35mrequestId[39m: "cd101797-aba7-4da2-8755-f54a5d980f4f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/journal/tags"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.832 +0200] [32mINFO[39m (52868): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "04aacd6c-e2af-4134-a3dc-1069e49d8d2a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:18.839 +0200] [32mINFO[39m (52868): [36m← GET /api/friends 200 (17ms)[39m
+    [35mrequestId[39m: "5e85592d-a37c-46a7-80f9-a8709ec0dd11"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/friends"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 17
+[2026-06-08 05:50:18.841 +0200] [32mINFO[39m (52868): [36m← GET /api/checklist 304 (9ms)[39m
+    [35mrequestId[39m: "04aacd6c-e2af-4134-a3dc-1069e49d8d2a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 9
+[2026-06-08 05:50:18.842 +0200] [32mINFO[39m (52868): [36m← GET /api/missions 304 (19ms)[39m
+    [35mrequestId[39m: "39a08a6a-1c47-44a4-a366-d3ecf679ab64"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 19
+[2026-06-08 05:50:18.849 +0200] [32mINFO[39m (52868): [36m← GET /api/journal/tags 200 (26ms)[39m
+    [35mrequestId[39m: "cd101797-aba7-4da2-8755-f54a5d980f4f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/journal/tags"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 26
+[2026-06-08 05:50:19.053 +0200] [32mINFO[39m (52868): [36m→ GET /api/journal[39m
+    [35mrequestId[39m: "f2d83cdf-02b7-405e-a75d-9e4aef2dd5cf"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/journal"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:19.069 +0200] [32mINFO[39m (52868): [36m← GET /api/journal 200 (16ms)[39m
+    [35mrequestId[39m: "f2d83cdf-02b7-405e-a75d-9e4aef2dd5cf"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/journal"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 16
+[2026-06-08 05:50:19.184 +0200] [32mINFO[39m (52868): [36m→ GET /api/tools/sentiment[39m
+    [35mrequestId[39m: "78571b1f-8903-4dfa-a8d9-48536560233c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/sentiment"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:19.185 +0200] [32mINFO[39m (52868): [36m→ GET /api/tools/volatility?pair=XAUUSD[39m
+    [35mrequestId[39m: "beaec81d-f1f4-4f18-bebe-ffa14ee7e456"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:19.185 +0200] [32mINFO[39m (52868): [36m→ GET /api/tools/cot[39m
+    [35mrequestId[39m: "08c6f53c-08f0-4b3b-b232-e14e6d08472e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/cot"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:19.185 +0200] [32mINFO[39m (52868): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "cc2e8214-be2a-4b40-b591-70c530d1756e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:19.205 +0200] [32mINFO[39m (52868): [36m← GET /api/tools/cot 200 (20ms)[39m
+    [35mrequestId[39m: "08c6f53c-08f0-4b3b-b232-e14e6d08472e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/cot"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 20
+[2026-06-08 05:50:19.208 +0200] [32mINFO[39m (52868): [36m← GET /api/calendar 304 (23ms)[39m
+    [35mrequestId[39m: "cc2e8214-be2a-4b40-b591-70c530d1756e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 23
+[myfxbook] Sessione ottenuta
+[2026-06-08 05:50:19.578 +0200] [32mINFO[39m (52868): [36m← GET /api/tools/volatility?pair=XAUUSD 200 (393ms)[39m
+    [35mrequestId[39m: "beaec81d-f1f4-4f18-bebe-ffa14ee7e456"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/volatility"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 393
+[2026-06-08 05:50:19.717 +0200] [32mINFO[39m (52868): [36m← GET /api/tools/sentiment 200 (533ms)[39m
+    [35mrequestId[39m: "78571b1f-8903-4dfa-a8d9-48536560233c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/sentiment"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 533
+[2026-06-08 05:50:23.042 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "ec5f0ac5-3339-4f56-b874-18691c196708"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:23.073 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (31ms)[39m
+    [35mrequestId[39m: "ec5f0ac5-3339-4f56-b874-18691c196708"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 31
+[2026-06-08 05:50:28.402 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "7020f1e0-1c82-42ad-8d54-ad102f7f22e5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:28.419 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (17ms)[39m
+    [35mrequestId[39m: "7020f1e0-1c82-42ad-8d54-ad102f7f22e5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 17
+[2026-06-08 05:50:33.758 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "4629c1ec-2f63-427b-bf02-bd502a189038"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:33.766 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (8ms)[39m
+    [35mrequestId[39m: "4629c1ec-2f63-427b-bf02-bd502a189038"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-08 05:50:39.283 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "80c01ccf-514a-4299-ad82-f2f5a287373c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:39.290 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (7ms)[39m
+    [35mrequestId[39m: "80c01ccf-514a-4299-ad82-f2f5a287373c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-08 05:50:41.564 +0200] [32mINFO[39m (52868): [36m→ GET /api/login?returnTo=%2F[39m
+    [35mrequestId[39m: "a2ddb69e-1b42-4a20-8c8f-d325bbdbfacd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/login"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:42.435 +0200] [32mINFO[39m (52868): [36m← GET /api/login?returnTo=%2F 307 (871ms)[39m
+    [35mrequestId[39m: "a2ddb69e-1b42-4a20-8c8f-d325bbdbfacd"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/login"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 307
+    [35mdurationMs[39m: 871
+[2026-06-08 05:50:42.769 +0200] [32mINFO[39m (52868): [36m→ GET /api/login?__clerk_handshake=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18zRHJkT3dMcjBaOXVxZkFKRjI2cDlyM2x2NTQiLCJ0eXAiOiJKV1QifQ.eyJoYW5kc2hha2UiOlsiX19jbGllbnRfdWF0PTsgUGF0aD0vOyBFeHBpcmVzPVRodSwgMDEgSmFuIDE5NzAgMDA6MDA6MDAgR01UOyBTZWN1cmU7IFNhbWVTaXRlPU5vbmUiLCJfX2NsaWVudF91YXQ9MTc4MDg4ODI4MzsgUGF0aD0vOyBEb21haW49MTI3LjAuMC4xOyBNYXgtQWdlPTMxNTM2MDAwMDsgU2VjdXJlOyBTYW1lU2l0ZT1Ob25lIiwiX19jbGllbnRfdWF0X0pxX1lMUW92PTE3ODA4ODgyODM7IFBhdGg9LzsgRG9tYWluPTEyNy4wLjAuMTsgTWF4LUFnZT0zMTUzNjAwMDA7IFNlY3VyZTsgU2FtZVNpdGU9Tm9uZSIsIl9fc2Vzc2lvbl9KcV9ZTFFvdj1leUpoYkdjaU9pSlNVekkxTmlJc0ltTmhkQ0k2SW1Oc1gwSTNaRFJRUkRFeE1VRkJRU0lzSW10cFpDSTZJbWx1YzE4elJISmtUM2RNY2pCYU9YVnhaa0ZLUmpJMmNEbHlNMngyTlRRaUxDSnZhV0YwSWpveE56Z3dPRGt3TmpRekxDSjBlWEFpT2lKS1YxUWlmUS5leUpoZW5BaU9pSm9kSFJ3T2k4dk1USTNMakF1TUM0eE9qTXdNREVpTENKbGVIQWlPakUzT0RBNE9UQTNNRE1zSW1aMllTSTZXek01TEMweFhTd2lhV0YwSWpveE56Z3dPRGt3TmpRekxDSnBjM01pT2lKb2RIUndjem92TDNOaGRtbHVaeTF3YjNOemRXMHRPRFV1WTJ4bGNtc3VZV05qYjNWdWRITXVaR1YySWl3aWJtSm1Jam94Tnpnd09Ea3dOak16TENKdklqcDdJbWxrSWpvaWIzSm5Yek5FY21obWVGUjRObUp6YlZaVE5FTlpWSEV5UlhsWGRIaFRWU0lzSW5KdmJDSTZJbUZrYldsdUlpd2ljMnhuSWpvaVoyRnlhV3N0TVRjM09UQTBOakl3TWprNE9EZ3dPRFE0TmlKOUxDSnphV1FpT2lKelpYTnpYek5GY0haT1JVWnVUa2N3YTJaRGMyOU9VM2N3UVZWbFRISnFNU0lzSW5OMGN5STZJbUZqZEdsMlpTSXNJbk4xWWlJNkluVnpaWEpmTTBSeWFHRnRUVk5OYUZwVGVWTXlSSFJTTXpVMldWbG5hREpCSWl3aWRpSTZNbjAudGtKRGZOWk9rSUQtUjFKb1cwdjV4WEhhWEhpbmhhQ0kzTTViWW9qZHQ0YjczeDZMQ2pDR3BUNVdFQWdkVXpSZmszdmV5VDFjb1ltNG1IVGdBa3BTdnF6dGxVY2xmR1lBYVE4ZjN2SFNPalJLY2gzVVhrNTJiRDFjWk4zYmVraTFEZVBCck1WOWpQTmJFYl9RTWlhWnlJRVJ4QVN6YzRJZnlTb3ZBWVZ1UzdtSnZnOUFUZ3czM0xkRjBZUmxkYUd0Y2Q3Zk1kUHZQRURWYldlcmw1QnJ6eDJncm9ZRFBLc0tDLUxxWGxDYVhUTXBCRjRSZUxPelF2TG9udmxwZElZWnBjTDVWU0pEX1JBTDNsel83TUFTUThOZ3dldXdxbi11em1uLVpuRkpuSlVZX0laMlp6dDdQSjllYmhCNWpMTkM3cUdrbjlydmpRRWRXb0d4WDdqMWJROyBQYXRoPS87IEV4cGlyZXM9VHVlLCAwOCBKdW4gMjAyNyAwMzo1MDo0MyBHTVQ7IFNlY3VyZTsgU2FtZVNpdGU9Tm9uZSIsIl9fcmVmcmVzaF9KcV9ZTFFvdj0yMkNwc1YyNjdnYms5ZUkxU1JHMzsgUGF0aD0vOyBFeHBpcmVzPVR1ZSwgMDggSnVuIDIwMjcgMDM6NTA6NDMgR01UOyBIdHRwT25seTsgU2VjdXJlOyBTYW1lU2l0ZT1Ob25lIiwiX19jbGVya19kYl9qd3Q9ZHZiXzNFa0lpQWhtenU4YWhydmJtQUNLQmgwb3F5bDsgUGF0aD0vOyBFeHBpcmVzPVR1ZSwgMDggSnVuIDIwMjcgMDM6NTA6NDMgR01UOyBTZWN1cmU7IFNhbWVTaXRlPU5vbmUiLCJfX2NsZXJrX2RiX2p3dF9KcV9ZTFFvdj1kdmJfM0VrSWlBaG16dThhaHJ2Ym1BQ0tCaDBvcXlsOyBQYXRoPS87IEV4cGlyZXM9VHVlLCAwOCBKdW4gMjAyNyAwMzo1MDo0MyBHTVQ7IFNlY3VyZTsgU2FtZVNpdGU9Tm9uZSJdfQ.b1btTU36dsj4G8wdycswIUvbF_HVMeRa2RmGBWxvvH3T0EnYv5TsVqXkNER4BJIO9Xr8Y-UyAe0Qm3_S-3pIrJDTYvUp_jR0lTwYiushzEjVCxZ80pf-j3DMO27lq2qDVViQGmMwV4YKKfTK_CpQZMtrDsijYMieaNBQkmWLz42OPRWbQW45bkrxviCZzgEXvsEr_bclN9AMQRKrtRbIiQjLsxrtld98094IT6a6LLN6kmc4zt53msqwigGmA9AS2dt2qDGPwYpZ4A-JEtMVbB3a0VsBR_lpJnYkmu2ojuuiAGbzJYEfaqCSxlZj6eKH9EXcWPEzz57jIGkF4i5ctA&returnTo=%2F[39m
+    [35mrequestId[39m: "9b078b55-9a2c-4fe9-a675-fdf45b063d48"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/login"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:42.774 +0200] [32mINFO[39m (52868): [36m← GET /api/login?__clerk_handshake=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18zRHJkT3dMcjBaOXVxZkFKRjI2cDlyM2x2NTQiLCJ0eXAiOiJKV1QifQ.eyJoYW5kc2hha2UiOlsiX19jbGllbnRfdWF0PTsgUGF0aD0vOyBFeHBpcmVzPVRodSwgMDEgSmFuIDE5NzAgMDA6MDA6MDAgR01UOyBTZWN1cmU7IFNhbWVTaXRlPU5vbmUiLCJfX2NsaWVudF91YXQ9MTc4MDg4ODI4MzsgUGF0aD0vOyBEb21haW49MTI3LjAuMC4xOyBNYXgtQWdlPTMxNTM2MDAwMDsgU2VjdXJlOyBTYW1lU2l0ZT1Ob25lIiwiX19jbGllbnRfdWF0X0pxX1lMUW92PTE3ODA4ODgyODM7IFBhdGg9LzsgRG9tYWluPTEyNy4wLjAuMTsgTWF4LUFnZT0zMTUzNjAwMDA7IFNlY3VyZTsgU2FtZVNpdGU9Tm9uZSIsIl9fc2Vzc2lvbl9KcV9ZTFFvdj1leUpoYkdjaU9pSlNVekkxTmlJc0ltTmhkQ0k2SW1Oc1gwSTNaRFJRUkRFeE1VRkJRU0lzSW10cFpDSTZJbWx1YzE4elJISmtUM2RNY2pCYU9YVnhaa0ZLUmpJMmNEbHlNMngyTlRRaUxDSnZhV0YwSWpveE56Z3dPRGt3TmpRekxDSjBlWEFpT2lKS1YxUWlmUS5leUpoZW5BaU9pSm9kSFJ3T2k4dk1USTNMakF1TUM0eE9qTXdNREVpTENKbGVIQWlPakUzT0RBNE9UQTNNRE1zSW1aMllTSTZXek01TEMweFhTd2lhV0YwSWpveE56Z3dPRGt3TmpRekxDSnBjM01pT2lKb2RIUndjem92TDNOaGRtbHVaeTF3YjNOemRXMHRPRFV1WTJ4bGNtc3VZV05qYjNWdWRITXVaR1YySWl3aWJtSm1Jam94Tnpnd09Ea3dOak16TENKdklqcDdJbWxrSWpvaWIzSm5Yek5FY21obWVGUjRObUp6YlZaVE5FTlpWSEV5UlhsWGRIaFRWU0lzSW5KdmJDSTZJbUZrYldsdUlpd2ljMnhuSWpvaVoyRnlhV3N0TVRjM09UQTBOakl3TWprNE9EZ3dPRFE0TmlKOUxDSnphV1FpT2lKelpYTnpYek5GY0haT1JVWnVUa2N3YTJaRGMyOU9VM2N3UVZWbFRISnFNU0lzSW5OMGN5STZJbUZqZEdsMlpTSXNJbk4xWWlJNkluVnpaWEpmTTBSeWFHRnRUVk5OYUZwVGVWTXlSSFJTTXpVMldWbG5hREpCSWl3aWRpSTZNbjAudGtKRGZOWk9rSUQtUjFKb1cwdjV4WEhhWEhpbmhhQ0kzTTViWW9qZHQ0YjczeDZMQ2pDR3BUNVdFQWdkVXpSZmszdmV5VDFjb1ltNG1IVGdBa3BTdnF6dGxVY2xmR1lBYVE4ZjN2SFNPalJLY2gzVVhrNTJiRDFjWk4zYmVraTFEZVBCck1WOWpQTmJFYl9RTWlhWnlJRVJ4QVN6YzRJZnlTb3ZBWVZ1UzdtSnZnOUFUZ3czM0xkRjBZUmxkYUd0Y2Q3Zk1kUHZQRURWYldlcmw1QnJ6eDJncm9ZRFBLc0tDLUxxWGxDYVhUTXBCRjRSZUxPelF2TG9udmxwZElZWnBjTDVWU0pEX1JBTDNsel83TUFTUThOZ3dldXdxbi11em1uLVpuRkpuSlVZX0laMlp6dDdQSjllYmhCNWpMTkM3cUdrbjlydmpRRWRXb0d4WDdqMWJROyBQYXRoPS87IEV4cGlyZXM9VHVlLCAwOCBKdW4gMjAyNyAwMzo1MDo0MyBHTVQ7IFNlY3VyZTsgU2FtZVNpdGU9Tm9uZSIsIl9fcmVmcmVzaF9KcV9ZTFFvdj0yMkNwc1YyNjdnYms5ZUkxU1JHMzsgUGF0aD0vOyBFeHBpcmVzPVR1ZSwgMDggSnVuIDIwMjcgMDM6NTA6NDMgR01UOyBIdHRwT25seTsgU2VjdXJlOyBTYW1lU2l0ZT1Ob25lIiwiX19jbGVya19kYl9qd3Q9ZHZiXzNFa0lpQWhtenU4YWhydmJtQUNLQmgwb3F5bDsgUGF0aD0vOyBFeHBpcmVzPVR1ZSwgMDggSnVuIDIwMjcgMDM6NTA6NDMgR01UOyBTZWN1cmU7IFNhbWVTaXRlPU5vbmUiLCJfX2NsZXJrX2RiX2p3dF9KcV9ZTFFvdj1kdmJfM0VrSWlBaG16dThhaHJ2Ym1BQ0tCaDBvcXlsOyBQYXRoPS87IEV4cGlyZXM9VHVlLCAwOCBKdW4gMjAyNyAwMzo1MDo0MyBHTVQ7IFNlY3VyZTsgU2FtZVNpdGU9Tm9uZSJdfQ.b1btTU36dsj4G8wdycswIUvbF_HVMeRa2RmGBWxvvH3T0EnYv5TsVqXkNER4BJIO9Xr8Y-UyAe0Qm3_S-3pIrJDTYvUp_jR0lTwYiushzEjVCxZ80pf-j3DMO27lq2qDVViQGmMwV4YKKfTK_CpQZMtrDsijYMieaNBQkmWLz42OPRWbQW45bkrxviCZzgEXvsEr_bclN9AMQRKrtRbIiQjLsxrtld98094IT6a6LLN6kmc4zt53msqwigGmA9AS2dt2qDGPwYpZ4A-JEtMVbB3a0VsBR_lpJnYkmu2ojuuiAGbzJYEfaqCSxlZj6eKH9EXcWPEzz57jIGkF4i5ctA&returnTo=%2F 307 (5ms)[39m
+    [35mrequestId[39m: "9b078b55-9a2c-4fe9-a675-fdf45b063d48"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/login"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 307
+    [35mdurationMs[39m: 5
+[2026-06-08 05:50:42.780 +0200] [32mINFO[39m (52868): [36m→ GET /api/login?returnTo=%2F[39m
+    [35mrequestId[39m: "4425d2bc-4755-423f-b326-dbf6ee3f48c9"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/login"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:42.782 +0200] [31mERROR[39m (52868): [36mUnhandled API error[39m
+    [35mrequestId[39m: "4425d2bc-4755-423f-b326-dbf6ee3f48c9"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/login"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    err: {
+      "type": "Error",
+      "message": "OIDC_CLIENT_ID or REPL_ID is required for Replit OIDC. Set OIDC_CLIENT_ID for generic OIDC providers or REPL_ID on Replit.",
+      "stack":
+          Error: OIDC_CLIENT_ID or REPL_ID is required for Replit OIDC. Set OIDC_CLIENT_ID for generic OIDC providers or REPL_ID on Replit.
+              at getValidatedOidcSettings (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\lib\auth.ts:43:11)
+              at getOidcConfig (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\lib\auth.ts:56:22)
+              at <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\auth.ts:175:24)
+              at Layer.handleRequest (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\layer.js:152:17)
+              at next (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\route.js:157:13)
+              at Route.dispatch (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\route.js:117:3)
+              at handle (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:435:11)
+              at Layer.handleRequest (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\lib\layer.js:152:17)
+              at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:295:15
+              at processParams (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\router@2.2.0\node_modules\router\index.js:582:12)
+    }
+[2026-06-08 05:50:42.783 +0200] [31mERROR[39m (52868): [36m← GET /api/login?returnTo=%2F 500 (3ms)[39m
+    [35mrequestId[39m: "4425d2bc-4755-423f-b326-dbf6ee3f48c9"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/login"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 500
+    [35mdurationMs[39m: 3
+[2026-06-08 05:50:45.620 +0200] [32mINFO[39m (52868): [36m→ GET /api/checklist[39m
+    [35mrequestId[39m: "ae0cfb74-d0ac-4445-a55e-9f8c47182668"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.625 +0200] [32mINFO[39m (52868): [36m→ GET /api/missions[39m
+    [35mrequestId[39m: "cfea94af-7389-436b-baec-47ade6e6e8e8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.627 +0200] [32mINFO[39m (52868): [36m→ GET /api/ideas[39m
+    [35mrequestId[39m: "b30ca6d2-e8ef-4f21-b381-d4e1236cef19"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.627 +0200] [32mINFO[39m (52868): [36m→ GET /api/push/preferences[39m
+    [35mrequestId[39m: "b54d8abc-c1c4-430b-bb58-8373b2633f0f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.628 +0200] [32mINFO[39m (52868): [36m→ GET /api/settings[39m
+    [35mrequestId[39m: "e467c8a9-83aa-49d1-843d-ba9e5f141ecc"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.644 +0200] [32mINFO[39m (52868): [36m← GET /api/checklist 200 (24ms)[39m
+    [35mrequestId[39m: "ae0cfb74-d0ac-4445-a55e-9f8c47182668"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/checklist"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 24
+[2026-06-08 05:50:45.655 +0200] [32mINFO[39m (52868): [36m← GET /api/settings 200 (27ms)[39m
+    [35mrequestId[39m: "e467c8a9-83aa-49d1-843d-ba9e5f141ecc"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 27
+[2026-06-08 05:50:45.670 +0200] [32mINFO[39m (52868): [36m← GET /api/push/preferences 200 (43ms)[39m
+    [35mrequestId[39m: "b54d8abc-c1c4-430b-bb58-8373b2633f0f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 43
+[2026-06-08 05:50:45.671 +0200] [32mINFO[39m (52868): [36m← GET /api/ideas 200 (44ms)[39m
+    [35mrequestId[39m: "b30ca6d2-e8ef-4f21-b381-d4e1236cef19"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/ideas"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 44
+[2026-06-08 05:50:45.675 +0200] [32mINFO[39m (52868): [36m← GET /api/missions 200 (50ms)[39m
+    [35mrequestId[39m: "cfea94af-7389-436b-baec-47ade6e6e8e8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/missions"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 50
+[2026-06-08 05:50:45.695 +0200] [32mINFO[39m (52868): [36m→ GET /api/calendar[39m
+    [35mrequestId[39m: "746a5a25-f66a-4cc8-9260-37051c8c31be"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.700 +0200] [32mINFO[39m (52868): [36m← GET /api/calendar 200 (5ms)[39m
+    [35mrequestId[39m: "746a5a25-f66a-4cc8-9260-37051c8c31be"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/calendar"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 5
+[2026-06-08 05:50:45.714 +0200] [32mINFO[39m (52868): [36m→ GET /api/profile[39m
+    [35mrequestId[39m: "a6865038-7b31-409e-b40a-6ea6b797c07e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.724 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "debe842c-0038-4079-b4ea-81b37ffb3502"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.725 +0200] [32mINFO[39m (52868): [36m→ GET /api/tools/macro-news?currencies=USD%2CXAU&lang=it[39m
+    [35mrequestId[39m: "36d89e2f-4f8c-420d-923a-7ee7fefe28d6"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.729 +0200] [32mINFO[39m (52868): [36m← GET /api/profile 200 (14ms)[39m
+    [35mrequestId[39m: "a6865038-7b31-409e-b40a-6ea6b797c07e"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 14
+[2026-06-08 05:50:45.759 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 200 (35ms)[39m
+    [35mrequestId[39m: "debe842c-0038-4079-b4ea-81b37ffb3502"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 35
+[2026-06-08 05:50:45.763 +0200] [32mINFO[39m (52868): [36m→ PUT /api/settings[39m
+    [35mrequestId[39m: "a44f5d66-9cbc-4e50-88af-b1a4960bec9f"
+    [35mmethod[39m: "PUT"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.765 +0200] [32mINFO[39m (52868): [36m→ GET /api/push/preferences[39m
+    [35mrequestId[39m: "0c9768e9-3a28-48b8-836a-7ea9512f4486"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.775 +0200] [32mINFO[39m (52868): [36m← GET /api/push/preferences 304 (10ms)[39m
+    [35mrequestId[39m: "0c9768e9-3a28-48b8-836a-7ea9512f4486"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 10
+[2026-06-08 05:50:45.779 +0200] [32mINFO[39m (52868): [36m→ GET /api/push/preferences[39m
+    [35mrequestId[39m: "0dada7a0-d6c8-4900-b69c-b9693e876044"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.781 +0200] [32mINFO[39m (52868): [36m← PUT /api/settings 200 (19ms)[39m
+    [35mrequestId[39m: "a44f5d66-9cbc-4e50-88af-b1a4960bec9f"
+    [35mmethod[39m: "PUT"
+    [35mpath[39m: "/api/settings"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 19
+[2026-06-08 05:50:45.786 +0200] [32mINFO[39m (52868): [36m← GET /api/push/preferences 304 (7ms)[39m
+    [35mrequestId[39m: "0dada7a0-d6c8-4900-b69c-b9693e876044"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-08 05:50:45.790 +0200] [32mINFO[39m (52868): [36m→ GET /api/push/preferences[39m
+    [35mrequestId[39m: "c195133d-c1b7-4838-97a5-0d5a6f4aed65"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.796 +0200] [32mINFO[39m (52868): [36m← GET /api/push/preferences 304 (5ms)[39m
+    [35mrequestId[39m: "c195133d-c1b7-4838-97a5-0d5a6f4aed65"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/push/preferences"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 5
+[2026-06-08 05:50:45.832 +0200] [32mINFO[39m (52868): [36m→ GET /api/settings[39m
+    [35mrequestId[39m: "8de96a89-8fa8-4db3-9d48-816260ad2bb4"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.843 +0200] [32mINFO[39m (52868): [36m→ GET /api/auth/user[39m
+    [35mrequestId[39m: "ae06d2ac-ccea-4c11-9b60-a3dacfeb95b7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/auth/user"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.851 +0200] [32mINFO[39m (52868): [36m← GET /api/auth/user 200 (8ms)[39m
+    [35mrequestId[39m: "ae06d2ac-ccea-4c11-9b60-a3dacfeb95b7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/auth/user"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 8
+[2026-06-08 05:50:45.853 +0200] [32mINFO[39m (52868): [36m← GET /api/settings 200 (21ms)[39m
+    [35mrequestId[39m: "8de96a89-8fa8-4db3-9d48-816260ad2bb4"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/settings"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 21
+[2026-06-08 05:50:45.894 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/feed[39m
+    [35mrequestId[39m: "cf731fcf-7814-4703-8974-6e751c7071b8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/feed"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.896 +0200] [32mINFO[39m (52868): [36m→ GET /api/friends/requests[39m
+    [35mrequestId[39m: "e503370c-6d3a-49bb-ac7d-812f7518c7be"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/friends/requests"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.897 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/stories[39m
+    [35mrequestId[39m: "d95d0db3-ce0d-40ca-b1b8-a8fae592e84c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/stories"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:45.923 +0200] [32mINFO[39m (52868): [36m← GET /api/friends/requests 200 (27ms)[39m
+    [35mrequestId[39m: "e503370c-6d3a-49bb-ac7d-812f7518c7be"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/friends/requests"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 27
+[2026-06-08 05:50:45.935 +0200] [32mINFO[39m (52868): [36m← GET /api/social/feed 200 (41ms)[39m
+    [35mrequestId[39m: "cf731fcf-7814-4703-8974-6e751c7071b8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/feed"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 41
+[2026-06-08 05:50:45.943 +0200] [32mINFO[39m (52868): [36m← GET /api/social/stories 200 (46ms)[39m
+    [35mrequestId[39m: "d95d0db3-ce0d-40ca-b1b8-a8fae592e84c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/stories"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 46
+[2026-06-08 05:50:47.069 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/mutual-followers[39m
+    [35mrequestId[39m: "a232a0bd-889d-4253-85bb-18d7ee0bd18a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/mutual-followers"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:47.087 +0200] [32mINFO[39m (52868): [36m→ GET /api/friends[39m
+    [35mrequestId[39m: "0f9b1f32-7fbd-425f-a221-c853ed8d3f26"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/friends"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:47.089 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "fb36ec42-002d-4f6c-8f65-2f5ec72c20be"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:47.092 +0200] [32mINFO[39m (52868): [36m← GET /api/social/mutual-followers 200 (23ms)[39m
+    [35mrequestId[39m: "a232a0bd-889d-4253-85bb-18d7ee0bd18a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/mutual-followers"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 23
+[2026-06-08 05:50:47.114 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (24ms)[39m
+    [35mrequestId[39m: "fb36ec42-002d-4f6c-8f65-2f5ec72c20be"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 24
+[2026-06-08 05:50:47.117 +0200] [32mINFO[39m (52868): [36m← GET /api/friends 200 (30ms)[39m
+    [35mrequestId[39m: "0f9b1f32-7fbd-425f-a221-c853ed8d3f26"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/friends"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 30
+[2026-06-08 05:50:47.124 +0200] [32mINFO[39m (52868): [36m→ POST /api/chat/keys[39m
+    [35mrequestId[39m: "24f77af3-4ad5-4d0d-83d1-87337e56f006"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/chat/keys"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:47.143 +0200] [32mINFO[39m (52868): [36m← POST /api/chat/keys 200 (19ms)[39m
+    [35mrequestId[39m: "24f77af3-4ad5-4d0d-83d1-87337e56f006"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/chat/keys"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 19
+[2026-06-08 05:50:47.848 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/keys/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "9a351c6d-6291-4195-9077-bccad9067a11"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/keys/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:47.848 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "83852e79-fefd-4849-a4f0-f1e085cd2fa4"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:47.870 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/keys/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 304 (22ms)[39m
+    [35mrequestId[39m: "9a351c6d-6291-4195-9077-bccad9067a11"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/keys/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 22
+[2026-06-08 05:50:47.872 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 200 (24ms)[39m
+    [35mrequestId[39m: "83852e79-fefd-4849-a4f0-f1e085cd2fa4"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 24
+[2026-06-08 05:50:50.900 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "9af939fb-babb-444a-8110-9e6147fea661"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:50.918 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 304 (18ms)[39m
+    [35mrequestId[39m: "9af939fb-babb-444a-8110-9e6147fea661"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 18
+[2026-06-08 05:50:51.173 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/calls/signals[39m
+    [35mrequestId[39m: "b5dcc3c9-fdd7-462c-96d5-d12157b349c5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:51.185 +0200] [32mINFO[39m (52868): [36m← GET /api/social/calls/signals 200 (13ms)[39m
+    [35mrequestId[39m: "b5dcc3c9-fdd7-462c-96d5-d12157b349c5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 13
+[2026-06-08 05:50:52.148 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "2b95ade6-5e09-4628-ac3b-78fe1917e848"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:52.162 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (14ms)[39m
+    [35mrequestId[39m: "2b95ade6-5e09-4628-ac3b-78fe1917e848"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 14
+[2026-06-08 05:50:53.278 +0200] [32mINFO[39m (52868): [36m→ POST /api/social/upload-file[39m
+    [35mrequestId[39m: "14598fb0-c67b-4d8e-98d6-ce55c61c68fb"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/social/upload-file"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:53.326 +0200] [32mINFO[39m (52868): [36m← POST /api/social/upload-file 200 (48ms)[39m
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 48
+[2026-06-08 05:50:53.339 +0200] [32mINFO[39m (52868): [36m→ POST /api/chat/messages[39m
+    [35mrequestId[39m: "46f2276a-6b8d-4db6-a43e-25c4931ba085"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/chat/messages"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:53.366 +0200] [32mINFO[39m (52868): [36m← POST /api/chat/messages 201 (27ms)[39m
+    [35mrequestId[39m: "46f2276a-6b8d-4db6-a43e-25c4931ba085"
+    [35mmethod[39m: "POST"
+    [35mpath[39m: "/api/chat/messages"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 201
+    [35mdurationMs[39m: 27
+[2026-06-08 05:50:53.383 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "14774968-53f4-4678-a598-f984cb62a753"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:53.407 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 200 (24ms)[39m
+    [35mrequestId[39m: "14774968-53f4-4678-a598-f984cb62a753"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 24
+[2026-06-08 05:50:55.171 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/calls/signals[39m
+    [35mrequestId[39m: "d4017a38-47f1-4c04-a4fc-c6a4890cf4cf"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:55.176 +0200] [32mINFO[39m (52868): [36m← GET /api/social/calls/signals 304 (5ms)[39m
+    [35mrequestId[39m: "d4017a38-47f1-4c04-a4fc-c6a4890cf4cf"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 5
+[2026-06-08 05:50:56.427 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "82e4bac3-6eaf-4206-86f8-70bb50609925"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:56.442 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 304 (16ms)[39m
+    [35mrequestId[39m: "82e4bac3-6eaf-4206-86f8-70bb50609925"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 16
+[2026-06-08 05:50:56.825 +0200] [32mINFO[39m (52868): [36m→ GET /api/uploads/chat-files/chat-1780890653296-91090280.pdf[39m
+    [35mrequestId[39m: "c606deb9-8dd9-4390-a1ac-5b558e5cc9f3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/uploads/chat-files/chat-1780890653296-91090280.pdf"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:56.846 +0200] [32mINFO[39m (52868): [36m← GET /api/uploads/chat-files/chat-1780890653296-91090280.pdf 200 (21ms)[39m
+    [35mrequestId[39m: "c606deb9-8dd9-4390-a1ac-5b558e5cc9f3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/uploads/chat-files/chat-1780890653296-91090280.pdf"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 21
+[2026-06-08 05:50:57.198 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "f80101cc-733e-4170-bfd0-8fa9a4c7ffb2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:57.220 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (22ms)[39m
+    [35mrequestId[39m: "f80101cc-733e-4170-bfd0-8fa9a4c7ffb2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 22
+[2026-06-08 05:50:59.171 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/calls/signals[39m
+    [35mrequestId[39m: "52b07ef4-0a9e-45d1-8a56-969244d0a578"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:59.178 +0200] [32mINFO[39m (52868): [36m← GET /api/social/calls/signals 304 (7ms)[39m
+    [35mrequestId[39m: "52b07ef4-0a9e-45d1-8a56-969244d0a578"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-08 05:50:59.461 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "a9dee5b6-14f7-4599-b8c0-031bd7763374"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:50:59.477 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 304 (16ms)[39m
+    [35mrequestId[39m: "a9dee5b6-14f7-4599-b8c0-031bd7763374"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 16
+[2026-06-08 05:51:02.129 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/mutual-followers[39m
+    [35mrequestId[39m: "7bec93bd-19f7-4dda-a541-d7a905e9209f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/mutual-followers"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:02.141 +0200] [32mINFO[39m (52868): [36m← GET /api/social/mutual-followers 304 (12ms)[39m
+    [35mrequestId[39m: "7bec93bd-19f7-4dda-a541-d7a905e9209f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/mutual-followers"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 12
+[2026-06-08 05:51:02.237 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "4da31e0b-10c3-4c7a-81fc-deacc699237f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:02.246 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (9ms)[39m
+    [35mrequestId[39m: "4da31e0b-10c3-4c7a-81fc-deacc699237f"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 9
+[2026-06-08 05:51:02.496 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "d553ff2d-4bbb-4de9-b279-d4a9fbdeca67"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:02.510 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 304 (14ms)[39m
+    [35mrequestId[39m: "d553ff2d-4bbb-4de9-b279-d4a9fbdeca67"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 14
+[2026-06-08 05:51:03.166 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/calls/signals[39m
+    [35mrequestId[39m: "70e150fd-2efc-4b1c-aa77-3ac203d09576"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:03.172 +0200] [32mINFO[39m (52868): [36m← GET /api/social/calls/signals 304 (6ms)[39m
+    [35mrequestId[39m: "70e150fd-2efc-4b1c-aa77-3ac203d09576"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 6
+[2026-06-08 05:51:05.534 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "581f54b3-21a1-406a-9a13-fa96e9f64dae"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:05.559 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 304 (25ms)[39m
+    [35mrequestId[39m: "581f54b3-21a1-406a-9a13-fa96e9f64dae"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 25
+[2026-06-08 05:51:07.180 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/calls/signals[39m
+    [35mrequestId[39m: "2f239d80-ef46-41d1-bace-00376e09d9dc"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:07.207 +0200] [32mINFO[39m (52868): [36m← GET /api/social/calls/signals 304 (27ms)[39m
+    [35mrequestId[39m: "2f239d80-ef46-41d1-bace-00376e09d9dc"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 27
+[2026-06-08 05:51:07.266 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "a052712d-9f51-4890-98bd-5c8972f75cc8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:07.277 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (11ms)[39m
+    [35mrequestId[39m: "a052712d-9f51-4890-98bd-5c8972f75cc8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 11
+[2026-06-08 05:51:08.576 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "7e8d93a3-56f7-4004-80fd-a2c66eef5aad"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:08.594 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 304 (18ms)[39m
+    [35mrequestId[39m: "7e8d93a3-56f7-4004-80fd-a2c66eef5aad"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 18
+[2026-06-08 05:51:09.694 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "5a8f74d5-de8c-41dd-846a-f78da7f1f0a3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:11.042 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (1348ms)[39m
+    [35mrequestId[39m: "5a8f74d5-de8c-41dd-846a-f78da7f1f0a3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 1348
+[2026-06-08 05:51:11.193 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/calls/signals[39m
+    [35mrequestId[39m: "78c22305-3b2e-45c2-9680-3f18a8e375c7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:11.207 +0200] [32mINFO[39m (52868): [36m← GET /api/social/calls/signals 304 (14ms)[39m
+    [35mrequestId[39m: "78c22305-3b2e-45c2-9680-3f18a8e375c7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 14
+[2026-06-08 05:51:11.629 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "81321ec1-715a-4101-aa8a-7b2dd1e10c8b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:12.310 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "fc05338f-526c-4bde-b2db-97a49c0d0289"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:13.317 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 304 (1687ms)[39m
+    [35mrequestId[39m: "81321ec1-715a-4101-aa8a-7b2dd1e10c8b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 1687
+[2026-06-08 05:51:13.418 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (1108ms)[39m
+    [35mrequestId[39m: "fc05338f-526c-4bde-b2db-97a49c0d0289"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 1108
+[2026-06-08 05:51:15.172 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/calls/signals[39m
+    [35mrequestId[39m: "3f268562-c8de-4208-bf02-9c5e6157e988"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:15.176 +0200] [32mINFO[39m (52868): [36m← GET /api/social/calls/signals 304 (4ms)[39m
+    [35mrequestId[39m: "3f268562-c8de-4208-bf02-9c5e6157e988"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 4
+[2026-06-08 05:51:16.351 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "a9af563d-2df3-4237-bee9-58527a819c62"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:16.391 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 304 (40ms)[39m
+    [35mrequestId[39m: "a9af563d-2df3-4237-bee9-58527a819c62"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 40
+[2026-06-08 05:51:16.430 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "617786fd-64ab-4ba4-88ca-467f4fdf96e3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:16.445 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (16ms)[39m
+    [35mrequestId[39m: "617786fd-64ab-4ba4-88ca-467f4fdf96e3"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 16
+[news/llm] OK — 30 articoli con sentiment reale (openai/gpt-oss-120b:free)
+[2026-06-08 05:51:17.163 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/mutual-followers[39m
+    [35mrequestId[39m: "f96523f9-feab-43aa-801b-4ed9278e6508"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/mutual-followers"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:17.179 +0200] [32mINFO[39m (52868): [36m← GET /api/social/mutual-followers 304 (16ms)[39m
+    [35mrequestId[39m: "f96523f9-feab-43aa-801b-4ed9278e6508"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/mutual-followers"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 16
+[2026-06-08 05:51:18.461 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "d5f022d9-a9ef-4919-9d87-5384dbcdb3d2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:18.587 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (126ms)[39m
+    [35mrequestId[39m: "d5f022d9-a9ef-4919-9d87-5384dbcdb3d2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 126
+[2026-06-08 05:51:19.184 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/calls/signals[39m
+    [35mrequestId[39m: "053cc962-5b70-469a-adf0-c72ae93bd47a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:19.190 +0200] [32mINFO[39m (52868): [36m← GET /api/social/calls/signals 304 (6ms)[39m
+    [35mrequestId[39m: "053cc962-5b70-469a-adf0-c72ae93bd47a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/calls/signals"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 6
+[2026-06-08 05:51:19.442 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn[39m
+    [35mrequestId[39m: "6c011ce6-4162-422b-ad7d-5ab692f2a026"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:19.463 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn 304 (21ms)[39m
+    [35mrequestId[39m: "6c011ce6-4162-422b-ad7d-5ab692f2a026"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/messages/user_3Epsn3mzhcEYJKqxvA5blhqZ5xn"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 21
+[2026-06-08 05:51:22.186 +0200] [32mINFO[39m (52868): [36m→ GET /api/community[39m
+    [35mrequestId[39m: "29a11e6b-7875-484b-9aec-a3871c88fed7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/community"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:22.209 +0200] [32mINFO[39m (52868): [36m← GET /api/community 200 (23ms)[39m
+    [35mrequestId[39m: "29a11e6b-7875-484b-9aec-a3871c88fed7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/community"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 23
+[2026-06-08 05:51:22.853 +0200] [32mINFO[39m (52868): [36m→ GET /api/leaderboard[39m
+    [35mrequestId[39m: "d3669bb7-0032-4c92-97d9-8e7a8a32ed4d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/leaderboard"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:22.854 +0200] [32mINFO[39m (52868): [36m→ GET /api/profile[39m
+    [35mrequestId[39m: "8facb00d-e91e-4083-bd12-3e931695bd0a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:22.872 +0200] [32mINFO[39m (52868): [36m← GET /api/leaderboard 304 (19ms)[39m
+    [35mrequestId[39m: "d3669bb7-0032-4c92-97d9-8e7a8a32ed4d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/leaderboard"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 19
+[2026-06-08 05:51:22.878 +0200] [32mINFO[39m (52868): [36m← GET /api/profile 304 (24ms)[39m
+    [35mrequestId[39m: "8facb00d-e91e-4083-bd12-3e931695bd0a"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 24
+[2026-06-08 05:51:23.629 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "285314a7-75a8-4aaa-95c3-3ace27d3861d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:23.637 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (8ms)[39m
+    [35mrequestId[39m: "285314a7-75a8-4aaa-95c3-3ace27d3861d"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-08 05:51:26.419 +0200] [32mINFO[39m (52868): [36m→ GET /api/profile[39m
+    [35mrequestId[39m: "c3f7ef84-2201-4dfe-9b95-cbd3a97ba745"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:26.427 +0200] [32mINFO[39m (52868): [36m← GET /api/profile 304 (8ms)[39m
+    [35mrequestId[39m: "c3f7ef84-2201-4dfe-9b95-cbd3a97ba745"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/profile"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-08 05:51:27.572 +0200] [32mINFO[39m (52868): [36m→ GET /api/routines/competition[39m
+    [35mrequestId[39m: "51adfa33-64d8-4a27-bee3-a20bdcf7fa14"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/routines/competition"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:27.587 +0200] [32mINFO[39m (52868): [36m← GET /api/routines/competition 200 (15ms)[39m
+    [35mrequestId[39m: "51adfa33-64d8-4a27-bee3-a20bdcf7fa14"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/routines/competition"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 15
+[2026-06-08 05:51:28.653 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "1ada3851-ae60-43e4-a919-081f5ddcb955"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:28.663 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (10ms)[39m
+    [35mrequestId[39m: "1ada3851-ae60-43e4-a919-081f5ddcb955"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 10
+[2026-06-08 05:51:30.760 +0200] [32mINFO[39m (52868): [36m→ GET /api/backtest/candles?symbol=XAUUSD&interval=H1[39m
+    [35mrequestId[39m: "93ffaa17-5bc2-46ac-b298-f7a2104a6040"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/backtest/candles"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:30.767 +0200] [32mINFO[39m (52868): [36m→ GET /api/brain/graph?strategyId=[39m
+    [35mrequestId[39m: "b393f2ad-42bf-4e11-b460-0f67eb5b694c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/graph"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:30.767 +0200] [32mINFO[39m (52868): [36m→ GET /api/brain/scan-config[39m
+    [35mrequestId[39m: "db24efbb-9ccc-4228-a192-23b3f3d8f9f8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/scan-config"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:30.768 +0200] [32mINFO[39m (52868): [36m→ GET /api/brain/strategies[39m
+    [35mrequestId[39m: "be4144bd-5cdd-494b-bd30-7c62f02fa0af"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/strategies"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:30.770 +0200] [32mINFO[39m (52868): [36m→ GET /api/brain/analyses?limit=20[39m
+    [35mrequestId[39m: "bbd1fe6d-27c0-4983-b705-11bc5eba1761"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/analyses"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:30.770 +0200] [32mINFO[39m (52868): [36m→ GET /api/brain/knowledge?strategyId=[39m
+    [35mrequestId[39m: "f46a6ecb-d559-4083-934d-7cae8f0e3bd7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/knowledge"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:30.781 +0200] [32mINFO[39m (52868): [36m← GET /api/brain/scan-config 304 (14ms)[39m
+    [35mrequestId[39m: "db24efbb-9ccc-4228-a192-23b3f3d8f9f8"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/scan-config"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 14
+[2026-06-08 05:51:30.787 +0200] [32mINFO[39m (52868): [36m← GET /api/brain/graph?strategyId= 304 (20ms)[39m
+    [35mrequestId[39m: "b393f2ad-42bf-4e11-b460-0f67eb5b694c"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/graph"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 20
+[2026-06-08 05:51:30.788 +0200] [32mINFO[39m (52868): [36m← GET /api/brain/analyses?limit=20 304 (18ms)[39m
+    [35mrequestId[39m: "bbd1fe6d-27c0-4983-b705-11bc5eba1761"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/analyses"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 18
+[2026-06-08 05:51:30.802 +0200] [32mINFO[39m (52868): [36m← GET /api/brain/strategies 304 (34ms)[39m
+    [35mrequestId[39m: "be4144bd-5cdd-494b-bd30-7c62f02fa0af"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/strategies"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 34
+[2026-06-08 05:51:30.803 +0200] [32mINFO[39m (52868): [36m← GET /api/brain/knowledge?strategyId= 304 (33ms)[39m
+    [35mrequestId[39m: "f46a6ecb-d559-4083-934d-7cae8f0e3bd7"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/knowledge"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 33
+[2026-06-08 05:51:30.827 +0200] [32mINFO[39m (52868): [36m→ GET /api/brain/graph?strategyId=3[39m
+    [35mrequestId[39m: "73170911-d0ed-4640-89fc-99f814d07f80"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/graph"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:30.828 +0200] [32mINFO[39m (52868): [36m→ GET /api/brain/knowledge?strategyId=3[39m
+    [35mrequestId[39m: "0ca12e3b-48f8-499d-a845-d3e70a581ed5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/knowledge"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:30.836 +0200] [32mINFO[39m (52868): [36m← GET /api/brain/knowledge?strategyId=3 304 (8ms)[39m
+    [35mrequestId[39m: "0ca12e3b-48f8-499d-a845-d3e70a581ed5"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/knowledge"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 8
+[2026-06-08 05:51:30.837 +0200] [32mINFO[39m (52868): [36m← GET /api/brain/graph?strategyId=3 304 (10ms)[39m
+    [35mrequestId[39m: "73170911-d0ed-4640-89fc-99f814d07f80"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/brain/graph"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 10
+[candles] Yahoo OK: XAUUSD H1 → 1691 candles
+[2026-06-08 05:51:31.322 +0200] [32mINFO[39m (52868): [36m← GET /api/backtest/candles?symbol=XAUUSD&interval=H1 200 (562ms)[39m
+    [35mrequestId[39m: "93ffaa17-5bc2-46ac-b298-f7a2104a6040"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/backtest/candles"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 562
+[2026-06-08 05:51:33.688 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "77e3853f-0dc6-4a09-a42d-a9674cb5c970"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:33.725 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (37ms)[39m
+    [35mrequestId[39m: "77e3853f-0dc6-4a09-a42d-a9674cb5c970"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 37
+[2026-06-08 05:51:34.513 +0200] [32mINFO[39m (52868): [36m→ GET /api/auth/user[39m
+    [35mrequestId[39m: "15f05e90-8a60-4ce3-95b3-4f64fac110aa"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/auth/user"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:34.516 +0200] [32mINFO[39m (52868): [36m← GET /api/auth/user 304 (3ms)[39m
+    [35mrequestId[39m: "15f05e90-8a60-4ce3-95b3-4f64fac110aa"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/auth/user"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 3
+[2026-06-08 05:51:34.527 +0200] [32mINFO[39m (52868): [36m→ GET /api/auth/user[39m
+    [35mrequestId[39m: "8ec0fb5e-0265-4e31-afd3-bf51e1cdef86"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/auth/user"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:34.535 +0200] [32mINFO[39m (52868): [36m← GET /api/auth/user 304 (7ms)[39m
+    [35mrequestId[39m: "8ec0fb5e-0265-4e31-afd3-bf51e1cdef86"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/auth/user"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 7
+[2026-06-08 05:51:34.586 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/feed[39m
+    [35mrequestId[39m: "b0680550-c839-42b5-85e9-eb270c9947e2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/feed"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:34.586 +0200] [32mINFO[39m (52868): [36m→ GET /api/social/stories[39m
+    [35mrequestId[39m: "0ffb5719-635f-4835-8ebe-e85b694ba22b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/stories"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:34.588 +0200] [32mINFO[39m (52868): [36m→ GET /api/friends/requests[39m
+    [35mrequestId[39m: "550a651e-c59d-4df2-8288-678c43ac8d78"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/friends/requests"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:34.609 +0200] [32mINFO[39m (52868): [36m← GET /api/friends/requests 304 (21ms)[39m
+    [35mrequestId[39m: "550a651e-c59d-4df2-8288-678c43ac8d78"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/friends/requests"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 21
+[2026-06-08 05:51:34.612 +0200] [32mINFO[39m (52868): [36m← GET /api/social/stories 304 (26ms)[39m
+    [35mrequestId[39m: "0ffb5719-635f-4835-8ebe-e85b694ba22b"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/stories"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 26
+[2026-06-08 05:51:34.623 +0200] [32mINFO[39m (52868): [36m← GET /api/social/feed 304 (37ms)[39m
+    [35mrequestId[39m: "b0680550-c839-42b5-85e9-eb270c9947e2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/social/feed"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 37
+[news/llm] OK — 30 articoli con sentiment reale (openai/gpt-oss-120b:free)
+[2026-06-08 05:51:36.836 +0200] [32mINFO[39m (52868): [36m← GET /api/tools/macro-news?currencies=USD%2CXAU&lang=it 200 (78824ms)[39m
+    [35mrequestId[39m: "e9e32eac-bd6c-4815-8441-60eb1c7006d2"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/tools/macro-news"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 200
+    [35mdurationMs[39m: 78824
+[2026-06-08 05:51:38.747 +0200] [32mINFO[39m (52868): [36m→ GET /api/chat/unread[39m
+    [35mrequestId[39m: "648a40b8-8974-41fb-96e5-8409db15c088"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35mevent[39m: "request.start"
+[2026-06-08 05:51:38.756 +0200] [32mINFO[39m (52868): [36m← GET /api/chat/unread 304 (9ms)[39m
+    [35mrequestId[39m: "648a40b8-8974-41fb-96e5-8409db15c088"
+    [35mmethod[39m: "GET"
+    [35mpath[39m: "/api/chat/unread"
+    [35muserId[39m: "user_3DrhamMSMhZSyS2DtR356YYgh2A"
+    [35mevent[39m: "request.end"
+    [35mstatusCode[39m: 304
+    [35mdurationMs[39m: 9

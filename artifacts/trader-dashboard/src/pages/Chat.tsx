@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
 import { useE2EEKeys } from "@/hooks/useE2EEKeys";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@workspace/replit-auth-web";
 import { getSharedKey, encryptMessage, decryptMessage } from "@/lib/e2ee";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1796,6 +1797,7 @@ function SocialTab({
 // ─── MESSAGGI TAB (E2EE con mutual followers) ─────────────────────────────────
 
 function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
+  const { toast } = useToast();
   const {
     keyPair,
     isReady: e2eeReady,
@@ -2019,7 +2021,8 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
     } catch (err) {
       reportClientError(err, {
         context: "DM attachment upload",
-        notify: false,
+        fallbackMessage: "Upload file non riuscito.",
+        toast,
       });
     } finally {
       setDmImgUploading(false);
