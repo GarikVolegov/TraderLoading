@@ -102,6 +102,34 @@ try {
   const missingRes = await fetch(`${base}/fxblue/setup-intents/missing/complete`, { method: "POST" });
   assert.equal(missingRes.status, 404);
 
+  const existingSyncRes = await fetch(`${base}/fxblue/setup-intents`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      platform: "MT5",
+      brokerName: "FP Trading",
+      server: "FPTradingLLC-Live",
+      accountNumber: "82364482",
+      environment: "live",
+    }),
+  });
+  assert.equal(existingSyncRes.status, 201);
+  const existingSync = (await existingSyncRes.json()) as { intent: { id: string; accountNumber: string } };
+  assert.equal(existingSync.intent.accountNumber, "82364482");
+
+  const existingVerifyRes = await fetch(`${base}/fxblue/setup-intents/${existingSync.intent.id}/verify-profile`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ fxBlueProfileRef: "82364482" }),
+  });
+  assert.equal(existingVerifyRes.status, 200);
+
+  const existingCompleteRes = await fetch(`${base}/fxblue/setup-intents/${existingSync.intent.id}/complete`, { method: "POST" });
+  assert.equal(existingCompleteRes.status, 201);
+  const existingCompleted = (await existingCompleteRes.json()) as { profile: { providerKind: string; tradingEnabled: boolean } };
+  assert.equal(existingCompleted.profile.providerKind, "fxblue-account-sync");
+  assert.equal(existingCompleted.profile.tradingEnabled, false);
+
   await new Promise<void>((resolve) => server.close(() => resolve()));
 } finally {
   await rm(tempDir, { recursive: true, force: true });

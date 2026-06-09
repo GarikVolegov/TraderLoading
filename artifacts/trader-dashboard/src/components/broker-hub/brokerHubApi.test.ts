@@ -136,6 +136,49 @@ try {
   }
 
   {
+    const payload = {
+      platform: "MT5" as const,
+      brokerName: "FP Trading",
+      server: "FPTradingLLC-Live",
+      accountNumber: "82364482",
+      environment: "live" as const,
+    };
+    const calls = mockFetch(() =>
+      Response.json(
+        {
+          intent: { id: "fxblue-existing-1", status: "created" },
+          fxBlueUrl: "https://diagnostics.fxblue.com/accountsync.aspx",
+          instructions: ["Open FX Blue"],
+        },
+        { status: 201 },
+      ),
+    );
+
+    const result = await createFxBlueSetupIntent(payload, { baseUrl: "https://api.example.test" });
+
+    assert.equal(result.intent.id, "fxblue-existing-1");
+    assert.equal(calls[0]?.init?.body, JSON.stringify(payload));
+  }
+
+  {
+    mockFetch(() => new Response("", { status: 404 }));
+
+    await assert.rejects(
+      createFxBlueSetupIntent(
+        {
+          platform: "MT5",
+          brokerName: "FP Trading",
+          server: "FPTradingLLC-Live",
+          accountNumber: "82364482",
+          environment: "live",
+        },
+        { baseUrl: "https://api.example.test" },
+      ),
+      /Broker request failed \(HTTP 404\)/,
+    );
+  }
+
+  {
     const calls = mockFetch(() => Response.json({ intent: { id: "fxblue-i1", status: "profile_verified" }, snapshot: { status: "connected" } }));
 
     const result = await verifyFxBlueProfile("fxblue-i1", { fxBlueProfileRef: "trader-one" }, { baseUrl: "https://api.example.test" });

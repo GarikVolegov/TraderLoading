@@ -30,20 +30,51 @@ export function FxBlueAccountSyncWizard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const detailsReady = Boolean(accountNumber.trim() && server.trim() && investorPassword);
+  const detailsReady = Boolean(accountNumber.trim() && server.trim());
+  const existingSyncReady = Boolean(accountNumber.trim() && server.trim() && fxBlueProfileRef.trim());
+
+  const setupPayload = () => ({
+    platform,
+    brokerName: brokerName.trim() || "FX Blue",
+    server: server.trim(),
+    accountNumber: accountNumber.trim(),
+    environment,
+    ...(investorPassword.trim() ? { investorPassword: investorPassword.trim() } : {}),
+  });
+
+  const connectExistingSync = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const created = await hub.createFxBlueSetupIntent(setupPayload());
+      setInvestorPassword("");
+      setIntentId(created.intent.id);
+
+      const verified = await hub.verifyFxBlueProfile(created.intent.id, { fxBlueProfileRef: fxBlueProfileRef.trim() });
+      if (verified.error) {
+        setError(verified.error);
+        return;
+      }
+
+      const completed = await hub.completeFxBlueSetupIntent(created.intent.id);
+      if (completed.profile) {
+        setStep("done");
+        onConnected();
+        return;
+      }
+      setError(completed.error ?? "Profilo FX Blue non collegato");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Profilo FX Blue non collegato");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const createIntent = async () => {
     setBusy(true);
     setError(null);
     try {
-      const created = await hub.createFxBlueSetupIntent({
-        platform,
-        brokerName: brokerName.trim() || "FX Blue",
-        server: server.trim(),
-        accountNumber: accountNumber.trim(),
-        environment,
-        investorPassword,
-      });
+      const created = await hub.createFxBlueSetupIntent(setupPayload());
       setInvestorPassword("");
       setIntentId(created.intent.id);
       setStep("fxblue");
@@ -60,8 +91,12 @@ export function FxBlueAccountSyncWizard({
     setError(null);
     try {
       const data = await hub.verifyFxBlueProfile(intentId, { fxBlueProfileRef: fxBlueProfileRef.trim() });
-      if (data.snapshot?.status === "connected") setStep("done");
-      if (data.error) setError(data.error);
+      if (data.error) {
+        setError(data.error);
+        return;
+      }
+      if (data.intent?.id) setIntentId(data.intent.id);
+      setStep("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Profilo FX Blue non verificato");
     } finally {
@@ -93,7 +128,7 @@ export function FxBlueAccountSyncWizard({
         <div>
           <p className="text-sm font-bold">FX Blue Account Sync</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Configura FX Blue dal Broker Hub e collega i dati sincronizzati in Sola lettura.
+            Collega il profilo FX Blue gia' sincronizzato e importa i dati in Sola lettura.
           </p>
         </div>
         <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase text-primary">
@@ -148,13 +183,35 @@ export function FxBlueAccountSyncWizard({
               <Input value={server} onChange={(event) => setServer(event.target.value)} />
             </div>
           </div>
+
+          <div className="-mx-4 space-y-3 border-y border-primary/20 bg-primary/5 px-4 py-3">
+            <div className="space-y-1">
+              <p className="text-sm font-bold">Hai gia' configurato FX Blue?</p>
+              <p className="text-xs text-muted-foreground">
+                Inserisci username o URL pubblico del profilo FX Blue. Broker Hub non richiede la password del conto per questo collegamento.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Username o URL profilo FX Blue</Label>
+              <Input
+                value={fxBlueProfileRef}
+                onChange={(event) => setFxBlueProfileRef(event.target.value)}
+                placeholder="82364482 oppure https://www.fxblue.com/users/tuo-username"
+              />
+            </div>
+            <Button className="w-full gap-2" disabled={busy || !existingSyncReady} onClick={connectExistingSync}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              Collega profilo gia' sincronizzato
+            </Button>
+          </div>
+
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5">
               <LockKeyhole className="h-3.5 w-3.5" />
-              password investor/read-only
+              password investor/read-only opzionale
             </Label>
             <Input type="password" autoComplete="off" value={investorPassword} onChange={(event) => setInvestorPassword(event.target.value)} />
-            <p className="text-xs text-amber-400">Non inserire la password master del conto. Usa solo la password investor/read-only per FX Blue.</p>
+            <p className="text-xs text-amber-400">Serve solo se devi ancora configurare FX Blue. Non inserire la password master del conto.</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <Button variant="outline" onClick={onBack}>

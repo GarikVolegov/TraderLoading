@@ -53,10 +53,8 @@ function requireSetupInput(input: FxBlueSetupIntentDraft): Omit<FxBlueSetupInten
   const brokerName = readString(input.brokerName) || "FX Blue";
   const server = readString(input.server);
   const accountNumber = readString(input.accountNumber);
-  const investorPassword = readString(input.investorPassword);
   if (!accountNumber) throw new Error("Numero conto richiesto.");
   if (!server) throw new Error("Server broker richiesto.");
-  if (!investorPassword) throw new Error("Password investor/read-only richiesta per completare il setup su FX Blue.");
   return {
     platform: sanitizePlatform(input.platform),
     brokerName,

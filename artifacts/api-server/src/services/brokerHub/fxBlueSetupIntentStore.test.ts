@@ -33,6 +33,24 @@ assert.equal(verified.fxBlueProfileRef, "trader-one");
 const fetched = await store.getIntent(intent.id);
 assert.equal(fetched?.status, "profile_verified");
 
+const existingSyncStore = createFxBlueSetupIntentStore({
+  now: () => new Date("2026-06-08T10:00:00.000Z"),
+  id: () => "fxblue-existing-sync-1",
+});
+
+const existingSyncIntent = await existingSyncStore.createIntent({
+  platform: "MT5",
+  brokerName: "FP Trading",
+  server: "FPTradingLLC-Live",
+  accountNumber: "82364482",
+  environment: "live",
+});
+
+assert.equal(existingSyncIntent.id, "fxblue-existing-sync-1");
+assert.equal(existingSyncIntent.accountNumber, "82364482");
+assert.equal(existingSyncIntent.server, "FPTradingLLC-Live");
+assert.equal("investorPassword" in (existingSyncIntent as object), false);
+
 await assert.rejects(
   store.createIntent({
     platform: "MT5",

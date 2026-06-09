@@ -73,7 +73,7 @@ export type FxBlueSetupPayload = {
   server: string;
   accountNumber: string;
   environment: "demo" | "live";
-  investorPassword: string;
+  investorPassword?: string;
 };
 
 export type FxBlueSetupIntentResponse = {
@@ -185,7 +185,7 @@ export function createBrokerHubUrl(path: string, options: BrokerHubApiOptions = 
 
 async function readJson<T>(response: Response, fallbackMessage = "Broker request failed"): Promise<T> {
   const data = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(data.error ?? fallbackMessage);
+  if (!response.ok) throw new Error(data.error ?? `${fallbackMessage} (HTTP ${response.status})`);
   return data;
 }
 
