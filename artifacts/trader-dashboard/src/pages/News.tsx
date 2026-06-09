@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Newspaper, TrendingUp, TrendingDown, Minus, RefreshCw,
   ExternalLink, Rss, Cpu, ShieldCheck, Clock, ChevronDown,
-  ChevronUp, Zap, Bot,
+  ChevronUp, Zap, Bot, ThumbsUp, ThumbsDown, SlidersHorizontal, X,
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { useLanguage, useDateLocale } from "@/contexts/LanguageContext";
@@ -30,6 +30,7 @@ import {
   type NewsProviderStatus,
   type NewsSocketMessage,
 } from "@/lib/newsApi";
+import { apiJSON } from "@/lib/apiFetch";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -331,7 +332,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
   );
 }
 
-function ArticleCard({ article, idx, isAI, onOpen }: { article: Article; idx: number; isAI: boolean; onOpen: (article: Article) => void }) {
+function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Article; idx: number; isAI: boolean; onOpen: (article: Article) => void; vote: number; onVote: (vote: number) => void }) {
   const [expanded, setExpanded] = useState(false);
   const explanation = article.relevanceReason ?? article.impactReason;
   const hasImpactDetails = isAI && (article.impactScore || (article.affectedPairs && article.affectedPairs.length > 0) || explanation);
@@ -446,7 +447,7 @@ function ArticleCard({ article, idx, isAI, onOpen }: { article: Article; idx: nu
               </>
             )}
             {article.verified && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 ml-auto">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
                 <ShieldCheck className="w-2.5 h-2.5" />
                 {article.citationUrls && article.citationUrls.length > 0
                   ? `${article.citationUrls.length} URL`
@@ -455,6 +456,18 @@ function ArticleCard({ article, idx, isAI, onOpen }: { article: Article; idx: nu
                     : "✓"}
               </span>
             )}
+            <div className="ml-auto flex items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
+              <button type="button" title="Più notizie così" aria-label="Più notizie così"
+                onClick={() => onVote(vote === 1 ? 0 : 1)}
+                className={`p-1 rounded transition-colors hover:bg-emerald-500/15 ${vote === 1 ? "text-emerald-400" : "text-muted-foreground/40"}`}>
+                <ThumbsUp className="w-3 h-3" />
+              </button>
+              <button type="button" title="Meno notizie così" aria-label="Meno notizie così"
+                onClick={() => onVote(vote === -1 ? 0 : -1)}
+                className={`p-1 rounded transition-colors hover:bg-red-500/15 ${vote === -1 ? "text-red-400" : "text-muted-foreground/40"}`}>
+                <ThumbsDown className="w-3 h-3" />
+              </button>
+            </div>
           </div>
 
           {/* Citation URLs */}
@@ -482,6 +495,90 @@ function ArticleCard({ article, idx, isAI, onOpen }: { article: Article; idx: nu
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+// ─── Feed training panel (per-user keywords + profile) ────────────────────────
+
+function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
+  const [open, setOpen] = useState(false);
+  const { data } = useQuery<{ keywords: string[]; profile: string }>({
+    queryKey: ["news-preferences"],
+    queryFn: () => apiJSON("news/preferences"),
+  });
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [profile, setProfile] = useState("");
+  const [kwInput, setKwInput] = useState("");
+  const loadedRef = useRef(false);
+  useEffect(() => {
+    if (data && !loadedRef.current) {
+      loadedRef.current = true;
+      setKeywords(data.keywords ?? []);
+      setProfile(data.profile ?? "");
+    }
+  }, [data]);
+
+  const save = useMutation({
+    mutationFn: () => apiJSON("news/preferences", { method: "PUT", body: JSON.stringify({ keywords, profile }) }),
+    onSuccess: () => onApplied(),
+  });
+
+  const addKw = () => {
+    const k = kwInput.trim();
+    if (k && !keywords.includes(k)) setKeywords([...keywords, k]);
+    setKwInput("");
+  };
+
+  return (
+    <div className="tl-panel p-3 sm:p-4">
+      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 text-sm font-semibold">
+        <SlidersHorizontal className="w-4 h-4 text-primary" />
+        Addestra il feed con le tue info
+        {open ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          <div>
+            <label className="text-xs text-muted-foreground">Parole chiave / temi che ti interessano</label>
+            {keywords.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {keywords.map((k) => (
+                  <span key={k} className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                    {k}
+                    <button type="button" onClick={() => setKeywords(keywords.filter((x) => x !== k))} className="hover:text-red-400"><X className="w-3 h-3" /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <input
+              value={kwInput}
+              onChange={(e) => setKwInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKw(); } }}
+              placeholder="Aggiungi un tema e premi Invio (es. oro intraday, Fed, liquidity)"
+              className="mt-1.5 w-full rounded-lg border border-border/60 bg-secondary/40 px-3 py-2 text-sm outline-none focus:border-primary/50"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Il tuo profilo / strategia</label>
+            <textarea
+              value={profile}
+              onChange={(e) => setProfile(e.target.value)}
+              placeholder="Es. Scalper su oro, solo high-impact intraday; seguo Fed, CPI e rendimenti."
+              className="mt-1.5 w-full min-h-20 rounded-lg border border-border/60 bg-secondary/40 px-3 py-2 text-sm outline-none focus:border-primary/50"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-muted-foreground/60">Usa anche 👍 / 👎 sulle notizie: il feed impara nel tempo.</p>
+            <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
+              {save.isPending && <RefreshCw className="w-4 h-4 mr-1 animate-spin" />}
+              Salva e ri-ordina
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function News() {
   const { t, language } = useLanguage();
   const qc = useQueryClient();
@@ -494,6 +591,16 @@ export default function News() {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [votes, setVotes] = useState<Record<string, number>>({});
+  const voteMutation = useMutation({
+    mutationFn: (payload: { articleKey: string; source: string; vote: number }) =>
+      apiJSON("news/feedback", { method: "POST", body: JSON.stringify(payload) }),
+  });
+  const handleVote = (article: Article, v: number) => {
+    const key = articleKey(article);
+    setVotes((prev) => ({ ...prev, [key]: v }));
+    voteMutation.mutate({ articleKey: key, source: article.source, vote: v });
+  };
 
   const { data, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery<NewsData>({
@@ -714,6 +821,8 @@ export default function News() {
         </div>
       )}
 
+      <FeedTrainingPanel onApplied={() => { qc.invalidateQueries({ queryKey: ["news-preferences"] }); qc.invalidateQueries({ queryKey }); }} />
+
       {/* News grid */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -725,7 +834,7 @@ export default function News() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {articles.map((article, idx) => (
-              <ArticleCard key={`${articleKey(article)}-${idx}`} article={article} idx={idx} isAI={isAI} onOpen={setSelectedArticle} />
+              <ArticleCard key={`${articleKey(article)}-${idx}`} article={article} idx={idx} isAI={isAI} onOpen={setSelectedArticle} vote={votes[articleKey(article)] ?? 0} onVote={(v) => handleVote(article, v)} />
             ))}
           </div>
 
