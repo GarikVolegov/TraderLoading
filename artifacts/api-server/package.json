@@ -13,6 +13,7 @@
     "@clerk/express": "^2.1.11",
     "@clerk/shared": "^4.8.7",
     "@napi-rs/canvas": "^0.1.65",
+    "@sentry/node": "^10.56.0",
     "@types/multer": "^2.1.0",
     "@types/ws": "^8.18.1",
     "@workspace/api-zod": "workspace:*",

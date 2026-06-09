@@ -9,6 +9,9 @@ import { newsHubRuntime } from "./services/newsHub/runtimeSingleton.js";
 import { attachNewsHubWebSocket } from "./services/newsHub/socketServer.js";
 import { attachNewsProviderSockets } from "./services/newsHub/providerSockets.js";
 import logger from "./lib/logger";
+import { captureError, flushObservability, initObservability } from "./lib/observability";
+
+initObservability();
 
 const rawPort = process.env["PORT"];
 
@@ -108,12 +111,19 @@ process.on("SIGINT", () => {
 });
 
 process.on("unhandledRejection", (reason) => {
+  captureError(reason instanceof Error ? reason : new Error("Unhandled promise rejection"), {
+    reason,
+    surface: "process",
+    kind: "unhandledRejection",
+  });
   logger.error({ reason }, "Unhandled promise rejection");
 });
 
 process.on("uncaughtException", (err) => {
+  captureError(err, { surface: "process", kind: "uncaughtException" });
   logger.error({ err }, "Uncaught exception");
-  void shutdown("uncaughtException", 1).finally(() => {
+  void shutdown("uncaughtException", 1).finally(async () => {
+    await flushObservability(2_000);
     process.exit(1);
   });
 });

@@ -46,6 +46,10 @@ Parameters:
   ViteClerkPublishableKey:
     Type: String
     NoEcho: true
+  SentryDsn:
+    Type: String
+    Default: ""
+    NoEcho: true
   AppSecretJson:
     Type: String
     NoEcho: true
@@ -189,6 +193,8 @@ Resources:
           Environment:
             - Name: NODE_ENV
               Value: production
+            - Name: APP_VERSION
+              Value: !Ref ContainerImage
             - Name: PORT
               Value: "3001"
             - Name: TRUST_PROXY
@@ -209,6 +215,16 @@ Resources:
               Value: "5000"
             - Name: PGSSLMODE
               Value: require
+            - Name: SENTRY_ENVIRONMENT
+              Value: production
+            - Name: SENTRY_DSN
+              Value: !Ref SentryDsn
+            - Name: SENTRY_TRACES_SAMPLE_RATE
+              Value: "0.05"
+            - Name: DD_SERVICE
+              Value: !Sub ${AppName}-api
+            - Name: NEW_RELIC_APP_NAME
+              Value: !Sub ${AppName} API
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Sub "${AppSecret}:DATABASE_URL::"
@@ -231,7 +247,7 @@ Resources:
           HealthCheck:
             Command:
               - CMD-SHELL
-              - node -e "fetch('http://127.0.0.1:3001/api/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+              - node -e "fetch('http://127.0.0.1:3001/api/readyz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
             Interval: 30
             Timeout: 5
             Retries: 3

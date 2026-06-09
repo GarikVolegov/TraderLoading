@@ -16,6 +16,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import { loggingMiddleware } from "./middlewares/loggingMiddleware";
 import logger from "./lib/logger";
+import { captureError } from "./lib/observability";
 import {
   createCorsOptions,
   createHelmetOptions,
@@ -126,6 +127,7 @@ app.use(
     res: express.Response,
     _next: express.NextFunction,
   ) => {
+    captureError(err, { surface: "express" });
     logger.error({ err }, "Unhandled API error");
     if (res.headersSent) return;
     res.status(500).json({ error: "Internal server error" });

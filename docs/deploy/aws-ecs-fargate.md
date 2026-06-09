@@ -66,14 +66,38 @@ aws cloudformation deploy \
     ApiCorsOrigins=https://app.example.com \
     ViteApiBase=https://app.example.com \
     ViteClerkPublishableKey="$VITE_CLERK_PUBLISHABLE_KEY" \
+    SentryDsn="$SENTRY_DSN" \
     AppSecretJson=file://app-secret.json
 ```
 
-### Rolling Update
+### Health And Rolling Update
 
-The ALB and container health checks use `/api/healthz`. ECS performs Rolling update
-deployment with `MinimumHealthyPercent: 100` and `MaximumPercent: 200`,
-so new tasks must pass health checks before old tasks are drained.
+The ALB target group uses `/api/healthz` as a lightweight liveness probe. The
+container health check uses `/api/readyz`, which verifies the API process and
+database connectivity before ECS keeps the task in service. `/api/status`
+returns the same readiness payload for operators and uptime monitors.
+
+ECS performs Rolling update deployment with `MinimumHealthyPercent: 100` and
+`MaximumPercent: 200`, so new tasks must pass health checks before old tasks are
+drained.
+
+## Observability
+
+CloudWatch Logs is enabled through the `awslogs` driver and the template keeps
+30 days of logs in `/ecs/<AppName>`. Container Insights is enabled on the ECS
+cluster for CPU, memory, network, and task-level metrics.
+
+Sentry is optional. Set `SENTRY_DSN`, `SENTRY_ENVIRONMENT=production`,
+`SENTRY_TRACES_SAMPLE_RATE`, and `APP_VERSION` to receive process and Express
+errors with release context. Start with `SENTRY_TRACES_SAMPLE_RATE=0.05` and
+increase only when you need deeper traces. The template passes Sentry through
+the optional `SentryDsn` parameter rather than a Secrets Manager JSON key, so
+tasks still start when Sentry is not configured.
+
+Datadog and New Relic are prepared through standard environment names
+(`DD_SERVICE`, `NEW_RELIC_APP_NAME`). To fully enable APM, add the vendor
+sidecar/agent, API keys, and Node loader required by the vendor in a follow-up
+infrastructure change.
 
 ## Database Migration
 
