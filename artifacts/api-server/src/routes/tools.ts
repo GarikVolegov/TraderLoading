@@ -1062,9 +1062,20 @@ Rispondi SOLO con questo JSON (summary in ${langName}):
 
   console.log(`[tools/macro-news/groq] OK — ${articles.length} articoli classificati con Llama`);
 
+  // RISK ON/OFF from the deterministic regime (consistent with every other path),
+  // using Groq's per-article currency/impact/direction as input.
+  const regime = computeRiskRegime(articles.map((a) => ({
+    title: a.title,
+    summary: a.summary,
+    impactScore: a.impact === "alto" ? 9 : a.impact === "medio" ? 6 : 3,
+    impactDirection: a.direction,
+    primaryAssets: a.currency ? [a.currency] : [],
+  })));
+
   return {
     articles,
-    sentiment: (parsed.sentiment as string) || rssResult.sentiment,
+    sentiment: regime.regime,
+    sentimentIntensity: regime.intensity ?? undefined,
     summary: parsed.summary || "",
     fetchedAt: new Date().toISOString(),
   };
@@ -1191,9 +1202,18 @@ Genera 6-8 articoli bilanciati tra macro e geopolitica. imageKeywords: 2-3 parol
     console.log(`[macro-news] Perplexity returned ${realCitationUrls.length} real citation URLs for ${totalArticles} articles`);
   }
 
+  const regime = computeRiskRegime(articles.map((a) => ({
+    title: a.title,
+    summary: a.summary,
+    impactScore: a.impact === "alto" ? 9 : a.impact === "medio" ? 6 : 3,
+    impactDirection: a.direction,
+    primaryAssets: a.currency ? [a.currency] : [],
+  })));
+
   return {
     articles,
-    sentiment: parsed.sentiment ?? "neutrale",
+    sentiment: regime.regime,
+    sentimentIntensity: regime.intensity ?? undefined,
     summary: parsed.summary ?? "",
     fetchedAt: new Date().toISOString(),
     citationUrls: realCitationUrls,
