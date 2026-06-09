@@ -20,6 +20,7 @@ import { DailyAlarmNotifier } from "./components/DailyAlarmNotifier";
 import { MacroNotifier } from "./components/MacroNotifier";
 import { SessionStartNotifier } from "./components/SessionStartNotifier";
 import { SessionCheckinModal } from "./components/SessionCheckinModal";
+import { CommandPalette } from "./components/CommandPalette";
 import { ScheduledCallRuntime } from "./components/ScheduledCallRuntime";
 import { LevelRewardModal } from "./components/LevelRewardModal";
 import { PinLockScreen } from "./components/PinLockScreen";
@@ -252,6 +253,7 @@ function AuthenticatedShell() {
       <PairOnboardingWrapper />
       <SessionCheckinModal />
       <LevelRewardModal />
+      <CommandPalette />
 
       {/* Global nav — always mounted, unaffected by page transitions */}
       <TopNav />

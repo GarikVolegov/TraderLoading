@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const files = [
   "lib/i18n.ts",
@@ -65,6 +67,26 @@ for (const lang of languageCodes.filter((code) => code !== "it")) {
   const missing = [...italianKeys].filter((key) => !keys.has(key));
   assert.deepEqual(missing, [], `${lang} should include every Italian i18n key`);
 }
+
+const usedTranslationKeys: string[] = [];
+function collectTranslationKeys(dir: string) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const absolutePath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      collectTranslationKeys(absolutePath);
+      continue;
+    }
+    if (!/\.(ts|tsx)$/.test(entry.name)) continue;
+    const source = readFileSync(absolutePath, "utf8");
+    for (const match of source.matchAll(/\bt\(\s*["']([^"']+)["']/g)) {
+      usedTranslationKeys.push(match[1]);
+    }
+  }
+}
+
+collectTranslationKeys(fileURLToPath(new URL(".", import.meta.url)));
+const missingUsedKeys = [...new Set(usedTranslationKeys)].filter((key) => !italianKeys.has(key));
+assert.deepEqual(missingUsedKeys, [], "Every literal t() key should exist in DICT");
 
 const newsSource = readFileSync(new URL("pages/News.tsx", import.meta.url), "utf8");
 assert.match(newsSource, /Apri articolo/);

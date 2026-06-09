@@ -147,4 +147,100 @@ const backfilled = selectCuratedNews([
 assert.equal(backfilled.length, 2);
 assert.equal(backfilled[0]?.title, "US CPI surprise sends Treasury yields higher");
 
+// Hard noise: price-forecast listicles never enter the feed, not even via
+// minKeep backfill, regardless of impact score.
+const forecastListicle = article("Previsioni per il prezzo dell'oro (XAU/USD) per oggi, domani e la prossima settimana", {
+  summary: "Analisi e previsioni sul prezzo dell'oro.",
+  originalTitle: "Gold Price Forecast (XAU/USD) for today, tomorrow and next week",
+  impactScore: 9,
+  matchConfidence: 0.9,
+});
+assert.equal(selectCuratedNews([forecastListicle], { pairs: "XAUUSD", minKeep: 3 }).length, 0);
+
+// Near-duplicate stories from different outlets keep only the stronger one.
+const outletA = article("Gold drops 9% ahead of crucial CPI inflation print", {
+  summary: "Bullion slides as markets brace for US inflation data.",
+  impactScore: 9,
+  matchConfidence: 0.9,
+  publishedAt: "2026-06-09T10:05:00.000Z",
+});
+const outletB = article("Gold drops 9% ahead of key CPI inflation data print", {
+  summary: "Gold falls before the US CPI release.",
+  impactScore: 8,
+  matchConfidence: 0.8,
+  publishedAt: "2026-06-09T10:00:00.000Z",
+});
+const crossOutlet = selectCuratedNews([outletB, outletA], { pairs: "XAUUSD" });
+assert.equal(crossOutlet.length, 1);
+assert.equal(crossOutlet[0]?.impactScore, 9);
+
+// Corporate/single-stock housekeeping (dividends, mining deals) is penalized
+// out of the feed even when it names the traded asset.
+const dividendNote = article("Azioni Newmont Corporation: data del dividendo", {
+  summary: "Newmont annuncia la data di stacco del dividendo.",
+  originalTitle: "Newmont Corporation shares: dividend ex-date announced",
+  originalSummary: "Newmont announces its dividend ex-date.",
+  impactScore: 8,
+  matchConfidence: 0.32,
+});
+assert.equal(selectCuratedNews([dividendNote], { pairs: "XAUUSD" }).length, 0);
+
+// Evergreen explainers are hard-excluded, also from backfill.
+const explainer = article("Come viene fissato il prezzo dell'oro: spiegazione del fixing", {
+  summary: "Una guida al meccanismo del fixing di Londra.",
+  originalTitle: "How the gold price is set: London fixing explained",
+  impactScore: 8,
+  matchConfidence: 0.9,
+});
+assert.equal(selectCuratedNews([explainer], { pairs: "XAUUSD", minKeep: 3 }).length, 0);
+
+// Translated near-duplicates with different original outlets are still merged:
+// the translated titles converge even when the originals differ.
+const trumpA = article("Il prezzo dell'oro crolla sotto i 4.250 dollari mentre Trump promette nuovi dazi", {
+  summary: "Il metallo scivola dopo le dichiarazioni sui dazi.",
+  originalTitle: "Gold price tumbles below $4,250 as Trump pledges fresh tariffs - FXStreet",
+  impactScore: 9,
+  matchConfidence: 0.9,
+  publishedAt: "2026-06-09T19:13:00.000Z",
+});
+const trumpB = article("Il prezzo dell'oro scende sotto i 4.250 dollari mentre Trump promette nuovi dazi", {
+  summary: "Oro in calo dopo le promesse sui dazi.",
+  originalTitle: "Gold slips under $4,250 on Trump tariff pledge - Kitco News",
+  impactScore: 8,
+  matchConfidence: 0.85,
+  publishedAt: "2026-06-09T19:55:00.000Z",
+});
+const trumpDeduped = selectCuratedNews([trumpA, trumpB], { pairs: "XAUUSD" });
+assert.equal(trumpDeduped.length, 1);
+assert.equal(trumpDeduped[0]?.impactScore, 9);
+
+// Clickbait evergreen: question op-eds, time-to-buy advice and key-level
+// technical clickbait are hard-excluded.
+for (const noisy of [
+  article("Perché l'oro rimane uno scudo affidabile durante i periodi incerti?", {
+    originalTitle: "Why Gold Remains A Trusted Shield During Uncertain Times? - Kalkine Media",
+  }),
+  article("Analisi del prezzo dell'oro: zone chiave di acquisto a $ 4.900", {
+    originalTitle: "Gold Price Analysis: Key Buy Zones at $4900 - IndexBox",
+  }),
+  article("L'oro è sceso del 23% dal picco. È ora di acquistare?", {
+    originalTitle: "Gold is down 23% from its peak. Time to buy?",
+  }),
+  article("Analista veterano individua il livello critico per i prezzi dell'oro", {
+    originalTitle: "Veteran analyst spots critical level for gold prices",
+  }),
+]) {
+  assert.equal(selectCuratedNews([noisy], { pairs: "XAUUSD", minKeep: 3 }).length, 0, noisy.title);
+}
+
+// Quiet-day last resort: with zero fresh candidates, fallback-tier articles
+// backfill the floor instead of returning an empty feed (stale stays out).
+const fallbackOnly = article("Fed rate decision moves Treasury yields", {
+  summary: "The decision changes rate expectations for XAU/USD.",
+  freshnessTier: "fallback",
+  isFallback: true,
+});
+assert.equal(selectCuratedNews([fallbackOnly], { pairs: "XAUUSD" }).length, 0);
+assert.equal(selectCuratedNews([fallbackOnly], { pairs: "XAUUSD", minKeep: 3 }).length, 1);
+
 console.log("news curation checks passed");

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Wind, Eye, BookOpen, Heart, Clock, Play, Pause, RotateCcw, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { MoodPerformanceInsight } from "@/components/MoodPerformanceInsight";
 
 type Phase = "inspira" | "trattieni" | "espira" | "riposa";
 
@@ -427,6 +428,7 @@ export default function Zen() {
               <TabsTrigger value="quotes"        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.quotes")}</TabsTrigger>
               <TabsTrigger value="gratitude"     className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.gratitude")}</TabsTrigger>
               <TabsTrigger value="meditation"    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.meditation")}</TabsTrigger>
+              <TabsTrigger value="insight"       className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.insight")}</TabsTrigger>
             </TabsList>
 
             <div className="md:w-2/3">
@@ -435,6 +437,7 @@ export default function Zen() {
               <TabsContent value="quotes"        className="mt-0"><MotivationalQuotes /></TabsContent>
               <TabsContent value="gratitude"     className="mt-0"><Gratitude /></TabsContent>
               <TabsContent value="meditation"    className="mt-0"><MeditationTimer /></TabsContent>
+              <TabsContent value="insight"       className="mt-0"><MoodPerformanceInsight /></TabsContent>
             </div>
           </div>
         </Tabs>

@@ -1924,6 +1924,81 @@ export function useGetTodayCheckin<
 }
 
 /**
+ * @summary List session check-ins (most recent first)
+ */
+export const getGetCheckinsUrl = () => {
+  return `/api/checkins`;
+};
+
+export const getCheckins = async (
+  options?: RequestInit,
+): Promise<Checkin[]> => {
+  return customFetch<Checkin[]>(getGetCheckinsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCheckinsQueryKey = () => {
+  return [`/api/checkins`] as const;
+};
+
+export const getGetCheckinsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCheckins>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCheckins>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCheckinsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCheckins>>> = ({
+    signal,
+  }) => getCheckins({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCheckins>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCheckinsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCheckins>>
+>;
+export type GetCheckinsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List session check-ins (most recent first)
+ */
+
+export function useGetCheckins<
+  TData = Awaited<ReturnType<typeof getCheckins>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCheckins>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCheckinsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Create a session check-in
  */
 export const getCreateCheckinUrl = () => {

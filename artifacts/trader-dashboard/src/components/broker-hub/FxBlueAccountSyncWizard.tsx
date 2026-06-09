@@ -31,7 +31,7 @@ export function FxBlueAccountSyncWizard({
   const [error, setError] = useState<string | null>(null);
 
   const detailsReady = Boolean(accountNumber.trim() && server.trim());
-  const existingSyncReady = Boolean(accountNumber.trim() && server.trim() && fxBlueProfileRef.trim());
+  const existingSyncReady = Boolean(fxBlueProfileRef.trim());
 
   const setupPayload = () => ({
     platform,
@@ -40,6 +40,7 @@ export function FxBlueAccountSyncWizard({
     accountNumber: accountNumber.trim(),
     environment,
     ...(investorPassword.trim() ? { investorPassword: investorPassword.trim() } : {}),
+    ...(fxBlueProfileRef.trim() ? { fxBlueProfileRef: fxBlueProfileRef.trim() } : {}),
   });
 
   const connectExistingSync = async () => {

@@ -14,6 +14,8 @@ assert.match(source, /connectExistingSync/);
 assert.match(source, /createFxBlueSetupIntent/);
 assert.match(source, /verifyFxBlueProfile/);
 assert.match(source, /completeFxBlueSetupIntent/);
+assert.match(source, /const existingSyncReady = Boolean\(fxBlueProfileRef\.trim\(\)\)/);
+assert.match(source, /fxBlueProfileRef: fxBlueProfileRef\.trim\(\)/);
 assert.equal(source.includes("placeOrder("), false);
 assert.equal(source.includes("tradingEnabled: true"), false);
 

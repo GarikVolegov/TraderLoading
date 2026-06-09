@@ -94,7 +94,7 @@ export function PnlHeatmap({ entries }: { entries: EquityEntryInput[] | undefine
             <div
               key={key}
               title={pnl !== undefined ? `${key}: ${pnl > 0 ? "+" : ""}${pnl.toFixed(2)} ${currency}` : key}
-              className={`flex aspect-square flex-col items-center justify-center rounded-md border text-[11px] font-semibold transition-colors ${cellClasses(pnl, inMonth)}`}
+              className={`flex h-11 flex-col items-center justify-center rounded-md border text-[11px] font-semibold transition-colors sm:h-14 ${cellClasses(pnl, inMonth)}`}
             >
               <span>{format(day, "d")}</span>
               {inMonth && pnl !== undefined && (

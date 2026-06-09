@@ -74,6 +74,7 @@ export type FxBlueSetupPayload = {
   accountNumber: string;
   environment: "demo" | "live";
   investorPassword?: string;
+  fxBlueProfileRef?: string;
 };
 
 export type FxBlueSetupIntentResponse = {

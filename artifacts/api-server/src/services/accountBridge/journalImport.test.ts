@@ -20,6 +20,11 @@ assert.equal(getTradeResult({ ...baseTrade, profit: 10 }), "win");
 assert.equal(getTradeResult({ ...baseTrade, profit: -1 }), "loss");
 assert.equal(getTradeResult({ ...baseTrade, profit: 0 }), "breakeven");
 assert.equal(getTradeResult({ ...baseTrade, profit: undefined }), "breakeven");
+assert.equal(
+  getTradeResult({ ...baseTrade, profit: 5, commission: -8, swap: 0 }),
+  "loss",
+  "result should follow net P&L after costs",
+);
 
 const draft = buildJournalEntryFromAccountTrade(baseTrade);
 assert.equal(draft.title, "EURUSD BUY account trade");

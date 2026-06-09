@@ -268,6 +268,7 @@ export function createBrokersRouter(
         accountNumber: req.body?.accountNumber,
         environment: req.body?.environment,
         investorPassword: req.body?.investorPassword,
+        fxBlueProfileRef: req.body?.fxBlueProfileRef,
       });
       res.status(201).json({
         intent,

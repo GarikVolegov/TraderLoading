@@ -79,8 +79,24 @@ const REASONS: Record<string, Record<string, string>> = {
   },
 };
 
+// Classification regexes are English: always include the original (untranslated)
+// title/summary, otherwise Italian/Spanish/... feeds fail keyword matching
+// ("gold" → "oro" would never match).
 function textOf(article: NewsArticle): string {
-  return `${article.title} ${article.summary}`.toLowerCase();
+  return [article.title, article.summary, article.originalTitle, article.originalSummary]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+// Headlines that lead with an explicit call ("Bullish for gold: …") beat the
+// per-driver hard-coded direction, which can be wrong for second-order stories
+// (e.g. "inflation could send real yields lower" is gold-bullish).
+function explicitTitleDirection(article: NewsArticle): Direction | null {
+  const lead = `${article.originalTitle ?? article.title}`.slice(0, 40);
+  if (/\b(bullish|rialzista)\b/i.test(lead)) return "bullish";
+  if (/\b(bearish|ribassista)\b/i.test(lead)) return "bearish";
+  return null;
 }
 
 function selectedPairs(pairs = ""): string[] {
@@ -221,7 +237,11 @@ export function classifyNewsArticle(article: NewsArticle, context: NewsIntellige
     ? reasonFor(match.reasonKey, context.lang)
     : isGlobalMacro ? reasonFor("generic", context.lang) : undefined;
   const effConfidence = match ? confidence : isGlobalMacro ? 0.4 : confidence;
-  const effScore = match?.score ?? (isGlobalMacro ? 6 : article.impactScore ?? 2);
+  // Keep the strongest judgment: the LLM enrichment step runs before this and
+  // its impact score must not be silently replaced by the rule's fixed score.
+  const ruleScore = match?.score ?? (isGlobalMacro ? 6 : undefined);
+  const effScore = Math.max(article.impactScore ?? 0, ruleScore ?? 0) || (article.impactScore ?? 2);
+  const titleDirection = explicitTitleDirection(article);
 
   return {
     relevant,
@@ -230,8 +250,8 @@ export function classifyNewsArticle(article: NewsArticle, context: NewsIntellige
       primaryAssets: articleAssets,
       affectedPairs,
       impactScore: effScore,
-      impactDirection: match?.direction ?? "neutral",
-      sentiment: article.sentiment ?? match?.direction ?? null,
+      impactDirection: titleDirection ?? match?.direction ?? "neutral",
+      sentiment: titleDirection ?? article.sentiment ?? match?.direction ?? null,
       relevanceReason,
       impactReason: article.impactReason ?? relevanceReason,
       matchConfidence: Number(effConfidence.toFixed(2)),

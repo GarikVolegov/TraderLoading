@@ -436,6 +436,19 @@ paths:
                 nullable: true
 
   /checkins:
+    get:
+      operationId: getCheckins
+      tags: [checkins]
+      summary: List session check-ins (most recent first)
+      responses:
+        "200":
+          description: List of check-ins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Checkin"
     post:
       operationId: createCheckin
       tags: [checkins]

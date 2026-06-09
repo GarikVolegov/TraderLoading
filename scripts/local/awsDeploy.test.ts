@@ -50,9 +50,11 @@ for (const token of [
   "AWS::ElasticLoadBalancingV2::TargetGroup",
   "AWS::ApplicationAutoScaling::ScalableTarget",
   "AWS::ApplicationAutoScaling::ScalingPolicy",
+  "AWS::ElasticLoadBalancingV2::Listener",
   "AWS::Logs::LogGroup",
   "AWS::IAM::Role",
   "AWS::SecretsManager::Secret",
+  "AcmCertificateArn",
   "FARGATE",
   "awsvpc",
   "/api/healthz",
@@ -69,11 +71,20 @@ assert.match(cloudformation, /MaxCapacity:\s*!Ref MaxTaskCount/);
 assert.match(cloudformation, /MinCapacity:\s*!Ref MinTaskCount/);
 assert.match(cloudformation, /Name: DATABASE_URL/);
 assert.match(cloudformation, /ValueFrom: !Sub "\$\{AppSecret\}:DATABASE_URL::"/);
+assert.match(cloudformation, /HasAcmCertificate:/);
+assert.match(cloudformation, /FromPort: 443/);
+assert.match(cloudformation, /Protocol: HTTPS/);
+assert.match(cloudformation, /CertificateArn: !Ref AcmCertificateArn/);
+assert.match(cloudformation, /Type: redirect/);
+assert.match(cloudformation, /Port: "443"/);
+assert.match(cloudformation, /StatusCode: HTTP_301/);
 
 const docs = read("docs/deploy/aws-ecs-fargate.md");
 assert.match(docs, /ECS Fargate/);
 assert.match(docs, /Amazon RDS PostgreSQL/);
 assert.match(docs, /Secrets Manager/);
+assert.match(docs, /ACM certificate/);
+assert.match(docs, /AcmCertificateArn/);
 assert.match(docs, /1 vCPU \/ 2 GB/);
 assert.match(docs, /Rolling update/);
 assert.match(docs, /\/api\/healthz/);

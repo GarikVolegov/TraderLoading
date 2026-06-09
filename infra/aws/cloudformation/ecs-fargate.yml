@@ -17,6 +17,10 @@ Parameters:
   AlbIngressCidr:
     Type: String
     Default: 0.0.0.0/0
+  AcmCertificateArn:
+    Type: String
+    Default: ""
+    Description: Optional ACM certificate ARN. When set, the ALB serves HTTPS on 443 and redirects HTTP to HTTPS.
   DesiredCount:
     Type: Number
     Default: 2
@@ -54,6 +58,9 @@ Parameters:
     Type: String
     NoEcho: true
     Description: JSON with DATABASE_URL, CLERK_SECRET_KEY, BROKER_VAULT_KEY, VAPID keys, and provider API keys.
+
+Conditions:
+  HasAcmCertificate: !Not [!Equals [!Ref AcmCertificateArn, ""]]
 
 Resources:
   AppSecret:
@@ -119,6 +126,13 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: !Ref AlbIngressCidr
+        - !If
+          - HasAcmCertificate
+          - IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: !Ref AlbIngressCidr
+          - !Ref AWS::NoValue
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
@@ -168,6 +182,26 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Protocol: HTTP
       Port: 80
+      DefaultActions: !If
+        - HasAcmCertificate
+        - - Type: redirect
+            RedirectConfig:
+              Protocol: HTTPS
+              Port: "443"
+              StatusCode: HTTP_301
+        - - Type: forward
+            TargetGroupArn: !Ref TargetGroup
+
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasAcmCertificate
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Protocol: HTTPS
+      Port: 443
+      SecurityPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates:
+        - CertificateArn: !Ref AcmCertificateArn
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup

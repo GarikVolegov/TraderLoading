@@ -53,6 +53,8 @@ for (const token of [
   "newsProviderSockets?.close()",
   "sessionScheduler.close()",
   "brainScanner.close()",
+  "brokerHubRuntime.close()",
+  "cotScheduler.close()",
   "newsHubRuntime.stop()",
   "const stopResults = await Promise.allSettled",
   "await closeDbPool()",
@@ -87,6 +89,30 @@ assert.match(brainScannerSource, /let activeRun: Promise<void> \| null = null/);
 assert.match(brainScannerSource, /await activeRun/);
 assert.match(brainScannerSource, /task\.stop\(\)/);
 assert.match(brainScannerSource, /task\.destroy\(\)/);
+
+const brokerRuntimeSource = readText("artifacts/api-server/src/services/brokerHub/runtime.ts");
+assert.match(brokerRuntimeSource, /close\(\): Promise<void>/);
+assert.match(brokerRuntimeSource, /const activeSyncs = new Map<string, Promise<void>>\(\)/);
+assert.match(brokerRuntimeSource, /for \(const timer of syncTimers\.values\(\)\)/);
+assert.match(brokerRuntimeSource, /clearInterval\(timer\)/);
+assert.match(brokerRuntimeSource, /await Promise\.allSettled\(activeSyncs\.values\(\)\)/);
+assert.ok(
+  brokerRuntimeSource.indexOf("await Promise.allSettled(activeSyncs.values())") >
+    brokerRuntimeSource.indexOf("syncTimers.clear()"),
+  "broker auto sync promises should drain after timers are stopped",
+);
+assert.ok(
+  brokerRuntimeSource.lastIndexOf("await current.connector.disconnect()") >
+    brokerRuntimeSource.indexOf("await Promise.allSettled(activeSyncs.values())"),
+  "broker connectors should disconnect after in-flight auto sync work drains",
+);
+assert.match(brokerRuntimeSource, /await current\.connector\.disconnect\(\)/);
+
+const toolsSource = readText("artifacts/api-server/src/routes/tools.ts");
+assert.match(toolsSource, /const cotTask = cron\.schedule/);
+assert.match(toolsSource, /export const cotScheduler/);
+assert.match(toolsSource, /cotTask\.stop\(\)/);
+assert.match(toolsSource, /cotTask\.destroy\(\)/);
 
 const wsShutdownSource = readText("artifacts/api-server/src/services/webSocketShutdown.ts");
 assert.match(wsShutdownSource, /export async function closeWebSocketServer/);

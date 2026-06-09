@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { importBrokerAccountData } from "./accountDataSync.js";
+import { importBrokerAccountData, resultFromTradeNet } from "./accountDataSync.js";
 import type { BrokerAccountProfile, BrokerDeal, BrokerSnapshot } from "./types.js";
 
 const previousDatabaseUrl = process.env.DATABASE_URL;
@@ -59,6 +59,10 @@ try {
     closedAt: "2026-06-09T09:30:00.000Z",
     source: "fxblue-account-sync",
   }];
+
+  assert.equal(resultFromTradeNet({ profit: 10, commission: -2, swap: -1 }), "win");
+  assert.equal(resultFromTradeNet({ profit: 5, commission: -8, swap: 0 }), "loss");
+  assert.equal(resultFromTradeNet({ profit: 5, commission: -3, swap: -2 }), "breakeven");
 
   const result = await importBrokerAccountData({ profile, snapshot, deals });
 

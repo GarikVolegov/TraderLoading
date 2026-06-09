@@ -20,12 +20,15 @@ function formatTimestamp(value: string | undefined): string {
 
 export function getTradeResult(trade: AccountTrade): JournalTradeResult {
   const profit = typeof trade.profit === "number" && Number.isFinite(trade.profit) ? trade.profit : 0;
+  const commission = typeof trade.commission === "number" && Number.isFinite(trade.commission) ? trade.commission : 0;
+  const swap = typeof trade.swap === "number" && Number.isFinite(trade.swap) ? trade.swap : 0;
+  const netProfit = profit + commission + swap;
 
-  if (profit > 0) {
+  if (netProfit > 0) {
     return "win";
   }
 
-  if (profit < 0) {
+  if (netProfit < 0) {
     return "loss";
   }
 

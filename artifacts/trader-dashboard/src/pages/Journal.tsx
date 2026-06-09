@@ -132,6 +132,16 @@ function TradesTab() {
   });
   const deleteMutation = useDeleteJournalEntry();
 
+  // Deep-link dalla command palette: /journal?new=1 apre subito il form nuovo trade.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      setEditingEntry(null);
+      setIsModalOpen(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   const getResultConfig = (result: string) => {
     switch (result) {
       case "win": return { label: "Win", class: "bg-success/10 text-success border-success/30" };

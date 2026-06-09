@@ -24,6 +24,7 @@ export interface FxBlueSetupIntentDraft {
   accountNumber: unknown;
   environment?: unknown;
   investorPassword?: unknown;
+  fxBlueProfileRef?: unknown;
 }
 
 export interface FxBlueSetupIntentStore {
@@ -49,18 +50,34 @@ function sanitizeEnvironment(value: unknown): "demo" | "live" {
   return value === "demo" ? "demo" : "live";
 }
 
+function sanitizeFxBlueProfileRef(value: unknown): string {
+  const raw = readString(value);
+  if (!raw) return "";
+  if (!/^https?:\/\//i.test(raw)) return raw;
+  try {
+    const url = new URL(raw);
+    const parts = url.pathname.split("/").filter(Boolean);
+    const usersIndex = parts.findIndex((part) => part.toLowerCase() === "users");
+    return parts[usersIndex + 1]?.split(",")[0]?.trim() ?? raw;
+  } catch {
+    return raw;
+  }
+}
+
 function requireSetupInput(input: FxBlueSetupIntentDraft): Omit<FxBlueSetupIntent, "id" | "status" | "displayStatus" | "createdAt" | "updatedAt"> {
   const brokerName = readString(input.brokerName) || "FX Blue";
   const server = readString(input.server);
   const accountNumber = readString(input.accountNumber);
-  if (!accountNumber) throw new Error("Numero conto richiesto.");
-  if (!server) throw new Error("Server broker richiesto.");
+  const fxBlueProfileRef = sanitizeFxBlueProfileRef(input.fxBlueProfileRef);
+  if (!accountNumber && !fxBlueProfileRef) throw new Error("Numero conto richiesto.");
+  if (!server && !fxBlueProfileRef) throw new Error("Server broker richiesto.");
   return {
     platform: sanitizePlatform(input.platform),
     brokerName,
-    server,
-    accountNumber,
+    server: server || "FX Blue Account Sync",
+    accountNumber: accountNumber || fxBlueProfileRef,
     environment: sanitizeEnvironment(input.environment),
+    ...(fxBlueProfileRef ? { fxBlueProfileRef } : {}),
   };
 }
 

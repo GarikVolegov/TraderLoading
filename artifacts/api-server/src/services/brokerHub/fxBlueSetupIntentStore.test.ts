@@ -51,6 +51,19 @@ assert.equal(existingSyncIntent.accountNumber, "82364482");
 assert.equal(existingSyncIntent.server, "FPTradingLLC-Live");
 assert.equal("investorPassword" in (existingSyncIntent as object), false);
 
+const publicProfileOnlyIntent = await existingSyncStore.createIntent({
+  platform: "MT5",
+  brokerName: "FX Blue",
+  server: "",
+  accountNumber: "",
+  environment: "live",
+  fxBlueProfileRef: "https://www.fxblue.com/users/volegovgarik",
+});
+
+assert.equal(publicProfileOnlyIntent.accountNumber, "volegovgarik");
+assert.equal(publicProfileOnlyIntent.server, "FX Blue Account Sync");
+assert.equal(publicProfileOnlyIntent.fxBlueProfileRef, "volegovgarik");
+
 await assert.rejects(
   store.createIntent({
     platform: "MT5",

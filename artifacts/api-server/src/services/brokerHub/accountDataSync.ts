@@ -32,9 +32,14 @@ function volume(value: number | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : "-";
 }
 
-function resultFromProfit(profit: number | undefined): JournalTradeResult {
-  if ((profit ?? 0) > 0) return "win";
-  if ((profit ?? 0) < 0) return "loss";
+export function resultFromTradeNet(deal: Pick<BrokerDeal, "profit" | "commission" | "swap">): JournalTradeResult {
+  const profit = typeof deal.profit === "number" && Number.isFinite(deal.profit) ? deal.profit : 0;
+  const commission = typeof deal.commission === "number" && Number.isFinite(deal.commission) ? deal.commission : 0;
+  const swap = typeof deal.swap === "number" && Number.isFinite(deal.swap) ? deal.swap : 0;
+  const netProfit = profit + commission + swap;
+
+  if (netProfit > 0) return "win";
+  if (netProfit < 0) return "loss";
   return "breakeven";
 }
 
@@ -190,7 +195,7 @@ export async function importBrokerAccountData(input: BrokerAccountDataSyncInput)
         title: journalTitle(deal),
         content: journalContent(input.profile, input.snapshot, deal),
         tradeDate: tradeDateFor(deal),
-        result: resultFromProfit(deal.profit),
+        result: resultFromTradeNet(deal),
         tags: journalTags(input.profile, deal),
         userId: journalUserId,
       })

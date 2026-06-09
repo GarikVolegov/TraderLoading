@@ -164,19 +164,51 @@ const MECHANISMS: Record<Lang, Record<Driver, string[]>> = {
 };
 
 // Two-sided scenario framing for data-release drivers (the non-trivial part a
-// trader actually wants: what happens above vs below expectations).
-const SCENARIO_HINTS: Record<Lang, Partial<Record<Driver, string>>> = {
+// trader actually wants: what happens above vs below expectations). Split into
+// sides so the clause that agrees with the article's direction can lead.
+const SCENARIO_SIDES: Record<Lang, Partial<Record<Driver, { up: string; down: string }>>> = {
   it: {
-    inflation: "Sopra le attese favorisce dollaro e rendimenti (pressione sull'oro e sugli asset sensibili ai tassi); sotto le attese li indebolisce.",
-    jobs: "Un dato sopra le attese rafforza dollaro e rendimenti; sotto le attese aumenta le probabilità di una Fed più accomodante.",
-    rates: "Toni hawkish sostengono la valuta di riferimento; toni dovish la indeboliscono e sostengono gli asset rifugio.",
+    inflation: {
+      up: "sopra le attese favorisce dollaro e rendimenti (pressione sull'oro e sugli asset sensibili ai tassi)",
+      down: "sotto le attese indebolisce dollaro e rendimenti e sostiene i beni rifugio",
+    },
+    jobs: {
+      up: "un dato sopra le attese rafforza dollaro e rendimenti",
+      down: "sotto le attese aumenta le probabilità di una Fed più accomodante",
+    },
+    rates: {
+      up: "toni hawkish sostengono la valuta di riferimento",
+      down: "toni dovish la indeboliscono e sostengono gli asset rifugio",
+    },
   },
   en: {
-    inflation: "Above expectations favors the dollar and yields (pressure on gold and rate-sensitive assets); below expectations softens them.",
-    jobs: "A beat strengthens the dollar and yields; a miss raises the odds of a more dovish Fed.",
-    rates: "Hawkish tones support the reference currency; dovish tones weaken it and support safe havens.",
+    inflation: {
+      up: "above expectations favors the dollar and yields (pressure on gold and rate-sensitive assets)",
+      down: "below expectations softens them and supports safe havens",
+    },
+    jobs: {
+      up: "a beat strengthens the dollar and yields",
+      down: "a miss raises the odds of a more dovish Fed",
+    },
+    rates: {
+      up: "hawkish tones support the reference currency",
+      down: "dovish tones weaken it and support safe havens",
+    },
   },
 };
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function scenarioHint(lang: Lang, driver: Driver, direction: Direction): string | undefined {
+  const sides = SCENARIO_SIDES[lang][driver];
+  if (!sides) return undefined;
+  // Lead with the side consistent with the article's call so the hint reads as
+  // an extension of the scenario, not a contradiction.
+  const ordered = direction === "bullish" ? [sides.down, sides.up] : [sides.up, sides.down];
+  return `${capitalize(ordered[0])}; ${ordered[1]}.`;
+}
 
 // ─── possibleImpact variants ──────────────────────────────────────────────────
 
@@ -245,7 +277,7 @@ function possibleImpact(article: NewsArticle, lang: Lang, driver: Driver, seed: 
 
   // Add the two-sided scenario only when the article is impactful enough that
   // the above/below-expectations framing is actionable.
-  const hint = score >= 5 ? SCENARIO_HINTS[lang][driver] : undefined;
+  const hint = score >= 5 ? scenarioHint(lang, driver, direction) : undefined;
   if (hint) text = `${text} ${hint}`;
   return text;
 }
@@ -277,7 +309,9 @@ function whatHappened(article: NewsArticle, lang: Lang): string {
       : "The article reports a market update worth monitoring.";
   }
 
-  const figures = extractNewsFigures(articleText(article));
+  // Surface only figures that the visible text does not already contain
+  // (typically numbers living in the original/untranslated headline).
+  const figures = extractNewsFigures(articleText(article)).filter((figure) => !base.includes(figure));
   if (figures.length > 0) {
     base += lang === "it" ? ` Dati chiave: ${figures.join(", ")}.` : ` Key figures: ${figures.join(", ")}.`;
   }

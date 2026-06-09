@@ -806,21 +806,38 @@ async function fetchCotData(): Promise<void> {
   }
 }
 
+let activeCotFetch: Promise<void> | null = null;
+
+function runCotFetch(): Promise<void> {
+  activeCotFetch = fetchCotData().finally(() => {
+    activeCotFetch = null;
+  });
+  return activeCotFetch;
+}
+
 // Cron: ogni venerdì alle 21:00 UTC (30 min dopo pubblicazione CFTC)
-cron.schedule("0 21 * * 5", () => {
+const cotTask = cron.schedule("0 21 * * 5", () => {
   console.info("[tools/cot] Cron triggered — fetching new COT data");
-  fetchCotData().catch(console.error);
+  runCotFetch().catch(console.error);
 }, { timezone: "UTC" });
 
+export const cotScheduler = {
+  async close(): Promise<void> {
+    cotTask.stop();
+    cotTask.destroy();
+    await activeCotFetch;
+  },
+};
+
 // Fetch iniziale al boot del server
-fetchCotData().catch(console.error);
+runCotFetch().catch(console.error);
 
 router.get("/tools/cot", async (req, res) => {
   const now = Date.now();
   const isStale = cotCache ? now >= cotCache.expiresAt : true;
 
   if (!cotCache || isStale) {
-    await fetchCotData();
+    await runCotFetch();
   }
 
   const cache = cotCache!;

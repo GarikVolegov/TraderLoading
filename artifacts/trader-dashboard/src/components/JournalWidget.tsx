@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { parseTradeContent } from "@/lib/parseTradeContent";
 import { getGetJournalEntriesQueryKey, useGetJournalEntries } from "@workspace/api-client-react";
 import {
+  getJournalEntryEffectiveResult,
+  getJournalEntryNetPnl,
   getJournalResultMeta,
   getJournalWidgetSummary,
   safeParseJournalDate,
@@ -76,7 +78,7 @@ export function JournalWidget() {
 
   const latest = summary.latestEntry;
   const latestDate = safeParseJournalDate(latest?.tradeDate) ?? safeParseJournalDate(latest?.createdAt);
-  const latestMeta = getJournalResultMeta(latest?.result ?? "none");
+  const latestMeta = getJournalResultMeta(getJournalEntryEffectiveResult(latest));
 
   const openNewTrade = (event: SyntheticEvent) => {
     event.stopPropagation();
@@ -176,7 +178,7 @@ export function JournalWidget() {
                 {(() => {
                   const parsed = parseTradeContent(latest.content);
                   if (parsed) {
-                    const profit = parsed.profit ?? 0;
+                    const profit = getJournalEntryNetPnl(latest) ?? 0;
                     const profitTone = profit > 0 ? "text-emerald-300" : profit < 0 ? "text-red-300" : "text-muted-foreground";
                     return (
                       <div className="mt-2 flex items-center gap-3 text-xs">

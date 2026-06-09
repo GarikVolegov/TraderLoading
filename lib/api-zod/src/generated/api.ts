@@ -297,6 +297,19 @@ export const GetTodayCheckinResponse = zod
   .nullable();
 
 /**
+ * @summary List session check-ins (most recent first)
+ */
+export const GetCheckinsResponseItem = zod.object({
+  id: zod.number(),
+  mood: zod.string(),
+  sessionName: zod.string(),
+  note: zod.string().nullish(),
+  date: zod.string(),
+  createdAt: zod.string(),
+});
+export const GetCheckinsResponse = zod.array(GetCheckinsResponseItem);
+
+/**
  * @summary Create a session check-in
  */
 export const CreateCheckinBody = zod.object({

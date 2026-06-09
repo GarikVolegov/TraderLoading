@@ -17,7 +17,7 @@ import {
 } from "../services/newsHub/ranking.js";
 import { cleanNewsText, createTranslationMemo } from "../services/newsHub/contentQuality.js";
 import { buildNewsDeepDive } from "../services/newsHub/deepDive.js";
-import { personalizeArticles, type NewsFeedbackEntry, type NewsPreferences } from "../services/newsHub/personalization.js";
+import { articleKey as personalizationArticleKey, type NewsFeedbackEntry, type NewsPreferences } from "../services/newsHub/personalization.js";
 import { selectCuratedNews } from "../services/newsHub/curation.js";
 import { filterTradingDecisionRelevantNews } from "../services/newsHub/tradingRelevance.js";
 
@@ -475,6 +475,12 @@ function computeImpact(text: string): { score: number; key: string } {
 }
 
 function detectSentiment(text: string): "bullish" | "bearish" | "neutral" {
+  // A headline leading with an explicit call wins over bag-of-words counting
+  // ("Bullish for gold: inflation could send real yields lower" counts one
+  // bullish and one bearish word but is unambiguous).
+  const lead = text.slice(0, 40);
+  if (/\b(bullish|rialzista)\b/i.test(lead)) return "bullish";
+  if (/\b(bearish|ribassista)\b/i.test(lead)) return "bearish";
   const b = (text.match(/surges?|rally|rallies|gains?|rises?|risen|higher|strong|beats?|above.forecast|hawkish|boost/ig) ?? []).length;
   const e = (text.match(/falls?|dropped?|drops?|declines?|lower|weak|misses?|below.forecast|dovish|recession|crisis|concern/ig) ?? []).length;
   return b > e ? "bullish" : e > b ? "bearish" : "neutral";
@@ -505,7 +511,10 @@ function enrichHeuristically(
 ): NewsArticle[] {
   const reasons = IMPACT_REASONS[lang] ?? IMPACT_REASONS.en;
   return articles.map((a) => {
-    const text = `${a.title} ${a.summary}`;
+    // The impact/sentiment/pair regexes are English: analyze the original
+    // (untranslated) text, falling back to the translated one. Running them on
+    // the Italian translation made most patterns miss ("gold" → "oro").
+    const text = `${a.originalTitle ?? a.title} ${a.originalSummary ?? a.summary}`;
     const { score, key } = computeImpact(text);
     const affectedPairs = detectAffectedPairs(text, pairCurrencies, pairsStr);
     const sentiment = a.sentiment ?? detectSentiment(text);
@@ -695,8 +704,9 @@ const NEWS_LLM_BUDGET_MS = (() => {
 // NEWS_FEED_CORPUS_LIMIT anyway, so processing the whole RSS haul is wasted time.
 const NEWS_BUILD_CANDIDATE_LIMIT = 90;
 // Bump when the snapshot payload shape/ordering changes so stored snapshots
-// from older builds are not served (v3: curated chronological feed).
-const NEWS_ASSET_CACHE_VERSION = "asset-impact-v3";
+// from older builds are not served (v6: original-text enrichment, hard-noise +
+// clickbait exclusions, per-language near-duplicate dedupe).
+const NEWS_ASSET_CACHE_VERSION = "asset-impact-v6";
 
 function newsCacheKey(input: { pairs?: string; lang?: string }): { cacheKey: string; pairsStr: string; lang: string } {
   const pairsStr = input.pairs || "";
@@ -768,7 +778,10 @@ async function buildNewsData(input: { pairs?: string; lang?: string } = {}): Pro
   let agentSummary: string | undefined;
   let nextRefreshAt: string | undefined;
   const formattedPairs = formatPairsForPrompt(pairsStr);
-  const cacheTtl = newsCacheTtlMs();
+  // The real refresh cadence is the snapshot freshness window, not the small
+  // in-process cache TTL: the UI countdown must reflect when a rebuild can
+  // actually produce new content.
+  const refreshIntervalMs = NEWS_SNAPSHOT_FRESH_MS;
   const freshnessWindowHours = newsFreshnessWindowHours();
 
   // 1. Fetch RSS (sempre attivo, gratuito)
@@ -839,10 +852,10 @@ async function buildNewsData(input: { pairs?: string; lang?: string } = {}): Pro
       sort: "chronological",
     });
     source = "ai";  // enrichment (euristico o Groq) conta come AI
-    nextRefreshAt = new Date(Date.now() + cacheTtl).toISOString();
+    nextRefreshAt = new Date(Date.now() + refreshIntervalMs).toISOString();
   } catch {
     articles = [];
-    nextRefreshAt = new Date(Date.now() + cacheTtl).toISOString();
+    nextRefreshAt = new Date(Date.now() + refreshIntervalMs).toISOString();
   }
 
   const watchedPairs = pairsStr
@@ -906,6 +919,13 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
   // Stale, missing, or forced: rebuild (internally time-bounded) and persist.
   try {
     const fresh = await buildNewsData({ pairs: pairsStr, lang });
+    // A transient provider outage yields an empty build: better the previous
+    // snapshot than blanking the feed (and persisting the blank) for the whole
+    // freshness window.
+    if (fresh.articles.length === 0 && snapshot && snapshot.payload.articles.length > 0) {
+      NEWS_CACHE.set(cacheKey, snapshot.payload);
+      return snapshot.payload;
+    }
     NEWS_CACHE.set(cacheKey, fresh);
     void writeNewsSnapshot(cacheKey, fresh);
     return fresh;
@@ -1014,19 +1034,31 @@ router.post("/news/feedback", async (req, res) => {
 });
 
 router.get("/news", async (req, res) => {
-  const result = await getNewsData({
-    noCache: req.query.nocache === "1",
-    pairs: (req.query.pairs as string) || "",
-    lang: req.query.lang as string | undefined,
-  });
+  let result: NewsResponse;
+  try {
+    result = await getNewsData({
+      noCache: req.query.nocache === "1",
+      pairs: (req.query.pairs as string) || "",
+      lang: req.query.lang as string | undefined,
+    });
+  } catch (err) {
+    console.error("[news] feed unavailable:", err instanceof Error ? err.message : err);
+    res.status(503).json({ error: "Feed notizie temporaneamente non disponibile" });
+    return;
+  }
 
-  // Re-rank the shared corpus with the user's keywords / profile / feedback.
+  // Personalization in a chronological feed: direct 👎 votes hide the article,
+  // everything else keeps its time position (re-ranking by keyword boost would
+  // break the newest-first ordering the feed guarantees).
   let articles = result.articles;
   const userId = newsUserId(req);
   if (userId) {
     try {
-      const [prefs, feedback] = await Promise.all([readNewsPreferences(userId), readNewsFeedback(userId)]);
-      articles = personalizeArticles(result.articles, prefs, feedback);
+      const feedback = await readNewsFeedback(userId);
+      const downvoted = new Set(feedback.filter((entry) => entry.vote === -1).map((entry) => entry.articleKey));
+      if (downvoted.size > 0) {
+        articles = articles.filter((article) => !downvoted.has(personalizationArticleKey(article)));
+      }
     } catch (err) {
       console.warn("[news] personalization skipped:", err instanceof Error ? err.message : err);
     }

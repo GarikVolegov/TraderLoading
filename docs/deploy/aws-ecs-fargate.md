@@ -9,6 +9,7 @@ Secrets Manager for application secrets.
 - ECS service: 2 tasks for rolling update availability.
 - Task size: 1 vCPU / 2 GB memory per task for the first production pilot.
 - Autoscaling: 2-6 tasks by CPU target tracking.
+- TLS: public production traffic should terminate on the ALB with an ACM certificate.
 - Database: Amazon RDS PostgreSQL or Aurora PostgreSQL, sized separately from
   the app tasks.
 - Uploads: move runtime uploads to shared storage before running more than one
@@ -63,6 +64,7 @@ aws cloudformation deploy \
     VpcId=<vpc-id> \
     PublicSubnetIds=<public-subnet-1>,<public-subnet-2> \
     PrivateSubnetIds=<private-subnet-1>,<private-subnet-2> \
+    AcmCertificateArn=arn:aws:acm:<region>:<account>:certificate/<certificate-id> \
     ApiCorsOrigins=https://app.example.com \
     ViteApiBase=https://app.example.com \
     ViteClerkPublishableKey="$VITE_CLERK_PUBLISHABLE_KEY" \
@@ -71,6 +73,10 @@ aws cloudformation deploy \
 ```
 
 ### Health And Rolling Update
+
+When `AcmCertificateArn` is set, the ALB listens on HTTPS/443 with the ACM
+certificate and redirects HTTP/80 to HTTPS. Leave it empty only for private
+smoke tests before attaching a production domain.
 
 The ALB target group uses `/api/healthz` as a lightweight liveness probe. The
 container health check uses `/api/readyz`, which verifies the API process and
@@ -111,11 +117,17 @@ For additive changes, prefer expand/contract migrations: add compatible columns
 or indexes first, deploy app code second, and remove old schema only after the
 new version is stable.
 
+The checked-in Drizzle baseline migration is intended for a fresh production
+database. If an existing environment was previously created with `db:push`,
+manual SQL, or an older unversioned schema, do not run the baseline blindly on
+that database. First compare the live schema with the Drizzle snapshot; then
+either migrate into a fresh database/restore, or mark the verified baseline as
+applied in the migration journal before running later migrations.
+
 ## Notes
 
 - Set `PGPOOL_MAX` so total task connections stay below the RDS connection
   limit.
 - Use `PGSSLMODE=require` for RDS TLS.
-- Add HTTPS on the ALB with ACM before public production launch.
 - For multi-task realtime workloads, move scheduler leadership, transient
   signaling, and uploads to shared services such as ElastiCache/Redis and S3.
