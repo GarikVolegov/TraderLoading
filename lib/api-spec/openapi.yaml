@@ -2187,6 +2187,9 @@ components:
       properties:
         position:
           type: integer
+        userId:
+          type: string
+          nullable: true
         name:
           type: string
         avatarUrl:
@@ -2198,6 +2201,7 @@ components:
           type: integer
       required:
         - position
+        - userId
         - name
         - level
         - xp

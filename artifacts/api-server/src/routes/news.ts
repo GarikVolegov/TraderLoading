@@ -18,6 +18,7 @@ import {
 import { cleanNewsText, createTranslationMemo } from "../services/newsHub/contentQuality.js";
 import { buildNewsDeepDive } from "../services/newsHub/deepDive.js";
 import { personalizeArticles, type NewsFeedbackEntry, type NewsPreferences } from "../services/newsHub/personalization.js";
+import { filterTradingDecisionRelevantNews } from "../services/newsHub/tradingRelevance.js";
 
 const router: IRouter = Router();
 
@@ -819,6 +820,7 @@ async function buildNewsData(input: { pairs?: string; lang?: string } = {}): Pro
     const nowMs = Date.now();
     const recent = sorted.filter((a) => a.publishedAt && nowMs - new Date(a.publishedAt).getTime() <= maxAgeMs);
     articles = recent.length > 0 ? recent : sorted.slice(0, 12);
+    articles = filterTradingDecisionRelevantNews(articles);
     source = "ai";  // enrichment (euristico o Groq) conta come AI
     nextRefreshAt = new Date(Date.now() + cacheTtl).toISOString();
   } catch {

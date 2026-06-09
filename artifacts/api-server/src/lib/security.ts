@@ -1,4 +1,11 @@
 type SecurityEnv = Partial<Record<string, string>>;
+type HelmetOptions = {
+  contentSecurityPolicy?: {
+    directives?: {
+      imgSrc?: string[];
+    };
+  };
+};
 type UploadGuardRequest = { method?: string; path: string };
 type UploadGuardResponse = {
   setHeader(name: string, value: string): void;
@@ -65,6 +72,16 @@ export function createCorsOptions(env: SecurityEnv = process.env) {
       const allowed = isAllowedOrigin(origin);
       if (callback) callback(null, allowed);
       return allowed;
+    },
+  };
+}
+
+export function createHelmetOptions(): HelmetOptions {
+  return {
+    contentSecurityPolicy: {
+      directives: {
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+      },
     },
   };
 }

@@ -50,6 +50,10 @@ const RISK_OFF_THEME =
 // Unambiguous risk-ON sentiment (risk-positive regardless of asset).
 const RISK_ON_THEME =
   /\b(risk.?on|risk\s+appetite|soft\s+landing|goldilocks|rate\s+cut|stimulus|dovish|easing|relief)\b/i;
+const HOT_INFLATION_THEME =
+  /\b(cpi|inflation|inflazione|consumer\s+price\s+index)\b.{0,90}\b(hot|hotter|sticky|above|beat|beats|higher|rises?|jumps?|accelerat|surprise|sopra|oltre|alta|aument|rialz|accelera|pressione)\b|\b(hot|hotter|sticky|above|beat|beats|higher|sopra|alta|aument|rialz)\b.{0,90}\b(cpi|inflation|inflazione|consumer\s+price\s+index)\b/i;
+const COOLING_INFLATION_THEME =
+  /\b(cpi|inflation|inflazione|consumer\s+price\s+index)\b.{0,90}\b(cools?|cooler|below|miss|misses|lower|falls?|drops?|disinflation|sotto|raffredda|calo|scende|in\s+discesa)\b|\b(cools?|cooler|below|miss|misses|lower|falls?|drops?|sotto|raffredda|calo|scende)\b.{0,90}\b(cpi|inflation|inflazione|consumer\s+price\s+index)\b/i;
 const YIELDS_UP = /\byields?\s+(rise|rises|jump|jumps|surge|surges|climb|climbs|higher|spike)\b|rising\s+yields?/i;
 const YIELDS_DOWN = /\byields?\s+(fall|falls|drop|drops|slide|slides|lower|tumble|tumbles)\b|falling\s+yields?/i;
 
@@ -75,8 +79,10 @@ function articleSignal(input: RiskRegimeInput): number {
   let signal = 0;
   if (RISK_OFF_THEME.test(text)) signal -= 1;
   if (RISK_ON_THEME.test(text)) signal += 1;
-  if (YIELDS_UP.test(text)) signal += 0.4;
-  if (YIELDS_DOWN.test(text)) signal -= 0.4;
+  if (HOT_INFLATION_THEME.test(text)) signal -= 1.2;
+  if (COOLING_INFLATION_THEME.test(text)) signal += 0.8;
+  if (YIELDS_UP.test(text)) signal -= 0.4;
+  if (YIELDS_DOWN.test(text)) signal += 0.4;
 
   const dir = (input.impactDirection ?? input.sentiment ?? "").toString().toLowerCase();
   const up = dir === "bullish";

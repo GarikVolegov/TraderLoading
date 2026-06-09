@@ -6,6 +6,7 @@ const router: IRouter = Router();
 router.get("/backtest/candles", async (req, res) => {
   const symbol = (req.query.symbol as string || "EURUSD").toUpperCase().replace("/", "");
   const interval = (req.query.interval as string) || "H1";
+  const startDate = typeof req.query.startDate === "string" ? req.query.startDate : undefined;
 
   if (!isSupportedSymbol(symbol)) {
     res.status(400).json({
@@ -15,7 +16,7 @@ router.get("/backtest/candles", async (req, res) => {
   }
 
   try {
-    const data = await getCandles(symbol, interval);
+    const data = await getCandles(symbol, interval, { startDate });
     res.json(data);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

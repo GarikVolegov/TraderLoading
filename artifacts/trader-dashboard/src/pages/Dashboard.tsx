@@ -38,6 +38,7 @@ import { VolatilityWidget } from "@/components/VolatilityWidget";
 import { CotWidget } from "@/components/CotWidget";
 import { RoutineWidget } from "@/components/RoutineWidget";
 import { JournalWidget } from "@/components/JournalWidget";
+import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -60,11 +61,12 @@ const WIDGET_DEFS: WidgetDef[] = [
   { id: "routine",    label: "Routine Giornaliera",  icon: Sunrise,        route: "/routine",                component: RoutineWidget },
   { id: "missions",   label: "Missioni Giornaliere", icon: Target,         route: "/missions",               component: MissionsWidget },
   { id: "checklist",  label: "Checklist Pre-Trade",  icon: ClipboardCheck, route: "/checklist",              component: ChecklistDashboardWidget },
+  { id: "lot",        label: "Dimensionamento",      icon: BarChart2,                                      component: LotCalculatorWidget },
   { id: "journal",    label: "Diario Trading",       icon: BookOpen,       route: "/journal",                component: JournalWidget },
   { id: "calendar",   label: "Calendario Avanzato",  icon: CalendarDays,   route: "/calendar",               component: CalendarWidget, bodyHandlesOwnClicks: true },
-  { id: "sentiment",  label: "Sentiment di Mercato", icon: BarChart2,      route: "/tools?tab=sentiment",    component: SentimentWidget },
-  { id: "volatility", label: "Volatilita & ADR",     icon: TrendingUp,     route: "/tools?tab=volatility",   component: VolatilityWidget },
-  { id: "cot",        label: "COT Report",           icon: BookMarked,     route: "/tools?tab=cot",          component: CotWidget },
+  { id: "sentiment",  label: "Sentiment di Mercato", icon: BarChart2,                                      component: SentimentWidget },
+  { id: "volatility", label: "Volatilita & ADR",     icon: TrendingUp,                                     component: VolatilityWidget },
+  { id: "cot",        label: "COT Report",           icon: BookMarked,                                     component: CotWidget },
 ];
 
 const DEFAULT_ORDER = [
@@ -74,6 +76,7 @@ const DEFAULT_ORDER = [
   "missions",
   "routine",
   "checklist",
+  "lot",
   "journal",
   "sentiment",
   "volatility",

@@ -1,4 +1,5 @@
 import { createBrokerAuditLog, type BrokerAuditLog } from "./auditLog.js";
+import { importBrokerAccountData, type BrokerAccountDataSyncResult } from "./accountDataSync.js";
 import { createBrokerVault, type BrokerVault } from "./brokerVault.js";
 import { createCTraderBrokerConnector } from "./cTraderConnector.js";
 import { createDemoBrokerConnector } from "./demoConnector.js";
@@ -44,6 +45,8 @@ interface BrokerHubRuntimeOptions {
   auditLog?: BrokerAuditLog;
   companionStore?: CompanionStore;
   connectorFactory?: (profile: BrokerAccountProfile, vault: BrokerVault) => BrokerConnector;
+  accountDataImporter?: (input: { profile: BrokerAccountProfile; snapshot: BrokerSnapshot; deals: BrokerDeal[] }) => Promise<BrokerAccountDataSyncResult>;
+  autoSyncIntervalMs?: number;
 }
 
 function createConnector(profile: BrokerAccountProfile, vault: BrokerVault, localCompanionStore: CompanionStore): BrokerConnector {
@@ -89,8 +92,11 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
   const vault = options.vault ?? createBrokerVault();
   const auditLog = options.auditLog ?? createBrokerAuditLog();
   const localCompanionStore = options.companionStore ?? companionStore;
+  const accountDataImporter = options.accountDataImporter ?? importBrokerAccountData;
+  const autoSyncIntervalMs = options.autoSyncIntervalMs ?? 10_000;
   const listeners = new Set<Listener>();
   const connectors = new Map<string, { connector: BrokerConnector; unsubscribe: () => void }>();
+  const syncTimers = new Map<string, ReturnType<typeof setInterval>>();
 
   function emit(event: BrokerEvent): void {
     for (const listener of Array.from(listeners)) {
@@ -111,6 +117,53 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
     return connector;
   }
 
+  function isFxBlueProfile(profile: BrokerAccountProfile): boolean {
+    return profile.providerKind === "fxblue-account-sync" || profile.kind === "fxblue-account-sync" || profile.route === "fxblue_account_sync";
+  }
+
+  async function importProfileData(profile: BrokerAccountProfile, snapshot: BrokerSnapshot, connector: BrokerConnector): Promise<void> {
+    if (!isFxBlueProfile(profile) || snapshot.status !== "connected") return;
+    try {
+      const deals = await connector.getDealsHistory();
+      await accountDataImporter({ profile, snapshot, deals });
+    } catch (error) {
+      console.error("[brokerHub] failed to import broker account data", error);
+    }
+  }
+
+  function stopAutoSync(id: string): void {
+    const timer = syncTimers.get(id);
+    if (!timer) return;
+    clearInterval(timer);
+    syncTimers.delete(id);
+  }
+
+  function startAutoSync(profile: BrokerAccountProfile): void {
+    if (!isFxBlueProfile(profile) || autoSyncIntervalMs <= 0 || syncTimers.has(profile.id)) return;
+    const timer = setInterval(() => {
+      void (async () => {
+        const currentProfile = await store.getProfile(profile.id);
+        if (!currentProfile) {
+          stopAutoSync(profile.id);
+          return;
+        }
+        const connector = connectorFor(currentProfile);
+        const snapshot = await connector.connect();
+        await store.saveProfile({
+          ...currentProfile,
+          connectionStatus: snapshot.status,
+          health: snapshot.status === "connected" ? "connected" : currentProfile.health,
+          lastSnapshotAt: snapshot.lastUpdated,
+        });
+        await importProfileData(currentProfile, snapshot, connector);
+      })().catch((error) => {
+        console.error("[brokerHub] FX Blue auto sync failed", error);
+      });
+    }, autoSyncIntervalMs);
+    timer.unref?.();
+    syncTimers.set(profile.id, timer);
+  }
+
   return {
     async listProfiles() {
       return store.listProfiles();
@@ -127,6 +180,7 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
         await current.connector.disconnect();
         connectors.delete(id);
       }
+      stopAutoSync(id);
       await vault.deleteProfile(id);
       await store.deleteProfile(id);
     },
@@ -141,8 +195,15 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
       }
       const connector = connectorFor(profile);
       const snapshot = await connector.connect();
-      await store.saveProfile({ ...profile, connectionStatus: snapshot.status });
-      return { profile, snapshot };
+      const updated = await store.saveProfile({
+        ...profile,
+        connectionStatus: snapshot.status,
+        health: snapshot.status === "connected" ? "connected" : profile.health,
+        lastSnapshotAt: snapshot.lastUpdated,
+      });
+      await importProfileData(updated, snapshot, connector);
+      startAutoSync(updated);
+      return { profile: updated, snapshot };
     },
 
     async disconnectProfile(id: string) {
@@ -154,6 +215,7 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
         current.unsubscribe();
         connectors.delete(id);
       }
+      stopAutoSync(id);
       const updated = await store.saveProfile({ ...profile, connectionStatus: "offline" });
       return { profile: updated, snapshot: disconnectedSnapshot(updated) };
     },
@@ -162,22 +224,47 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
       const profile = await store.getProfile(id);
       if (!profile) throw new Error("Broker profile not found");
       const connector = connectorFor(profile);
-      const snapshot = await connector.getSnapshot();
-      await store.saveProfile({ ...profile, connectionStatus: snapshot.status });
-      return { profile, snapshot };
+      const snapshot = isFxBlueProfile(profile) ? await connector.connect() : await connector.getSnapshot();
+      const updated = await store.saveProfile({
+        ...profile,
+        connectionStatus: snapshot.status,
+        health: snapshot.status === "connected" ? "connected" : profile.health,
+        lastSnapshotAt: snapshot.lastUpdated,
+      });
+      await importProfileData(updated, snapshot, connector);
+      startAutoSync(updated);
+      return { profile: updated, snapshot };
     },
 
     async getSnapshot(id: string): Promise<BrokerSnapshot> {
       const profile = await store.getProfile(id);
       if (!profile) throw new Error("Broker profile not found");
       const current = connectors.get(id);
+      if (isFxBlueProfile(profile)) {
+        const connector = connectorFor(profile);
+        const snapshot = await connector.connect();
+        const updated = await store.saveProfile({
+          ...profile,
+          connectionStatus: snapshot.status,
+          health: snapshot.status === "connected" ? "connected" : profile.health,
+          lastSnapshotAt: snapshot.lastUpdated,
+        });
+        await importProfileData(updated, snapshot, connector);
+        startAutoSync(updated);
+        return snapshot;
+      }
       return current ? current.connector.getSnapshot() : disconnectedSnapshot(profile);
     },
 
     async getHistory(id: string): Promise<BrokerDeal[]> {
       const profile = await store.getProfile(id);
       if (!profile) throw new Error("Broker profile not found");
-      return connectorFor(profile).getDealsHistory();
+      const connector = connectorFor(profile);
+      const snapshot = isFxBlueProfile(profile) ? await connector.connect() : await connector.getSnapshot();
+      const history = await connector.getDealsHistory();
+      await importProfileData(profile, snapshot, connector);
+      startAutoSync(profile);
+      return history;
     },
 
     async placeOrder(id: string, raw: unknown): Promise<BrokerOrderResult> {

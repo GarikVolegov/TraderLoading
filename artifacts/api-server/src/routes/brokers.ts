@@ -33,6 +33,23 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : "Broker request failed";
 }
 
+function getUserId(req: Request): string | null {
+  return req.user?.id ?? null;
+}
+
+async function claimBrokerProfileForCurrentUser(
+  runtime: BrokerHubRuntime,
+  req: Request,
+  profileId: string,
+): Promise<void> {
+  const userId = getUserId(req);
+  if (!userId) return;
+  const profiles = await runtime.listProfiles();
+  const profile = profiles.profiles.find((item) => item.id === profileId);
+  if (!profile || profile.ownerUserId === userId || profile.ownerUserId) return;
+  await runtime.saveProfile({ id: profile.id, ownerUserId: userId });
+}
+
 interface BrokersRouterOptions {
   intentStore?: ConnectionIntentStore;
   providerRegistry?: BrokerProviderRegistry;
@@ -133,7 +150,8 @@ function readOrderType(value: unknown): "market" | "limit" | "stop" {
   return type === "limit" || type === "stop" ? type : "market";
 }
 
-function readBrokerSource(value: unknown): "traderloading-mt5-smartlink" | "metatrader-local-companion" {
+function readBrokerSource(value: unknown): BrokerDeal["source"] {
+  if (value === "fxblue-account-sync") return "fxblue-account-sync";
   return value === "traderloading-mt5-smartlink" ? "traderloading-mt5-smartlink" : "metatrader-local-companion";
 }
 
@@ -191,7 +209,11 @@ function normalizeDeal(value: unknown): BrokerDeal {
     volume: readNumber(data.volume),
     entryPrice: typeof data.entryPrice === "number" ? data.entryPrice : undefined,
     exitPrice: typeof data.exitPrice === "number" ? data.exitPrice : undefined,
+    stopLoss: typeof data.stopLoss === "number" ? data.stopLoss : undefined,
+    takeProfit: typeof data.takeProfit === "number" ? data.takeProfit : undefined,
     profit: typeof data.profit === "number" ? data.profit : undefined,
+    commission: typeof data.commission === "number" ? data.commission : undefined,
+    swap: typeof data.swap === "number" ? data.swap : undefined,
     openedAt: readString(data.openedAt) || undefined,
     closedAt: readString(data.closedAt) || undefined,
     source: readBrokerSource(data.source),
@@ -275,6 +297,7 @@ export function createBrokersRouter(
         brokerName: intent.brokerName,
         kind: "fxblue-account-sync",
         providerKind: "fxblue-account-sync",
+        ownerUserId: getUserId(req),
         providerUserId: fxBlueProfileRef,
         providerAccountId: fxBlueProfileRef,
         accountId: intent.accountNumber,
@@ -330,6 +353,7 @@ export function createBrokersRouter(
       });
       const profile = await runtime.saveProfile({
         ...connected.profile,
+        ownerUserId: connected.profile.ownerUserId ?? getUserId(req),
         tradingEnabled: false,
         capabilities: {
           ...connected.profile.capabilities,
@@ -1190,6 +1214,7 @@ export function createBrokersRouter(
 
   router.post("/brokers/profiles/:id/connect", async (req, res) => {
     try {
+      await claimBrokerProfileForCurrentUser(runtime, req, req.params.id);
       res.json(await runtime.connectProfile(req.params.id));
     } catch (error) {
       res.status(404).json({ error: message(error) });
@@ -1206,6 +1231,7 @@ export function createBrokersRouter(
 
   router.post("/brokers/profiles/:id/refresh", async (req, res) => {
     try {
+      await claimBrokerProfileForCurrentUser(runtime, req, req.params.id);
       res.json(await runtime.refreshProfile(req.params.id));
     } catch (error) {
       res.status(404).json({ error: message(error) });
@@ -1230,6 +1256,7 @@ export function createBrokersRouter(
 
   router.get("/brokers/profiles/:id/snapshot", async (req, res) => {
     try {
+      await claimBrokerProfileForCurrentUser(runtime, req, req.params.id);
       res.json(await runtime.getSnapshot(req.params.id));
     } catch (error) {
       res.status(404).json({ error: message(error) });
@@ -1238,6 +1265,7 @@ export function createBrokersRouter(
 
   router.get("/brokers/profiles/:id/history", async (req, res) => {
     try {
+      await claimBrokerProfileForCurrentUser(runtime, req, req.params.id);
       res.json(await runtime.getHistory(req.params.id));
     } catch (error) {
       res.status(404).json({ error: message(error) });

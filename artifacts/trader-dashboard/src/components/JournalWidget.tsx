@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { JournalEntryModal } from "@/components/JournalEntryModal";
 import { useDateLocale } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
-import { useGetJournalEntries } from "@workspace/api-client-react";
+import { getGetJournalEntriesQueryKey, useGetJournalEntries } from "@workspace/api-client-react";
 import {
   getJournalResultMeta,
   getJournalWidgetSummary,
@@ -64,7 +64,9 @@ export function JournalWidget() {
   const [, navigate] = useLocation();
   const dateLocale = useDateLocale();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { data: entries, isLoading, isError } = useGetJournalEntries();
+  const { data: entries, isLoading, isError } = useGetJournalEntries({
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 10_000 },
+  });
 
   const summary = useMemo(
     () => getJournalWidgetSummary(entries as JournalWidgetEntry[] | undefined),

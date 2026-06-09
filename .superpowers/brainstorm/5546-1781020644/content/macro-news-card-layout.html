@@ -1,0 +1,70 @@
+<h2>Quale card notizia e' piu' pulita?</h2>
+<p class="subtitle">Tutte mostrano subito: impatto, tipo di dato, notizia e asset impattato. Fonti, spiegazione lunga e approfondimento restano nel dettaglio al click.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#070b12;padding:18px">
+      <div style="border:1px solid #243044;border-radius:8px;background:#0d1320;padding:14px;display:grid;gap:10px">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span style="border:1px solid #ef444455;color:#f87171;background:#ef44441a;border-radius:6px;padding:3px 7px;font-size:10px;font-weight:800">ALTO</span>
+            <span style="border:1px solid #38bdf855;color:#67e8f9;background:#06b6d41a;border-radius:6px;padding:3px 7px;font-size:10px;font-weight:800">CPI / INFLAZIONE</span>
+          </div>
+          <span style="color:#22c55e;font-family:monospace;font-size:12px;font-weight:800">USD, XAU</span>
+        </div>
+        <div style="color:white;font-weight:800;font-size:15px;line-height:1.25">Previsioni CPI USA: inflazione ancora appiccicosa prima del dato</div>
+        <div style="display:flex;justify-content:space-between;gap:10px;color:#94a3b8;font-size:11px">
+          <span>Bearish rischio · Fed watch</span>
+          <span>1h fa</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Compatta senza dettagli</h3>
+      <p>La card resta leggibile: badge essenziali sopra, titolo al centro, contesto minimo sotto. Approfondimento nel dialog.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#070b12;padding:18px">
+      <div style="border:1px solid #243044;border-radius:8px;background:#0d1320;overflow:hidden">
+        <div style="height:56px;background:linear-gradient(90deg,#344054,#111827 45%,#14532d)"></div>
+        <div style="padding:12px;display:grid;gap:9px">
+          <div style="display:flex;justify-content:space-between;gap:8px">
+            <span style="border:1px solid #f59e0b55;color:#fbbf24;background:#f59e0b1a;border-radius:6px;padding:3px 7px;font-size:10px;font-weight:800">MEDIO</span>
+            <span style="color:#22c55e;font-family:monospace;font-size:12px;font-weight:800">EUR, USD</span>
+          </div>
+          <div style="color:white;font-weight:800;font-size:14px;line-height:1.25">ECB: toni prudenti mentre il dollaro resta forte</div>
+          <span style="color:#67e8f9;font-size:10px;font-weight:800">BANCA CENTRALE</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Compatta con immagine</h3>
+      <p>Piacevole visivamente, ma l'immagine consuma spazio e puo' distrarre quando vuoi scansionare molte news.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#070b12;padding:18px">
+      <div style="border:1px solid #243044;border-radius:8px;background:#0d1320;padding:10px;display:grid;gap:8px">
+        <div style="display:grid;grid-template-columns:54px 92px 1fr 70px;gap:8px;align-items:center">
+          <span style="color:#f87171;font-size:10px;font-weight:900">ALTO</span>
+          <span style="color:#67e8f9;font-size:10px;font-weight:900">NFP / LAVORO</span>
+          <span style="color:white;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Payroll USA sopra attese, rendimenti in rialzo</span>
+          <span style="color:#22c55e;font-family:monospace;font-size:11px;font-weight:800;text-align:right">USD, JPY</span>
+        </div>
+        <div style="display:grid;grid-template-columns:54px 92px 1fr 70px;gap:8px;align-items:center">
+          <span style="color:#fbbf24;font-size:10px;font-weight:900">MEDIO</span>
+          <span style="color:#a78bfa;font-size:10px;font-weight:900">GEOPOLITICA</span>
+          <span style="color:white;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Tensioni commerciali sostengono oro e franco</span>
+          <span style="color:#22c55e;font-family:monospace;font-size:11px;font-weight:800;text-align:right">XAU, CHF</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Feed a righe</h3>
+      <p>Massima densita' e scansione rapida, meno elegante nel bottom sheet attuale e meno touch-friendly.</p>
+    </div>
+  </div>
+</div>

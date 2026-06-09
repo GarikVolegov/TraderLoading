@@ -11,6 +11,10 @@ import {
   unregisterPushSubscription,
   updatePushPreferences,
 } from "@/lib/pushNotificationsApi";
+import {
+  loadSharedPushPreferences,
+  setSharedPushPreferences,
+} from "@/lib/pushPreferencesStore";
 import { reportClientError } from "@/lib/clientErrorReporter";
 
 export type { NotificationPrefs };
@@ -56,7 +60,7 @@ export function usePushNotifications() {
           notify: false,
         }),
       );
-    const prefsPromise = fetchPushPreferences()
+    const prefsPromise = loadSharedPushPreferences(fetchPushPreferences)
       .then((data) => setPrefs(normalizeNotificationPrefs(data)))
       .catch((error) =>
         reportClientError(error, {
@@ -121,6 +125,7 @@ export function usePushNotifications() {
       setPrefs(updated);
       try {
         const data = await updatePushPreferences({ [key]: value });
+        setSharedPushPreferences(data);
         setPrefs(normalizeNotificationPrefs(data));
       } catch (error) {
         reportClientError(error, {

@@ -33,8 +33,8 @@ export function TopNav() {
             className="lg:hidden shrink-0"
           >
             <Link href="/">
-              <span className="text-sm font-bold font-mono tracking-widest whitespace-nowrap bg-gradient-to-r from-foreground to-foreground/50 bg-clip-text text-transparent cursor-pointer">
-                TRADER<span className="text-primary">LOADING</span>
+              <span className="text-sm font-bold font-mono tracking-wide whitespace-nowrap bg-gradient-to-r from-foreground to-foreground/50 bg-clip-text text-transparent cursor-pointer">
+                TraderLoading
               </span>
             </Link>
           </motion.div>

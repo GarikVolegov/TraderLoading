@@ -28,7 +28,7 @@ const YAHOO_INTERVAL: Record<string, string> = {
 };
 
 const YAHOO_RANGE: Record<string, string> = {
-  M15: "60d", M30: "60d", H1: "90d", H4: "90d", D1: "6mo", W1: "2y",
+  M15: "60d", M30: "60d", H1: "2y", H4: "2y", D1: "2y", W1: "2y",
 };
 
 const TWELVE_INTERVAL: Record<string, string> = {
@@ -37,6 +37,11 @@ const TWELVE_INTERVAL: Record<string, string> = {
 
 const TWELVE_OUTPUTSIZE: Record<string, number> = {
   M15: 5000, M30: 5000, H1: 5000, H4: 5000, D1: 5000, W1: 5000,
+};
+
+const MIN_REPLAY_CANDLES: Record<string, number> = {
+  M15: 120,
+  M30: 120,
 };
 
 export function isTwelveDataEnabled(apiKey = process.env.TWELVEDATA_API_KEY): boolean {
@@ -56,6 +61,10 @@ const CACHE_TTL = 60 * 60 * 1000;
 
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume?: number };
 
+export type CandlesRequestOptions = {
+  startDate?: string;
+};
+
 export interface CandlesResult {
   symbol: string;
   interval: string;
@@ -70,14 +79,39 @@ export function isSupportedSymbol(symbol: string): boolean {
   return Boolean(YAHOO_SYMBOLS[symbol]);
 }
 
-async function fetchYahoo(symbol: string, interval: string): Promise<Candle[]> {
+function normalizeStartDate(startDate: string | undefined): string | null {
+  if (!startDate) return null;
+  const trimmed = startDate.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
+  const date = new Date(`${trimmed}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function unixDayStart(date: string): number {
+  return Math.floor(new Date(`${date}T00:00:00.000Z`).getTime() / 1000);
+}
+
+function buildYahooChartUrl(symbol: string, interval: string, options: CandlesRequestOptions = {}): string {
   const yahooSym = YAHOO_SYMBOLS[symbol];
   if (!yahooSym) throw new Error(`Yahoo: symbol ${symbol} unsupported`);
 
   const yahooInterval = YAHOO_INTERVAL[interval] || "1h";
   const range = YAHOO_RANGE[interval] || "2y";
+  const params = new URLSearchParams({ interval: yahooInterval });
+  const startDate = normalizeStartDate(options.startDate);
+  if (startDate) {
+    params.set("period1", String(unixDayStart(startDate)));
+    params.set("period2", String(Math.floor(Date.now() / 1000)));
+  } else {
+    params.set("range", range);
+  }
 
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSym)}?interval=${yahooInterval}&range=${range}`;
+  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSym)}?${params.toString()}`;
+}
+
+async function fetchYahoo(symbol: string, interval: string, options: CandlesRequestOptions = {}): Promise<Candle[]> {
+  const url = buildYahooChartUrl(symbol, interval, options);
   const response = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
     signal: AbortSignal.timeout(15000),
@@ -127,7 +161,7 @@ async function fetchYahoo(symbol: string, interval: string): Promise<Candle[]> {
   return candles;
 }
 
-async function fetchTwelveData(symbol: string, interval: string): Promise<Candle[]> {
+async function fetchTwelveData(symbol: string, interval: string, options: CandlesRequestOptions = {}): Promise<Candle[]> {
   const twelveSym = TWELVE_SYMBOLS[symbol];
   if (!twelveSym) throw new Error(`TwelveData: symbol ${symbol} unsupported`);
 
@@ -135,7 +169,16 @@ async function fetchTwelveData(symbol: string, interval: string): Promise<Candle
   const outputsize = TWELVE_OUTPUTSIZE[interval] || 5000;
 
   const apiKey = getTwelveDataApiKey();
-  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(twelveSym)}&interval=${twInterval}&outputsize=${outputsize}&apikey=${encodeURIComponent(apiKey)}&format=JSON`;
+  const params = new URLSearchParams({
+    symbol: twelveSym,
+    interval: twInterval,
+    outputsize: String(outputsize),
+    apikey: apiKey,
+    format: "JSON",
+  });
+  const startDate = normalizeStartDate(options.startDate);
+  if (startDate) params.set("start_date", `${startDate} 00:00:00`);
+  const url = `https://api.twelvedata.com/time_series?${params.toString()}`;
   const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
 
   if (!response.ok) throw new Error(`TwelveData HTTP ${response.status}`);
@@ -166,7 +209,7 @@ async function fetchTwelveData(symbol: string, interval: string): Promise<Candle
   return candles;
 }
 
-async function fetchCoinGecko(symbol: string, interval: string): Promise<Candle[]> {
+async function fetchCoinGecko(symbol: string, interval: string, _options: CandlesRequestOptions = {}): Promise<Candle[]> {
   const coinId = COINGECKO_IDS[symbol];
   if (!coinId) throw new Error(`CoinGecko: symbol ${symbol} unsupported`);
 
@@ -198,7 +241,7 @@ async function fetchCoinGecko(symbol: string, interval: string): Promise<Candle[
   return candles;
 }
 
-type FetchFn = (symbol: string, interval: string) => Promise<Candle[]>;
+type FetchFn = (symbol: string, interval: string, options?: CandlesRequestOptions) => Promise<Candle[]>;
 
 function getFallbackChain(symbol: string, interval: string): Array<{ name: string; fn: FetchFn }> {
   const chain: Array<{ name: string; fn: FetchFn }> = [];
@@ -226,8 +269,10 @@ function getFallbackChain(symbol: string, interval: string): Array<{ name: strin
  * fallback su cache stantia se tutte le sorgenti falliscono. Lancia se non c'è
  * alcun dato disponibile.
  */
-export async function getCandles(symbol: string, interval: string): Promise<CandlesResult> {
-  const cacheKey = `${symbol}-${interval}`;
+export async function getCandles(symbol: string, interval: string, options: CandlesRequestOptions = {}): Promise<CandlesResult> {
+  const startDate = normalizeStartDate(options.startDate);
+  const requestOptions = startDate ? { ...options, startDate } : options;
+  const cacheKey = `${symbol}-${interval}-${startDate ?? "latest"}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
@@ -238,7 +283,11 @@ export async function getCandles(symbol: string, interval: string): Promise<Cand
 
   for (const { name, fn } of chain) {
     try {
-      const candles = await fn(symbol, interval);
+      const candles = await fn(symbol, interval, requestOptions);
+      const minCandles = MIN_REPLAY_CANDLES[interval] ?? 1;
+      if (candles.length < minCandles) {
+        throw new Error(`insufficient candles (${candles.length}/${minCandles})`);
+      }
       console.log(`[candles] ${name} OK: ${symbol} ${interval} → ${candles.length} candles`);
       const responseData: CandlesResult = { symbol, interval, source: name.toLowerCase(), candles };
       cache.set(cacheKey, { data: responseData, timestamp: Date.now() });

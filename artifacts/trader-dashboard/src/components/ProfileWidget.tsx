@@ -49,7 +49,9 @@ function WinRateBadge({ winRate, totalTrades }: { winRate: number | null | undef
 
 export function ProfileWidget() {
   const queryClient = useQueryClient();
-  const { data: profile, isLoading } = useGetProfile();
+  const { data: profile, isLoading } = useGetProfile({
+    query: { queryKey: getGetProfileQueryKey(), refetchInterval: 10_000 },
+  });
 
   const updateProfileMutation = useUpdateProfile({
     mutation: {
@@ -172,8 +174,8 @@ export function ProfileWidget() {
   }
 
   const XP_PER_LEVEL = 500;
-  const xpIntoLevel = profile.xp % XP_PER_LEVEL;
-  const progressPercentage = Math.min(100, (xpIntoLevel / XP_PER_LEVEL) * 100);
+  const nextLevelXpTarget = profile.level * XP_PER_LEVEL;
+  const progressPercentage = Math.min(100, (profile.xp / nextLevelXpTarget) * 100);
   const levelBadge = getLevelBadge(profile.level);
   const levelName = profile.levelName || getLevelName(profile.level);
   const streak = profile.streak ?? 0;
@@ -253,8 +255,8 @@ export function ProfileWidget() {
                 <Hexagon className="w-4 h-4" /> Progressione XP
               </span>
               <span className="font-mono font-bold">
-                <span className="text-primary">{xpIntoLevel}</span>
-                <span className="text-muted-foreground"> / {XP_PER_LEVEL}</span>
+                <span className="text-primary">{profile.xp.toLocaleString()}</span>
+                <span className="text-muted-foreground"> / {nextLevelXpTarget.toLocaleString()}</span>
               </span>
             </div>
 
@@ -391,7 +393,7 @@ export function ProfileWidget() {
           <div className="rounded-xl bg-secondary/20 border border-border/20 p-3">
             <p className="text-xs text-muted-foreground/60 flex items-center gap-1.5">
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>Il <strong>Win Rate</strong> viene calcolato automaticamente dai tuoi trade nel Diario.</span>
+              <span>Il <strong>Win Rate</strong> viene calcolato automaticamente dallo storico del conto trading collegato.</span>
             </p>
           </div>
 

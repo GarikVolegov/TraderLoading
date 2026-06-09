@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { FileText, ArrowRight, Loader2, AlertCircle, ArrowUp, ArrowDown, RefreshCw, X } from "lucide-react";
+import { FileText, Loader2, AlertCircle, ArrowUp, ArrowDown, RefreshCw, X } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, ReferenceLine, Tooltip, CartesianGrid, XAxis } from "recharts";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
@@ -69,11 +68,6 @@ export function CotWidget() {
             >
               <RefreshCw className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} />
             </button>
-            <Link href="/tools">
-              <button className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
-                Dettaglio <ArrowRight className="w-3 h-3" />
-              </button>
-            </Link>
           </div>
         </CardTitle>
       </CardHeader>

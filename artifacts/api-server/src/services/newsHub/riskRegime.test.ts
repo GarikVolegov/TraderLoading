@@ -35,4 +35,20 @@ const balanced = computeRiskRegime([
 ]);
 assert.equal(balanced.regime, "neutrale");
 
+// Hot US inflation/CPI reprices rates higher and usually tightens financial
+// conditions: for XAU/USD traders this is a risk-OFF macro driver, not a
+// generic risk-on signal.
+const hotCpi = computeRiskRegime([
+  {
+    title: "Anteprima CPI USA di maggio: inflazione sopra attese",
+    summary: "Il dato puo' spingere rendimenti Treasury e dollaro piu' in alto, mettendo pressione su oro e azioni.",
+    impactScore: 8,
+    impactDirection: "bearish",
+    freshnessTier: "fresh",
+    primaryAssets: ["XAU", "USD"],
+  },
+]);
+assert.equal(hotCpi.regime, "risk-off");
+assert.equal(hotCpi.intensity, "forte");
+
 console.log("risk regime checks passed");

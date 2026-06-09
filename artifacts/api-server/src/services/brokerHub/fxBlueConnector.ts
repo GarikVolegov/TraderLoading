@@ -37,7 +37,11 @@ export interface FxBlueFetchPayload {
     volume?: number;
     entryPrice?: number;
     exitPrice?: number;
+    stopLoss?: number;
+    takeProfit?: number;
     profit?: number;
+    commission?: number;
+    swap?: number;
     openedAt?: string;
     closedAt?: string;
   }>;
@@ -223,7 +227,11 @@ export function parseFxBlueRss(xml: string, username: string): FxBlueFetchPayloa
       volume: lots,
       entryPrice: openPrice,
       exitPrice: closePrice,
+      stopLoss: num(readTag(item, "position:stopLoss")),
+      takeProfit: num(readTag(item, "position:takeProfit")),
       profit,
+      commission: num(readTag(item, "position:commission")),
+      swap: num(readTag(item, "position:swap")),
       openedAt: openTime,
       closedAt: closeTime,
     });
@@ -298,7 +306,11 @@ export function parseFxBlueOrderList(value: string, username: string): FxBlueFet
       volume: readJsNumber(record, "lots"),
       entryPrice: readJsNumber(record, "openPrice"),
       exitPrice: readJsNumber(record, "closePrice"),
+      stopLoss: readJsNumber(record, "sl"),
+      takeProfit: readJsNumber(record, "tp"),
       profit: readJsNumber(record, "totalProfit") || readJsNumber(record, "profit"),
+      commission: readJsNumber(record, "commission"),
+      swap: readJsNumber(record, "swap"),
       openedAt: readJsField(record, "openDate"),
       closedAt: readJsField(record, "closeDate"),
     });
@@ -343,7 +355,11 @@ function mapDeal(raw: NonNullable<FxBlueFetchPayload["deals"]>[number]): BrokerD
     volume: num(raw.volume),
     entryPrice: typeof raw.entryPrice === "number" ? raw.entryPrice : undefined,
     exitPrice: typeof raw.exitPrice === "number" ? raw.exitPrice : undefined,
+    stopLoss: typeof raw.stopLoss === "number" ? raw.stopLoss : undefined,
+    takeProfit: typeof raw.takeProfit === "number" ? raw.takeProfit : undefined,
     profit: typeof raw.profit === "number" ? raw.profit : undefined,
+    commission: typeof raw.commission === "number" ? raw.commission : undefined,
+    swap: typeof raw.swap === "number" ? raw.swap : undefined,
     openedAt: str(raw.openedAt) || undefined,
     closedAt: str(raw.closedAt) || undefined,
     source: "fxblue-account-sync",

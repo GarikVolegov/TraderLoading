@@ -61,6 +61,7 @@ export interface BrokerAccountProfile {
   brokerName: string;
   kind: BrokerKind;
   providerKind: BrokerProviderKind;
+  ownerUserId?: string | null;
   providerUserId?: string;
   providerAccountId?: string;
   accountId: string;
@@ -159,7 +160,11 @@ export interface BrokerDeal {
   volume: number;
   entryPrice?: number;
   exitPrice?: number;
+  stopLoss?: number;
+  takeProfit?: number;
   profit?: number;
+  commission?: number;
+  swap?: number;
   openedAt?: string;
   closedAt?: string;
   source: BrokerKind;

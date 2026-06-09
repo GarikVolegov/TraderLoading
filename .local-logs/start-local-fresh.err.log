@@ -2,4 +2,63 @@ $ pnpm --filter ./scripts exec tsx local/start.ts
 $ orval --config ./orval.config.ts
 $ drizzle-kit push --config ./drizzle.config.ts
 $ vite --config vite.config.ts --host 0.0.0.0 --strictPort
-[tools/macro-news] Groq failed, falling back to RSS: GROQ_API_KEY not set
+[brokerHub] failed to import broker account data DrizzleQueryError: Failed query: insert into "account_trades" ("id", "ticket", "source", "symbol", "direction", "volume", "open_time", "close_time", "entry_price", "exit_price", "stop_loss", "take_profit", "profit", "commission", "swap", "status", "broker_profile_id", "broker_account_id", "risk_price_distance", "return_pct", "journal_entry_id", "user_id", "created_at", "updated_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, default, $20, default, $21) returning "id"
+params: 212349435,fxblue-account-sync,XAUUSD.R,buy,0.01,Tue 26 May 2026 04:38:18,Tue 26 May 2026 14:35:48,4533.51,4509.08,4509,4662,-21.05,-0.06,0,closed,40fbdbdc-8d24-4c58-a2fe-a8d79151d8f3,82364482,24.51,-18.3251,user_3DrhamMSMhZSyS2DtR356YYgh2A,2026-06-09T15:30:47.614Z
+    at NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    ... 3 lines matching cause stack trace ...
+    at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\brokers.ts:1260:16) {
+  query: 'insert into "account_trades" ("id", "ticket", "source", "symbol", "direction", "volume", "open_time", "close_time", "entry_price", "exit_price", "stop_loss", "take_profit", "profit", "commission", "swap", "status", "broker_profile_id", "broker_account_id", "risk_price_distance", "return_pct", "journal_entry_id", "user_id", "created_at", "updated_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, default, $20, default, $21) returning "id"',
+  params: [
+    '212349435',
+    'fxblue-account-sync',
+    'XAUUSD.R',
+    'buy',
+    '0.01',
+    'Tue 26 May 2026 04:38:18',
+    'Tue 26 May 2026 14:35:48',
+    '4533.51',
+    '4509.08',
+    '4509',
+    '4662',
+    '-21.05',
+    '-0.06',
+    '0',
+    'closed',
+    '40fbdbdc-8d24-4c58-a2fe-a8d79151d8f3',
+    '82364482',
+    '24.51',
+    '-18.3251',
+    'user_3DrhamMSMhZSyS2DtR356YYgh2A',
+    '2026-06-09T15:30:47.614Z'
+  ],
+  cause: error: duplicate key value violates unique constraint "account_trades_source_ticket_user_unique"
+      at C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\pg-pool@3.13.0_pg@8.20.0\node_modules\pg-pool\index.js:45:11
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:71:12)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\node_modules\.pnpm\drizzle-orm@0.45.2_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+      at async importBrokerAccountData (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\services\brokerHub\accountDataSync.ts:180:26)
+      at async importProfileData (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\services\brokerHub\runtime.ts:128:7)
+      at async Object.getSnapshot (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\services\brokerHub\runtime.ts:252:9)
+      at async <anonymous> (C:\Users\osman\Desktop\TraderLoadingsLOCALE\artifacts\api-server\src\routes\brokers.ts:1260:16) {
+    length: 333,
+    severity: 'ERROR',
+    code: '23505',
+    detail: 'Key (source, ticket, user_id)=(fxblue-account-sync, 212349435, user_3DrhamMSMhZSyS2DtR356YYgh2A) already exists.',
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: 'public',
+    table: 'account_trades',
+    column: undefined,
+    dataType: undefined,
+    constraint: 'account_trades_source_ticket_user_unique',
+    file: 'nbtinsert.c',
+    line: '666',
+    routine: '_bt_check_unique'
+  }
+}

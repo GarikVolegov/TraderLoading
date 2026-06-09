@@ -10,6 +10,7 @@ import { createBrokerHubRuntime } from "../services/brokerHub/runtime.js";
 import { createBrokersRouter } from "./brokers.js";
 
 const tempDir = await mkdtemp(join(tmpdir(), "broker-fxblue-route-"));
+const importedDeals: Array<{ profileId: string; dealId: string; ownerUserId?: string | null }> = [];
 
 try {
   const runtime = createBrokerHubRuntime({
@@ -18,6 +19,11 @@ try {
       path: join(tempDir, "vault.json"),
       key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     }),
+    autoSyncIntervalMs: 0,
+    accountDataImporter: async ({ profile, deals }) => {
+      importedDeals.push(...deals.map((deal) => ({ profileId: profile.id, dealId: deal.id, ownerUserId: profile.ownerUserId })));
+      return { imported: deals.length, journalCreated: deals.length, updated: 0, skipped: 0 };
+    },
     connectorFactory: (profile) => {
       const snapshot = {
         profileId: profile.id,
@@ -62,6 +68,19 @@ try {
 
   const app = express();
   app.use(express.json());
+  app.use((req, _res, next) => {
+    const testUserId = req.headers["x-test-user"];
+    if (typeof testUserId === "string") {
+      req.user = {
+        id: testUserId,
+        email: null,
+        firstName: null,
+        lastName: null,
+        profileImageUrl: null,
+      };
+    }
+    next();
+  });
   app.use("/api", createBrokersRouter(runtime));
   const server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -114,6 +133,7 @@ try {
   assert.equal(history[0]?.symbol, "XAUUSD");
   assert.equal(history[0]?.profit, 54.2);
   assert.equal(history[0]?.source, "fxblue-account-sync");
+  assert.ok(importedDeals.some((deal) => deal.profileId === completed.profile.id && deal.dealId === "fxblue-deal-1"));
 
   const profilesRes = await fetch(`${base}/profiles`);
   const profiles = (await profilesRes.json()) as { profiles: unknown[] };
@@ -149,6 +169,37 @@ try {
   const existingCompleted = (await existingCompleteRes.json()) as { profile: { providerKind: string; tradingEnabled: boolean } };
   assert.equal(existingCompleted.profile.providerKind, "fxblue-account-sync");
   assert.equal(existingCompleted.profile.tradingEnabled, false);
+
+  const legacyProfile = await runtime.saveProfile({
+    label: "Legacy FX Blue",
+    brokerName: "FP Trading",
+    kind: "fxblue-account-sync",
+    providerKind: "fxblue-account-sync",
+    providerUserId: "legacy-trader",
+    providerAccountId: "legacy-trader",
+    accountId: "LEGACY-1",
+    environment: "live",
+    route: "fxblue_account_sync",
+    health: "waiting_for_fxblue_sync",
+    tradingEnabled: false,
+    capabilities: {
+      readAccount: true,
+      readPositions: true,
+      readHistory: true,
+      placeOrders: false,
+      closePositions: false,
+      realtimeUpdates: false,
+      requiresTerminal: false,
+    },
+    connectionStatus: "offline",
+  });
+  const legacySnapshotRes = await fetch(`${base}/profiles/${legacyProfile.id}/snapshot`, {
+    headers: { "x-test-user": "user-legacy-1" },
+  });
+  assert.equal(legacySnapshotRes.status, 200);
+  const claimedProfiles = await runtime.listProfiles();
+  assert.equal(claimedProfiles.profiles.find((profile) => profile.id === legacyProfile.id)?.ownerUserId, "user-legacy-1");
+  assert.ok(importedDeals.some((deal) => deal.profileId === legacyProfile.id && deal.ownerUserId === "user-legacy-1"));
 
   await new Promise<void>((resolve) => server.close(() => resolve()));
 } finally {

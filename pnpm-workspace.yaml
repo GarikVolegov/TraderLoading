@@ -31,8 +31,16 @@ catalog:
 
 minimumReleaseAge: 1440
 
+allowBuilds:
+  '@clerk/shared': true
+  '@swc/core': true
+  esbuild: true
+  msw: true
+  unrs-resolver: true
+
 onlyBuiltDependencies:
   - '@swc/core'
+  - '@clerk/shared'
   - esbuild
   - msw
   - unrs-resolver

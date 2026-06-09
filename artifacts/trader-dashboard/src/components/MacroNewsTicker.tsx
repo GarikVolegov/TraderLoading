@@ -58,6 +58,7 @@ interface MacroArticle {
   category?: string;
   timestamp?: string;
   imageUrl?: string | null;
+  imageKeywords?: string[];
   url?: string | null;
   deepDive?: MacroArticleDeepDive;
 }
@@ -202,6 +203,69 @@ const CATEGORY_LABELS: Record<string, { label: string; cls: string }> = {
   },
 };
 
+const ASSET_IMAGE_KEYWORDS: Record<string, string[]> = {
+  EUR: ["euro", "europe", "centralbank"],
+  USD: ["dollar", "wallstreet", "federalreserve"],
+  GBP: ["london", "pound", "bankofengland"],
+  JPY: ["tokyo", "yen", "bankofjapan"],
+  CHF: ["switzerland", "franc", "bank"],
+  CAD: ["canada", "dollar", "economy"],
+  AUD: ["australia", "dollar", "economy"],
+  NZD: ["newzealand", "dollar", "economy"],
+  XAU: ["gold", "bullion", "vault"],
+  GLOBALE: ["global", "economy", "markets"],
+};
+
+function stableImageLock(text: string): number {
+  let hash = 1;
+  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) % 997;
+  return hash || 1;
+}
+
+function representativeMacroKeywords(
+  article: Pick<MacroArticle, "currency" | "title" | "summary" | "imageKeywords">,
+): string[] {
+  const text = `${article.title} ${article.summary}`.toLowerCase();
+  const keywords: string[] = [];
+  const add = (...items: string[]) => {
+    for (const item of items) if (item && !keywords.includes(item)) keywords.push(item);
+  };
+
+  if (/trump|white house|donald/.test(text)) add("donaldtrump", "gold", "tradeagreement");
+  if (/gold|xau|bullion/.test(text)) add("gold", "bullion", "vault");
+  if (/silver|xag/.test(text)) add("silver", "preciousmetals");
+  if (/fed|fomc|powell|federal reserve/.test(text)) add("federalreserve", "centralbank");
+  if (/cpi|inflation|pce|price index/.test(text)) add("inflation", "economy");
+  if (/jobs|payroll|employment|unemployment/.test(text)) add("jobsreport", "economy");
+  if (/oil|crude|petrol|energy/.test(text)) add("oil", "energy");
+  if (/china|beijing/.test(text)) add("china", "trade");
+  if (/war|conflict|geopolit|sanction/.test(text)) add("geopolitics", "conflict");
+  if (/election|vote|government/.test(text)) add("election", "politics");
+  add(...(article.imageKeywords ?? []));
+  add(...(ASSET_IMAGE_KEYWORDS[article.currency] ?? ASSET_IMAGE_KEYWORDS.GLOBALE));
+  return keywords.slice(0, 3);
+}
+
+function representativeMacroImageUrl(
+  article: Pick<MacroArticle, "currency" | "title" | "summary" | "imageKeywords">,
+): string {
+  const keywords = representativeMacroKeywords(article).map((keyword) => encodeURIComponent(keyword));
+  const query = keywords.length > 0 ? keywords.join(",") : "global,economy,markets";
+  const lock = stableImageLock(`${article.title} ${article.summary}`);
+  return `https://loremflickr.com/800/400/${query}?lock=${lock}`;
+}
+
+function handleMacroNewsImageError(
+  event: React.SyntheticEvent<HTMLImageElement>,
+  article: Pick<MacroArticle, "currency" | "title" | "summary" | "imageKeywords">,
+) {
+  const image = event.currentTarget;
+  const fallback = representativeMacroImageUrl(article);
+  if (image.src !== fallback) {
+    image.src = fallback;
+  }
+}
+
 function MacroNewsDetailDialog({
   article,
   open,
@@ -254,13 +318,12 @@ function MacroNewsDetailDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {article.imageUrl && (
-          <img
-            src={article.imageUrl}
-            alt=""
-            className="w-full max-h-64 object-cover rounded-lg border border-border/40"
-          />
-        )}
+        <img
+          src={article.imageUrl || representativeMacroImageUrl(article)}
+          alt=""
+          className="w-full max-h-64 object-cover rounded-lg border border-border/40"
+          onError={(event) => handleMacroNewsImageError(event, article)}
+        />
 
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-foreground/90">
@@ -653,21 +716,15 @@ export function MacroNewsTicker() {
                       }}
                       className="rounded-2xl border border-border bg-card/60 overflow-hidden cursor-pointer hover:border-primary/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
-                      {article.imageUrl && (
-                        <div className="w-full h-28 overflow-hidden">
-                          <img
-                            src={article.imageUrl}
-                            alt=""
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            onError={(e) => {
-                              (
-                                e.currentTarget as HTMLImageElement
-                              ).parentElement!.style.display = "none";
-                            }}
-                          />
-                        </div>
-                      )}
+                      <div className="w-full h-28 overflow-hidden">
+                        <img
+                          src={article.imageUrl || representativeMacroImageUrl(article)}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(event) => handleMacroNewsImageError(event, article)}
+                        />
+                      </div>
                       <div className="p-3.5 space-y-2">
                         <div className="flex items-start justify-between gap-3">
                           <h4 className="text-sm font-semibold leading-tight flex-1">

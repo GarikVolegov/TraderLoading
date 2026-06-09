@@ -17,6 +17,7 @@ import { loggingMiddleware } from "./middlewares/loggingMiddleware";
 import logger from "./lib/logger";
 import {
   createCorsOptions,
+  createHelmetOptions,
   getRateLimitConfig,
   parseTrustProxy,
   publicUploadGuard,
@@ -37,7 +38,7 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 // ── Logging distribuito: deve stare PRIMA di cors/json per catturare tutto ──
 app.use(loggingMiddleware);
 
-app.use(helmet());
+app.use(helmet(createHelmetOptions()));
 app.use(cors(createCorsOptions()));
 app.use(cookieParser());
 app.use(express.json({ limit: "5mb" }));

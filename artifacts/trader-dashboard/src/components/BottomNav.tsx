@@ -1,21 +1,21 @@
 import { Link, useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, BookOpen, MessageCircle, Wrench, Brain, BrainCircuit, Settings, FlaskConical, Sunrise } from "lucide-react";
+import { LayoutDashboard, BookOpen, MessageCircle, Brain, BrainCircuit, Settings, FlaskConical, Sunrise, Library } from "lucide-react";
 import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const NAV_ITEMS = [
   { href: "/",        icon: LayoutDashboard, labelKey: "nav.home",    isChat: false },
   { href: "/journal", icon: BookOpen,         labelKey: "nav.journal", isChat: false },
-  { href: "/tools",   icon: Wrench,           labelKey: "nav.tools",   isChat: false },
+  { href: "/backtest", icon: FlaskConical,    labelKey: "nav.backtest", isChat: false },
   { href: "/zen",     icon: Brain,            labelKey: "nav.zen",     isChat: false },
   { href: "/chat",    icon: MessageCircle,    labelKey: "nav.chat",    isChat: true  },
 ] as const;
 
 const SECONDARY_ITEMS = [
+  { href: "/library",  icon: Library,     labelKey: "nav.library"  },
   { href: "/brain",    icon: BrainCircuit, labelKey: "nav.brain"    },
   { href: "/routine",  icon: Sunrise,     labelKey: "nav.routine"  },
-  { href: "/backtest", icon: FlaskConical, labelKey: "nav.backtest" },
   { href: "/settings", icon: Settings,     labelKey: "nav.settings" },
 ] as const;
 
@@ -234,7 +234,7 @@ export function BottomNav() {
             <div className="w-11 h-11 rounded-lg border border-primary/25 flex items-center justify-center shrink-0 overflow-hidden bg-background shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
               <img
                 src={`${import.meta.env.BASE_URL}app-icon-192.png`}
-                alt="TraderLOADING"
+                alt="TraderLoading"
                 className="h-full w-full object-cover"
               />
             </div>

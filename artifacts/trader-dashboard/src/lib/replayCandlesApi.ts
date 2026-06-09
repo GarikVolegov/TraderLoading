@@ -1,14 +1,22 @@
 export type ReplayCandleRaw = { time: number; open: number; high: number; low: number; close: number; volume?: number };
 
-export function createReplayCandlesUrl(input: { symbol: string; interval: string }, options: { baseUrl?: string } = {}): string {
-  const path = "/api/backtest/candles?symbol=" + input.symbol.replace("/", "") + "&interval=" + input.interval;
+export function createReplayCandlesUrl(
+  input: { symbol: string; interval: string; startDate?: string },
+  options: { baseUrl?: string } = {},
+): string {
+  const params = new URLSearchParams({
+    symbol: input.symbol.replace("/", ""),
+    interval: input.interval,
+  });
+  if (input.startDate) params.set("startDate", input.startDate);
+  const path = "/api/backtest/candles?" + params.toString();
   const configuredBaseUrl = (import.meta as ImportMeta & { env?: { VITE_API_BASE?: string } }).env?.VITE_API_BASE;
   const baseUrl = options.baseUrl ?? configuredBaseUrl?.trim() ?? "";
   return baseUrl ? new URL(path, baseUrl).toString() : path;
 }
 
 export async function fetchReplayCandles(
-  input: { symbol: string; interval: string },
+  input: { symbol: string; interval: string; startDate?: string },
   options: { baseUrl?: string; signal?: AbortSignal } = {},
 ): Promise<{ candles: ReplayCandleRaw[] }> {
   const response = await fetch(createReplayCandlesUrl(input, options), { signal: options.signal });

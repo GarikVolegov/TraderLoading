@@ -50,7 +50,7 @@ export default function LandingPage() {
              <TerminalSquare className="w-5 h-5 text-primary" />
           </div>
           <span className="text-lg sm:text-xl font-bold tracking-tight whitespace-nowrap font-mono">
-            TRADER<span className="text-primary">LOADING</span>
+            TraderLoading
           </span>
         </motion.div>
 
@@ -154,7 +154,7 @@ export default function LandingPage() {
       <footer className="relative z-10 border-t border-white/5 py-8 text-center text-sm text-muted-foreground bg-background/50 backdrop-blur-md">
         <div className="flex items-center justify-center gap-2 mb-2">
            <TerminalSquare className="w-4 h-4 opacity-50" />
-           <span className="font-mono opacity-50">TRADERLOADING</span>
+           <span className="font-mono opacity-50">TraderLoading</span>
         </div>
         © {new Date().getFullYear()} TraderLoading. All rights reserved.
       </footer>

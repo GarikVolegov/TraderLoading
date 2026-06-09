@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import {
   createCorsOptions,
+  createHelmetOptions,
   getRateLimitConfig,
   isAllowedUploadPath,
   parseTrustProxy,
@@ -32,6 +33,14 @@ const productionCors = createCorsOptions({
 assert.equal(productionCors.origin("https://app.example.com"), true);
 assert.equal(productionCors.origin("http://localhost:5173"), false);
 assert.equal(productionCors.origin(undefined), true);
+
+const helmetOptions = createHelmetOptions();
+assert.deepEqual(helmetOptions.contentSecurityPolicy?.directives?.imgSrc, [
+  "'self'",
+  "data:",
+  "blob:",
+  "https:",
+]);
 
 assert.equal(parseTrustProxy({ TRUST_PROXY: "1" }), 1);
 assert.equal(parseTrustProxy({ TRUST_PROXY: "loopback" }), "loopback");

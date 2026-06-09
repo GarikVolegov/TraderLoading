@@ -169,7 +169,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
     playingRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    fetchReplayCandles({ symbol: s, interval: activeInterval }, { signal: controller.signal })
+    fetchReplayCandles({ symbol: s, interval: activeInterval, startDate: startDate || undefined }, { signal: controller.signal })
       .then((data) => {
         if (controller.signal.aborted) return;
         const candles: CandlestickData<Time>[] = data.candles.map((c) => ({
@@ -798,7 +798,6 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
               aria-label="Data di inizio backtest"
               type="date"
               value={startDate}
-              min={dataRange.min}
               max={dataRange.max}
               onChange={(e) => handleApplyDate(e.target.value)}
               className="flex-1 h-8 px-2 rounded-md border border-border bg-background text-xs font-mono"

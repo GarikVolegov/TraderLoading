@@ -130,7 +130,11 @@ export interface BrokerDeal {
   volume: number;
   entryPrice?: number;
   exitPrice?: number;
+  stopLoss?: number;
+  takeProfit?: number;
   profit?: number;
+  commission?: number;
+  swap?: number;
   openedAt?: string;
   closedAt?: string;
   source: BrokerKind;

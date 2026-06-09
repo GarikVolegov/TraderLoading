@@ -915,19 +915,85 @@ function normalizeCurrencies(raw: string): { key: string; label: string } {
   return { key: unique.join(",").toLowerCase(), label: unique.join(", ") };
 }
 
-function buildMacroImageUrl(keywords: string[] | undefined, currency: string, index = 0): string {
-  const lock = (index * 37 + 1) % 1000 || 1;
-  const kws = (keywords ?? []).filter(Boolean).slice(0, 3);
-  if (kws.length > 0) {
-    return `https://loremflickr.com/800/400/${kws.join(",")}?lock=${lock}`;
-  }
-  const fallbacks: Record<string, string> = {
-    EUR: "europe,economy", USD: "dollar,wallstreet", GBP: "london,finance",
-    JPY: "tokyo,japan,finance", CHF: "switzerland,bank", CAD: "canada,economy",
-    AUD: "australia,economy", NZD: "newzealand,economy", XAU: "gold,bullion",
-    GLOBALE: "global,economy,finance",
+const ASSET_IMAGE_KEYWORDS: Record<string, string[]> = {
+  EUR: ["euro", "europe", "centralbank"],
+  USD: ["dollar", "wallstreet", "federalreserve"],
+  GBP: ["london", "pound", "bankofengland"],
+  JPY: ["tokyo", "yen", "bankofjapan"],
+  CHF: ["switzerland", "franc", "bank"],
+  CAD: ["canada", "dollar", "economy"],
+  AUD: ["australia", "dollar", "economy"],
+  NZD: ["newzealand", "dollar", "economy"],
+  XAU: ["gold", "bullion", "vault"],
+  GLOBALE: ["global", "economy", "markets"],
+};
+
+function stableImageLock(text: string, index: number): number {
+  let hash = index + 1;
+  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) % 997;
+  return hash || 1;
+}
+
+function buildMacroImageKeywords(keywords: string[] | undefined, currency: string, context = ""): string[] {
+  const text = context.toLowerCase();
+  const out: string[] = [];
+  const add = (...items: string[]) => {
+    for (const item of items) if (item && !out.includes(item)) out.push(item);
   };
-  return `https://loremflickr.com/800/400/${fallbacks[currency] ?? "finance,trading"}?lock=${lock}`;
+
+  if (/trump|white house|donald/.test(text)) add("donaldtrump", "gold", "tradeagreement");
+  if (/gold|xau|bullion/.test(text)) add("gold", "bullion", "vault");
+  if (/silver|xag/.test(text)) add("silver", "preciousmetals");
+  if (/fed|fomc|powell|federal reserve/.test(text)) add("federalreserve", "centralbank");
+  if (/cpi|inflation|pce|price index/.test(text)) add("inflation", "economy");
+  if (/jobs|payroll|employment|unemployment/.test(text)) add("jobsreport", "economy");
+  if (/oil|crude|petrol|energy/.test(text)) add("oil", "energy");
+  if (/china|beijing/.test(text)) add("china", "trade");
+  if (/war|conflict|geopolit|sanction/.test(text)) add("geopolitics", "conflict");
+  if (/election|vote|government/.test(text)) add("election", "politics");
+  add(...(keywords ?? []));
+  add(...(ASSET_IMAGE_KEYWORDS[currency] ?? ASSET_IMAGE_KEYWORDS.GLOBALE));
+  return out.slice(0, 3);
+}
+
+function buildMacroImageUrl(keywords: string[] | undefined, currency: string, index = 0, context = ""): string {
+  const kws = buildMacroImageKeywords(keywords, currency, context).map((keyword) => encodeURIComponent(keyword));
+  const query = kws.length > 0 ? kws.join(",") : "global,economy,markets";
+  const lock = stableImageLock(context || `${currency} macro news`, index);
+  return `https://loremflickr.com/800/400/${query}?lock=${lock}`;
+}
+
+function uniqueMacroToolImageUrl(
+  article: Pick<MacroNewsResult["articles"][number], "title" | "summary" | "currency" | "imageUrl" | "imageKeywords">,
+  index: number,
+  seen: Set<string>,
+): string {
+  const sourceImage = article.imageUrl?.trim();
+  if (sourceImage && !seen.has(sourceImage)) {
+    seen.add(sourceImage);
+    return sourceImage;
+  }
+
+  const context = `${article.title} ${article.summary}`;
+  for (let offset = 0; offset < 20; offset++) {
+    const fallback = buildMacroImageUrl(article.imageKeywords, article.currency, index + offset * 97, context);
+    if (!seen.has(fallback)) {
+      seen.add(fallback);
+      return fallback;
+    }
+  }
+
+  const fallback = buildMacroImageUrl(article.imageKeywords, article.currency, index + seen.size * 193, context);
+  seen.add(fallback);
+  return fallback;
+}
+
+function ensureUniqueMacroToolImageUrls<T extends Pick<MacroNewsResult["articles"][number], "title" | "summary" | "currency" | "imageUrl" | "imageKeywords">>(articles: T[]): T[] {
+  const seenImageUrls = new Set<string>();
+  return articles.map((article, index) => ({
+    ...article,
+    imageUrl: uniqueMacroToolImageUrl(article, index, seenImageUrls),
+  }));
 }
 
 async function translateMacroArticle(
@@ -1073,7 +1139,7 @@ Rispondi SOLO con questo JSON (summary in ${langName}):
   })));
 
   return {
-    articles,
+    articles: ensureUniqueMacroToolImageUrls(articles),
     sentiment: regime.regime,
     sentimentIntensity: regime.intensity ?? undefined,
     summary: parsed.summary || "",
@@ -1165,7 +1231,7 @@ Genera 6-8 articoli bilanciati tra macro e geopolitica. imageKeywords: 2-3 parol
 
   const totalArticles = Math.max((parsed.articles ?? []).length, 1);
 
-  const articles = (parsed.articles ?? []).map((a, i) => {
+  const articles = ensureUniqueMacroToolImageUrls((parsed.articles ?? []).map((a, i) => {
     const rawSources = Array.isArray(a.sources) && a.sources.length > 0
       ? a.sources
       : a.source ? [a.source] : [];
@@ -1191,9 +1257,9 @@ Genera 6-8 articoli bilanciati tra macro e geopolitica. imageKeywords: 2-3 parol
       sources: dedupedSources,
       citationUrls: articleCitationUrls,
       verified,
-      imageUrl: buildMacroImageUrl(a.imageKeywords, a.currency ?? "GLOBALE", i),
+      imageUrl: buildMacroImageUrl(a.imageKeywords, a.currency ?? "GLOBALE", i, `${a.title ?? ""} ${a.summary ?? ""}`),
     };
-  });
+  }));
 
   // Warn in dev if Perplexity returned no citations (may indicate key/model issue)
   if (realCitationUrls.length === 0) {
@@ -1356,23 +1422,19 @@ async function fetchMacroRSSFallback(currenciesInput: string, lang = "it"): Prom
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 
-  // Add fallback image for articles without one, with unique index
-  const withImages = deduped.map((a, i) => ({
-    ...a,
-    imageUrl: a.imageUrl ?? buildMacroImageUrl(undefined, a.currency, i),
-  }));
+  const articles = ensureUniqueMacroToolImageUrls(deduped.map((a) => ({ ...a, imageKeywords: undefined })));
 
   // Translate title+summary if needed
-  const articles = lang !== "en"
+  const translatedArticles = lang !== "en"
     ? await Promise.all(
-        withImages.map(async (a) => {
+        articles.map(async (a) => {
           const { title, summary } = await translateMacroArticle(a.title, a.summary, lang, a.source);
           return { ...a, title, summary };
         })
       )
-    : withImages;
+    : articles;
 
-  const regime = computeRiskRegime(articles.map((a) => ({
+  const regime = computeRiskRegime(translatedArticles.map((a) => ({
     title: a.title,
     summary: a.summary,
     impactScore: a.impact === "alto" ? 9 : a.impact === "medio" ? 6 : 3,
@@ -1381,7 +1443,7 @@ async function fetchMacroRSSFallback(currenciesInput: string, lang = "it"): Prom
   })));
 
   return {
-    articles,
+    articles: translatedArticles,
     sentiment: regime.regime,
     sentimentIntensity: regime.intensity ?? undefined,
     summary: `Notizie in tempo reale da ${RSS_MACRO_FEEDS.map((f) => f.source).join(", ")}`,

@@ -133,6 +133,11 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       if (hasAutoStarted.current) return;
       hasAutoStarted.current = true;
 
+      document.removeEventListener("pointerdown", tryAutoStart, true);
+      document.removeEventListener("click", tryAutoStart, true);
+      document.removeEventListener("keydown", tryAutoStart, true);
+      document.removeEventListener("touchstart", tryAutoStart, true);
+
       try {
         if (!audioCtxRef.current) {
           audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -152,22 +157,16 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         clearTimeout(safetyTimeout);
         completeLoading();
       }, 800);
-
-      document.removeEventListener("click", tryAutoStart, true);
-      document.removeEventListener("keydown", tryAutoStart, true);
-      document.removeEventListener("touchstart", tryAutoStart, true);
     };
 
-    tryAutoStart();
-    
-    if (!hasAutoStarted.current) {
-      document.addEventListener("click", tryAutoStart, true);
-      document.addEventListener("keydown", tryAutoStart, true);
-      document.addEventListener("touchstart", tryAutoStart, true);
-    }
+    document.addEventListener("pointerdown", tryAutoStart, true);
+    document.addEventListener("click", tryAutoStart, true);
+    document.addEventListener("keydown", tryAutoStart, true);
+    document.addEventListener("touchstart", tryAutoStart, true);
 
     return () => {
       clearTimeout(safetyTimeout);
+      document.removeEventListener("pointerdown", tryAutoStart, true);
       document.removeEventListener("click", tryAutoStart, true);
       document.removeEventListener("keydown", tryAutoStart, true);
       document.removeEventListener("touchstart", tryAutoStart, true);

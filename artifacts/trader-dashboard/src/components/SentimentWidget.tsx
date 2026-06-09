@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Activity, ArrowRight, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Activity, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
 import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
@@ -130,11 +129,6 @@ export function SentimentWidget() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
           </button>
-          <Link href="/tools">
-            <span className="link-pill">
-              Dettaglio <ArrowRight className="w-3 h-3" />
-            </span>
-          </Link>
         </div>
       </div>
 

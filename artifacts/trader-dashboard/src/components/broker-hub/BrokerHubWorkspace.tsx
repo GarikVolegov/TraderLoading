@@ -97,7 +97,7 @@ function AccountsPanel({ hub, onConnected }: { hub: ReturnType<typeof useBrokerH
 function HistoryPanel({ hub }: { hub: ReturnType<typeof useBrokerHub> }) {
   useEffect(() => {
     if (hub.profiles.activeProfileId) void hub.refreshHistory(hub.profiles.activeProfileId);
-  }, [hub]);
+  }, [hub.profiles.activeProfileId, hub.refreshHistory]);
 
   return (
     <div className="space-y-3">

@@ -192,6 +192,12 @@ function sanitize(raw: unknown, existing?: BrokerAccountProfile): BrokerAccountP
     brokerName: brokerName || "Broker",
     kind,
     providerKind,
+    ownerUserId:
+      typeof data.ownerUserId === "string"
+        ? data.ownerUserId
+        : data.ownerUserId === null
+          ? null
+          : existing?.ownerUserId,
     providerUserId: readString(data.providerUserId, existing?.providerUserId) || undefined,
     providerAccountId: readString(data.providerAccountId, existing?.providerAccountId) || undefined,
     accountId: readString(data.accountId, existing?.accountId ?? (kind === "demo" ? "DEMO-1" : "")),

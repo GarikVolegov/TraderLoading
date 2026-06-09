@@ -2410,7 +2410,7 @@ function SupportSection() {
           </a>
 
           <a
-            href="mailto:feedback@traderloading.app?subject=Feedback%20TraderLOADING"
+            href="mailto:feedback@traderloading.app?subject=Feedback%20TraderLoading"
             className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"
           >
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -2430,7 +2430,7 @@ function SupportSection() {
       {/* Version info */}
       <div className="pt-2 border-t border-border/30 text-center">
         <p className="text-xs text-muted-foreground/50 font-mono">
-          TraderLOADING · v1.0 · Fatto con ♥ per i trader disciplinati
+          TraderLoading · v1.0 · Fatto con ♥ per i trader disciplinati
         </p>
       </div>
     </div>
@@ -2675,7 +2675,7 @@ function TermsSection() {
         <FileText className="w-5 h-5 text-pink-400 mt-0.5 shrink-0" />
         <div>
           <p className="text-sm font-semibold text-foreground">
-            Termini di utilizzo · TraderLOADING
+            Termini di utilizzo · TraderLoading
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
             Ultimo aggiornamento: {TERMS_UPDATED}. Utilizzando l'app accetti i
@@ -2687,7 +2687,7 @@ function TermsSection() {
       <div className="space-y-6">
         <TermsBlock title="Scopo dell'applicazione">
           <p>
-            TraderLOADING è uno strumento di supporto alla disciplina e
+            TraderLoading è uno strumento di supporto alla disciplina e
             all'organizzazione personale per trader. Non fornisce consigli
             finanziari, segnali di trading o raccomandazioni di investimento di
             alcun tipo.
@@ -2746,7 +2746,7 @@ function TermsSection() {
           <p>
             Tutti i contenuti dell'app (interfaccia, testi, grafica, logiche di
             gamification, contenuti formativi della Biblioteca) sono di
-            proprietà esclusiva di TraderLOADING. È vietata la riproduzione,
+            proprietà esclusiva di TraderLoading. È vietata la riproduzione,
             copia o ridistribuzione senza autorizzazione scritta.
           </p>
           <p>
@@ -2791,7 +2791,7 @@ function TermsSection() {
 
       <div className="pt-2 border-t border-border/30 text-center">
         <p className="text-xs text-muted-foreground/50 font-mono">
-          TraderLOADING · Termini v1.0 · Aggiornato il {TERMS_UPDATED}
+          TraderLoading · Termini v1.0 · Aggiornato il {TERMS_UPDATED}
         </p>
       </div>
     </div>

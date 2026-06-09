@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the rocket TraderLOADING mark the official app icon for browser tabs, installed desktop/mobile web apps, and local notifications.
+**Goal:** Make the rocket TraderLoading mark the official app icon for browser tabs, installed desktop/mobile web apps, and local notifications.
 
 **Architecture:** Keep icons as static public assets in `artifacts/trader-dashboard/public`. Use explicit manifest icon sizes for PWA installation and update browser/notification references to the same official PNG family.
 

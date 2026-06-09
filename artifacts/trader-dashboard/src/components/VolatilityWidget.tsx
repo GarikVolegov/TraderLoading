@@ -1,10 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  TrendingUp, ArrowRight, Loader2, AlertCircle,
+  TrendingUp, Loader2, AlertCircle,
   ChevronDown, ArrowUp, ArrowDown, RefreshCw,
 } from "lucide-react";
 import { BarChart, Bar, Cell, ResponsiveContainer, ReferenceLine, Tooltip } from "recharts";
@@ -96,11 +95,6 @@ export function VolatilityWidget() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
           </button>
-          <Link href="/tools">
-            <span className="link-pill">
-              Dettaglio <ArrowRight className="w-3 h-3" />
-            </span>
-          </Link>
         </div>
       </div>
 

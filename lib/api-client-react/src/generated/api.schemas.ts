@@ -605,6 +605,7 @@ export interface UnreadCountResponse {
 
 export interface GetLeaderboardResponseItem {
   position: number;
+  userId: string | null;
   name: string;
   avatarUrl?: string | null;
   level: number;

@@ -976,6 +976,7 @@ export const UpdateUserSettingsResponse = zod.object({
  */
 export const GetLeaderboardResponseItem = zod.object({
   position: zod.number(),
+  userId: zod.string().nullable(),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   level: zod.number(),

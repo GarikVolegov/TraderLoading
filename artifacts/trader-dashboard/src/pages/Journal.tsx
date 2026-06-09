@@ -44,7 +44,9 @@ function TradesTab() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
-  const { data: entries, isLoading } = useGetJournalEntries();
+  const { data: entries, isLoading } = useGetJournalEntries({
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 10_000 },
+  });
   const deleteMutation = useDeleteJournalEntry();
 
   const getResultConfig = (result: string) => {
@@ -55,6 +57,9 @@ function TradesTab() {
       default: return { label: "–", class: "bg-white/5 text-muted-foreground border-white/10" };
     }
   };
+
+  const isSyncedTrade = (entry: JournalEntry) =>
+    (entry.tags ?? "").toLowerCase().split(",").map((tag) => tag.trim()).some((tag) => tag === "account-import" || tag === "fxblue");
 
   const handleDelete = async (id: number) => {
     if (!confirm(t("journal.delete_confirm"))) return;
@@ -89,6 +94,7 @@ function TradesTab() {
               .sort((a, b) => new Date(b.tradeDate).getTime() - new Date(a.tradeDate).getTime())
               .map((entry, idx) => {
                 const resConfig = getResultConfig(entry.result);
+                const syncedTrade = isSyncedTrade(entry);
                 return (
                   <motion.div
                     key={entry.id}
@@ -107,6 +113,13 @@ function TradesTab() {
                         {resConfig.label}
                       </div>
                     </div>
+
+                    {syncedTrade && (
+                      <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+                        <RefreshCw className="h-3 w-3" />
+                        Sync FX Blue
+                      </div>
+                    )}
 
                     <h3 className="text-xl font-bold mb-2 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
                       {entry.title}
@@ -141,7 +154,7 @@ function TradesTab() {
                     <div className="flex justify-end gap-2 mt-auto pt-4 border-t border-border/50 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="sm" className="h-8" onClick={() => { setEditingEntry(entry); setIsModalOpen(true); }}>
                         <Edit2 className="w-4 h-4 mr-2" />
-                        {t("journal.edit")}
+                        {syncedTrade ? "Commenta" : t("journal.edit")}
                       </Button>
                       <Button variant="ghost" size="sm" className="h-8 text-destructive hover:bg-destructive/20" onClick={() => handleDelete(entry.id)}>
                         <Trash2 className="w-4 h-4" />
@@ -648,7 +661,9 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
   const dateLocale = useDateLocale();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: entries, isLoading } = useGetJournalEntries();
+  const { data: entries, isLoading } = useGetJournalEntries({
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 10_000 },
+  });
   const [offset, setOffset] = useState(0);
 
   const periodInfo = useMemo(() => {

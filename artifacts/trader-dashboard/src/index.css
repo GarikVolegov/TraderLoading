@@ -118,14 +118,24 @@
   body {
     @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground;
     touch-action: manipulation;
+    position: relative;
+    min-height: 100dvh;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background-image:
       linear-gradient(180deg, hsl(var(--background)) 0%, hsl(224 55% 5%) 100%),
       radial-gradient(ellipse 70% 45% at 85% -10%, hsl(var(--primary) / 0.055) 0%, transparent 55%),
       linear-gradient(hsl(var(--border) / 0.035) 1px, transparent 1px),
       linear-gradient(90deg, hsl(var(--border) / 0.025) 1px, transparent 1px);
     background-size: auto, auto, 48px 48px, 48px 48px;
-    background-attachment: fixed;
-    min-height: 100dvh;
+    transform: translateZ(0);
+    will-change: transform;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -196,6 +206,10 @@
 
   .tl-panel-muted {
     @apply rounded-[0.625rem] border border-border/35 bg-secondary/38 text-card-foreground;
+  }
+
+  .tl-input {
+    @apply w-full rounded-lg border border-border/60 bg-secondary/40 px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/30;
   }
 
   .tl-toolbar {
@@ -410,7 +424,7 @@
 
   /* Ticker */
   .animate-marquee {
-    animation: marquee 120s linear infinite;
+    animation: marquee 420s linear infinite;
   }
   /* Pause the ticker on hover so it can be read */
   .animate-marquee:hover {

@@ -88,6 +88,34 @@ export function useBrokerHub() {
     void refreshProfiles();
   }, [refreshProfiles]);
 
+  useEffect(() => {
+    const profileId = profiles.activeProfileId;
+    if (!profileId) return;
+    let cancelled = false;
+
+    const syncActiveProfile = async () => {
+      try {
+        const [nextSnapshot, nextHistory] = await Promise.all([
+          getBrokerSnapshot(profileId),
+          getBrokerHistory(profileId),
+        ]);
+        if (cancelled) return;
+        setSnapshot(nextSnapshot);
+        setHistory(nextHistory);
+        setMessage(nextSnapshot.status === "connected" ? "FX Blue sincronizzato" : nextSnapshot.error ?? null);
+      } catch (error) {
+        if (!cancelled) setMessage(error instanceof Error ? error.message : "Sync FX Blue non disponibile");
+      }
+    };
+
+    void syncActiveProfile();
+    const timer = window.setInterval(() => void syncActiveProfile(), 10_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [profiles.activeProfileId]);
+
   const saveProfile = useCallback(
     async (raw: Partial<BrokerAccountProfile> & { accessToken?: string; bridgeToken?: string }) => {
       const data = await saveBrokerProfile(raw);

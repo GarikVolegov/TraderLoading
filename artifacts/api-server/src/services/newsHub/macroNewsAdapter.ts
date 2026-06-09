@@ -1,5 +1,6 @@
 import type { NewsArticle, NewsDeepDive, NewsResponse } from "./types.js";
 import { computeRiskRegime } from "./riskRegime.js";
+import { isTradingDecisionRelevantNews } from "./tradingRelevance.js";
 
 export interface MacroNewsArticle {
   title: string;
@@ -88,6 +89,75 @@ function categoryFromArticle(article: NewsArticle): string {
   return "macro-dati";
 }
 
+const ASSET_IMAGE_KEYWORDS: Record<string, string[]> = {
+  EUR: ["euro", "europe", "centralbank"],
+  USD: ["dollar", "wallstreet", "federalreserve"],
+  GBP: ["london", "pound", "bankofengland"],
+  JPY: ["tokyo", "yen", "bankofjapan"],
+  CHF: ["switzerland", "franc", "bank"],
+  CAD: ["canada", "dollar", "economy"],
+  AUD: ["australia", "dollar", "economy"],
+  NZD: ["newzealand", "dollar", "economy"],
+  XAU: ["gold", "bullion", "vault"],
+  GLOBALE: ["global", "economy", "markets"],
+};
+
+function stableLock(text: string, index: number): number {
+  let hash = index + 1;
+  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) % 997;
+  return hash || 1;
+}
+
+function semanticImageKeywords(article: NewsArticle): string[] {
+  const text = `${article.title} ${article.summary} ${article.originalTitle ?? ""} ${article.originalSummary ?? ""}`.toLowerCase();
+  const currency = currencyFromArticle(article);
+  const keywords: string[] = [];
+  const add = (...items: string[]) => {
+    for (const item of items) if (item && !keywords.includes(item)) keywords.push(item);
+  };
+
+  if (/trump|white house|donald/.test(text)) add("donaldtrump", "gold", "tradeagreement");
+  if (/gold|xau|bullion/.test(text)) add("gold", "bullion", "vault");
+  if (/silver|xag/.test(text)) add("silver", "preciousmetals");
+  if (/fed|fomc|powell|federal reserve/.test(text)) add("federalreserve", "centralbank");
+  if (/cpi|inflation|pce|price index/.test(text)) add("inflation", "economy");
+  if (/jobs|payroll|employment|unemployment/.test(text)) add("jobsreport", "economy");
+  if (/oil|crude|petrol|energy/.test(text)) add("oil", "energy");
+  if (/china|beijing/.test(text)) add("china", "trade");
+  if (/war|conflict|geopolit|sanction/.test(text)) add("geopolitics", "conflict");
+  if (/election|vote|government/.test(text)) add("election", "politics");
+  add(...(article.primaryAssets ?? []));
+  add(...(ASSET_IMAGE_KEYWORDS[currency] ?? ASSET_IMAGE_KEYWORDS.GLOBALE));
+  return keywords.slice(0, 3);
+}
+
+function representativeMacroImageUrl(article: NewsArticle, index: number): string {
+  const keywords = semanticImageKeywords(article).map((keyword) => encodeURIComponent(keyword));
+  const query = keywords.length > 0 ? keywords.join(",") : "global,economy,markets";
+  const lock = stableLock(`${article.title} ${article.summary}`, index);
+  return `https://loremflickr.com/800/400/${query}?lock=${lock}`;
+}
+
+function uniqueMacroImageUrl(article: NewsArticle, index: number, seen: Set<string>): string {
+  const sourceImage = article.imageUrl?.trim();
+  if (sourceImage && !seen.has(sourceImage)) {
+    seen.add(sourceImage);
+    return sourceImage;
+  }
+
+  for (let offset = 0; offset < 20; offset++) {
+    const fallback = representativeMacroImageUrl(article, index + offset * 97);
+    if (!seen.has(fallback)) {
+      seen.add(fallback);
+      return fallback;
+    }
+  }
+
+  const fallback = representativeMacroImageUrl(article, index + seen.size * 193);
+  seen.add(fallback);
+  return fallback;
+}
+
 function normalizePair(pair: string): string {
   const clean = pair.trim().toUpperCase();
   return clean.length === 6 ? `${clean.slice(0, 3)}/${clean.slice(3)}` : clean;
@@ -151,11 +221,64 @@ function isExplicitlyOutsideRequestedPairs(article: NewsArticle, requestedPairs 
   return mentionsDominantNonFocusAsset(text, focusPairs);
 }
 
+function primaryMacroPair(articles: NewsArticle[], requestedPairs = ""): string {
+  const requested = requestedPairs.split(",").map(normalizePair).filter(Boolean)[0];
+  if (requested) return requested;
+  return articles.find((article) => article.affectedPairs?.[0])?.affectedPairs?.[0] ?? "asset monitorati";
+}
+
+function regimeSummaryLabel(regime: ReturnType<typeof computeRiskRegime>): string {
+  const base = regime.regime === "neutrale" ? "NEUTRALE" : regime.regime.toUpperCase();
+  return regime.intensity ? `${base} ${regime.intensity}` : base;
+}
+
+function topMacroDriver(articles: NewsArticle[]): string {
+  const text = articles
+    .slice(0, 3)
+    .map((article) => `${article.title} ${article.summary} ${article.originalTitle ?? ""} ${article.originalSummary ?? ""}`)
+    .join(" ")
+    .toLowerCase();
+  if (/cpi|inflation|inflazione|consumer price index/.test(text)) return "CPI/inflazione";
+  if (/fed|fomc|powell|treasury|yield|rendiment|tassi|rate/.test(text)) return "Fed, dollaro e rendimenti";
+  if (/payroll|nfp|jobs|occupazione|unemployment/.test(text)) return "lavoro USA";
+  if (/war|conflict|geopolit|sanction|crisi|sanzion/.test(text)) return "rischio geopolitico";
+  return categoryFromArticle(articles[0] ?? ({} as NewsArticle)).replace("-", " ");
+}
+
+function macroActionHint(articles: NewsArticle[], pair: string): string {
+  const text = articles
+    .slice(0, 3)
+    .map((article) => `${article.title} ${article.summary} ${article.originalTitle ?? ""} ${article.originalSummary ?? ""}`)
+    .join(" ")
+    .toLowerCase();
+  if (/cpi|inflation|inflazione|consumer price index/.test(text) && /XAU\/USD/i.test(pair)) {
+    return "Sopra attese: dollaro/rendimenti piu' forti e pressione su oro; sotto attese: possibile supporto a XAU/USD.";
+  }
+  if (/fed|fomc|treasury|yield|rendiment|tassi|rate/.test(text)) {
+    return "Il punto operativo e' la reazione di dollaro e rendimenti: attendi conferma prima di aumentare size.";
+  }
+  return "Usalo come contesto: attendi conferma su prezzo e volatilita' prima di aumentare size.";
+}
+
+function buildMacroTickerSummary(
+  articles: NewsArticle[],
+  regime: ReturnType<typeof computeRiskRegime>,
+  options: { pairs?: string } = {},
+): string {
+  if (articles.length === 0) return "Nessuna notizia macro ad alto impatto realmente utile per il trading in questo momento.";
+  const pair = primaryMacroPair(articles, options.pairs);
+  const driver = topMacroDriver(articles);
+  return `${regimeSummaryLabel(regime)} su ${pair}: driver principale ${driver}. ${macroActionHint(articles, pair)}`;
+}
+
 export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: string } = {}): MacroNewsResultLike {
-  const kept = news.articles.filter((article) => !isExplicitlyOutsideRequestedPairs(article, options.pairs));
+  const kept = news.articles.filter(
+    (article) => !isExplicitlyOutsideRequestedPairs(article, options.pairs) && isTradingDecisionRelevantNews(article),
+  );
   const regime = computeRiskRegime(kept);
+  const seenImageUrls = new Set<string>();
   const articles = kept
-    .map((article): MacroNewsArticle => ({
+    .map((article, index): MacroNewsArticle => ({
     title: article.title,
     summary: article.summary,
     originalTitle: article.originalTitle,
@@ -172,7 +295,7 @@ export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: stri
     verified: article.verified ?? Boolean(article.url),
     category: categoryFromArticle(article),
     timestamp: article.publishedAt,
-    imageUrl: article.imageUrl,
+    imageUrl: uniqueMacroImageUrl(article, index, seenImageUrls),
     imageKeywords: article.primaryAssets,
     deepDive: article.deepDive,
   }));
@@ -181,7 +304,7 @@ export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: stri
     articles,
     sentiment: regime.regime,
     sentimentIntensity: regime.intensity ?? undefined,
-    summary: news.agentSummary ?? "Notizie aggiornate dal News Hub con filtro per asset e impatto.",
+    summary: buildMacroTickerSummary(kept, regime, options),
     fetchedAt: news.fetchedAt,
     citationUrls: articles.flatMap((article) => article.citationUrls ?? []),
   };
