@@ -9,9 +9,9 @@ assert.match(apiSource, /whatHappened: string/);
 assert.match(apiSource, /whyItMatters: string/);
 assert.match(apiSource, /possibleImpact: string/);
 
-assert.match(pageSource, /Cosa e' successo/);
-assert.match(pageSource, /Perche' influenza l'asset/);
-assert.match(pageSource, /Come puo' impattare/);
+assert.match(pageSource, /Cosa è successo/);
+assert.match(pageSource, /Perché influenza l'asset/);
+assert.match(pageSource, /Come può impattare/);
 assert.match(pageSource, /article\.deepDive/);
 assert.match(pageSource, /Impatto per il trading/);
 

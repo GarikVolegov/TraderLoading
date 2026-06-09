@@ -44,6 +44,28 @@ for (const key of ["news.source.ai", "news.source.rss", "news.source.updated"]) 
   assert.match(i18nSource, new RegExp(`"${key}"`), `Missing copy key ${key}`);
 }
 
+const languageCodes = ["it", "en", "es", "fr", "de"] as const;
+const languageKeys = new Map<string, Set<string>>();
+
+for (let index = 0; index < languageCodes.length; index++) {
+  const lang = languageCodes[index];
+  const start = i18nSource.indexOf(`  ${lang}: {`);
+  const nextStart = languageCodes
+    .slice(index + 1)
+    .map((nextLang) => i18nSource.indexOf(`  ${nextLang}: {`, start + 1))
+    .find((position) => position > start);
+  const end = nextStart ?? i18nSource.indexOf("\n};", start);
+  const block = i18nSource.slice(start, end);
+  languageKeys.set(lang, new Set([...block.matchAll(/"([^"]+)"\s*:/g)].map((match) => match[1])));
+}
+
+const italianKeys = languageKeys.get("it") ?? new Set<string>();
+for (const lang of languageCodes.filter((code) => code !== "it")) {
+  const keys = languageKeys.get(lang) ?? new Set<string>();
+  const missing = [...italianKeys].filter((key) => !keys.has(key));
+  assert.deepEqual(missing, [], `${lang} should include every Italian i18n key`);
+}
+
 const newsSource = readFileSync(new URL("pages/News.tsx", import.meta.url), "utf8");
 assert.match(newsSource, /Apri articolo/);
 assert.doesNotMatch(newsSource, /Sito fonte/);

@@ -793,6 +793,9 @@ function StoryViewer({
             <img
               src={story.imageUrl}
               className="w-full h-full object-contain rounded-xl"
+              onError={(event) => {
+                event.currentTarget.style.visibility = "hidden";
+              }}
             />
           ) : (
             <p className="text-white text-lg text-center leading-relaxed font-medium">
@@ -1309,6 +1312,9 @@ function PostCard({
             src={post.imageUrl}
             alt="post"
             className="w-full rounded-xl mb-3 object-cover max-h-64"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
           />
         )}
         <div className="flex items-center gap-3">
@@ -1566,7 +1572,7 @@ function SocialTab({
                         if (relationshipStatus === "accepted") {
                           return (
                             <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-1">
-                              Gia' amico
+                              Già amico
                             </span>
                           );
                         }
@@ -3377,6 +3383,9 @@ function TextChannelView({
                                 src={msg.imageUrl}
                                 alt=""
                                 className="max-w-xs rounded-xl mb-1 border border-border"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                }}
                               />
                             )}
                             {msg.content && (

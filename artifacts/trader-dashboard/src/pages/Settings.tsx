@@ -149,6 +149,23 @@ const FONT_OPTIONS = [
   sample: string;
 }[];
 
+const WEEKDAY_OPTIONS = [
+  { id: 1, label: "L", title: "Lunedì" },
+  { id: 2, label: "M", title: "Martedì" },
+  { id: 3, label: "M", title: "Mercoledì" },
+  { id: 4, label: "G", title: "Giovedì" },
+  { id: 5, label: "V", title: "Venerdì" },
+  { id: 6, label: "S", title: "Sabato" },
+  { id: 0, label: "D", title: "Domenica" },
+] as const;
+
+function getSessionDaysForUi(session: MarketSessionConfig): number[] {
+  if (!Array.isArray(session.days) || session.days.length === 0) {
+    return WEEKDAY_OPTIONS.map((day) => day.id);
+  }
+  return session.days;
+}
+
 function FontSettings() {
   const { fontChoice, setFontChoice } = useBackground();
   const updateMutation = useUpdateUserSettings();
@@ -428,7 +445,7 @@ function TradingSettings() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [localSessions, setLocalSessions] =
-    useState<TradingSessionConfig[]>(tradingSessions);
+    useState<MarketSessionConfig[]>(tradingSessions as MarketSessionConfig[]);
   const [localDivisor, setLocalDivisor] = useState(String(lotDivisor));
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
@@ -436,7 +453,7 @@ function TradingSettings() {
   const localTimeZoneLabel = getLocalTimeZoneLabel();
 
   useEffect(() => {
-    setLocalSessions(tradingSessions);
+    setLocalSessions(tradingSessions as MarketSessionConfig[]);
   }, [tradingSessions]);
   useEffect(() => {
     setLocalDivisor(String(lotDivisor));
@@ -447,7 +464,7 @@ function TradingSettings() {
 
   const overlapError = detectOverlap(localSessions);
 
-  const saveSessions = (sessions: TradingSessionConfig[]) => {
+  const saveSessions = (sessions: MarketSessionConfig[]) => {
     setLocalSessions(sessions);
     setTradingSessions(sessions);
     clearTimeout(debounceRef.current);
@@ -506,13 +523,34 @@ function TradingSettings() {
             : session.color === "session-closed"
               ? "session-ny"
               : session.color,
+        days:
+          kind === "market_closed"
+            ? Array.isArray(session.days) && session.days.length > 0
+              ? session.days
+              : [6, 0]
+            : undefined,
+      };
+    });
+    saveSessions(updated);
+  };
+
+  const handleClosedSessionDayToggle = (idx: number, day: number) => {
+    const updated = localSessions.map((session, i) => {
+      if (i !== idx) return session;
+      const selected = getSessionDaysForUi(session);
+      const nextDays = selected.includes(day)
+        ? selected.filter((value) => value !== day)
+        : [...selected, day];
+      return {
+        ...session,
+        days: nextDays.sort((a, b) => a - b),
       };
     });
     saveSessions(updated);
   };
 
   const handleAddSession = () => {
-    const newSession: TradingSessionConfig = {
+    const newSession: MarketSessionConfig = {
       id: `custom-${Date.now()}`,
       name: `Sessione ${localSessions.length + 1}`,
       openUTC: "07:00",
@@ -527,13 +565,14 @@ function TradingSettings() {
   };
 
   const handleAddClosedSession = () => {
-    const newSession: TradingSessionConfig = {
+    const newSession: MarketSessionConfig = {
       id: `closed-${Date.now()}`,
       name: "Mercato chiuso",
       openUTC: "22:00",
       closeUTC: "23:59",
       color: "session-closed",
       kind: "market_closed",
+      days: [6, 0],
       enabled: true,
     };
     saveSessions([...localSessions, newSession]);
@@ -716,6 +755,34 @@ function TradingSettings() {
                   />
                 </div>
               </div>
+              {isMarketClosedSession(session as MarketSessionConfig) && (
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                    Giorni chiusura
+                  </label>
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {WEEKDAY_OPTIONS.map((day) => {
+                      const selected = getSessionDaysForUi(session as MarketSessionConfig).includes(day.id);
+                      return (
+                        <button
+                          key={day.id}
+                          type="button"
+                          title={day.title}
+                          aria-pressed={selected}
+                          onClick={() => handleClosedSessionDayToggle(idx, day.id)}
+                          className={`h-8 rounded-md border text-xs font-bold transition-colors ${
+                            selected
+                              ? "border-red-400/70 bg-red-500/15 text-red-200"
+                              : "border-border/40 bg-secondary/30 text-muted-foreground hover:border-red-400/40 hover:text-red-200"
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </motion.div>
           ))}
 

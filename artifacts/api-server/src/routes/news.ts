@@ -85,7 +85,13 @@ const NEWS_FEED_CORPUS_LIMIT = 80;
 // Drop articles older than this so the feed stays "as recent as possible".
 // Undated and clearly-stale items are excluded (with a floor so the feed is
 // never emptied on a quiet news day).
-const NEWS_MAX_AGE_HOURS = 96;
+const NEWS_MAX_AGE_HOURS = 72;
+
+// Curated feed sizing: keep a wide curated corpus for the chronological
+// infinite scroll, but guarantee a floor so quiet news days never leave the
+// feed empty (curation relaxes its threshold to backfill up to the floor).
+const NEWS_CURATED_FEED_LIMIT = 40;
+const NEWS_CURATED_FEED_FLOOR = 10;
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
@@ -688,7 +694,9 @@ const NEWS_LLM_BUDGET_MS = (() => {
 // Translate/enrich at most this many RSS candidates — the corpus is trimmed to
 // NEWS_FEED_CORPUS_LIMIT anyway, so processing the whole RSS haul is wasted time.
 const NEWS_BUILD_CANDIDATE_LIMIT = 90;
-const NEWS_ASSET_CACHE_VERSION = "asset-impact-v2";
+// Bump when the snapshot payload shape/ordering changes so stored snapshots
+// from older builds are not served (v3: curated chronological feed).
+const NEWS_ASSET_CACHE_VERSION = "asset-impact-v3";
 
 function newsCacheKey(input: { pairs?: string; lang?: string }): { cacheKey: string; pairsStr: string; lang: string } {
   const pairsStr = input.pairs || "";
@@ -822,9 +830,13 @@ async function buildNewsData(input: { pairs?: string; lang?: string } = {}): Pro
     const nowMs = Date.now();
     const recent = sorted.filter((a) => a.publishedAt && nowMs - new Date(a.publishedAt).getTime() <= maxAgeMs);
     articles = recent.length > 0 ? recent : sorted.slice(0, 12);
+    // Curated chronological feed: quality-gate first, then keep a wide set of
+    // the most important articles ordered newest-first for the scroll.
     articles = selectCuratedNews(filterTradingDecisionRelevantNews(articles), {
       pairs: pairsStr,
-      limit: 5,
+      limit: NEWS_CURATED_FEED_LIMIT,
+      minKeep: NEWS_CURATED_FEED_FLOOR,
+      sort: "chronological",
     });
     source = "ai";  // enrichment (euristico o Groq) conta come AI
     nextRefreshAt = new Date(Date.now() + cacheTtl).toISOString();
@@ -840,9 +852,9 @@ async function buildNewsData(input: { pairs?: string; lang?: string } = {}): Pro
       }).filter(Boolean)
     : [];
 
-  articles = articles.map((article) => ({
+  articles = articles.map((article, index) => ({
     ...article,
-    deepDive: article.deepDive ?? buildNewsDeepDive(article, { lang }),
+    deepDive: article.deepDive ?? buildNewsDeepDive(article, { lang, variantSeed: index }),
   }));
 
   const freshArticles = articles.filter((article) => !article.isFallback);

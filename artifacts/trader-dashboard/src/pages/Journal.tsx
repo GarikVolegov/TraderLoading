@@ -27,6 +27,8 @@ import {
 import { downloadICS } from "@/utils/icsExport";
 import { useLanguage, useDateLocale } from "@/contexts/LanguageContext";
 import { getJournalRecapPeriod, isJournalRecapEditable } from "@/lib/journalRecapPeriods";
+import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTradeContent";
+import { PnlHeatmap } from "@/components/PnlHeatmap";
 import {
   emptyJournalRecapFields,
   fetchJournalRecap,
@@ -36,6 +38,87 @@ import {
 } from "@/lib/journalRecapsApi";
 
 type Tab = "trades" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
+
+function SyncedTradeDetails({ content }: { content: string }) {
+  const parsed = useMemo(() => parseTradeContent(content), [content]);
+  if (!parsed) return null;
+
+  const profit = parsed.profit ?? 0;
+  const profitClass = profit > 0 ? "text-success" : profit < 0 ? "text-destructive" : "text-muted-foreground";
+  const profitSign = profit > 0 ? "+" : "";
+  const duration = tradeDuration(parsed);
+  const rMultiple = tradeRMultiple(parsed);
+  const directionClass = parsed.direction === "BUY"
+    ? "bg-success/10 text-success border-success/30"
+    : "bg-destructive/10 text-destructive border-destructive/30";
+
+  return (
+    <div className="mb-6 flex-grow space-y-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className={`font-mono text-2xl font-bold ${profitClass}`}>
+          {parsed.profit != null ? `${profitSign}${profit.toFixed(2)} ${parsed.currency ?? ""}`.trim() : "—"}
+        </span>
+        <div className="flex items-center gap-1.5">
+          {rMultiple != null && (
+            <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold font-mono ${rMultiple >= 0 ? "border-success/30 text-success" : "border-destructive/30 text-destructive"}`}>
+              {rMultiple >= 0 ? "+" : ""}{rMultiple}R
+            </span>
+          )}
+          {duration && (
+            <span className="rounded-md border border-border/50 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {duration}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+        {parsed.direction && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">Direzione</span>
+            <span className={`rounded px-1.5 py-px font-bold border text-[10px] ${directionClass}`}>{parsed.direction}</span>
+          </div>
+        )}
+        {parsed.volume != null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">Volume</span>
+            <span className="font-mono text-foreground/90">{parsed.volume}</span>
+          </div>
+        )}
+        {parsed.entryPrice != null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">Entry</span>
+            <span className="font-mono text-foreground/90">{parsed.entryPrice}</span>
+          </div>
+        )}
+        {parsed.exitPrice != null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">Exit</span>
+            <span className="font-mono text-foreground/90">{parsed.exitPrice}</span>
+          </div>
+        )}
+        {parsed.stopLoss != null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">Stop Loss</span>
+            <span className="font-mono text-foreground/90">{parsed.stopLoss}</span>
+          </div>
+        )}
+        {parsed.takeProfit != null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">Take Profit</span>
+            <span className="font-mono text-foreground/90">{parsed.takeProfit}</span>
+          </div>
+        )}
+      </div>
+
+      {parsed.comment && (
+        <p className="border-t border-border/30 pt-2 text-sm text-muted-foreground/80 line-clamp-2 whitespace-pre-wrap">
+          {parsed.comment}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function TradesTab() {
   const { t } = useLanguage();
@@ -79,6 +162,10 @@ function TradesTab() {
           <Plus className="w-4 h-4 mr-2" />
           {t("journal.new_trade")}
         </Button>
+      </div>
+
+      <div className="mb-4 sm:mb-6">
+        <PnlHeatmap entries={entries} />
       </div>
 
       {isLoading ? (
@@ -147,9 +234,13 @@ function TradesTab() {
                       </div>
                     )}
 
-                    <p className="text-sm text-muted-foreground/80 line-clamp-3 mb-6 flex-grow">
-                      {entry.content || t("journal.no_note")}
-                    </p>
+                    {syncedTrade && entry.content && parseTradeContent(entry.content) ? (
+                      <SyncedTradeDetails content={entry.content} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground/80 line-clamp-3 mb-6 flex-grow">
+                        {entry.content || t("journal.no_note")}
+                      </p>
+                    )}
 
                     <div className="flex justify-end gap-2 mt-auto pt-4 border-t border-border/50 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="sm" className="h-8" onClick={() => { setEditingEntry(entry); setIsModalOpen(true); }}>

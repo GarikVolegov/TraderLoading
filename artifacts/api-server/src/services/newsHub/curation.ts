@@ -19,6 +19,20 @@ export interface NewsCurationOptions {
   pairs?: string;
   limit?: number;
   minScore?: number;
+  /**
+   * Guarantee at least this many articles when enough non-stale candidates
+   * exist: if fewer than `minKeep` pass `minScore`, the threshold is relaxed
+   * step by step and the next strongest articles backfill the feed. This keeps
+   * the feed alive on quiet news days without letting weak items outrank
+   * strong ones.
+   */
+  minKeep?: number;
+  /**
+   * Final ordering of the curated set. `score` (default) keeps the strongest
+   * article first (ticker use). `chronological` re-sorts the curated picks
+   * newest-first so the feed reads as a timeline of the most important news.
+   */
+  sort?: "score" | "chronological";
 }
 
 export interface NewsCurationScore {
@@ -200,6 +214,7 @@ export function selectCuratedNews(
 ): NewsArticle[] {
   const minScore = options.minScore ?? DEFAULT_MIN_SCORE;
   const limit = options.limit ?? DEFAULT_LIMIT;
+  const minKeep = Math.min(options.minKeep ?? 0, limit);
   const strongestByTopic = new Map<string, { article: NewsArticle; curation: NewsCurationScore }>();
 
   for (const article of articles) {
@@ -208,7 +223,6 @@ export function selectCuratedNews(
     }
 
     const curation = scoreCuratedNewsArticle(article, options);
-    if (curation.score < minScore) continue;
 
     const existing = strongestByTopic.get(curation.topicKey);
     if (
@@ -220,11 +234,24 @@ export function selectCuratedNews(
     }
   }
 
-  return Array.from(strongestByTopic.values())
-    .sort((a, b) => {
-      if (b.curation.score !== a.curation.score) return b.curation.score - a.curation.score;
-      return publishedTime(b.article) - publishedTime(a.article);
-    })
-    .slice(0, limit)
-    .map((entry) => entry.article);
+  const byScore = Array.from(strongestByTopic.values()).sort((a, b) => {
+    if (b.curation.score !== a.curation.score) return b.curation.score - a.curation.score;
+    return publishedTime(b.article) - publishedTime(a.article);
+  });
+
+  const curated = byScore.filter((entry) => entry.curation.score >= minScore);
+  if (curated.length < minKeep) {
+    for (const entry of byScore) {
+      if (curated.length >= minKeep) break;
+      if (entry.curation.score >= minScore) continue;
+      curated.push(entry);
+    }
+    // Backfill preserves strongest-first order because `byScore` is sorted.
+  }
+
+  const selected = curated.slice(0, limit).map((entry) => entry.article);
+  if (options.sort === "chronological") {
+    return selected.sort((a, b) => publishedTime(b) - publishedTime(a));
+  }
+  return selected;
 }

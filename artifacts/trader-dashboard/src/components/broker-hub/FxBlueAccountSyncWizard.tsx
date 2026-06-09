@@ -128,7 +128,7 @@ export function FxBlueAccountSyncWizard({
         <div>
           <p className="text-sm font-bold">FX Blue Account Sync</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Collega il profilo FX Blue gia' sincronizzato e importa i dati in Sola lettura.
+            Collega il profilo FX Blue già sincronizzato e importa i dati in Sola lettura.
           </p>
         </div>
         <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase text-primary">
@@ -186,7 +186,7 @@ export function FxBlueAccountSyncWizard({
 
           <div className="-mx-4 space-y-3 border-y border-primary/20 bg-primary/5 px-4 py-3">
             <div className="space-y-1">
-              <p className="text-sm font-bold">Hai gia' configurato FX Blue?</p>
+              <p className="text-sm font-bold">Hai già configurato FX Blue?</p>
               <p className="text-xs text-muted-foreground">
                 Inserisci username o URL pubblico del profilo FX Blue. Broker Hub non richiede la password del conto per questo collegamento.
               </p>
@@ -201,7 +201,7 @@ export function FxBlueAccountSyncWizard({
             </div>
             <Button className="w-full gap-2" disabled={busy || !existingSyncReady} onClick={connectExistingSync}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-              Collega profilo gia' sincronizzato
+              Collega profilo già sincronizzato
             </Button>
           </div>
 

@@ -15,7 +15,7 @@ assert.match(
 assert.doesNotMatch(source, /route: "\/tools\?tab=/);
 assert.match(
   source,
-  /const DEFAULT_ORDER = \[\s*"clock",\s*"quote",\s*"account",\s*"missions",\s*"routine",\s*"checklist",\s*"lot",\s*"journal",\s*"sentiment",\s*"volatility",\s*"cot",\s*"calendar",\s*\];/s,
+  /const DEFAULT_ORDER = \[\s*"clock",\s*"quote",\s*"account",\s*"missions",\s*"routine",\s*"checklist",\s*"lot",\s*"journal",\s*"equity",\s*"sentiment",\s*"volatility",\s*"cot",\s*"calendar",\s*\];/s,
 );
 
 console.log("dashboard order checks passed");

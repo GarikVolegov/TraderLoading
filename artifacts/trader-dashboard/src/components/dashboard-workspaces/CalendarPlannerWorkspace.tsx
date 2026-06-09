@@ -288,9 +288,18 @@ function buildAgendaItems({
     manual: item,
   }));
 
-  return [...marketItems, ...ideaItems, ...missionItems, ...newsItems, ...journalItems, ...manualAgendaItems]
+  const merged = [...marketItems, ...ideaItems, ...missionItems, ...newsItems, ...journalItems, ...manualAgendaItems]
     .filter((item) => toDate(item.startAt))
     .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+
+  // Dedup: import multipli (es. stesso trade FX Blue) producono voci identiche
+  const seen = new Set<string>();
+  return merged.filter((item) => {
+    const key = `${item.source}|${item.title}|${item.startAt}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function CalendarPlannerWorkspace() {
@@ -301,6 +310,7 @@ export function CalendarPlannerWorkspace() {
   const [notes, setNotes] = useState("");
   const [startAt, setStartAt] = useState(() => toDateTimeInputValue(new Date()));
   const [endAt, setEndAt] = useState("");
+  const [showPast, setShowPast] = useState(false);
 
   const { data: events, isLoading: eventsLoading } = useGetEconomicCalendar();
   const { data: ideas, isLoading: ideasLoading } = useGetIdeas();
@@ -325,7 +335,7 @@ export function CalendarPlannerWorkspace() {
     [events, ideas, missions, macroNews?.articles, journal, manualItems],
   );
 
-  const groupedAgenda = useMemo(() => {
+  const { pastGroups, upcomingGroups } = useMemo(() => {
     const groups = new Map<string, { date: Date; items: AgendaItem[] }>();
 
     agendaItems.forEach((item) => {
@@ -340,8 +350,16 @@ export function CalendarPlannerWorkspace() {
       }
     });
 
-    return Array.from(groups.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+    const sorted = Array.from(groups.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return {
+      pastGroups: sorted.filter((g) => g.date < startOfToday),
+      upcomingGroups: sorted.filter((g) => g.date >= startOfToday),
+    };
   }, [agendaItems]);
+
+  const groupedAgenda = showPast ? [...pastGroups, ...upcomingGroups] : upcomingGroups;
 
   const summary = useMemo(() => {
     const now = new Date();
@@ -480,7 +498,18 @@ export function CalendarPlannerWorkspace() {
             <h3 className="text-sm font-bold text-foreground">Agenda unificata</h3>
             <p className="text-xs text-muted-foreground">Market, obiettivi, missioni, news, journal e note manuali.</p>
           </div>
-          {isLoading && <span className="text-xs text-muted-foreground">Sync...</span>}
+          <div className="flex items-center gap-2">
+            {pastGroups.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowPast((v) => !v)}
+                className="rounded-md border border-border/40 bg-secondary/30 px-2 py-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {showPast ? "Nascondi passati" : `Mostra passati (${pastGroups.length})`}
+              </button>
+            )}
+            {isLoading && <span className="text-xs text-muted-foreground">Sync...</span>}
+          </div>
         </div>
 
         {groupedAgenda.length === 0 ? (

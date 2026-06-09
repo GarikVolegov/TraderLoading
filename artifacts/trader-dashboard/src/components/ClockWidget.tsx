@@ -4,7 +4,13 @@ import { it } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useBackground, type TradingSessionConfig } from "@/contexts/BackgroundContext";
-import { getLocalClockHours, isMarketClosedSession, isTradingSession, type MarketSessionConfig } from "@/lib/marketSessions";
+import {
+  getLocalClockHours,
+  isMarketClosedSession,
+  isSessionEnabledForDate,
+  isTradingSession,
+  type MarketSessionConfig,
+} from "@/lib/marketSessions";
 
 function parseTime(t: string): number {
   const [h, m] = t.split(":").map(Number);
@@ -52,15 +58,19 @@ export function ClockWidget() {
   const localHours = useMemo(() => getLocalClockHours(time), [time]);
 
   const activeSession = useMemo(() => {
-    const enabled = tradingSessions.filter((s) => s.enabled && isTradingSession(s as MarketSessionConfig));
+    const enabled = tradingSessions.filter(
+      (s) => s.enabled && isTradingSession(s as MarketSessionConfig) && isSessionEnabledForDate(s as MarketSessionConfig, time),
+    );
     return enabled.find((s) => isInSession(localHours, s)) ?? null;
-  }, [localHours, tradingSessions]);
+  }, [localHours, time, tradingSessions]);
 
   const activeClosedSession = useMemo(() => {
     if (activeSession) return null;
-    const enabled = tradingSessions.filter((s) => s.enabled && isMarketClosedSession(s as MarketSessionConfig));
+    const enabled = tradingSessions.filter(
+      (s) => s.enabled && isMarketClosedSession(s as MarketSessionConfig) && isSessionEnabledForDate(s as MarketSessionConfig, time),
+    );
     return enabled.find((s) => isInSession(localHours, s)) ?? null;
-  }, [activeSession, localHours, tradingSessions]);
+  }, [activeSession, localHours, time, tradingSessions]);
 
   const nextSessionInfo = useMemo(() => {
     if (activeSession) return null;
@@ -85,9 +95,9 @@ export function ClockWidget() {
   const badgeLabel = activeSession
     ? activeSession.name
     : activeClosedSession
-    ? activeClosedSession.name
+    ? "Chiuso"
     : isWeekend
-    ? "Mercato chiuso"
+    ? "Chiuso"
     : "Mercato aperto";
   const compactBadgeLabel = badgeLabel === "Conferma Vol." ? "Conferma" : badgeLabel;
 

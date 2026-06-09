@@ -70,4 +70,33 @@ assert.equal(typeof attached.deepDive.whatHappened, "string");
 assert.equal(typeof attached.deepDive.whyItMatters, "string");
 assert.equal(typeof attached.deepDive.possibleImpact, "string");
 
+// Concrete figures from the article surface in whatHappened.
+const figures = buildNewsDeepDive(article({
+  title: "US CPI rises 3.2% as payrolls add 250,000 jobs",
+  summary: "Inflation came in at 3.2% versus 3.1% expected while payrolls added 250,000.",
+}), { lang: "it" });
+assert.match(figures.whatHappened, /3,?\.?2\s*%/);
+assert.match(figures.whatHappened, /250,000/);
+assert.match(figures.whatHappened, /Dati chiave/);
+
+// A banal summary (identical to the title) is grounded with the source.
+const banal = buildNewsDeepDive(article({
+  title: "Gold climbs to fresh record",
+  summary: "Gold climbs to fresh record",
+  source: "Reuters",
+}), { lang: "it" });
+assert.match(banal.whatHappened, /Fonte: Reuters/);
+
+// Variant seeds rotate the phrasing so adjacent feed cards do not repeat the
+// same template sentence.
+const seedA = buildNewsDeepDive(article(), { lang: "it", variantSeed: 0 });
+const seedB = buildNewsDeepDive(article(), { lang: "it", variantSeed: 1 });
+assert.notEqual(seedA.possibleImpact, seedB.possibleImpact);
+assert.notEqual(seedA.whyItMatters, seedB.whyItMatters);
+assert.match(seedB.possibleImpact, /ribassista/i);
+
+// High-impact data releases carry the two-sided (above/below expectations)
+// scenario so the detail is actionable, not generic.
+assert.match(seedA.possibleImpact, /Sopra le attese|sotto le attese/i);
+
 console.log("news deep dive checks passed");

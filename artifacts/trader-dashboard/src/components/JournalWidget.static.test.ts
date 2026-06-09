@@ -13,6 +13,6 @@ assert.match(widgetSource, /aria-label="Apri pagina diario"/);
 assert.match(widgetSource, /getJournalWidgetSummary/);
 assert.match(dashboardSource, /JournalWidget/);
 assert.match(dashboardSource, /id: "journal"/);
-assert.match(dashboardSource, /"checklist",\s*"lot",\s*"journal",\s*"sentiment"/s);
+assert.match(dashboardSource, /"checklist",\s*"lot",\s*"journal",\s*"equity",\s*"sentiment"/s);
 
 console.log("journal widget static checks passed");

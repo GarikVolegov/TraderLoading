@@ -210,7 +210,7 @@ export function CotWidget() {
 
             {data.fetchedAt && (
               <p className="text-[9px] text-center text-muted-foreground">
-                Aggiornato {new Date(data.fetchedAt).toLocaleDateString("it-IT")} · ogni venerdi
+                Aggiornato {new Date(data.fetchedAt).toLocaleDateString("it-IT")} · ogni venerdì
               </p>
             )}
           </motion.div>

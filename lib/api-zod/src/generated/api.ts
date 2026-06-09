@@ -784,6 +784,9 @@ export const DeleteBacktestTradeResponse = zod.object({
 export const getUserSettingsResponseBackgroundDarknessMin = 0;
 export const getUserSettingsResponseBackgroundDarknessMax = 90;
 
+export const getUserSettingsResponseTradingSessionsItemDaysItemMin = 0;
+export const getUserSettingsResponseTradingSessionsItemDaysItemMax = 6;
+
 export const getUserSettingsResponsePreMacroMinutesMin = 0;
 
 export const GetUserSettingsResponse = zod.object({
@@ -820,6 +823,17 @@ export const GetUserSettingsResponse = zod.object({
           .describe(
             "Session kind. Missing means trading for backward compatibility.",
           ),
+        days: zod
+          .array(
+            zod
+              .number()
+              .min(getUserSettingsResponseTradingSessionsItemDaysItemMin)
+              .max(getUserSettingsResponseTradingSessionsItemDaysItemMax),
+          )
+          .optional()
+          .describe(
+            "Optional JavaScript weekday numbers: 0 Sunday through 6 Saturday. Missing or empty means every day.",
+          ),
         enabled: zod.boolean(),
       }),
     )
@@ -848,6 +862,9 @@ export const GetUserSettingsResponse = zod.object({
  */
 export const updateUserSettingsBodyBackgroundDarknessMin = 0;
 export const updateUserSettingsBodyBackgroundDarknessMax = 90;
+
+export const updateUserSettingsBodyTradingSessionsItemDaysItemMin = 0;
+export const updateUserSettingsBodyTradingSessionsItemDaysItemMax = 6;
 
 export const updateUserSettingsBodyPreMacroMinutesMin = 0;
 
@@ -881,6 +898,17 @@ export const UpdateUserSettingsBody = zod.object({
           .describe(
             "Session kind. Missing means trading for backward compatibility.",
           ),
+        days: zod
+          .array(
+            zod
+              .number()
+              .min(updateUserSettingsBodyTradingSessionsItemDaysItemMin)
+              .max(updateUserSettingsBodyTradingSessionsItemDaysItemMax),
+          )
+          .optional()
+          .describe(
+            "Optional JavaScript weekday numbers: 0 Sunday through 6 Saturday. Missing or empty means every day.",
+          ),
         enabled: zod.boolean(),
       }),
     )
@@ -909,6 +937,9 @@ export const UpdateUserSettingsBody = zod.object({
 
 export const updateUserSettingsResponseBackgroundDarknessMin = 0;
 export const updateUserSettingsResponseBackgroundDarknessMax = 90;
+
+export const updateUserSettingsResponseTradingSessionsItemDaysItemMin = 0;
+export const updateUserSettingsResponseTradingSessionsItemDaysItemMax = 6;
 
 export const updateUserSettingsResponsePreMacroMinutesMin = 0;
 
@@ -945,6 +976,17 @@ export const UpdateUserSettingsResponse = zod.object({
           .optional()
           .describe(
             "Session kind. Missing means trading for backward compatibility.",
+          ),
+        days: zod
+          .array(
+            zod
+              .number()
+              .min(updateUserSettingsResponseTradingSessionsItemDaysItemMin)
+              .max(updateUserSettingsResponseTradingSessionsItemDaysItemMax),
+          )
+          .optional()
+          .describe(
+            "Optional JavaScript weekday numbers: 0 Sunday through 6 Saturday. Missing or empty means every day.",
           ),
         enabled: zod.boolean(),
       }),

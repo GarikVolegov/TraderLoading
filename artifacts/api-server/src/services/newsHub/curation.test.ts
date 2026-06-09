@@ -103,4 +103,48 @@ const limited = selectCuratedNews([
 ], { pairs: "XAUUSD", limit: 3 });
 assert.equal(limited.length, 3);
 
+// Chronological sort: the curated picks come back newest-first regardless of score.
+const chronological = selectCuratedNews([
+  article("Fed minutes show inflation concern", {
+    summary: "Officials remain focused on sticky inflation.",
+    impactScore: 8,
+    matchConfidence: 0.8,
+    publishedAt: "2026-06-09T10:00:00.000Z",
+  }),
+  article("US jobs report triggers dollar breakout", {
+    summary: "Payrolls surprise changes Fed expectations for XAU/USD.",
+    impactScore: 9,
+    matchConfidence: 0.92,
+    publishedAt: "2026-06-09T09:59:00.000Z",
+  }),
+], { pairs: "XAUUSD", sort: "chronological" });
+assert.equal(chronological.length, 2);
+assert.equal(chronological[0]?.title, "Fed minutes show inflation concern");
+
+// minKeep backfill: a below-threshold (but non-stale) article is kept when the
+// feed would otherwise starve, while stale/fallback items stay excluded.
+const weakButUsable = article("Gold steadies near record on rate cut expectations", {
+  summary: "Bullion consolidates as markets weigh interest rates outlook.",
+  impactScore: 5,
+  matchConfidence: 0.5,
+});
+assert.equal(selectCuratedNews([weakButUsable], { pairs: "EURUSD" }).length, 0);
+assert.equal(selectCuratedNews([weakButUsable], { pairs: "EURUSD", minKeep: 3 }).length, 1);
+const staleWeak = article("Fed rate decision shocks dollar markets", {
+  summary: "The decision moves yields and FX volatility.",
+  freshnessTier: "stale",
+});
+assert.equal(selectCuratedNews([staleWeak], { pairs: "XAUUSD", minKeep: 3 }).length, 0);
+
+// minKeep never overrides the strongest-first selection: the high-impact
+// article still leads when backfill kicks in.
+const backfilled = selectCuratedNews([
+  weakButUsable,
+  article("US CPI surprise sends Treasury yields higher", {
+    summary: "Inflation data reprices Fed expectations and pressures XAU/USD.",
+  }),
+], { pairs: "XAUUSD", minKeep: 2 });
+assert.equal(backfilled.length, 2);
+assert.equal(backfilled[0]?.title, "US CPI surprise sends Treasury yields higher");
+
 console.log("news curation checks passed");

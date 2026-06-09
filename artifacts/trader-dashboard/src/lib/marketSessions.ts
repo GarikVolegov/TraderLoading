@@ -1,7 +1,7 @@
 import type { TradingSessionConfig } from "@workspace/api-client-react";
 
 export type TradingSessionKind = "trading" | "market_closed";
-export type MarketSessionConfig = TradingSessionConfig & { kind?: TradingSessionKind };
+export type MarketSessionConfig = TradingSessionConfig & { kind?: TradingSessionKind; days?: number[] };
 
 export function getSessionKind(session: MarketSessionConfig): TradingSessionKind {
   return session.kind === "market_closed" ? "market_closed" : "trading";
@@ -13,6 +13,11 @@ export function isMarketClosedSession(session: MarketSessionConfig): boolean {
 
 export function isTradingSession(session: MarketSessionConfig): boolean {
   return getSessionKind(session) === "trading";
+}
+
+export function isSessionEnabledForDate(session: MarketSessionConfig, date = new Date()): boolean {
+  if (!Array.isArray(session.days) || session.days.length === 0) return true;
+  return session.days.includes(date.getDay());
 }
 
 export function timeToMinutes(time: string): number {

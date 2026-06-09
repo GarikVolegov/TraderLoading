@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { JournalEntryModal } from "@/components/JournalEntryModal";
 import { useDateLocale } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
+import { parseTradeContent } from "@/lib/parseTradeContent";
 import { getGetJournalEntriesQueryKey, useGetJournalEntries } from "@workspace/api-client-react";
 import {
   getJournalResultMeta,
@@ -140,10 +141,15 @@ export function JournalWidget() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-2">
-                <Metric label="Win" value={summary.weekly.wins} icon={TrendingUp} tone="text-emerald-300" />
-                <Metric label="Loss" value={summary.weekly.losses} icon={TrendingDown} tone="text-red-300" />
-                <Metric label="Rate" value={`${summary.weekly.winRate}%`} icon={BarChart3} tone="text-primary" />
+              <div>
+                <p className="mb-1.5 text-[0.55rem] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  Ultimi 7 giorni
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <Metric label="Win" value={summary.weekly.wins} icon={TrendingUp} tone="text-emerald-300" />
+                  <Metric label="Loss" value={summary.weekly.losses} icon={TrendingDown} tone="text-red-300" />
+                  <Metric label="Rate" value={`${summary.weekly.winRate}%`} icon={BarChart3} tone="text-primary" />
+                </div>
               </div>
 
               <div className="rounded-md border border-border/35 bg-secondary/25 p-3">
@@ -167,9 +173,30 @@ export function JournalWidget() {
                     {latestDate ? format(latestDate, "d MMM yyyy", { locale: dateLocale }) : "Data recente"}
                   </span>
                 </div>
-                <p className="mt-2 line-clamp-2 text-xs leading-snug text-muted-foreground/85">
-                  {latest.content || "Nessuna nota per questo trade."}
-                </p>
+                {(() => {
+                  const parsed = parseTradeContent(latest.content);
+                  if (parsed) {
+                    const profit = parsed.profit ?? 0;
+                    const profitTone = profit > 0 ? "text-emerald-300" : profit < 0 ? "text-red-300" : "text-muted-foreground";
+                    return (
+                      <div className="mt-2 flex items-center gap-3 text-xs">
+                        <span className={`font-mono text-base font-black ${profitTone}`}>
+                          {profit > 0 ? "+" : ""}{profit.toFixed(2)} {parsed.currency ?? ""}
+                        </span>
+                        {parsed.entryPrice != null && parsed.exitPrice != null && (
+                          <span className="font-mono text-muted-foreground/85">
+                            {parsed.entryPrice} → {parsed.exitPrice}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
+                  return (
+                    <p className="mt-2 line-clamp-2 text-xs leading-snug text-muted-foreground/85">
+                      {latest.content || "Nessuna nota per questo trade."}
+                    </p>
+                  );
+                })()}
               </div>
             </>
           )}

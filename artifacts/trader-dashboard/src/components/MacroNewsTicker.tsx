@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBackground } from "@/contexts/BackgroundContext";
@@ -87,6 +88,9 @@ const ALL_CURRENCIES = [
 ];
 
 const STORAGE_KEY = "macro-news-currencies";
+const MARQUEE_PIXELS_PER_SECOND = 72;
+const MIN_MARQUEE_DURATION_SECONDS = 18;
+const DEFAULT_MARQUEE_DURATION_SECONDS = 30;
 
 const CURRENCY_FLAGS: Record<string, string> = {
   EUR: "\u{1F1EA}\u{1F1FA}",
@@ -301,7 +305,7 @@ function MacroNewsDetailDialog({
   const assetLabels = macroArticleAssetLabels(article);
   const deepDive = article.deepDive ?? {
     whatHappened: article.summary || article.title,
-    whyItMatters: `La notizia riguarda ${assetLabels.join(", ")} e puo' modificare aspettative, flussi o volatilita' sull'asset monitorato.`,
+    whyItMatters: `La notizia riguarda ${assetLabels.join(", ")} e può modificare aspettative, flussi o volatilità sull'asset monitorato.`,
     possibleImpact: `Impatto ${article.impact} su ${assetLabels.join(", ")}. Direzione stimata: ${article.direction}.`,
   };
   return (
@@ -349,9 +353,9 @@ function MacroNewsDetailDialog({
 
           <div className="grid gap-3">
             {[
-              ["Cosa e' successo", deepDive.whatHappened],
-              ["Perche' influenza l'asset", deepDive.whyItMatters],
-              ["Come puo' impattare", deepDive.possibleImpact],
+              ["Cosa è successo", deepDive.whatHappened],
+              ["Perché influenza l'asset", deepDive.whyItMatters],
+              ["Come può impattare", deepDive.possibleImpact],
             ].map(([label, value]) => (
               <div key={label} className="rounded-lg border border-primary/15 bg-primary/5 p-3">
                 <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">
@@ -444,6 +448,10 @@ export function MacroNewsTicker() {
   const [selectedCurrencies, setSelectedCurrencies] =
     useState<string[]>(loadCurrencies);
   const forceNextRef = useRef(false);
+  const marqueeTrackRef = useRef<HTMLDivElement | null>(null);
+  const [marqueeDurationSeconds, setMarqueeDurationSeconds] = useState(
+    DEFAULT_MARQUEE_DURATION_SECONDS,
+  );
   const { selectedCurrencies: contextCurrencies } = useBackground();
 
   const pairDerivedCurrencies = useMemo(() => {
@@ -493,13 +501,65 @@ export function MacroNewsTicker() {
 
   const tickerItems = useMemo(() => {
     if (!data?.articles?.length) return [];
-    return data.articles.map((a) => {
-      const flag = CURRENCY_FLAGS[a.currency] ?? "\u{1F4CA}";
-      const dot = IMPACT_DOT[a.impact] ?? "\u26AA";
-      const impactLabel = a.impact ? a.impact.toUpperCase() : "";
-      return `${dot} ${flag} ${a.currency}: ${a.title} \u2014 ${impactLabel}`;
-    });
+    const seenTitles = new Set<string>();
+    return data.articles
+      .filter((a) => {
+        const key = `${a.currency}|${a.title}`;
+        if (seenTitles.has(key)) return false;
+        seenTitles.add(key);
+        return true;
+      })
+      .map((a) => {
+        const flag = CURRENCY_FLAGS[a.currency] ?? "\u{1F4CA}";
+        const dot = IMPACT_DOT[a.impact] ?? "\u26AA";
+        const impactLabel = a.impact ? a.impact.toUpperCase() : "";
+        return `${dot} ${flag} ${a.currency}: ${a.title} \u2014 ${impactLabel}`;
+      });
   }, [data]);
+
+  useEffect(() => {
+    const track = marqueeTrackRef.current;
+    if (!track || tickerItems.length === 0) {
+      setMarqueeDurationSeconds(DEFAULT_MARQUEE_DURATION_SECONDS);
+      return;
+    }
+
+    const measureDuration = () => {
+      const distance = track.scrollWidth / 2;
+      if (!Number.isFinite(distance) || distance <= 0) return;
+
+      const nextDuration = Math.max(
+        MIN_MARQUEE_DURATION_SECONDS,
+        Math.round(distance / MARQUEE_PIXELS_PER_SECOND),
+      );
+      setMarqueeDurationSeconds((current) =>
+        current === nextDuration ? current : nextDuration,
+      );
+    };
+
+    measureDuration();
+    window.addEventListener("resize", measureDuration);
+
+    if (typeof ResizeObserver === "undefined") {
+      return () => window.removeEventListener("resize", measureDuration);
+    }
+
+    const resizeObserver = new ResizeObserver(measureDuration);
+    resizeObserver.observe(track);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", measureDuration);
+    };
+  }, [tickerItems]);
+
+  const marqueeStyle = useMemo(
+    () =>
+      ({
+        "--marquee-duration": `${marqueeDurationSeconds}s`,
+      }) as CSSProperties & Record<"--marquee-duration", string>,
+    [marqueeDurationSeconds],
+  );
 
   const toggleCurrency = useCallback((cur: string) => {
     setSelectedCurrencies((prev) => {
@@ -539,7 +599,11 @@ export function MacroNewsTicker() {
           </span>
         ) : tickerItems.length > 0 ? (
           <div className="overflow-hidden whitespace-nowrap mask-fade">
-            <div className="inline-flex animate-marquee gap-8">
+            <div
+              ref={marqueeTrackRef}
+              className="inline-flex animate-marquee gap-8"
+              style={marqueeStyle}
+            >
               {tickerItems.map((item, i) => (
                 <span
                   key={i}

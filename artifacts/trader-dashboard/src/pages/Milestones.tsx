@@ -35,6 +35,8 @@ import { formatFileSize } from "@/lib/fileFormatting";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+const XP_PER_LEVEL = 500;
+
 const LEVEL_NAMES: Record<number, string> = {
   1: "Novizio Consapevole",
   2: "Apprendista Disciplinato",
@@ -740,7 +742,7 @@ function LevelRow({
         <div className="shrink-0 text-right mr-2 hidden sm:block">
           <p className="text-[10px] text-muted-foreground/50">XP richiesti</p>
           <p className="text-xs font-mono font-bold text-muted-foreground">
-            {((level - 1) * 500).toLocaleString()}
+            {((level - 1) * XP_PER_LEVEL).toLocaleString()}
           </p>
         </div>
 
@@ -954,7 +956,7 @@ export default function Milestones() {
                   Prossimo livello
                 </p>
                 <p className="text-xs font-bold text-primary">
-                  −{profile.xpToNextLevel} XP
+                  {profile.xpToNextLevel.toLocaleString()} XP mancanti
                 </p>
               </div>
             </div>
@@ -962,7 +964,7 @@ export default function Milestones() {
               <div
                 className="h-full rounded-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-500"
                 style={{
-                  width: `${Math.round(((500 - profile.xpToNextLevel) / 500) * 100)}%`,
+                  width: `${Math.round(((XP_PER_LEVEL - profile.xpToNextLevel) / XP_PER_LEVEL) * 100)}%`,
                 }}
               />
             </div>

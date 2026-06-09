@@ -38,6 +38,7 @@ import { VolatilityWidget } from "@/components/VolatilityWidget";
 import { CotWidget } from "@/components/CotWidget";
 import { RoutineWidget } from "@/components/RoutineWidget";
 import { JournalWidget } from "@/components/JournalWidget";
+import { EquityCurveWidget } from "@/components/EquityCurveWidget";
 import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -63,6 +64,7 @@ const WIDGET_DEFS: WidgetDef[] = [
   { id: "checklist",  label: "Checklist Pre-Trade",  icon: ClipboardCheck, route: "/checklist",              component: ChecklistDashboardWidget },
   { id: "lot",        label: "Dimensionamento",      icon: BarChart2,                                      component: LotCalculatorWidget },
   { id: "journal",    label: "Diario Trading",       icon: BookOpen,       route: "/journal",                component: JournalWidget },
+  { id: "equity",     label: "Equity",               icon: TrendingUp,     route: "/journal",                component: EquityCurveWidget },
   { id: "calendar",   label: "Calendario Avanzato",  icon: CalendarDays,   route: "/calendar",               component: CalendarWidget, bodyHandlesOwnClicks: true },
   { id: "sentiment",  label: "Sentiment di Mercato", icon: BarChart2,                                      component: SentimentWidget },
   { id: "volatility", label: "Volatilita & ADR",     icon: TrendingUp,                                     component: VolatilityWidget },
@@ -78,6 +80,7 @@ const DEFAULT_ORDER = [
   "checklist",
   "lot",
   "journal",
+  "equity",
   "sentiment",
   "volatility",
   "cot",
@@ -183,17 +186,7 @@ function SortableWidget({
               : ""
           } ${isBodyOpenable ? "cursor-pointer hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.3),0_18px_42px_rgba(0,0,0,0.25)]" : ""}`}
           style={{ borderRadius: "0.625rem" }}
-          role={isBodyOpenable ? "button" : undefined}
-          tabIndex={isBodyOpenable ? 0 : undefined}
-          aria-label={isBodyOpenable ? `Apri ${def.label}` : undefined}
           onClick={handleOpen}
-          onKeyDown={(event) => {
-            if (!isBodyOpenable) return;
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              onOpen(def.id);
-            }
-          }}
         >
           <def.component />
 
@@ -202,7 +195,7 @@ function SortableWidget({
             <button
               type="button"
               style={{ height: "2.25rem", width: "2.25rem" }}
-              className="absolute bottom-2.5 right-2.5 z-[5] flex items-center justify-center rounded-full border border-primary/30 bg-card/85 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-primary/10 group-hover:opacity-100"
+              className="absolute bottom-2.5 right-2.5 z-[5] flex items-center justify-center rounded-full border border-primary/30 bg-card/85 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-primary/10 group-hover:opacity-100 focus-visible:opacity-100"
               aria-label={`Apri pagina ${def.label}`}
               onClick={(event) => {
                 event.stopPropagation();

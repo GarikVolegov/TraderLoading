@@ -3,6 +3,7 @@ import {
   detectTradingSessionOverlap,
   getLocalTimeZone,
   getLocalTimeZoneLabel,
+  isSessionEnabledForDate,
   isMarketClosedSession,
   isTradingSession,
   legacyUtcTimeToLocalSessionTime,
@@ -44,6 +45,10 @@ assert.equal(isTradingSession(london), true);
 assert.equal(isMarketClosedSession(london), false);
 assert.equal(isTradingSession(closed), false);
 assert.equal(isMarketClosedSession(closed), true);
+assert.equal(isSessionEnabledForDate({ ...closed, days: [6, 0] }, new Date(2026, 5, 6)), true);
+assert.equal(isSessionEnabledForDate({ ...closed, days: [6, 0] }, new Date(2026, 5, 7)), true);
+assert.equal(isSessionEnabledForDate({ ...closed, days: [6, 0] }, new Date(2026, 5, 5)), false);
+assert.equal(isSessionEnabledForDate(closed, new Date(2026, 5, 5)), true);
 assert.deepEqual(toDailyIntervals(23 * 60, 2 * 60), [[1380, 1440], [0, 120]]);
 assert.deepEqual(toDailyIntervals(0, 0), [[0, 1440]]);
 assert.equal(detectTradingSessionOverlap([london, overlap])?.includes("sovrappongono"), true);

@@ -366,6 +366,8 @@ export interface TradingSessionConfig {
   color: string;
   /** Session kind. Missing means trading for backward compatibility. */
   kind?: TradingSessionConfigKind;
+  /** Optional JavaScript weekday numbers: 0 Sunday through 6 Saturday. Missing or empty means every day. */
+  days?: number[];
   enabled: boolean;
 }
 

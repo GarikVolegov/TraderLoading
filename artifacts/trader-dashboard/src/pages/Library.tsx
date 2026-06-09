@@ -373,12 +373,28 @@ export default function Library() {
 
       {/* Empty state */}
       {contents.length === 0 && (
-        <div className="tl-panel p-16 text-center">
+        <div className="tl-panel p-10 sm:p-16 text-center">
           <LibraryIcon className="w-14 h-14 mx-auto mb-4 opacity-15" />
           <h3 className="text-xl font-bold mb-2">Biblioteca in costruzione</h3>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
             {isAdmin ? "Aggiungi il primo contenuto e assegnagli un livello di sblocco." : "Presto qui troverai contenuti formativi sbloccabili salendo di livello."}
           </p>
+          <div className="mt-8 grid max-w-md mx-auto grid-cols-3 gap-3">
+            {(Object.keys(TYPE_META) as ContentType[]).map((type) => {
+              const M = TYPE_META[type];
+              return (
+                <div key={type} className="rounded-xl border border-border/40 bg-secondary/20 px-3 py-4">
+                  <M.icon className="mx-auto h-6 w-6" style={{ color: M.color }} />
+                  <p className="mt-2 text-xs font-semibold text-muted-foreground">{M.label}</p>
+                </div>
+              );
+            })}
+          </div>
+          {!isAdmin && (
+            <p className="mt-4 text-xs text-muted-foreground/70">
+              Nel frattempo accumula XP completando missioni e routine: i contenuti si sbloccano per livello.
+            </p>
+          )}
         </div>
       )}
 

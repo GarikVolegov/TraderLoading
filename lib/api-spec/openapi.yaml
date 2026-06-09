@@ -1845,6 +1845,13 @@ components:
             - trading
             - market_closed
           description: "Session kind. Missing means trading for backward compatibility."
+        days:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+          description: "Optional JavaScript weekday numbers: 0 Sunday through 6 Saturday. Missing or empty means every day."
         enabled:
           type: boolean
       required:

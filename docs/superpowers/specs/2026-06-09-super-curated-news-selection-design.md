@@ -17,9 +17,15 @@ This keeps the system predictable, testable, and independent from LLM availabili
 - Show only the best news, not every provider article.
 - Prefer articles with clear trading usefulness over generic financial commentary.
 - Use the user's selected pairs and strong macro drivers as primary relevance signals.
-- Limit visible news to a small curated set:
-  - maximum 5 articles in `/api/news`;
-  - maximum 3 articles in the macro ticker adapter.
+- Limit visible news to a curated set:
+  - maximum 40 articles in `/api/news`, returned in chronological (newest-first) order so the feed reads as a timeline of the most important news, with a floor of 10 (the curation threshold relaxes to backfill the floor on quiet days, never with stale/fallback items);
+  - maximum 3 articles in the macro ticker adapter, ordered by curation score.
+
+> Amendment (2026-06-09, after the first implementation): the original "maximum 5
+> articles in `/api/news`" conflicted with the chronological infinite-scroll feed
+> and with the requirement that the feed always contains at least the most
+> important news. The route now uses `limit: 40`, `minKeep: 10`,
+> `sort: "chronological"`. The ticker keeps `limit: 3` score-ordered.
 - Keep excluded articles out of the user-facing feed.
 - Make the selection rule easy to test and tune.
 

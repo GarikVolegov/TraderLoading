@@ -194,7 +194,7 @@ export function SessionCheckinModal() {
           <Button onClick={handleSubmit} disabled={!mood || createCheckin.isPending} className="flex-1">
             {t("checkin.start")}
           </Button>
-          <Button variant="ghost" onClick={() => setVisible(false)}>
+          <Button variant="ghost" onClick={handleSkip}>
             {t("checkin.skip")}
           </Button>
         </div>

@@ -270,9 +270,9 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
           {deepDive ? (
             <div className="grid gap-3">
               {[
-                ["Cosa e' successo", deepDive.whatHappened],
-                ["Perche' influenza l'asset", deepDive.whyItMatters],
-                ["Come puo' impattare", deepDive.possibleImpact],
+                ["Cosa è successo", deepDive.whatHappened],
+                ["Perché influenza l'asset", deepDive.whyItMatters],
+                ["Come può impattare", deepDive.possibleImpact],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-primary/15 bg-primary/5 p-3">
                   <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">{label}</p>

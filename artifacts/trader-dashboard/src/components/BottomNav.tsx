@@ -1,8 +1,10 @@
-import { Link, useRoute } from "wouter";
+import { useState } from "react";
+import { Link, useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, BookOpen, MessageCircle, Brain, BrainCircuit, Settings, FlaskConical, Sunrise, Library } from "lucide-react";
+import { LayoutDashboard, BookOpen, MessageCircle, Brain, BrainCircuit, Settings, FlaskConical, Sunrise, Library, MoreHorizontal, Newspaper, Landmark, CalendarDays, Trophy, Clock } from "lucide-react";
 import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const NAV_ITEMS = [
   { href: "/",        icon: LayoutDashboard, labelKey: "nav.home",    isChat: false },
@@ -17,6 +19,19 @@ const SECONDARY_ITEMS = [
   { href: "/brain",    icon: BrainCircuit, labelKey: "nav.brain"    },
   { href: "/routine",  icon: Sunrise,     labelKey: "nav.routine"  },
   { href: "/settings", icon: Settings,     labelKey: "nav.settings" },
+] as const;
+
+/** Route raggiungibili da mobile solo tramite il menu "Altro". */
+const MORE_ITEMS = [
+  { href: "/news",       icon: Newspaper,    labelKey: "nav.news"       },
+  { href: "/brain",      icon: BrainCircuit, labelKey: "nav.brain"      },
+  { href: "/routine",    icon: Sunrise,      labelKey: "nav.routine"    },
+  { href: "/broker",     icon: Landmark,     labelKey: "nav.broker"     },
+  { href: "/calendar",   icon: CalendarDays, labelKey: "nav.calendar"   },
+  { href: "/milestones", icon: Trophy,       labelKey: "nav.milestones" },
+  { href: "/clock",      icon: Clock,        labelKey: "nav.clock"      },
+  { href: "/library",    icon: Library,      labelKey: "nav.library"    },
+  { href: "/settings",   icon: Settings,     labelKey: "nav.settings"   },
 ] as const;
 
 function NavItem({
@@ -180,11 +195,51 @@ function NavItem({
   );
 }
 
+function MoreSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { t } = useLanguage();
+  const [location] = useLocation();
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="rounded-t-2xl border-border/50 bg-card/95 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] backdrop-blur-2xl">
+        <SheetHeader>
+          <SheetTitle className="text-left text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            {t("nav.more")}
+          </SheetTitle>
+        </SheetHeader>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {MORE_ITEMS.map(({ href, icon: Icon, labelKey }) => {
+            const isActive = location === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => onOpenChange(false)}
+                className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 transition-colors ${
+                  isActive
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border/40 bg-secondary/20 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-[11px] font-medium">{t(labelKey)}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export function BottomNav() {
   const { t } = useLanguage();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [location] = useLocation();
   const { data: unreadData } = useGetUnreadCount({ query: { queryKey: getGetUnreadCountQueryKey(), refetchInterval: 5000 } });
   const { data: profile } = useGetProfile();
   const unreadCount = unreadData?.count ?? 0;
+  const moreActive = MORE_ITEMS.some((item) => location === item.href);
   const avatarSrc =
     profile && profile.avatarUrl
       ? profile.avatarUrl
@@ -211,10 +266,28 @@ export function BottomNav() {
                 badge={item.isChat ? unreadCount : undefined}
               />
             ))}
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              aria-label={t("nav.more")}
+              className="relative flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 py-2"
+            >
+              {moreActive && (
+                <span className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary sm:w-10" />
+              )}
+              <MoreHorizontal
+                className={`h-5 w-5 transition-colors duration-200 sm:h-[22px] sm:w-[22px] ${moreActive ? "text-primary" : "text-muted-foreground"}`}
+              />
+              <span className={`text-[10px] font-medium sm:text-[11px] ${moreActive ? "text-primary" : "text-muted-foreground opacity-50"}`}>
+                {t("nav.more")}
+              </span>
+            </button>
           </div>
           <div className="h-[env(safe-area-inset-bottom,0px)]" />
         </div>
       </motion.nav>
+
+      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
 
       {/* ── Desktop sidebar ───────────────────────────────────────────── */}
       <motion.nav

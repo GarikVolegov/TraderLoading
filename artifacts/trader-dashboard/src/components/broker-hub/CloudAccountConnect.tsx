@@ -15,7 +15,7 @@ export function CloudAccountConnect() {
         </div>
         <div className="mt-3 grid gap-2 text-muted-foreground">
           <p>Il Broker Hub accetta solo FX Blue Account Sync per collegare nuovi conti.</p>
-          <p>Il profilo creato e' sempre in Sola lettura e non puo' inviare ordini live.</p>
+          <p>Il profilo creato è sempre in Sola lettura e non può inviare ordini live.</p>
           <p>Completa il setup su FX Blue, poi incolla il riferimento pubblico del profilo per verificare la sincronizzazione.</p>
         </div>
       </aside>
