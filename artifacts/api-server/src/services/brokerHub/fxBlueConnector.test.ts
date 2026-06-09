@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   createFxBlueBrokerConnector,
+  parseFxBlueOrderList,
   parseFxBlueOverviewScript,
   parseFxBlueProfileRef,
   parseFxBlueRss,
@@ -63,6 +64,17 @@ assert.equal(rss.positions?.[0]?.markPrice, 0.74114);
 assert.equal(rss.deals?.length, 1);
 assert.equal(rss.deals?.[0]?.symbol, "EURUSD");
 assert.equal(rss.deals?.[0]?.side, "sell");
+
+const orderList = parseFxBlueOrderList(`({totalRecords: 3,version: 2, orders: [
+{ticket:226650964,type:"Pending order",action:"Buy Limit",symbol:"BTCUSD",lots:0.01,openDate:"Thu 28 May 2026 13:04:33",closeDate:"Thu 1 Jan 1970 00:00:00",profit:0,swap:0,commission:0,totalProfit:0,pips:0,openPrice:59000,closePrice:0,result:"n/a"},
+{ticket:210189751,type:"Deposit",action:"",symbol:"",lots:0,openDate:"Thu 14 May 2026 15:18:53",closeDate:"Thu 14 May 2026 15:18:53",profit:100,swap:0,commission:0,totalProfit:100,pips:0,openPrice:0,closePrice:0,result:"n/a"},
+{ticket:211464918,type:"Closed position",action:"Buy",symbol:"XAUUSD.r",lots:0.01,openDate:"Wed 20 May 2026 17:12:33",closeDate:"Wed 20 May 2026 17:55:14",profit:54.26,swap:0,commission:-0.06,totalProfit:54.20,pips:630.6,openPrice:4468.94,closePrice:4532,result:"Win"}
+]})`, "volegovgarik");
+assert.equal(orderList.orders?.length, 1);
+assert.equal(orderList.orders?.[0]?.symbol, "BTCUSD");
+assert.equal(orderList.deals?.length, 1);
+assert.equal(orderList.deals?.[0]?.symbol, "XAUUSD.r");
+assert.equal(orderList.deals?.[0]?.profit, 54.2);
 
 const payload: FxBlueFetchPayload = {
   account: {

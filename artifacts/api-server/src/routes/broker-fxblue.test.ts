@@ -32,6 +32,18 @@ try {
         orders: [],
         lastUpdated: "2026-06-08T10:00:00.000Z",
       };
+      const history = [{
+        id: "fxblue-deal-1",
+        symbol: "XAUUSD",
+        side: "buy" as const,
+        volume: 0.01,
+        entryPrice: 4468.94,
+        exitPrice: 4532,
+        profit: 54.2,
+        openedAt: "Wed 20 May 2026 17:12:33",
+        closedAt: "Wed 20 May 2026 17:55:14",
+        source: "fxblue-account-sync" as const,
+      }];
       return {
         async connect() { return snapshot; },
         async disconnect() {},
@@ -39,7 +51,7 @@ try {
         async getSnapshot() { return snapshot; },
         async getPositions() { return []; },
         async getOrders() { return []; },
-        async getDealsHistory() { return []; },
+        async getDealsHistory() { return history; },
         async placeOrder() { return { accepted: false, reason: "read only" }; },
         async modifyOrder() { return { accepted: false, reason: "read only" }; },
         async closePosition() { return { accepted: false, reason: "read only" }; },
@@ -94,6 +106,14 @@ try {
   assert.equal(completed.profile.tradingEnabled, false);
   assert.equal(completed.profile.capabilities.placeOrders, false);
   assert.equal(completed.snapshot.status, "connected");
+
+  const historyRes = await fetch(`${base}/profiles/${completed.profile.id}/history`);
+  assert.equal(historyRes.status, 200);
+  const history = (await historyRes.json()) as Array<{ symbol: string; profit: number; source: string }>;
+  assert.equal(history.length, 1);
+  assert.equal(history[0]?.symbol, "XAUUSD");
+  assert.equal(history[0]?.profit, 54.2);
+  assert.equal(history[0]?.source, "fxblue-account-sync");
 
   const profilesRes = await fetch(`${base}/profiles`);
   const profiles = (await profilesRes.json()) as { profiles: unknown[] };

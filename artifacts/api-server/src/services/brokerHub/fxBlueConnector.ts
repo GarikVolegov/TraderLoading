@@ -119,8 +119,8 @@ function mergeFxBluePayloads(left: FxBlueFetchPayload, right: FxBlueFetchPayload
     account: { ...(left.account ?? {}), ...(right.account ?? {}) },
     metrics: { ...(left.metrics ?? {}), ...(right.metrics ?? {}) },
     positions: right.positions ?? left.positions,
-    orders: right.orders ?? left.orders,
-    deals: right.deals ?? left.deals,
+    orders: right.orders && right.orders.length > 0 ? right.orders : left.orders,
+    deals: right.deals && right.deals.length > 0 ? right.deals : left.deals,
   };
 }
 
@@ -226,6 +226,81 @@ export function parseFxBlueRss(xml: string, username: string): FxBlueFetchPayloa
       profit,
       openedAt: openTime,
       closedAt: closeTime,
+    });
+  }
+
+  return payload;
+}
+
+function readJsField(record: string, name: string): string {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = record.match(new RegExp(`${escaped}\\s*:\\s*(?:"([^"]*)"|([^,}]*))`, "i"));
+  return (match?.[1] ?? match?.[2] ?? "").trim();
+}
+
+function readJsNumber(record: string, name: string): number {
+  return num(readJsField(record, name));
+}
+
+function orderSide(value: string): "buy" | "sell" {
+  return value.toLowerCase().includes("sell") ? "sell" : "buy";
+}
+
+function orderType(value: string): BrokerOrder["type"] {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("stop")) return "stop";
+  return "limit";
+}
+
+export function parseFxBlueOrderList(value: string, username: string): FxBlueFetchPayload {
+  const ordersBlock =
+    value.match(/orders\s*:\s*\[([\s\S]*?)\]\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:/i)?.[1] ??
+    value.match(/orders\s*:\s*\[([\s\S]*?)\]\s*\}\s*\)?\s*$/i)?.[1] ??
+    "";
+  const records = ordersBlock.match(/\{[\s\S]*?\}(?=\s*,|\s*$)/g) ?? [];
+  const payload: FxBlueFetchPayload = {
+    account: {
+      id: username,
+      label: `FX Blue ${username}`,
+      brokerName: "FX Blue",
+      environment: "live",
+    },
+    orders: [],
+    deals: [],
+  };
+
+  for (const record of records) {
+    const type = readJsField(record, "type");
+    const ticket = readJsField(record, "ticket");
+    const symbol = readJsField(record, "symbol");
+    const action = readJsField(record, "action");
+    if (!ticket || !symbol) continue;
+
+    if (/pending order/i.test(type)) {
+      payload.orders?.push({
+        id: ticket,
+        brokerOrderId: ticket,
+        symbol: symbol.toUpperCase(),
+        side: orderSide(action),
+        type: orderType(action),
+        volume: readJsNumber(record, "lots"),
+        status: "pending",
+        createdAt: readJsField(record, "openDate") || new Date(0).toISOString(),
+      });
+      continue;
+    }
+
+    if (!/closed position/i.test(type)) continue;
+    payload.deals?.push({
+      id: ticket,
+      symbol,
+      side: orderSide(action),
+      volume: readJsNumber(record, "lots"),
+      entryPrice: readJsNumber(record, "openPrice"),
+      exitPrice: readJsNumber(record, "closePrice"),
+      profit: readJsNumber(record, "totalProfit") || readJsNumber(record, "profit"),
+      openedAt: readJsField(record, "openDate"),
+      closedAt: readJsField(record, "closeDate"),
     });
   }
 
@@ -347,17 +422,19 @@ async function fetchFxBlueText(url: string): Promise<FxBlueFetchResult> {
 
 async function defaultFetchProfile(username: string): Promise<FxBlueFetchPayload> {
   const baseUrl = `https://www.fxblue.com/users/${encodeURIComponent(username)}`;
-  const [overviewResult, rssResult] = await Promise.allSettled([
+  const [overviewResult, rssResult, orderListResult] = await Promise.allSettled([
     fetchFxBlueText(`${baseUrl}/overviewscript`),
     fetchFxBlueText(`${baseUrl}/rss`),
+    fetchFxBlueText(`https://api.fxblue.com/wl/data/_orderlist.aspx?id=${encodeURIComponent(username)}&start=0&limit=999999`),
   ]);
-  const results = [overviewResult, rssResult].map((result): FxBlueFetchResult =>
+  const results = [overviewResult, rssResult, orderListResult].map((result): FxBlueFetchResult =>
     result.status === "fulfilled" ? result.value : { kind: "error", error: result.reason instanceof Error ? result.reason.message : "FX Blue non raggiungibile." },
   );
   const payloads: FxBlueFetchPayload[] = [];
-  const [overview, rss] = results;
+  const [overview, rss, orderList] = results;
   if (overview.kind === "ok") payloads.push(parseFxBlueOverviewScript(overview.text, username));
   if (rss.kind === "ok") payloads.push(parseFxBlueRss(rss.text, username));
+  if (orderList.kind === "ok") payloads.push(parseFxBlueOrderList(orderList.text, username));
   const readable = payloads.filter((payload) => payload.status !== "waiting" && payload.status !== "error" && payload.status !== "private");
   if (readable.length > 0) return readable.reduce(mergeFxBluePayloads);
   if (results.some((result) => result.kind === "private")) return { status: "private" };
