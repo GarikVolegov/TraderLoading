@@ -17,6 +17,7 @@ import {
 } from "../services/newsHub/ranking.js";
 import { cleanNewsText, createTranslationMemo } from "../services/newsHub/contentQuality.js";
 import { buildNewsDeepDive } from "../services/newsHub/deepDive.js";
+import { personalizeArticles, type NewsFeedbackEntry, type NewsPreferences } from "../services/newsHub/personalization.js";
 
 const router: IRouter = Router();
 
@@ -900,6 +901,99 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
   }
 }
 
+// ─── Per-user personalization ("train the feed with my info") ─────────────────
+
+function newsUserId(req: unknown): string | undefined {
+  return (req as { user?: { id?: string } }).user?.id;
+}
+
+async function readNewsPreferences(userId: string): Promise<NewsPreferences> {
+  try {
+    const { db, newsPreferencesTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const [row] = await db.select().from(newsPreferencesTable).where(eq(newsPreferencesTable.userId, userId)).limit(1);
+    if (!row) return { keywords: [], profile: "" };
+    let keywords: string[] = [];
+    try { const v = JSON.parse(row.keywords); if (Array.isArray(v)) keywords = v.map(String); } catch { /* ignore */ }
+    return { keywords, profile: row.profile ?? "" };
+  } catch (err) {
+    console.warn("[news] preferences read skipped:", err instanceof Error ? err.message : err);
+    return { keywords: [], profile: "" };
+  }
+}
+
+async function writeNewsPreferences(userId: string, prefs: NewsPreferences): Promise<void> {
+  const { db, newsPreferencesTable } = await import("@workspace/db");
+  const now = new Date();
+  const keywords = JSON.stringify(prefs.keywords.map((k) => String(k).trim()).filter(Boolean).slice(0, 40));
+  const profile = (prefs.profile ?? "").slice(0, 2000);
+  await db
+    .insert(newsPreferencesTable)
+    .values({ userId, keywords, profile, updatedAt: now })
+    .onConflictDoUpdate({ target: newsPreferencesTable.userId, set: { keywords, profile, updatedAt: now } });
+}
+
+async function readNewsFeedback(userId: string): Promise<NewsFeedbackEntry[]> {
+  try {
+    const { db, newsFeedbackTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const rows = await db.select().from(newsFeedbackTable).where(eq(newsFeedbackTable.userId, userId)).limit(500);
+    return rows.map((r) => ({ articleKey: r.articleKey, source: r.source, vote: r.vote }));
+  } catch (err) {
+    console.warn("[news] feedback read skipped:", err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
+async function upsertNewsFeedback(userId: string, entry: NewsFeedbackEntry): Promise<void> {
+  const { db, newsFeedbackTable } = await import("@workspace/db");
+  await db
+    .insert(newsFeedbackTable)
+    .values({ userId, articleKey: entry.articleKey, source: entry.source, vote: entry.vote })
+    .onConflictDoUpdate({
+      target: [newsFeedbackTable.userId, newsFeedbackTable.articleKey],
+      set: { vote: entry.vote, source: entry.source },
+    });
+}
+
+router.get("/news/preferences", async (req, res) => {
+  const userId = newsUserId(req);
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  res.json(await readNewsPreferences(userId));
+});
+
+router.put("/news/preferences", async (req, res) => {
+  const userId = newsUserId(req);
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  const body = req.body ?? {};
+  const keywords = Array.isArray(body.keywords) ? body.keywords.map((k: unknown) => String(k)) : [];
+  const profile = typeof body.profile === "string" ? body.profile : "";
+  try {
+    await writeNewsPreferences(userId, { keywords, profile });
+    res.json({ keywords, profile });
+  } catch (err) {
+    console.error("[news] preferences write:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
+router.post("/news/feedback", async (req, res) => {
+  const userId = newsUserId(req);
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  const body = req.body ?? {};
+  const articleKey = typeof body.articleKey === "string" ? body.articleKey : "";
+  const source = typeof body.source === "string" ? body.source : "";
+  const vote = body.vote === 1 || body.vote === -1 || body.vote === 0 ? body.vote : 0;
+  if (!articleKey) { res.status(400).json({ error: "articleKey richiesto" }); return; }
+  try {
+    await upsertNewsFeedback(userId, { articleKey, source, vote });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[news] feedback write:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
 router.get("/news", async (req, res) => {
   const result = await getNewsData({
     noCache: req.query.nocache === "1",
@@ -907,8 +1001,20 @@ router.get("/news", async (req, res) => {
     lang: req.query.lang as string | undefined,
   });
 
+  // Re-rank the shared corpus with the user's keywords / profile / feedback.
+  let articles = result.articles;
+  const userId = newsUserId(req);
+  if (userId) {
+    try {
+      const [prefs, feedback] = await Promise.all([readNewsPreferences(userId), readNewsFeedback(userId)]);
+      articles = personalizeArticles(result.articles, prefs, feedback);
+    } catch (err) {
+      console.warn("[news] personalization skipped:", err instanceof Error ? err.message : err);
+    }
+  }
+
   const limitParam = Number.parseInt((req.query.limit as string) ?? "", 10);
-  const page = paginateNews(result.articles, {
+  const page = paginateNews(articles, {
     cursor: (req.query.cursor as string) ?? null,
     limit: Number.isFinite(limitParam) ? limitParam : DEFAULT_NEWS_PAGE_SIZE,
   });
