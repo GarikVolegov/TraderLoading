@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Cable, CheckCircle2, History, ListChecks, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { simpleStatusLabel } from "@/lib/uiCopyPolicy";
 import { ConnectAccountWizard } from "./ConnectAccountWizard";
 import { useBrokerHub } from "./useBrokerHub";
 import type { BrokerHubTab } from "./types";
@@ -26,7 +27,7 @@ function StatusStrip({ snapshot, message }: ReturnType<typeof useBrokerHub>) {
       <div className="rounded-xl border border-border/40 bg-card/60 p-3">
         <p className="text-[11px] uppercase text-muted-foreground">Conto attivo</p>
         <p className="mt-1 font-mono text-sm font-bold">{snapshot.brokerName}</p>
-        <p className="text-xs text-muted-foreground">{snapshot.status}</p>
+        <p className="text-xs text-muted-foreground">{simpleStatusLabel(snapshot.status)}</p>
       </div>
       {[
         ["Balance", snapshot.metrics.balance],
@@ -82,8 +83,8 @@ function AccountsPanel({ hub, onConnected }: { hub: ReturnType<typeof useBrokerH
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-              <span className="rounded-full border border-border/40 px-2 py-1">{profile.environment}</span>
-              <span className="rounded-full border border-border/40 px-2 py-1">{profile.health ?? profile.connectionStatus ?? "offline"}</span>
+              <span className="rounded-full border border-border/40 px-2 py-1">{profile.environment === "live" ? "Reale" : "Demo"}</span>
+              <span className="rounded-full border border-border/40 px-2 py-1">{simpleStatusLabel(profile.health ?? profile.connectionStatus)}</span>
               <span className="rounded-full border border-border/40 px-2 py-1">{profile.tradingEnabled ? "Trading non disponibile" : "Trading bloccato"}</span>
               {!capabilities.placeOrders && <span className="rounded-full border border-border/40 px-2 py-1">Sola lettura</span>}
             </div>

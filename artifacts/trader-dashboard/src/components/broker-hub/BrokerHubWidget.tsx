@@ -1,5 +1,6 @@
 import { Activity, Cable, History, Landmark, ListChecks, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { simpleStatusLabel } from "@/lib/uiCopyPolicy";
 import { useBrokerHub } from "./useBrokerHub";
 import type { BrokerHubTab } from "./types";
 
@@ -41,7 +42,7 @@ export function BrokerHubWidget() {
           }`}
         >
           {connected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-          {snapshot.status}
+          {simpleStatusLabel(snapshot.status)}
         </div>
       </div>
 

@@ -18,6 +18,7 @@ import {
 import { cleanNewsText, createTranslationMemo } from "../services/newsHub/contentQuality.js";
 import { buildNewsDeepDive } from "../services/newsHub/deepDive.js";
 import { personalizeArticles, type NewsFeedbackEntry, type NewsPreferences } from "../services/newsHub/personalization.js";
+import { selectCuratedNews } from "../services/newsHub/curation.js";
 import { filterTradingDecisionRelevantNews } from "../services/newsHub/tradingRelevance.js";
 
 const router: IRouter = Router();
@@ -687,13 +688,14 @@ const NEWS_LLM_BUDGET_MS = (() => {
 // Translate/enrich at most this many RSS candidates — the corpus is trimmed to
 // NEWS_FEED_CORPUS_LIMIT anyway, so processing the whole RSS haul is wasted time.
 const NEWS_BUILD_CANDIDATE_LIMIT = 90;
+const NEWS_ASSET_CACHE_VERSION = "asset-impact-v2";
 
 function newsCacheKey(input: { pairs?: string; lang?: string }): { cacheKey: string; pairsStr: string; lang: string } {
   const pairsStr = input.pairs || "";
   const lang = sanitizeNewsLang(input.lang);
   const pairCurrencies = pairsToCurrencies(pairsStr);
   const baseCacheKey = pairCurrencies.length > 0 ? pairCurrencies.sort().join(",") : "all";
-  return { cacheKey: `${baseCacheKey}:${lang}`, pairsStr, lang };
+  return { cacheKey: `${NEWS_ASSET_CACHE_VERSION}:${baseCacheKey}:${lang}`, pairsStr, lang };
 }
 
 // Resolve to `fallback` if `promise` has not settled within `ms`. The underlying
@@ -820,7 +822,10 @@ async function buildNewsData(input: { pairs?: string; lang?: string } = {}): Pro
     const nowMs = Date.now();
     const recent = sorted.filter((a) => a.publishedAt && nowMs - new Date(a.publishedAt).getTime() <= maxAgeMs);
     articles = recent.length > 0 ? recent : sorted.slice(0, 12);
-    articles = filterTradingDecisionRelevantNews(articles);
+    articles = selectCuratedNews(filterTradingDecisionRelevantNews(articles), {
+      pairs: pairsStr,
+      limit: 5,
+    });
     source = "ai";  // enrichment (euristico o Groq) conta come AI
     nextRefreshAt = new Date(Date.now() + cacheTtl).toISOString();
   } catch {

@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AccountKeyBackupResponse,
   AuthUserEnvelope,
   AvatarResponse,
   BacktestSession,
@@ -63,6 +64,7 @@ import type {
   PublicKeyRecord,
   PublicKeyResponse,
   Quote,
+  SaveAccountKeyBackupBody,
   SavePublicKeyBody,
   SearchUsersParams,
   SendMessageBody,
@@ -4926,6 +4928,168 @@ export const useSavePublicKey = <
   TContext
 > => {
   return useMutation(getSavePublicKeyMutationOptions(options));
+};
+
+/**
+ * @summary Get the authenticated user's account-backed E2EE key pair
+ */
+export const getGetAccountKeyBackupUrl = () => {
+  return `/api/chat/key-backup`;
+};
+
+export const getAccountKeyBackup = async (
+  options?: RequestInit,
+): Promise<AccountKeyBackupResponse> => {
+  return customFetch<AccountKeyBackupResponse>(getGetAccountKeyBackupUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAccountKeyBackupQueryKey = () => {
+  return [`/api/chat/key-backup`] as const;
+};
+
+export const getGetAccountKeyBackupQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAccountKeyBackup>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAccountKeyBackup>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAccountKeyBackupQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAccountKeyBackup>>
+  > = ({ signal }) => getAccountKeyBackup({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAccountKeyBackup>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAccountKeyBackupQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAccountKeyBackup>>
+>;
+export type GetAccountKeyBackupQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the authenticated user's account-backed E2EE key pair
+ */
+
+export function useGetAccountKeyBackup<
+  TData = Awaited<ReturnType<typeof getAccountKeyBackup>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAccountKeyBackup>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAccountKeyBackupQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save the authenticated user's account-backed E2EE key pair
+ */
+export const getSaveAccountKeyBackupUrl = () => {
+  return `/api/chat/key-backup`;
+};
+
+export const saveAccountKeyBackup = async (
+  saveAccountKeyBackupBody: SaveAccountKeyBackupBody,
+  options?: RequestInit,
+): Promise<AccountKeyBackupResponse> => {
+  return customFetch<AccountKeyBackupResponse>(getSaveAccountKeyBackupUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(saveAccountKeyBackupBody),
+  });
+};
+
+export const getSaveAccountKeyBackupMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveAccountKeyBackup>>,
+    TError,
+    { data: BodyType<SaveAccountKeyBackupBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveAccountKeyBackup>>,
+  TError,
+  { data: BodyType<SaveAccountKeyBackupBody> },
+  TContext
+> => {
+  const mutationKey = ["saveAccountKeyBackup"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveAccountKeyBackup>>,
+    { data: BodyType<SaveAccountKeyBackupBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveAccountKeyBackup(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveAccountKeyBackupMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveAccountKeyBackup>>
+>;
+export type SaveAccountKeyBackupMutationBody =
+  BodyType<SaveAccountKeyBackupBody>;
+export type SaveAccountKeyBackupMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save the authenticated user's account-backed E2EE key pair
+ */
+export const useSaveAccountKeyBackup = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveAccountKeyBackup>>,
+    TError,
+    { data: BodyType<SaveAccountKeyBackupBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveAccountKeyBackup>>,
+  TError,
+  { data: BodyType<SaveAccountKeyBackupBody> },
+  TContext
+> => {
+  return useMutation(getSaveAccountKeyBackupMutationOptions(options));
 };
 
 /**

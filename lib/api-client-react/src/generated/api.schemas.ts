@@ -564,6 +564,30 @@ export interface SavePublicKeyBody {
   publicKeyJwk: SavePublicKeyBodyPublicKeyJwk;
 }
 
+export type SaveAccountKeyBackupBodyPublicKeyJwk = { [key: string]: unknown };
+
+export type SaveAccountKeyBackupBodyPrivateKeyJwk = { [key: string]: unknown };
+
+export interface SaveAccountKeyBackupBody {
+  publicKeyJwk: SaveAccountKeyBackupBodyPublicKeyJwk;
+  privateKeyJwk: SaveAccountKeyBackupBodyPrivateKeyJwk;
+}
+
+export type AccountKeyBackupResponsePublicKeyJwk = {
+  [key: string]: unknown;
+} | null;
+
+export type AccountKeyBackupResponsePrivateKeyJwk = {
+  [key: string]: unknown;
+} | null;
+
+export interface AccountKeyBackupResponse {
+  userId: string;
+  hasBackup: boolean;
+  publicKeyJwk: AccountKeyBackupResponsePublicKeyJwk;
+  privateKeyJwk: AccountKeyBackupResponsePrivateKeyJwk;
+}
+
 export interface PublicKeyRecord {
   id: number;
   userId: string;

@@ -1124,6 +1124,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/PublicKeyRecord"
 
+  /chat/key-backup:
+    get:
+      operationId: getAccountKeyBackup
+      tags: [chat]
+      summary: Get the authenticated user's account-backed E2EE key pair
+      responses:
+        "200":
+          description: Account key backup status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeyBackupResponse"
+    put:
+      operationId: saveAccountKeyBackup
+      tags: [chat]
+      summary: Save the authenticated user's account-backed E2EE key pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveAccountKeyBackupBody"
+      responses:
+        "200":
+          description: Account key backup saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeyBackupResponse"
+
   /chat/keys/{userId}:
     get:
       operationId: getPublicKey
@@ -2094,6 +2124,36 @@ components:
           type: object
       required:
         - publicKeyJwk
+
+    SaveAccountKeyBackupBody:
+      type: object
+      properties:
+        publicKeyJwk:
+          type: object
+        privateKeyJwk:
+          type: object
+      required:
+        - publicKeyJwk
+        - privateKeyJwk
+
+    AccountKeyBackupResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        hasBackup:
+          type: boolean
+        publicKeyJwk:
+          type: object
+          nullable: true
+        privateKeyJwk:
+          type: object
+          nullable: true
+      required:
+        - userId
+        - hasBackup
+        - publicKeyJwk
+        - privateKeyJwk
 
     PublicKeyRecord:
       type: object

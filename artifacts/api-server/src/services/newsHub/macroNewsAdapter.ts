@@ -1,5 +1,6 @@
 import type { NewsArticle, NewsDeepDive, NewsResponse } from "./types.js";
 import { computeRiskRegime } from "./riskRegime.js";
+import { selectCuratedNews } from "./curation.js";
 import { isTradingDecisionRelevantNews } from "./tradingRelevance.js";
 
 export interface MacroNewsArticle {
@@ -21,6 +22,8 @@ export interface MacroNewsArticle {
   timestamp?: string | null;
   imageUrl?: string | null;
   imageKeywords?: string[];
+  affectedPairs?: string[];
+  primaryAssets?: string[];
   deepDive?: NewsDeepDive;
 }
 
@@ -53,11 +56,12 @@ const ASSET_PATTERNS: Record<string, RegExp[]> = {
 export function pairsFromMacroCurrencies(currenciesRaw: string): string {
   const currencies = currenciesRaw.split(",").map((currency) => currency.trim().toUpperCase()).filter(Boolean);
   const set = new Set(currencies);
-  if (set.has("XAU") && set.has("USD")) return "XAUUSD";
+  const pairs: string[] = [];
+  if (set.has("XAU") && set.has("USD")) pairs.push("XAUUSD");
   for (const currency of MAJOR_CURRENCIES) {
-    if (set.has(currency) && set.has("USD")) return `${currency}USD`;
+    if (set.has(currency) && set.has("USD")) pairs.push(`${currency}USD`);
   }
-  return "";
+  return pairs.join(",");
 }
 
 function impactFromScore(score: number | undefined): "alto" | "medio" | "basso" {
@@ -73,7 +77,7 @@ function directionFromArticle(article: NewsArticle): "bullish" | "bearish" | "ne
 }
 
 function currencyFromArticle(article: NewsArticle): string {
-  const primary = article.primaryAssets?.find((asset) => asset && asset !== "USD");
+  const primary = article.primaryAssets?.find((asset) => asset && asset !== "GLOBALE");
   if (primary) return primary;
   const pair = article.affectedPairs?.[0];
   if (pair?.includes("/")) return pair.split("/")[0] ?? "GLOBALE";
@@ -272,8 +276,11 @@ function buildMacroTickerSummary(
 }
 
 export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: string } = {}): MacroNewsResultLike {
-  const kept = news.articles.filter(
-    (article) => !isExplicitlyOutsideRequestedPairs(article, options.pairs) && isTradingDecisionRelevantNews(article),
+  const kept = selectCuratedNews(
+    news.articles.filter(
+      (article) => !isExplicitlyOutsideRequestedPairs(article, options.pairs) && isTradingDecisionRelevantNews(article),
+    ),
+    { pairs: options.pairs, limit: 3 },
   );
   const regime = computeRiskRegime(kept);
   const seenImageUrls = new Set<string>();
@@ -297,6 +304,8 @@ export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: stri
     timestamp: article.publishedAt,
     imageUrl: uniqueMacroImageUrl(article, index, seenImageUrls),
     imageKeywords: article.primaryAssets,
+    affectedPairs: article.affectedPairs,
+    primaryAssets: article.primaryAssets,
     deepDive: article.deepDive,
   }));
 

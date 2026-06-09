@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, chatMessagesTable, userPublicKeysTable, friendshipsTable, globalChatMessagesTable, profileTable, followsTable } from "@workspace/db";
+import { db, chatMessagesTable, userPublicKeysTable, userE2eeKeyBackupsTable, friendshipsTable, globalChatMessagesTable, profileTable, followsTable } from "@workspace/db";
 import { eq, or, and, desc, sql, lt, asc } from "drizzle-orm";
 import { getUserNotificationLanguage, sendPushToUser } from "./push.js";
 import { getServerNotificationCopy } from "../services/notifications/notificationCopy.js";
@@ -38,6 +38,134 @@ async function areMutualFollowers(userId: string, friendId: string): Promise<boo
     .limit(1);
   return legacy.length > 0;
 }
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+export function isValidAccountKeyBackupBody(body: unknown): body is {
+  publicKeyJwk: Record<string, unknown>;
+  privateKeyJwk: Record<string, unknown>;
+} {
+  if (!isJsonObject(body)) return false;
+  return isJsonObject(body.publicKeyJwk) && isJsonObject(body.privateKeyJwk);
+}
+
+export function serializeAccountKeyBackup(
+  userId: string,
+  backup: { publicKeyJwk: string; privateKeyJwk: string } | null,
+) {
+  if (!backup) {
+    return {
+      userId,
+      hasBackup: false,
+      publicKeyJwk: null,
+      privateKeyJwk: null,
+    };
+  }
+
+  return {
+    userId,
+    hasBackup: true,
+    publicKeyJwk: JSON.parse(backup.publicKeyJwk),
+    privateKeyJwk: JSON.parse(backup.privateKeyJwk),
+  };
+}
+
+async function upsertPublicKey(userId: string, publicKeyJwk: Record<string, unknown>) {
+  const existing = await db
+    .select()
+    .from(userPublicKeysTable)
+    .where(eq(userPublicKeysTable.userId, userId))
+    .limit(1);
+
+  if (existing.length > 0) {
+    return db
+      .update(userPublicKeysTable)
+      .set({ publicKeyJwk: JSON.stringify(publicKeyJwk) })
+      .where(eq(userPublicKeysTable.userId, userId))
+      .returning();
+  }
+
+  return db
+    .insert(userPublicKeysTable)
+    .values({ userId, publicKeyJwk: JSON.stringify(publicKeyJwk) })
+    .returning();
+}
+
+router.get("/chat/key-backup", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
+  try {
+    const [backup] = await db
+      .select({
+        publicKeyJwk: userE2eeKeyBackupsTable.publicKeyJwk,
+        privateKeyJwk: userE2eeKeyBackupsTable.privateKeyJwk,
+      })
+      .from(userE2eeKeyBackupsTable)
+      .where(eq(userE2eeKeyBackupsTable.userId, userId))
+      .limit(1);
+
+    res.json(serializeAccountKeyBackup(userId, backup ?? null));
+  } catch (err) {
+    console.error("chat/key-backup GET error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
+router.put("/chat/key-backup", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
+  try {
+    if (!isValidAccountKeyBackupBody(req.body)) {
+      res.status(400).json({ error: "publicKeyJwk e privateKeyJwk richiesti" });
+      return;
+    }
+
+    const publicKeyJwk = JSON.stringify(req.body.publicKeyJwk);
+    const privateKeyJwk = JSON.stringify(req.body.privateKeyJwk);
+
+    const existing = await db
+      .select()
+      .from(userE2eeKeyBackupsTable)
+      .where(eq(userE2eeKeyBackupsTable.userId, userId))
+      .limit(1);
+
+    let saved: { publicKeyJwk: string; privateKeyJwk: string };
+    if (existing.length > 0) {
+      const [updated] = await db
+        .update(userE2eeKeyBackupsTable)
+        .set({
+          publicKeyJwk,
+          privateKeyJwk,
+          updatedAt: new Date(),
+        })
+        .where(eq(userE2eeKeyBackupsTable.userId, userId))
+        .returning({
+          publicKeyJwk: userE2eeKeyBackupsTable.publicKeyJwk,
+          privateKeyJwk: userE2eeKeyBackupsTable.privateKeyJwk,
+        });
+      saved = updated;
+    } else {
+      const [created] = await db
+        .insert(userE2eeKeyBackupsTable)
+        .values({ userId, publicKeyJwk, privateKeyJwk })
+        .returning({
+          publicKeyJwk: userE2eeKeyBackupsTable.publicKeyJwk,
+          privateKeyJwk: userE2eeKeyBackupsTable.privateKeyJwk,
+        });
+      saved = created;
+    }
+
+    await upsertPublicKey(userId, req.body.publicKeyJwk);
+    res.json(serializeAccountKeyBackup(userId, saved));
+  } catch (err) {
+    console.error("chat/key-backup PUT error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
 
 router.post("/chat/keys", async (req, res) => {
   const userId = requireAuth(req, res);

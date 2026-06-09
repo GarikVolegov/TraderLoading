@@ -6,6 +6,7 @@ import { cleanNewsText } from "../services/newsHub/contentQuality.js";
 import { macroNewsFromNewsHub, pairsFromMacroCurrencies } from "../services/newsHub/macroNewsAdapter.js";
 import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
+import { getVolatilityUnit, YAHOO_VOLATILITY_PAIRS } from "../services/volatility.js";
 
 const router = Router();
 
@@ -185,46 +186,13 @@ router.get("/tools/sentiment", async (req, res) => {
 
 // ─── 3. VOLATILITY (Mataf-methodology via Yahoo Finance OHLCV) ────────────────
 
-const YAHOO_PAIRS: Record<string, string> = {
-  "EURUSD": "EURUSD=X",
-  "GBPUSD": "GBPUSD=X",
-  "USDJPY": "JPY=X",
-  "USDCHF": "CHF=X",
-  "AUDUSD": "AUDUSD=X",
-  "USDCAD": "CAD=X",
-  "NZDUSD": "NZDUSD=X",
-  "EURGBP": "EURGBP=X",
-  "EURJPY": "EURJPY=X",
-  "GBPJPY": "GBPJPY=X",
-  "XAUUSD": "GC=F",
-  "XAGUSD": "SI=F",
-  "USDMXN": "MXN=X",
-  "USDZAR": "ZAR=X",
-};
-
-// Pip multiplier: how many pips per 1.0 of price movement
-const PIP_MULTIPLIER: Record<string, number> = {
-  "USDJPY": 100, "EURJPY": 100, "GBPJPY": 100, "CADJPY": 100, "AUDJPY": 100,
-  "XAUUSD": 10,  "XAGUSD": 100,
-};
-const DEFAULT_PIP = 10000;
-
-function getPipMultiplier(pair: string) {
-  for (const [k, v] of Object.entries(PIP_MULTIPLIER)) {
-    if (pair.includes(k.slice(3)) && k.slice(3) === "JPY") return v;
-    if (pair === k) return v;
-  }
-  if (pair.endsWith("JPY")) return 100;
-  return DEFAULT_PIP;
-}
-
 function avgPips(arr: number[]) {
   return arr.length ? parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)) : 0;
 }
 
 router.get("/tools/volatility", async (req, res) => {
   const pair = (req.query["pair"] as string ?? "EURUSD").toUpperCase();
-  const ticker = YAHOO_PAIRS[pair];
+  const ticker = YAHOO_VOLATILITY_PAIRS[pair];
 
   if (!ticker) {
     res.status(400).json({ error: `Pair ${pair} non supportato` });
@@ -260,7 +228,7 @@ router.get("/tools/volatility", async (req, res) => {
 
     if (!quote || !timestamps.length) throw new Error("Dati insufficienti da Yahoo Finance");
 
-    const pip = getPipMultiplier(pair);
+    const { multiplier: pip, pipUnit } = getVolatilityUnit(pair);
 
     // Build per-day pip ranges (H-L) — exactly Mataf's method
     const ranges: { ts: number; pips: number; close: number }[] = [];
@@ -336,7 +304,7 @@ router.get("/tools/volatility", async (req, res) => {
       w1Pct, m1Pct, m3Pct, m6Pct, y1Pct,
       label,
       peakDay,
-      pipUnit: pip === 100 ? "pip (JPY)" : pip === 10 ? "pip (XAU)" : "pip",
+      pipUnit,
       last30,
       // legacy fields for backwards compat
       daily5: w1,
@@ -888,6 +856,8 @@ interface MacroNewsResult {
     timestamp?: string | null;
     imageUrl?: string | null;
     imageKeywords?: string[];
+    affectedPairs?: string[];
+    primaryAssets?: string[];
   }>;
   sentiment: string;
   sentimentIntensity?: string;
@@ -898,6 +868,7 @@ interface MacroNewsResult {
 
 const macroNewsCache = new Map<string, { data: MacroNewsResult; expiresAt: number }>();
 const MACRO_NEWS_TTL = 2 * 60 * 1000;
+const MACRO_NEWS_ASSET_CACHE_VERSION = "asset-impact-v2";
 const VALID_CURRENCIES = new Set(["EUR", "USD", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "XAU"]);
 
 function normalizeCurrencies(raw: string): { key: string; label: string } {
@@ -1513,7 +1484,7 @@ router.get("/tools/macro-news", async (req, res) => {
     currenciesInput = derived.join(",");
   }
   const { key: baseKey, label } = normalizeCurrencies(currenciesInput);
-  const key = `${baseKey}:${lang}`;
+  const key = `${MACRO_NEWS_ASSET_CACHE_VERSION}:${baseKey}:${lang}`;
   const forceRefresh = req.query.force === "1";
 
   const cached = macroNewsCache.get(key);
@@ -1546,7 +1517,7 @@ router.post("/tools/macro-news", async (req, res) => {
     }
   }
   const { key: baseKey, label } = normalizeCurrencies(currencyInput);
-  const key = `${baseKey}:${lang}`;
+  const key = `${MACRO_NEWS_ASSET_CACHE_VERSION}:${baseKey}:${lang}`;
 
   const cached = macroNewsCache.get(key);
   if (cached && Date.now() < cached.expiresAt) {
@@ -1567,7 +1538,7 @@ router.post("/tools/macro-news", async (req, res) => {
 
 // ─── SUPPORTED PAIRS LIST ─────────────────────────────────────────────────────
 router.get("/tools/pairs", (req, res) => {
-  res.json({ pairs: Object.keys(YAHOO_PAIRS) });
+  res.json({ pairs: Object.keys(YAHOO_VOLATILITY_PAIRS) });
 });
 
 export default router;

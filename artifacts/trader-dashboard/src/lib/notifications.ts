@@ -215,3 +215,117 @@ export function shouldNotifyOnce(
 export function browserNotificationsAvailable(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
 }
+
+export type BrowserNotificationDeliveryResult = "service-worker" | "window" | "toast" | "skipped";
+
+export type BrowserNotificationAction = { action: string; title: string; icon?: string };
+
+type BrowserNotificationOptions = NotificationOptions & {
+  vibrate?: number[];
+  actions?: BrowserNotificationAction[];
+};
+
+export interface BrowserNotificationDelivery {
+  title: string;
+  body?: string;
+  icon?: string;
+  badge?: string;
+  tag?: string;
+  data?: Record<string, unknown>;
+  requireInteraction?: boolean;
+  vibrate?: number[];
+  actions?: BrowserNotificationAction[];
+  showToast?: () => void;
+  registrationTimeoutMs?: number;
+  getPermission?: () => NotificationPermission;
+  getServiceWorkerRegistration?: () => Promise<ServiceWorkerRegistration | null | undefined>;
+  createWindowNotification?: (title: string, options: BrowserNotificationOptions) => unknown;
+}
+
+function notificationOptions(input: BrowserNotificationDelivery): BrowserNotificationOptions {
+  const options: BrowserNotificationOptions = {
+    icon: input.icon ?? "/app-icon-192.png",
+  };
+
+  if (input.body !== undefined) options.body = input.body;
+  if (input.badge !== undefined) options.badge = input.badge;
+  if (input.tag !== undefined) options.tag = input.tag;
+  if (input.data !== undefined) options.data = input.data;
+  if (input.requireInteraction !== undefined) options.requireInteraction = input.requireInteraction;
+  if (input.vibrate !== undefined) options.vibrate = input.vibrate;
+  if (input.actions !== undefined) options.actions = input.actions;
+
+  return options;
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function getDefaultServiceWorkerRegistration(timeoutMs: number): Promise<ServiceWorkerRegistration | null> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
+
+  try {
+    const existing = await navigator.serviceWorker.getRegistration();
+    if (existing?.active && "showNotification" in existing) return existing;
+  } catch {
+    // Fall through to navigator.serviceWorker.ready.
+  }
+
+  try {
+    const ready = await withTimeout(navigator.serviceWorker.ready, timeoutMs);
+    return ready && "showNotification" in ready ? ready : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function deliverBrowserNotification(
+  input: BrowserNotificationDelivery,
+): Promise<BrowserNotificationDeliveryResult> {
+  const getPermission = input.getPermission ?? (() =>
+    typeof Notification !== "undefined" ? Notification.permission : "denied"
+  );
+  const permission = getPermission();
+
+  if (permission !== "granted") {
+    input.showToast?.();
+    return input.showToast ? "toast" : "skipped";
+  }
+
+  const options = notificationOptions(input);
+  const getRegistration = input.getServiceWorkerRegistration
+    ?? (() => getDefaultServiceWorkerRegistration(input.registrationTimeoutMs ?? 1_500));
+
+  try {
+    const registration = await getRegistration();
+    if (registration) {
+      await registration.showNotification(input.title, options);
+      return "service-worker";
+    }
+  } catch {
+    // Fall through to the window notification constructor.
+  }
+
+  try {
+    const createWindowNotification = input.createWindowNotification ?? ((title: string, opts: BrowserNotificationOptions) => {
+      if (typeof Notification === "undefined") return null;
+      return new Notification(title, opts);
+    });
+    createWindowNotification(input.title, options);
+    return "window";
+  } catch {
+    input.showToast?.();
+    return input.showToast ? "toast" : "skipped";
+  }
+}

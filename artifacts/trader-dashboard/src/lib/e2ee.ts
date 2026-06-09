@@ -1,13 +1,36 @@
 const DB_NAME = "traderloading-e2ee";
 const STORE_NAME = "keys";
 
+export type E2EEKeyPair = { publicKey: JsonWebKey; privateKey: JsonWebKey };
+
+export type AccountKeyBackupStore = {
+  load: () => Promise<E2EEKeyPair | null>;
+  save: (keyPair: E2EEKeyPair) => Promise<void>;
+  loadLocal?: (userId: string) => Promise<E2EEKeyPair | null>;
+  saveLocal?: (userId: string, keyPair: E2EEKeyPair) => Promise<void>;
+};
+
 function getKeyId(userId: string): string {
   return `ecdh-keypair-${userId}`;
 }
 
+function getFallbackKeyId(userId: string): string {
+  return `traderloading:e2ee:${getKeyId(userId)}`;
+}
+
+function getIndexedDB(): IDBFactory | null {
+  return typeof indexedDB === "undefined" ? null : indexedDB;
+}
+
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
+    const dbFactory = getIndexedDB();
+    if (!dbFactory) {
+      reject(new Error("IndexedDB is not available"));
+      return;
+    }
+
+    const req = dbFactory.open(DB_NAME, 1);
     req.onupgradeneeded = () => {
       req.result.createObjectStore(STORE_NAME);
     };
@@ -16,7 +39,7 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-async function storeKeyPair(userId: string, keyPair: { publicKey: JsonWebKey; privateKey: JsonWebKey }) {
+async function storeKeyPairInIndexedDB(userId: string, keyPair: E2EEKeyPair) {
   const idb = await openDB();
   return new Promise<void>((resolve, reject) => {
     const tx = idb.transaction(STORE_NAME, "readwrite");
@@ -26,7 +49,41 @@ async function storeKeyPair(userId: string, keyPair: { publicKey: JsonWebKey; pr
   });
 }
 
-async function loadKeyPair(userId: string): Promise<{ publicKey: JsonWebKey; privateKey: JsonWebKey } | null> {
+function storeKeyPairInLocalStorage(userId: string, keyPair: E2EEKeyPair): void {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(getFallbackKeyId(userId), JSON.stringify(keyPair));
+}
+
+async function storeKeyPair(userId: string, keyPair: E2EEKeyPair) {
+  let stored = false;
+  try {
+    storeKeyPairInLocalStorage(userId, keyPair);
+    stored = true;
+  } catch {
+    // localStorage may be blocked by the browser.
+  }
+
+  try {
+    await storeKeyPairInIndexedDB(userId, keyPair);
+    stored = true;
+  } catch {
+    // IndexedDB may be unavailable or reset during app updates.
+  }
+
+  if (!stored) {
+    throw new Error("Unable to persist E2EE key pair");
+  }
+}
+
+async function storeKeyPairBestEffort(userId: string, keyPair: E2EEKeyPair): Promise<void> {
+  try {
+    await storeKeyPair(userId, keyPair);
+  } catch {
+    // Account backup remains the source of truth when local storage is unavailable.
+  }
+}
+
+async function loadKeyPairFromIndexedDB(userId: string): Promise<E2EEKeyPair | null> {
   const idb = await openDB();
   return new Promise((resolve, reject) => {
     const tx = idb.transaction(STORE_NAME, "readonly");
@@ -36,7 +93,50 @@ async function loadKeyPair(userId: string): Promise<{ publicKey: JsonWebKey; pri
   });
 }
 
-export async function generateKeyPair(userId: string): Promise<{ publicKey: JsonWebKey; privateKey: JsonWebKey }> {
+function loadKeyPairFromLocalStorage(userId: string): E2EEKeyPair | null {
+  if (typeof localStorage === "undefined") return null;
+  const raw = localStorage.getItem(getFallbackKeyId(userId));
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed?.publicKey && parsed?.privateKey) {
+      return parsed;
+    }
+  } catch {
+    localStorage.removeItem(getFallbackKeyId(userId));
+  }
+
+  return null;
+}
+
+async function loadKeyPair(userId: string): Promise<E2EEKeyPair | null> {
+  try {
+    const fromIndexedDB = await loadKeyPairFromIndexedDB(userId);
+    if (fromIndexedDB) {
+      try {
+        storeKeyPairInLocalStorage(userId, fromIndexedDB);
+      } catch {
+        // Best-effort fallback cache.
+      }
+      return fromIndexedDB;
+    }
+  } catch {
+    // Fall back to localStorage when IndexedDB is unavailable or was reset.
+  }
+
+  const fromLocalStorage = loadKeyPairFromLocalStorage(userId);
+  if (fromLocalStorage) {
+    try {
+      await storeKeyPairInIndexedDB(userId, fromLocalStorage);
+    } catch {
+      // IndexedDB can be unavailable in private/incognito contexts.
+    }
+  }
+  return fromLocalStorage;
+}
+
+export async function generateKeyPair(userId: string): Promise<E2EEKeyPair> {
   const keyPair = await crypto.subtle.generateKey(
     { name: "ECDH", namedCurve: "P-256" },
     true,
@@ -49,10 +149,49 @@ export async function generateKeyPair(userId: string): Promise<{ publicKey: Json
   return pair;
 }
 
-export async function getOrCreateKeyPair(userId: string): Promise<{ publicKey: JsonWebKey; privateKey: JsonWebKey }> {
+export async function getOrCreateKeyPair(userId: string): Promise<E2EEKeyPair> {
   const existing = await loadKeyPair(userId);
   if (existing) return existing;
   return generateKeyPair(userId);
+}
+
+export async function getOrCreateAccountKeyPair(
+  userId: string,
+  accountBackup: AccountKeyBackupStore,
+): Promise<E2EEKeyPair> {
+  const loadLocal = accountBackup.loadLocal ?? loadKeyPair;
+  const saveLocal = accountBackup.saveLocal ?? storeKeyPairBestEffort;
+
+  const localPair = await loadLocal(userId);
+  let accountPair: E2EEKeyPair | null = null;
+
+  try {
+    accountPair = await accountBackup.load();
+  } catch {
+    accountPair = null;
+  }
+
+  if (accountPair) {
+    await saveLocal(userId, accountPair);
+    return accountPair;
+  }
+
+  if (localPair) {
+    try {
+      await accountBackup.save(localPair);
+    } catch {
+      // Keep messaging usable; a later login can retry account backup sync.
+    }
+    return localPair;
+  }
+
+  const generated = await generateKeyPair(userId);
+  try {
+    await accountBackup.save(generated);
+  } catch {
+    // Local persistence is enough to start; account backup can retry later.
+  }
+  return generated;
 }
 
 async function deriveSharedKey(privateKeyJwk: JsonWebKey, publicKeyJwk: JsonWebKey): Promise<CryptoKey> {
@@ -101,8 +240,12 @@ async function deriveSharedKey(privateKeyJwk: JsonWebKey, publicKeyJwk: JsonWebK
 
 const sharedKeyCache = new Map<string, CryptoKey>();
 
+function keyFingerprint(key: JsonWebKey): string {
+  return [key.kty, key.crv, key.x, key.y].filter(Boolean).join(":");
+}
+
 export async function getSharedKey(privateKeyJwk: JsonWebKey, friendPublicKeyJwk: JsonWebKey): Promise<CryptoKey> {
-  const cacheKey = JSON.stringify(friendPublicKeyJwk);
+  const cacheKey = `${keyFingerprint(privateKeyJwk)}->${keyFingerprint(friendPublicKeyJwk)}`;
   const cached = sharedKeyCache.get(cacheKey);
   if (cached) return cached;
   const key = await deriveSharedKey(privateKeyJwk, friendPublicKeyJwk);

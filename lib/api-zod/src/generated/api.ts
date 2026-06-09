@@ -1088,6 +1088,31 @@ export const SavePublicKeyResponse = zod.object({
 });
 
 /**
+ * @summary Get the authenticated user's account-backed E2EE key pair
+ */
+export const GetAccountKeyBackupResponse = zod.object({
+  userId: zod.string(),
+  hasBackup: zod.boolean(),
+  publicKeyJwk: zod.object({}).passthrough().nullable(),
+  privateKeyJwk: zod.object({}).passthrough().nullable(),
+});
+
+/**
+ * @summary Save the authenticated user's account-backed E2EE key pair
+ */
+export const SaveAccountKeyBackupBody = zod.object({
+  publicKeyJwk: zod.object({}).passthrough(),
+  privateKeyJwk: zod.object({}).passthrough(),
+});
+
+export const SaveAccountKeyBackupResponse = zod.object({
+  userId: zod.string(),
+  hasBackup: zod.boolean(),
+  publicKeyJwk: zod.object({}).passthrough().nullable(),
+  privateKeyJwk: zod.object({}).passthrough().nullable(),
+});
+
+/**
  * @summary Get a user public key
  */
 export const GetPublicKeyParams = zod.object({

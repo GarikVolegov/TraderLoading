@@ -3,7 +3,7 @@ import { useGetEconomicCalendar, useGetUserSettings } from "@workspace/api-clien
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { getNotificationCopy, shouldNotifyOnce } from "@/lib/notifications";
+import { deliverBrowserNotification, getNotificationCopy, shouldNotifyOnce } from "@/lib/notifications";
 
 function eventTimestamp(value?: string | null): number | null {
   if (!value) return null;
@@ -50,19 +50,16 @@ export function MacroNotifier() {
         const label = `${event.country ? `${event.country}: ` : ""}${event.title ?? "High impact"}`;
         const body = copy.messages.macroEvents(1, label);
 
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification(copy.titles.macroAlert, {
-            body,
-            icon: "/app-icon-192.png",
-            tag: `macro-${eventKey(event)}`,
-          });
-        } else {
-          toast({
+        void deliverBrowserNotification({
+          title: copy.titles.macroAlert,
+          body,
+          tag: `macro-${eventKey(event)}`,
+          showToast: () => toast({
             title: copy.titles.macroAlert,
             description: body,
             duration: 10000,
-          });
-        }
+          }),
+        });
       }, delay);
       timersRef.current.push(timer);
     }

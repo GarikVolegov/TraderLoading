@@ -41,14 +41,14 @@ const KNOWN_ASSETS = ["EUR", "USD", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "X
 const GLOBAL_MACRO_RE =
   /\b(fed|fomc|powell|ecb|lagarde|boe|boj|snb|rba|rbnz|boc|central\s+bank|rate\s+(decision|hike|cut|change)|interest\s+rates?|cpi|inflation|pce|nonfarm|non.?farm|nfp|payrolls?|jobs?\s+report|unemployment|gdp|pmi|treasury\s+yields?|bond\s+yields?|geopolit|war|conflict|sanction|tariff|trade\s+war|recession)\b/i;
 
-const XAU_INDIRECT_RULES: Array<{ re: RegExp; score: number; confidence: number; direction: Direction; reasonKey: string }> = [
-  { re: /\bcpi\b|inflation|pce|price\s+index/i, score: 8, confidence: 0.78, direction: "bearish", reasonKey: "inflation" },
-  { re: /\bfed\b|\bfomc\b|powell|rate\s+(hike|decision|cut)|interest\s+rates?/i, score: 8, confidence: 0.76, direction: "bearish", reasonKey: "fed" },
-  { re: /treasury\s+yields?|real\s+yields?|bond\s+yields?/i, score: 8, confidence: 0.8, direction: "bearish", reasonKey: "yields" },
-  { re: /non.?farm|nfp|payrolls?|jobs?\s+report|unemployment/i, score: 7, confidence: 0.72, direction: "mixed", reasonKey: "jobs" },
-  { re: /geopolitical|war|conflict|tensions?|safe.?haven|risk.?off|sanctions/i, score: 8, confidence: 0.82, direction: "bullish", reasonKey: "risk" },
-  { re: /dollar\s+(rises?|jumps?|surges?|stronger|firmer)|dxy\s+(rises?|jumps?|surges?)/i, score: 7, confidence: 0.74, direction: "bearish", reasonKey: "usd_up" },
-  { re: /dollar\s+(falls?|drops?|weakens?|slides)|dxy\s+(falls?|drops?|slides?)/i, score: 7, confidence: 0.74, direction: "bullish", reasonKey: "usd_down" },
+const XAU_INDIRECT_RULES: Array<{ re: RegExp; assets: string[]; score: number; confidence: number; direction: Direction; reasonKey: string }> = [
+  { re: /\bcpi\b|inflation|pce|price\s+index/i, assets: ["USD", "XAU"], score: 8, confidence: 0.78, direction: "bearish", reasonKey: "inflation" },
+  { re: /\bfed\b|\bfomc\b|powell|rate\s+(hike|decision|cut)|interest\s+rates?/i, assets: ["USD", "XAU"], score: 8, confidence: 0.76, direction: "bearish", reasonKey: "fed" },
+  { re: /treasury\s+yields?|real\s+yields?|bond\s+yields?/i, assets: ["USD", "XAU"], score: 8, confidence: 0.8, direction: "bearish", reasonKey: "yields" },
+  { re: /non.?farm|nfp|payrolls?|jobs?\s+report|unemployment/i, assets: ["USD", "XAU"], score: 7, confidence: 0.72, direction: "mixed", reasonKey: "jobs" },
+  { re: /geopolitical|war|conflict|tensions?|safe.?haven|risk.?off|sanctions/i, assets: ["XAU", "USD"], score: 8, confidence: 0.82, direction: "bullish", reasonKey: "risk" },
+  { re: /dollar\s+(rises?|jumps?|surges?|stronger|firmer)|dxy\s+(rises?|jumps?|surges?)/i, assets: ["USD", "XAU"], score: 7, confidence: 0.74, direction: "bearish", reasonKey: "usd_up" },
+  { re: /dollar\s+(falls?|drops?|weakens?|slides)|dxy\s+(falls?|drops?|slides?)/i, assets: ["USD", "XAU"], score: 7, confidence: 0.74, direction: "bullish", reasonKey: "usd_down" },
 ];
 
 const CORPORATE_EQUITY_RE = /\b(inc\.?|corp\.?|ltd\.?|plc|earnings|transcript|revenue|guidance|shares?|stock|nasdaq|nyse)\b/i;
@@ -166,7 +166,7 @@ function directMatches(text: string, focusAssets: string[]): RuleMatch[] {
 function xauIndirectMatches(text: string, focusAssets: string[]): RuleMatch[] {
   if (!focusAssets.includes("XAU")) return [];
   return XAU_INDIRECT_RULES.filter((rule) => rule.re.test(text)).map((rule) => ({
-    assets: ["XAU", "USD"],
+    assets: rule.assets,
     score: rule.score,
     confidence: rule.confidence,
     direction: rule.direction,

@@ -4,7 +4,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { getLocalDateKey, isTradingSession, type MarketSessionConfig } from "@/lib/marketSessions";
-import { getNotificationCopy, shouldNotifyOnce } from "@/lib/notifications";
+import { deliverBrowserNotification, getNotificationCopy, shouldNotifyOnce } from "@/lib/notifications";
 
 function parseTime(time: string): { h: number; m: number } {
   const [h, m] = time.split(":").map(Number);
@@ -51,15 +51,12 @@ export function SessionStartNotifier() {
       const title = copy.titles.sessionOpen(session.name);
       const body = copy.messages.sessionOpen;
 
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(title, {
-          body,
-          icon: "/app-icon-192.png",
-          tag: `session-open-${session.id ?? session.name}`,
-        });
-      } else {
-        toast({ title, description: body, duration: 8000 });
-      }
+      void deliverBrowserNotification({
+        title,
+        body,
+        tag: `session-open-${session.id ?? session.name}`,
+        showToast: () => toast({ title, description: body, duration: 8000 }),
+      });
     }
   }, [language, now, openingSessions, push.isSubscribed, push.prefs.sessions, push.ready, toast]);
 

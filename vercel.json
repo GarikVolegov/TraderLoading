@@ -10,8 +10,8 @@
   },
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "http://63.34.152.101/api/:path*"
+      "source": "/api/(.*)",
+      "destination": "/api"
     },
     {
       "source": "/((?!api/).*)",

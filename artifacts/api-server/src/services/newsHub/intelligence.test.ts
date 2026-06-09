@@ -19,6 +19,7 @@ const cpi = classifyNewsArticle(
   { pairs: "XAUUSD", lang: "it" },
 );
 assert.equal(cpi.relevant, true);
+assert.equal(cpi.article.primaryAssets?.[0], "USD");
 assert.ok(cpi.article.primaryAssets?.includes("XAU"));
 assert.ok(cpi.article.primaryAssets?.includes("USD"));
 assert.deepEqual(cpi.article.affectedPairs, ["XAU/USD"]);

@@ -3,7 +3,7 @@ import { useGetMissions, useGetChecklist } from "@workspace/api-client-react";
 import { useLoading } from "@/contexts/LoadingContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { shouldNotifyOnce } from "@/lib/notifications";
+import { deliverBrowserNotification, shouldNotifyOnce } from "@/lib/notifications";
 
 export function WelcomeNotification() {
   const { isLoading } = useLoading();
@@ -49,16 +49,12 @@ export function WelcomeNotification() {
       });
     };
 
-    if ("Notification" in window && Notification.permission === "granted") {
-      new Notification("TraderLoading", {
-        body: lines.join("\n"),
-        icon: "/app-icon-192.png",
-        tag: "welcome-summary",
-      });
-      return;
-    }
-
-    showToast();
+    void deliverBrowserNotification({
+      title: "TraderLoading",
+      body: lines.join("\n"),
+      tag: "welcome-summary",
+      showToast,
+    });
   }, [isLoading, missions, checklist, toast, t]);
 
   return null;

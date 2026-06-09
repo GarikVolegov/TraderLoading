@@ -13,7 +13,7 @@ const IMPACT_CONFIG = {
   High: { color: "bg-red-500", border: "border-red-500/30", text: "text-red-400", label: "Alto" },
   Medium: { color: "bg-orange-500", border: "border-orange-500/30", text: "text-orange-400", label: "Medio" },
   Low: { color: "bg-yellow-500", border: "border-yellow-500/30", text: "text-yellow-400", label: "Basso" },
-  Holiday: { color: "bg-blue-500", border: "border-blue-500/30", text: "text-blue-400", label: "Festivo" },
+  Holiday: { color: "bg-white", border: "border-white/40", text: "text-white", label: "Festivo" },
 } as const;
 
 type Impact = keyof typeof IMPACT_CONFIG;
@@ -162,7 +162,7 @@ export function CalendarWidget() {
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Impatto</p>
               <div className="flex flex-wrap gap-1.5">
-                {(Object.keys(IMPACT_CONFIG) as Impact[]).filter(i => i !== "Holiday").map((impact) => {
+                {(Object.keys(IMPACT_CONFIG) as Impact[]).map((impact) => {
                   const cfg = IMPACT_CONFIG[impact];
                   return (
                     <button

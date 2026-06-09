@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Newspaper, TrendingUp, TrendingDown, Minus, RefreshCw,
-  ExternalLink, Rss, Cpu, ShieldCheck, Clock, ChevronDown,
-  ChevronUp, Zap, Bot, ThumbsUp, ThumbsDown, SlidersHorizontal, X,
+  ExternalLink, Clock, ChevronDown,
+  ChevronUp, Zap, ThumbsUp, ThumbsDown, SlidersHorizontal, X,
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
@@ -27,10 +27,10 @@ import {
   fetchNews,
   type Article,
   type NewsData,
-  type NewsProviderStatus,
   type NewsSocketMessage,
 } from "@/lib/newsApi";
 import { apiJSON } from "@/lib/apiFetch";
+import { simpleStatusLabel } from "@/lib/uiCopyPolicy";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -251,7 +251,6 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
           </div>
           <DialogTitle className="text-xl leading-snug pt-2">{article.title}</DialogTitle>
           <DialogDescription className="flex items-center gap-2 flex-wrap">
-            <span>{article.source}</span>
             {article.publishedAt && (
               <>
                 <span>·</span>
@@ -311,7 +310,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
                 className="inline-flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 <ExternalLink className="w-4 h-4" />
-                Apri fonte originale
+                Apri articolo
               </a>
             )}
             {article.sourceUrl && article.sourceUrl !== detailUrl && (
@@ -322,7 +321,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
                 className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary"
               >
                 <ExternalLink className="w-4 h-4" />
-                Sito fonte
+                Apri articolo
               </a>
             )}
           </div>
@@ -439,22 +438,11 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
 
           {/* Footer */}
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50 flex-wrap mt-auto pt-1 border-t border-border/20">
-            <span className="font-medium text-muted-foreground/70">{article.source}</span>
             {article.publishedAt && (
               <>
                 <span>·</span>
                 <TimeAgo iso={article.publishedAt} />
               </>
-            )}
-            {article.verified && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
-                <ShieldCheck className="w-2.5 h-2.5" />
-                {article.citationUrls && article.citationUrls.length > 0
-                  ? `${article.citationUrls.length} URL`
-                  : article.sources && article.sources.length >= 2
-                    ? `${article.sources.length} FONTI`
-                    : "✓"}
-              </span>
             )}
             <div className="ml-auto flex items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
               <button type="button" title="Più notizie così" aria-label="Più notizie così"
@@ -469,24 +457,6 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
               </button>
             </div>
           </div>
-
-          {/* Citation URLs */}
-          {article.citationUrls && article.citationUrls.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {article.citationUrls.map((url, si) => {
-                let domain = url;
-                try { domain = new URL(url).hostname.replace(/^www\./, ""); } catch { /* */ }
-                return (
-                  <a key={si} href={url} target="_blank" rel="noopener noreferrer" title={url}
-                    onClick={(event) => event.stopPropagation()}
-                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium border border-emerald-500/25 bg-emerald-500/8 text-emerald-400 hover:bg-emerald-500/20 transition-all">
-                    <ExternalLink className="w-2 h-2 shrink-0" />
-                    {domain.length > 22 ? domain.slice(0, 20) + "…" : domain}
-                  </a>
-                );
-              })}
-            </div>
-          )}
         </CardContent>
       </Card>
     </motion.div>
@@ -587,7 +557,6 @@ export default function News() {
   const queryKey = useMemo(() => createNewsQueryKey(selectedPairsKey, language), [language, selectedPairsKey]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "fallback" | "error">("connecting");
-  const [providerStatuses, setProviderStatuses] = useState<NewsProviderStatus[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -648,18 +617,12 @@ export default function News() {
         qc.setQueryData<InfiniteData<NewsData>>(queryKey, (current) =>
           mergeSnapshotMeta(prependLiveArticles(current, message.snapshot.articles), message.snapshot),
         );
-        setProviderStatuses(message.snapshot.providerStatuses ?? []);
         setLiveStatus("live");
       }
       if (message.type === "news_article") {
         qc.setQueryData<InfiniteData<NewsData>>(queryKey, (current) => prependLiveArticles(current, [message.article]));
       }
-      if (message.type === "news_provider_status") {
-        setProviderStatuses((current) => {
-          const others = current.filter((status) => status.provider !== message.status.provider);
-          return [...others, message.status].sort((a, b) => a.provider.localeCompare(b.provider));
-        });
-      }
+      if (message.type === "news_provider_status" && message.status.status === "error") setLiveStatus("error");
       if (message.type === "news_error") setLiveStatus("error");
     });
 
@@ -679,18 +642,9 @@ export default function News() {
 
   const newsData = data?.pages?.[0];
   const isAI = newsData?.source === "ai";
-  const visibleProviderStatuses = providerStatuses.length > 0 ? providerStatuses : newsData?.providerStatuses ?? [];
   const liveLabel =
-    liveStatus === "live" ? "Live socket" :
-    liveStatus === "connecting" ? "Connessione live" :
-    liveStatus === "fallback" ? "Fallback HTTP" :
-    "Live non disponibile";
+    liveStatus === "connecting" ? "Aggiornamento" : simpleStatusLabel(liveStatus);
   const hasFreshArticles = (newsData?.freshArticlesCount ?? articles.filter((article) => !article.isFallback).length) > 0;
-  const primarySource = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const article of articles) counts.set(article.source, (counts.get(article.source) ?? 0) + 1);
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
-  }, [articles]);
   const freshnessLabel = hasFreshArticles
     ? `Ultime ${newsData?.freshnessWindowHours ?? 48}h`
     : articles.length > 0
@@ -708,9 +662,6 @@ export default function News() {
       setIsRefreshing(false);
     }
   };
-
-  const SourceIcon = isAI ? Cpu : Rss;
-  const sourceLabel = isAI ? t("news.source.ai") : t("news.source.rss");
 
   return (
     <PageLayout>
@@ -736,11 +687,11 @@ export default function News() {
             className="tl-panel flex gap-3 border-primary/20 bg-primary/5 p-4"
           >
             <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
-              <Bot className="w-4 h-4 text-primary" />
+              <Newspaper className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="text-xs font-bold text-primary/80 uppercase tracking-wider">Analisi AI Agent</span>
+                <span className="text-xs font-bold text-primary/80 uppercase tracking-wider">Sintesi mercato</span>
                 {newsData.watchedPairs && newsData.watchedPairs.length > 0 && (
                   <div className="flex gap-1 flex-wrap">
                     {newsData.watchedPairs.map((p) => <PairBadge key={p} pair={p} />)}
@@ -753,32 +704,16 @@ export default function News() {
         )}
       </AnimatePresence>
 
-      {/* Meta bar (source, time, countdown) */}
+      {/* Meta bar */}
       {newsData && (
-        <div className="flex items-center gap-3 text-xs text-muted-foreground/60 flex-wrap">
-          <span className="inline-flex items-center gap-1.5">
-            <SourceIcon className="w-3.5 h-3.5" />
-            {sourceLabel}
-          </span>
-          {primarySource && (
-            <>
-              <span>Â·</span>
-              <span>Fonte principale: {primarySource}</span>
-            </>
-          )}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground/70 flex-wrap">
           {newsData.fetchedAt && (
-            <>
-              <span>·</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
               <TimeAgo iso={newsData.fetchedAt} />
-            </>
+            </span>
           )}
-          {isAI && newsData.nextRefreshAt && (
-            <>
-              <span>·</span>
-              <RefreshCountdown nextRefreshAt={newsData.nextRefreshAt} />
-            </>
-          )}
-          <span>Â·</span>
+          {isAI && newsData.nextRefreshAt && <RefreshCountdown nextRefreshAt={newsData.nextRefreshAt} />}
           <span
             className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-semibold ${
               liveStatus === "live"
@@ -795,29 +730,6 @@ export default function News() {
             <Clock className="h-3 w-3" />
             {freshnessLabel}
           </span>
-        </div>
-      )}
-
-      {visibleProviderStatuses.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {visibleProviderStatuses.map((status) => (
-            <span
-              key={status.provider}
-              title={status.message}
-              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                status.status === "connected"
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                  : status.status === "error"
-                    ? "border-red-500/30 bg-red-500/10 text-red-400"
-                    : status.status === "disabled"
-                      ? "border-white/10 bg-white/5 text-muted-foreground"
-                      : "border-amber-500/30 bg-amber-500/10 text-amber-300"
-              }`}
-            >
-              {status.provider}
-              <span className="opacity-70">{status.transport}</span>
-            </span>
-          ))}
         </div>
       )}
 
@@ -871,3 +783,5 @@ export default function News() {
     </PageLayout>
   );
 }
+
+

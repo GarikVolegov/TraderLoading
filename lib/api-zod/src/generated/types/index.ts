@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./accountKeyBackupResponse";
+export * from "./accountKeyBackupResponsePrivateKeyJwk";
+export * from "./accountKeyBackupResponsePublicKeyJwk";
 export * from "./authorizationSessionHeaderParameter";
 export * from "./authUser";
 export * from "./authUserEnvelope";
@@ -72,6 +75,9 @@ export * from "./publicKeyRecord";
 export * from "./publicKeyResponse";
 export * from "./publicKeyResponsePublicKeyJwk";
 export * from "./quote";
+export * from "./saveAccountKeyBackupBody";
+export * from "./saveAccountKeyBackupBodyPrivateKeyJwk";
+export * from "./saveAccountKeyBackupBodyPublicKeyJwk";
 export * from "./savePublicKeyBody";
 export * from "./savePublicKeyBodyPublicKeyJwk";
 export * from "./searchUsersParams";

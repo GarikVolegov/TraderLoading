@@ -4,6 +4,7 @@ import type { NewsResponse } from "./types.js";
 
 assert.equal(pairsFromMacroCurrencies("USD,XAU"), "XAUUSD");
 assert.equal(pairsFromMacroCurrencies("EUR,USD"), "EURUSD");
+assert.equal(pairsFromMacroCurrencies("XAU,USD,EUR"), "XAUUSD,EURUSD");
 assert.equal(pairsFromMacroCurrencies(""), "");
 
 const news: NewsResponse = {
@@ -43,6 +44,8 @@ assert.equal(macro.articles[0]?.currency, "XAU");
 assert.equal(macro.articles[0]?.impact, "alto");
 assert.equal(macro.articles[0]?.direction, "bullish");
 assert.equal(macro.articles[0]?.source, "Reuters");
+assert.deepEqual(macro.articles[0]?.primaryAssets, ["XAU", "USD"]);
+assert.deepEqual(macro.articles[0]?.affectedPairs, ["XAU/USD"]);
 assert.equal(macro.articles[0]?.originalTitle, "Gold jumps as Treasury yields retreat");
 assert.equal(macro.articles[0]?.originalSummary, "Spot gold rises while the dollar softens.");
 assert.equal(macro.articles[0]?.timestamp, "2026-06-07T10:55:00.000Z");
@@ -236,5 +239,87 @@ assert.doesNotMatch(unclearAgentSummaryMacro.summary, /maggio/i);
 assert.match(unclearAgentSummaryMacro.summary, /RISK-OFF|risk-off/i);
 assert.match(unclearAgentSummaryMacro.summary, /XAU\/USD/);
 assert.match(unclearAgentSummaryMacro.summary, /rendimenti|dollaro|inflazione/i);
+
+const usdDriverMacro = macroNewsFromNewsHub({
+  ...news,
+  articles: [
+    {
+      ...news.articles[0]!,
+      title: "Fed officials warn inflation remains sticky",
+      summary: "The dollar climbs while Treasury yields rise before the next policy decision.",
+      originalTitle: "Fed officials warn inflation remains sticky",
+      originalSummary: "The dollar climbs while Treasury yields rise before the next policy decision.",
+      impactScore: 8,
+      impactDirection: "bearish",
+      primaryAssets: ["USD", "XAU"],
+      affectedPairs: ["XAU/USD"],
+      freshnessTier: "fresh",
+    },
+  ],
+}, { pairs: "XAUUSD" });
+assert.equal(usdDriverMacro.articles[0]?.currency, "USD");
+assert.deepEqual(usdDriverMacro.articles[0]?.primaryAssets, ["USD", "XAU"]);
+
+const curatedSelectionSnapshot: NewsResponse = {
+  ...news,
+  articles: [
+    {
+      ...news.articles[0]!,
+      title: "Gold price update as traders wait for direction",
+      summary: "Spot gold moves sideways in quiet trade.",
+      originalTitle: "Gold price update as traders wait for direction",
+      originalSummary: "Spot gold moves sideways in quiet trade.",
+      impactScore: 6,
+      matchConfidence: 0.7,
+      freshnessTier: "fresh",
+      impactReason: "Generic market commentary.",
+    },
+    {
+      ...news.articles[0]!,
+      title: "US CPI surprise sends Treasury yields higher",
+      summary: "Inflation data reprices Fed expectations and pressures XAU/USD.",
+      originalTitle: "US CPI surprise sends Treasury yields higher",
+      originalSummary: "Inflation data reprices Fed expectations and pressures XAU/USD.",
+      impactScore: 9,
+      matchConfidence: 0.9,
+      freshnessTier: "fresh",
+      impactReason: "CPI is a direct driver for USD yields and gold volatility.",
+    },
+    {
+      ...news.articles[0]!,
+      title: "Fed minutes show inflation concern",
+      summary: "FOMC minutes move dollar and Treasury yield expectations.",
+      originalTitle: "Fed minutes show inflation concern",
+      originalSummary: "FOMC minutes move dollar and Treasury yield expectations.",
+      impactScore: 8,
+      matchConfidence: 0.84,
+      freshnessTier: "fresh",
+    },
+    {
+      ...news.articles[0]!,
+      title: "Payrolls surprise drives dollar volatility",
+      summary: "NFP changes rate expectations and moves XAU/USD risk.",
+      originalTitle: "Payrolls surprise drives dollar volatility",
+      originalSummary: "NFP changes rate expectations and moves XAU/USD risk.",
+      impactScore: 8,
+      matchConfidence: 0.82,
+      freshnessTier: "fresh",
+    },
+    {
+      ...news.articles[0]!,
+      title: "Powell warns inflation remains sticky",
+      summary: "Fed comments lift Treasury yields before the next rate decision.",
+      originalTitle: "Powell warns inflation remains sticky",
+      originalSummary: "Fed comments lift Treasury yields before the next rate decision.",
+      impactScore: 8,
+      matchConfidence: 0.8,
+      freshnessTier: "fresh",
+    },
+  ],
+};
+const curatedMacro = macroNewsFromNewsHub(curatedSelectionSnapshot, { pairs: "XAUUSD" });
+assert.equal(curatedMacro.articles.length, 3);
+assert.equal(curatedMacro.articles.some((article) => /Gold price update/i.test(article.title)), false);
+assert.equal(curatedMacro.articles[0]?.title, "US CPI surprise sends Treasury yields higher");
 
 console.log("macro news adapter checks passed");
