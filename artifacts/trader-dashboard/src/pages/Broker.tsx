@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BrokerHubWorkspace } from "@/components/broker-hub/BrokerHubWorkspace";
 import type { BrokerHubTab } from "@/components/broker-hub/types";
 
-const BROKER_TABS: BrokerHubTab[] = ["connect", "accounts", "terminal", "order", "history"];
+const BROKER_TABS: BrokerHubTab[] = ["connect", "accounts", "history"];
 
 function getInitialBrokerTab(): BrokerHubTab {
   const requested = new URLSearchParams(window.location.search).get("tab");

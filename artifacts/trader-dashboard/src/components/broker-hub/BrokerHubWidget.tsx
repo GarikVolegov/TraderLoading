@@ -1,4 +1,4 @@
-import { Activity, Cable, History, Landmark, ListChecks, Send, Wifi, WifiOff } from "lucide-react";
+import { Activity, Cable, History, Landmark, ListChecks, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useBrokerHub } from "./useBrokerHub";
 import type { BrokerHubTab } from "./types";
@@ -66,11 +66,10 @@ export function BrokerHubWidget() {
           </span>
           <span className="font-mono font-bold">{snapshot.positions.length}</span>
         </div>
-        <div className="col-span-2 grid grid-cols-4 gap-2">
+        <div className="col-span-2 grid grid-cols-3 gap-2">
           {[
             ["connect", Cable, "Collega"],
             ["accounts", ListChecks, "Account"],
-            ["order", Send, "Ordini"],
             ["history", History, "Storico"],
           ].map(([tab, Icon, label]) => (
             <button
