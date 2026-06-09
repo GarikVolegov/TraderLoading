@@ -113,6 +113,22 @@ router.get("/library/collections/:id", async (req: any, res) => {
   }
 });
 
+// ─── Consumer: flat list of contents (client groups by unlock level) ──────────
+router.get("/library/contents", async (req: any, res) => {
+  try {
+    const isAdmin = req.user?.id ? isPlatformAdmin(req.user.id) : false;
+    const rows = await db
+      .select()
+      .from(libraryContentsTable)
+      .where(isAdmin ? undefined : eq(libraryContentsTable.published, true))
+      .orderBy(asc(libraryContentsTable.requiredLevel), asc(libraryContentsTable.orderIndex));
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /library/contents", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
 // ─── Consumer: single content ─────────────────────────────────────────────────
 router.get("/library/contents/:id", async (req: any, res) => {
   try {
