@@ -1,4 +1,4 @@
-import { boolean, integer, numeric, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, numeric, pgTable, serial, text, timestamp, index } from "drizzle-orm/pg-core";
 
 // ─── Strategie (regole testuali che il "cervello" vision deve applicare) ────────
 export const brainStrategiesTable = pgTable("brain_strategies", {
@@ -9,7 +9,7 @@ export const brainStrategiesTable = pgTable("brain_strategies", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [index("brain_strategies_user_active_idx").on(table.userId, table.active)]);
 
 // ─── Analisi prodotte dal cervello (on-demand o autonome) ───────────────────────
 export const brainAnalysesTable = pgTable("brain_analyses", {
@@ -31,7 +31,7 @@ export const brainAnalysesTable = pgTable("brain_analyses", {
   rawModel: text("raw_model"),
   rawJson: text("raw_json"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [index("brain_analyses_user_created_idx").on(table.userId, table.createdAt)]);
 
 // ─── Feedback dell'utente sulle analisi (memoria di apprendimento) ──────────────
 export const brainFeedbackTable = pgTable("brain_feedback", {
@@ -56,7 +56,10 @@ export const brainScanConfigTable = pgTable("brain_scan_config", {
   lastRunAt: timestamp("last_run_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("brain_scan_config_enabled_last_run_idx").on(table.enabled, table.lastRunAt),
+  index("brain_scan_config_user_idx").on(table.userId),
+]);
 
 // ─── Memoria a grafo (GraphRAG): sorgenti di conoscenza caricate dall'utente ─────
 // Ogni materiale (testo libero, PDF, immagine) diventa una "sorgente"; il testo
@@ -72,7 +75,7 @@ export const brainKnowledgeSourcesTable = pgTable("brain_knowledge_sources", {
   status: text("status").notNull().default("processing"), // "processing" | "ready" | "error"
   error: text("error"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [index("brain_knowledge_sources_user_strategy_idx").on(table.userId, table.strategyId)]);
 
 // ─── Nodi del grafo di conoscenza ───────────────────────────────────────────────
 export const brainGraphNodesTable = pgTable("brain_graph_nodes", {
@@ -87,7 +90,10 @@ export const brainGraphNodesTable = pgTable("brain_graph_nodes", {
   sourceId: integer("source_id").references(() => brainKnowledgeSourcesTable.id, { onDelete: "cascade" }), // null = derivato da feedback
   weight: numeric("weight", { precision: 6, scale: 3 }).notNull().default("1"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("brain_graph_nodes_user_strategy_label_idx").on(table.userId, table.strategyId, table.label),
+  index("brain_graph_nodes_source_idx").on(table.sourceId),
+]);
 
 // ─── Archi (relazioni) del grafo di conoscenza ──────────────────────────────────
 export const brainGraphEdgesTable = pgTable("brain_graph_edges", {
@@ -101,7 +107,10 @@ export const brainGraphEdgesTable = pgTable("brain_graph_edges", {
   relation: text("relation").notNull(),
   weight: numeric("weight", { precision: 6, scale: 3 }).notNull().default("1"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("brain_graph_edges_user_strategy_from_idx").on(table.userId, table.strategyId, table.fromNodeId),
+  index("brain_graph_edges_to_idx").on(table.toNodeId),
+]);
 
 export type BrainStrategy = typeof brainStrategiesTable.$inferSelect;
 export type BrainAnalysis = typeof brainAnalysesTable.$inferSelect;

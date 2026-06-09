@@ -18,7 +18,10 @@ export const signalsTable = pgTable(
     data: text("data").notNull().default(""),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("signals_recipient_scope_idx").on(t.recipientId, t.scope)],
+  (t) => [
+    index("signals_recipient_scope_idx").on(t.recipientId, t.scope),
+    index("signals_created_idx").on(t.createdAt),
+  ],
 );
 
 export type SignalRow = typeof signalsTable.$inferSelect;
