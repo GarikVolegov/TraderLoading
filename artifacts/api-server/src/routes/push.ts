@@ -11,6 +11,7 @@ import {
   isServerScheduledCallDue,
   parseScheduledCallConfigs,
 } from "../services/notifications/scheduledCalls.js";
+import logger from "../lib/logger.js";
 
 const router: IRouter = Router();
 
@@ -140,6 +141,14 @@ export async function sendPushToUser(
 
 const _sentToday = new Map<string, string>();
 
+export interface SchedulerHandle {
+  close(): Promise<void>;
+}
+
+const noopScheduler: SchedulerHandle = {
+  async close() {},
+};
+
 function todayLocal(date = new Date()): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
@@ -199,15 +208,17 @@ async function checkScheduledCallsForUser(
   }
 }
 
-export function startSessionScheduler(): void {
+export function startSessionScheduler(): SchedulerHandle {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-    console.log("[push] VAPID keys missing - session scheduler disabled");
-    return;
+    logger.info("Push session scheduler disabled because VAPID keys are missing");
+    return noopScheduler;
   }
 
-  console.log("[push] Session scheduler started");
+  logger.info("Push session scheduler started");
+  let isClosing = false;
+  let activeRun: Promise<void> | null = null;
 
-  setInterval(async () => {
+  async function runSchedulerTick(): Promise<void> {
     try {
       const now = new Date();
       const nowH = now.getHours();
@@ -243,9 +254,29 @@ export function startSessionScheduler(): void {
         }),
       );
     } catch (err) {
-      console.error("[push] scheduler error:", err);
+      logger.error({ err }, "Push session scheduler error");
     }
+  }
+
+  function scheduleTick(): void {
+    if (isClosing || activeRun) return;
+    activeRun = runSchedulerTick().finally(() => {
+      activeRun = null;
+    });
+  }
+
+  const interval = setInterval(() => {
+    scheduleTick();
   }, 60_000);
+
+  return {
+    async close() {
+      isClosing = true;
+      clearInterval(interval);
+      if (activeRun) await activeRun;
+      logger.info("Push session scheduler stopped");
+    },
+  };
 }
 
 router.get("/push/vapid-public-key", (_req, res) => {
@@ -271,7 +302,7 @@ router.post("/push/subscribe", async (req, res) => {
       });
     res.json({ ok: true });
   } catch (err) {
-    console.error("push/subscribe error:", err);
+    logger.error({ err }, "Push subscription failed");
     res.status(500).json({ error: "Internal error" });
   }
 });

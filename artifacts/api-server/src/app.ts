@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import compression from "compression";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -40,6 +41,7 @@ app.use(loggingMiddleware);
 
 app.use(helmet(createHelmetOptions()));
 app.use(cors(createCorsOptions()));
+app.use(compression({ threshold: 1024 }));
 app.use(cookieParser());
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));

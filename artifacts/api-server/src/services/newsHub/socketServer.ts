@@ -3,6 +3,7 @@ import type { Duplex } from "node:stream";
 import { WebSocket, WebSocketServer } from "ws";
 import type { NewsEvent, NewsRefreshRequest } from "./types.js";
 import type { NewsHubRuntime } from "./runtime.js";
+import { closeWebSocketServer } from "../webSocketShutdown.js";
 
 type ClientMessage = {
   type?: string;
@@ -118,7 +119,7 @@ export function attachNewsHubWebSocket(server: Server, runtime: NewsHubRuntime):
     async close(): Promise<void> {
       unsubscribe();
       server.off("upgrade", onUpgrade);
-      await new Promise<void>((resolve) => wss.close(() => resolve()));
+      await closeWebSocketServer(wss);
     },
   };
 }

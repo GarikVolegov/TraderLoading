@@ -4,6 +4,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { createAccountBridgeRuntime, type AccountBridgeRuntime } from "./accountBridgeRuntime.js";
 import { accountBridgeRuntime } from "./accountBridgeRuntimeSingleton.js";
 import type { AccountBridgeConfig, AccountBridgeEvent } from "./types.js";
+import { closeWebSocketServer } from "../webSocketShutdown.js";
 
 type ClientMessage = {
   type?: string;
@@ -100,9 +101,7 @@ export function attachAccountBridgeWebSocket(
     async close(): Promise<void> {
       server.off("upgrade", onUpgrade);
       await service.stop();
-      await new Promise<void>((resolve) => {
-        wss.close(() => resolve());
-      });
+      await closeWebSocketServer(wss);
     },
   };
 }

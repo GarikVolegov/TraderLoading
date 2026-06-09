@@ -15,13 +15,19 @@ if (Number.isNaN(port) || port <= 0) {
 const basePath = process.env.BASE_PATH ?? "/";
 const apiTarget = process.env.VITE_API_BASE ?? "http://127.0.0.1:3001";
 
-export default defineConfig({
+export default defineConfig(async ({ command }) => {
+  const isServe = command === "serve";
+  if (!isServe) {
+    process.env.NODE_ENV = "production";
+  }
+
+  return {
   base: basePath,
   plugins: [
     react(),
     tailwindcss({ optimize: false }),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
+    ...(isServe ? [runtimeErrorOverlay()] : []),
+    ...(isServe &&
     process.env.REPL_ID !== undefined
       ? [
           await import("@replit/vite-plugin-cartographer").then((m) =>
@@ -46,6 +52,10 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    sourcemap: false,
+    minify: "esbuild",
+    cssMinify: true,
+    reportCompressedSize: true,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -82,4 +92,5 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
   },
+  };
 });

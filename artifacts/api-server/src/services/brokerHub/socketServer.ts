@@ -3,6 +3,7 @@ import type { Duplex } from "node:stream";
 import { WebSocket, WebSocketServer } from "ws";
 import { brokerHubRuntime, type BrokerHubRuntime } from "./runtime.js";
 import type { BrokerEvent } from "./types.js";
+import { closeWebSocketServer } from "../webSocketShutdown.js";
 
 interface ClientMessage {
   type?: string;
@@ -74,7 +75,7 @@ export function attachBrokerHubWebSocket(
     async close(): Promise<void> {
       unsubscribe();
       server.off("upgrade", onUpgrade);
-      await new Promise<void>((resolve) => wss.close(() => resolve()));
+      await closeWebSocketServer(wss);
     },
   };
 }
