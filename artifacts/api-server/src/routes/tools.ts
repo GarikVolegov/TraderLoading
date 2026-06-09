@@ -4,6 +4,7 @@ import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
 import { getNewsData } from "./news.js";
 import { cleanNewsText } from "../services/newsHub/contentQuality.js";
 import { macroNewsFromNewsHub, pairsFromMacroCurrencies } from "../services/newsHub/macroNewsAdapter.js";
+import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
 
 const router = Router();
@@ -889,6 +890,7 @@ interface MacroNewsResult {
     imageKeywords?: string[];
   }>;
   sentiment: string;
+  sentimentIntensity?: string;
   summary: string;
   fetchedAt: string;
   citationUrls?: string[];     // all Perplexity citations for the full query
@@ -1350,23 +1352,43 @@ async function fetchMacroRSSFallback(currenciesInput: string, lang = "it"): Prom
       )
     : withImages;
 
-  const bullCount = articles.filter((a) => a.direction === "bullish").length;
-  const bearCount = articles.filter((a) => a.direction === "bearish").length;
-  const sentiment = bullCount > bearCount ? "risk-on" : bearCount > bullCount ? "risk-off" : "neutrale";
+  const regime = computeRiskRegime(articles.map((a) => ({
+    title: a.title,
+    summary: a.summary,
+    impactScore: a.impact === "alto" ? 9 : a.impact === "medio" ? 6 : 3,
+    impactDirection: a.direction,
+    primaryAssets: a.currency ? [a.currency] : [],
+  })));
 
   return {
     articles,
-    sentiment,
+    sentiment: regime.regime,
+    sentimentIntensity: regime.intensity ?? undefined,
     summary: `Notizie in tempo reale da ${RSS_MACRO_FEEDS.map((f) => f.source).join(", ")}`,
     fetchedAt: new Date().toISOString(),
   };
 }
 
-async function fetchMacroNews(currencyLabel: string, currenciesRaw = "", lang = "it"): Promise<MacroNewsResult> {
+async function fetchMacroNews(
+  currencyLabel: string,
+  currenciesRaw = "",
+  lang = "it",
+  options: { forceRefresh?: boolean } = {},
+): Promise<MacroNewsResult> {
   const pairs = pairsFromMacroCurrencies(currenciesRaw);
+  const forceRefresh = options.forceRefresh === true;
   if (pairs) {
-    const news = await getNewsData({ noCache: true, pairs, lang });
-    return macroNewsFromNewsHub(news) as MacroNewsResult;
+    try {
+      const news = await withTimeout(
+        getNewsData({ noCache: forceRefresh === true, pairs, lang }),
+        NEWS_HUB_MACRO_TIMEOUT_MS,
+        "NewsHub",
+      );
+      return macroNewsFromNewsHub(news, { pairs }) as MacroNewsResult;
+    } catch (err) {
+      console.warn("[tools/macro-news] NewsHub timed out, falling back to RSS:", err instanceof Error ? err.message : String(err));
+      return fetchMacroRSSFallback(currenciesRaw, lang);
+    }
   }
 
   try {
@@ -1381,6 +1403,22 @@ const VALID_LANGS = new Set(["it", "en", "es", "fr", "de"]);
 function sanitizeLang(raw: string | undefined): string {
   const l = (raw ?? "it").toLowerCase().slice(0, 2);
   return VALID_LANGS.has(l) ? l : "it";
+}
+
+const NEWS_HUB_MACRO_TIMEOUT_MS = process.env.VERCEL ? 25_000 : 45_000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timeout = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 router.get("/tools/macro-news", async (req, res) => {
@@ -1403,7 +1441,7 @@ router.get("/tools/macro-news", async (req, res) => {
   }
 
   try {
-    const result = await fetchMacroNews(label, currenciesInput, lang);
+    const result = await fetchMacroNews(label, currenciesInput, lang, { forceRefresh });
     macroNewsCache.set(key, { data: result, expiresAt: Date.now() + MACRO_NEWS_TTL });
     res.json(result);
   } catch (err) {

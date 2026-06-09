@@ -65,6 +65,7 @@ interface MacroArticle {
 interface MacroNewsData {
   articles: MacroArticle[];
   sentiment: string;
+  sentimentIntensity?: string;
   summary: string;
   fetchedAt: string;
   citationUrls?: string[];
@@ -610,6 +611,9 @@ export function MacroNewsTicker() {
                 >
                   <Activity className="w-3.5 h-3.5" />
                   {data.sentiment.toUpperCase()}
+                  {data.sentimentIntensity && (
+                    <span className="opacity-70 font-bold">· {data.sentimentIntensity.toUpperCase()}</span>
+                  )}
                 </div>
                 {data.summary && (
                   <p className="text-xs text-muted-foreground italic flex-1 line-clamp-2">

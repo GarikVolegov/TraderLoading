@@ -50,7 +50,48 @@ assert.equal(macro.articles[0]?.url, "https://example.com/gold");
 assert.equal(macro.articles[0]?.deepDive?.whatHappened, "Spot gold rises while the dollar softens.");
 assert.equal(macro.articles[0]?.deepDive?.whyItMatters, "I rendimenti e il dollaro influenzano direttamente XAU/USD.");
 assert.equal(macro.articles[0]?.deepDive?.possibleImpact, "Potrebbe sostenere XAU/USD se il dollaro resta debole.");
-assert.equal(macro.sentiment, "risk-on");
+// Gold rising is a flight-to-safety signal → RISK-OFF (the previous naive
+// bull/bear count wrongly called this risk-on). Strong single safe-haven signal.
+assert.equal(macro.sentiment, "risk-off");
+assert.equal(macro.sentimentIntensity, "forte");
 assert.equal(macro.summary, "Gold is being driven by USD and yields.");
+
+const staleSnapshot: NewsResponse = {
+  ...news,
+  articles: [
+    {
+      ...news.articles[0]!,
+      title: "NZD/USD nears 0.5830 as weaker dollar supports the kiwi",
+      summary: "The RBNZ-Fed policy split helps New Zealand dollar buyers while USD softens.",
+      imageUrl: null,
+      affectedPairs: ["XAU/USD"],
+      primaryAssets: ["XAU", "USD"],
+    },
+    news.articles[0]!,
+  ],
+};
+const filteredMacro = macroNewsFromNewsHub(staleSnapshot, { pairs: "XAUUSD" });
+assert.equal(filteredMacro.articles.some((article) => /NZD\/USD/i.test(article.title)), false);
+assert.equal(filteredMacro.articles.length, 1);
+
+const dominantNzdSnapshot: NewsResponse = {
+  ...news,
+  articles: [
+    {
+      ...news.articles[0]!,
+      title: "New Zealand Dollar rises on easing geopolitical risk, RBNZ rate-hike expectations",
+      summary: "The kiwi advances as traders reassess the RBNZ path and broader risk appetite.",
+      originalTitle: "New Zealand Dollar rises on easing geopolitical risk, RBNZ rate-hike expectations",
+      originalSummary: "The kiwi advances as traders reassess the RBNZ path and broader risk appetite.",
+      imageUrl: null,
+      affectedPairs: ["XAU/USD"],
+      primaryAssets: ["XAU", "USD"],
+    },
+    news.articles[0]!,
+  ],
+};
+const filteredDominantNzdMacro = macroNewsFromNewsHub(dominantNzdSnapshot, { pairs: "XAUUSD" });
+assert.equal(filteredDominantNzdMacro.articles.some((article) => /New Zealand Dollar|RBNZ|kiwi/i.test(`${article.title} ${article.summary}`)), false);
+assert.equal(filteredDominantNzdMacro.articles.length, 1);
 
 console.log("macro news adapter checks passed");

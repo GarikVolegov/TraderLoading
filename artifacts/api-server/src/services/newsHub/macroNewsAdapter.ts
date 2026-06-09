@@ -1,4 +1,5 @@
 import type { NewsArticle, NewsDeepDive, NewsResponse } from "./types.js";
+import { computeRiskRegime } from "./riskRegime.js";
 
 export interface MacroNewsArticle {
   title: string;
@@ -25,12 +26,28 @@ export interface MacroNewsArticle {
 export interface MacroNewsResultLike {
   articles: MacroNewsArticle[];
   sentiment: string;
+  sentimentIntensity?: string;
   summary: string;
   fetchedAt: string;
   citationUrls?: string[];
 }
 
 const MAJOR_CURRENCIES = ["EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD"];
+const KNOWN_ASSETS = ["EUR", "USD", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "XAU", "XAG", "BTC", "ETH"];
+const ASSET_PATTERNS: Record<string, RegExp[]> = {
+  EUR: [/\beur\b/i, /\beuro\b/i, /\becb\b/i],
+  USD: [/\busd\b/i, /\bdollar\b/i, /\bdxy\b/i, /\bfed\b/i, /\bfomc\b/i, /federal\s+reserve/i, /treasury\s+yields?/i],
+  GBP: [/\bgbp\b/i, /\bpound\b/i, /\bsterling\b/i, /\bboe\b/i],
+  JPY: [/\bjpy\b/i, /\byen\b/i, /\bboj\b/i],
+  CHF: [/\bchf\b/i, /\bswiss\s+franc\b/i, /\bsnb\b/i],
+  CAD: [/\bcad\b/i, /\bcanadian\s+dollar\b/i, /\bboc\b/i],
+  AUD: [/\baud\b/i, /\baussie\b/i, /\brba\b/i],
+  NZD: [/\bnzd\b/i, /\bkiwi\b/i, /\brbnz\b/i, /\bnew\s+zealand\s+dollar\b/i],
+  XAU: [/\bxau\b/i, /\bgold\b/i, /\bbullion\b/i],
+  XAG: [/\bxag\b/i, /\bsilver\b/i],
+  BTC: [/\bbtc\b/i, /\bbitcoin\b/i, /\bcrypto\b/i],
+  ETH: [/\beth\b/i, /\bethereum\b/i],
+};
 
 export function pairsFromMacroCurrencies(currenciesRaw: string): string {
   const currencies = currenciesRaw.split(",").map((currency) => currency.trim().toUpperCase()).filter(Boolean);
@@ -62,12 +79,6 @@ function currencyFromArticle(article: NewsArticle): string {
   return article.primaryAssets?.[0] ?? "GLOBALE";
 }
 
-function sentimentFromArticles(articles: MacroNewsArticle[]): string {
-  const bull = articles.filter((article) => article.direction === "bullish").length;
-  const bear = articles.filter((article) => article.direction === "bearish").length;
-  return bull > bear ? "risk-on" : bear > bull ? "risk-off" : "neutrale";
-}
-
 function categoryFromArticle(article: NewsArticle): string {
   const text = `${article.title} ${article.summary}`.toLowerCase();
   if (/gold|xau|bullion|commodit/.test(text)) return "commodities";
@@ -77,8 +88,74 @@ function categoryFromArticle(article: NewsArticle): string {
   return "macro-dati";
 }
 
-export function macroNewsFromNewsHub(news: NewsResponse): MacroNewsResultLike {
-  const articles = news.articles.map((article): MacroNewsArticle => ({
+function normalizePair(pair: string): string {
+  const clean = pair.trim().toUpperCase();
+  return clean.length === 6 ? `${clean.slice(0, 3)}/${clean.slice(3)}` : clean;
+}
+
+function explicitPairsInText(text: string): string[] {
+  const pairs = new Set<string>();
+  const slashRe = /\b([A-Z]{3})\s*\/\s*([A-Z]{3})\b/gi;
+  let slashMatch: RegExpExecArray | null;
+  while ((slashMatch = slashRe.exec(text)) !== null) {
+    pairs.add(`${slashMatch[1]?.toUpperCase()}/${slashMatch[2]?.toUpperCase()}`);
+  }
+  for (const base of KNOWN_ASSETS) {
+    for (const quote of KNOWN_ASSETS) {
+      if (base === quote) continue;
+      const compact = `${base}${quote}`;
+      if (new RegExp(`\\b${compact}\\b`, "i").test(text)) pairs.add(`${base}/${quote}`);
+    }
+  }
+  return Array.from(pairs);
+}
+
+function selectedAssetsFromPairs(pairs: string[]): string[] {
+  const assets = new Set<string>();
+  for (const pair of pairs) {
+    for (const part of pair.split("/")) if (part) assets.add(part);
+  }
+  return Array.from(assets);
+}
+
+function hasAssetPattern(text: string, asset: string): boolean {
+  return (ASSET_PATTERNS[asset] ?? []).some((pattern) => pattern.test(text));
+}
+
+function hasStrongUsdMention(text: string): boolean {
+  return /\busd\b|\bdxy\b|\bfed\b|\bfomc\b|federal\s+reserve|treasury\s+yields?|powell/i.test(text);
+}
+
+function mentionsDominantNonFocusAsset(text: string, focusPairs: string[]): boolean {
+  const focusAssets = selectedAssetsFromPairs(focusPairs);
+  if (focusAssets.length === 0) return false;
+  const focusSet = new Set(focusAssets);
+  const outsideAssets = KNOWN_ASSETS.filter((asset) => !focusSet.has(asset) && hasAssetPattern(text, asset));
+  if (outsideAssets.length === 0) return false;
+  const hasFocusMention = focusAssets.some((asset) => asset === "USD" ? hasStrongUsdMention(text) : hasAssetPattern(text, asset));
+  return !hasFocusMention;
+}
+
+function isExplicitlyOutsideRequestedPairs(article: NewsArticle, requestedPairs = ""): boolean {
+  const focusPairs = requestedPairs.split(",").map(normalizePair).filter(Boolean);
+  if (focusPairs.length === 0) return false;
+  const text = [
+    article.title,
+    article.summary,
+    article.originalTitle,
+    article.originalSummary,
+  ].filter(Boolean).join(" ");
+  const explicitPairs = explicitPairsInText(text);
+  const focusSet = new Set(focusPairs);
+  if (explicitPairs.length > 0 && explicitPairs.every((pair) => !focusSet.has(pair))) return true;
+  return mentionsDominantNonFocusAsset(text, focusPairs);
+}
+
+export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: string } = {}): MacroNewsResultLike {
+  const kept = news.articles.filter((article) => !isExplicitlyOutsideRequestedPairs(article, options.pairs));
+  const regime = computeRiskRegime(kept);
+  const articles = kept
+    .map((article): MacroNewsArticle => ({
     title: article.title,
     summary: article.summary,
     originalTitle: article.originalTitle,
@@ -102,7 +179,8 @@ export function macroNewsFromNewsHub(news: NewsResponse): MacroNewsResultLike {
 
   return {
     articles,
-    sentiment: sentimentFromArticles(articles),
+    sentiment: regime.regime,
+    sentimentIntensity: regime.intensity ?? undefined,
     summary: news.agentSummary ?? "Notizie aggiornate dal News Hub con filtro per asset e impatto.",
     fetchedAt: news.fetchedAt,
     citationUrls: articles.flatMap((article) => article.citationUrls ?? []),

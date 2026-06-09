@@ -26,8 +26,20 @@ const ASSET_KEYWORDS: Record<string, RegExp[]> = {
   EUR: [/\beur\b/i, /\beuro\b/i, /\becb\b/i, /\blagarde\b/i],
   GBP: [/\bgbp\b/i, /\bpound\b/i, /\bsterling\b/i, /\bboe\b/i],
   JPY: [/\bjpy\b/i, /\byen\b/i, /\bboj\b/i],
+  CHF: [/\bchf\b/i, /\bswiss\s+franc\b/i, /\bsnb\b/i],
+  CAD: [/\bcad\b/i, /\bcanadian\s+dollar\b/i, /\bboc\b/i],
+  AUD: [/\baud\b/i, /\baussie\b/i, /\brba\b/i],
+  NZD: [/\bnzd\b/i, /\bkiwi\b/i, /\brbnz\b/i, /\bnew\s+zealand\s+dollar\b/i],
   BTC: [/\bbtc\b/i, /\bbitcoin\b/i, /\bcrypto\b/i],
 };
+
+const KNOWN_ASSETS = ["EUR", "USD", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "XAU", "XAG", "BTC", "ETH"];
+
+// Broad macro themes that move virtually every FX/gold pair, so they stay in the
+// feed even when they don't name a selected pair (avoid over-filtering to only
+// the highest-conviction, pair-specific items).
+const GLOBAL_MACRO_RE =
+  /\b(fed|fomc|powell|ecb|lagarde|boe|boj|snb|rba|rbnz|boc|central\s+bank|rate\s+(decision|hike|cut|change)|interest\s+rates?|cpi|inflation|pce|nonfarm|non.?farm|nfp|payrolls?|jobs?\s+report|unemployment|gdp|pmi|treasury\s+yields?|bond\s+yields?|geopolit|war|conflict|sanction|tariff|trade\s+war|recession)\b/i;
 
 const XAU_INDIRECT_RULES: Array<{ re: RegExp; score: number; confidence: number; direction: Direction; reasonKey: string }> = [
   { re: /\bcpi\b|inflation|pce|price\s+index/i, score: 8, confidence: 0.78, direction: "bearish", reasonKey: "inflation" },
@@ -87,6 +99,50 @@ function selectedAssets(pairs = ""): string[] {
   return Array.from(assets);
 }
 
+function explicitPairsInText(text: string): string[] {
+  const pairs = new Set<string>();
+  const slashRe = /\b([A-Z]{3})\s*\/\s*([A-Z]{3})\b/gi;
+  let slashMatch: RegExpExecArray | null;
+  while ((slashMatch = slashRe.exec(text)) !== null) {
+    pairs.add(`${slashMatch[1]?.toUpperCase()}/${slashMatch[2]?.toUpperCase()}`);
+  }
+  for (const base of KNOWN_ASSETS) {
+    for (const quote of KNOWN_ASSETS) {
+      if (base === quote) continue;
+      const compact = `${base}${quote}`;
+      if (new RegExp(`\\b${compact}\\b`, "i").test(text)) pairs.add(`${base}/${quote}`);
+    }
+  }
+  return Array.from(pairs);
+}
+
+function mentionsOnlyNonFocusPairs(text: string, focusPairs: string[]): boolean {
+  const explicitPairs = explicitPairsInText(text);
+  if (explicitPairs.length === 0) return false;
+  const focusSet = new Set(focusPairs.map((pair) => pair.toUpperCase()));
+  return explicitPairs.every((pair) => !focusSet.has(pair.toUpperCase()));
+}
+
+function mentionedAssets(text: string): string[] {
+  return KNOWN_ASSETS.filter((asset) => hasAssetKeyword(text, asset));
+}
+
+function hasStrongUsdMention(text: string): boolean {
+  return /\busd\b|\bdxy\b|\bfed\b|\bfomc\b|federal\s+reserve|treasury\s+yields?|powell/i.test(text);
+}
+
+function mentionsDominantNonFocusAsset(text: string, focusAssets: string[]): boolean {
+  if (focusAssets.length === 0) return false;
+  const focusSet = new Set(focusAssets);
+  const outsideAssets = mentionedAssets(text).filter((asset) => !focusSet.has(asset));
+  if (outsideAssets.length === 0) return false;
+  const hasFocusMention = focusAssets.some((asset) => {
+    if (asset === "USD") return hasStrongUsdMention(text);
+    return hasAssetKeyword(text, asset);
+  });
+  return !hasFocusMention;
+}
+
 function hasAssetKeyword(text: string, asset: string): boolean {
   return (ASSET_KEYWORDS[asset] ?? []).some((re) => re.test(text));
 }
@@ -131,6 +187,20 @@ export function classifyNewsArticle(article: NewsArticle, context: NewsIntellige
   const focusPairs = selectedPairs(context.pairs);
   const focusAssets = selectedAssets(context.pairs);
   const text = textOf(article);
+  if (mentionsOnlyNonFocusPairs(text, focusPairs) || mentionsDominantNonFocusAsset(text, focusAssets)) {
+    return {
+      relevant: false,
+      article: {
+        ...article,
+        primaryAssets: [],
+        affectedPairs: [],
+        impactScore: article.impactScore ?? 2,
+        impactDirection: "neutral",
+        sentiment: article.sentiment ?? null,
+        matchConfidence: 0.12,
+      },
+    };
+  }
   const matches = [...directMatches(text, focusAssets), ...xauIndirectMatches(text, focusAssets)];
   const match = bestMatch(matches);
   const confidence = match?.confidence ?? 0.15;
@@ -140,9 +210,18 @@ export function classifyNewsArticle(article: NewsArticle, context: NewsIntellige
         return parts.some((part) => match.assets.includes(part));
       })
     : [];
-  const relevant = Boolean(match && confidence >= 0.45 && affectedPairs.length > 0);
+  // Broadened: besides pair-matched news, keep GLOBAL-MACRO news (Fed/CPI/yields/
+  // geopolitics…) that moves every pair — but only when the article is NOT
+  // dominated by another asset (that case is excluded above). This widens the
+  // feed beyond just the highest-conviction items without admitting noise.
+  const isGlobalMacro = GLOBAL_MACRO_RE.test(text);
+  const relevant = Boolean((match && confidence >= 0.45 && affectedPairs.length > 0) || isGlobalMacro);
   const articleAssets = match ? Array.from(new Set(match.assets)) : [];
-  const relevanceReason = match ? reasonFor(match.reasonKey, context.lang) : undefined;
+  const relevanceReason = match
+    ? reasonFor(match.reasonKey, context.lang)
+    : isGlobalMacro ? reasonFor("generic", context.lang) : undefined;
+  const effConfidence = match ? confidence : isGlobalMacro ? 0.4 : confidence;
+  const effScore = match?.score ?? (isGlobalMacro ? 6 : article.impactScore ?? 2);
 
   return {
     relevant,
@@ -150,12 +229,12 @@ export function classifyNewsArticle(article: NewsArticle, context: NewsIntellige
       ...article,
       primaryAssets: articleAssets,
       affectedPairs,
-      impactScore: match?.score ?? article.impactScore ?? 2,
+      impactScore: effScore,
       impactDirection: match?.direction ?? "neutral",
       sentiment: article.sentiment ?? match?.direction ?? null,
       relevanceReason,
       impactReason: article.impactReason ?? relevanceReason,
-      matchConfidence: Number(confidence.toFixed(2)),
+      matchConfidence: Number(effConfidence.toFixed(2)),
     },
   };
 }
