@@ -268,6 +268,18 @@ for (const noisy of [
   article("Da Gift Nifty alla guerra USA-Iran: 8 cose fondamentali prima dell'apertura", {
     originalTitle: "From Gift Nifty to US-Iran war: 8 things to know before market opens",
   }),
+  article("L'oro scende sotto Rs 1,5 lakh in mezzo alla svendita globale", {
+    originalTitle: "Gold falls below Rs 1.5 lakh amid global selloff",
+  }),
+  article("Il prezzo dell'oro scende di 6.591 Tk per bhori", {
+    originalTitle: "Gold price drops by Tk 6,591 per bhori",
+  }),
+  article("Prezzo oro e argento oggi, 10 giugno: controlla i prezzi a Mumbai, Delhi, Chennai", {
+    originalTitle: "Gold and silver price today, June 10: check prices in Mumbai, Delhi, Chennai",
+  }),
+  article("Prezzo dell'oro oggi: l'oro MCX scende oltre Rs 2.000", {
+    originalTitle: "Gold price today: MCX gold slips over Rs 2,000",
+  }),
 ]) {
   assert.equal(selectCuratedNews([noisy], { pairs: "XAUUSD", minKeep: 3 }).length, 0, noisy.title);
 }
