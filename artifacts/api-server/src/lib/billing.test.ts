@@ -6,6 +6,8 @@ const {
   getPlanFromSubscription,
   getStripeBillingConfig,
   isProSubscription,
+  maskStripeId,
+  getBillingCapabilities,
   paymentRequiredBody,
 } = await import("./billing.js");
 
@@ -18,6 +20,39 @@ assert.equal(isProSubscription(null), false);
 assert.equal(getPlanFromSubscription({ plan: "pro", status: "active", currentPeriodEnd: null, cancelAtPeriodEnd: false }), "pro");
 assert.equal(getPlanFromSubscription({ plan: "pro", status: "canceled", currentPeriodEnd: null, cancelAtPeriodEnd: false }), "free");
 assert.equal(getPlanFromSubscription(null), "free");
+
+assert.equal(maskStripeId("sub_1234567890abcdef"), "sub_...cdef");
+assert.equal(maskStripeId(null), null);
+
+assert.deepEqual(getBillingCapabilities(null), {
+  canCancel: false,
+  canResume: false,
+  canViewInvoices: false,
+});
+assert.deepEqual(getBillingCapabilities({
+  plan: "pro",
+  status: "active",
+  currentPeriodEnd: null,
+  cancelAtPeriodEnd: false,
+  stripeCustomerId: "cus_123",
+  stripeSubscriptionId: "sub_123",
+}), {
+  canCancel: true,
+  canResume: false,
+  canViewInvoices: true,
+});
+assert.deepEqual(getBillingCapabilities({
+  plan: "pro",
+  status: "active",
+  currentPeriodEnd: null,
+  cancelAtPeriodEnd: true,
+  stripeCustomerId: "cus_123",
+  stripeSubscriptionId: "sub_123",
+}), {
+  canCancel: false,
+  canResume: true,
+  canViewInvoices: true,
+});
 
 assert.deepEqual(paymentRequiredBody("backtest"), {
   error: "pro_required",

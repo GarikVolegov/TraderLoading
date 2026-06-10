@@ -63,8 +63,16 @@ export const GetBillingStatusResponse = zod.object({
     "paused",
   ]),
   pro: zod.boolean(),
-  currentPeriodEnd: zod.string().nullish(),
-  cancelAtPeriodEnd: zod.boolean().optional(),
+  currentPeriodEnd: zod.string().nullable(),
+  cancelAtPeriodEnd: zod.boolean(),
+  stripeCustomerId: zod.string().nullable(),
+  stripeSubscriptionId: zod
+    .string()
+    .nullable()
+    .describe("Masked Stripe subscription id for display."),
+  canCancel: zod.boolean(),
+  canResume: zod.boolean(),
+  canViewInvoices: zod.boolean(),
 });
 
 /**
@@ -72,6 +80,82 @@ export const GetBillingStatusResponse = zod.object({
  */
 export const CreateBillingCheckoutSessionResponse = zod.object({
   clientSecret: zod.string().nullable(),
+});
+
+/**
+ * @summary Cancel Pro renewal at period end
+ */
+export const CancelBillingSubscriptionResponse = zod.object({
+  plan: zod.enum(["free", "pro"]),
+  status: zod.enum([
+    "none",
+    "trialing",
+    "active",
+    "past_due",
+    "canceled",
+    "incomplete",
+    "incomplete_expired",
+    "unpaid",
+    "paused",
+  ]),
+  pro: zod.boolean(),
+  currentPeriodEnd: zod.string().nullable(),
+  cancelAtPeriodEnd: zod.boolean(),
+  stripeCustomerId: zod.string().nullable(),
+  stripeSubscriptionId: zod
+    .string()
+    .nullable()
+    .describe("Masked Stripe subscription id for display."),
+  canCancel: zod.boolean(),
+  canResume: zod.boolean(),
+  canViewInvoices: zod.boolean(),
+});
+
+/**
+ * @summary Resume a Pro subscription scheduled for cancellation
+ */
+export const ResumeBillingSubscriptionResponse = zod.object({
+  plan: zod.enum(["free", "pro"]),
+  status: zod.enum([
+    "none",
+    "trialing",
+    "active",
+    "past_due",
+    "canceled",
+    "incomplete",
+    "incomplete_expired",
+    "unpaid",
+    "paused",
+  ]),
+  pro: zod.boolean(),
+  currentPeriodEnd: zod.string().nullable(),
+  cancelAtPeriodEnd: zod.boolean(),
+  stripeCustomerId: zod.string().nullable(),
+  stripeSubscriptionId: zod
+    .string()
+    .nullable()
+    .describe("Masked Stripe subscription id for display."),
+  canCancel: zod.boolean(),
+  canResume: zod.boolean(),
+  canViewInvoices: zod.boolean(),
+});
+
+/**
+ * @summary List current user's Stripe invoices
+ */
+export const GetBillingInvoicesResponse = zod.object({
+  invoices: zod.array(
+    zod.object({
+      id: zod.string(),
+      number: zod.string().nullable(),
+      status: zod.string().nullable(),
+      amountPaid: zod.number(),
+      currency: zod.string(),
+      hostedInvoiceUrl: zod.string().nullable(),
+      periodStart: zod.string().nullable(),
+      periodEnd: zod.string().nullable(),
+    }),
+  ),
 });
 
 /**

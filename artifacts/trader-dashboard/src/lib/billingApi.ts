@@ -6,10 +6,30 @@ export interface BillingStatus {
   status: string;
   currentPeriodEnd?: string | null;
   cancelAtPeriodEnd?: boolean;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  canCancel?: boolean;
+  canResume?: boolean;
+  canViewInvoices?: boolean;
 }
 
 export interface CheckoutSessionResponse {
   clientSecret: string;
+}
+
+export interface BillingInvoice {
+  id: string;
+  number: string | null;
+  status: string | null;
+  amountPaid: number;
+  currency: string;
+  hostedInvoiceUrl: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+}
+
+export interface BillingInvoicesResponse {
+  invoices: BillingInvoice[];
 }
 
 export const billingQueryKey = ["/api/billing/me"] as const;
@@ -20,4 +40,16 @@ export function fetchBillingStatus(options?: RelativeApiOptions): Promise<Billin
 
 export function createCheckoutSession(options?: RelativeApiOptions): Promise<CheckoutSessionResponse> {
   return apiJSON<CheckoutSessionResponse>("billing/checkout-session", { method: "POST" }, options);
+}
+
+export function cancelSubscription(options?: RelativeApiOptions): Promise<BillingStatus> {
+  return apiJSON<BillingStatus>("billing/cancel", { method: "POST" }, options);
+}
+
+export function resumeSubscription(options?: RelativeApiOptions): Promise<BillingStatus> {
+  return apiJSON<BillingStatus>("billing/resume", { method: "POST" }, options);
+}
+
+export function fetchBillingInvoices(options?: RelativeApiOptions): Promise<BillingInvoicesResponse> {
+  return apiJSON<BillingInvoicesResponse>("billing/invoices", undefined, options);
 }

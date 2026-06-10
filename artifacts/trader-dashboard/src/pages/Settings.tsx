@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ProfileWidget } from "@/components/ProfileWidget";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { BackgroundPresetsManager } from "@/components/BackgroundPresetsManager";
+import { BillingSubscriptionPanel } from "@/components/BillingSubscriptionPanel";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -3059,6 +3060,7 @@ function TermsSection() {
 
 type TileId =
   | "profilo"
+  | "abbonamento"
   | "pairs"
   | "audio"
   | "aspetto"
@@ -3102,6 +3104,7 @@ export default function Settings() {
     useState<TileId>("audio");
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     pairs: false,
+    abbonamento: false,
     audio: false,
     aspetto: false,
     notifiche: false,
@@ -3135,6 +3138,14 @@ export default function Settings() {
       subtitle: t("settings.tile.pairs_sub"),
       color: "text-indigo-400",
       glow: "group-hover:shadow-indigo-400/20",
+    },
+    {
+      id: "abbonamento",
+      icon: <Star className="w-6 h-6" />,
+      label: "Abbonamento",
+      subtitle: "Piano Pro, rinnovo e fatture",
+      color: "text-primary",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "audio",
@@ -3270,6 +3281,7 @@ export default function Settings() {
 
   const tileContent: Record<TileId, React.ReactNode> = {
     profilo: <ProfileWidget />,
+    abbonamento: <BillingSubscriptionPanel />,
     pairs: <PairPreferencesSettings />,
     audio: <AudioPlayer />,
     aspetto: (

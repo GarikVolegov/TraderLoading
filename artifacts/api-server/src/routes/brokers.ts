@@ -315,6 +315,14 @@ export function createBrokersRouter(
     });
   });
 
+  router.use("/brokers", async (req, res, next) => {
+    if (req.path === "/catalog" || req.path.startsWith("/companion/downloads/")) {
+      next();
+      return;
+    }
+    if (await requireBrokerPro(req, res)) next();
+  });
+
   if (!legacyConnectionRoutesEnabled) {
     router.post("/brokers/connect-intents", blockLegacyConnectionRoute);
     router.get("/brokers/connect-intents/:id", blockLegacyConnectionRoute);
@@ -796,18 +804,6 @@ export function createBrokersRouter(
     } catch (error) {
       res.status(500).json({ error: message(error) });
     }
-  });
-
-  router.use("/brokers", async (req, res, next) => {
-    if (req.path === "/catalog") {
-      next();
-      return;
-    }
-    if (req.path.startsWith("/companion/")) {
-      next();
-      return;
-    }
-    if (await requireBrokerPro(req, res)) next();
   });
 
   router.post("/brokers/profiles", async (req, res) => {

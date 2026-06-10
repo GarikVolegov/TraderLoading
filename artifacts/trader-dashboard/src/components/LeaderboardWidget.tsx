@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Trophy, Crown, Medal, Award, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useGetProfile } from "@workspace/api-client-react";
 import { UserProfileModal } from "@/components/UserProfileModal";
+import { billingQueryKey, fetchBillingStatus } from "@/lib/billingApi";
 import { fetchLeaderboard, leaderboardQueryKey, type LeaderboardEntry } from "@/lib/leaderboardApi";
 
 function useLeaderboard() {
@@ -44,6 +46,40 @@ function PositionBadge({ position }: { position: number }) {
 }
 
 export function LeaderboardWidget() {
+  const billing = useQuery({ queryKey: billingQueryKey, queryFn: () => fetchBillingStatus() });
+
+  if (billing.isLoading) {
+    return <Card className="h-full min-h-[260px] border-border/30 bg-card/60 animate-pulse" />;
+  }
+
+  if (!billing.data?.pro) {
+    return (
+      <Card className="h-full relative overflow-hidden border-primary/20 bg-card/60">
+        <CardHeader className="border-b border-border/50 bg-secondary/10 pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
+            Classifica Pro
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 p-4">
+          <div className="rounded-lg border border-border/40 bg-secondary/20 px-3 py-3 text-xs text-muted-foreground">
+            Confronta XP, livelli e progressi con gli altri trader nel piano Pro.
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/10 px-3 py-2">
+            <span className="text-xs font-bold text-primary">7 EUR/mese</span>
+            <Button type="button" size="sm" onClick={() => window.location.assign("/chat")}>
+              Passa a Pro
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return <LeaderboardWidgetInner />;
+}
+
+function LeaderboardWidgetInner() {
   const { data: leaderboard, isLoading } = useLeaderboard();
   const { data: profile } = useGetProfile();
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);

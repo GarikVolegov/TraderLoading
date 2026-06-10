@@ -24,6 +24,7 @@ import type {
   BacktestTrade,
   BeginBrowserLoginParams,
   BillingCheckoutSession,
+  BillingInvoices,
   BillingStatus,
   CalendarEvent,
   ChatMessageRecord,
@@ -62,6 +63,7 @@ import type {
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
   NewsResponse,
+  PaymentRequiredError,
   PendingFriendRequest,
   PublicKeyRecord,
   PublicKeyResponse,
@@ -482,6 +484,249 @@ export const useCreateBillingCheckoutSession = <
 > => {
   return useMutation(getCreateBillingCheckoutSessionMutationOptions(options));
 };
+
+/**
+ * @summary Cancel Pro renewal at period end
+ */
+export const getCancelBillingSubscriptionUrl = () => {
+  return `/api/billing/cancel`;
+};
+
+export const cancelBillingSubscription = async (
+  options?: RequestInit,
+): Promise<BillingStatus> => {
+  return customFetch<BillingStatus>(getCancelBillingSubscriptionUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCancelBillingSubscriptionMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelBillingSubscription>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelBillingSubscription>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["cancelBillingSubscription"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelBillingSubscription>>,
+    void
+  > = () => {
+    return cancelBillingSubscription(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelBillingSubscriptionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelBillingSubscription>>
+>;
+
+export type CancelBillingSubscriptionMutationError = ErrorType<
+  ErrorEnvelope | StripeNotConfiguredError
+>;
+
+/**
+ * @summary Cancel Pro renewal at period end
+ */
+export const useCancelBillingSubscription = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelBillingSubscription>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cancelBillingSubscription>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getCancelBillingSubscriptionMutationOptions(options));
+};
+
+/**
+ * @summary Resume a Pro subscription scheduled for cancellation
+ */
+export const getResumeBillingSubscriptionUrl = () => {
+  return `/api/billing/resume`;
+};
+
+export const resumeBillingSubscription = async (
+  options?: RequestInit,
+): Promise<BillingStatus> => {
+  return customFetch<BillingStatus>(getResumeBillingSubscriptionUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getResumeBillingSubscriptionMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resumeBillingSubscription>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resumeBillingSubscription>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["resumeBillingSubscription"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resumeBillingSubscription>>,
+    void
+  > = () => {
+    return resumeBillingSubscription(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResumeBillingSubscriptionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resumeBillingSubscription>>
+>;
+
+export type ResumeBillingSubscriptionMutationError = ErrorType<
+  ErrorEnvelope | StripeNotConfiguredError
+>;
+
+/**
+ * @summary Resume a Pro subscription scheduled for cancellation
+ */
+export const useResumeBillingSubscription = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resumeBillingSubscription>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resumeBillingSubscription>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getResumeBillingSubscriptionMutationOptions(options));
+};
+
+/**
+ * @summary List current user's Stripe invoices
+ */
+export const getGetBillingInvoicesUrl = () => {
+  return `/api/billing/invoices`;
+};
+
+export const getBillingInvoices = async (
+  options?: RequestInit,
+): Promise<BillingInvoices> => {
+  return customFetch<BillingInvoices>(getGetBillingInvoicesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBillingInvoicesQueryKey = () => {
+  return [`/api/billing/invoices`] as const;
+};
+
+export const getGetBillingInvoicesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBillingInvoices>>,
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingInvoices>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillingInvoicesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBillingInvoices>>
+  > = ({ signal }) => getBillingInvoices({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingInvoices>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBillingInvoicesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBillingInvoices>>
+>;
+export type GetBillingInvoicesQueryError = ErrorType<
+  ErrorEnvelope | StripeNotConfiguredError
+>;
+
+/**
+ * @summary List current user's Stripe invoices
+ */
+
+export function useGetBillingInvoices<
+  TData = Awaited<ReturnType<typeof getBillingInvoices>>,
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingInvoices>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBillingInvoicesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get the currently authenticated user
@@ -4006,7 +4251,7 @@ export const getGetBacktestSessionsQueryKey = () => {
 
 export const getGetBacktestSessionsQueryOptions = <
   TData = Awaited<ReturnType<typeof getBacktestSessions>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof getBacktestSessions>>,
@@ -4033,7 +4278,7 @@ export const getGetBacktestSessionsQueryOptions = <
 export type GetBacktestSessionsQueryResult = NonNullable<
   Awaited<ReturnType<typeof getBacktestSessions>>
 >;
-export type GetBacktestSessionsQueryError = ErrorType<unknown>;
+export type GetBacktestSessionsQueryError = ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Get all backtest sessions
@@ -4041,7 +4286,7 @@ export type GetBacktestSessionsQueryError = ErrorType<unknown>;
 
 export function useGetBacktestSessions<
   TData = Awaited<ReturnType<typeof getBacktestSessions>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof getBacktestSessions>>,
@@ -4079,7 +4324,7 @@ export const createBacktestSession = async (
 };
 
 export const getCreateBacktestSessionMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4121,13 +4366,14 @@ export type CreateBacktestSessionMutationResult = NonNullable<
 >;
 export type CreateBacktestSessionMutationBody =
   BodyType<CreateBacktestSessionRequest>;
-export type CreateBacktestSessionMutationError = ErrorType<unknown>;
+export type CreateBacktestSessionMutationError =
+  ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Create a backtest session
  */
 export const useCreateBacktestSession = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4167,7 +4413,7 @@ export const deleteBacktestSession = async (
 };
 
 export const getDeleteBacktestSessionMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4208,13 +4454,14 @@ export type DeleteBacktestSessionMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteBacktestSession>>
 >;
 
-export type DeleteBacktestSessionMutationError = ErrorType<unknown>;
+export type DeleteBacktestSessionMutationError =
+  ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Delete a backtest session
  */
 export const useDeleteBacktestSession = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4256,7 +4503,7 @@ export const getGetBacktestTradesQueryKey = (id: number) => {
 
 export const getGetBacktestTradesQueryOptions = <
   TData = Awaited<ReturnType<typeof getBacktestTrades>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(
   id: number,
   options?: {
@@ -4291,7 +4538,7 @@ export const getGetBacktestTradesQueryOptions = <
 export type GetBacktestTradesQueryResult = NonNullable<
   Awaited<ReturnType<typeof getBacktestTrades>>
 >;
-export type GetBacktestTradesQueryError = ErrorType<unknown>;
+export type GetBacktestTradesQueryError = ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Get trades for a backtest session
@@ -4299,7 +4546,7 @@ export type GetBacktestTradesQueryError = ErrorType<unknown>;
 
 export function useGetBacktestTrades<
   TData = Awaited<ReturnType<typeof getBacktestTrades>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(
   id: number,
   options?: {
@@ -4341,7 +4588,7 @@ export const createBacktestTrade = async (
 };
 
 export const getCreateBacktestTradeMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4383,13 +4630,13 @@ export type CreateBacktestTradeMutationResult = NonNullable<
 >;
 export type CreateBacktestTradeMutationBody =
   BodyType<CreateBacktestTradeRequest>;
-export type CreateBacktestTradeMutationError = ErrorType<unknown>;
+export type CreateBacktestTradeMutationError = ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Add a trade to a backtest session
  */
 export const useCreateBacktestTrade = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4426,7 +4673,7 @@ export const deleteBacktestTrade = async (
 };
 
 export const getDeleteBacktestTradeMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4467,13 +4714,13 @@ export type DeleteBacktestTradeMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteBacktestTrade>>
 >;
 
-export type DeleteBacktestTradeMutationError = ErrorType<unknown>;
+export type DeleteBacktestTradeMutationError = ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Delete a backtest trade
  */
 export const useDeleteBacktestTrade = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4676,7 +4923,7 @@ export const getGetLeaderboardQueryKey = () => {
 
 export const getGetLeaderboardQueryOptions = <
   TData = Awaited<ReturnType<typeof getLeaderboard>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof getLeaderboard>>,
@@ -4703,7 +4950,7 @@ export const getGetLeaderboardQueryOptions = <
 export type GetLeaderboardQueryResult = NonNullable<
   Awaited<ReturnType<typeof getLeaderboard>>
 >;
-export type GetLeaderboardQueryError = ErrorType<unknown>;
+export type GetLeaderboardQueryError = ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Get trader leaderboard ranked by XP
@@ -4711,7 +4958,7 @@ export type GetLeaderboardQueryError = ErrorType<unknown>;
 
 export function useGetLeaderboard<
   TData = Awaited<ReturnType<typeof getLeaderboard>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof getLeaderboard>>,

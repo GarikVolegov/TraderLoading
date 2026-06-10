@@ -20,6 +20,16 @@ export type SubscriptionEntitlement = Pick<
   "plan" | "status" | "currentPeriodEnd" | "cancelAtPeriodEnd"
 > | null;
 
+export type BillingSubscriptionSummary = Pick<
+  AdminUserSubscription,
+  | "plan"
+  | "status"
+  | "currentPeriodEnd"
+  | "cancelAtPeriodEnd"
+  | "stripeCustomerId"
+  | "stripeSubscriptionId"
+> | null;
+
 export function isProSubscription(subscription: SubscriptionEntitlement): boolean {
   if (!subscription) return false;
   if (subscription.plan !== "pro") return false;
@@ -30,6 +40,24 @@ export function isProSubscription(subscription: SubscriptionEntitlement): boolea
 
 export function getPlanFromSubscription(subscription: SubscriptionEntitlement): BillingPlan {
   return isProSubscription(subscription) ? "pro" : "free";
+}
+
+export function maskStripeId(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (value.length <= 8) return value;
+  const prefix = value.slice(0, value.indexOf("_") > 0 ? value.indexOf("_") + 1 : 4);
+  return `${prefix}...${value.slice(-4)}`;
+}
+
+export function getBillingCapabilities(subscription: BillingSubscriptionSummary) {
+  const hasStripeSubscription = Boolean(subscription?.stripeSubscriptionId);
+  const hasStripeCustomer = Boolean(subscription?.stripeCustomerId);
+  const pro = isProSubscription(subscription);
+  return {
+    canCancel: pro && hasStripeSubscription && subscription?.cancelAtPeriodEnd !== true,
+    canResume: pro && hasStripeSubscription && subscription?.cancelAtPeriodEnd === true,
+    canViewInvoices: hasStripeCustomer,
+  };
 }
 
 export function paymentRequiredBody(feature: BillingFeature) {
@@ -63,6 +91,10 @@ export async function getUserSubscription(userId: string): Promise<AdminUserSubs
     .where(eq(adminUserSubscriptionsTable.userId, userId))
     .limit(1);
   return subscription ?? null;
+}
+
+export async function isUserPro(userId: string): Promise<boolean> {
+  return isProSubscription(await getUserSubscription(userId));
 }
 
 export async function requireProFeature(req: Request, res: Response, feature: BillingFeature): Promise<boolean> {

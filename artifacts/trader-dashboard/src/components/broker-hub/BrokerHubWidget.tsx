@@ -1,5 +1,8 @@
 import { Activity, Cable, History, Landmark, ListChecks, Wifi, WifiOff } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { billingQueryKey, fetchBillingStatus } from "@/lib/billingApi";
 import { simpleStatusLabel } from "@/lib/uiCopyPolicy";
 import { useBrokerHub } from "./useBrokerHub";
 import { AccountEquityCurve } from "./AccountEquityCurve";
@@ -18,6 +21,45 @@ function openWorkspace(tab: BrokerHubTab) {
 }
 
 export function BrokerHubWidget() {
+  const billing = useQuery({ queryKey: billingQueryKey, queryFn: () => fetchBillingStatus() });
+
+  if (billing.isLoading) {
+    return <Card className="h-[320px] border-border/30 bg-card/60 animate-pulse" />;
+  }
+
+  if (!billing.data?.pro) {
+    return (
+      <Card className="relative overflow-hidden border-primary/20 bg-card/60">
+        <div className="widget-header">
+          <div className="flex items-center gap-2.5">
+            <div className="widget-icon border border-primary/20 bg-primary/10">
+              <Landmark className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <p className="widget-title">Broker Hub Pro</p>
+              <p className="text-[10px] text-muted-foreground">Collegamento conto riservato</p>
+            </div>
+          </div>
+          <div className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
+            7 EUR/mese
+          </div>
+        </div>
+        <CardContent className="space-y-3 p-4">
+          <div className="rounded-lg border border-border/40 bg-secondary/20 px-3 py-3 text-xs text-muted-foreground">
+            Sblocca Collegamento conto, storico e snapshot account con Pro.
+          </div>
+          <Button type="button" className="w-full" onClick={() => openWorkspace("connect")}>
+            Passa a Pro
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return <BrokerHubWidgetInner />;
+}
+
+function BrokerHubWidgetInner() {
   const { snapshot, activeProfile, history } = useBrokerHub();
   const connected = snapshot.status === "connected";
   const title = activeProfile?.label ?? "Nessun conto";

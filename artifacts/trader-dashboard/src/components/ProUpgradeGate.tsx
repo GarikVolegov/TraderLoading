@@ -32,6 +32,7 @@ export function ProUpgradeGate({ feature, children }: { feature: ProFeature; chi
   const queryClient = useQueryClient();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutComplete, setCheckoutComplete] = useState(false);
   const billing = useQuery({
     queryKey: billingQueryKey,
     queryFn: () => fetchBillingStatus(),
@@ -42,7 +43,10 @@ export function ProUpgradeGate({ feature, children }: { feature: ProFeature; chi
       clientSecret
         ? {
             clientSecret,
-            onComplete: () => queryClient.invalidateQueries({ queryKey: billingQueryKey }),
+            onComplete: () => {
+              setCheckoutComplete(true);
+              queryClient.invalidateQueries({ queryKey: billingQueryKey });
+            },
           }
         : null,
     [clientSecret, queryClient],
@@ -91,6 +95,11 @@ export function ProUpgradeGate({ feature, children }: { feature: ProFeature; chi
             <p className="text-3xl font-bold">7 EUR/mese</p>
             <p className="text-xs text-muted-foreground">Abbonamento mensile Pro gestito in sicurezza da Stripe.</p>
           </div>
+          {checkoutComplete && (
+            <p className="rounded-lg border border-primary/25 bg-primary/10 px-3 py-2 text-sm text-primary">
+              Pagamento ricevuto. Sto aggiornando lo stato Pro.
+            </p>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
           {!clientSecret && (
             <div className="flex flex-wrap justify-center gap-3">

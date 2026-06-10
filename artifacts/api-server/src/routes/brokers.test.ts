@@ -107,6 +107,47 @@ try {
   assert.equal(history.length, 1);
 
   await new Promise<void>((resolve) => server.close(() => resolve()));
+
+  const deniedApp = express();
+  deniedApp.use(express.json());
+  deniedApp.use((req, _res, next) => {
+    req.user = {
+      id: "free-user",
+      email: null,
+      firstName: null,
+      lastName: null,
+      profileImageUrl: null,
+    };
+    next();
+  });
+  deniedApp.use("/api", createBrokersRouter(runtime, {
+    requireProAccess: async (_req, res) => {
+      res.status(402).json({ error: "pro_required", feature: "broker" });
+      return false;
+    },
+  }));
+  const deniedServer = createServer(deniedApp);
+  await new Promise<void>((resolve) => deniedServer.listen(0, "127.0.0.1", resolve));
+  const deniedAddress = deniedServer.address();
+  assert.ok(deniedAddress && typeof deniedAddress === "object");
+  const deniedBase = `http://127.0.0.1:${deniedAddress.port}/api/brokers`;
+
+  const catalogResponse = await fetch(`${deniedBase}/catalog`);
+  assert.equal(catalogResponse.status, 200);
+
+  for (const [path, init] of [
+    ["/fxblue/setup-intents", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }],
+    ["/connect-intents", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }],
+    ["/profiles", undefined],
+  ] as const) {
+    const response = await fetch(`${deniedBase}${path}`, init);
+    assert.equal(response.status, 402, `${path} should require Pro`);
+    const body = (await response.json()) as { error: string; feature: string };
+    assert.equal(body.error, "pro_required");
+    assert.equal(body.feature, "broker");
+  }
+
+  await new Promise<void>((resolve) => deniedServer.close(() => resolve()));
 } finally {
   await rm(tempDir, { recursive: true, force: true });
 }

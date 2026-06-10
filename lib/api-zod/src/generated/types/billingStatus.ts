@@ -12,6 +12,12 @@ export interface BillingStatus {
   plan: BillingStatusPlan;
   status: BillingStatusStatus;
   pro: boolean;
-  currentPeriodEnd?: string | null;
-  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  stripeCustomerId: string | null;
+  /** Masked Stripe subscription id for display. */
+  stripeSubscriptionId: string | null;
+  canCancel: boolean;
+  canResume: boolean;
+  canViewInvoices: boolean;
 }

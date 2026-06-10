@@ -36,12 +36,48 @@ export interface BillingStatus {
   plan: BillingStatusPlan;
   status: BillingStatusStatus;
   pro: boolean;
-  currentPeriodEnd?: string | null;
-  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  stripeCustomerId: string | null;
+  /** Masked Stripe subscription id for display. */
+  stripeSubscriptionId: string | null;
+  canCancel: boolean;
+  canResume: boolean;
+  canViewInvoices: boolean;
 }
 
 export interface BillingCheckoutSession {
   clientSecret: string | null;
+}
+
+export interface BillingInvoice {
+  id: string;
+  number: string | null;
+  status: string | null;
+  amountPaid: number;
+  currency: string;
+  hostedInvoiceUrl: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+}
+
+export interface BillingInvoices {
+  invoices: BillingInvoice[];
+}
+
+export type PaymentRequiredErrorFeature =
+  (typeof PaymentRequiredErrorFeature)[keyof typeof PaymentRequiredErrorFeature];
+
+export const PaymentRequiredErrorFeature = {
+  backtest: "backtest",
+  leaderboard: "leaderboard",
+  broker: "broker",
+} as const;
+
+export interface PaymentRequiredError {
+  error: "pro_required";
+  feature: PaymentRequiredErrorFeature;
+  message: string;
 }
 
 export interface StripeNotConfiguredError {
