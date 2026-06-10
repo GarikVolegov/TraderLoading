@@ -29,6 +29,7 @@ import { useLanguage, useDateLocale } from "@/contexts/LanguageContext";
 import { getJournalRecapPeriod, isJournalRecapEditable } from "@/lib/journalRecapPeriods";
 import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTradeContent";
 import { PnlHeatmap } from "@/components/PnlHeatmap";
+import { TradeChartSnapshot } from "@/components/TradeChartSnapshot";
 import {
   emptyJournalRecapFields,
   fetchJournalRecap,
@@ -110,6 +111,8 @@ function SyncedTradeDetails({ content }: { content: string }) {
           </div>
         )}
       </div>
+
+      <TradeChartSnapshot parsed={parsed} />
 
       {parsed.comment && (
         <p className="border-t border-border/30 pt-2 text-sm text-muted-foreground/80 line-clamp-2 whitespace-pre-wrap">

@@ -13,9 +13,11 @@ assert.match(
   /\{\s*id: "lot",\s*label: "Dimensionamento",\s*icon: BarChart2,\s*component: LotCalculatorWidget\s*\}/s,
 );
 assert.doesNotMatch(source, /route: "\/tools\?tab=/);
+// La curva equity vive dentro il widget Broker Hub ("account"), non come widget separato.
 assert.match(
   source,
-  /const DEFAULT_ORDER = \[\s*"clock",\s*"quote",\s*"account",\s*"missions",\s*"routine",\s*"checklist",\s*"lot",\s*"journal",\s*"equity",\s*"sentiment",\s*"volatility",\s*"cot",\s*"calendar",\s*\];/s,
+  /const DEFAULT_ORDER = \[\s*"clock",\s*"quote",\s*"account",\s*"missions",\s*"routine",\s*"checklist",\s*"lot",\s*"journal",\s*"sentiment",\s*"volatility",\s*"cot",\s*"calendar",\s*\];/s,
 );
+assert.doesNotMatch(source, /EquityCurveWidget/);
 
 console.log("dashboard order checks passed");

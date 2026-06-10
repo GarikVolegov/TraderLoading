@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { simpleStatusLabel } from "@/lib/uiCopyPolicy";
 import { ConnectAccountWizard } from "./ConnectAccountWizard";
+import { AccountEquityCurve } from "./AccountEquityCurve";
 import { useBrokerHub } from "./useBrokerHub";
 import type { BrokerHubTab } from "./types";
 
@@ -128,6 +129,12 @@ export function BrokerHubWorkspace({ initialTab = "connect" }: { initialTab?: Br
   return (
     <div className="space-y-4">
       <StatusStrip {...hub} />
+      <AccountEquityCurve
+        history={hub.history}
+        balance={hub.snapshot.metrics.balance}
+        currency={hub.snapshot.metrics.currency}
+        connected={hub.snapshot.status === "connected"}
+      />
       <Tabs value={tab} onValueChange={(value) => setTab(value as BrokerHubTab)} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="connect" className="gap-2"><Cable className="h-3.5 w-3.5" />Collega</TabsTrigger>

@@ -5,6 +5,7 @@ import { Link, useLocation } from "wouter";
 import confetti from "canvas-confetti";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { EveningTradeReport, type TodayReport } from "@/components/EveningTradeReport";
 import { getRoutineStartProgram } from "./Routine.helpers";
 import {
   appendRoutineCompletion,
@@ -692,8 +693,23 @@ function TradeReviewStep({ answers, onChange }: { answers: Answers; onChange: (a
   const set = (k: string, v: string) =>
     onChange({ ...answers, tradeReview: { ...review, [k]: v } });
 
+  const applyReport = (report: TodayReport) =>
+    onChange({
+      ...answers,
+      tradeReview: {
+        ...review,
+        win: String(report.win),
+        loss: String(report.loss),
+        be: String(report.be),
+        ...(report.netPnl != null
+          ? { pnl: `${report.netPnl >= 0 ? "+" : ""}${report.netPnl.toFixed(2)} ${report.currency}`.trim() }
+          : {}),
+      },
+    });
+
   return (
     <div className="flex flex-col gap-4 w-full max-w-lg mx-auto">
+      <EveningTradeReport onApply={applyReport} />
       <div className="grid grid-cols-3 gap-3">
         {[
           { key: "win",   label: "Win",   color: "#10b981" },

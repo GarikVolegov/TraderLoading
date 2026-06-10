@@ -38,7 +38,6 @@ import { VolatilityWidget } from "@/components/VolatilityWidget";
 import { CotWidget } from "@/components/CotWidget";
 import { RoutineWidget } from "@/components/RoutineWidget";
 import { JournalWidget } from "@/components/JournalWidget";
-import { EquityCurveWidget } from "@/components/EquityCurveWidget";
 import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -64,7 +63,6 @@ const WIDGET_DEFS: WidgetDef[] = [
   { id: "checklist",  label: "Checklist Pre-Trade",  icon: ClipboardCheck, route: "/checklist",              component: ChecklistDashboardWidget },
   { id: "lot",        label: "Dimensionamento",      icon: BarChart2,                                      component: LotCalculatorWidget },
   { id: "journal",    label: "Diario Trading",       icon: BookOpen,       route: "/journal",                component: JournalWidget },
-  { id: "equity",     label: "Equity",               icon: TrendingUp,     route: "/journal",                component: EquityCurveWidget },
   { id: "calendar",   label: "Calendario Avanzato",  icon: CalendarDays,   route: "/calendar",               component: CalendarWidget, bodyHandlesOwnClicks: true },
   { id: "sentiment",  label: "Sentiment di Mercato", icon: BarChart2,                                      component: SentimentWidget },
   { id: "volatility", label: "Volatilita & ADR",     icon: TrendingUp,                                     component: VolatilityWidget },
@@ -80,7 +78,6 @@ const DEFAULT_ORDER = [
   "checklist",
   "lot",
   "journal",
-  "equity",
   "sentiment",
   "volatility",
   "cot",
