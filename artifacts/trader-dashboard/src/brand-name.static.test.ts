@@ -26,7 +26,7 @@ for (const file of files) {
 }
 
 const index = fs.readFileSync("index.html", "utf8");
-assert.match(index, /<title>TraderLoading<\/title>/);
+assert.match(index, /<title>TraderLoading[^<]*<\/title>/);
 assert.match(index, /apple-mobile-web-app-title" content="TraderLoading"/);
 
 const manifest = JSON.parse(fs.readFileSync("public/manifest.json", "utf8"));

@@ -14,7 +14,7 @@ assert.match(component, /hasAcceptedCookieConsent/);
 assert.match(component, /acceptCookieConsent/);
 assert.match(component, /Accetta/);
 assert.match(component, /sessione/);
-assert.match(component, /aggiornamenti/);
+assert.match(component, /preferenze essenziali/);
 assert.match(app, /CookieConsentPopup/);
 assert.match(app, /<CookieConsentPopup \/>/);
 

@@ -141,6 +141,17 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
                 {switchCopy.action}
               </Link>
             </div>
+            <p className="mt-3 text-center text-xs leading-5 text-muted-foreground/80">
+              Continuando accetti i{" "}
+              <Link href="/terms" className="font-semibold text-primary hover:text-primary/80">
+                Termini
+              </Link>{" "}
+              e confermi di aver letto la{" "}
+              <Link href="/privacy" className="font-semibold text-primary hover:text-primary/80">
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </div>
         </section>
       </motion.div>

@@ -17,7 +17,7 @@ const router: IRouter = Router();
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? "";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? "";
-const VAPID_EMAIL = process.env.VAPID_EMAIL || "mailto:noreply@traderloading.app";
+const VAPID_EMAIL = process.env.VAPID_EMAIL || "mailto:assistenza@traderloading.com";
 const PUSH_DEDUPE_WINDOW_MS = 30_000;
 const _recentPushes = new Map<string, number>();
 

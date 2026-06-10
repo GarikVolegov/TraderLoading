@@ -1,0 +1,46 @@
+# TraderLoading
+
+> TraderLoading is a free all-in-one web workspace for retail traders that combines an
+> auto-synced trading journal, real-time macro news intelligence, risk management tools
+> and gamified discipline routines. Interface available in English, Italian, Spanish,
+> French and German.
+
+## What it does
+
+- **Trading journal with automatic sync**: connects to a live trading account through
+  FX Blue Account Sync (MT4/MT5, read-only — never the master password). Every closed
+  trade is imported with entry/exit, stop loss, take profit, P&L, commissions and swap,
+  and rendered with an R-multiple, trade duration and a candlestick chart snapshot of
+  the trade window.
+- **Account equity tracking**: balance curve anchored to the real broker account balance,
+  with period P&L, max drawdown and a monthly P&L calendar heatmap.
+- **Macro news intelligence**: curated real-time news feed for FX, gold and crypto with
+  per-asset impact scores, deep-dive explanations (what happened, why it matters,
+  possible impact) and a market sentiment gauge.
+- **Risk and preparation tools**: position size calculator, pre-trade checklist,
+  economic calendar, COT report, average daily range and volatility stats, market
+  session clock.
+- **Backtesting**: chart replay on real historical candles (FX Replay style) with
+  per-session statistics.
+- **Discipline and psychology**: guided morning and evening routines, session emotional
+  check-ins, mood-vs-performance win rate insights, breathing and meditation exercises,
+  daily missions with XP, levels and unlockable content.
+- **Community**: social feed, direct messages with end-to-end encryption, leaderboards
+  and friend challenges.
+
+## Key facts
+
+- Pricing: free to start (no credit card required).
+- Platform: web application (desktop and mobile responsive, installable PWA).
+- Broker connection: FX Blue Account Sync only, read-only by design; the platform can
+  never place orders or access the account master password.
+- Sign-up: https://traderloading.com/sign-up
+- Support contact: assistenza@traderloading.com
+
+## Pages
+
+- [Home / overview](https://traderloading.com/): product landing page
+- [Sign up](https://traderloading.com/sign-up): create a free account
+- [Sign in](https://traderloading.com/sign-in): existing users
+- [Privacy policy](https://traderloading.com/privacy)
+- [Terms of service](https://traderloading.com/terms)

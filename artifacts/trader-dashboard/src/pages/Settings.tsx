@@ -11,6 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Image,
   Upload,
   X,
@@ -1245,6 +1255,7 @@ function NotificationSettings() {
   const { language } = useLanguage();
   const notificationCopy = getNotificationCopy(language);
   const push = usePushNotifications();
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
 
   const [reminderTime, setReminderTime] = useState("");
   const [preMacro, setPreMacro] = useState("15");
@@ -1413,16 +1424,21 @@ function NotificationSettings() {
       await push.unsubscribe();
       toast({ description: ui.pushOff });
     } else {
-      const ok = await push.subscribe();
-      if (ok) toast({ description: ui.pushOn });
-      else if (
-        push.permission === "denied" ||
-        ("Notification" in window && Notification.permission === "denied")
-      ) {
-        toast({ description: ui.deniedToast, variant: "destructive" });
-      } else {
-        toast({ description: ui.pushUnavailable, variant: "destructive" });
-      }
+      setShowPushPrompt(true);
+    }
+  };
+
+  const confirmPushActivation = async () => {
+    setShowPushPrompt(false);
+    const ok = await push.subscribe();
+    if (ok) toast({ description: ui.pushOn });
+    else if (
+      push.permission === "denied" ||
+      ("Notification" in window && Notification.permission === "denied")
+    ) {
+      toast({ description: ui.deniedToast, variant: "destructive" });
+    } else {
+      toast({ description: ui.pushUnavailable, variant: "destructive" });
     }
   };
 
@@ -1430,6 +1446,31 @@ function NotificationSettings() {
 
   return (
     <div className="space-y-4">
+      <AlertDialog open={showPushPrompt} onOpenChange={setShowPushPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Attivare le notifiche?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Vuoi ricevere alert utili sulle sessioni, le missioni e gli
+                eventi macro? Puoi scegliere quali notifiche ricevere e
+                disattivarle in qualsiasi momento.
+              </span>
+              <span className="block">
+                TraderLoading userà il permesso solo per avvisi operativi
+                collegati alla tua routine, non per pubblicità.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non ora</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmPushActivation}>
+              Attiva notifiche
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Push notifications master toggle */}
       <Card>
         <CardHeader className="pb-3">
@@ -2040,7 +2081,7 @@ function ChecklistSettings() {
   );
 }
 
-function AuthSection({ login }: { login: () => void }) {
+function AuthSection({ login, signup }: { login: () => void; signup: () => void }) {
   return (
     <Card>
       <CardHeader>
@@ -2059,11 +2100,146 @@ function AuthSection({ login }: { login: () => void }) {
             <LogIn className="w-4 h-4 mr-2" />
             Accedi
           </Button>
-          <Button onClick={login} variant="outline" className="w-full">
+          <Button onClick={signup} variant="outline" className="w-full">
             <UserPlus className="w-4 h-4 mr-2" />
             Registrati
           </Button>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AccountExportSection() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <FileText className="w-5 h-5 text-primary" />
+          Esporta dati
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Scarica un file JSON con profilo, preferenze, journal, routine,
+          backtest e dati trading collegati al tuo account. Segreti broker,
+          password e log interni di sicurezza non vengono inclusi.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => {
+            window.location.href = "/api/account/export";
+          }}
+        >
+          <FileText className="w-4 h-4" />
+          Esporta dati
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AccountDeletionSection({ onDeleted }: { onDeleted: () => void }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const canDelete = confirmation.trim().toUpperCase() === "ELIMINA";
+
+  const handleDelete = async () => {
+    if (!canDelete || deleting) return;
+    setDeleting(true);
+    try {
+      const response = await fetch("/api/account", {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(
+          typeof data?.error === "string"
+            ? data.error
+            : "Non siamo riusciti a eliminare l'account.",
+        );
+      }
+      toast({ description: "Account eliminato. I dati collegati sono stati rimossi." });
+      setOpen(false);
+      onDeleted();
+    } catch (error) {
+      reportClientError(error, {
+        context: "account deletion",
+        fallbackMessage:
+          "Non siamo riusciti a eliminare l'account. Contatta il supporto.",
+        toast,
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Card className="border-destructive/35 bg-destructive/5">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base text-destructive">
+          <Trash2 className="w-5 h-5" />
+          Elimina account
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Cancella profilo, diario, dati di trading, notifiche, social, chat e
+          connessioni broker collegate al tuo account. Alcuni log tecnici minimi
+          possono restare per sicurezza, antifrode o obblighi legali.
+        </p>
+        <AlertDialog open={open} onOpenChange={setOpen}>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-destructive/50 text-destructive hover:bg-destructive/10"
+            onClick={() => setOpen(true)}
+          >
+            <Trash2 className="w-4 h-4" />
+            Elimina account
+          </Button>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Conferma eliminazione account</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <span className="block">
+                  Questa azione elimina in modo permanente profilo, preferenze,
+                  journal, immagini, backtest, messaggi, notifiche push e
+                  connessioni broker salvate.
+                </span>
+                <span className="block">
+                  Per continuare scrivi <span className="font-mono text-foreground">ELIMINA</span>.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Input
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              placeholder="ELIMINA"
+              aria-label="Frase di conferma eliminazione account"
+              autoComplete="off"
+            />
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={!canDelete || deleting}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void handleDelete();
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? "Eliminazione..." : "Elimina definitivamente"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
@@ -2461,7 +2637,7 @@ function SupportSection() {
         </h3>
         <div className="space-y-3">
           <a
-            href="mailto:support@traderloading.app"
+            href="mailto:assistenza@traderloading.com"
             className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"
           >
             <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shrink-0">
@@ -2470,14 +2646,14 @@ function SupportSection() {
             <div className="flex-1">
               <p className="text-sm font-semibold">Scrivi al supporto</p>
               <p className="text-xs text-muted-foreground">
-                support@traderloading.app
+                assistenza@traderloading.com
               </p>
             </div>
             <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </a>
 
           <a
-            href="mailto:feedback@traderloading.app?subject=Feedback%20TraderLoading"
+            href="mailto:assistenza@traderloading.com?subject=Feedback%20TraderLoading"
             className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"
           >
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -2691,7 +2867,7 @@ function HelpSection() {
           Hai ancora bisogno di aiuto?
         </h3>
         <a
-          href="mailto:support@traderloading.app?subject=Richiesta%20assistenza"
+          href="mailto:assistenza@traderloading.com?subject=Richiesta%20assistenza"
           className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-purple-400/30 hover:bg-secondary/40 transition-all group"
         >
           <div className="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
@@ -2700,7 +2876,7 @@ function HelpSection() {
           <div className="flex-1">
             <p className="text-sm font-semibold">Contatta il supporto</p>
             <p className="text-xs text-muted-foreground">
-              support@traderloading.app
+              assistenza@traderloading.com
             </p>
           </div>
           <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-purple-400 transition-colors" />
@@ -2800,6 +2976,22 @@ function TermsSection() {
           </p>
         </TermsBlock>
 
+        <TermsBlock title="Privacy e dati">
+          <p>
+            Usiamo i dati per fornire autenticazione, sincronizzazione,
+            sicurezza dell'account, notifiche operative e funzioni di diario,
+            backtest, community e broker. Non vendiamo dati personali e non li
+            usiamo per pubblicita comportamentale.
+          </p>
+          <p>
+            Puoi chiedere accesso, esportazione, rettifica o cancellazione dei
+            dati da Impostazioni → Account oppure scrivendo a
+            assistenza@traderloading.com. I consensi facoltativi, come notifiche e
+            comunicazioni prodotto, possono essere revocati in qualsiasi
+            momento.
+          </p>
+        </TermsBlock>
+
         <TermsBlock title="Account e sicurezza">
           <p>
             L'utente è responsabile della sicurezza delle proprie credenziali.
@@ -2846,11 +3038,11 @@ function TermsSection() {
             legali:
           </p>
           <a
-            href="mailto:legal@traderloading.app"
+            href="mailto:assistenza@traderloading.com"
             className="inline-flex items-center gap-1.5 text-pink-400 hover:text-pink-300 transition-colors text-xs font-medium"
           >
             <Mail className="w-3.5 h-3.5" />
-            legal@traderloading.app
+            assistenza@traderloading.com
             <ExternalLink className="w-3 h-3" />
           </a>
         </TermsBlock>
@@ -2902,6 +3094,7 @@ export default function Settings() {
   const isAuthenticated = !!isSignedIn;
   const isLoading = !isLoaded;
   const login = () => navigate("/sign-in");
+  const signup = () => navigate("/sign-up");
   const logout = () => {
     void signOut({ redirectUrl: "/" });
   };
@@ -3123,9 +3316,15 @@ export default function Settings() {
         >
           <LogOut className="w-4 h-4 mr-2" /> {t("settings.account.logout")}
         </Button>
+        <AccountExportSection />
+        <AccountDeletionSection
+          onDeleted={() => {
+            void signOut({ redirectUrl: "/" });
+          }}
+        />
       </div>
     ) : !isLoading ? (
-      <AuthSection login={login} />
+      <AuthSection login={login} signup={signup} />
     ) : (
       <p className="text-sm text-muted-foreground">
         {t("settings.account.loading")}

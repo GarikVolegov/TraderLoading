@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { TrendingUp, BarChart2, Shield, Zap, TerminalSquare } from "lucide-react";
 
@@ -26,6 +26,36 @@ const features = [
     desc: "Earn XP, level up, and stay accountable with daily missions and streaks.",
   },
 ];
+
+// Mantieni allineato con il JSON-LD FAQPage in index.html: Google richiede che
+// le risposte dello schema siano visibili in pagina.
+export const FAQ_ITEMS = [
+  {
+    question: "Is TraderLoading free?",
+    answer:
+      "Yes. You can create an account and use the trading journal, macro news feed, risk tools and discipline routines for free — no credit card required.",
+  },
+  {
+    question: "How does the automatic trade sync work?",
+    answer:
+      "TraderLoading connects to your MT4 or MT5 account through FX Blue Account Sync in read-only mode. Every closed trade is imported automatically with entry, exit, stop loss, take profit, P&L, commissions and swap — no manual data entry.",
+  },
+  {
+    question: "Is my trading account safe?",
+    answer:
+      "Yes. The connection is read-only by design: you only ever use the investor (read-only) password, never the master password. TraderLoading can never place orders or modify your account.",
+  },
+  {
+    question: "What makes TraderLoading different from other trading journals?",
+    answer:
+      "It combines tools that usually live in separate apps: an auto-synced journal with R-multiples and chart snapshots, real-time macro news with per-asset impact analysis, an account equity curve anchored to your real balance, and a psychology layer — emotional check-ins, mood-vs-performance insights and guided morning/evening routines.",
+  },
+  {
+    question: "Do I need to install anything?",
+    answer:
+      "No. TraderLoading runs in the browser on desktop and mobile, and can be installed as a PWA for an app-like experience. Nothing to download on your trading machine.",
+  },
+] as const;
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
@@ -150,6 +180,33 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ─── FAQ ─────────────────────────────────────────────────────── */}
+      <section className="relative z-10 px-4 sm:px-6 pb-24">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-center mb-10 font-mono">
+            Frequently Asked Questions
+          </h2>
+          <div className="space-y-4">
+            {FAQ_ITEMS.map(({ question, answer }, idx) => (
+              <motion.details
+                key={question}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.05 * idx }}
+                className="group rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm px-6 py-4 open:border-primary/30 open:bg-card/60 transition-colors"
+              >
+                <summary className="cursor-pointer list-none text-left font-bold text-foreground text-lg flex items-center justify-between gap-3">
+                  {question}
+                  <span className="shrink-0 text-primary transition-transform group-open:rotate-45 text-xl leading-none">+</span>
+                </summary>
+                <p className="mt-3 text-muted-foreground leading-relaxed text-base">{answer}</p>
+              </motion.details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ─── Footer ──────────────────────────────────────────────────── */}
       <footer className="relative z-10 border-t border-white/5 py-8 text-center text-sm text-muted-foreground bg-background/50 backdrop-blur-md">
         <div className="flex items-center justify-center gap-2 mb-2">
@@ -157,6 +214,20 @@ export default function LandingPage() {
            <span className="font-mono opacity-50">TraderLoading</span>
         </div>
         © {new Date().getFullYear()} TraderLoading. All rights reserved.
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-4">
+          <Link href="/privacy" className="hover:text-foreground">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="hover:text-foreground">
+            Termini
+          </Link>
+          <a
+            href="mailto:assistenza@traderloading.com"
+            className="hover:text-foreground"
+          >
+            Supporto
+          </a>
+        </div>
       </footer>
     </div>
   );
