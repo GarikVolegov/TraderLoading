@@ -15,6 +15,13 @@
       "when": 1781046128453,
       "tag": "0001_confused_sauron",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781087479693,
+      "tag": "0002_chilly_rawhide_kid",
+      "breakpoints": true
     }
   ]
 }
