@@ -15,6 +15,66 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary Readiness check
+ */
+export const ReadinessCheckResponse = zod.object({
+  status: zod.enum(["ok", "degraded"]),
+  uptimeSeconds: zod.number().optional(),
+  version: zod.string().optional(),
+  checks: zod.object({
+    database: zod.object({
+      status: zod.enum(["ok", "error"]),
+      latencyMs: zod.number(),
+      error: zod.string().optional(),
+    }),
+  }),
+});
+
+/**
+ * @summary Service status
+ */
+export const ServiceStatusResponse = zod.object({
+  status: zod.enum(["ok", "degraded"]),
+  uptimeSeconds: zod.number().optional(),
+  version: zod.string().optional(),
+  checks: zod.object({
+    database: zod.object({
+      status: zod.enum(["ok", "error"]),
+      latencyMs: zod.number(),
+      error: zod.string().optional(),
+    }),
+  }),
+});
+
+/**
+ * @summary Get the current user's subscription status
+ */
+export const GetBillingStatusResponse = zod.object({
+  plan: zod.enum(["free", "pro"]),
+  status: zod.enum([
+    "none",
+    "trialing",
+    "active",
+    "past_due",
+    "canceled",
+    "incomplete",
+    "incomplete_expired",
+    "unpaid",
+    "paused",
+  ]),
+  pro: zod.boolean(),
+  currentPeriodEnd: zod.string().nullish(),
+  cancelAtPeriodEnd: zod.boolean().optional(),
+});
+
+/**
+ * @summary Create a Stripe Embedded Checkout session for Pro
+ */
+export const CreateBillingCheckoutSessionResponse = zod.object({
+  clientSecret: zod.string().nullable(),
+});
+
+/**
  * @summary Get the currently authenticated user
  */
 export const GetCurrentAuthUserHeader = zod.object({

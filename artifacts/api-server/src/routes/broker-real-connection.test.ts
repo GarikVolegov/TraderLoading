@@ -105,7 +105,20 @@ try {
 
   const app = express();
   app.use(express.json());
-  app.use("/api", createBrokersRouter(runtime, { intentStore, providerRegistry, enableLegacyConnectionRoutes: true }));
+  app.use((req, _res, next) => {
+    const testUserId = req.headers["x-test-user"];
+    if (typeof testUserId === "string") {
+      req.user = {
+        id: testUserId,
+        email: null,
+        firstName: null,
+        lastName: null,
+        profileImageUrl: null,
+      };
+    }
+    next();
+  });
+  app.use("/api", createBrokersRouter(runtime, { intentStore, providerRegistry, enableLegacyConnectionRoutes: true, requireProAccess: async () => true }));
   const server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -147,7 +160,7 @@ try {
 
   const completeRes = await fetch(`${base}/connect-intents/${created.intent.id}/complete`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({
       mode: "credentials",
       accountNumber: "12345678",
@@ -170,13 +183,19 @@ try {
   assert.equal("accountPassword" in completed.profile, false);
   assert.equal(completed.snapshot.status, "connected");
 
-  const closeRes = await fetch(`${base}/profiles/${completed.profile.id}/positions/pos-1/close`, { method: "POST" });
+  const closeRes = await fetch(`${base}/profiles/${completed.profile.id}/positions/pos-1/close`, {
+    method: "POST",
+    headers: { "x-test-user": "user-one" },
+  });
   assert.equal(closeRes.status, 200);
   const close = (await closeRes.json()) as { accepted: boolean; orderId?: string };
   assert.equal(close.accepted, true);
   assert.equal(close.orderId, "closed-pos-1");
 
-  const disconnectRes = await fetch(`${base}/profiles/${completed.profile.id}/disconnect`, { method: "POST" });
+  const disconnectRes = await fetch(`${base}/profiles/${completed.profile.id}/disconnect`, {
+    method: "POST",
+    headers: { "x-test-user": "user-one" },
+  });
   assert.equal(disconnectRes.status, 200);
   const disconnected = (await disconnectRes.json()) as { snapshot: { status: string } };
   assert.equal(disconnected.snapshot.status, "offline");

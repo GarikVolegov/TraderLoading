@@ -22,6 +22,13 @@
       "when": 1781087479693,
       "tag": "0002_chilly_rawhide_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781095614094,
+      "tag": "0003_admin_user_subscriptions",
+      "breakpoints": true
     }
   ]
 }

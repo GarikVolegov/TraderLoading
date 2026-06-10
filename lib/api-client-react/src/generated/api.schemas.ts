@@ -9,6 +9,79 @@ export interface HealthStatus {
   status: string;
 }
 
+export type BillingStatusPlan =
+  (typeof BillingStatusPlan)[keyof typeof BillingStatusPlan];
+
+export const BillingStatusPlan = {
+  free: "free",
+  pro: "pro",
+} as const;
+
+export type BillingStatusStatus =
+  (typeof BillingStatusStatus)[keyof typeof BillingStatusStatus];
+
+export const BillingStatusStatus = {
+  none: "none",
+  trialing: "trialing",
+  active: "active",
+  past_due: "past_due",
+  canceled: "canceled",
+  incomplete: "incomplete",
+  incomplete_expired: "incomplete_expired",
+  unpaid: "unpaid",
+  paused: "paused",
+} as const;
+
+export interface BillingStatus {
+  plan: BillingStatusPlan;
+  status: BillingStatusStatus;
+  pro: boolean;
+  currentPeriodEnd?: string | null;
+  cancelAtPeriodEnd?: boolean;
+}
+
+export interface BillingCheckoutSession {
+  clientSecret: string | null;
+}
+
+export interface StripeNotConfiguredError {
+  error: "stripe_not_configured";
+  missing: string[];
+}
+
+export type ReadinessStatusStatus =
+  (typeof ReadinessStatusStatus)[keyof typeof ReadinessStatusStatus];
+
+export const ReadinessStatusStatus = {
+  ok: "ok",
+  degraded: "degraded",
+} as const;
+
+export type ReadinessStatusChecksDatabaseStatus =
+  (typeof ReadinessStatusChecksDatabaseStatus)[keyof typeof ReadinessStatusChecksDatabaseStatus];
+
+export const ReadinessStatusChecksDatabaseStatus = {
+  ok: "ok",
+  error: "error",
+} as const;
+
+export type ReadinessStatusChecksDatabase = {
+  status: ReadinessStatusChecksDatabaseStatus;
+  latencyMs: number;
+  error?: string;
+};
+
+export type ReadinessStatusChecks = {
+  database: ReadinessStatusChecksDatabase;
+};
+
+export interface ReadinessStatus {
+  status: ReadinessStatusStatus;
+  uptimeSeconds?: number;
+  version?: string;
+  checks: ReadinessStatusChecks;
+}
+
 export interface AuthUser {
   id: string;
   /** @nullable */

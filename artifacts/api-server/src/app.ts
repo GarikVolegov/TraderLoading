@@ -17,6 +17,7 @@ import {
 import { loggingMiddleware } from "./middlewares/loggingMiddleware";
 import logger from "./lib/logger";
 import { captureError } from "./lib/observability";
+import { getUploadsDir } from "./lib/uploads";
 import {
   createCorsOptions,
   createHelmetOptions,
@@ -25,12 +26,13 @@ import {
   publicUploadGuard,
 } from "./lib/security";
 import healthRouter from "./routes/health";
+import { createStripeWebhookRouter } from "./routes/billing";
 import router from "./routes";
 
 const app: Express = express();
 app.set("trust proxy", parseTrustProxy());
 
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+const UPLOADS_DIR = getUploadsDir();
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
@@ -44,6 +46,7 @@ app.use(helmet(createHelmetOptions()));
 app.use(cors(createCorsOptions()));
 app.use(compression({ threshold: 1024 }));
 app.use(cookieParser());
+app.use("/api", express.raw({ type: "application/json" }), createStripeWebhookRouter());
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 

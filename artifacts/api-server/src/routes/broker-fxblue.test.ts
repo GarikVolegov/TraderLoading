@@ -81,7 +81,7 @@ try {
     }
     next();
   });
-  app.use("/api", createBrokersRouter(runtime));
+  app.use("/api", createBrokersRouter(runtime, { requireProAccess: async () => true }));
   const server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -90,7 +90,7 @@ try {
 
   const createRes = await fetch(`${base}/fxblue/setup-intents`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({
       platform: "MT5",
       brokerName: "FP Trading",
@@ -105,9 +105,16 @@ try {
   assert.equal(created.intent.accountNumber, "123456");
   assert.equal(created.fxBlueUrl, "https://diagnostics.fxblue.com/accountsync.aspx");
 
+  const crossUserVerifyRes = await fetch(`${base}/fxblue/setup-intents/${created.intent.id}/verify-profile`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-test-user": "user-two" },
+    body: JSON.stringify({ fxBlueProfileRef: "trader-one" }),
+  });
+  assert.equal(crossUserVerifyRes.status, 404);
+
   const verifyRes = await fetch(`${base}/fxblue/setup-intents/${created.intent.id}/verify-profile`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({ fxBlueProfileRef: "trader-one" }),
   });
   assert.equal(verifyRes.status, 200);
@@ -115,7 +122,16 @@ try {
   assert.equal(verified.intent.status, "profile_verified");
   assert.equal(verified.snapshot.status, "connected");
 
-  const completeRes = await fetch(`${base}/fxblue/setup-intents/${created.intent.id}/complete`, { method: "POST" });
+  const crossUserCompleteRes = await fetch(`${base}/fxblue/setup-intents/${created.intent.id}/complete`, {
+    method: "POST",
+    headers: { "x-test-user": "user-two" },
+  });
+  assert.equal(crossUserCompleteRes.status, 404);
+
+  const completeRes = await fetch(`${base}/fxblue/setup-intents/${created.intent.id}/complete`, {
+    method: "POST",
+    headers: { "x-test-user": "user-one" },
+  });
   assert.equal(completeRes.status, 201);
   const completed = (await completeRes.json()) as {
     profile: { id: string; providerKind: string; tradingEnabled: boolean; capabilities: { placeOrders: boolean } };
@@ -126,7 +142,9 @@ try {
   assert.equal(completed.profile.capabilities.placeOrders, false);
   assert.equal(completed.snapshot.status, "connected");
 
-  const historyRes = await fetch(`${base}/profiles/${completed.profile.id}/history`);
+  const historyRes = await fetch(`${base}/profiles/${completed.profile.id}/history`, {
+    headers: { "x-test-user": "user-one" },
+  });
   assert.equal(historyRes.status, 200);
   const history = (await historyRes.json()) as Array<{ symbol: string; profit: number; source: string }>;
   assert.equal(history.length, 1);
@@ -135,16 +153,21 @@ try {
   assert.equal(history[0]?.source, "fxblue-account-sync");
   assert.ok(importedDeals.some((deal) => deal.profileId === completed.profile.id && deal.dealId === "fxblue-deal-1"));
 
-  const profilesRes = await fetch(`${base}/profiles`);
+  const profilesRes = await fetch(`${base}/profiles`, {
+    headers: { "x-test-user": "user-one" },
+  });
   const profiles = (await profilesRes.json()) as { profiles: unknown[] };
   assert.equal(JSON.stringify(profiles).includes("read-only-secret"), false);
 
-  const missingRes = await fetch(`${base}/fxblue/setup-intents/missing/complete`, { method: "POST" });
+  const missingRes = await fetch(`${base}/fxblue/setup-intents/missing/complete`, {
+    method: "POST",
+    headers: { "x-test-user": "user-one" },
+  });
   assert.equal(missingRes.status, 404);
 
   const existingSyncRes = await fetch(`${base}/fxblue/setup-intents`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({
       platform: "MT5",
       brokerName: "FP Trading",
@@ -159,12 +182,15 @@ try {
 
   const existingVerifyRes = await fetch(`${base}/fxblue/setup-intents/${existingSync.intent.id}/verify-profile`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({ fxBlueProfileRef: "82364482" }),
   });
   assert.equal(existingVerifyRes.status, 200);
 
-  const existingCompleteRes = await fetch(`${base}/fxblue/setup-intents/${existingSync.intent.id}/complete`, { method: "POST" });
+  const existingCompleteRes = await fetch(`${base}/fxblue/setup-intents/${existingSync.intent.id}/complete`, {
+    method: "POST",
+    headers: { "x-test-user": "user-one" },
+  });
   assert.equal(existingCompleteRes.status, 201);
   const existingCompleted = (await existingCompleteRes.json()) as { profile: { providerKind: string; tradingEnabled: boolean } };
   assert.equal(existingCompleted.profile.providerKind, "fxblue-account-sync");
@@ -196,10 +222,10 @@ try {
   const legacySnapshotRes = await fetch(`${base}/profiles/${legacyProfile.id}/snapshot`, {
     headers: { "x-test-user": "user-legacy-1" },
   });
-  assert.equal(legacySnapshotRes.status, 200);
+  assert.equal(legacySnapshotRes.status, 404);
   const claimedProfiles = await runtime.listProfiles();
-  assert.equal(claimedProfiles.profiles.find((profile) => profile.id === legacyProfile.id)?.ownerUserId, "user-legacy-1");
-  assert.ok(importedDeals.some((deal) => deal.profileId === legacyProfile.id && deal.ownerUserId === "user-legacy-1"));
+  assert.equal(claimedProfiles.profiles.find((profile) => profile.id === legacyProfile.id)?.ownerUserId, undefined);
+  assert.equal(importedDeals.some((deal) => deal.profileId === legacyProfile.id && deal.ownerUserId === "user-legacy-1"), false);
 
   await new Promise<void>((resolve) => server.close(() => resolve()));
 } finally {

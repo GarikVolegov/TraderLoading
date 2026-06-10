@@ -23,6 +23,8 @@ import type {
   BacktestSession,
   BacktestTrade,
   BeginBrowserLoginParams,
+  BillingCheckoutSession,
+  BillingStatus,
   CalendarEvent,
   ChatMessageRecord,
   ChatMessagesResponse,
@@ -64,10 +66,12 @@ import type {
   PublicKeyRecord,
   PublicKeyResponse,
   Quote,
+  ReadinessStatus,
   SaveAccountKeyBackupBody,
   SavePublicKeyBody,
   SearchUsersParams,
   SendMessageBody,
+  StripeNotConfiguredError,
   UnreadCountResponse,
   UpdateChecklistItemRequest,
   UpdateIdeaRequest,
@@ -167,6 +171,317 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Readiness check
+ */
+export const getReadinessCheckUrl = () => {
+  return `/api/readyz`;
+};
+
+export const readinessCheck = async (
+  options?: RequestInit,
+): Promise<ReadinessStatus> => {
+  return customFetch<ReadinessStatus>(getReadinessCheckUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getReadinessCheckQueryKey = () => {
+  return [`/api/readyz`] as const;
+};
+
+export const getReadinessCheckQueryOptions = <
+  TData = Awaited<ReturnType<typeof readinessCheck>>,
+  TError = ErrorType<ReadinessStatus>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof readinessCheck>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getReadinessCheckQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof readinessCheck>>> = ({
+    signal,
+  }) => readinessCheck({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof readinessCheck>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ReadinessCheckQueryResult = NonNullable<
+  Awaited<ReturnType<typeof readinessCheck>>
+>;
+export type ReadinessCheckQueryError = ErrorType<ReadinessStatus>;
+
+/**
+ * @summary Readiness check
+ */
+
+export function useReadinessCheck<
+  TData = Awaited<ReturnType<typeof readinessCheck>>,
+  TError = ErrorType<ReadinessStatus>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof readinessCheck>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getReadinessCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Service status
+ */
+export const getServiceStatusUrl = () => {
+  return `/api/status`;
+};
+
+export const serviceStatus = async (
+  options?: RequestInit,
+): Promise<ReadinessStatus> => {
+  return customFetch<ReadinessStatus>(getServiceStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getServiceStatusQueryKey = () => {
+  return [`/api/status`] as const;
+};
+
+export const getServiceStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof serviceStatus>>,
+  TError = ErrorType<ReadinessStatus>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof serviceStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getServiceStatusQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof serviceStatus>>> = ({
+    signal,
+  }) => serviceStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof serviceStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ServiceStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof serviceStatus>>
+>;
+export type ServiceStatusQueryError = ErrorType<ReadinessStatus>;
+
+/**
+ * @summary Service status
+ */
+
+export function useServiceStatus<
+  TData = Awaited<ReturnType<typeof serviceStatus>>,
+  TError = ErrorType<ReadinessStatus>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof serviceStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getServiceStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get the current user's subscription status
+ */
+export const getGetBillingStatusUrl = () => {
+  return `/api/billing/me`;
+};
+
+export const getBillingStatus = async (
+  options?: RequestInit,
+): Promise<BillingStatus> => {
+  return customFetch<BillingStatus>(getGetBillingStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBillingStatusQueryKey = () => {
+  return [`/api/billing/me`] as const;
+};
+
+export const getGetBillingStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBillingStatus>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillingStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBillingStatus>>
+  > = ({ signal }) => getBillingStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBillingStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBillingStatus>>
+>;
+export type GetBillingStatusQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get the current user's subscription status
+ */
+
+export function useGetBillingStatus<
+  TData = Awaited<ReturnType<typeof getBillingStatus>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBillingStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a Stripe Embedded Checkout session for Pro
+ */
+export const getCreateBillingCheckoutSessionUrl = () => {
+  return `/api/billing/checkout-session`;
+};
+
+export const createBillingCheckoutSession = async (
+  options?: RequestInit,
+): Promise<BillingCheckoutSession> => {
+  return customFetch<BillingCheckoutSession>(
+    getCreateBillingCheckoutSessionUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getCreateBillingCheckoutSessionMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBillingCheckoutSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBillingCheckoutSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["createBillingCheckoutSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBillingCheckoutSession>>,
+    void
+  > = () => {
+    return createBillingCheckoutSession(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBillingCheckoutSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBillingCheckoutSession>>
+>;
+
+export type CreateBillingCheckoutSessionMutationError = ErrorType<
+  ErrorEnvelope | StripeNotConfiguredError
+>;
+
+/**
+ * @summary Create a Stripe Embedded Checkout session for Pro
+ */
+export const useCreateBillingCheckoutSession = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBillingCheckoutSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBillingCheckoutSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getCreateBillingCheckoutSessionMutationOptions(options));
+};
 
 /**
  * @summary Get the currently authenticated user

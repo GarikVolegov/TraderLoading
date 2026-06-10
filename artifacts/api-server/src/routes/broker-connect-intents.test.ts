@@ -24,7 +24,20 @@ try {
 
   const app = express();
   app.use(express.json());
-  app.use("/api", createBrokersRouter(runtime, { intentStore, enableLegacyConnectionRoutes: true }));
+  app.use((req, _res, next) => {
+    const testUserId = req.headers["x-test-user"];
+    if (typeof testUserId === "string") {
+      req.user = {
+        id: testUserId,
+        email: null,
+        firstName: null,
+        lastName: null,
+        profileImageUrl: null,
+      };
+    }
+    next();
+  });
+  app.use("/api", createBrokersRouter(runtime, { intentStore, enableLegacyConnectionRoutes: true, requireProAccess: async () => true }));
   const server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -58,7 +71,7 @@ try {
 
   const demoRes = await fetch(`${base}/connect-intents/${created.intent.id}/complete`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({ mode: "demo" }),
   });
   assert.equal(demoRes.status, 200);
@@ -79,7 +92,7 @@ try {
   const advancedCreated = (await advancedCreateRes.json()) as { intent: { id: string } };
   const advancedRes = await fetch(`${base}/connect-intents/${advancedCreated.intent.id}/complete`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({
       mode: "advanced",
       platform: "mt5-vps",
@@ -98,7 +111,7 @@ try {
   assert.equal(advanced.intent.displayStatus, "Conto collegato");
   assert.equal("detectedConnectorKind" in advanced.intent, false);
 
-  const profilesRes = await fetch(`${base}/profiles`);
+  const profilesRes = await fetch(`${base}/profiles`, { headers: { "x-test-user": "user-one" } });
   const profiles = (await profilesRes.json()) as { profiles: Array<{ id: string; kind: string; brokerName: string }> };
   const advancedProfile = profiles.profiles.find((profile) => profile.id === advanced.intent.profileId);
   assert.equal(advancedProfile?.kind, "mt5-vps-bridge");

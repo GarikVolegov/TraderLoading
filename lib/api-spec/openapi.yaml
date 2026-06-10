@@ -9,6 +9,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: billing
+    description: Subscription billing and entitlement operations
   - name: Auth
     description: Browser and mobile authentication endpoints.
   - name: profile
@@ -50,6 +52,86 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /readyz:
+    get:
+      operationId: readinessCheck
+      tags: [health]
+      summary: Readiness check
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+        "503":
+          description: Dependency check failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+  /status:
+    get:
+      operationId: serviceStatus
+      tags: [health]
+      summary: Service status
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+        "503":
+          description: Dependency check failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+
+  /billing/me:
+    get:
+      operationId: getBillingStatus
+      tags: [billing]
+      summary: Get the current user's subscription status
+      responses:
+        "200":
+          description: Billing entitlement status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /billing/checkout-session:
+    post:
+      operationId: createBillingCheckoutSession
+      tags: [billing]
+      summary: Create a Stripe Embedded Checkout session for Pro
+      responses:
+        "200":
+          description: Checkout session client secret
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingCheckoutSession"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Stripe billing is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeNotConfiguredError"
 
   /auth/user:
     get:
@@ -1304,6 +1386,86 @@ components:
           type: string
       required:
         - status
+
+    BillingStatus:
+      type: object
+      required:
+        - plan
+        - status
+        - pro
+      properties:
+        plan:
+          type: string
+          enum: [free, pro]
+        status:
+          type: string
+          enum:
+            - none
+            - trialing
+            - active
+            - past_due
+            - canceled
+            - incomplete
+            - incomplete_expired
+            - unpaid
+            - paused
+        pro:
+          type: boolean
+        currentPeriodEnd:
+          type: string
+          nullable: true
+        cancelAtPeriodEnd:
+          type: boolean
+
+    BillingCheckoutSession:
+      type: object
+      required:
+        - clientSecret
+      properties:
+        clientSecret:
+          type: string
+          nullable: true
+
+    StripeNotConfiguredError:
+      type: object
+      required:
+        - error
+        - missing
+      properties:
+        error:
+          type: string
+          const: stripe_not_configured
+        missing:
+          type: array
+          items:
+            type: string
+
+    ReadinessStatus:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        uptimeSeconds:
+          type: number
+        version:
+          type: string
+        checks:
+          type: object
+          required: [database]
+          properties:
+            database:
+              type: object
+              required: [status, latencyMs]
+              properties:
+                status:
+                  type: string
+                  enum: [ok, error]
+                latencyMs:
+                  type: number
+                error:
+                  type: string
 
     AuthUser:
       type: object

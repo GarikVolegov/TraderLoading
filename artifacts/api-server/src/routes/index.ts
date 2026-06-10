@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health.js";
 import authRouter from "./auth.js";
+import accountRouter from "./account.js";
 import profileRouter from "./profile.js";
 import missionsRouter from "./missions.js";
 import missionTemplatesRouter from "./mission-templates.js";
@@ -28,12 +29,15 @@ import brokersRouter from "./brokers.js";
 import routinesRouter from "./routines.js";
 import libraryRouter from "./library.js";
 import adminRouter from "./admin.js";
+import billingRouter from "./billing.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
 router.use(adminRouter);
+router.use(billingRouter);
+router.use(accountRouter);
 router.use(profileRouter);
 router.use(missionsRouter);
 router.use(missionTemplatesRouter);

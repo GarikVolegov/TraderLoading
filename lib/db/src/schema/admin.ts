@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   jsonb,
   pgTable,
@@ -53,6 +54,33 @@ export const adminUserStatusTable = pgTable("admin_user_status", {
     index("admin_user_status_status_idx").on(table.status),
 ]);
 
+export const adminUserSubscriptionsTable = pgTable("admin_user_subscriptions", {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    plan: text("plan").notNull().default("free"),
+    status: text("status").notNull().default("active"),
+    source: text("source").notNull().default("manual"),
+    manualOverride: boolean("manual_override").notNull().default(true),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    stripePriceId: text("stripe_price_id"),
+    currentPeriodEnd: timestamp("current_period_end"),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    reason: text("reason"),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+}, (table) => [
+    uniqueIndex("admin_user_subscriptions_user_unique").on(table.userId),
+    index("admin_user_subscriptions_plan_idx").on(table.plan),
+    index("admin_user_subscriptions_status_idx").on(table.status),
+    index("admin_user_subscriptions_customer_idx").on(table.stripeCustomerId),
+    index("admin_user_subscriptions_subscription_idx").on(table.stripeSubscriptionId),
+]);
+
 export const adminAuditLogsTable = pgTable("admin_audit_logs", {
     id: serial("id").primaryKey(),
     actorUserId: text("actor_user_id").notNull(),
@@ -98,12 +126,25 @@ export const insertAdminAuditLogSchema = createInsertSchema(
   createdAt: true,
 });
 
+export const insertAdminUserSubscriptionSchema = createInsertSchema(
+  adminUserSubscriptionsTable,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type AdminRoleName = (typeof adminRoleNames)[number];
 export type AdminUser = typeof adminUsersTable.$inferSelect;
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 export type AdminUserStatus = typeof adminUserStatusTable.$inferSelect;
 export type InsertAdminUserStatus = z.infer<
   typeof insertAdminUserStatusSchema
+>;
+export type AdminUserSubscription =
+  typeof adminUserSubscriptionsTable.$inferSelect;
+export type InsertAdminUserSubscription = z.infer<
+  typeof insertAdminUserSubscriptionSchema
 >;
 export type AdminAuditLog = typeof adminAuditLogsTable.$inferSelect;
 export type InsertAdminAuditLog = z.infer<typeof insertAdminAuditLogSchema>;

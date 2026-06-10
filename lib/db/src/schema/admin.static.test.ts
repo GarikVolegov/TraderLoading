@@ -6,9 +6,14 @@ const schemaIndex = fs.readFileSync("src/schema/index.ts", "utf8");
 
 assert.match(adminSchema, /pgTable\("admin_users"/);
 assert.match(adminSchema, /pgTable\("admin_user_status"/);
+assert.match(adminSchema, /pgTable\("admin_user_subscriptions"/);
 assert.match(adminSchema, /pgTable\("admin_audit_logs"/);
 assert.match(adminSchema, /admin_users_user_idx/);
 assert.match(adminSchema, /admin_user_status_user_unique/);
+assert.match(adminSchema, /admin_user_subscriptions_user_unique/);
+assert.match(adminSchema, /admin_user_subscriptions_plan_idx/);
+assert.match(adminSchema, /admin_user_subscriptions_status_idx/);
+assert.match(adminSchema, /manual_override/);
 assert.match(adminSchema, /admin_audit_logs_actor_idx/);
 assert.match(adminSchema, /admin_audit_logs_target_idx/);
 assert.match(adminSchema, /admin_audit_logs_created_idx/);

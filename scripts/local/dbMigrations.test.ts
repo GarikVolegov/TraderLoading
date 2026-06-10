@@ -24,6 +24,7 @@ assert.ok(migrationFiles.length > 0, "Drizzle should include versioned SQL migra
 assert.ok((journal.entries ?? []).length > 0, "Drizzle journal should track generated migrations");
 assert.match(schemaIndex, /brokerProfileStoreTable/);
 assert.match(migrationSql, /broker_profile_store/);
+assert.match(migrationSql, /admin_user_subscriptions/);
 assert.doesNotMatch(databaseProfileStore, /CREATE TABLE IF NOT EXISTS broker_profile_store/);
 
 for (const entry of journal.entries ?? []) {

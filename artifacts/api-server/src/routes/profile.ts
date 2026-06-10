@@ -7,6 +7,8 @@ import { db } from "@workspace/db";
 import { accountTradesTable, profileTable } from "@workspace/db";
 import { UpdateProfileBody, UpdateProfileResponse, GetProfileResponse, GetLeaderboardResponse } from "@workspace/api-zod";
 import { eq, isNull, and, ne, sql, isNotNull, desc } from "drizzle-orm";
+import { resolveUploadPath } from "../lib/uploads.js";
+import { requireProFeature } from "../lib/billing.js";
 
 const router: IRouter = Router();
 
@@ -41,7 +43,7 @@ function getLevelName(level: number): string {
   return `Trader Livello ${level}`;
 }
 
-const AVATARS_DIR = path.join(process.cwd(), "uploads", "avatars");
+const AVATARS_DIR = resolveUploadPath("avatars");
 if (!fs.existsSync(AVATARS_DIR)) {
   fs.mkdirSync(AVATARS_DIR, { recursive: true });
 }
@@ -331,7 +333,8 @@ router.post("/profile/avatar/generate", async (req, res) => {
   }
 });
 
-router.get("/leaderboard", async (_req, res) => {
+router.get("/leaderboard", async (req, res) => {
+  if (!(await requireProFeature(req, res, "leaderboard"))) return;
   const profiles = await db.select()
     .from(profileTable)
     .where(isNotNull(profileTable.userId))

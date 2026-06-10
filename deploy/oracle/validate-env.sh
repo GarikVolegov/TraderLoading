@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="${SCRIPT_PATH%/*}"
+if [[ "$SCRIPT_DIR" == "$SCRIPT_PATH" ]]; then
+  SCRIPT_DIR="."
+fi
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$ROOT_DIR"
 
 ENV_FILE="${ORACLE_ENV_FILE:-.env.oracle}"

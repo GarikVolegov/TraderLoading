@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { brokerHubRuntime, type BrokerHubRuntime } from "../services/brokerHub/runtime.js";
@@ -21,6 +22,7 @@ import {
 } from "../services/brokerHub/fxBlueSetupIntentStore.js";
 import type {
   BrokerAccount,
+  BrokerAccountProfile,
   BrokerCapabilities,
   BrokerDeal,
   BrokerOrder,
@@ -37,17 +39,74 @@ function getUserId(req: Request): string | null {
   return req.user?.id ?? null;
 }
 
-async function claimBrokerProfileForCurrentUser(
+function requireBrokerUser(req: Request, res: Response): string | null {
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Autenticazione richiesta." });
+    return null;
+  }
+  return userId;
+}
+
+async function requireOwnedBrokerProfile(
   runtime: BrokerHubRuntime,
   req: Request,
+  res: Response,
   profileId: string,
-): Promise<void> {
-  const userId = getUserId(req);
-  if (!userId) return;
+): Promise<BrokerAccountProfile | null> {
+  const userId = requireBrokerUser(req, res);
+  if (!userId) return null;
   const profiles = await runtime.listProfiles();
-  const profile = profiles.profiles.find((item) => item.id === profileId);
-  if (!profile || profile.ownerUserId === userId || profile.ownerUserId) return;
-  await runtime.saveProfile({ id: profile.id, ownerUserId: userId });
+  const profile = profiles.profiles.find((item) => item.id === profileId && item.ownerUserId === userId);
+  if (!profile) {
+    res.status(404).json({ error: "Broker profile not found" });
+    return null;
+  }
+  return profile;
+}
+
+async function requireOwnedFxBlueIntent(
+  fxBlueSetupIntentStore: FxBlueSetupIntentStore,
+  req: Request,
+  res: Response,
+): Promise<Awaited<ReturnType<FxBlueSetupIntentStore["getIntent"]>>> {
+  const userId = requireBrokerUser(req, res);
+  if (!userId) return null;
+  const intent = await fxBlueSetupIntentStore.getIntent(readString(req.params.id));
+  if (!intent || intent.ownerUserId !== userId) {
+    res.status(404).json({ error: "FX Blue setup intent non trovato." });
+    return null;
+  }
+  return intent;
+}
+
+const SMARTLINK_TOKEN_SECRET = "smartLinkToken";
+
+function createSmartLinkToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+function isSmartLinkProfile(profile: { providerKind?: string } | null | undefined): boolean {
+  return profile?.providerKind === "traderloading-mt5-smartlink";
+}
+
+async function ensureSmartLinkToken(runtime: BrokerHubRuntime, profileId: string): Promise<string> {
+  const existing = await runtime.getSecret(profileId, SMARTLINK_TOKEN_SECRET);
+  if (existing && existing !== "smartlink" && existing.length >= 32) return existing;
+  const token = createSmartLinkToken();
+  await runtime.setSecret(profileId, SMARTLINK_TOKEN_SECRET, token);
+  return token;
+}
+
+async function requireTrustedSmartLink(
+  runtime: BrokerHubRuntime,
+  profile: { id: string; providerKind?: string } | null | undefined,
+  token: string,
+): Promise<boolean> {
+  if (!profile || !isSmartLinkProfile(profile)) return false;
+  const expected = await runtime.getSecret(profile.id, SMARTLINK_TOKEN_SECRET);
+  if (expected && token === expected) return true;
+  throw new Error("Token SmartLink non valido.");
 }
 
 interface BrokersRouterOptions {
@@ -57,9 +116,15 @@ interface BrokersRouterOptions {
   smartLinkService?: Mt5SmartLinkService;
   fxBlueSetupIntentStore?: FxBlueSetupIntentStore;
   enableLegacyConnectionRoutes?: boolean;
+  requireProAccess?: (req: Request, res: Response) => Promise<boolean>;
 }
 
 const FXBLUE_ONLY_CONNECTION_ERROR = "Il Broker Hub collega nuovi conti solo tramite FX Blue Account Sync.";
+
+async function defaultRequireBrokerPro(req: Request, res: Response): Promise<boolean> {
+  const { requireProFeature } = await import("../lib/billing.js");
+  return requireProFeature(req, res, "broker");
+}
 
 const FXBLUE_ONLY_CATALOG = [
   {
@@ -129,6 +194,7 @@ function appBaseUrl(value: unknown): string {
 async function readMt5ConnectorSource(): Promise<string> {
   const candidates = [
     resolve(process.cwd(), "tools", "metatrader-companion", "TraderLoadingConnector.mq5"),
+    resolve(process.cwd(), "..", "tools", "metatrader-companion", "TraderLoadingConnector.mq5"),
     resolve(process.cwd(), "..", "..", "tools", "metatrader-companion", "TraderLoadingConnector.mq5"),
   ];
   for (const candidate of candidates) {
@@ -231,6 +297,7 @@ export function createBrokersRouter(
   const smartLinkService = options.smartLinkService ?? defaultMt5SmartLinkService;
   const fxBlueSetupIntentStore = options.fxBlueSetupIntentStore ?? createFxBlueSetupIntentStore();
   const legacyConnectionRoutesEnabled = options.enableLegacyConnectionRoutes === true;
+  const requireBrokerPro = options.requireProAccess ?? defaultRequireBrokerPro;
 
   router.get("/brokers/catalog", (_req, res) => {
     const catalog = legacyConnectionRoutesEnabled ? BROKER_CATALOG : FXBLUE_ONLY_CATALOG;
@@ -261,7 +328,10 @@ export function createBrokersRouter(
 
   router.post("/brokers/fxblue/setup-intents", async (req, res) => {
     try {
+      const userId = requireBrokerUser(req, res);
+      if (!userId) return;
       const intent = await fxBlueSetupIntentStore.createIntent({
+        ownerUserId: userId,
         platform: req.body?.platform,
         brokerName: req.body?.brokerName,
         server: req.body?.server,
@@ -287,18 +357,15 @@ export function createBrokersRouter(
 
   router.post("/brokers/fxblue/setup-intents/:id/verify-profile", async (req, res) => {
     try {
-      const intent = await fxBlueSetupIntentStore.getIntent(req.params.id);
-      if (!intent) {
-        res.status(404).json({ error: "FX Blue setup intent non trovato." });
-        return;
-      }
+      const intent = await requireOwnedFxBlueIntent(fxBlueSetupIntentStore, req, res);
+      if (!intent) return;
       const fxBlueProfileRef = parseFxBlueProfileRef(readString(req.body?.fxBlueProfileRef));
       const tempProfile = await runtime.saveProfile({
         label: `${intent.brokerName} FX Blue`,
         brokerName: intent.brokerName,
         kind: "fxblue-account-sync",
         providerKind: "fxblue-account-sync",
-        ownerUserId: getUserId(req),
+        ownerUserId: intent.ownerUserId,
         providerUserId: fxBlueProfileRef,
         providerAccountId: fxBlueProfileRef,
         accountId: intent.accountNumber,
@@ -337,15 +404,14 @@ export function createBrokersRouter(
 
   router.post("/brokers/fxblue/setup-intents/:id/complete", async (req, res) => {
     try {
-      const intent = await fxBlueSetupIntentStore.getIntent(req.params.id);
-      if (!intent) {
-        res.status(404).json({ error: "FX Blue setup intent non trovato." });
-        return;
-      }
+      const intent = await requireOwnedFxBlueIntent(fxBlueSetupIntentStore, req, res);
+      if (!intent) return;
       if (!intent.profileId || !intent.fxBlueProfileRef) {
         res.status(400).json({ error: "Verifica prima il profilo FX Blue." });
         return;
       }
+      const ownedProfile = await requireOwnedBrokerProfile(runtime, req, res, intent.profileId);
+      if (!ownedProfile) return;
       const connected = await runtime.connectProfile(intent.profileId);
       const completed = await fxBlueSetupIntentStore.updateIntent(intent.id, {
         status: "completed",
@@ -354,7 +420,7 @@ export function createBrokersRouter(
       });
       const profile = await runtime.saveProfile({
         ...connected.profile,
-        ownerUserId: connected.profile.ownerUserId ?? getUserId(req),
+        ownerUserId: intent.ownerUserId,
         tradingEnabled: false,
         capabilities: {
           ...connected.profile.capabilities,
@@ -550,6 +616,7 @@ export function createBrokersRouter(
           tradingEnabled: req.body?.tradingEnabled === true,
         });
         const profile = await runtime.saveProfile({
+          ownerUserId: getUserId(req),
           label: verification.label,
           brokerName: broker.displayName,
           kind: verification.providerKind,
@@ -650,6 +717,7 @@ export function createBrokersRouter(
             : broker.defaultAccountLabel;
 
       const profile = await runtime.saveProfile({
+        ownerUserId: getUserId(req),
         label: accountLabel,
         brokerName: resolvedProfileKind === "demo" ? "TraderLoading" : broker.displayName,
         kind: resolvedProfileKind,
@@ -713,17 +781,40 @@ export function createBrokersRouter(
     }
   });
 
-  router.get("/brokers/profiles", async (_req, res) => {
+  router.get("/brokers/profiles", async (req, res) => {
     try {
-      res.json(await runtime.listProfiles());
+      const userId = requireBrokerUser(req, res);
+      if (!userId) return;
+      const profiles = await runtime.listProfiles();
+      res.json({
+        activeProfileId:
+          profiles.profiles.some((profile) => profile.id === profiles.activeProfileId && profile.ownerUserId === userId)
+            ? profiles.activeProfileId
+            : null,
+        profiles: profiles.profiles.filter((profile) => profile.ownerUserId === userId),
+      });
     } catch (error) {
       res.status(500).json({ error: message(error) });
     }
   });
 
+  router.use("/brokers", async (req, res, next) => {
+    if (req.path === "/catalog") {
+      next();
+      return;
+    }
+    if (req.path.startsWith("/companion/")) {
+      next();
+      return;
+    }
+    if (await requireBrokerPro(req, res)) next();
+  });
+
   router.post("/brokers/profiles", async (req, res) => {
     try {
-      const profile = await runtime.saveProfile(req.body);
+      const userId = requireBrokerUser(req, res);
+      if (!userId) return;
+      const profile = await runtime.saveProfile({ ...req.body, ownerUserId: userId });
       if (typeof req.body?.accessToken === "string" && req.body.accessToken) {
         await runtime.setSecret(profile.id, "accessToken", req.body.accessToken);
       }
@@ -741,15 +832,18 @@ export function createBrokersRouter(
 
   router.post("/brokers/smartlink/mt5/start", async (req, res) => {
     try {
+      const userId = requireBrokerUser(req, res);
+      if (!userId) return;
       const broker = resolveBroker(String(req.body?.brokerName ?? "FP Trading"));
       const tradingEnabled = req.body?.tradingEnabled === true;
       const existingProfiles = await runtime.listProfiles();
       const existing =
         typeof req.body?.profileId === "string"
-          ? existingProfiles.profiles.find((profile) => profile.id === req.body.profileId)
+          ? existingProfiles.profiles.find((profile) => profile.id === req.body.profileId && profile.ownerUserId === userId)
           : undefined;
       const profile = await runtime.saveProfile({
         id: existing?.id,
+        ownerUserId: userId,
         label: existing?.label ?? `${broker.defaultAccountLabel} SmartLink`,
         brokerName: broker.displayName,
         kind: "traderloading-mt5-smartlink",
@@ -765,11 +859,13 @@ export function createBrokersRouter(
         terminalDetected: false,
         accountLoginMode: "terminal_session",
       });
+      const smartLinkToken = await ensureSmartLinkToken(runtime, profile.id);
       const activated = await runtime.connectProfile(profile.id);
       const status = await smartLinkService.start({
         profileId: profile.id,
         brokerName: broker.displayName,
         tradingEnabled,
+        token: smartLinkToken,
         terminalPath: readString(req.body?.terminalPath) || undefined,
       });
       const updated = await runtime.saveProfile({
@@ -794,6 +890,8 @@ export function createBrokersRouter(
         res.status(400).json({ error: "Profilo SmartLink richiesto." });
         return;
       }
+      const ownedProfile = await requireOwnedBrokerProfile(runtime, req, res, profileId);
+      if (!ownedProfile) return;
       const status = await smartLinkService.status(profileId);
       const profiles = await runtime.listProfiles();
       const profile = profiles.profiles.find((item) => item.id === profileId);
@@ -835,11 +933,15 @@ export function createBrokersRouter(
         res.status(400).json({ error: "Numero conto, password e server sono richiesti." });
         return;
       }
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, profileId);
+      if (!profile) return;
+      const smartLinkToken = await ensureSmartLinkToken(runtime, profileId);
       const status = await smartLinkService.login({
         profileId,
         accountNumber,
         password,
         server: serverName,
+        token: smartLinkToken,
         terminalPath: readString(req.body?.terminalPath) || undefined,
       });
       const updated = await runtime.saveProfile({
@@ -865,6 +967,8 @@ export function createBrokersRouter(
         res.status(400).json({ error: "Profilo SmartLink richiesto." });
         return;
       }
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, profileId);
+      if (!profile) return;
       const status = await smartLinkService.stop(profileId);
       const updated = await runtime.saveProfile({
         id: profileId,
@@ -886,6 +990,8 @@ export function createBrokersRouter(
         res.status(400).json({ error: "Profilo SmartLink richiesto." });
         return;
       }
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, profileId);
+      if (!profile) return;
       res.json(await smartLinkService.diagnostics(profileId));
     } catch (error) {
       res.status(400).json({ error: message(error) });
@@ -894,9 +1000,12 @@ export function createBrokersRouter(
 
   router.post("/brokers/companion/pairing", async (req, res) => {
     try {
+      const userId = requireBrokerUser(req, res);
+      if (!userId) return;
       const broker = resolveBroker(String(req.body?.brokerName ?? "Qualsiasi broker MetaTrader"));
       const tradingEnabled = req.body?.tradingEnabled === true;
       const profile = await runtime.saveProfile({
+        ownerUserId: userId,
         label: `${broker.defaultAccountLabel} Connector`,
         brokerName: broker.displayName,
         kind: "metatrader-local-companion",
@@ -997,7 +1106,7 @@ export function createBrokersRouter(
       const token = readString(req.body?.token);
       const existing = await runtime.listProfiles();
       const existingProfile = existing.profiles.find((item) => item.id === profileId);
-      const isSmartLink = existingProfile?.providerKind === "traderloading-mt5-smartlink" && token === "smartlink";
+      const isSmartLink = await requireTrustedSmartLink(runtime, existingProfile, token);
       const heartbeat = isSmartLink
         ? { lastHeartbeatAt: new Date().toISOString() }
         : await companionStore.heartbeat({ profileId, token, terminal: readString(req.body?.terminal) || undefined });
@@ -1022,6 +1131,7 @@ export function createBrokersRouter(
       const existing = await runtime.listProfiles();
       const profile = existing.profiles.find((item) => item.id === profileId);
       if (!profile) throw new Error("Profilo Connector non trovato.");
+      const isSmartLink = await requireTrustedSmartLink(runtime, profile, token);
       const account = normalizeAccount(req.body?.account, profile.brokerName);
       const rawMetrics = typeof req.body?.metrics === "object" && req.body.metrics !== null ? req.body.metrics as Record<string, unknown> : {};
       const partialCapabilities = typeof req.body?.capabilities === "object" && req.body.capabilities !== null ? req.body.capabilities as Partial<BrokerCapabilities> : {};
@@ -1052,7 +1162,7 @@ export function createBrokersRouter(
         lastUpdated: new Date().toISOString(),
       };
       const savedSnapshot =
-        profile.providerKind === "traderloading-mt5-smartlink" && token === "smartlink"
+        isSmartLink
           ? await companionStore.importSnapshot({ profileId, snapshot, deals: [] }).then(() => snapshot)
           : await companionStore.saveSnapshot({ profileId, token, snapshot, capabilities });
       const updated = await runtime.saveProfile({
@@ -1082,8 +1192,9 @@ export function createBrokersRouter(
       const deals: BrokerDeal[] = Array.isArray(req.body?.deals) ? req.body.deals.map(normalizeDeal) : [];
       const existing = await runtime.listProfiles();
       const profile = existing.profiles.find((item) => item.id === profileId);
+      const isSmartLink = await requireTrustedSmartLink(runtime, profile, token);
       const saved =
-        profile?.providerKind === "traderloading-mt5-smartlink" && token === "smartlink"
+        isSmartLink
           ? await companionStore.getSnapshot(profileId).then(async (snapshot) => {
               await companionStore.importSnapshot({
                 profileId,
@@ -1093,8 +1204,8 @@ export function createBrokersRouter(
                     status: "connecting",
                     kind: "traderloading-mt5-smartlink",
                     providerKind: "traderloading-mt5-smartlink",
-                    brokerName: profile.brokerName,
-                    tradingEnabled: profile.tradingEnabled,
+                    brokerName: profile!.brokerName,
+                    tradingEnabled: profile!.tradingEnabled,
                     accounts: [],
                     metrics: { balance: 0, equity: 0, margin: 0, freeMargin: 0, currency: "USD", dailyProfit: 0 },
                     positions: [],
@@ -1118,8 +1229,9 @@ export function createBrokersRouter(
       const token = readString(req.query.token);
       const existing = await runtime.listProfiles();
       const profile = existing.profiles.find((item) => item.id === profileId);
+      const isSmartLink = await requireTrustedSmartLink(runtime, profile, token);
       const orders =
-        profile?.providerKind === "traderloading-mt5-smartlink" && token === "smartlink"
+        isSmartLink
           ? await companionStore.listPendingOrdersTrusted(profileId)
           : await companionStore.listPendingOrders(profileId, token);
       res.json({ orders });
@@ -1140,8 +1252,9 @@ export function createBrokersRouter(
       };
       const existing = await runtime.listProfiles();
       const profile = existing.profiles.find((item) => item.id === profileId);
+      const isSmartLink = await requireTrustedSmartLink(runtime, profile, token);
       const pending =
-        profile?.providerKind === "traderloading-mt5-smartlink" && token === "smartlink"
+        isSmartLink
           ? await companionStore.completeOrderTrusted({ profileId, orderId: req.params.id, result })
           : await companionStore.completeOrder({ profileId, token, orderId: req.params.id, result });
       res.json({
@@ -1164,6 +1277,8 @@ export function createBrokersRouter(
 
   router.post("/brokers/import/history", async (req, res) => {
     try {
+      const userId = requireBrokerUser(req, res);
+      if (!userId) return;
       const brokerName = readString(req.body?.brokerName, "Broker importato");
       const accountId = readString(req.body?.accountId, `IMPORT-${Date.now()}`);
       const accountLabel = readString(req.body?.accountLabel, `${brokerName} import`);
@@ -1171,6 +1286,7 @@ export function createBrokersRouter(
       if (deals.length === 0) throw new Error("Importa almeno un trade chiuso dal report broker.");
       const profit = deals.reduce((sum: number, deal: BrokerDeal) => sum + (deal.profit ?? 0), 0);
       const profile = await runtime.saveProfile({
+        ownerUserId: userId,
         label: accountLabel,
         brokerName,
         kind: "metatrader-local-companion",
@@ -1215,7 +1331,8 @@ export function createBrokersRouter(
 
   router.post("/brokers/profiles/:id/connect", async (req, res) => {
     try {
-      await claimBrokerProfileForCurrentUser(runtime, req, req.params.id);
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, req.params.id);
+      if (!profile) return;
       res.json(await runtime.connectProfile(req.params.id));
     } catch (error) {
       res.status(404).json({ error: message(error) });
@@ -1224,6 +1341,8 @@ export function createBrokersRouter(
 
   router.post("/brokers/profiles/:id/disconnect", async (req, res) => {
     try {
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, req.params.id);
+      if (!profile) return;
       res.json(await runtime.disconnectProfile(req.params.id));
     } catch (error) {
       res.status(404).json({ error: message(error) });
@@ -1232,7 +1351,8 @@ export function createBrokersRouter(
 
   router.post("/brokers/profiles/:id/refresh", async (req, res) => {
     try {
-      await claimBrokerProfileForCurrentUser(runtime, req, req.params.id);
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, req.params.id);
+      if (!profile) return;
       res.json(await runtime.refreshProfile(req.params.id));
     } catch (error) {
       res.status(404).json({ error: message(error) });
@@ -1241,6 +1361,8 @@ export function createBrokersRouter(
 
   router.post("/brokers/profiles/:id/orders", async (req, res) => {
     try {
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, req.params.id);
+      if (!profile) return;
       res.json(await runtime.placeOrder(req.params.id, req.body));
     } catch (error) {
       res.status(400).json({ error: message(error) });
@@ -1249,6 +1371,8 @@ export function createBrokersRouter(
 
   router.post("/brokers/profiles/:id/positions/:positionId/close", async (req, res) => {
     try {
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, req.params.id);
+      if (!profile) return;
       res.json(await runtime.closePosition(req.params.id, req.params.positionId));
     } catch (error) {
       res.status(400).json({ error: message(error) });
@@ -1257,7 +1381,8 @@ export function createBrokersRouter(
 
   router.get("/brokers/profiles/:id/snapshot", async (req, res) => {
     try {
-      await claimBrokerProfileForCurrentUser(runtime, req, req.params.id);
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, req.params.id);
+      if (!profile) return;
       res.json(await runtime.getSnapshot(req.params.id));
     } catch (error) {
       res.status(404).json({ error: message(error) });
@@ -1266,7 +1391,8 @@ export function createBrokersRouter(
 
   router.get("/brokers/profiles/:id/history", async (req, res) => {
     try {
-      await claimBrokerProfileForCurrentUser(runtime, req, req.params.id);
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, req.params.id);
+      if (!profile) return;
       res.json(await runtime.getHistory(req.params.id));
     } catch (error) {
       res.status(404).json({ error: message(error) });
@@ -1275,6 +1401,8 @@ export function createBrokersRouter(
 
   router.delete("/brokers/profiles/:id", async (req, res) => {
     try {
+      const profile = await requireOwnedBrokerProfile(runtime, req, res, req.params.id);
+      if (!profile) return;
       await runtime.deleteProfile(req.params.id);
       res.status(204).end();
     } catch (error) {

@@ -4,6 +4,7 @@ import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
+import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { useE2EEKeys } from "@/hooks/useE2EEKeys";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -4368,7 +4369,11 @@ export default function Chat() {
               }
             />
           )}
-          {activeTab === "classifica" && <ClassificaTab currentUserId={user?.id ?? ""} />}
+          {activeTab === "classifica" && (
+            <ProUpgradeGate feature="leaderboard">
+              <ClassificaTab currentUserId={user?.id ?? ""} />
+            </ProUpgradeGate>
+          )}
         </div>
       </motion.section>
     </PageLayout>

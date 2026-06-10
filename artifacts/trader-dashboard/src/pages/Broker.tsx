@@ -2,6 +2,7 @@ import { Wallet } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { BrokerHubWorkspace } from "@/components/broker-hub/BrokerHubWorkspace";
+import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import type { BrokerHubTab } from "@/components/broker-hub/types";
 
 const BROKER_TABS: BrokerHubTab[] = ["connect", "accounts", "history"];
@@ -24,7 +25,9 @@ export default function Broker() {
         subtitle="Collega il conto solo tramite FX Blue Account Sync"
       />
 
-      <BrokerHubWorkspace initialTab={getInitialBrokerTab()} />
+      <ProUpgradeGate feature="broker">
+        <BrokerHubWorkspace initialTab={getInitialBrokerTab()} />
+      </ProUpgradeGate>
     </PageLayout>
   );
 }

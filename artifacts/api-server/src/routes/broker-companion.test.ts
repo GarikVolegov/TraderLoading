@@ -27,7 +27,20 @@ try {
 
   const app = express();
   app.use(express.json());
-  app.use("/api", createBrokersRouter(runtime, { companionStore, enableLegacyConnectionRoutes: true }));
+  app.use((req, _res, next) => {
+    const testUserId = req.headers["x-test-user"];
+    if (typeof testUserId === "string") {
+      req.user = {
+        id: testUserId,
+        email: null,
+        firstName: null,
+        lastName: null,
+        profileImageUrl: null,
+      };
+    }
+    next();
+  });
+  app.use("/api", createBrokersRouter(runtime, { companionStore, enableLegacyConnectionRoutes: true, requireProAccess: async () => true }));
   const server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -59,7 +72,7 @@ try {
 
   const pairingRes = await fetch(`${base}/companion/pairing`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({ brokerName: "FP Trading", tradingEnabled: true }),
   });
   assert.equal(pairingRes.status, 201);
@@ -99,11 +112,14 @@ try {
   assert.equal(initialStatus.connected, false);
   assert.equal(initialStatus.message, "In attesa del TraderLoading Connector.");
 
-  const profilesAfterPairingRes = await fetch(`${base}/profiles`);
+  const profilesAfterPairingRes = await fetch(`${base}/profiles`, { headers: { "x-test-user": "user-one" } });
   const profilesAfterPairing = (await profilesAfterPairingRes.json()) as { activeProfileId: string | null };
   assert.equal(profilesAfterPairing.activeProfileId, pairing.profile.id);
 
-  const connectBeforeSnapshotRes = await fetch(`${base}/profiles/${pairing.profile.id}/connect`, { method: "POST" });
+  const connectBeforeSnapshotRes = await fetch(`${base}/profiles/${pairing.profile.id}/connect`, {
+    method: "POST",
+    headers: { "x-test-user": "user-one" },
+  });
   assert.equal(connectBeforeSnapshotRes.status, 200);
   const connectBeforeSnapshot = (await connectBeforeSnapshotRes.json()) as { snapshot: { status: string; error?: string } };
   assert.equal(connectBeforeSnapshot.snapshot.status, "connecting");
@@ -111,7 +127,7 @@ try {
 
   const orderBeforeHeartbeatRes = await fetch(`${base}/profiles/${pairing.profile.id}/orders`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({ symbol: "EURUSD", side: "buy", type: "market", volume: 0.1 }),
   });
   assert.equal(orderBeforeHeartbeatRes.status, 200);
@@ -158,7 +174,9 @@ try {
   assert.equal(snapshotAck.profile.health, "connected");
   assert.equal(snapshotAck.snapshot.status, "connected");
 
-  const snapshotAfterRes = await fetch(`${base}/profiles/${pairing.profile.id}/snapshot`);
+  const snapshotAfterRes = await fetch(`${base}/profiles/${pairing.profile.id}/snapshot`, {
+    headers: { "x-test-user": "user-one" },
+  });
   const snapshotAfter = (await snapshotAfterRes.json()) as { status: string; accounts: Array<{ id: string }>; positions: unknown[] };
   assert.equal(snapshotAfter.status, "connected");
   assert.equal(snapshotAfter.accounts[0]?.id, "123456");
@@ -173,7 +191,7 @@ try {
 
   const orderRes = await fetch(`${base}/profiles/${pairing.profile.id}/orders`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({ symbol: "EURUSD", side: "sell", type: "market", volume: 0.1, clientRequestId: "client-1" }),
   });
   assert.equal(orderRes.status, 200);
@@ -208,14 +226,16 @@ try {
   });
   assert.equal(historyRes.status, 200);
 
-  const dealsRes = await fetch(`${base}/profiles/${pairing.profile.id}/history`);
+  const dealsRes = await fetch(`${base}/profiles/${pairing.profile.id}/history`, {
+    headers: { "x-test-user": "user-one" },
+  });
   const deals = (await dealsRes.json()) as Array<{ id: string; profit: number }>;
   assert.equal(deals.length, 1);
   assert.equal(deals[0]?.id, "deal-1");
 
   const importRes = await fetch(`${base}/import/history`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({
       brokerName: "Broker non supportato",
       accountLabel: "Broker non supportato import",
@@ -229,7 +249,9 @@ try {
   assert.equal(imported.profile.health, "import_only");
   assert.equal(imported.profile.capabilities.placeOrders, false);
 
-  const importedHistoryRes = await fetch(`${base}/profiles/${imported.profile.id}/history`);
+  const importedHistoryRes = await fetch(`${base}/profiles/${imported.profile.id}/history`, {
+    headers: { "x-test-user": "user-one" },
+  });
   const importedHistory = (await importedHistoryRes.json()) as Array<{ id: string; symbol: string; profit: number }>;
   assert.equal(importedHistory.length, 1);
   assert.equal(importedHistory[0]?.id, "import-deal-1");

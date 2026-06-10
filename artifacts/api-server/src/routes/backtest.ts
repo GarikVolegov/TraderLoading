@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, backtestSessionsTable, backtestTradesTable } from "@workspace/db";
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { getUserId } from "./profile.js";
+import { requireProFeature } from "../lib/billing.js";
 
 const router: IRouter = Router();
 
@@ -10,6 +11,7 @@ function userWhere(userId: string | null) {
 }
 
 router.get("/backtest/sessions", async (req, res) => {
+  if (!(await requireProFeature(req, res, "backtest"))) return;
   const userId = getUserId(req);
   const sessions = await db.select().from(backtestSessionsTable)
     .where(userWhere(userId))
@@ -18,6 +20,7 @@ router.get("/backtest/sessions", async (req, res) => {
 });
 
 router.post("/backtest/sessions", async (req, res) => {
+  if (!(await requireProFeature(req, res, "backtest"))) return;
   const userId = getUserId(req);
   const { name, pair, timeframe, strategy, notes } = req.body;
   if (!name || !pair) {
@@ -31,6 +34,7 @@ router.post("/backtest/sessions", async (req, res) => {
 });
 
 router.delete("/backtest/sessions/:id", async (req, res) => {
+  if (!(await requireProFeature(req, res, "backtest"))) return;
   const userId = getUserId(req);
   const id = parseInt(req.params.id);
   await db.delete(backtestSessionsTable).where(
@@ -40,6 +44,7 @@ router.delete("/backtest/sessions/:id", async (req, res) => {
 });
 
 router.get("/backtest/sessions/:id/trades", async (req, res) => {
+  if (!(await requireProFeature(req, res, "backtest"))) return;
   const sessionId = parseInt(req.params.id);
   const trades = await db.select().from(backtestTradesTable)
     .where(eq(backtestTradesTable.sessionId, sessionId))
@@ -48,6 +53,7 @@ router.get("/backtest/sessions/:id/trades", async (req, res) => {
 });
 
 router.post("/backtest/sessions/:id/trades", async (req, res) => {
+  if (!(await requireProFeature(req, res, "backtest"))) return;
   const userId = getUserId(req);
   const sessionId = parseInt(req.params.id);
   const { direction, entryPrice, exitPrice, stopLoss, takeProfit, lotSize, result, pips, notes, tradeDate } = req.body;
@@ -65,6 +71,7 @@ router.post("/backtest/sessions/:id/trades", async (req, res) => {
 });
 
 router.delete("/backtest/trades/:id", async (req, res) => {
+  if (!(await requireProFeature(req, res, "backtest"))) return;
   const id = parseInt(req.params.id);
   await db.delete(backtestTradesTable).where(eq(backtestTradesTable.id, id));
   res.json({ ok: true });

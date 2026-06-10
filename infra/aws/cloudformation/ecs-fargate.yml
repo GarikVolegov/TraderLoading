@@ -5,9 +5,11 @@ Parameters:
   AppName:
     Type: String
     Default: traderloadings
+    MaxLength: 22
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9-]*$"
   ContainerImage:
     Type: String
-    Description: ECR image URI, for example 123456789012.dkr.ecr.eu-west-1.amazonaws.com/traderloadings:latest
+    Description: Immutable ECR image URI, preferably a release tag or digest.
   VpcId:
     Type: AWS::EC2::VPC::Id
   PublicSubnetIds:
@@ -41,12 +43,19 @@ Parameters:
     Type: String
     Default: "2048"
     AllowedValues: ["1024", "2048", "3072", "4096", "8192"]
+  RedisCacheNodeType:
+    Type: String
+    Default: cache.t4g.micro
+    Description: ElastiCache Redis node type for distributed application cache.
   ApiCorsOrigins:
     Type: String
     Description: Comma-separated production origins allowed by the API.
   ViteApiBase:
     Type: String
     Default: ""
+  AppBaseUrl:
+    Type: String
+    Description: Public application URL used for Stripe Checkout return URLs.
   ViteClerkPublishableKey:
     Type: String
     NoEcho: true
@@ -54,13 +63,18 @@ Parameters:
     Type: String
     Default: ""
     NoEcho: true
+  AlarmEmail:
+    Type: String
+    Default: ""
+    Description: Optional email address subscribed to critical CloudWatch alarms.
   AppSecretJson:
     Type: String
     NoEcho: true
-    Description: JSON with DATABASE_URL, CLERK_SECRET_KEY, BROKER_VAULT_KEY, VAPID keys, and provider API keys.
+    Description: JSON with DATABASE_URL, CLERK_SECRET_KEY, BROKER_VAULT_KEY, VAPID keys, Stripe keys, and provider API keys.
 
 Conditions:
   HasAcmCertificate: !Not [!Equals [!Ref AcmCertificateArn, ""]]
+  HasAlarmEmail: !Not [!Equals [!Ref AlarmEmail, ""]]
 
 Resources:
   AppSecret:
@@ -115,6 +129,19 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+      Policies:
+        - PolicyName: UseUploadsFileSystem
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticfilesystem:ClientMount
+                  - elasticfilesystem:ClientWrite
+                Resource: !Sub arn:${AWS::Partition}:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/${UploadsFileSystem}
+                Condition:
+                  StringEquals:
+                    "elasticfilesystem:AccessPointArn": !GetAtt UploadsAccessPoint.Arn
 
   AlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -151,6 +178,99 @@ Resources:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
 
+  EfsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${AppName} EFS ingress from ECS service
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref ServiceSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${AppName} Redis ingress from ECS service
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref ServiceSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: !Sub ${AppName} Redis private subnets
+      SubnetIds: !Ref PrivateSubnetIds
+
+  RedisReplicationGroup:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      ReplicationGroupDescription: !Sub ${AppName} distributed application cache
+      Engine: redis
+      CacheNodeType: !Ref RedisCacheNodeType
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      SecurityGroupIds:
+        - !Ref RedisSecurityGroup
+      NumCacheClusters: 2
+      AutomaticFailoverEnabled: true
+      MultiAZEnabled: true
+      AtRestEncryptionEnabled: true
+      TransitEncryptionEnabled: true
+
+  UploadsFileSystem:
+    Type: AWS::EFS::FileSystem
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Encrypted: true
+      BackupPolicy:
+        Status: ENABLED
+      LifecyclePolicies:
+        - TransitionToIA: AFTER_30_DAYS
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub ${AppName}-uploads
+
+  UploadsAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !Ref UploadsFileSystem
+      PosixUser:
+        Uid: "10001"
+        Gid: "10001"
+      RootDirectory:
+        Path: /uploads
+        CreationInfo:
+          OwnerUid: "10001"
+          OwnerGid: "10001"
+          Permissions: "0770"
+
+  UploadsMountTargetA:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref UploadsFileSystem
+      SubnetId: !Select [0, !Ref PrivateSubnetIds]
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+
+  UploadsMountTargetB:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref UploadsFileSystem
+      SubnetId: !Select [1, !Ref PrivateSubnetIds]
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -169,7 +289,7 @@ Resources:
       TargetType: ip
       Protocol: HTTP
       Port: 3001
-      HealthCheckPath: /api/healthz
+      HealthCheckPath: /api/readyz
       HealthCheckProtocol: HTTP
       HealthCheckIntervalSeconds: 30
       HealthCheckTimeoutSeconds: 5
@@ -182,15 +302,26 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Protocol: HTTP
       Port: 80
-      DefaultActions: !If
-        - HasAcmCertificate
-        - - Type: redirect
-            RedirectConfig:
-              Protocol: HTTPS
-              Port: "443"
-              StatusCode: HTTP_301
-        - - Type: forward
-            TargetGroupArn: !Ref TargetGroup
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  HttpRedirectRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Condition: HasAcmCertificate
+    Properties:
+      ListenerArn: !Ref Listener
+      Priority: 1
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /*
+      Actions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: "443"
+            StatusCode: HTTP_301
 
   HttpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -237,12 +368,16 @@ Resources:
               Value: !Ref ApiCorsOrigins
             - Name: VITE_API_BASE
               Value: !Ref ViteApiBase
+            - Name: APP_BASE_URL
+              Value: !Ref AppBaseUrl
             - Name: VITE_CLERK_PUBLISHABLE_KEY
               Value: !Ref ViteClerkPublishableKey
             - Name: FRONTEND_DIST_DIR
               Value: /app/artifacts/trader-dashboard/dist/public
+            - Name: UPLOADS_DIR
+              Value: /app/uploads
             - Name: PGPOOL_MAX
-              Value: "10"
+              Value: "4"
             - Name: PG_IDLE_TIMEOUT_MS
               Value: "30000"
             - Name: PG_CONNECTION_TIMEOUT_MS
@@ -259,6 +394,8 @@ Resources:
               Value: !Sub ${AppName}-api
             - Name: NEW_RELIC_APP_NAME
               Value: !Sub ${AppName} API
+            - Name: REDIS_URL
+              Value: !Sub rediss://${RedisReplicationGroup.PrimaryEndPoint.Address}:6379
           Secrets:
             - Name: DATABASE_URL
               ValueFrom: !Sub "${AppSecret}:DATABASE_URL::"
@@ -272,6 +409,12 @@ Resources:
               ValueFrom: !Sub "${AppSecret}:VAPID_PRIVATE_KEY::"
             - Name: VAPID_EMAIL
               ValueFrom: !Sub "${AppSecret}:VAPID_EMAIL::"
+            - Name: STRIPE_SECRET_KEY
+              ValueFrom: !Sub "${AppSecret}:STRIPE_SECRET_KEY::"
+            - Name: STRIPE_WEBHOOK_SECRET
+              ValueFrom: !Sub "${AppSecret}:STRIPE_WEBHOOK_SECRET::"
+            - Name: STRIPE_PRO_MONTHLY_PRICE_ID
+              ValueFrom: !Sub "${AppSecret}:STRIPE_PRO_MONTHLY_PRICE_ID::"
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -286,10 +429,25 @@ Resources:
             Timeout: 5
             Retries: 3
             StartPeriod: 60
+          MountPoints:
+            - SourceVolume: uploads
+              ContainerPath: /app/uploads
+              ReadOnly: false
+      Volumes:
+        - Name: uploads
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref UploadsFileSystem
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref UploadsAccessPoint
+              IAM: ENABLED
 
   Service:
     Type: AWS::ECS::Service
-    DependsOn: Listener
+    DependsOn:
+      - Listener
+      - UploadsMountTargetA
+      - UploadsMountTargetB
     Properties:
       ServiceName: !Sub ${AppName}-service
       Cluster: !Ref Cluster
@@ -299,6 +457,10 @@ Resources:
       DeploymentConfiguration:
         MinimumHealthyPercent: 100
         MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      HealthCheckGracePeriodSeconds: 90
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
@@ -316,7 +478,6 @@ Resources:
       MaxCapacity: !Ref MaxTaskCount
       MinCapacity: !Ref MinTaskCount
       ResourceId: !Sub service/${Cluster}/${Service.Name}
-      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
       ScalableDimension: ecs:service:DesiredCount
       ServiceNamespace: ecs
 
@@ -333,6 +494,71 @@ Resources:
         PredefinedMetricSpecification:
           PredefinedMetricType: ECSServiceAverageCPUUtilization
 
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasAlarmEmail
+    Properties:
+      TopicName: !Sub ${AppName}-production-alarms
+      DisplayName: !Sub ${AppName} production alarms
+
+  AlarmSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlarmEmail
+    Properties:
+      TopicArn: !Ref AlarmTopic
+      Protocol: email
+      Endpoint: !Ref AlarmEmail
+
+  AlbTarget5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasAlarmEmail
+    Properties:
+      AlarmName: !Sub ${AppName}-alb-target-5xx
+      AlarmDescription: !Sub ${AppName} target group returned too many 5xx responses.
+      Namespace: AWS/ApplicationELB
+      MetricName: HTTPCode_Target_5XX_Count
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt LoadBalancer.LoadBalancerFullName
+        - Name: TargetGroup
+          Value: !GetAtt TargetGroup.TargetGroupFullName
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 3
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+      OKActions:
+        - !Ref AlarmTopic
+
+  EcsCpuHighAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasAlarmEmail
+    Properties:
+      AlarmName: !Sub ${AppName}-ecs-cpu-high
+      AlarmDescription: !Sub ${AppName} ECS service CPU stayed above 80 percent.
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+        - Name: ServiceName
+          Value: !GetAtt Service.Name
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+      OKActions:
+        - !Ref AlarmTopic
+
 Outputs:
   LoadBalancerDnsName:
     Description: Public DNS name for the application load balancer.
@@ -343,3 +569,8 @@ Outputs:
     Value: !GetAtt Service.Name
   SecretArn:
     Value: !Ref AppSecret
+  RedisPrimaryEndpoint:
+    Value: !GetAtt RedisReplicationGroup.PrimaryEndPoint.Address
+  AlarmTopicArn:
+    Condition: HasAlarmEmail
+    Value: !Ref AlarmTopic

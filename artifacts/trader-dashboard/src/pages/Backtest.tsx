@@ -32,6 +32,7 @@ import {
   serializeReplaySavedTradeIds,
 } from "@/components/chartReplayPersistence";
 import { useBackground } from "@/contexts/BackgroundContext";
+import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { calculateBacktestStats } from "@/lib/backtestStats";
 import { calculateManualBacktestTradeResult } from "@/lib/backtestTradeResult";
 
@@ -512,13 +513,16 @@ export default function Backtest() {
   if (activeSession) {
     return (
       <PageLayout>
-        <SessionDetail session={activeSession} onBack={() => setActiveSession(null)} />
+        <ProUpgradeGate feature="backtest">
+          <SessionDetail session={activeSession} onBack={() => setActiveSession(null)} />
+        </ProUpgradeGate>
       </PageLayout>
     );
   }
 
   return (
     <PageLayout>
+      <ProUpgradeGate feature="backtest">
       <PageHeader
         title="Backtest"
         subtitle="Replay su grafici reali. Testa le tue strategie come su FX Replay."
@@ -601,6 +605,7 @@ export default function Backtest() {
           </AnimatePresence>
         </div>
       )}
+      </ProUpgradeGate>
     </PageLayout>
   );
 }
