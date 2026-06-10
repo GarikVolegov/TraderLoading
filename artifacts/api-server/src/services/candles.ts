@@ -1,6 +1,7 @@
 // ─── Candle data service ───────────────────────────────────────────────────────
 // Fetch logica condivisa fra la route HTTP (/api/backtest/candles) e il "cervello"
 // vision (analisi on-demand + scanner autonomo). Estratta da routes/candles.ts.
+import { getJsonCache, setJsonCache } from "../lib/cache.js";
 
 const YAHOO_SYMBOLS: Record<string, string> = {
   EURUSD: "EURUSD=X", GBPUSD: "GBPUSD=X", USDJPY: "USDJPY=X",
@@ -90,6 +91,17 @@ function normalizeStartDate(startDate: string | undefined): string | null {
 
 function unixDayStart(date: string): number {
   return Math.floor(new Date(`${date}T00:00:00.000Z`).getTime() / 1000);
+}
+
+function candleCacheKey(symbol: string, interval: string, startDate: string | null): string {
+  return `candles:v1:${symbol}:${interval}:${startDate ?? "latest"}`;
+}
+
+function candleCacheTtlSeconds(interval: string, startDate: string | null): number {
+  if (startDate) return 24 * 60 * 60;
+  if (interval === "M15" || interval === "M30") return 15 * 60;
+  if (interval === "H1" || interval === "H4") return 60 * 60;
+  return 6 * 60 * 60;
 }
 
 function buildYahooChartUrl(symbol: string, interval: string, options: CandlesRequestOptions = {}): string {
@@ -272,10 +284,16 @@ function getFallbackChain(symbol: string, interval: string): Array<{ name: strin
 export async function getCandles(symbol: string, interval: string, options: CandlesRequestOptions = {}): Promise<CandlesResult> {
   const startDate = normalizeStartDate(options.startDate);
   const requestOptions = startDate ? { ...options, startDate } : options;
-  const cacheKey = `${symbol}-${interval}-${startDate ?? "latest"}`;
+  const cacheKey = candleCacheKey(symbol, interval, startDate);
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
+  }
+
+  const distributedCached = await getJsonCache<CandlesResult>(cacheKey);
+  if (distributedCached) {
+    cache.set(cacheKey, { data: distributedCached, timestamp: Date.now() });
+    return distributedCached;
   }
 
   const errors: string[] = [];
@@ -291,6 +309,7 @@ export async function getCandles(symbol: string, interval: string, options: Cand
       console.log(`[candles] ${name} OK: ${symbol} ${interval} → ${candles.length} candles`);
       const responseData: CandlesResult = { symbol, interval, source: name.toLowerCase(), candles };
       cache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+      await setJsonCache(cacheKey, responseData, candleCacheTtlSeconds(interval, startDate));
       return responseData;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

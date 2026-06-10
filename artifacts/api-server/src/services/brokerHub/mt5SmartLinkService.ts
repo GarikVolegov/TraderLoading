@@ -30,9 +30,9 @@ export interface Mt5SmartLinkDiagnosticCheck {
 }
 
 export interface Mt5SmartLinkService {
-  start(input: { profileId: string; brokerName: string; tradingEnabled: boolean; terminalPath?: string }): Promise<Mt5SmartLinkStatus>;
+  start(input: { profileId: string; brokerName: string; tradingEnabled: boolean; token: string; terminalPath?: string }): Promise<Mt5SmartLinkStatus>;
   status(profileId: string): Promise<Mt5SmartLinkStatus>;
-  login(input: { profileId: string; accountNumber: string; password: string; server: string; terminalPath?: string }): Promise<Mt5SmartLinkStatus>;
+  login(input: { profileId: string; accountNumber: string; password: string; server: string; token: string; terminalPath?: string }): Promise<Mt5SmartLinkStatus>;
   stop(profileId: string): Promise<Mt5SmartLinkStatus>;
   diagnostics(profileId: string): Promise<{ profileId: string; checks: Mt5SmartLinkDiagnosticCheck[] }>;
 }
@@ -136,6 +136,7 @@ export function createMt5SmartLinkService(): Mt5SmartLinkService {
     login?: string;
     password?: string;
     server?: string;
+    token: string;
   }): { status?: Mt5SmartLinkStatus; process?: ChildProcessWithoutNullStreams } {
     const script = bridgeScriptPath();
     if (!existsSync(script)) {
@@ -164,7 +165,7 @@ export function createMt5SmartLinkService(): Mt5SmartLinkService {
       "--profile-id",
       input.profileId,
       "--token",
-      "smartlink",
+      input.token,
     ];
     if (input.login) args.push("--login", input.login);
     if (input.password) args.push("--password", input.password);
@@ -178,7 +179,7 @@ export function createMt5SmartLinkService(): Mt5SmartLinkService {
           MT5_TERMINAL_PATH: input.terminalPath,
           TRADERLOADING_SMARTLINK_API: smartLinkApiBase(),
           TRADERLOADING_SMARTLINK_PROFILE_ID: input.profileId,
-          TRADERLOADING_SMARTLINK_TOKEN: "smartlink",
+          TRADERLOADING_SMARTLINK_TOKEN: input.token,
         },
         windowsHide: true,
       });
@@ -224,7 +225,7 @@ export function createMt5SmartLinkService(): Mt5SmartLinkService {
       const existing = bridges.get(input.profileId);
       if (existing?.process && !existing.process.killed) return { ...existing.status };
 
-      const launched = launchBridge({ profileId: input.profileId, terminalPath });
+      const launched = launchBridge({ profileId: input.profileId, terminalPath, token: input.token });
       if (launched.status) return remember(input.profileId, launched.status);
       return remember(
         input.profileId,
@@ -255,6 +256,7 @@ export function createMt5SmartLinkService(): Mt5SmartLinkService {
           login: input.accountNumber,
           password: input.password,
           server: input.server,
+          token: input.token,
         });
         if (launched.status) return remember(input.profileId, launched.status);
         return remember(

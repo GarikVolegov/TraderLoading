@@ -23,10 +23,11 @@ import {
   capText,
 } from "../services/knowledgeProcessor.js";
 import { ingestSource, buildAnalysisContext, graphStats } from "../services/knowledgeGraph.js";
+import { resolveUploadPath } from "../lib/uploads.js";
 
 const router: IRouter = Router();
 
-const BRAIN_UPLOADS_DIR = path.join(process.cwd(), "uploads", "brain");
+const BRAIN_UPLOADS_DIR = resolveUploadPath("brain");
 const KNOWLEDGE_DIR = path.join(BRAIN_UPLOADS_DIR, "knowledge");
 for (const dir of [BRAIN_UPLOADS_DIR, KNOWLEDGE_DIR]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

@@ -74,6 +74,14 @@ for (const key of [
 const cloudformation = readText("infra/aws/cloudformation/ecs-fargate.yml");
 for (const token of [
   "SentryDsn:",
+  "AlarmEmail:",
+  "HasAlarmEmail",
+  "AWS::SNS::Topic",
+  "AWS::SNS::Subscription",
+  "AWS::CloudWatch::Alarm",
+  "HTTPCode_Target_5XX_Count",
+  "CPUUtilization",
+  "AlarmActions",
   "APP_VERSION",
   "SENTRY_DSN",
   "SENTRY_ENVIRONMENT",

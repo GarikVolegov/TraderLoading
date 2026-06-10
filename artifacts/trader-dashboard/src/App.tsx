@@ -21,6 +21,11 @@ import { MacroNotifier } from "./components/MacroNotifier";
 import { SessionStartNotifier } from "./components/SessionStartNotifier";
 import { SessionCheckinModal } from "./components/SessionCheckinModal";
 import { CommandPalette } from "./components/CommandPalette";
+import { SignUpConversionTracker } from "./components/SignUpConversionTracker";
+import { initAnalytics } from "./lib/analytics";
+
+// Avvio analytics (no-op senza VITE_GA_MEASUREMENT_ID o senza consenso cookie).
+initAnalytics();
 import { ScheduledCallRuntime } from "./components/ScheduledCallRuntime";
 import { LevelRewardModal } from "./components/LevelRewardModal";
 import { PinLockScreen } from "./components/PinLockScreen";
@@ -50,6 +55,7 @@ const Broker = lazy(() => import("./pages/Broker"));
 const NotFound = lazy(() => import("./pages/not-found"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Admin = lazy(() => import("./pages/Admin"));
+const LegalPage = lazy(() => import("./pages/LegalPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -146,6 +152,22 @@ function SignUpPage() {
         fallbackRedirectUrl={`${basePath}/`}
       />
     </AuthPageShell>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <LegalPage kind="privacy" />
+    </Suspense>
+  );
+}
+
+function TermsPage() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <LegalPage kind="terms" />
+    </Suspense>
   );
 }
 
@@ -265,6 +287,7 @@ function AuthenticatedShell() {
       <SessionCheckinModal />
       <LevelRewardModal />
       <CommandPalette />
+      <SignUpConversionTracker />
 
       {/* Global nav — always mounted, unaffected by page transitions */}
       <TopNav />
@@ -315,6 +338,8 @@ function ClerkProviderWithRoutes() {
         <Switch>
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route path="/privacy" component={PrivacyPage} />
+          <Route path="/terms" component={TermsPage} />
           <Route path="/*?" component={AppShell} />
         </Switch>
       </QueryClientProvider>

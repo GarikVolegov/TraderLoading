@@ -16,8 +16,9 @@ import { isBrainConfigured } from "./llmClient.js";
 import { getUserNotificationLanguage, sendPushToUser, type SchedulerHandle } from "../routes/push.js";
 import { getServerNotificationCopy } from "./notifications/notificationCopy.js";
 import logger from "../lib/logger.js";
+import { resolveUploadPath } from "../lib/uploads.js";
 
-const BRAIN_UPLOADS_DIR = path.join(process.cwd(), "uploads", "brain");
+const BRAIN_UPLOADS_DIR = resolveUploadPath("brain");
 const _lastNotified = new Map<string, number>();
 
 async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {

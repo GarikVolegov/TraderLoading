@@ -138,18 +138,11 @@ export async function importBrokerAccountData(input: BrokerAccountDataSyncInput)
   for (const deal of closedDeals) {
     const riskDistance = riskPriceDistance(deal);
     const tradeReturnPct = returnPct(deal, input.snapshot);
-    const [existing] = await db
-      .select({
-        id: accountTradesTable.id,
-        journalEntryId: accountTradesTable.journalEntryId,
-      })
-      .from(accountTradesTable)
-      .where(and(
-        eq(accountTradesTable.source, deal.source),
-        eq(accountTradesTable.ticket, deal.id),
-        eq(accountTradesTable.userId, tradeUserId),
-      ))
-      .limit(1);
+    const uniqueTradeWhere = and(
+      eq(accountTradesTable.source, deal.source),
+      eq(accountTradesTable.ticket, deal.id),
+      eq(accountTradesTable.userId, tradeUserId),
+    );
 
     const values = {
       ticket: deal.id,
@@ -175,20 +168,41 @@ export async function importBrokerAccountData(input: BrokerAccountDataSyncInput)
       updatedAt: new Date(),
     };
 
-    let accountTradeId = existing?.id;
-    let journalEntryId = existing?.journalEntryId ?? null;
+    const [inserted] = await db
+      .insert(accountTradesTable)
+      .values(values)
+      .onConflictDoNothing()
+      .returning({ id: accountTradesTable.id });
 
-    if (existing) {
-      await db.update(accountTradesTable).set(values).where(eq(accountTradesTable.id, existing.id));
-      updated += 1;
-    } else {
-      const [inserted] = await db.insert(accountTradesTable).values(values).returning({ id: accountTradesTable.id });
+    let accountTradeId = inserted?.id;
+    let journalEntryId: number | null = null;
+    const shouldCreateJournal = Boolean(inserted);
+
+    if (inserted) {
       accountTradeId = inserted?.id;
       imported += 1;
+    } else {
+      const [current] = await db
+        .select({
+          id: accountTradesTable.id,
+          journalEntryId: accountTradesTable.journalEntryId,
+        })
+        .from(accountTradesTable)
+        .where(uniqueTradeWhere)
+        .limit(1);
+
+      if (!current) continue;
+      accountTradeId = current.id;
+      journalEntryId = current.journalEntryId;
+      await db.update(accountTradesTable).set(values).where(eq(accountTradesTable.id, current.id));
+      updated += 1;
     }
 
-    if (!accountTradeId || journalEntryId) continue;
+    if (!accountTradeId || journalEntryId || !shouldCreateJournal) continue;
 
+    // Dedup diario: lo stesso ticket può arrivare da una riconnessione del
+    // profilo (nuova riga account_trades) — riaggancia l'entry esistente
+    // invece di crearne un duplicato.
     const [journal] = await db
       .insert(journalEntriesTable)
       .values({

@@ -121,6 +121,10 @@ process.on("unhandledRejection", (reason) => {
     kind: "unhandledRejection",
   });
   logger.error({ reason }, "Unhandled promise rejection");
+  void shutdown("unhandledRejection", 1).finally(async () => {
+    await flushObservability(2_000);
+    process.exit(1);
+  });
 });
 
 process.on("uncaughtException", (err) => {

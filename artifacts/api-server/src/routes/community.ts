@@ -5,8 +5,9 @@ import fs from "fs";
 import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, voicePresenceTable, profileTable } from "@workspace/db";
 import { eq, and, desc, asc, sql, lt } from "drizzle-orm";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
+import { resolveUploadPath } from "../lib/uploads.js";
 
-const COMMUNITY_FILES_DIR = path.join(process.cwd(), "uploads", "community-files");
+const COMMUNITY_FILES_DIR = resolveUploadPath("community-files");
 if (!fs.existsSync(COMMUNITY_FILES_DIR)) fs.mkdirSync(COMMUNITY_FILES_DIR, { recursive: true });
 
 const communityFileStorage = multer.diskStorage({

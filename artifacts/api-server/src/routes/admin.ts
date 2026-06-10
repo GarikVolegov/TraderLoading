@@ -1,13 +1,25 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import {
   accountTradesTable,
   adminAuditLogsTable,
+  adminUserSubscriptionsTable,
   adminUserStatusTable,
   backtestSessionsTable,
+  backtestTradesTable,
+  brokerProfileStoreTable,
+  communitiesTable,
+  communityMessagesTable,
   db,
   journalEntriesTable,
+  levelMilestonesTable,
   loginAccessTable,
+  libraryCollectionsTable,
+  libraryContentsTable,
+  missionTemplatesTable,
+  newsSnapshotsTable,
   profileTable,
+  pushSubscriptionsTable,
+  quotesTable,
   sessionsTable,
   usersTable,
 } from "@workspace/db";
@@ -28,6 +40,66 @@ export function parseAdminLimit(value: unknown, fallback: number): number {
   return Math.min(100, Math.floor(parsed));
 }
 
+export type AdminStatusFilter = "all" | "active" | "suspended" | "banned";
+export type AdminSubscriptionPlan = "free" | "pro";
+export type AdminSubscriptionStatus =
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "canceled";
+
+const ADMIN_SUBSCRIPTION_PLANS: AdminSubscriptionPlan[] = [
+  "free",
+  "pro",
+];
+
+const ADMIN_SUBSCRIPTION_STATUSES: AdminSubscriptionStatus[] = [
+  "active",
+  "trialing",
+  "past_due",
+  "canceled",
+];
+
+export function parseAdminStatusFilter(value: unknown): AdminStatusFilter {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const status = String(raw ?? "all").trim().toLowerCase();
+  if (
+    status === "active" ||
+    status === "suspended" ||
+    status === "banned"
+  ) {
+    return status;
+  }
+  return "all";
+}
+
+export function parseAdminSubscriptionPlan(
+  value: unknown,
+): AdminSubscriptionPlan | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const plan = String(raw ?? "").trim().toLowerCase();
+  return ADMIN_SUBSCRIPTION_PLANS.includes(plan as AdminSubscriptionPlan)
+    ? (plan as AdminSubscriptionPlan)
+    : null;
+}
+
+export function parseAdminSubscriptionStatus(
+  value: unknown,
+): AdminSubscriptionStatus | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const status = String(raw ?? "").trim().toLowerCase();
+  return ADMIN_SUBSCRIPTION_STATUSES.includes(
+    status as AdminSubscriptionStatus,
+  )
+    ? (status as AdminSubscriptionStatus)
+    : null;
+}
+
+export function parseAdminAuditTarget(value: unknown): string {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return String(raw ?? "").trim();
+}
+
 export function serializeAdminUserStatus(
   row: { status: string } | null | undefined,
 ): string {
@@ -40,6 +112,10 @@ export function requireActionReason(value: unknown): string {
   return reason;
 }
 
+export function serializeRuntimeFlag(key: string, value: unknown) {
+  return { key, configured: String(value ?? "").trim().length > 0 };
+}
+
 function getRouteParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
@@ -48,6 +124,22 @@ function startOfToday(): Date {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return today;
+}
+
+function parseOptionalAdminDate(value: unknown): Date | null | undefined {
+  if (value === null) return null;
+  const raw = String(value ?? "").trim();
+  if (!raw) return undefined;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function normalizeAdminSubscriptionPeriodEnd(
+  plan: AdminSubscriptionPlan,
+  value: unknown,
+): Date | null | undefined {
+  if (plan === "free") return null;
+  return parseOptionalAdminDate(value);
 }
 
 router.get("/admin/me", requireAdmin("admin.access"), (req, res) => {
@@ -126,20 +218,483 @@ router.get("/admin/dashboard", requireAdmin("dashboard.read"), async (_req, res)
         id: "recent-audit",
         label: "Azioni admin recenti",
         count: recentAudit.length,
-        href: "/admin/audit",
+        href: "/admin/security",
       },
     ],
     recentAudit,
   });
 });
 
+router.get("/admin/trading/overview", requireAdmin("trading.read"), async (_req, res) => {
+  const today = startOfToday();
+  const [
+    [{ value: brokerProfiles }],
+    [{ value: importedTrades }],
+    [{ value: openTrades }],
+    [{ value: tradesToday }],
+    [{ value: backtestSessions }],
+    [{ value: backtestTrades }],
+    recentTrades,
+  ] = await Promise.all([
+    db.select({ value: count() }).from(brokerProfileStoreTable),
+    db.select({ value: count() }).from(accountTradesTable),
+    db
+      .select({ value: count() })
+      .from(accountTradesTable)
+      .where(eq(accountTradesTable.status, "open")),
+    db
+      .select({ value: count() })
+      .from(accountTradesTable)
+      .where(sql`${accountTradesTable.createdAt} >= ${today}`),
+    db.select({ value: count() }).from(backtestSessionsTable),
+    db.select({ value: count() }).from(backtestTradesTable),
+    db
+      .select({
+        id: accountTradesTable.id,
+        userId: accountTradesTable.userId,
+        ticket: accountTradesTable.ticket,
+        source: accountTradesTable.source,
+        symbol: accountTradesTable.symbol,
+        direction: accountTradesTable.direction,
+        status: accountTradesTable.status,
+        profit: accountTradesTable.profit,
+        createdAt: accountTradesTable.createdAt,
+      })
+      .from(accountTradesTable)
+      .orderBy(desc(accountTradesTable.createdAt))
+      .limit(8),
+  ]);
+
+  res.json({
+    metrics: {
+      brokerProfiles,
+      importedTrades,
+      openTrades,
+      tradesToday,
+      backtestSessions,
+      backtestTrades,
+    },
+    recentTrades,
+  });
+});
+
+router.get("/admin/content/overview", requireAdmin("content.publish"), async (_req, res) => {
+  const [
+    [{ value: collections }],
+    [{ value: publishedCollections }],
+    [{ value: contents }],
+    [{ value: publishedContents }],
+    [{ value: missionTemplates }],
+    [{ value: levelMilestones }],
+    [{ value: quotes }],
+    [{ value: communities }],
+    [{ value: communityMessages }],
+  ] = await Promise.all([
+    db.select({ value: count() }).from(libraryCollectionsTable),
+    db
+      .select({ value: count() })
+      .from(libraryCollectionsTable)
+      .where(eq(libraryCollectionsTable.published, true)),
+    db.select({ value: count() }).from(libraryContentsTable),
+    db
+      .select({ value: count() })
+      .from(libraryContentsTable)
+      .where(eq(libraryContentsTable.published, true)),
+    db.select({ value: count() }).from(missionTemplatesTable),
+    db.select({ value: count() }).from(levelMilestonesTable),
+    db.select({ value: count() }).from(quotesTable),
+    db.select({ value: count() }).from(communitiesTable),
+    db.select({ value: count() }).from(communityMessagesTable),
+  ]);
+
+  res.json({
+    metrics: {
+      collections,
+      publishedCollections,
+      contents,
+      publishedContents,
+      missionTemplates,
+      levelMilestones,
+      quotes,
+      communities,
+      communityMessages,
+    },
+  });
+});
+
+router.get("/admin/content/items", requireAdmin("content.publish"), async (req, res) => {
+  const limit = parseAdminLimit(req.query.limit, 25);
+
+  const items = await db
+    .select({
+      id: libraryContentsTable.id,
+      title: libraryContentsTable.title,
+      type: libraryContentsTable.type,
+      published: libraryContentsTable.published,
+      requiredLevel: libraryContentsTable.requiredLevel,
+      collectionId: libraryContentsTable.collectionId,
+      collectionTitle: libraryCollectionsTable.title,
+      updatedAt: libraryContentsTable.updatedAt,
+      createdAt: libraryContentsTable.createdAt,
+    })
+    .from(libraryContentsTable)
+    .leftJoin(
+      libraryCollectionsTable,
+      eq(libraryCollectionsTable.id, libraryContentsTable.collectionId),
+    )
+    .orderBy(desc(libraryContentsTable.updatedAt), desc(libraryContentsTable.createdAt))
+    .limit(limit);
+
+  res.json({ items });
+});
+
+async function updateAdminContentPublished({
+  req,
+  res,
+  published,
+}: {
+  req: Request;
+  res: Response;
+  published: boolean;
+}) {
+  const itemId = Number(getRouteParam(req.params.itemId));
+  if (!Number.isInteger(itemId)) {
+    res.status(400).json({ error: "ID contenuto non valido" });
+    return;
+  }
+
+  let reason: string;
+  try {
+    reason = requireActionReason(req.body?.reason);
+  } catch {
+    res.status(400).json({ error: "Motivo obbligatorio" });
+    return;
+  }
+
+  const [before] = await db
+    .select()
+    .from(libraryContentsTable)
+    .where(eq(libraryContentsTable.id, itemId))
+    .limit(1);
+
+  if (!before) {
+    res.status(404).json({ error: "Contenuto non trovato" });
+    return;
+  }
+
+  const [after] = await db
+    .update(libraryContentsTable)
+    .set({ published, updatedAt: new Date() })
+    .where(eq(libraryContentsTable.id, itemId))
+    .returning();
+
+  await writeAdminAudit({
+    req,
+    admin: req.admin!,
+    action: published ? "content.publish" : "content.unpublish",
+    targetType: "library_content",
+    targetId: String(itemId),
+    reason,
+    before,
+    after,
+  });
+
+  res.json({ success: true, item: after });
+}
+
+router.post(
+  "/admin/content/items/:itemId/publish",
+  requireAdmin("content.publish"),
+  async (req, res) => {
+    await updateAdminContentPublished({ req, res, published: true });
+  },
+);
+
+router.post(
+  "/admin/content/items/:itemId/unpublish",
+  requireAdmin("content.publish"),
+  async (req, res) => {
+    await updateAdminContentPublished({ req, res, published: false });
+  },
+);
+
+router.get("/admin/subscriptions", requireAdmin("billing.subscriptions.write"), async (req, res) => {
+  const q = normalizeAdminSearch(req.query.q);
+  const limit = parseAdminLimit(req.query.limit, 50);
+  const filters = [];
+
+  if (q) {
+    filters.push(
+      or(
+        ilike(profileTable.name, `%${q}%`),
+        ilike(usersTable.email, `%${q}%`),
+        ilike(profileTable.userId, `%${q}%`),
+        ilike(adminUserSubscriptionsTable.plan, `%${q}%`),
+      ),
+    );
+  }
+
+  const [rows, [{ value: manualOverrides }], [{ value: activeSubscriptions }], [{ value: paidPlans }]] =
+    await Promise.all([
+      db
+        .select({
+          profileId: profileTable.id,
+          userId: profileTable.userId,
+          name: profileTable.name,
+          email: usersTable.email,
+          plan: adminUserSubscriptionsTable.plan,
+          status: adminUserSubscriptionsTable.status,
+          source: adminUserSubscriptionsTable.source,
+          manualOverride: adminUserSubscriptionsTable.manualOverride,
+          currentPeriodEnd: adminUserSubscriptionsTable.currentPeriodEnd,
+          reason: adminUserSubscriptionsTable.reason,
+          updatedBy: adminUserSubscriptionsTable.updatedBy,
+          updatedAt: adminUserSubscriptionsTable.updatedAt,
+        })
+        .from(profileTable)
+        .leftJoin(usersTable, eq(usersTable.id, profileTable.userId))
+        .leftJoin(
+          adminUserSubscriptionsTable,
+          eq(adminUserSubscriptionsTable.userId, profileTable.userId),
+        )
+        .where(filters.length > 0 ? and(...filters) : undefined)
+        .orderBy(
+          desc(adminUserSubscriptionsTable.updatedAt),
+          desc(profileTable.updatedAt),
+        )
+        .limit(limit),
+      db
+        .select({ value: count() })
+        .from(adminUserSubscriptionsTable)
+        .where(eq(adminUserSubscriptionsTable.manualOverride, true)),
+      db
+        .select({ value: count() })
+        .from(adminUserSubscriptionsTable)
+        .where(eq(adminUserSubscriptionsTable.status, "active")),
+      db
+        .select({ value: count() })
+        .from(adminUserSubscriptionsTable)
+        .where(eq(adminUserSubscriptionsTable.plan, "pro")),
+    ]);
+
+  res.json({
+    metrics: {
+      visibleUsers: rows.length,
+      manualOverrides,
+      activeSubscriptions,
+      paidPlans,
+    },
+    subscriptions: rows.map((row) => ({
+      ...row,
+      plan: row.plan ?? "free",
+      status: row.status ?? "active",
+      source: row.source ?? "default",
+      manualOverride: row.manualOverride ?? false,
+      reason: row.reason ?? null,
+      updatedBy: row.updatedBy ?? null,
+      updatedAt: row.updatedAt ?? null,
+      currentPeriodEnd: row.currentPeriodEnd ?? null,
+    })),
+  });
+});
+
+router.post(
+  "/admin/subscriptions/:userId",
+  requireAdmin("billing.subscriptions.write"),
+  async (req, res) => {
+    const targetUserId = getRouteParam(req.params.userId).trim();
+    if (!targetUserId) {
+      res.status(400).json({ error: "Utente non valido" });
+      return;
+    }
+
+    const plan = parseAdminSubscriptionPlan(req.body?.plan);
+    const status = parseAdminSubscriptionStatus(req.body?.status);
+    if (!plan || !status) {
+      res.status(400).json({ error: "Piano o stato abbonamento non valido" });
+      return;
+    }
+
+    let reason: string;
+    try {
+      reason = requireActionReason(req.body?.reason);
+    } catch {
+      res.status(400).json({ error: "Motivo obbligatorio" });
+      return;
+    }
+
+    const currentPeriodEnd = normalizeAdminSubscriptionPeriodEnd(
+      plan,
+      req.body?.currentPeriodEnd,
+    );
+    if (currentPeriodEnd === null && req.body?.currentPeriodEnd) {
+      res.status(400).json({ error: "Data fine periodo non valida" });
+      return;
+    }
+
+    const [profile] = await db
+      .select({ userId: profileTable.userId })
+      .from(profileTable)
+      .where(eq(profileTable.userId, targetUserId))
+      .limit(1);
+
+    if (!profile?.userId) {
+      res.status(404).json({ error: "Utente non trovato" });
+      return;
+    }
+
+    const [before] = await db
+      .select()
+      .from(adminUserSubscriptionsTable)
+      .where(eq(adminUserSubscriptionsTable.userId, targetUserId))
+      .limit(1);
+
+    const values = {
+      userId: targetUserId,
+      plan,
+      status,
+      source: "manual",
+      manualOverride: true,
+      currentPeriodEnd,
+      reason,
+      updatedBy: req.admin!.userId,
+      updatedAt: new Date(),
+    };
+
+    const [subscription] = await db
+      .insert(adminUserSubscriptionsTable)
+      .values(values)
+      .onConflictDoUpdate({
+        target: adminUserSubscriptionsTable.userId,
+        set: values,
+      })
+      .returning();
+
+    await writeAdminAudit({
+      req,
+      admin: req.admin!,
+      action: "subscriptions.manual_update",
+      targetType: "subscription",
+      targetId: targetUserId,
+      reason,
+      before,
+      after: subscription,
+    });
+
+    res.json({ success: true, subscription });
+  },
+);
+
+router.get("/admin/support/overview", requireAdmin("support.write"), async (_req, res) => {
+  const today = startOfToday();
+  const [
+    [{ value: suspendedUsers }],
+    [{ value: activeToday }],
+    [{ value: pushSubscribers }],
+    [{ value: adminActionsToday }],
+    recentLoginAccess,
+  ] = await Promise.all([
+    db
+      .select({ value: count() })
+      .from(adminUserStatusTable)
+      .where(eq(adminUserStatusTable.status, "suspended")),
+    db
+      .select({ value: count() })
+      .from(loginAccessTable)
+      .where(sql`${loginAccessTable.createdAt} >= ${today}`),
+    db.select({ value: count() }).from(pushSubscriptionsTable),
+    db
+      .select({ value: count() })
+      .from(adminAuditLogsTable)
+      .where(sql`${adminAuditLogsTable.createdAt} >= ${today}`),
+    db
+      .select({
+        id: loginAccessTable.id,
+        userId: loginAccessTable.userId,
+        ipAddress: loginAccessTable.ipAddress,
+        userAgent: loginAccessTable.userAgent,
+        createdAt: loginAccessTable.createdAt,
+      })
+      .from(loginAccessTable)
+      .orderBy(desc(loginAccessTable.createdAt))
+      .limit(8),
+  ]);
+
+  res.json({
+    metrics: {
+      suspendedUsers,
+      activeToday,
+      pushSubscribers,
+      adminActionsToday,
+    },
+    recentLoginAccess,
+  });
+});
+
+router.get(
+  "/admin/system/overview",
+  requireAdmin("system.feature_flags.write"),
+  async (_req, res) => {
+    const started = Date.now();
+    let database: { status: "ok" | "error"; latencyMs: number };
+    try {
+      await db.execute(sql`select 1`);
+      database = { status: "ok", latencyMs: Date.now() - started };
+    } catch {
+      database = { status: "error", latencyMs: Date.now() - started };
+    }
+
+    const [
+      [{ value: sessions }],
+      [{ value: pushSubscriptions }],
+      [{ value: newsSnapshots }],
+      [{ value: adminUsers }],
+    ] = await Promise.all([
+      db.select({ value: count() }).from(sessionsTable),
+      db.select({ value: count() }).from(pushSubscriptionsTable),
+      db.select({ value: count() }).from(newsSnapshotsTable),
+      db.select({ value: count() }).from(adminUserStatusTable),
+    ]);
+
+    res.json({
+      runtime: {
+        nodeEnv: process.env.NODE_ENV ?? "unknown",
+        uptimeSeconds: Math.round(process.uptime()),
+        version: process.env.APP_VERSION ?? process.env.npm_package_version ?? "unknown",
+        database,
+      },
+      metrics: {
+        sessions,
+        pushSubscriptions,
+        newsSnapshots,
+        adminUserStatuses: adminUsers,
+      },
+      flags: [
+        serializeRuntimeFlag("CLERK_SECRET_KEY", process.env.CLERK_SECRET_KEY),
+        serializeRuntimeFlag("VAPID_PUBLIC_KEY", process.env.VAPID_PUBLIC_KEY),
+        serializeRuntimeFlag("VAPID_PRIVATE_KEY", process.env.VAPID_PRIVATE_KEY),
+        serializeRuntimeFlag("SENTRY_DSN", process.env.SENTRY_DSN),
+        serializeRuntimeFlag("OPENAI_API_KEY", process.env.OPENAI_API_KEY),
+        serializeRuntimeFlag("BRAIN_SCAN_ENABLED", process.env.BRAIN_SCAN_ENABLED),
+      ],
+    });
+  },
+);
+
 router.get("/admin/users", requireAdmin("users.read"), async (req, res) => {
   const q = normalizeAdminSearch(req.query.q);
   const limit = parseAdminLimit(req.query.limit, 50);
-  const status = String(req.query.status ?? "all");
+  const status = parseAdminStatusFilter(req.query.status);
   const filters = [];
 
-  if (status !== "all") {
+  if (status === "active") {
+    filters.push(
+      or(
+        eq(adminUserStatusTable.status, "active"),
+        sql`${adminUserStatusTable.status} is null`,
+      ),
+    );
+  } else if (status !== "all") {
     filters.push(eq(adminUserStatusTable.status, status));
   }
 
@@ -423,9 +978,21 @@ router.post(
 
 router.get("/admin/audit", requireAdmin("security.audit.read"), async (req, res) => {
   const limit = parseAdminLimit(req.query.limit, 50);
+  const actor = parseAdminAuditTarget(req.query.actor);
+  const targetType = parseAdminAuditTarget(req.query.targetType);
+  const targetId = parseAdminAuditTarget(req.query.targetId);
+  const action = parseAdminAuditTarget(req.query.action);
+  const filters = [];
+
+  if (actor) filters.push(eq(adminAuditLogsTable.actorUserId, actor));
+  if (targetType) filters.push(eq(adminAuditLogsTable.targetType, targetType));
+  if (targetId) filters.push(eq(adminAuditLogsTable.targetId, targetId));
+  if (action) filters.push(eq(adminAuditLogsTable.action, action));
+
   const rows = await db
     .select()
     .from(adminAuditLogsTable)
+    .where(filters.length > 0 ? and(...filters) : undefined)
     .orderBy(desc(adminAuditLogsTable.createdAt))
     .limit(limit);
 

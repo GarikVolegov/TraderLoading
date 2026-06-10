@@ -4,10 +4,11 @@ import path from "path";
 import fs from "fs";
 import { db, libraryCollectionsTable, libraryContentsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
+import { resolveUploadPath } from "../lib/uploads.js";
 
 const router: IRouter = Router();
 
-const LIBRARY_FILES_DIR = path.join(process.cwd(), "uploads", "library-files");
+const LIBRARY_FILES_DIR = resolveUploadPath("library-files");
 if (!fs.existsSync(LIBRARY_FILES_DIR)) fs.mkdirSync(LIBRARY_FILES_DIR, { recursive: true });
 
 const ALLOWED_MIME = new Set([

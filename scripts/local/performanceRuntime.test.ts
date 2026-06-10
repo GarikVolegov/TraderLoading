@@ -72,6 +72,10 @@ assert.ok(
   serverEntry.indexOf("await closeDbPool()") > serverEntry.indexOf("logShutdownFailures(stopResults)"),
   "database pool should close after runtime and scheduler shutdown has drained",
 );
+assert.match(
+  serverEntry,
+  /process\.on\("unhandledRejection", \(reason\) => \{[\s\S]*void shutdown\("unhandledRejection", 1\)\.finally\(async \(\) => \{[\s\S]*await flushObservability\(2_000\);[\s\S]*process\.exit\(1\);[\s\S]*\}\);[\s\S]*\}\);/s,
+);
 
 const pushSource = readText("artifacts/api-server/src/routes/push.ts");
 assert.match(pushSource, /import logger from "\.\.\/lib\/logger\.js"/);

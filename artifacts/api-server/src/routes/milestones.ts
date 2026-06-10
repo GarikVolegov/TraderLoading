@@ -11,10 +11,11 @@ import {
 } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { getUserId, getLevelName, computeLevel } from "./profile.js";
+import { resolveUploadPath } from "../lib/uploads.js";
 
 const router: IRouter = Router();
 
-const MILESTONE_FILES_DIR = path.join(process.cwd(), "uploads", "milestone-files");
+const MILESTONE_FILES_DIR = resolveUploadPath("milestone-files");
 if (!fs.existsSync(MILESTONE_FILES_DIR)) fs.mkdirSync(MILESTONE_FILES_DIR, { recursive: true });
 
 const milestoneFileStorage = multer.diskStorage({

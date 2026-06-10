@@ -3,6 +3,7 @@ export type FxBlueSetupStatus = "created" | "profile_verified" | "waiting_for_sy
 
 export interface FxBlueSetupIntent {
   id: string;
+  ownerUserId?: string;
   platform: FxBluePlatform;
   brokerName: string;
   server: string;
@@ -18,6 +19,7 @@ export interface FxBlueSetupIntent {
 }
 
 export interface FxBlueSetupIntentDraft {
+  ownerUserId?: unknown;
   platform: unknown;
   brokerName: unknown;
   server: unknown;
@@ -69,9 +71,11 @@ function requireSetupInput(input: FxBlueSetupIntentDraft): Omit<FxBlueSetupInten
   const server = readString(input.server);
   const accountNumber = readString(input.accountNumber);
   const fxBlueProfileRef = sanitizeFxBlueProfileRef(input.fxBlueProfileRef);
+  const ownerUserId = readString(input.ownerUserId);
   if (!accountNumber && !fxBlueProfileRef) throw new Error("Numero conto richiesto.");
   if (!server && !fxBlueProfileRef) throw new Error("Server broker richiesto.");
   return {
+    ...(ownerUserId ? { ownerUserId } : {}),
     platform: sanitizePlatform(input.platform),
     brokerName,
     server: server || "FX Blue Account Sync",

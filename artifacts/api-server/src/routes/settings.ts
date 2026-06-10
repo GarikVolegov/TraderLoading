@@ -5,6 +5,7 @@ import fs from "fs";
 import { db, userSettingsTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
 import { getUserId } from "./profile.js";
+import { getUploadsDir } from "../lib/uploads.js";
 
 const router: IRouter = Router();
 const SUPPORTED_LANGUAGES = new Set(["it", "en", "es", "fr", "de"]);
@@ -115,7 +116,7 @@ export function buildSettingsUpdateData(
   return { updateData };
 }
 
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+const UPLOADS_DIR = getUploadsDir();
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }

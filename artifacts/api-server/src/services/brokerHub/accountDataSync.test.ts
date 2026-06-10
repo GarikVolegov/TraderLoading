@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { importBrokerAccountData, resultFromTradeNet } from "./accountDataSync.js";
 import type { BrokerAccountProfile, BrokerDeal, BrokerSnapshot } from "./types.js";
+
+const source = readFileSync(new URL("./accountDataSync.ts", import.meta.url), "utf8");
+assert.match(source, /onConflictDoNothing\(\)/);
+assert.doesNotMatch(source, /const \[existing\] = await db\s+\.select\(\{\s+id: accountTradesTable\.id,\s+journalEntryId: accountTradesTable\.journalEntryId,\s+\}\)\s+\.from\(accountTradesTable\)/s);
 
 const previousDatabaseUrl = process.env.DATABASE_URL;
 delete process.env.DATABASE_URL;

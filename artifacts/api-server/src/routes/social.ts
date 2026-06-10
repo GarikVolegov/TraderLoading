@@ -7,9 +7,10 @@ import { eq, and, or, desc, asc, sql, inArray, gt, isNull } from "drizzle-orm";
 import { getUserNotificationLanguage, sendPushToUser } from "./push.js";
 import { getServerNotificationCopy } from "../services/notifications/notificationCopy.js";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
+import { resolveUploadPath } from "../lib/uploads.js";
 
-const POST_IMAGES_DIR = path.join(process.cwd(), "uploads", "post-images");
-const CHAT_FILES_DIR = path.join(process.cwd(), "uploads", "chat-files");
+const POST_IMAGES_DIR = resolveUploadPath("post-images");
+const CHAT_FILES_DIR = resolveUploadPath("chat-files");
 if (!fs.existsSync(POST_IMAGES_DIR)) fs.mkdirSync(POST_IMAGES_DIR, { recursive: true });
 if (!fs.existsSync(CHAT_FILES_DIR)) fs.mkdirSync(CHAT_FILES_DIR, { recursive: true });
 
@@ -470,7 +471,7 @@ router.get("/social/mutual-followers", async (req, res) => {
 });
 
 // ─── Voice Upload ─────────────────────────────────────────────────────────────
-const VOICE_DIR = path.join(process.cwd(), "uploads", "voice");
+const VOICE_DIR = resolveUploadPath("voice");
 if (!fs.existsSync(VOICE_DIR)) fs.mkdirSync(VOICE_DIR, { recursive: true });
 
 const voiceStorage = multer.diskStorage({

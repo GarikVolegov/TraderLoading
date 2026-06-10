@@ -17,6 +17,7 @@ export type AdminPermission =
   | "support.write"
   | "moderation.resolve"
   | "content.publish"
+  | "billing.subscriptions.write"
   | "trading.read"
   | "trading.retry_sync"
   | "system.feature_flags.write"
@@ -40,6 +41,7 @@ export const ADMIN_PERMISSIONS_BY_ROLE: Record<AdminRole, AdminPermission[]> = {
     "support.write",
     "moderation.resolve",
     "content.publish",
+    "billing.subscriptions.write",
     "trading.read",
     "trading.retry_sync",
     "system.feature_flags.write",
@@ -55,6 +57,7 @@ export const ADMIN_PERMISSIONS_BY_ROLE: Record<AdminRole, AdminPermission[]> = {
     "support.write",
     "moderation.resolve",
     "content.publish",
+    "billing.subscriptions.write",
     "trading.read",
     "trading.retry_sync",
     "security.audit.read",

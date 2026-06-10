@@ -25,6 +25,12 @@ declare global {
 const recentAccess = new Map<string, number>();
 const DEDUP_TTL = 60 * 60 * 1000; // 1 hour
 
+function pruneExpiredAccess(now: number) {
+  for (const [key, loggedAt] of recentAccess) {
+    if (now - loggedAt >= DEDUP_TTL) recentAccess.delete(key);
+  }
+}
+
 function getClientIp(req: Request): string {
   return req.ip || req.socket?.remoteAddress || "unknown";
 }
@@ -45,6 +51,7 @@ async function recordAccess(
   const last = recentAccess.get(key);
   if (last && now - last < DEDUP_TTL) return; // already logged recently
 
+  pruneExpiredAccess(now);
   recentAccess.set(key, now);
 
   // Also check DB — avoid duplicates surviving a server restart (within 1 h)

@@ -22,6 +22,7 @@ import {
   validateJournalRecapPeriod,
   type JournalRecapKind,
 } from "../services/journalRecapPeriods.js";
+import { getUploadsDir } from "../lib/uploads.js";
 
 const router: IRouter = Router();
 const JOURNAL_XP_REWARD = 75;
@@ -58,7 +59,7 @@ export type JournalTagSummary = {
   count: number;
 };
 
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+const UPLOADS_DIR = getUploadsDir();
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
