@@ -49,6 +49,7 @@ const Calendar = lazy(() => import("./pages/Calendar"));
 const Broker = lazy(() => import("./pages/Broker"));
 const NotFound = lazy(() => import("./pages/not-found"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
+const Admin = lazy(() => import("./pages/Admin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -237,6 +238,16 @@ function AppRouter() {
 }
 
 function AuthenticatedShell() {
+  const [location] = useLocation();
+
+  if (location.startsWith("/admin")) {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <Admin />
+      </Suspense>
+    );
+  }
+
   return (
     <BackgroundProvider>
       {/* Global overlays — never unmounted during page transitions */}
