@@ -74,6 +74,7 @@ async function recordAccess(
 type AuthMiddlewareDeps = {
   getClerkUserId?: (req: Request) => string | null | undefined;
   getStoredSession?: (sid: string) => Promise<SessionData | null>;
+  getAdminStatus?: (userId: string) => Promise<{ status: string } | null>;
   recordAccess?: (
     userId: string,
     ip: string,
@@ -95,6 +96,17 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
   const getClerkUserId =
     deps.getClerkUserId ?? ((req: Request) => getAuth(req).userId);
   const getStoredSession = deps.getStoredSession ?? getSession;
+  const getAdminStatus =
+    deps.getAdminStatus ??
+    (async (userId: string) => {
+      const [adminStatus] = await db
+        .select({ status: adminUserStatusTable.status })
+        .from(adminUserStatusTable)
+        .where(eq(adminUserStatusTable.userId, userId))
+        .limit(1);
+
+      return adminStatus ?? null;
+    });
   const recordLoginAccess = deps.recordAccess ?? recordAccess;
   const warn =
     deps.warn ??
@@ -141,11 +153,12 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
     }
 
     if (req.user) {
-      const [adminStatus] = await db
-        .select({ status: adminUserStatusTable.status })
-        .from(adminUserStatusTable)
-        .where(eq(adminUserStatusTable.userId, req.user.id))
-        .limit(1);
+      let adminStatus: { status: string } | null = null;
+      try {
+        adminStatus = await getAdminStatus(req.user.id);
+      } catch (error) {
+        warn(error, "Admin status lookup failed");
+      }
 
       if (!isAccountAllowedByAdminStatus(adminStatus ?? null)) {
         req.user = undefined;

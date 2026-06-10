@@ -21,6 +21,7 @@ const middleware = createAuthMiddleware({
           access_token: "access-token",
         }
       : null,
+  getAdminStatus: async () => null,
   recordAccess: async () => {},
 });
 
@@ -39,6 +40,7 @@ assert.deepEqual(req.user, sessionUser);
   let recordedIp = "";
   const ipMiddleware = createAuthMiddleware({
     getClerkUserId: () => "clerk-user",
+    getAdminStatus: async () => null,
     recordAccess: async (_userId, ip) => {
       recordedIp = ip;
     },
@@ -61,6 +63,7 @@ assert.deepEqual(req.user, sessionUser);
   const warnings: Array<{ message: string; error: unknown }> = [];
   const accessFailureMiddleware = createAuthMiddleware({
     getClerkUserId: () => "clerk-user",
+    getAdminStatus: async () => null,
     recordAccess: async () => {
       throw new Error("db logging failed");
     },
@@ -95,6 +98,7 @@ assert.deepEqual(req.user, sessionUser);
       user: sessionUser,
       access_token: "access-token",
     }),
+    getAdminStatus: async () => null,
     recordAccess: async () => {},
     warn: (error, message) => {
       warnings.push({ error, message });
@@ -121,6 +125,7 @@ assert.deepEqual(req.user, sessionUser);
     getStoredSession: async () => {
       throw new Error("session database failed");
     },
+    getAdminStatus: async () => null,
     recordAccess: async () => {},
     warn: (error, message) => {
       warnings.push({ error, message });
