@@ -1,7 +1,7 @@
 import { getAuth } from "@clerk/express";
 import { type Request, type Response, type NextFunction } from "express";
 import type { AuthUser } from "@workspace/api-zod";
-import { db, loginAccessTable } from "@workspace/db";
+import { adminUserStatusTable, db, loginAccessTable } from "@workspace/db";
 import { and, eq, gte } from "drizzle-orm";
 import logger, { requestContext, type RequestContext } from "../lib/logger";
 import { getSession, getSessionId, type SessionData } from "../lib/auth";
@@ -27,6 +27,12 @@ const DEDUP_TTL = 60 * 60 * 1000; // 1 hour
 
 function getClientIp(req: Request): string {
   return req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+export function isAccountAllowedByAdminStatus(
+  status: { status: string } | null | undefined,
+): boolean {
+  return !status || status.status === "active";
 }
 
 async function recordAccess(
@@ -135,6 +141,18 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
     }
 
     if (req.user) {
+      const [adminStatus] = await db
+        .select({ status: adminUserStatusTable.status })
+        .from(adminUserStatusTable)
+        .where(eq(adminUserStatusTable.userId, req.user.id))
+        .limit(1);
+
+      if (!isAccountAllowedByAdminStatus(adminStatus ?? null)) {
+        req.user = undefined;
+        next();
+        return;
+      }
+
       const ip = getClientIp(req);
       const ua = req.headers["user-agent"];
       recordLoginAccess(req.user.id, ip, ua).catch((error) => {
