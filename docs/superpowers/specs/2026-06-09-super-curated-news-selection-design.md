@@ -26,6 +26,19 @@ This keeps the system predictable, testable, and independent from LLM availabili
 > and with the requirement that the feed always contains at least the most
 > important news. The route now uses `limit: 40`, `minKeep: 10`,
 > `sort: "chronological"`. The ticker keeps `limit: 3` score-ordered.
+
+> Amendment (2026-06-10, quality hardening): curation gained (a) hard title
+> exclusions for price-forecast listicles, evergreen explainers, question
+> op-eds, time-to-buy advice, key-level/technical clickbait and local-market
+> rate-today content (₹/Nifty/FCNR); (b) a corporate/single-stock noise penalty
+> (dividends, earnings, mining deals) plus a low-match-confidence penalty;
+> (c) per-language near-duplicate dedupe (Jaccard ≥ 0.6 on translated titles OR
+> original titles, publisher suffix stripped); (d) a fallback-tier last resort
+> so quiet days never produce an empty feed (stale stays excluded). Upstream,
+> enrichment/classification now run on the original English text instead of the
+> translation, the LLM impact score is no longer overwritten by rule scores, and
+> per-user personalization only hides downvoted articles (re-ranking would break
+> the chronological guarantee).
 - Keep excluded articles out of the user-facing feed.
 - Make the selection rule easy to test and tune.
 

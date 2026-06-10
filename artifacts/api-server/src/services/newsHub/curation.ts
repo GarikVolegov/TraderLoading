@@ -18,7 +18,7 @@ const GENERIC_NOISE_RE =
 // evergreen explainers are never trading news, regardless of how the rest of
 // the article scores. Checked on titles only to avoid body-text false positives.
 const HARD_NOISE_TITLE_RE =
-  /price\s+(forecast|prediction)s?|previsioni?\s+(per\s+il|del|sul)\s+prezzo|forecast\s+for\s+(today|tomorrow|this\s+week)|per\s+oggi,?\s*domani|technical\s+analysis|analisi\s+tecnica|top\s+\d+\s|how\s+to\s+trade|come\s+fare\s+trading|spiegazion\w*|explained|explainer|beginner'?s?\s+guide|guida\s+(a|al|per)\b|guide\s+to\b|come\s+viene\s+fissat|how\s+.{0,24}\bis\s+(set|priced|determined)|cos'?è\b|what\s+is\b|è\s+(ora|il\s+momento)\s+di\s+(acquistare|comprare|vendere)|time\s+to\s+(buy|sell)|should\s+you\s+(buy|sell)|livello\s+(critico|chiave)|key\s+(level|buy|sell)|critical\s+level|buy\s+zones?|zone\s+(chiave|di\s+acquisto)|price\s+analysis|analisi\s+del\s+prezzo|analyst\s+(spots|reveals|pinpoints|names)|^(perch[eé]|why)(?=[\s,:'’])[^?]*\?\s*$/i;
+  /price\s+(forecast|prediction)s?|previsioni?\s+(per\s+il|del|sul)\s+prezzo|forecast\s+for\s+(today|tomorrow|this\s+week)|per\s+oggi,?\s*domani|technical\s+analysis|analisi\s+tecnica|top\s+\d+\s|how\s+to\s+trade|come\s+fare\s+trading|spiegazion\w*|explained|explainer|beginner'?s?\s+guide|guida\s+(a|al|per)\b|guide\s+to\b|come\s+viene\s+fissat|how\s+.{0,24}\bis\s+(set|priced|determined)|cos'?è\b|what\s+is\b|è\s+(ora|il\s+momento)\s+di\s+(acquistare|comprare|vendere)|time\s+to\s+(buy|sell)|should\s+you\s+(buy|sell)|livello\s+(critico|chiave)|key\s+(level|buy|sell)|critical\s+level|buy\s+zones?|zone\s+(chiave|di\s+acquisto)|price\s+analysis|analisi\s+del\s+prezzo|analyst\s+(spots|reveals|pinpoints|names)|gold\s+(and\s+silver\s+)?rates?\s+today|silver\s+rates?\s+today|tass[oi]\s+di\s+oro|₹|\brupees?\b|\bfcnr\b|\bnifty\b|\bsensex\b|\b\d+\s+(things\s+to\s+know|cose\s+(fondamentali|da\s+sapere))|^(perch[eé]|why)(?=[\s,:'’])[^?]*\?\s*$/i;
 
 // Single-stock / corporate housekeeping content (dividends, earnings, mining
 // exploration deals): it names the asset but does not move the macro pair.
@@ -129,13 +129,30 @@ interface TitleTokenSets {
   original: Set<string>;
 }
 
+// Function words common in headlines: they inflate similarity between distinct
+// stories ("dell'oro", "mentre") and dilute it between true duplicates.
+const TITLE_STOPWORDS = new Set([
+  "dell", "della", "delle", "dello", "dalla", "dagli", "sugli", "sulla", "nelle", "negli",
+  "mentre", "dopo", "prima", "verso", "contro", "sopra", "sotto", "come", "alla", "alle", "agli",
+  "potrebbe", "potrebbero", "ancora", "questo", "questa",
+  "with", "from", "after", "while", "amid", "over", "under", "into", "says", "said",
+  "could", "would", "might", "this", "that", "these", "those", "than", "have", "been",
+]);
+
 function tokenSet(title: string | undefined): Set<string> {
   if (!title) return new Set();
   const text = title
     .replace(/\s+-\s+[^-]{2,60}$/, "") // drop the "- Publisher" suffix
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s]/gu, " ");
-  return new Set(text.split(/\s+/).filter((word) => word.length > 3));
+  return new Set(
+    text
+      .split(/\s+/)
+      .filter((word) => word.length > 3 && !TITLE_STOPWORDS.has(word))
+      // Light prefix stemming unifies inflections across rewrites of the same
+      // story ("indebolimento"/"indebolirsi", "pledge"/"pledges").
+      .map((word) => word.slice(0, 6)),
+  );
 }
 
 function titleTokens(article: NewsArticle): TitleTokenSets {

@@ -214,6 +214,36 @@ const trumpDeduped = selectCuratedNews([trumpA, trumpB], { pairs: "XAUUSD" });
 assert.equal(trumpDeduped.length, 1);
 assert.equal(trumpDeduped[0]?.impactScore, 9);
 
+// Re-published bank calls hours apart are merged too: headline function words
+// (dell', mentre, …) are ignored so the shared substance dominates.
+const msA = article("Morgan Stanley prevede un indebolimento del dollaro USA mentre la Fed mantiene i tassi", {
+  summary: "La banca vede un dollaro più debole nel 2026.",
+  impactScore: 8,
+  matchConfidence: 0.8,
+  publishedAt: "2026-06-09T20:25:00.000Z",
+});
+const msB = article("Morgan Stanley avverte che il dollaro USA potrebbe indebolirsi mentre la Fed mantiene i tassi", {
+  summary: "La banca ribadisce la view ribassista sul dollaro.",
+  impactScore: 8,
+  matchConfidence: 0.82,
+  publishedAt: "2026-06-10T00:54:00.000Z",
+});
+const msDeduped = selectCuratedNews([msA, msB], { pairs: "XAUUSD" });
+assert.equal(msDeduped.length, 1);
+
+// …but genuinely different stories on the same asset are NOT merged.
+const distinctStories = selectCuratedNews([
+  article("L'oro crolla sotto i 4.250 dollari a causa delle rinnovate tensioni tra Stati Uniti e Iran", {
+    summary: "Le tensioni geopolitiche muovono i beni rifugio.",
+    publishedAt: "2026-06-09T23:15:00.000Z",
+  }),
+  article("Il prezzo dell'oro crolla sotto i 4.250 dollari mentre Trump promette di rispondere ai dazi", {
+    summary: "Le dichiarazioni sui dazi pesano sul metallo.",
+    publishedAt: "2026-06-09T19:13:00.000Z",
+  }),
+], { pairs: "XAUUSD" });
+assert.equal(distinctStories.length, 2);
+
 // Clickbait evergreen: question op-eds, time-to-buy advice and key-level
 // technical clickbait are hard-excluded.
 for (const noisy of [
@@ -228,6 +258,15 @@ for (const noisy of [
   }),
   article("Analista veterano individua il livello critico per i prezzi dell'oro", {
     originalTitle: "Veteran analyst spots critical level for gold prices",
+  }),
+  article("Tasso di oro e argento oggi 10 giugno: i prezzi aggiornati", {
+    originalTitle: "Gold and silver rate today June 10: latest prices",
+  }),
+  article("Il prezzo dell'oro sale da ₹ 10 a ₹ 1,53.170; argento in ribasso", {
+    originalTitle: "Gold price up ₹10 to ₹1,53,170; silver down",
+  }),
+  article("Da Gift Nifty alla guerra USA-Iran: 8 cose fondamentali prima dell'apertura", {
+    originalTitle: "From Gift Nifty to US-Iran war: 8 things to know before market opens",
   }),
 ]) {
   assert.equal(selectCuratedNews([noisy], { pairs: "XAUUSD", minKeep: 3 }).length, 0, noisy.title);

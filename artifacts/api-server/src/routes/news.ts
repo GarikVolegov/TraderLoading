@@ -706,7 +706,7 @@ const NEWS_BUILD_CANDIDATE_LIMIT = 90;
 // Bump when the snapshot payload shape/ordering changes so stored snapshots
 // from older builds are not served (v6: original-text enrichment, hard-noise +
 // clickbait exclusions, per-language near-duplicate dedupe).
-const NEWS_ASSET_CACHE_VERSION = "asset-impact-v6";
+const NEWS_ASSET_CACHE_VERSION = "asset-impact-v8";
 
 function newsCacheKey(input: { pairs?: string; lang?: string }): { cacheKey: string; pairsStr: string; lang: string } {
   const pairsStr = input.pairs || "";
