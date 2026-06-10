@@ -27,11 +27,13 @@ import accountBridgeRouter from "./account-bridge.js";
 import brokersRouter from "./brokers.js";
 import routinesRouter from "./routines.js";
 import libraryRouter from "./library.js";
+import adminRouter from "./admin.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(adminRouter);
 router.use(profileRouter);
 router.use(missionsRouter);
 router.use(missionTemplatesRouter);
