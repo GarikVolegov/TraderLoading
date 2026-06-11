@@ -15,6 +15,35 @@ if (Number.isNaN(port) || port <= 0) {
 const basePath = process.env.BASE_PATH ?? "/";
 const apiTarget = process.env.VITE_API_BASE ?? "http://127.0.0.1:3001";
 
+export function packageNameFromModuleId(id: string): string | undefined {
+  const normalized = id.replaceAll(path.sep, "/");
+  const marker = "/node_modules/";
+  const markerIndex = normalized.lastIndexOf(marker);
+  if (markerIndex === -1) return undefined;
+
+  const packagePath = normalized.slice(markerIndex + marker.length);
+  const [first, second] = packagePath.split("/");
+  if (!first) return undefined;
+  return first.startsWith("@") && second ? `${first}/${second}` : first;
+}
+
+export function getManualChunkName(id: string): string | undefined {
+  const packageName = packageNameFromModuleId(id);
+  if (!packageName) return undefined;
+
+  if (packageName === "react" || packageName === "react-dom" || packageName === "scheduler") {
+    return "vendor-react";
+  }
+  if (packageName === "wouter") return "vendor-router";
+  if (packageName.startsWith("@clerk/")) return "vendor-auth";
+  if (packageName === "lightweight-charts") return "vendor-lightweight-charts";
+  if (packageName === "recharts" || packageName.startsWith("d3-")) return "vendor-recharts";
+  if (packageName === "framer-motion" || packageName.startsWith("@dnd-kit/")) return "vendor-motion";
+  if (packageName.startsWith("@radix-ui/") || packageName === "lucide-react") return "vendor-ui";
+
+  return undefined;
+}
+
 export default defineConfig(async ({ command }) => {
   const isServe = command === "serve";
   if (!isServe) {
@@ -58,16 +87,7 @@ export default defineConfig(async ({ command }) => {
     reportCompressedSize: true,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return undefined;
-          if (id.includes("@clerk")) return "vendor-auth";
-          if (id.includes("lightweight-charts")) return "vendor-lightweight-charts";
-          if (id.includes("recharts") || id.includes("d3-")) return "vendor-recharts";
-          if (id.includes("framer-motion") || id.includes("@dnd-kit")) return "vendor-motion";
-          if (id.includes("@radix-ui") || id.includes("lucide-react")) return "vendor-ui";
-          if (id.includes("react") || id.includes("react-dom") || id.includes("wouter")) return "vendor-react";
-          return undefined;
-        },
+        manualChunks: getManualChunkName,
       },
     },
   },

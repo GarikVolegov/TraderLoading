@@ -44,4 +44,25 @@ for (const lang of SUPPORTED_LANGUAGES) {
   }
 }
 
+// Guardia anti "copia non tradotta": un'ondata di chiavi con lo stesso testo
+// italiano in tutte le lingue (com'è successo con la mappa auto.ui recovered)
+// deve far fallire il test. I termini tecnici legittimamente identici
+// (Win Rate, Stop Loss, Broker Hub, ...) restano ampiamente sotto la soglia
+// (al momento della scrittura: 27-34 per lingua).
+const MAX_IDENTICAL_TO_IT = 80;
+for (const lang of SUPPORTED_LANGUAGES) {
+  if (lang === "it") continue;
+  const identical = baseKeys.filter(
+    (key) =>
+      DICT[lang][key] === DICT.it[key] &&
+      /[a-zà-ù]{4,}/i.test(DICT.it[key]) &&
+      DICT.it[key].split(" ").length >= 2,
+  );
+  assert.ok(
+    identical.length <= MAX_IDENTICAL_TO_IT,
+    `[${lang}] ${identical.length} valori identici all'italiano (max ${MAX_IDENTICAL_TO_IT}): ` +
+      `probabile blocco di chiavi non tradotte. Esempi: ${identical.slice(0, 5).join(", ")}`,
+  );
+}
+
 console.log(`i18n parity checks passed (${baseKeys.length} chiavi x ${SUPPORTED_LANGUAGES.length} lingue)`);

@@ -124,7 +124,11 @@ for (const [file, needles] of Object.entries(localizedSurfaceNeedles)) {
   }
 }
 
-const legacyHardcodedCopyFiles = new Set<string>();
+const legacyHardcodedCopyFiles = new Set<string>([
+  // Area /admin: console interna riservata agli operatori, italiano-only by
+  // design (vedi CLAUDE.md). Rimuovere da qui se/quando viene migrata a i18n.
+  "pages/Admin.tsx",
+]);
 
 const visibleTextPattern = /(?<![=!<>])>\s*([^<>{}`\n]*[A-Za-zÀ-ÿ][^<>{}`\n]*)\s*<(?=[/A-Za-z])/;
 const visibleAttributePattern = /(aria-label|placeholder|title)="([^"]*[A-Za-zÀ-ÿ][^"]*)"/;

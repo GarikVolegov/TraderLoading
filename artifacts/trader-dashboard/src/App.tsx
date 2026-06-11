@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef, type ComponentProps, type ComponentType } from "react";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { motion } from "framer-motion";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
@@ -74,7 +74,18 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const rawClerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL as string | undefined;
+const configuredClerkProxyUrl = rawClerkProxyUrl?.replace(/^\uFEFF/, "").trim();
+const clerkProxyDisabled = import.meta.env.VITE_CLERK_USE_PROXY === "false";
+const clerkProxyUrl = configuredClerkProxyUrl && !clerkProxyDisabled
+  ? configuredClerkProxyUrl
+  : undefined;
+const clerkJsUrl = clerkProxyUrl
+  ? `${clerkProxyUrl.replace(/\/$/, "")}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`
+  : undefined;
+const RuntimeClerkProvider = ClerkProvider as ComponentType<
+  ComponentProps<typeof ClerkProvider> & { __internal_clerkJSUrl?: string }
+>;
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
@@ -208,6 +219,19 @@ function PageFallback() {
   return <div className="min-h-screen bg-background" />;
 }
 
+function PublicAuthLoadingFallback() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <Switch>
+        <Route path="/" component={LandingPage} />
+        <Route path="/privacy" component={PrivacyPage} />
+        <Route path="/terms" component={TermsPage} />
+        <Route component={PageFallback} />
+      </Switch>
+    </Suspense>
+  );
+}
+
 function LanguageServerSync() {
   const { language } = useLanguage();
   const updateSettings = useUpdateUserSettings();
@@ -311,7 +335,7 @@ function AppShell() {
   const { isLoaded } = useAuth();
 
   if (!isLoaded) {
-    return <div className="min-h-screen bg-[hsl(224,71%,4%)]" />;
+    return <PublicAuthLoadingFallback />;
   }
 
   return (
@@ -332,9 +356,10 @@ function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
   return (
-    <ClerkProvider
+    <RuntimeClerkProvider
       publishableKey={clerkPubKey!}
       proxyUrl={clerkProxyUrl}
+      __internal_clerkJSUrl={clerkJsUrl}
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
@@ -351,7 +376,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/*?" component={AppShell} />
         </Switch>
       </QueryClientProvider>
-    </ClerkProvider>
+    </RuntimeClerkProvider>
   );
 }
 
