@@ -51,6 +51,7 @@ Thumbs.db
 .cache/
 .local/
 .local-logs/
+.local-postgres/
 .superpowers/
 .worktrees/
 
