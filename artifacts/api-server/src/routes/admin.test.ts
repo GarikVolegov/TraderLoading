@@ -11,6 +11,7 @@ const {
   parseAdminSubscriptionPlan,
   parseAdminSubscriptionStatus,
   normalizeAdminSubscriptionPeriodEnd,
+  buildAdminSubscriptionManualValues,
   serializeRuntimeFlag,
   serializeAdminUserStatus,
   requireActionReason,
@@ -39,13 +40,42 @@ assert.equal(parseAdminSubscriptionStatus("active"), "active");
 assert.equal(parseAdminSubscriptionStatus("past_due"), "past_due");
 assert.equal(parseAdminSubscriptionStatus("weird"), null);
 const proPeriodEnd = normalizeAdminSubscriptionPeriodEnd("pro", "2026-07-10");
-assert.equal(proPeriodEnd?.toISOString(), "2026-07-10T00:00:00.000Z");
+assert.equal(proPeriodEnd.ok, true);
 assert.equal(
-  normalizeAdminSubscriptionPeriodEnd("free", "2026-07-10"),
-  null,
+  proPeriodEnd.ok ? proPeriodEnd.value?.toISOString() : null,
+  "2026-07-10T00:00:00.000Z",
 );
-assert.equal(normalizeAdminSubscriptionPeriodEnd("pro", ""), undefined);
-assert.equal(normalizeAdminSubscriptionPeriodEnd("pro", "not-a-date"), null);
+// Downgrade a free con una data ancora nel form: niente errore, la data si azzera.
+assert.deepEqual(normalizeAdminSubscriptionPeriodEnd("free", "2026-07-10"), {
+  ok: true,
+  value: null,
+});
+// Upgrade a pro senza data: valore esplicito null (mai undefined), così
+// l'upsert sovrascrive eventuali scadenze stantie e l'override ha effetto.
+assert.deepEqual(normalizeAdminSubscriptionPeriodEnd("pro", ""), {
+  ok: true,
+  value: null,
+});
+assert.deepEqual(normalizeAdminSubscriptionPeriodEnd("pro", null), {
+  ok: true,
+  value: null,
+});
+assert.deepEqual(normalizeAdminSubscriptionPeriodEnd("pro", "not-a-date"), {
+  ok: false,
+});
+const downgradedSubscriptionValues = buildAdminSubscriptionManualValues({
+  userId: "user_123",
+  plan: "free",
+  status: "active",
+  currentPeriodEnd: null,
+  reason: "downgrade richiesto",
+  updatedBy: "admin_123",
+  updatedAt: new Date("2026-06-10T10:00:00.000Z"),
+});
+assert.equal(downgradedSubscriptionValues.stripeCustomerId, null);
+assert.equal(downgradedSubscriptionValues.stripeSubscriptionId, null);
+assert.equal(downgradedSubscriptionValues.stripePriceId, null);
+assert.equal(downgradedSubscriptionValues.cancelAtPeriodEnd, false);
 assert.equal(parseAdminAuditTarget("  user_123  "), "user_123");
 assert.equal(parseAdminAuditTarget("   "), "");
 assert.deepEqual(serializeRuntimeFlag("SENTRY_DSN", "abc"), {

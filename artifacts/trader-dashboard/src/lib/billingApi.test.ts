@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  billingStatusQueryOptions,
   billingQueryKey,
   cancelSubscription,
   createCheckoutSession,
@@ -18,6 +19,8 @@ globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
       plan: "free",
       pro: false,
       status: "free",
+      source: null,
+      manualOverride: false,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
       stripeCustomerId: null,
@@ -51,11 +54,17 @@ globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
 
 try {
   assert.deepEqual(billingQueryKey, ["/api/billing/me"]);
+  assert.equal(billingStatusQueryOptions().staleTime, 0);
+  assert.equal(billingStatusQueryOptions().refetchOnMount, "always");
+  assert.equal(billingStatusQueryOptions().refetchOnReconnect, "always");
+  assert.equal(billingStatusQueryOptions().refetchOnWindowFocus, "always");
 
   const status = await fetchBillingStatus({ basePath: "/" });
   assert.equal(calls[0]?.url, "/api/billing/me");
   assert.equal(status.plan, "free");
   assert.equal(status.pro, false);
+  assert.equal(status.source, null);
+  assert.equal(status.manualOverride, false);
 
   const checkout = await createCheckoutSession({ basePath: "/" });
   assert.equal(calls[1]?.url, "/api/billing/checkout-session");

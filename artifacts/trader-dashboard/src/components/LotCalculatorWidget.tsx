@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useBackground } from "@/contexts/BackgroundContext";
+import { uiText } from "@/contexts/LanguageContext";
 
 export function LotCalculatorWidget() {
   const [riskEuro, setRiskEuro] = useState<string>("");
@@ -18,24 +19,24 @@ export function LotCalculatorWidget() {
     <div className="space-y-6">
       <div className="space-y-4">
         <div>
-          <label className="text-xs text-muted-foreground mb-2 block">Rischio (€)</label>
+          <label className="text-xs text-muted-foreground mb-2 block">{uiText("auto.ui.e46122f621")}</label>
           <input
             type="number"
             value={riskEuro}
             onChange={(e) => setRiskEuro(e.target.value)}
-            placeholder="Es: 50"
+            placeholder={uiText("auto.ui.a5a9b84cff")}
             step="0.01"
             min="0"
             className="w-full px-3 py-2 text-base rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-colors focus:outline-none focus:border-primary/50"
           />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground mb-2 block">Stop Loss (pips)</label>
+          <label className="text-xs text-muted-foreground mb-2 block">{uiText("auto.ui.88cd2d84dd")}</label>
           <input
             type="number"
             value={stopLossPips}
             onChange={(e) => setStopLossPips(e.target.value)}
-            placeholder="Es: 100"
+            placeholder={uiText("auto.ui.6b16da6cad")}
             step="1"
             min="0"
             className="w-full px-3 py-2 text-base rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-colors focus:outline-none focus:border-primary/50"
@@ -49,7 +50,7 @@ export function LotCalculatorWidget() {
           animate={{ opacity: 1, scale: 1 }}
           className="rounded-xl bg-primary/10 border border-primary/30 p-4 text-center"
         >
-          <p className="text-xs text-muted-foreground mb-1">Dimensione Lotto</p>
+          <p className="text-xs text-muted-foreground mb-1">{uiText("auto.ui.25c37eced0")}</p>
           <p className="text-3xl font-bold text-primary font-mono">{lotSize}</p>
           <p className="text-xs text-muted-foreground mt-2">
             Formula: ({Number(riskEuro).toFixed(2)} € / {Number(stopLossPips).toFixed(0)} pips) / {lotDivisor}
@@ -59,7 +60,7 @@ export function LotCalculatorWidget() {
 
       <div className="rounded-xl bg-card border border-border p-4">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          <strong>Come usare:</strong> Inserisci il rischio in € e lo stop loss in pips. La formula calcola la dimensione del lotto in base al tuo divisore configurato.
+          <strong>{uiText("lot_calculator.how_title")}</strong> {uiText("lot_calculator.how_desc")}
         </p>
       </div>
     </div>

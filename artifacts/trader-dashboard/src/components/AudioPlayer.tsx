@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Volume2, Pause, Play, VolumeX } from "lucide-react";
 import { useAudio, AUDIO_MODES, type AudioMode } from "@/contexts/AudioContext";
+import { uiText } from "@/contexts/LanguageContext";
 
 const MODE_KEYS = Object.keys(AUDIO_MODES) as Exclude<AudioMode, "off">[];
 
@@ -12,7 +13,7 @@ export function AudioPlayer() {
     <Card className="p-3 sm:p-5 border-primary/20 bg-card/50 backdrop-blur-sm">
       <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-5">
         <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-        <h3 className="text-base sm:text-lg font-semibold">Audio Binaural</h3>
+        <h3 className="text-base sm:text-lg font-semibold">{uiText("auto.ui.1f48d524c3")}</h3>
         {mode !== "off" && (
           <span className="ml-auto text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full border border-primary/30 animate-pulse">
             {AUDIO_MODES[mode].label} attivo
@@ -57,13 +58,13 @@ export function AudioPlayer() {
           }`}
         >
           <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span>Stop</span>
+          <span>{uiText("auto.ui.9e253470c8")}</span>
         </motion.button>
       </div>
 
       <div>
         <div className="flex justify-between text-xs text-muted-foreground mb-1">
-          <span>Volume</span>
+          <span>{uiText("auto.ui.3b18e8e332")}</span>
           <span>{volume}%</span>
         </div>
         <input

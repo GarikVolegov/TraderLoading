@@ -6,6 +6,7 @@ import { useBackground, DEFAULT_BACKGROUND_PRESETS, type BackgroundPreset } from
 import { useUpdateUserSettings, getGetUserSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { uploadBackgroundImage } from "@/lib/backgroundSettingsApi";
 
 export function BackgroundPresetsManager() {
@@ -13,6 +14,7 @@ export function BackgroundPresetsManager() {
   const { mutate: updateSettings } = useUpdateUserSettings();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -23,7 +25,7 @@ export function BackgroundPresetsManager() {
 
   const handleUploadCustom = async (file: File) => {
     if (backgroundPresets.length >= 6) {
-      toast({ description: "Limite di 6 sfondi raggiunto. Rimuovi uno prima di aggiungerne uno nuovo.", variant: "destructive" });
+      toast({ description: t("background.presets.limit"), variant: "destructive" });
       return;
     }
     setUploading(true);
@@ -41,9 +43,9 @@ export function BackgroundPresetsManager() {
       setBackgroundUrl(data.url);
       updateSettings({ data: { backgroundPresets: updated, backgroundType: "custom", backgroundUrl: data.url } });
       qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
-      toast({ description: "Sfondo aggiunto con successo." });
+      toast({ description: t("background.presets.added") });
     } catch {
-      toast({ description: "Errore durante il caricamento.", variant: "destructive" });
+      toast({ description: t("background.presets.upload_error"), variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -57,7 +59,7 @@ export function BackgroundPresetsManager() {
     }
     updateSettings({ data: { backgroundPresets: updated } });
     qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
-    toast({ description: "Sfondo rimosso." });
+    toast({ description: t("background.presets.removed") });
   };
 
   return (
@@ -65,7 +67,7 @@ export function BackgroundPresetsManager() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Image className="w-5 h-5 text-primary" />
-          Sfondi Personalizzati
+          {t("background.presets.title")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -97,7 +99,7 @@ export function BackgroundPresetsManager() {
                 )}
               </div>
               {backgroundUrl === preset.url && (
-                <div className="absolute top-1 right-1 bg-primary/80 text-white text-xs px-2 py-1 rounded">Attivo</div>
+                <div className="absolute top-1 right-1 bg-primary/80 text-white text-xs px-2 py-1 rounded">{t("background.presets.active")}</div>
               )}
             </div>
           ))}
@@ -108,7 +110,7 @@ export function BackgroundPresetsManager() {
               className="rounded-lg border-2 border-dashed border-border hover:border-primary/50 aspect-video flex flex-col items-center justify-center cursor-pointer hover:bg-primary/5 transition-colors"
             >
               <Plus className="w-6 h-6 text-muted-foreground mb-1" />
-              <span className="text-xs text-muted-foreground text-center">Aggiungi sfondo</span>
+              <span className="text-xs text-muted-foreground text-center">{t("background.presets.add")}</span>
             </div>
           )}
         </div>
@@ -127,7 +129,7 @@ export function BackgroundPresetsManager() {
         />
 
         <p className="text-xs text-muted-foreground">
-          Massimo 6 sfondi. Clicca per selezionare, hover per rimuovere (non puoi rimuovere i predefiniti).
+          {t("background.presets.hint")}
         </p>
       </CardContent>
     </Card>

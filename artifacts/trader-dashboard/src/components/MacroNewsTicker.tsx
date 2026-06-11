@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
+import { uiText } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBackground } from "@/contexts/BackgroundContext";
@@ -764,7 +765,7 @@ export function MacroNewsTicker() {
             {isFetching && !data && (
               <div className="flex flex-col items-center py-8 gap-2 text-muted-foreground">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-sm">Analisi macro in corso...</p>
+                <p className="text-sm">{uiText("macro_news.analysis_loading")}</p>
                 <p className="text-xs text-muted-foreground/60">
                   Può richiedere 10-20 secondi
                 </p>
@@ -817,9 +818,7 @@ export function MacroNewsTicker() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground/60">
-                            Impatto
-                          </span>
+                          <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground/60">{uiText("auto.ui.f150e87d33")}</span>
                           <span
                             className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
                               IMPACT_STYLES[article.impact] ??
@@ -893,4 +892,3 @@ export function MacroNewsTicker() {
     </>
   );
 }
-

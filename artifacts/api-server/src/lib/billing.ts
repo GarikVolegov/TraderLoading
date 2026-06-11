@@ -3,7 +3,7 @@ import { db, adminUserSubscriptionsTable, type AdminUserSubscription } from "@wo
 import { eq } from "drizzle-orm";
 import type { Request, Response } from "express";
 
-export type BillingFeature = "backtest" | "leaderboard" | "broker";
+export type BillingFeature = "backtest" | "leaderboard" | "broker" | "wiki";
 export type BillingPlan = "free" | "pro";
 
 export interface StripeBillingConfig {

@@ -3,30 +3,32 @@ import { useLocation } from "wouter";
 import {
   LayoutDashboard, BookOpen, FlaskConical, Brain, MessageCircle, Library,
   BrainCircuit, Sunrise, Settings, Newspaper, Landmark, CalendarDays, Trophy,
-  Clock, Target, ClipboardCheck, Plus,
+  Clock, Target, ClipboardCheck, Plus, Network,
 } from "lucide-react";
 import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem,
   CommandList, CommandSeparator,
 } from "@/components/ui/command";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const PAGES = [
-  { href: "/",           label: "Dashboard",            icon: LayoutDashboard, keywords: "home command center" },
-  { href: "/journal",    label: "Diario di Trading",    icon: BookOpen,        keywords: "journal trade" },
-  { href: "/backtest",   label: "Backtest",             icon: FlaskConical,    keywords: "replay strategia" },
-  { href: "/zen",        label: "Zona Zen",             icon: Brain,           keywords: "respirazione meditazione umore insight" },
-  { href: "/chat",       label: "Community",            icon: MessageCircle,   keywords: "chat social messaggi" },
-  { href: "/news",       label: "Notizie Macro",        icon: Newspaper,       keywords: "news macro" },
-  { href: "/brain",      label: "Brain AI",             icon: BrainCircuit,    keywords: "analisi grafico strategia ai" },
-  { href: "/routine",    label: "Routine",              icon: Sunrise,         keywords: "programma mattutino serale" },
-  { href: "/broker",     label: "Broker Hub",           icon: Landmark,        keywords: "conto fx blue account" },
-  { href: "/calendar",   label: "Calendario Avanzato",  icon: CalendarDays,    keywords: "agenda eventi planner" },
-  { href: "/milestones", label: "Traguardi",            icon: Trophy,          keywords: "livelli xp certificati" },
-  { href: "/clock",      label: "Orologio & Sessioni",  icon: Clock,           keywords: "sessioni mercato orari" },
-  { href: "/missions",   label: "Missioni Giornaliere", icon: Target,          keywords: "missioni xp" },
-  { href: "/checklist",  label: "Checklist Pre-Trade",  icon: ClipboardCheck,  keywords: "conferme criteri" },
-  { href: "/library",    label: "Biblioteca",           icon: Library,         keywords: "contenuti formativi" },
-  { href: "/settings",   label: "Impostazioni",         icon: Settings,        keywords: "profilo aspetto audio pair" },
+  { href: "/",           labelKey: "dashboard.title",   icon: LayoutDashboard, keywords: "home command center" },
+  { href: "/journal",    labelKey: "journal.title",     icon: BookOpen,        keywords: "journal trade" },
+  { href: "/backtest",   labelKey: "nav.backtest",      icon: FlaskConical,    keywords: "replay strategia" },
+  { href: "/zen",        labelKey: "zen.title",         icon: Brain,           keywords: "respirazione meditazione umore insight" },
+  { href: "/chat",       labelKey: "nav.chat",          icon: MessageCircle,   keywords: "chat social messaggi" },
+  { href: "/news",       labelKey: "news.title",        icon: Newspaper,       keywords: "news macro" },
+  { href: "/brain",      labelKey: "nav.brain",         icon: BrainCircuit,    keywords: "analisi grafico strategia ai" },
+  { href: "/routine",    labelKey: "nav.routine",       icon: Sunrise,         keywords: "programma mattutino serale" },
+  { href: "/broker",     labelKey: "page.broker.title", icon: Landmark,        keywords: "conto fx blue account" },
+  { href: "/calendar",   labelKey: "page.calendar.title", icon: CalendarDays,  keywords: "agenda eventi planner" },
+  { href: "/milestones", labelKey: "nav.milestones",    icon: Trophy,          keywords: "livelli xp certificati" },
+  { href: "/clock",      labelKey: "nav.clock",         icon: Clock,           keywords: "sessioni mercato orari" },
+  { href: "/missions",   labelKey: "missions.title",    icon: Target,          keywords: "missioni xp" },
+  { href: "/checklist",  labelKey: "checklist.title",   icon: ClipboardCheck,  keywords: "conferme criteri" },
+  { href: "/library",    labelKey: "nav.library",       icon: Library,         keywords: "contenuti formativi" },
+  { href: "/wiki",       labelKey: "nav.wiki",          icon: Network,         keywords: "knowledge base documenti graph wiki" },
+  { href: "/settings",   labelKey: "settings.title",    icon: Settings,        keywords: "profilo aspetto audio pair" },
 ] as const;
 
 /**
@@ -36,6 +38,7 @@ const PAGES = [
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [, navigate] = useLocation();
+  const { t } = useLanguage();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -55,21 +58,21 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Vai a... (digita per cercare)" />
+      <CommandInput placeholder={t("command.placeholder")} />
       <CommandList>
-        <CommandEmpty>Nessun risultato.</CommandEmpty>
-        <CommandGroup heading="Azioni">
+        <CommandEmpty>{t("command.no_results")}</CommandEmpty>
+        <CommandGroup heading={t("command.actions")}>
           <CommandItem keywords={["nuovo", "trade", "diario"]} onSelect={() => go("/journal?new=1")}>
             <Plus className="mr-2" />
-            Nuovo trade
+            {t("command.new_trade")}
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />
-        <CommandGroup heading="Pagine">
-          {PAGES.map(({ href, label, icon: Icon, keywords }) => (
+        <CommandGroup heading={t("command.pages")}>
+          {PAGES.map(({ href, labelKey, icon: Icon, keywords }) => (
             <CommandItem key={href} keywords={keywords.split(" ")} onSelect={() => go(href)}>
               <Icon className="mr-2" />
-              {label}
+              {t(labelKey)}
             </CommandItem>
           ))}
         </CommandGroup>

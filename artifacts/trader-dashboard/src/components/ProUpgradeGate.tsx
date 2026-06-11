@@ -1,58 +1,87 @@
-import { useMemo, useState } from "react";
-import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Lock, RefreshCw, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Link } from "wouter";
+import { Lock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { billingQueryKey, createCheckoutSession, fetchBillingStatus } from "@/lib/billingApi";
+import { ProCheckoutDialog } from "@/components/ProCheckoutDialog";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useBillingStatus } from "@/lib/billingApi";
 
-const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
-  : null;
+export type ProFeature = "backtest" | "leaderboard" | "broker" | "wiki";
 
-export type ProFeature = "backtest" | "leaderboard" | "broker";
-
-const FEATURE_COPY: Record<ProFeature, { title: string; subtitle: string }> = {
+const FEATURE_COPY_KEYS: Record<ProFeature, { title: string; subtitle: string }> = {
   backtest: {
-    title: "Sblocca il Backtesting",
-    subtitle: "Replay, sessioni storiche e statistiche avanzate restano riservate al piano Pro.",
+    title: "billing.gate.backtest.title",
+    subtitle: "billing.gate.backtest.subtitle",
   },
   leaderboard: {
-    title: "Sblocca le Classifiche",
-    subtitle: "Accedi al ranking trader e confronta progressi, XP e livelli.",
+    title: "billing.gate.leaderboard.title",
+    subtitle: "billing.gate.leaderboard.subtitle",
   },
   broker: {
-    title: "Sblocca il Collegamento conto",
-    subtitle: "Collega il Broker Hub e sincronizza il conto con il piano Pro.",
+    title: "billing.gate.broker.title",
+    subtitle: "billing.gate.broker.subtitle",
+  },
+  wiki: {
+    title: "billing.gate.wiki.title",
+    subtitle: "billing.gate.wiki.subtitle",
   },
 };
 
-export function ProUpgradeGate({ feature, children }: { feature: ProFeature; children: React.ReactNode }) {
-  const queryClient = useQueryClient();
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [checkoutComplete, setCheckoutComplete] = useState(false);
-  const billing = useQuery({
-    queryKey: billingQueryKey,
-    queryFn: () => fetchBillingStatus(),
-  });
+const FEATURE_ITEMS = [
+  "billing.feature.backtesting",
+  "billing.feature.leaderboards",
+  "billing.feature.account_sync",
+];
 
-  const checkoutOptions = useMemo(
-    () =>
-      clientSecret
-        ? {
-            clientSecret,
-            onComplete: () => {
-              setCheckoutComplete(true);
-              queryClient.invalidateQueries({ queryKey: billingQueryKey });
-            },
-          }
-        : null,
-    [clientSecret, queryClient],
+function PaywallCard({ feature, onUpgrade }: { feature: ProFeature; onUpgrade: () => void }) {
+  const { t } = useLanguage();
+  const copy = FEATURE_COPY_KEYS[feature];
+
+  return (
+    <Card className="w-full max-w-md border-primary/25 bg-card/95 shadow-xl">
+      <CardContent className="p-5 sm:p-6">
+        <div className="text-center space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+            <Lock className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">{t(copy.title)}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{t(copy.subtitle)}</p>
+          </div>
+          <div className="grid gap-2 text-xs sm:grid-cols-3">
+            {FEATURE_ITEMS.map((item) => (
+              <div key={item} className="rounded-lg border border-border/60 bg-background/50 px-2 py-2">
+                <Sparkles className="mx-auto mb-1 h-4 w-4 text-primary" />
+                <span className="font-medium">{t(item)}</span>
+              </div>
+            ))}
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{t("billing.price_month")}</p>
+            <p className="text-xs text-muted-foreground">{t("billing.stripe_note")}</p>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <Button type="button" className="w-full sm:w-auto sm:px-8" onClick={onUpgrade}>
+              {t("billing.upgrade_cta")}
+            </Button>
+            <Link href="/pro">
+              <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
+                {t("billing.discover_cta")}
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
+}
 
-  if (billing.isLoading) {
+export function ProUpgradeGate({ feature, children }: { feature: ProFeature; children: React.ReactNode }) {
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const billing = useBillingStatus();
+
+  if (billing.isPending) {
     return <div className="min-h-[320px] rounded-lg bg-card/40 animate-pulse" />;
   }
 
@@ -60,68 +89,17 @@ export function ProUpgradeGate({ feature, children }: { feature: ProFeature; chi
     return <>{children}</>;
   }
 
-  const copy = FEATURE_COPY[feature];
-
-  async function startCheckout() {
-    setError(null);
-    try {
-      const session = await createCheckoutSession();
-      setClientSecret(session.clientSecret);
-    } catch {
-      setError("Checkout non disponibile. Controlla la configurazione Stripe e riprova.");
-    }
-  }
-
   return (
-    <Card className="border-primary/20 bg-card/70">
-      <CardContent className="p-5 sm:p-8">
-        <div className="mx-auto max-w-2xl text-center space-y-5">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
-            <Lock className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold">{copy.title}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">{copy.subtitle}</p>
-          </div>
-          <div className="grid gap-2 text-sm sm:grid-cols-3">
-            {["Backtesting", "Classifiche", "Collegamento conto"].map((item) => (
-              <div key={item} className="rounded-lg border border-border/60 bg-background/50 px-3 py-2">
-                <Sparkles className="mx-auto mb-1 h-4 w-4 text-primary" />
-                <span className="font-medium">{item}</span>
-              </div>
-            ))}
-          </div>
-          <div>
-            <p className="text-3xl font-bold">7 EUR/mese</p>
-            <p className="text-xs text-muted-foreground">Abbonamento mensile Pro gestito in sicurezza da Stripe.</p>
-          </div>
-          {checkoutComplete && (
-            <p className="rounded-lg border border-primary/25 bg-primary/10 px-3 py-2 text-sm text-primary">
-              Pagamento ricevuto. Sto aggiornando lo stato Pro.
-            </p>
-          )}
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {!clientSecret && (
-            <div className="flex flex-wrap justify-center gap-3">
-              <Button onClick={startCheckout}>Passa a Pro</Button>
-              <Button variant="outline" onClick={() => billing.refetch()}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Aggiorna stato
-              </Button>
-            </div>
-          )}
+    <div className="relative min-h-[420px]">
+      <div inert aria-hidden className="pointer-events-none select-none blur-[3px] opacity-50">
+        {children}
+      </div>
+      <div className="absolute inset-0 z-10 rounded-lg bg-background/40 p-4 backdrop-blur-[1px]">
+        <div className="sticky top-24 flex justify-center">
+          <PaywallCard feature={feature} onUpgrade={() => setCheckoutOpen(true)} />
         </div>
-        {clientSecret && checkoutOptions && stripePromise && (
-          <div className="mx-auto mt-6 max-w-2xl rounded-lg border border-border/60 bg-background p-3">
-            <EmbeddedCheckoutProvider stripe={stripePromise} options={checkoutOptions}>
-              <EmbeddedCheckout />
-            </EmbeddedCheckoutProvider>
-          </div>
-        )}
-        {clientSecret && !stripePromise && (
-          <p className="mt-4 text-center text-sm text-destructive">Chiave pubblicabile Stripe mancante.</p>
-        )}
-      </CardContent>
-    </Card>
+      </div>
+      <ProCheckoutDialog open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+    </div>
   );
 }

@@ -7,6 +7,7 @@ import { AreaChart, Area, ResponsiveContainer, ReferenceLine, Tooltip, Cartesian
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
 import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
+import { uiText } from "@/contexts/LanguageContext";
 
 interface CotReport {
   market: string;
@@ -58,7 +59,7 @@ export function CotWidget() {
           <FileText className="w-4 h-4 text-primary" />
           COT Report
           {data?.fallback && (
-            <span className="text-[9px] text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-full">Esempio</span>
+            <span className="text-[9px] text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-full">{uiText("auto.ui.aaded9e59f")}</span>
           )}
           <div className="ml-auto flex items-center gap-1.5">
             <button

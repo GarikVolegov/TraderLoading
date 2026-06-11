@@ -10,6 +10,7 @@ export type BillingStatusStatus =
   (typeof BillingStatusStatus)[keyof typeof BillingStatusStatus];
 
 export const BillingStatusStatus = {
+  free: "free",
   none: "none",
   trialing: "trialing",
   active: "active",

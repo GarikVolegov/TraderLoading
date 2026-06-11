@@ -18,6 +18,7 @@ import {
   type ScheduledCallVisualPreset,
 } from "@/lib/scheduledCalls";
 import { ScheduledCallOverlay } from "./ScheduledCallOverlay";
+import { uiText } from "@/contexts/LanguageContext";
 
 const DAYS = [
   { id: 1, label: "Lun" },
@@ -155,7 +156,7 @@ export function ScheduledCallsSettings() {
         ) : (
           <div className="grid gap-4">
             <div className="flex items-center justify-between gap-3">
-              <label className="text-sm font-medium">Attiva</label>
+              <label className="text-sm font-medium">{uiText("auto.ui.97ec36f1ec")}</label>
               <Switch checked={selected.enabled} onCheckedChange={(enabled) => patchSelected({ enabled })} />
             </div>
 
@@ -172,9 +173,7 @@ export function ScheduledCallsSettings() {
                 Titolo push
                 <Input value={selected.notificationTitle} onChange={(event) => patchSelected({ notificationTitle: event.target.value })} />
               </label>
-              <label className="space-y-1.5 text-sm">
-                Orario
-                <Input type="time" value={selected.time} onChange={(event) => patchSelected({ time: event.target.value })} />
+              <label className="space-y-1.5 text-sm">{uiText("auto.ui.9386b1dfe1")}<Input type="time" value={selected.time} onChange={(event) => patchSelected({ time: event.target.value })} />
               </label>
             </div>
 
@@ -188,7 +187,7 @@ export function ScheduledCallsSettings() {
             </label>
 
             <div className="space-y-2">
-              <p className="text-sm font-medium">Giorni specifici</p>
+              <p className="text-sm font-medium">{uiText("auto.ui.2ff1f1cfe6")}</p>
               <div className="grid grid-cols-7 gap-1.5">
                 {DAYS.map((day) => (
                   <button
@@ -241,12 +240,12 @@ export function ScheduledCallsSettings() {
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <label className="text-sm font-medium">requireInteraction</label>
+              <label className="text-sm font-medium">{uiText("auto.ui.e3c8ef7152")}</label>
               <Switch checked={selected.requireInteraction} onCheckedChange={(requireInteraction) => patchSelected({ requireInteraction })} />
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={persistSelected} isLoading={updateSettings.isPending}>Salva</Button>
+              <Button size="sm" onClick={persistSelected} isLoading={updateSettings.isPending}>{uiText("auto.ui.c5965db5f2")}</Button>
               <Button size="sm" variant="outline" onClick={() => setPreviewCall(selected)}>
                 <Eye className="h-4 w-4" />
                 Preview
@@ -256,9 +255,7 @@ export function ScheduledCallsSettings() {
                 Duplica
               </Button>
               <Button size="sm" variant="destructive" onClick={deleteSelected}>
-                <Trash2 className="h-4 w-4" />
-                Elimina
-              </Button>
+                <Trash2 className="h-4 w-4" />{uiText("auto.ui.6b177bdf78")}</Button>
             </div>
           </div>
         )}

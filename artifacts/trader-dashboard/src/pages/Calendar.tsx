@@ -2,8 +2,11 @@ import { CalendarDays } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarPlannerWorkspace } from "@/components/dashboard-workspaces/CalendarPlannerWorkspace";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Calendar() {
+  const { t } = useLanguage();
+
   return (
     <PageLayout>
       <PageHeader
@@ -12,8 +15,8 @@ export default function Calendar() {
             <CalendarDays className="h-4.5 w-4.5" />
           </div>
         }
-        title="Calendario Avanzato"
-        subtitle="Agenda, appuntamenti, obiettivi ed eventi macro di mercato"
+        title={t("page.calendar.title")}
+        subtitle={t("page.calendar.subtitle")}
       />
       <CalendarPlannerWorkspace />
     </PageLayout>

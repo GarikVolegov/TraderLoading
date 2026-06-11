@@ -5,6 +5,75 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
+export type WikiSourceStatus =
+  (typeof WikiSourceStatus)[keyof typeof WikiSourceStatus];
+
+export const WikiSourceStatus = {
+  queued: "queued",
+  processing: "processing",
+  ready: "ready",
+  error: "error",
+  pending_transcription: "pending_transcription",
+} as const;
+
+export interface WikiSource {
+  id: number;
+  kind: string;
+  title: string;
+  status: WikiSourceStatus;
+  error?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  createdAt?: string;
+}
+
+export interface CreateWikiTextSourceRequest {
+  title?: string;
+  content: string;
+  tags?: string[];
+}
+
+export interface CreateWikiUrlSourceRequest {
+  url: string;
+  title?: string;
+  tags?: string[];
+}
+
+export interface QueryWikiRequest {
+  question: string;
+}
+
+export type WikiGraphStats = {
+  sources?: number;
+  nodes?: number;
+  edges?: number;
+  communities?: number;
+};
+
+export type WikiGraphNodesItem = { [key: string]: unknown };
+
+export type WikiGraphEdgesItem = { [key: string]: unknown };
+
+export type WikiGraphCommunitiesItem = { [key: string]: unknown };
+
+export interface WikiGraph {
+  stats?: WikiGraphStats;
+  nodes?: WikiGraphNodesItem[];
+  edges?: WikiGraphEdgesItem[];
+  communities?: WikiGraphCommunitiesItem[];
+}
+
+export type WikiAnswerCitationsItem = { [key: string]: unknown };
+
+export type WikiAnswerNodesItem = { [key: string]: unknown };
+
+export interface WikiAnswer {
+  answer: string;
+  citations: WikiAnswerCitationsItem[];
+  nodes: WikiAnswerNodesItem[];
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -21,6 +90,7 @@ export type BillingStatusStatus =
   (typeof BillingStatusStatus)[keyof typeof BillingStatusStatus];
 
 export const BillingStatusStatus = {
+  free: "free",
   none: "none",
   trialing: "trialing",
   active: "active",
@@ -36,6 +106,9 @@ export interface BillingStatus {
   plan: BillingStatusPlan;
   status: BillingStatusStatus;
   pro: boolean;
+  /** Subscription source, for example Stripe checkout or manual admin override. */
+  source: string | null;
+  manualOverride: boolean;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   stripeCustomerId: string | null;
@@ -537,6 +610,7 @@ export interface UserSettings {
   /** @minimum 0 */
   preMacroMinutes: number;
   maxDailyLoss?: number | null;
+  onboardingTutorialCompletedAt?: string | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UserSettingsBackgroundPresetsItem[] | null;
 }
@@ -597,6 +671,7 @@ export interface UpdateUserSettingsRequest {
   /** @minimum 0 */
   preMacroMinutes?: number;
   maxDailyLoss?: number | null;
+  onboardingTutorialCompletedAt?: string | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UpdateUserSettingsRequestBackgroundPresetsItem[] | null;
 }
@@ -766,6 +841,16 @@ export interface CalendarEvent {
   previous?: string | null;
 }
 
+export interface BacktestSessionStats {
+  total: number;
+  wins: number;
+  losses: number;
+  breakevens: number;
+  winRate: number;
+  avgRR: string | null;
+  totalPips: string;
+}
+
 export interface BacktestSession {
   id: number;
   name: string;
@@ -775,6 +860,7 @@ export interface BacktestSession {
   notes?: string | null;
   userId?: string | null;
   createdAt: string;
+  stats: BacktestSessionStats;
 }
 
 export interface CreateBacktestSessionRequest {
@@ -853,6 +939,11 @@ export interface CreateBacktestTradeRequest {
  * Opaque session token — `Bearer <sid>`.
  */
 export type AuthorizationSessionHeaderParameter = string;
+
+export type UploadWikiSourceBody = {
+  file: Blob;
+  title?: string;
+};
 
 export type BeginBrowserLoginParams = {
   returnTo?: string;

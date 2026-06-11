@@ -235,6 +235,7 @@ function RefreshCountdown({ nextRefreshAt }: { nextRefreshAt?: string }) {
 // ─── Article Card ─────────────────────────────────────────────────────────────
 
 function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { t } = useLanguage();
   const explanation = article ? article.relevanceReason ?? article.impactReason : undefined;
   if (!article) return null;
   const detailUrl = preferredArticleUrl(article);
@@ -282,7 +283,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
             </div>
           ) : explanation && (
             <div className="rounded-lg border border-primary/15 bg-primary/5 p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">Impatto per il trading</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">{t("news.impact_for_trading")}</p>
               <p className="text-sm text-muted-foreground leading-relaxed">{explanation}</p>
             </div>
           )}
@@ -295,7 +296,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
 
           {(article.originalTitle || article.originalSummary) && (
             <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Originale</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">{t("news.original")}</p>
               {article.originalTitle && <p className="text-sm font-semibold text-muted-foreground">{article.originalTitle}</p>}
               {article.originalSummary && <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed">{article.originalSummary}</p>}
             </div>
@@ -332,6 +333,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
 }
 
 function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Article; idx: number; isAI: boolean; onOpen: (article: Article) => void; vote: number; onVote: (vote: number) => void }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const explanation = article.relevanceReason ?? article.impactReason;
   const hasImpactDetails = isAI && (article.impactScore || (article.affectedPairs && article.affectedPairs.length > 0) || explanation);
@@ -403,7 +405,7 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
           {/* Affected pairs */}
           {isAI && article.affectedPairs && article.affectedPairs.length > 0 && (
             <div className="flex items-center gap-1 flex-wrap">
-              <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider font-medium">Impatta:</span>
+              <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider font-medium">{t("news.impacts")}</span>
               {article.affectedPairs.map((p) => <PairBadge key={p} pair={p} />)}
             </div>
           )}
@@ -445,12 +447,12 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
               </>
             )}
             <div className="ml-auto flex items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
-              <button type="button" title="Più notizie così" aria-label="Più notizie così"
+              <button type="button" title={t("news.more_like_this")} aria-label={t("news.more_like_this")}
                 onClick={() => onVote(vote === 1 ? 0 : 1)}
                 className={`p-1 rounded transition-colors hover:bg-emerald-500/15 ${vote === 1 ? "text-emerald-400" : "text-muted-foreground/40"}`}>
                 <ThumbsUp className="w-3 h-3" />
               </button>
-              <button type="button" title="Meno notizie così" aria-label="Meno notizie così"
+              <button type="button" title={t("news.less_like_this")} aria-label={t("news.less_like_this")}
                 onClick={() => onVote(vote === -1 ? 0 : -1)}
                 className={`p-1 rounded transition-colors hover:bg-red-500/15 ${vote === -1 ? "text-red-400" : "text-muted-foreground/40"}`}>
                 <ThumbsDown className="w-3 h-3" />
@@ -468,6 +470,7 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
 // ─── Feed training panel (per-user keywords + profile) ────────────────────────
 
 function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const { data } = useQuery<{ keywords: string[]; profile: string }>({
     queryKey: ["news-preferences"],
@@ -506,7 +509,7 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
       {open && (
         <div className="mt-3 space-y-3">
           <div>
-            <label className="text-xs text-muted-foreground">Parole chiave / temi che ti interessano</label>
+            <label className="text-xs text-muted-foreground">{t("news.personalization.keywords")}</label>
             {keywords.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {keywords.map((k) => (
@@ -521,21 +524,21 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
               value={kwInput}
               onChange={(e) => setKwInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKw(); } }}
-              placeholder="Aggiungi un tema e premi Invio (es. oro intraday, Fed, liquidity)"
+              placeholder={t("news.personalization.keywords_placeholder")}
               className="mt-1.5 w-full rounded-lg border border-border/60 bg-secondary/40 px-3 py-2 text-sm outline-none focus:border-primary/50"
             />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Il tuo profilo / strategia</label>
+            <label className="text-xs text-muted-foreground">{t("news.personalization.strategy")}</label>
             <textarea
               value={profile}
               onChange={(e) => setProfile(e.target.value)}
-              placeholder="Es. Scalper su oro, solo high-impact intraday; seguo Fed, CPI e rendimenti."
+              placeholder={t("news.personalization.strategy_placeholder")}
               className="mt-1.5 w-full min-h-20 rounded-lg border border-border/60 bg-secondary/40 px-3 py-2 text-sm outline-none focus:border-primary/50"
             />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] text-muted-foreground/60">Usa anche 👍 / 👎 sulle notizie: il feed impara nel tempo.</p>
+            <p className="text-[11px] text-muted-foreground/60">{t("news.personalization.feedback_hint")}</p>
             <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
               {save.isPending && <RefreshCw className="w-4 h-4 mr-1 animate-spin" />}
               Salva e ri-ordina
@@ -691,7 +694,7 @@ export default function News() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="text-xs font-bold text-primary/80 uppercase tracking-wider">Sintesi mercato</span>
+                <span className="text-xs font-bold text-primary/80 uppercase tracking-wider">{t("news.market_summary")}</span>
                 {newsData.watchedPairs && newsData.watchedPairs.length > 0 && (
                   <div className="flex gap-1 flex-wrap">
                     {newsData.watchedPairs.map((p) => <PairBadge key={p} pair={p} />)}

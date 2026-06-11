@@ -119,8 +119,8 @@ try {
   console.log("\n> pnpm --filter @workspace/api-spec run codegen");
   await runCommand("pnpm", ["--filter", "@workspace/api-spec", "run", "codegen"]);
 
-  console.log("\n> pnpm --filter @workspace/db run push");
-  await runCommand("pnpm", ["--filter", "@workspace/db", "run", "push"], {
+  console.log("\n> pnpm --filter @workspace/db run push-force");
+  await runCommand("pnpm", ["--filter", "@workspace/db", "run", "push-force"], {
     env: { DATABASE_URL: database.url },
   });
 

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   createCorsOptions,
   createHelmetOptions,
+  getRateLimitKey,
   getRateLimitConfig,
   isAllowedWebSocketOrigin,
   isAllowedUploadPath,
@@ -94,6 +96,14 @@ assert.deepEqual(getRateLimitConfig({ NODE_ENV: "development" }), {
   windowMs: 15 * 60 * 1000,
   limit: 5000,
 });
+assert.equal(
+  getRateLimitKey({ socket: { remoteAddress: "127.0.0.1" } }),
+  "127.0.0.1",
+);
+assert.equal(getRateLimitKey({}), "unknown");
+
+const appSource = readFileSync(new URL("../app.ts", import.meta.url), "utf8");
+assert.match(appSource, /keyGenerator:\s*getRateLimitKey/);
 
 assert.equal(isAllowedUploadPath("/post-images/post-1.png"), true);
 assert.equal(isAllowedUploadPath("/bg-1.png"), true);

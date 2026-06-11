@@ -1,12 +1,12 @@
 import { Activity, Cable, History, Landmark, ListChecks, Wifi, WifiOff } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { billingQueryKey, fetchBillingStatus } from "@/lib/billingApi";
+import { useBillingStatus } from "@/lib/billingApi";
 import { simpleStatusLabel } from "@/lib/uiCopyPolicy";
 import { useBrokerHub } from "./useBrokerHub";
 import { AccountEquityCurve } from "./AccountEquityCurve";
 import type { BrokerHubTab } from "./types";
+import { uiText } from "@/contexts/LanguageContext";
 
 function money(value: number): string {
   return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -21,9 +21,11 @@ function openWorkspace(tab: BrokerHubTab) {
 }
 
 export function BrokerHubWidget() {
-  const billing = useQuery({ queryKey: billingQueryKey, queryFn: () => fetchBillingStatus() });
+  const billing = useBillingStatus();
 
-  if (billing.isLoading) {
+  // Skeleton solo al primo caricamento: nei refetch in background si rende dai
+  // dati in cache per evitare flash dello skeleton a ogni focus della finestra.
+  if (billing.isPending) {
     return <Card className="h-[320px] border-border/30 bg-card/60 animate-pulse" />;
   }
 
@@ -36,13 +38,11 @@ export function BrokerHubWidget() {
               <Landmark className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="widget-title">Broker Hub Pro</p>
-              <p className="text-[10px] text-muted-foreground">Collegamento conto riservato</p>
+              <p className="widget-title">{uiText("auto.ui.5ad4db1d5a")}</p>
+              <p className="text-[10px] text-muted-foreground">{uiText("auto.ui.e6f450849b")}</p>
             </div>
           </div>
-          <div className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
-            7 EUR/mese
-          </div>
+          <div className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">{uiText("auto.ui.ce13284c4b")}</div>
         </div>
         <CardContent className="space-y-3 p-4">
           <div className="rounded-lg border border-border/40 bg-secondary/20 px-3 py-3 text-xs text-muted-foreground">
@@ -73,7 +73,7 @@ function BrokerHubWidgetInner() {
             <Landmark className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <p className="widget-title">Broker Hub</p>
+            <p className="widget-title">{uiText("auto.ui.56c86a8f0d")}</p>
             <p className="max-w-[210px] truncate text-[10px] text-muted-foreground">{title}</p>
           </div>
         </div>

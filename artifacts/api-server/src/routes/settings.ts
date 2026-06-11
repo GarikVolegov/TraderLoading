@@ -29,6 +29,7 @@ function readLanguageFromSettings(settings: { notificationPrefs?: string | null 
 }
 
 type SettingsRecord = {
+  onboardingTutorialCompletedAt?: Date | string | null;
   notificationPrefs?: string | null;
   tradingSessions?: string | null;
   calendarCurrencies?: string | null;
@@ -37,8 +38,15 @@ type SettingsRecord = {
   alarmConfigs?: string | null;
 };
 
+function serializeDate(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 export function serializeSettings(settings: SettingsRecord): Record<string, unknown> {
   const result: Record<string, unknown> = { ...settings };
+  result.onboardingTutorialCompletedAt = serializeDate(settings.onboardingTutorialCompletedAt);
   result.language = readLanguageFromSettings(settings);
   if (settings.tradingSessions) {
     try { result.tradingSessions = JSON.parse(settings.tradingSessions); } catch { result.tradingSessions = null; }
@@ -77,6 +85,7 @@ export function buildSettingsUpdateData(
     maxDailyLoss,
     selectedPairs,
     alarmConfigs,
+    onboardingTutorialCompletedAt,
   } = body;
 
   const updateData: Record<string, unknown> = {};
@@ -106,6 +115,19 @@ export function buildSettingsUpdateData(
   }
   if (alarmConfigs !== undefined) {
     updateData.alarmConfigs = alarmConfigs ? JSON.stringify(alarmConfigs) : null;
+  }
+  if (onboardingTutorialCompletedAt !== undefined) {
+    if (onboardingTutorialCompletedAt === null) {
+      updateData.onboardingTutorialCompletedAt = null;
+    } else if (typeof onboardingTutorialCompletedAt === "string") {
+      const parsedDate = new Date(onboardingTutorialCompletedAt);
+      if (Number.isNaN(parsedDate.getTime())) {
+        return { updateData, error: "onboardingTutorialCompletedAt must be a valid ISO date string or null" };
+      }
+      updateData.onboardingTutorialCompletedAt = parsedDate;
+    } else {
+      return { updateData, error: "onboardingTutorialCompletedAt must be a valid ISO date string or null" };
+    }
   }
   if (language !== undefined) {
     updateData.notificationPrefs = JSON.stringify({

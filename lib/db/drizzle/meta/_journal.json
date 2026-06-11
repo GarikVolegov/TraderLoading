@@ -29,6 +29,20 @@
       "when": 1781095614094,
       "tag": "0003_admin_user_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781145600000,
+      "tag": "0004_user_settings_onboarding_tutorial",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781193600000,
+      "tag": "0005_brain_ai_wiki",
+      "breakpoints": true
     }
   ]
 }

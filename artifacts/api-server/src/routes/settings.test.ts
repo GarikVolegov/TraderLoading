@@ -6,6 +6,7 @@ const { buildSettingsUpdateData, serializeSettings } = await import("./settings.
 
 const existingSettings = {
   id: 1,
+  onboardingTutorialCompletedAt: new Date("2026-06-11T08:15:30.000Z"),
   notificationPrefs: JSON.stringify({ alerts: true, __language: "en" }),
   tradingSessions: JSON.stringify([{ id: "london" }]),
   calendarCurrencies: JSON.stringify(["EUR", "USD"]),
@@ -21,6 +22,7 @@ const emptyUpdate = buildSettingsUpdateData({}, existingSettings);
 assert.deepEqual(emptyUpdate, { updateData: {} });
 assert.deepEqual(serializeSettings(existingSettings), {
   ...existingSettings,
+  onboardingTutorialCompletedAt: "2026-06-11T08:15:30.000Z",
   language: "en",
   tradingSessions: [{ id: "london" }],
   calendarCurrencies: ["EUR", "USD"],
@@ -41,6 +43,29 @@ assert.deepEqual(languageUpdate, {
 
 const invalidLotDivisor = buildSettingsUpdateData({ lotDivisor: 0 }, existingSettings);
 assert.equal(invalidLotDivisor.error, "lotDivisor must be a number >= 1");
+
+const tutorialCompleteUpdate = buildSettingsUpdateData(
+  { onboardingTutorialCompletedAt: "2026-06-11T09:00:00.000Z" },
+  existingSettings,
+);
+assert.deepEqual(tutorialCompleteUpdate, {
+  updateData: {
+    onboardingTutorialCompletedAt: new Date("2026-06-11T09:00:00.000Z"),
+  },
+});
+
+const tutorialResetUpdate = buildSettingsUpdateData({ onboardingTutorialCompletedAt: null }, existingSettings);
+assert.deepEqual(tutorialResetUpdate, {
+  updateData: {
+    onboardingTutorialCompletedAt: null,
+  },
+});
+
+const invalidTutorialCompletedAt = buildSettingsUpdateData(
+  { onboardingTutorialCompletedAt: "not-a-date" },
+  existingSettings,
+);
+assert.equal(invalidTutorialCompletedAt.error, "onboardingTutorialCompletedAt must be a valid ISO date string or null");
 
 const alarmUpdate = buildSettingsUpdateData(
   { alarmConfigs: { version: 1, calls: [{ id: "desk", callerName: "Risk Desk", time: "10:30", days: [] }] } },

@@ -1,0 +1,14 @@
+# Quando .vercelignore esiste sostituisce .gitignore per l'upload della CLI:
+# elencare anche le esclusioni ovvie, non solo quelle extra.
+node_modules
+.git
+.worktrees
+.local-postgres
+.local-logs
+.agents
+.superpowers
+.claude
+.vscode
+docs
+.env.local
+.env.vercel.local

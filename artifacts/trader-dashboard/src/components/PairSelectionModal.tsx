@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Check, ChevronDown, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PAIR_CATALOG, CATEGORY_LABELS, type PairEntry } from "@workspace/pair-catalog";
+import { uiText } from "@/contexts/LanguageContext";
 
 interface PairSelectionModalProps {
   open: boolean;
@@ -155,7 +156,7 @@ export function PairSelectionModal({
               <div className="p-1.5 rounded-lg bg-indigo-500/15">
                 <BarChart2 className="w-4 h-4 text-indigo-400" />
               </div>
-              <h2 className="text-base sm:text-lg font-bold">I tuoi strumenti</h2>
+              <h2 className="text-base sm:text-lg font-bold">{uiText("auto.ui.8452dc94d6")}</h2>
             </div>
             {dismissible && (
               <button
@@ -180,7 +181,7 @@ export function PairSelectionModal({
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cerca per nome, simbolo o valuta…"
+              placeholder={uiText("auto.ui.05be789120")}
               autoCorrect="off"
               autoCapitalize="none"
               className="w-full pl-9 pr-8 h-10 rounded-xl bg-secondary/40 border border-border/50 text-sm outline-none focus:border-primary/50 focus:bg-secondary/60 transition-all placeholder:text-muted-foreground/40"

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { LineChart, TrendingDown } from "lucide-react";
 import { computeAccountEquity } from "./accountEquity";
 import type { BrokerDeal } from "./types";
+import { uiText } from "@/contexts/LanguageContext";
 
 const PERIODS = [
   { label: "1W", days: 7 },
@@ -117,7 +118,7 @@ export function AccountEquityCurve({
             className="h-20 w-full"
             preserveAspectRatio="none"
             role="img"
-            aria-label="Andamento balance del conto"
+            aria-label={uiText("auto.ui.b1f0bb00ee")}
           >
             <path d={area} fill={strokeColor} fillOpacity="0.1" />
             <path d={line} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />

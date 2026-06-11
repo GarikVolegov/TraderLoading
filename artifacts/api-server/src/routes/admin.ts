@@ -126,20 +126,49 @@ function startOfToday(): Date {
   return today;
 }
 
-function parseOptionalAdminDate(value: unknown): Date | null | undefined {
-  if (value === null) return null;
-  const raw = String(value ?? "").trim();
-  if (!raw) return undefined;
-  const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
+export type AdminSubscriptionPeriodEnd =
+  | { ok: true; value: Date | null }
+  | { ok: false };
 
+// Restituisce sempre un valore esplicito (mai undefined): l'upsert deve
+// sovrascrivere eventuali currentPeriodEnd stantii (es. scadenze Stripe
+// passate), altrimenti un override pro manuale resterebbe "scaduto".
+// Per il piano free la data viene azzerata qualunque cosa contenga il form.
 export function normalizeAdminSubscriptionPeriodEnd(
   plan: AdminSubscriptionPlan,
   value: unknown,
-): Date | null | undefined {
-  if (plan === "free") return null;
-  return parseOptionalAdminDate(value);
+): AdminSubscriptionPeriodEnd {
+  if (plan === "free" || value === null) return { ok: true, value: null };
+  const raw = String(value ?? "").trim();
+  if (!raw) return { ok: true, value: null };
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? { ok: false } : { ok: true, value: date };
+}
+
+export function buildAdminSubscriptionManualValues(input: {
+  userId: string;
+  plan: AdminSubscriptionPlan;
+  status: AdminSubscriptionStatus;
+  currentPeriodEnd: Date | null;
+  reason: string;
+  updatedBy: string;
+  updatedAt: Date;
+}) {
+  return {
+    userId: input.userId,
+    plan: input.plan,
+    status: input.status,
+    source: "manual",
+    manualOverride: true,
+    stripeCustomerId: input.plan === "free" ? null : undefined,
+    stripeSubscriptionId: input.plan === "free" ? null : undefined,
+    stripePriceId: input.plan === "free" ? null : undefined,
+    cancelAtPeriodEnd: input.plan === "free" ? false : undefined,
+    currentPeriodEnd: input.currentPeriodEnd,
+    reason: input.reason,
+    updatedBy: input.updatedBy,
+    updatedAt: input.updatedAt,
+  };
 }
 
 router.get("/admin/me", requireAdmin("admin.access"), (req, res) => {
@@ -527,7 +556,7 @@ router.post(
       plan,
       req.body?.currentPeriodEnd,
     );
-    if (currentPeriodEnd === null && req.body?.currentPeriodEnd) {
+    if (!currentPeriodEnd.ok) {
       res.status(400).json({ error: "Data fine periodo non valida" });
       return;
     }
@@ -549,17 +578,15 @@ router.post(
       .where(eq(adminUserSubscriptionsTable.userId, targetUserId))
       .limit(1);
 
-    const values = {
+    const values = buildAdminSubscriptionManualValues({
       userId: targetUserId,
       plan,
       status,
-      source: "manual",
-      manualOverride: true,
-      currentPeriodEnd,
+      currentPeriodEnd: currentPeriodEnd.value,
       reason,
       updatedBy: req.admin!.userId,
       updatedAt: new Date(),
-    };
+    });
 
     const [subscription] = await db
       .insert(adminUserSubscriptionsTable)

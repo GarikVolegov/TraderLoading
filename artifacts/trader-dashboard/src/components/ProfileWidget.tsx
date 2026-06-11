@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
+import { uiText } from "@/contexts/LanguageContext";
 import {
   useGetProfile,
   useUpdateProfile,
@@ -243,7 +244,7 @@ export function ProfileWidget() {
               <Trophy className="w-4 h-4 text-muted-foreground/50 mb-0.5" />
               <div className="flex flex-col items-center gap-0.5">
                 <span className="text-sm font-bold font-mono text-primary">{profile.xp.toLocaleString()}</span>
-                <span className="text-[10px] text-muted-foreground/60">XP Totali</span>
+                <span className="text-[10px] text-muted-foreground/60">{uiText("auto.ui.744ccf34e6")}</span>
                 <span className="text-[9px] text-muted-foreground/40">Livello {profile.level}</span>
               </div>
             </div>
@@ -288,7 +289,7 @@ export function ProfileWidget() {
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => !updateProfileMutation.isPending && setIsEditModalOpen(false)}
-        title="Modifica Profilo"
+        title={uiText("auto.ui.d80bbf5470")}
       >
         <form onSubmit={handleSaveEdit} className="space-y-5">
           <div className="flex flex-col items-center gap-3">
@@ -341,7 +342,7 @@ export function ProfileWidget() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Nome Trader</label>
+            <label className="text-sm font-medium">{uiText("auto.ui.85b82ff473")}</label>
             <div className="relative">
               <Input
                 required
@@ -351,7 +352,7 @@ export function ProfileWidget() {
                   setNameError("");
                   setNameAvailable(null);
                 }}
-                placeholder="Il tuo nome"
+                placeholder={uiText("auto.ui.08c4110761")}
                 className={nameError ? "border-destructive pr-10" : nameAvailable === true ? "border-primary pr-10" : "pr-10"}
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -364,7 +365,7 @@ export function ProfileWidget() {
               <p className="text-xs text-destructive">{nameError}</p>
             )}
             {nameAvailable === true && (
-              <p className="text-xs text-primary">Nome disponibile</p>
+              <p className="text-xs text-primary">{uiText("auto.ui.609678e0b8")}</p>
             )}
           </div>
 
@@ -380,10 +381,10 @@ export function ProfileWidget() {
                 max="60"
                 value={editYearsExp}
                 onChange={(e) => setEditYearsExp(e.target.value)}
-                placeholder="es. 3"
+                placeholder={uiText("auto.ui.7cd47c3736")}
                 className="w-28"
               />
-              <span className="text-sm text-muted-foreground">anni</span>
+              <span className="text-sm text-muted-foreground">{uiText("auto.ui.bf26aacd34")}</span>
             </div>
             <p className="text-xs text-muted-foreground/50">
               Lascia vuoto se preferisci non indicarlo
@@ -393,7 +394,7 @@ export function ProfileWidget() {
           <div className="rounded-xl bg-secondary/20 border border-border/20 p-3">
             <p className="text-xs text-muted-foreground/60 flex items-center gap-1.5">
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>Il <strong>Win Rate</strong> viene calcolato automaticamente dallo storico del conto trading collegato.</span>
+              <span>{uiText("auto.ui.9e855a218f")}<strong>Win Rate</strong>{uiText("auto.ui.a3304765a2")}</span>
             </p>
           </div>
 
@@ -403,9 +404,7 @@ export function ProfileWidget() {
               variant="outline"
               onClick={() => setIsEditModalOpen(false)}
               disabled={updateProfileMutation.isPending}
-            >
-              Annulla
-            </Button>
+            >{uiText("auto.ui.6c3de5381b")}</Button>
             <Button
               type="submit"
               isLoading={updateProfileMutation.isPending}

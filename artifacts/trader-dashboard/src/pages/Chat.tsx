@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage, uiText } from "@/contexts/LanguageContext";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { useE2EEKeys } from "@/hooks/useE2EEKeys";
@@ -474,15 +474,15 @@ function UserProfileModal({
           <div className="flex gap-6 mb-4 text-center">
             <div>
               <p className="font-bold">{followersCount ?? 0}</p>
-              <p className="text-xs text-muted-foreground">Follower</p>
+              <p className="text-xs text-muted-foreground">{uiText("auto.ui.995174eedf")}</p>
             </div>
             <div>
               <p className="font-bold">{followingCount ?? 0}</p>
-              <p className="text-xs text-muted-foreground">Following</p>
+              <p className="text-xs text-muted-foreground">{uiText("auto.ui.90eeb10083")}</p>
             </div>
             <div>
               <p className="font-bold">{posts?.length ?? 0}</p>
-              <p className="text-xs text-muted-foreground">Post</p>
+              <p className="text-xs text-muted-foreground">{uiText("auto.ui.7858ac3ff6")}</p>
             </div>
           </div>
 
@@ -533,9 +533,7 @@ function UserProfileModal({
 
           {posts && posts.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase mb-3">
-                Post
-              </p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase mb-3">{uiText("auto.ui.7858ac3ff6")}</p>
               <div className="space-y-3">
                 {posts.map((p: Post) => (
                   <div
@@ -867,7 +865,7 @@ function StoryViewer({
                           replyText.trim() &&
                           sendStoryReply(replyText.trim())
                         }
-                        placeholder="Scrivi una risposta..."
+                        placeholder={uiText("auto.ui.a537239d12")}
                         className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-white/40"
                         autoFocus
                       />
@@ -976,9 +974,7 @@ function StoryViewer({
                       setReplyBlob(null);
                     }}
                     className="w-full text-center text-white/40 text-xs py-1 hover:text-white/60"
-                  >
-                    Annulla
-                  </button>
+                  >{uiText("auto.ui.6c3de5381b")}</button>
                 </>
               )}
             </div>
@@ -1101,8 +1097,7 @@ function CreatePostModal({
             onClick={() => setIsStory(false)}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all border ${!isStory ? "bg-primary/10 text-primary border-primary/30" : "border-border text-muted-foreground hover:border-primary/20"}`}
           >
-            <FileText className="w-4 h-4" /> Post
-          </button>
+            <FileText className="w-4 h-4" />{uiText("auto.ui.7858ac3ff6")}</button>
           <button
             onClick={() => setIsStory(true)}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all border ${isStory ? "bg-primary/10 text-primary border-primary/30" : "border-border text-muted-foreground hover:border-primary/20"}`}
@@ -1148,7 +1143,7 @@ function CreatePostModal({
               onClick={() => fileInputRef.current?.click()}
               disabled={imageUploading || !!imageUrl}
               className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
-              title="Aggiungi immagine"
+              title={uiText("auto.ui.5d4e2a46f6")}
             >
               {imageUploading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -1159,7 +1154,7 @@ function CreatePostModal({
             <button
               onClick={() => setShowEmoji((s) => !s)}
               className={`p-2 rounded-lg transition-colors ${showEmoji ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"}`}
-              title="Emoji"
+              title={uiText("auto.ui.5090a9e78c")}
             >
               <Smile className="w-4 h-4" />
             </button>
@@ -1408,7 +1403,7 @@ function PostCard({
                   !e.shiftKey &&
                   (e.preventDefault(), submitComment())
                 }
-                placeholder="Aggiungi un commento..."
+                placeholder={uiText("auto.ui.0541ef2209")}
                 className="flex-1 bg-transparent text-xs focus:outline-none placeholder:text-muted-foreground/50 min-w-0"
               />
               <button
@@ -1510,13 +1505,13 @@ function SocialTab({
                 type="text"
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
-                placeholder="Cerca trader..."
+                placeholder={uiText("auto.ui.244dbe72f9")}
                 autoFocus
                 className="w-full pl-9 pr-4 py-1.5 bg-secondary/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
               />
             </div>
           ) : (
-            <p className="font-semibold text-sm">Social</p>
+            <p className="font-semibold text-sm">{uiText("auto.ui.41a575086b")}</p>
           )}
         </div>
         <button
@@ -1735,7 +1730,7 @@ function SocialTab({
                     <Plus className="w-4 h-4 text-primary" />
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-medium">Aggiungi una storia</p>
+                    <p className="text-sm font-medium">{uiText("chat.story.add")}</p>
                     <p className="text-xs">
                       Condividi il tuo trading per 24 ore
                     </p>
@@ -1752,7 +1747,7 @@ function SocialTab({
               ) : feed.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground space-y-3">
                   <Users className="w-12 h-12 mx-auto opacity-20" />
-                  <p className="font-medium">Nessun post nel feed</p>
+                  <p className="font-medium">{uiText("chat.feed.empty_title")}</p>
                   <p className="text-sm">
                     Cerca e segui altri trader per vedere i loro post!
                   </p>
@@ -2356,7 +2351,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
       return (
         <div className={`${base} min-w-[260px] px-3 py-2.5`}>
           <audio
-            aria-label="Messaggio vocale"
+            aria-label={uiText("auto.ui.fe60a4fba4")}
             controls
             src={msg.content}
             className="h-9 w-full"
@@ -2402,7 +2397,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
               rel="noreferrer"
               download={msg.fileName}
               className="p-2 rounded-lg bg-black/10 hover:bg-black/20 transition-colors"
-              title="Apri o scarica"
+              title={uiText("auto.ui.5fe28723c7")}
             >
               <Download className="w-4 h-4" />
             </a>
@@ -2481,13 +2476,11 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
       <div className="flex items-center justify-center h-full">
         <div className="text-center space-y-4">
           <Shield className="w-16 h-16 mx-auto text-destructive opacity-40" />
-          <p className="text-muted-foreground text-sm">Errore crittografia</p>
+          <p className="text-muted-foreground text-sm">{uiText("auto.ui.6f9df8e4ac")}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm"
-          >
-            Riprova
-          </button>
+          >{uiText("auto.ui.f360775cb8")}</button>
         </div>
       </div>
     );
@@ -2509,7 +2502,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Lock className="w-4 h-4 text-primary" />
-          <p className="font-semibold text-sm">Messaggi E2EE</p>
+          <p className="font-semibold text-sm">{uiText("auto.ui.5196dca303")}</p>
         </div>
         <div className="flex items-center gap-2">
           {callState === "incoming" && (
@@ -2535,7 +2528,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
         ) : messageContacts.length === 0 ? (
           <div className="text-center py-12 px-4 text-muted-foreground space-y-3">
             <UserCheck className="w-12 h-12 mx-auto opacity-20" />
-            <p className="font-medium text-sm">Nessun contatto disponibile</p>
+            <p className="font-medium text-sm">{uiText("auto.ui.76d784258a")}</p>
             <p className="text-xs leading-relaxed">
               Seguiti e seguaci possono chattare. Vai nel tab Social per trovare
               altri trader!
@@ -2596,7 +2589,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
             {callState === "idle" && (
               <button
                 onClick={startCall}
-                title="Chiamata vocale"
+                title={uiText("auto.ui.99608682c6")}
                 className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
               >
                 <Phone className="w-5 h-5" />
@@ -2616,7 +2609,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
             {decryptedMessages.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm py-12">
                 <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p>Inizio conversazione cifrata</p>
+                <p>{uiText("auto.ui.58974f8c19")}</p>
               </div>
             ) : (
               decryptedMessages.map((msg) => (
@@ -2660,8 +2653,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
                     onClick={stopRecording}
                     className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-xs flex items-center gap-1.5"
                   >
-                    <StopCircle className="w-3.5 h-3.5" /> Stop
-                  </button>
+                    <StopCircle className="w-3.5 h-3.5" />{uiText("auto.ui.9e253470c8")}</button>
                 </>
               ) : (
                 <>
@@ -2691,7 +2683,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setShowEmojiDM((s) => !s)}
-                title="Emoji"
+                title={uiText("auto.ui.5090a9e78c")}
                 className={`p-2 rounded-lg transition-colors ${showEmojiDM ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"}`}
               >
                 <Smile className="w-4 h-4" />
@@ -2699,7 +2691,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
               <button
                 onClick={() => dmFileInputRef.current?.click()}
                 disabled={dmImgUploading}
-                title="Allega file"
+                title={uiText("auto.ui.2b269b1b68")}
                 className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
               >
                 {dmImgUploading ? (
@@ -2724,7 +2716,7 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
                 onKeyDown={(e) =>
                   e.key === "Enter" && !e.shiftKey && handleSendText()
                 }
-                placeholder="Messaggio cifrato..."
+                placeholder={uiText("auto.ui.3e714ce7ae")}
                 className="flex-1 px-3 py-2.5 bg-card/50 border border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-colors"
                 disabled={isRecording || !!recordedBlob}
               />
@@ -2754,8 +2746,8 @@ function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-muted-foreground space-y-3">
             <Lock className="w-16 h-16 mx-auto opacity-20" />
-            <p className="text-sm">Seleziona un contatto</p>
-            <p className="text-xs">Solo i mutual follow possono chattare</p>
+            <p className="text-sm">{uiText("auto.ui.234ba7ea7e")}</p>
+            <p className="text-xs">{uiText("auto.ui.f78de8917d")}</p>
           </div>
         </div>
       )}
@@ -2788,7 +2780,7 @@ function ClassificaTab({ currentUserId }: { currentUserId: string }) {
         <div className="p-4 border-b border-border flex items-center gap-2 shrink-0">
           <Trophy className="w-4 h-4 text-yellow-400" />
           <div>
-            <p className="font-semibold text-sm">Classifica Trader</p>
+            <p className="font-semibold text-sm">{uiText("chat.leaderboard.title")}</p>
             <p className="text-xs text-muted-foreground">
               Ranking per XP e livello
             </p>
@@ -2802,7 +2794,7 @@ function ClassificaTab({ currentUserId }: { currentUserId: string }) {
           ) : !leaderboard || leaderboard.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Trophy className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Nessun trader in classifica.</p>
+              <p className="text-sm">{uiText("auto.ui.5ce296ad34")}</p>
             </div>
           ) : (
             <div className="divide-y divide-border/50">
@@ -2828,9 +2820,7 @@ function ClassificaTab({ currentUserId }: { currentUserId: string }) {
                       >
                         {entry.name}
                         {isMe && (
-                          <span className="ml-1.5 text-[10px] text-primary/70">
-                            (tu)
-                          </span>
+                          <span className="ml-1.5 text-[10px] text-primary/70">{uiText("auto.ui.7f73d79689")}</span>
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -3012,7 +3002,7 @@ function CreateCommunityModal({
         className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-bold text-base">Crea Community</h2>
+          <h2 className="font-bold text-base">{uiText("auto.ui.5fff6009cd")}</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground"
@@ -3045,20 +3035,18 @@ function CreateCommunityModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={50}
-              placeholder="es. Trader SMC Italia"
+              placeholder={uiText("auto.ui.4b6bb9f3ee")}
               className="w-full bg-secondary/30 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-              Descrizione
-            </label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">{uiText("auto.ui.07dfa30eec")}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={200}
               rows={2}
-              placeholder="Di cosa parla questa community?"
+              placeholder={uiText("auto.ui.4f747c4d42")}
               className="w-full bg-secondary/30 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50 resize-none"
             />
           </div>
@@ -3124,7 +3112,7 @@ function CreateChannelModal({
         className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-bold text-base">Nuovo canale</h2>
+          <h2 className="font-bold text-base">{uiText("auto.ui.0a38396995")}</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground"
@@ -3319,7 +3307,7 @@ function TextChannelView({
             ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-16">
                 <Hash className="w-12 h-12 opacity-20 mb-3" />
-                <p className="text-sm font-medium">Nessun messaggio ancora</p>
+                <p className="text-sm font-medium">{uiText("auto.ui.a975eec877")}</p>
                 <p className="text-xs mt-1">
                   Sii il primo a scrivere in #{channel.name}!
                 </p>
@@ -3410,7 +3398,7 @@ function TextChannelView({
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingFile}
-                title="Allega file"
+                title={uiText("auto.ui.2b269b1b68")}
                 className="text-muted-foreground hover:text-primary transition-colors shrink-0 disabled:opacity-40"
               >
                 {uploadingFile ? (
@@ -3456,7 +3444,7 @@ function TextChannelView({
           {files.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-16">
               <FolderOpen className="w-12 h-12 opacity-20 mb-3" />
-              <p className="text-sm font-medium">Nessun file caricato</p>
+              <p className="text-sm font-medium">{uiText("chat.files.empty_title")}</p>
               <p className="text-xs mt-1">
                 Usa l'icona 📎 nella chat per caricare file
               </p>
@@ -3514,14 +3502,14 @@ function TextChannelView({
                         href={f.fileUrl}
                         download={f.fileName}
                         className="w-7 h-7 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
-                        title="Scarica"
+                        title={uiText("auto.ui.bf03edb19e")}
                       >
                         <Download className="w-3.5 h-3.5" />
                       </a>
                     ) : (
                       <div
                         className="w-7 h-7 rounded-lg bg-secondary/30 text-muted-foreground/30 flex items-center justify-center"
-                        title="Download disabilitato"
+                        title={uiText("auto.ui.a75476af96")}
                       >
                         <Download className="w-3.5 h-3.5" />
                       </div>
@@ -3939,12 +3927,12 @@ function CommunityTab({
       <div className="flex items-center justify-between px-3 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <Radio className="w-4 h-4 text-primary" />
-          <span className="font-bold text-sm">Comunità</span>
+          <span className="font-bold text-sm">{uiText("auto.ui.19b6cbab8d")}</span>
         </div>
         <button
           onClick={() => setShowCreateCommunity(true)}
           className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-          title="Crea community"
+          title={uiText("auto.ui.c6d5037ec3")}
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -4116,8 +4104,8 @@ function CommunityTab({
       <div className="flex-1 flex items-center justify-center text-center p-8 text-muted-foreground lg:flex hidden">
         <div>
           <Radio className="w-12 h-12 mx-auto opacity-20 mb-3" />
-          <p className="text-sm font-medium">Seleziona una community</p>
-          <p className="text-xs mt-1">o creane una nuova con il pulsante +</p>
+          <p className="text-sm font-medium">{uiText("auto.ui.98da329dd3")}</p>
+          <p className="text-xs mt-1">{uiText("auto.ui.9de5f4bb17")}</p>
         </div>
       </div>
     );
@@ -4143,7 +4131,7 @@ function CommunityTab({
           {!selectedCommunityId ? (
             <>
               <Radio className="w-12 h-12 mx-auto opacity-20 mb-3" />
-              <p className="text-sm font-medium">Seleziona una community</p>
+              <p className="text-sm font-medium">{uiText("chat.community.select_title")}</p>
               <p className="text-xs mt-1">
                 Unisciti o creane una nuova per iniziare
               </p>
@@ -4167,7 +4155,7 @@ function CommunityTab({
           ) : (
             <>
               <Hash className="w-12 h-12 mx-auto opacity-20 mb-3" />
-              <p className="text-sm font-medium">Seleziona un canale</p>
+              <p className="text-sm font-medium">{uiText("auto.ui.a0dc7b6549")}</p>
             </>
           )}
         </div>

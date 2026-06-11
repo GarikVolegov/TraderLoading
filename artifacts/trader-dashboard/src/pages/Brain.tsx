@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { getPairLabel } from "@workspace/pair-catalog";
 import { API_BASE as API, apiFetch, apiUpload } from "@/lib/apiFetch";
+import { uiText } from "@/contexts/LanguageContext";
 
 // Upload multipart: NON impostiamo Content-Type, così il browser aggiunge il boundary.
 const ALL_PAIRS = [
@@ -127,7 +128,7 @@ function StrategySection({
           <textarea
             value={rules}
             onChange={(e) => setRules(e.target.value)}
-            placeholder="Descrivi le regole: condizioni di ingresso, conferme, gestione SL/TP, contesto di mercato che il cervello deve cercare nel grafico..."
+            placeholder={uiText("auto.ui.141b4bb739")}
             className="w-full min-h-[120px] rounded-lg border border-border bg-background px-3 py-2 text-sm resize-y"
           />
           <Button
@@ -196,11 +197,11 @@ function SignalCard({ a }: { a: BrainAnalysis }) {
           <DirectionBadge d={a.direction} />
           <span className="text-xs font-mono text-muted-foreground">{a.symbol} · {a.interval}</span>
           {a.mode === "autonomous" && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400">auto</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400">{uiText("auto.ui.0d612c12d2")}</span>
           )}
         </div>
         <div className="text-right">
-          <div className="text-[10px] text-muted-foreground">Confidenza</div>
+          <div className="text-[10px] text-muted-foreground">{uiText("auto.ui.4d38f4714e")}</div>
           <div className="text-sm font-bold font-mono">{Math.round(Number(a.confidence))}%</div>
         </div>
       </div>
@@ -341,7 +342,7 @@ function ScanSettings({ strategies }: { strategies: BrainStrategy[] }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm">Stato</span>
+          <span className="text-sm">{uiText("auto.ui.148c60ecba")}</span>
           <Button
             size="sm"
             variant={cfg?.enabled ? "default" : "outline"}
@@ -352,7 +353,7 @@ function ScanSettings({ strategies }: { strategies: BrainStrategy[] }) {
         </div>
 
         <div>
-          <div className="text-xs text-muted-foreground mb-1.5">Coppie monitorate</div>
+          <div className="text-xs text-muted-foreground mb-1.5">{uiText("auto.ui.e2fc74e6de")}</div>
           <div className="flex flex-wrap gap-1.5">
             {ALL_PAIRS.map((p) => {
               const on = selectedPairs.includes(p.replace("/", ""));
@@ -367,7 +368,7 @@ function ScanSettings({ strategies }: { strategies: BrainStrategy[] }) {
         </div>
 
         <div>
-          <div className="text-xs text-muted-foreground mb-1.5">Timeframe</div>
+          <div className="text-xs text-muted-foreground mb-1.5">{uiText("auto.ui.85decb73d1")}</div>
           <div className="flex flex-wrap gap-1.5">
             {TIMEFRAMES.map((tf) => {
               const on = selectedTfs.includes(tf);
@@ -383,12 +384,12 @@ function ScanSettings({ strategies }: { strategies: BrainStrategy[] }) {
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Ogni (min)</div>
+            <div className="text-xs text-muted-foreground mb-1">{uiText("auto.ui.de8f81b9ef")}</div>
             <Input type="number" min={5} defaultValue={cfg?.intervalMinutes ?? 30}
               onBlur={(e) => saveMutation.mutate({ intervalMinutes: Number(e.target.value) || 30 })} />
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Confidenza min %</div>
+            <div className="text-xs text-muted-foreground mb-1">{uiText("auto.ui.7761d1985c")}</div>
             <Input type="number" min={0} max={100} defaultValue={cfg ? Math.round(Number(cfg.minConfidence)) : 70}
               onBlur={(e) => saveMutation.mutate({ minConfidence: Number(e.target.value) || 70 })} />
           </div>
@@ -546,7 +547,7 @@ function KnowledgeSection({ strategyId }: { strategyId: number | null }) {
             <Upload className="w-5 h-5 text-muted-foreground" />
           )}
           <div className="text-xs text-muted-foreground">
-            Trascina <span className="font-medium text-foreground">immagini o PDF</span> qui, o clicca per scegliere
+            {uiText("brain.training_drop_before")} <span className="font-medium text-foreground">{uiText("brain.training_drop_files")}</span> {uiText("brain.training_drop_after")}
           </div>
         </div>
 
@@ -555,7 +556,7 @@ function KnowledgeSection({ strategyId }: { strategyId: number | null }) {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Incolla regole, appunti, descrizioni di setup, esempi storici, gestione del rischio…"
+            placeholder={uiText("auto.ui.f2182eee10")}
             className="w-full min-h-[90px] rounded-lg border border-border bg-background px-3 py-2 text-sm resize-y"
           />
           <Button
@@ -586,7 +587,7 @@ function KnowledgeSection({ strategyId }: { strategyId: number | null }) {
                   <button
                     onClick={() => deleteMutation.mutate(s.id)}
                     className="text-muted-foreground hover:text-red-400 shrink-0"
-                    title="Elimina"
+                    title={uiText("auto.ui.6b177bdf78")}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -650,8 +651,8 @@ export default function Brain() {
   return (
     <PageLayout>
       <PageHeader
-        title="Brain AI"
-        subtitle="Il cervello vision che guarda i grafici e applica la tua strategia"
+        title={uiText("auto.ui.7137a2bc5f")}
+        subtitle={uiText("auto.ui.2671021f99")}
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4 mt-2">
@@ -685,7 +686,7 @@ export default function Brain() {
               </div>
 
               {!effectiveStrategyId && (
-                <p className="text-xs text-yellow-400">Crea prima una strategia per poter analizzare.</p>
+                <p className="text-xs text-yellow-400">{uiText("auto.ui.06441a7fa6")}</p>
               )}
 
               <ChartReplay key={`${pair}-${interval}`} symbol={pair} interval={interval} />
@@ -697,7 +698,7 @@ export default function Brain() {
               <Sparkles className="w-3.5 h-3.5" /> Analisi recenti
             </h3>
             {analyses.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nessuna analisi ancora. Premi "Analizza ora".</p>
+              <p className="text-sm text-muted-foreground">{uiText("auto.ui.a420d60607")}</p>
             ) : (
               <div className="space-y-3">
                 {analyses.map((a) => <SignalCard key={a.id} a={a} />)}

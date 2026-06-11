@@ -3,6 +3,7 @@ import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { BrokerHubWorkspace } from "@/components/broker-hub/BrokerHubWorkspace";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { BrokerHubTab } from "@/components/broker-hub/types";
 
 const BROKER_TABS: BrokerHubTab[] = ["connect", "accounts", "history"];
@@ -13,6 +14,8 @@ function getInitialBrokerTab(): BrokerHubTab {
 }
 
 export default function Broker() {
+  const { t } = useLanguage();
+
   return (
     <PageLayout fullWidth>
       <PageHeader
@@ -21,8 +24,8 @@ export default function Broker() {
             <Wallet className="h-4 w-4" />
           </div>
         }
-        title="Broker Hub"
-        subtitle="Collega il conto solo tramite FX Blue Account Sync"
+        title={t("page.broker.title")}
+        subtitle={t("page.broker.subtitle")}
       />
 
       <ProUpgradeGate feature="broker">

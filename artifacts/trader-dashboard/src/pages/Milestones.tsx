@@ -32,6 +32,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { formatFileSize } from "@/lib/fileFormatting";
+import { uiText } from "@/contexts/LanguageContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -452,7 +453,7 @@ function MilestoneEditor({
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="es. Padronanza del Risk Management"
+            placeholder={uiText("auto.ui.5a8bc536be")}
             className="w-full h-9 px-3 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50"
           />
         </div>
@@ -490,13 +491,11 @@ function MilestoneEditor({
           </div>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            Descrizione
-          </label>
+          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.07dfa30eec")}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descrivi cosa significa raggiungere questo livello, cosa il trader ha dimostrato..."
+            placeholder={uiText("auto.ui.7a0349621f")}
             rows={3}
             className="w-full px-3 py-2 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50 resize-none"
           />
@@ -512,7 +511,7 @@ function MilestoneEditor({
               onKeyDown={(e) =>
                 e.key === "Enter" && (e.preventDefault(), addSkill())
               }
-              placeholder="es. Gestione del rischio"
+              placeholder={uiText("auto.ui.3e04830784")}
               className="flex-1 h-9 px-3 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50"
             />
             <button
@@ -740,7 +739,7 @@ function LevelRow({
 
         {/* XP needed */}
         <div className="shrink-0 text-right mr-2 hidden sm:block">
-          <p className="text-[10px] text-muted-foreground/50">XP richiesti</p>
+          <p className="text-[10px] text-muted-foreground/50">{uiText("auto.ui.00f59e3a8e")}</p>
           <p className="text-xs font-mono font-bold text-muted-foreground">
             {((level - 1) * XP_PER_LEVEL).toLocaleString()}
           </p>
@@ -755,7 +754,7 @@ function LevelRow({
               setEditing((s) => !s);
             }}
             className="shrink-0 p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-            title="Modifica traguardo"
+            title={uiText("auto.ui.d24714bb3d")}
           >
             <Edit3 className="w-3.5 h-3.5" />
           </button>
@@ -847,14 +846,14 @@ function LevelRow({
                                     href={f.fileUrl}
                                     download={f.fileName}
                                     className="shrink-0 p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-                                    title="Scarica"
+                                    title={uiText("auto.ui.bf03edb19e")}
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </a>
                                 ) : (
                                   <div
                                     className="shrink-0 p-1.5 rounded-lg bg-secondary/30 text-muted-foreground/30"
-                                    title="Download non disponibile"
+                                    title={uiText("auto.ui.c4a952844c")}
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </div>
@@ -924,8 +923,8 @@ export default function Milestones() {
     <PageLayout>
       <div className="max-w-2xl mx-auto px-4 pb-24 pt-4 space-y-6">
         <PageHeader
-          title="Traguardi"
-          subtitle="Il tuo percorso di crescita come trader"
+          title={uiText("auto.ui.689daf8e42")}
+          subtitle={uiText("auto.ui.f1e28afebb")}
           icon={<Trophy className="w-5 h-5 text-primary" />}
         />
 
@@ -976,7 +975,7 @@ export default function Milestones() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Award className="w-4 h-4 text-yellow-400" />
-              <h3 className="text-sm font-bold">I tuoi Certificati NFT</h3>
+              <h3 className="text-sm font-bold">{uiText("auto.ui.4314491bc5")}</h3>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/15 text-yellow-400 border border-yellow-500/30">
                 {certificates.length}
               </span>

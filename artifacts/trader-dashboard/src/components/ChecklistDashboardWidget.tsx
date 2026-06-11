@@ -10,6 +10,7 @@ import { Link } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useGetChecklist } from "@workspace/api-client-react";
 import { reportClientError } from "@/lib/clientErrorReporter";
+import { uiText } from "@/contexts/LanguageContext";
 
 const STORAGE_KEY = "tl_confirmation_session";
 
@@ -113,7 +114,7 @@ export function ChecklistDashboardWidget() {
                 <button
                   onClick={reset}
                   className="p-1 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-secondary/60 transition-all"
-                  title="Reset sessione"
+                  title={uiText("auto.ui.4634a0ed9f")}
                 >
                   <RotateCcw className="w-3 h-3" />
                 </button>

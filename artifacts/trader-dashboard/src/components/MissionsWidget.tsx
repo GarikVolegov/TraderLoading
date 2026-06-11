@@ -11,7 +11,7 @@ import {
   type Mission,
 } from "@workspace/api-client-react";
 import { downloadICS } from "@/utils/icsExport";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage, uiText } from "@/contexts/LanguageContext";
 
 function exportMissionToCalendar(mission: Mission) {
   const today = new Date();
@@ -92,7 +92,7 @@ export function MissionsWidget() {
       {missions && missions.length > 0 && (
         <div className="px-4 pt-2.5 pb-1">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Progresso XP</span>
+            <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">{uiText("auto.ui.49d5f3c4ad")}</span>
             <span className="text-[9px] text-muted-foreground/60 font-mono">{totalXp}/{totalPossible}</span>
           </div>
           <div className="h-1.5 rounded-full bg-secondary/60 overflow-hidden">

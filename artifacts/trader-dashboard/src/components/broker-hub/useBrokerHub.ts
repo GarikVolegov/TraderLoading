@@ -1,3 +1,4 @@
+import { uiText } from "@/contexts/LanguageContext";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   BrokerAccountProfile,
@@ -78,7 +79,7 @@ export function useBrokerHub() {
       }
       setMessage(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Broker Hub non disponibile");
+      setMessage(error instanceof Error ? error.message : uiText("auto.ui.68de907f03"));
     } finally {
       setLoading(false);
     }
@@ -102,9 +103,9 @@ export function useBrokerHub() {
         if (cancelled) return;
         setSnapshot(nextSnapshot);
         setHistory(nextHistory);
-        setMessage(nextSnapshot.status === "connected" ? "FX Blue sincronizzato" : nextSnapshot.error ?? null);
+        setMessage(nextSnapshot.status === uiText("auto.ui.c5e23457aa") ? "FX Blue sincronizzato" : nextSnapshot.error ?? null);
       } catch (error) {
-        if (!cancelled) setMessage(error instanceof Error ? error.message : "Sync FX Blue non disponibile");
+        if (!cancelled) setMessage(error instanceof Error ? error.message : uiText("auto.ui.e49ece2b58"));
       }
     };
 
@@ -120,7 +121,7 @@ export function useBrokerHub() {
     async (raw: Partial<BrokerAccountProfile> & { accessToken?: string; bridgeToken?: string }) => {
       const data = await saveBrokerProfile(raw);
       await refreshProfiles();
-      setMessage("Profilo broker salvato");
+      setMessage(uiText("auto.ui.69040fe36b"));
       return data.profile;
     },
     [refreshProfiles],
@@ -143,7 +144,7 @@ export function useBrokerHub() {
     const result = await verifyFxBlueProfileRequest(intentId, payload);
     const data = result.data;
     if (data.snapshot) setSnapshot(data.snapshot);
-    setMessage(data.intent?.displayStatus ?? data.error ?? "Profilo FX Blue non verificato");
+    setMessage(data.intent?.displayStatus ?? data.error ?? uiText("auto.ui.2d2acb400d"));
     return data;
   }, []);
 
@@ -153,7 +154,7 @@ export function useBrokerHub() {
       const data = result.data;
       if (data.snapshot) setSnapshot(data.snapshot);
       await refreshProfiles();
-      setMessage(data.intent?.displayStatus ?? data.error ?? "Account Sync FX Blue non completato");
+      setMessage(data.intent?.displayStatus ?? data.error ?? uiText("auto.ui.b87a76ff18"));
       return data;
     },
     [refreshProfiles],
@@ -175,7 +176,7 @@ export function useBrokerHub() {
       const data = result.data;
       if (data.intent) setConnectionIntent(data.intent);
       if (data.snapshot) setSnapshot(data.snapshot);
-      setMessage(data.intent?.displayStatus ?? data.error ?? "Conto non verificato");
+      setMessage(data.intent?.displayStatus ?? data.error ?? uiText("auto.ui.1ccdfd143b"));
       if (!result.ok) return { intent: data.intent, snapshot: data.snapshot };
       return data;
     },
@@ -192,7 +193,7 @@ export function useBrokerHub() {
       if (data.intent) setConnectionIntent(data.intent);
       if (data.snapshot) setSnapshot(data.snapshot);
       await refreshProfiles();
-      setMessage(data.intent?.displayStatus ?? data.error ?? "Conto non collegato");
+      setMessage(data.intent?.displayStatus ?? data.error ?? uiText("auto.ui.597406cf1e"));
       return data;
     },
     [refreshProfiles],
@@ -202,7 +203,7 @@ export function useBrokerHub() {
     async (payload: CompanionPairingPayload) => {
       const data = await createCompanionPairingRequest(payload);
       await refreshProfiles();
-      setMessage("Pairing Connector pronto");
+      setMessage(uiText("auto.ui.6b969cd390"));
       return data;
     },
     [refreshProfiles],
@@ -281,7 +282,7 @@ export function useBrokerHub() {
     async (id: string) => {
       await deleteBrokerProfile(id);
       await refreshProfiles();
-      setMessage("Profilo broker eliminato");
+      setMessage(uiText("auto.ui.b1d1f3c93a"));
     },
     [refreshProfiles],
   );

@@ -1,3 +1,4 @@
+import { uiText } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, LockKeyhole, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -132,9 +133,7 @@ export function FxBlueAccountSyncWizard({
             Collega il profilo FX Blue già sincronizzato e importa i dati in Sola lettura.
           </p>
         </div>
-        <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase text-primary">
-          Sola lettura
-        </span>
+        <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase text-primary">{uiText("auto.ui.6c3cdfe1cc")}</span>
       </div>
 
       {error && (
@@ -148,7 +147,7 @@ export function FxBlueAccountSyncWizard({
         <div className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Piattaforma</Label>
+              <Label>{uiText("auto.ui.0dcad48c42")}</Label>
               <select
                 value={platform}
                 onChange={(event) => setPlatform(event.target.value as "MT4" | "MT5")}
@@ -159,7 +158,7 @@ export function FxBlueAccountSyncWizard({
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Ambiente</Label>
+              <Label>{uiText("auto.ui.e6fefb74bf")}</Label>
               <select
                 value={environment}
                 onChange={(event) => setEnvironment(event.target.value as "demo" | "live")}
@@ -176,28 +175,28 @@ export function FxBlueAccountSyncWizard({
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Numero conto</Label>
+              <Label>{uiText("auto.ui.e10d36a838")}</Label>
               <Input value={accountNumber} onChange={(event) => setAccountNumber(event.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Server broker</Label>
+              <Label>{uiText("auto.ui.5c7ea0ffb1")}</Label>
               <Input value={server} onChange={(event) => setServer(event.target.value)} />
             </div>
           </div>
 
           <div className="-mx-4 space-y-3 border-y border-primary/20 bg-primary/5 px-4 py-3">
             <div className="space-y-1">
-              <p className="text-sm font-bold">Hai già configurato FX Blue?</p>
+              <p className="text-sm font-bold">{uiText("fxblue.existing_title")}</p>
               <p className="text-xs text-muted-foreground">
                 Inserisci username o URL pubblico del profilo FX Blue. Broker Hub non richiede la password del conto per questo collegamento.
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Username o URL profilo FX Blue</Label>
+              <Label>{uiText("auto.ui.373038118c")}</Label>
               <Input
                 value={fxBlueProfileRef}
                 onChange={(event) => setFxBlueProfileRef(event.target.value)}
-                placeholder="82364482 oppure https://www.fxblue.com/users/tuo-username"
+                placeholder={uiText("auto.ui.6da3300121")}
               />
             </div>
             <Button className="w-full gap-2" disabled={busy || !existingSyncReady} onClick={connectExistingSync}>
@@ -212,7 +211,7 @@ export function FxBlueAccountSyncWizard({
               password investor/read-only opzionale
             </Label>
             <Input type="password" autoComplete="off" value={investorPassword} onChange={(event) => setInvestorPassword(event.target.value)} />
-            <p className="text-xs text-amber-400">Serve solo se devi ancora configurare FX Blue. Non inserire la password master del conto.</p>
+            <p className="text-xs text-amber-400">{uiText("auto.ui.f3e32e2b66")}</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <Button variant="outline" onClick={onBack}>
@@ -229,10 +228,10 @@ export function FxBlueAccountSyncWizard({
       {step === "fxblue" && (
         <div className="space-y-3">
           <div className="rounded-lg border border-border/40 bg-background/40 p-3 text-sm text-muted-foreground">
-            <p>1. Accedi o registrati su FX Blue.</p>
+            <p>{uiText("auto.ui.99055dc0c7")}</p>
             <p>2. Apri Account Sync e seleziona {platform}.</p>
-            <p>3. Inserisci numero conto, server e password investor/read-only.</p>
-            <p>4. Avvia la raccolta e torna qui.</p>
+            <p>{uiText("auto.ui.4423dc1fee")}</p>
+            <p>{uiText("auto.ui.1a18315df3")}</p>
           </div>
           <a href={FXBLUE_ACCOUNT_SYNC_URL} target="_blank" rel="noreferrer" className={`${buttonVariants()} w-full gap-2`}>
             <ExternalLink className="h-4 w-4" />
@@ -247,11 +246,11 @@ export function FxBlueAccountSyncWizard({
       {step === "profile" && (
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label>Username o URL profilo FX Blue</Label>
+            <Label>{uiText("auto.ui.373038118c")}</Label>
             <Input
               value={fxBlueProfileRef}
               onChange={(event) => setFxBlueProfileRef(event.target.value)}
-              placeholder="trader-one oppure https://www.fxblue.com/users/trader-one"
+              placeholder={uiText("auto.ui.206cfc5fc5")}
             />
           </div>
           <Button className="w-full gap-2" disabled={busy || !fxBlueProfileRef.trim()} onClick={verifyProfile}>
@@ -267,7 +266,7 @@ export function FxBlueAccountSyncWizard({
             <CheckCircle2 className="h-5 w-5" />
             Profilo FX Blue verificato
           </div>
-          <p className="text-sm text-primary/80">Completa il collegamento per visualizzare il conto nel Broker Hub.</p>
+          <p className="text-sm text-primary/80">{uiText("fxblue.complete_hint")}</p>
           <Button className="w-full" onClick={complete} disabled={busy}>
             Completa collegamento
           </Button>

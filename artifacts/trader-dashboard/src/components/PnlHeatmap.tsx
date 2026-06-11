@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, startOfMonth, startOfWeek, subMonths } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useDateLocale } from "@/contexts/LanguageContext";
+import { useDateLocale, uiText } from "@/contexts/LanguageContext";
 import { computeEquityStats, type EquityEntryInput } from "@/lib/equityStats";
 
 const WEEKDAY_LABELS = ["L", "M", "M", "G", "V", "S", "D"];
@@ -51,7 +51,7 @@ export function PnlHeatmap({ entries }: { entries: EquityEntryInput[] | undefine
     <div className="rounded-2xl border border-border/30 bg-card/60 p-4 backdrop-blur-sm sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold">Calendario P&L</h3>
+          <h3 className="text-sm font-bold">{uiText("auto.ui.1de11733b0")}</h3>
           <p className="text-xs text-muted-foreground">
             {format(month, "MMMM yyyy", { locale: dateLocale })}
             {" · "}
@@ -64,7 +64,7 @@ export function PnlHeatmap({ entries }: { entries: EquityEntryInput[] | undefine
           <button
             type="button"
             onClick={() => setMonth((m) => subMonths(m, 1))}
-            aria-label="Mese precedente"
+            aria-label={uiText("auto.ui.2e0f3b1a66")}
             className="flex h-8 w-8 items-center justify-center rounded-md border border-border/40 text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -72,7 +72,7 @@ export function PnlHeatmap({ entries }: { entries: EquityEntryInput[] | undefine
           <button
             type="button"
             onClick={() => setMonth((m) => addMonths(m, 1))}
-            aria-label="Mese successivo"
+            aria-label={uiText("auto.ui.c001f53ebd")}
             className="flex h-8 w-8 items-center justify-center rounded-md border border-border/40 text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronRight className="h-4 w-4" />

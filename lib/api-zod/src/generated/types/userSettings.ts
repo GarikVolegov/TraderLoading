@@ -31,6 +31,7 @@ export interface UserSettings {
   /** @minimum 0 */
   preMacroMinutes: number;
   maxDailyLoss?: number | null;
+  onboardingTutorialCompletedAt?: Date | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UserSettingsBackgroundPresetsItem[] | null;
 }

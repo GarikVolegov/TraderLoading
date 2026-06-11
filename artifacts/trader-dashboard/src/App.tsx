@@ -31,6 +31,7 @@ import { LevelRewardModal } from "./components/LevelRewardModal";
 import { PinLockScreen } from "./components/PinLockScreen";
 import { ChecklistSetupModal } from "./components/ChecklistSetupModal";
 import { PairOnboardingWrapper } from "./components/PairOnboardingWrapper";
+import { AppTutorialWrapper } from "./components/AppTutorialWrapper";
 import { TopNav } from "./components/TopNav";
 import { BottomNav } from "./components/BottomNav";
 import { useLanguage } from "./contexts/LanguageContext";
@@ -44,6 +45,7 @@ const News = lazy(() => import("./pages/News"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Backtest = lazy(() => import("./pages/Backtest"));
 const Brain = lazy(() => import("./pages/Brain"));
+const Wiki = lazy(() => import("./pages/Wiki"));
 const Zen = lazy(() => import("./pages/Zen"));
 const Milestones = lazy(() => import("./pages/Milestones"));
 const Library = lazy(() => import("./pages/Library"));
@@ -52,6 +54,8 @@ const Missions = lazy(() => import("./pages/Missions"));
 const Clock = lazy(() => import("./pages/Clock"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Broker = lazy(() => import("./pages/Broker"));
+const ProPage = lazy(() => import("./pages/ProPage"));
+const BillingReturn = lazy(() => import("./pages/BillingReturn"));
 const NotFound = lazy(() => import("./pages/not-found"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Admin = lazy(() => import("./pages/Admin"));
@@ -243,6 +247,7 @@ function AppRouter() {
           <Route path="/backtest" component={Backtest} />
           <Route path="/tools" component={Backtest} />
           <Route path="/brain" component={Brain} />
+          <Route path="/wiki" component={Wiki} />
           <Route path="/zen" component={Zen} />
           <Route path="/milestones" component={Milestones} />
           <Route path="/library" component={Library} />
@@ -251,6 +256,8 @@ function AppRouter() {
           <Route path="/clock" component={Clock} />
           <Route path="/calendar" component={Calendar} />
           <Route path="/broker" component={Broker} />
+          <Route path="/pro" component={ProPage} />
+          <Route path="/billing/return" component={BillingReturn} />
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
@@ -284,6 +291,7 @@ function AuthenticatedShell() {
       <SessionStartNotifier />
       <LanguageServerSync />
       <PairOnboardingWrapper />
+      <AppTutorialWrapper />
       <SessionCheckinModal />
       <LevelRewardModal />
       <CommandPalette />

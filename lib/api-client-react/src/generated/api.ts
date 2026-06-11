@@ -42,6 +42,8 @@ import type {
   CreateJournalEntryRequest,
   CreateMissionTemplateRequest,
   CreateQuoteRequest,
+  CreateWikiTextSourceRequest,
+  CreateWikiUrlSourceRequest,
   DeleteBacktestSession200,
   DeleteBacktestTrade200,
   DeleteResponse,
@@ -67,6 +69,7 @@ import type {
   PendingFriendRequest,
   PublicKeyRecord,
   PublicKeyResponse,
+  QueryWikiRequest,
   Quote,
   ReadinessStatus,
   SaveAccountKeyBackupBody,
@@ -85,9 +88,13 @@ import type {
   UploadImageResponse,
   UploadJournalImageBody,
   UploadProfileAvatarBody,
+  UploadWikiSourceBody,
   UserProfile,
   UserSearchResult,
   UserSettings,
+  WikiAnswer,
+  WikiGraph,
+  WikiSource,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -98,6 +105,745 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary List private wiki sources
+ */
+export const getListWikiSourcesUrl = () => {
+  return `/api/wiki/sources`;
+};
+
+export const listWikiSources = async (
+  options?: RequestInit,
+): Promise<WikiSource[]> => {
+  return customFetch<WikiSource[]>(getListWikiSourcesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListWikiSourcesQueryKey = () => {
+  return [`/api/wiki/sources`] as const;
+};
+
+export const getListWikiSourcesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWikiSources>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiSources>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWikiSourcesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listWikiSources>>> = ({
+    signal,
+  }) => listWikiSources({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiSources>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListWikiSourcesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listWikiSources>>
+>;
+export type ListWikiSourcesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List private wiki sources
+ */
+
+export function useListWikiSources<
+  TData = Awaited<ReturnType<typeof listWikiSources>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiSources>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListWikiSourcesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a text note to the private wiki
+ */
+export const getCreateWikiTextSourceUrl = () => {
+  return `/api/wiki/sources/text`;
+};
+
+export const createWikiTextSource = async (
+  createWikiTextSourceRequest: CreateWikiTextSourceRequest,
+  options?: RequestInit,
+): Promise<WikiSource> => {
+  return customFetch<WikiSource>(getCreateWikiTextSourceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createWikiTextSourceRequest),
+  });
+};
+
+export const getCreateWikiTextSourceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWikiTextSource>>,
+    TError,
+    { data: BodyType<CreateWikiTextSourceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createWikiTextSource>>,
+  TError,
+  { data: BodyType<CreateWikiTextSourceRequest> },
+  TContext
+> => {
+  const mutationKey = ["createWikiTextSource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createWikiTextSource>>,
+    { data: BodyType<CreateWikiTextSourceRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createWikiTextSource(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateWikiTextSourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createWikiTextSource>>
+>;
+export type CreateWikiTextSourceMutationBody =
+  BodyType<CreateWikiTextSourceRequest>;
+export type CreateWikiTextSourceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a text note to the private wiki
+ */
+export const useCreateWikiTextSource = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWikiTextSource>>,
+    TError,
+    { data: BodyType<CreateWikiTextSourceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createWikiTextSource>>,
+  TError,
+  { data: BodyType<CreateWikiTextSourceRequest> },
+  TContext
+> => {
+  return useMutation(getCreateWikiTextSourceMutationOptions(options));
+};
+
+/**
+ * @summary Upload a file to the private wiki
+ */
+export const getUploadWikiSourceUrl = () => {
+  return `/api/wiki/sources/upload`;
+};
+
+export const uploadWikiSource = async (
+  uploadWikiSourceBody: UploadWikiSourceBody,
+  options?: RequestInit,
+): Promise<WikiSource> => {
+  const formData = new FormData();
+  formData.append(`file`, uploadWikiSourceBody.file);
+  if (uploadWikiSourceBody.title !== undefined) {
+    formData.append(`title`, uploadWikiSourceBody.title);
+  }
+
+  return customFetch<WikiSource>(getUploadWikiSourceUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getUploadWikiSourceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadWikiSource>>,
+    TError,
+    { data: BodyType<UploadWikiSourceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadWikiSource>>,
+  TError,
+  { data: BodyType<UploadWikiSourceBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadWikiSource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadWikiSource>>,
+    { data: BodyType<UploadWikiSourceBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return uploadWikiSource(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadWikiSourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadWikiSource>>
+>;
+export type UploadWikiSourceMutationBody = BodyType<UploadWikiSourceBody>;
+export type UploadWikiSourceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload a file to the private wiki
+ */
+export const useUploadWikiSource = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadWikiSource>>,
+    TError,
+    { data: BodyType<UploadWikiSourceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadWikiSource>>,
+  TError,
+  { data: BodyType<UploadWikiSourceBody> },
+  TContext
+> => {
+  return useMutation(getUploadWikiSourceMutationOptions(options));
+};
+
+/**
+ * @summary Import a URL into the private wiki
+ */
+export const getCreateWikiUrlSourceUrl = () => {
+  return `/api/wiki/sources/url`;
+};
+
+export const createWikiUrlSource = async (
+  createWikiUrlSourceRequest: CreateWikiUrlSourceRequest,
+  options?: RequestInit,
+): Promise<WikiSource> => {
+  return customFetch<WikiSource>(getCreateWikiUrlSourceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createWikiUrlSourceRequest),
+  });
+};
+
+export const getCreateWikiUrlSourceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWikiUrlSource>>,
+    TError,
+    { data: BodyType<CreateWikiUrlSourceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createWikiUrlSource>>,
+  TError,
+  { data: BodyType<CreateWikiUrlSourceRequest> },
+  TContext
+> => {
+  const mutationKey = ["createWikiUrlSource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createWikiUrlSource>>,
+    { data: BodyType<CreateWikiUrlSourceRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createWikiUrlSource(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateWikiUrlSourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createWikiUrlSource>>
+>;
+export type CreateWikiUrlSourceMutationBody =
+  BodyType<CreateWikiUrlSourceRequest>;
+export type CreateWikiUrlSourceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Import a URL into the private wiki
+ */
+export const useCreateWikiUrlSource = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWikiUrlSource>>,
+    TError,
+    { data: BodyType<CreateWikiUrlSourceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createWikiUrlSource>>,
+  TError,
+  { data: BodyType<CreateWikiUrlSourceRequest> },
+  TContext
+> => {
+  return useMutation(getCreateWikiUrlSourceMutationOptions(options));
+};
+
+/**
+ * @summary Delete a private wiki source
+ */
+export const getDeleteWikiSourceUrl = (id: number) => {
+  return `/api/wiki/sources/${id}`;
+};
+
+export const deleteWikiSource = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteWikiSourceUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteWikiSourceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWikiSource>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteWikiSource>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteWikiSource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteWikiSource>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteWikiSource(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteWikiSourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteWikiSource>>
+>;
+
+export type DeleteWikiSourceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a private wiki source
+ */
+export const useDeleteWikiSource = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWikiSource>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteWikiSource>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteWikiSourceMutationOptions(options));
+};
+
+/**
+ * @summary Get private wiki graph summary
+ */
+export const getGetWikiGraphUrl = () => {
+  return `/api/wiki/graph`;
+};
+
+export const getWikiGraph = async (
+  options?: RequestInit,
+): Promise<WikiGraph> => {
+  return customFetch<WikiGraph>(getGetWikiGraphUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetWikiGraphQueryKey = () => {
+  return [`/api/wiki/graph`] as const;
+};
+
+export const getGetWikiGraphQueryOptions = <
+  TData = Awaited<ReturnType<typeof getWikiGraph>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getWikiGraph>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetWikiGraphQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getWikiGraph>>> = ({
+    signal,
+  }) => getWikiGraph({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getWikiGraph>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetWikiGraphQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getWikiGraph>>
+>;
+export type GetWikiGraphQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get private wiki graph summary
+ */
+
+export function useGetWikiGraph<
+  TData = Awaited<ReturnType<typeof getWikiGraph>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getWikiGraph>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetWikiGraphQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List private wiki graph communities
+ */
+export const getListWikiCommunitiesUrl = () => {
+  return `/api/wiki/communities`;
+};
+
+export const listWikiCommunities = async (
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getListWikiCommunitiesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListWikiCommunitiesQueryKey = () => {
+  return [`/api/wiki/communities`] as const;
+};
+
+export const getListWikiCommunitiesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWikiCommunities>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiCommunities>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWikiCommunitiesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listWikiCommunities>>
+  > = ({ signal }) => listWikiCommunities({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiCommunities>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListWikiCommunitiesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listWikiCommunities>>
+>;
+export type ListWikiCommunitiesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List private wiki graph communities
+ */
+
+export function useListWikiCommunities<
+  TData = Awaited<ReturnType<typeof listWikiCommunities>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiCommunities>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListWikiCommunitiesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Ask the private wiki a question
+ */
+export const getQueryWikiUrl = () => {
+  return `/api/wiki/query`;
+};
+
+export const queryWiki = async (
+  queryWikiRequest: QueryWikiRequest,
+  options?: RequestInit,
+): Promise<WikiAnswer> => {
+  return customFetch<WikiAnswer>(getQueryWikiUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(queryWikiRequest),
+  });
+};
+
+export const getQueryWikiMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof queryWiki>>,
+    TError,
+    { data: BodyType<QueryWikiRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof queryWiki>>,
+  TError,
+  { data: BodyType<QueryWikiRequest> },
+  TContext
+> => {
+  const mutationKey = ["queryWiki"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof queryWiki>>,
+    { data: BodyType<QueryWikiRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return queryWiki(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QueryWikiMutationResult = NonNullable<
+  Awaited<ReturnType<typeof queryWiki>>
+>;
+export type QueryWikiMutationBody = BodyType<QueryWikiRequest>;
+export type QueryWikiMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Ask the private wiki a question
+ */
+export const useQueryWiki = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof queryWiki>>,
+    TError,
+    { data: BodyType<QueryWikiRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof queryWiki>>,
+  TError,
+  { data: BodyType<QueryWikiRequest> },
+  TContext
+> => {
+  return useMutation(getQueryWikiMutationOptions(options));
+};
+
+/**
+ * @summary Rebuild the private wiki graph
+ */
+export const getReindexWikiUrl = () => {
+  return `/api/wiki/reindex`;
+};
+
+export const reindexWiki = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getReindexWikiUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getReindexWikiMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reindexWiki>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reindexWiki>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["reindexWiki"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reindexWiki>>,
+    void
+  > = () => {
+    return reindexWiki(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReindexWikiMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reindexWiki>>
+>;
+
+export type ReindexWikiMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Rebuild the private wiki graph
+ */
+export const useReindexWiki = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reindexWiki>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reindexWiki>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getReindexWikiMutationOptions(options));
+};
 
 /**
  * @summary Health check

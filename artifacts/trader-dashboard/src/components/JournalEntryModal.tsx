@@ -21,7 +21,7 @@ import {
   useGetChecklist,
   type JournalEntry
 } from "@workspace/api-client-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage, uiText } from "@/contexts/LanguageContext";
 import { fetchJournalTags, journalTagsQueryKey, saveJournalTag, type JournalTagSummary } from "@/lib/journalTagsApi";
 
 interface JournalEntryModalProps {
@@ -166,7 +166,7 @@ function SmartTagInput({ value, onChange, onSaveTag, savedTags }: SmartTagInputP
               {query === "" && (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border/50">
                   <Star className="w-3 h-3 text-amber-400" />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Tag usati di frequente</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.4a76dcb4c0")}</span>
                 </div>
               )}
               {suggestions.map((s, i) => (
@@ -449,7 +449,7 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
             <Label className="text-muted-foreground flex items-center gap-1.5">
               <Tag className="w-3.5 h-3.5" />
               {t("journal_modal.tags_label")}
-              <span className="text-xs opacity-40 font-normal ml-1">Invio o , per aggiungere</span>
+              <span className="text-xs opacity-40 font-normal ml-1">{uiText("auto.ui.ae9109b789")}</span>
             </Label>
             <SmartTagInput
               value={tagList}

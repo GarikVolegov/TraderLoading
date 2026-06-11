@@ -16,7 +16,7 @@ assert.doesNotMatch(source, /route: "\/tools\?tab=/);
 // La curva equity vive dentro il widget Broker Hub ("account"), non come widget separato.
 assert.match(
   source,
-  /const DEFAULT_ORDER = \[\s*"clock",\s*"quote",\s*"account",\s*"missions",\s*"routine",\s*"checklist",\s*"lot",\s*"journal",\s*"sentiment",\s*"volatility",\s*"cot",\s*"calendar",\s*\];/s,
+  /const DEFAULT_ORDER = \[\s*"clock",\s*"quote",\s*"tradingview-watchlist",\s*"account",\s*"missions",\s*"routine",\s*"checklist",\s*"lot",\s*"journal",\s*"sentiment",\s*"volatility",\s*"cot",\s*"calendar",\s*\];/s,
 );
 assert.doesNotMatch(source, /EquityCurveWidget/);
 

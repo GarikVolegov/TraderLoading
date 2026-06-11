@@ -4,6 +4,7 @@ import { it } from "date-fns/locale";
 import { Calendar, CheckCircle2, Circle, LayoutGrid } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useGetMissions, useGetMissionTemplates } from "@workspace/api-client-react";
+import { uiText } from "@/contexts/LanguageContext";
 
 const DAY_LABELS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
@@ -77,7 +78,7 @@ export function CalendarMissionsWidget() {
                           </div>
                         ))
                       ) : (
-                        <p className="text-[9px] text-muted-foreground/40 text-center pt-2">Nessuna missione</p>
+                        <p className="text-[9px] text-muted-foreground/40 text-center pt-2">{uiText("auto.ui.3676ba9b90")}</p>
                       )
                     ) : isFuture(day) ? (
                       templates && templates.length > 0 ? (
@@ -105,15 +106,15 @@ export function CalendarMissionsWidget() {
         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border/30">
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-primary/70" />
-            <span className="text-[10px] text-muted-foreground/60">Completata</span>
+            <span className="text-[10px] text-muted-foreground/60">{uiText("auto.ui.c10c7696e7")}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-secondary/70 border border-border" />
-            <span className="text-[10px] text-muted-foreground/60">In corso</span>
+            <span className="text-[10px] text-muted-foreground/60">{uiText("auto.ui.4b6912649a")}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-secondary/30 border border-border/40" />
-            <span className="text-[10px] text-muted-foreground/60">Prossime</span>
+            <span className="text-[10px] text-muted-foreground/60">{uiText("auto.ui.e746c09825")}</span>
           </div>
         </div>
       </CardContent>

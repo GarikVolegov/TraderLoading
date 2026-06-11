@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, UserPlus, UserMinus, UserCheck, Heart, Lock, Loader2, User } from "lucide-react";
 import { apiJSON } from "@/lib/apiFetch";
 import { formatCompactItalianRelativeTime } from "@/lib/relativeTime";
+import { uiText } from "@/contexts/LanguageContext";
 
 interface SocialUser {
   userId: string;
@@ -123,15 +124,15 @@ export function UserProfileModal({
           <div className="flex gap-6 text-center">
             <div>
               <p className="font-bold text-lg">{followersCount}</p>
-              <p className="text-xs text-muted-foreground">Follower</p>
+              <p className="text-xs text-muted-foreground">{uiText("auto.ui.995174eedf")}</p>
             </div>
             <div>
               <p className="font-bold text-lg">{followingCount}</p>
-              <p className="text-xs text-muted-foreground">Following</p>
+              <p className="text-xs text-muted-foreground">{uiText("auto.ui.90eeb10083")}</p>
             </div>
             <div>
               <p className="font-bold text-lg">{posts.length}</p>
-              <p className="text-xs text-muted-foreground">Post</p>
+              <p className="text-xs text-muted-foreground">{uiText("auto.ui.7858ac3ff6")}</p>
             </div>
           </div>
 
@@ -176,7 +177,7 @@ export function UserProfileModal({
 
           {posts.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Post recenti</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{uiText("auto.ui.bef3bd79bc")}</p>
               <div className="space-y-2">
                 {posts.slice(0, 5).map((p) => (
                   <div key={p.id} className="bg-secondary/30 rounded-xl p-3 text-sm">

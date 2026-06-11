@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { MindMapEditor, MindMapView, isMindMapData, type MindMapData } from "@/components/MindMapEditor";
+import { uiText } from "@/contexts/LanguageContext";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type ContentType = "document" | "mindmap" | "video";
@@ -90,7 +91,7 @@ function ContentViewer({ content, onClose }: { content: Content; onClose: () => 
             <div className="aspect-video w-full overflow-hidden rounded-lg border border-border/40">
               <iframe src={embed} title={content.title} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
             </div>
-          ) : <p className="text-sm text-amber-400">Link video non valido.</p>
+          ) : <p className="text-sm text-amber-400">{uiText("auto.ui.39dab29de2")}</p>
         )}
 
         {content.type === "mindmap" && (
@@ -128,7 +129,7 @@ function ContentViewer({ content, onClose }: { content: Content; onClose: () => 
                 {content.bodyMarkdown}
               </div>
             )}
-            {!content.fileUrl && !content.bodyMarkdown && <p className="text-sm text-muted-foreground">Nessun contenuto.</p>}
+            {!content.fileUrl && !content.bodyMarkdown && <p className="text-sm text-muted-foreground">{uiText("auto.ui.f87d7a9950")}</p>}
           </div>
         )}
       </DialogContent>
@@ -186,8 +187,8 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
               );
             })}
           </div>
-          <input className="tl-input" placeholder="Titolo" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <textarea className="tl-input min-h-16" placeholder="Descrizione" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <input className="tl-input" placeholder={uiText("auto.ui.b2f23da948")} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <textarea className="tl-input min-h-16" placeholder={uiText("auto.ui.07dfa30eec")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
 
           {form.type === "video" && (
             <input className="tl-input" placeholder="Link YouTube / Vimeo" value={form.embedUrl} onChange={(e) => setForm({ ...form, embedUrl: e.target.value })} />
@@ -221,7 +222,7 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
             <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} /> Pubblicato
           </label>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={onClose}>Annulla</Button>
+            <Button variant="outline" size="sm" onClick={onClose}>{uiText("auto.ui.6c3de5381b")}</Button>
             <Button size="sm" disabled={!form.title.trim() || save.isPending} onClick={() => save.mutate()}>
               {save.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} Salva
             </Button>
@@ -246,7 +247,7 @@ function ContentCard({ item, locked, isAdmin, onOpen, onEdit, onDelete }: {
           <M.icon className="w-3.5 h-3.5" /> {M.label}
         </span>
         <div className="flex items-center gap-1">
-          {!item.published && <span className="text-[9px] text-amber-400 font-bold">BOZZA</span>}
+          {!item.published && <span className="text-[9px] text-amber-400 font-bold">{uiText("auto.ui.227e03417c")}</span>}
           {isAdmin && (
             <>
               <button onClick={onEdit} className="p-1 text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
@@ -301,9 +302,9 @@ export default function Library() {
   return (
     <PageLayout>
       <PageHeader
-        title="Biblioteca"
-        subtitle="Premi e contenuti formativi sbloccati in base al tuo livello"
-        action={isAdmin ? <Button size="sm" onClick={() => setEditContent("new")}><Plus className="w-4 h-4 mr-1" /> Contenuto</Button> : undefined}
+        title={uiText("auto.ui.497ac5c11b")}
+        subtitle={uiText("auto.ui.7365da3b5d")}
+        action={isAdmin ? <Button size="sm" onClick={() => setEditContent("new")}><Plus className="w-4 h-4 mr-1" />{uiText("auto.ui.fd19042867")}</Button> : undefined}
       />
 
       {/* Progress to next unlock */}
@@ -312,8 +313,8 @@ export default function Library() {
           <div className="flex items-center justify-between mb-2">
             <span className="inline-flex items-center gap-2 text-sm font-semibold"><Star className="w-4 h-4 text-primary" /> Livello {userLevel}</span>
             {nextLevel
-              ? <span className="text-xs text-muted-foreground">Prossimo sblocco al livello <span className="text-primary font-bold">{nextLevel}</span></span>
-              : <span className="text-xs text-primary font-semibold">Tutti i contenuti sbloccati!</span>}
+              ? <span className="text-xs text-muted-foreground">{uiText("auto.ui.9d3783b578")}<span className="text-primary font-bold">{nextLevel}</span></span>
+              : <span className="text-xs text-primary font-semibold">{uiText("auto.ui.195e8d38db")}</span>}
           </div>
           {nextLevel && (
             <>
@@ -336,7 +337,7 @@ export default function Library() {
               <Zap className="w-3 h-3 text-primary" />
               <span className="text-xs font-bold text-primary">{level === 0 ? "Sempre disponibile" : `Livello ${level}`}</span>
             </div>
-            {isAdmin && level > userLevel && <span className="text-[10px] text-amber-400 font-semibold">anteprima admin</span>}
+            {isAdmin && level > userLevel && <span className="text-[10px] text-amber-400 font-semibold">{uiText("auto.ui.c75425620c")}</span>}
             <div className="h-px flex-1 bg-border/50" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -352,7 +353,7 @@ export default function Library() {
       {/* Locked levels */}
       {lockedLevels.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contenuti bloccati</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.cdb9f9ede9")}</p>
           {lockedLevels.map((level) => {
             const count = byLevel.get(level)!.length;
             return (
@@ -375,7 +376,7 @@ export default function Library() {
       {contents.length === 0 && (
         <div className="tl-panel p-10 sm:p-16 text-center">
           <LibraryIcon className="w-14 h-14 mx-auto mb-4 opacity-15" />
-          <h3 className="text-xl font-bold mb-2">Biblioteca in costruzione</h3>
+          <h3 className="text-xl font-bold mb-2">{uiText("auto.ui.d6bf322405")}</h3>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
             {isAdmin ? "Aggiungi il primo contenuto e assegnagli un livello di sblocco." : "Presto qui troverai contenuti formativi sbloccabili salendo di livello."}
           </p>

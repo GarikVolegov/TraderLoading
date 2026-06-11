@@ -20,6 +20,15 @@ export async function fetchReplayCandles(
   options: { baseUrl?: string; signal?: AbortSignal } = {},
 ): Promise<{ candles: ReplayCandleRaw[] }> {
   const response = await fetch(createReplayCandlesUrl(input, options), { signal: options.signal });
-  if (!response.ok) throw new Error("HTTP " + response.status);
+  if (!response.ok) {
+    let message = "HTTP " + response.status;
+    try {
+      const body = await response.json() as { error?: unknown };
+      if (typeof body.error === "string" && body.error.trim()) message = body.error;
+    } catch {
+      /* keep HTTP status fallback */
+    }
+    throw new Error(message);
+  }
   return response.json() as Promise<{ candles: ReplayCandleRaw[] }>;
 }

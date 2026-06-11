@@ -48,8 +48,8 @@ export default function Checklist() {
   return (
     <PageLayout>
       <PageHeader
-        title="Criteri di Conferma"
-        subtitle="I requisiti che devi soddisfare prima di entrare in ogni trade"
+        title={t("checklist.confirmation_title")}
+        subtitle={t("checklist.confirmation_subtitle")}
       />
 
       <Card>
@@ -85,8 +85,8 @@ export default function Checklist() {
           ) : !items || items.length === 0 ? (
             <div className="p-12 text-center text-muted-foreground">
               <ShieldCheck className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <p className="font-medium mb-1">Nessun criterio definito</p>
-              <p className="text-sm text-muted-foreground">Aggiungi i criteri che devi verificare prima di entrare in ogni trade</p>
+              <p className="font-medium mb-1">{t("checklist.confirmation_empty")}</p>
+              <p className="text-sm text-muted-foreground">{t("checklist.confirmation_empty_desc")}</p>
             </div>
           ) : (
             <AnimatePresence>
@@ -124,7 +124,7 @@ export default function Checklist() {
 
       {total > 0 && (
         <p className="text-xs text-muted-foreground text-center">
-          {total} {total === 1 ? "criterio" : "criteri"} di conferma — spuntali nella Dashboard prima di ogni entrata
+          {t(total === 1 ? "checklist.confirmation_count_one" : "checklist.confirmation_count_many", { total })}
         </p>
       )}
     </PageLayout>

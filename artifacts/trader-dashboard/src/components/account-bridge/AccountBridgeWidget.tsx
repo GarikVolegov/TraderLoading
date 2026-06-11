@@ -2,6 +2,7 @@ import { Activity, ListChecks, PlugZap, Send, Wallet, Wifi, WifiOff } from "luci
 import { Card, CardContent } from "@/components/ui/card";
 import { useAccountBridgeSocket } from "./useAccountBridgeSocket";
 import type { AccountBridgeWorkspaceTab } from "./types";
+import { uiText } from "@/contexts/LanguageContext";
 
 function money(value: number): string {
   return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -32,7 +33,7 @@ export function AccountBridgeWidget() {
             <Wallet className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <p className="widget-title">Conto Live</p>
+            <p className="widget-title">{uiText("auto.ui.486c14b32d")}</p>
             <p className="text-[10px] text-muted-foreground">
               {snapshot.mode === "live" ? accountLabel : "Modalita demo"}
             </p>
@@ -73,16 +74,14 @@ export function AccountBridgeWidget() {
             type="button"
             onClick={() => openWorkspace("connect")}
             className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border/40 bg-background/35 text-[11px] font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-            title="Collega conto"
+            title={uiText("auto.ui.b2a1267ce5")}
           >
-            <PlugZap className="h-3.5 w-3.5" />
-            Collega
-          </button>
+            <PlugZap className="h-3.5 w-3.5" />{uiText("auto.ui.2671bbd8db")}</button>
           <button
             type="button"
             onClick={() => openWorkspace("accounts")}
             className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border/40 bg-background/35 text-[11px] font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-            title="Conti collegati"
+            title={uiText("auto.ui.c61faab915")}
           >
             <ListChecks className="h-3.5 w-3.5" />
             Conti
@@ -91,7 +90,7 @@ export function AccountBridgeWidget() {
             type="button"
             onClick={() => openWorkspace("order")}
             className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border/40 bg-background/35 text-[11px] font-bold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-            title="Apri operazione"
+            title={uiText("auto.ui.ab99ace5d7")}
           >
             <Send className="h-3.5 w-3.5" />
             Ordine

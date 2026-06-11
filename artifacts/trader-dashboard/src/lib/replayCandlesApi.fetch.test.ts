@@ -27,6 +27,15 @@ try {
     fetchReplayCandles({ symbol: "EURUSD", interval: "H4" }, { baseUrl: "https://api.example.test" }),
     /HTTP 503/,
   );
+
+  globalThis.fetch = (async () => Response.json(
+    { error: "Servono almeno 120 candele per avviare il replay." },
+    { status: 502 },
+  )) as typeof fetch;
+  await assert.rejects(
+    fetchReplayCandles({ symbol: "EURUSD", interval: "M5" }, { baseUrl: "https://api.example.test" }),
+    /Servono almeno 120 candele/,
+  );
 } finally {
   globalThis.fetch = originalFetch;
 }

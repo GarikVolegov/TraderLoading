@@ -1,9 +1,12 @@
+import { useQuery } from "@tanstack/react-query";
 import { apiJSON, type RelativeApiOptions } from "./apiFetch";
 
 export interface BillingStatus {
   plan: "free" | "pro";
   pro: boolean;
   status: string;
+  source?: string | null;
+  manualOverride?: boolean;
   currentPeriodEnd?: string | null;
   cancelAtPeriodEnd?: boolean;
   stripeCustomerId?: string | null;
@@ -38,8 +41,38 @@ export function fetchBillingStatus(options?: RelativeApiOptions): Promise<Billin
   return apiJSON<BillingStatus>("billing/me", undefined, options);
 }
 
+export function billingStatusQueryOptions(options?: RelativeApiOptions) {
+  return {
+    queryKey: billingQueryKey,
+    queryFn: () => fetchBillingStatus(options),
+    staleTime: 0,
+    refetchOnMount: "always" as const,
+    refetchOnReconnect: "always" as const,
+    refetchOnWindowFocus: "always" as const,
+  };
+}
+
+export function useBillingStatus(options?: RelativeApiOptions) {
+  return useQuery<BillingStatus>(billingStatusQueryOptions(options));
+}
+
 export function createCheckoutSession(options?: RelativeApiOptions): Promise<CheckoutSessionResponse> {
   return apiJSON<CheckoutSessionResponse>("billing/checkout-session", { method: "POST" }, options);
+}
+
+export function confirmCheckoutSession(
+  sessionId: string,
+  options?: RelativeApiOptions,
+): Promise<BillingStatus> {
+  return apiJSON<BillingStatus>(
+    "billing/confirm-session",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    },
+    options,
+  );
 }
 
 export function cancelSubscription(options?: RelativeApiOptions): Promise<BillingStatus> {

@@ -71,7 +71,16 @@ try {
   assert.match(calls[1] ?? "", /query1\.finance\.yahoo\.com/);
 
   calls.length = 0;
-  await getCandles("GBPUSD", "H1");
+  const m5Result = await getCandles("GBPUSD", "M5");
+  assert.equal(m5Result.source, "yahoo");
+  assert.equal(m5Result.candles.length, 130);
+  assert.match(calls[0] ?? "", /twelvedata\.com/);
+  assert.match(calls[0] ?? "", /interval=5min/);
+  assert.match(calls[1] ?? "", /query1\.finance\.yahoo\.com/);
+  assert.match(calls[1] ?? "", /interval=5m/);
+
+  calls.length = 0;
+  await getCandles("USDJPY", "H1");
   assert.match(calls[0] ?? "", /query1\.finance\.yahoo\.com/);
   assert.match(calls[0] ?? "", /interval=1h/);
   assert.match(calls[0] ?? "", /range=2y/);
@@ -82,6 +91,39 @@ try {
   assert.match(calls[0] ?? "", /interval=1d/);
   assert.match(calls[0] ?? "", /period1=1579046400/);
   assert.doesNotMatch(calls[0] ?? "", /range=2y/);
+
+  globalThis.fetch = (async () => Response.json({
+    chart: {
+      result: [
+        {
+          timestamp: [baseTime],
+          indicators: {
+            quote: [
+              {
+                open: [1.1],
+                high: [1.101],
+                low: [1.099],
+                close: [1.1005],
+                volume: [100],
+              },
+            ],
+          },
+        },
+      ],
+    },
+  })) as typeof fetch;
+
+  await assert.rejects(
+    getCandles("NZDUSD", "H4"),
+    /Servono almeno 120 candele/,
+  );
+
+  delete process.env.TWELVEDATA_API_KEY;
+  globalThis.fetch = (async () => new Response("", { status: 422 })) as typeof fetch;
+  await assert.rejects(
+    getCandles("XAUUSD", "M15", { startDate: "2025-02-02" }),
+    /Storico intraday non disponibile/,
+  );
 } finally {
   globalThis.fetch = originalFetch;
   if (originalTwelveDataApiKey == null) {

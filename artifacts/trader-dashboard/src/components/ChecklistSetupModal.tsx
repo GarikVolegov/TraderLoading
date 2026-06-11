@@ -4,6 +4,7 @@ import { X, ChevronDown, ChevronRight, Check, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCreateChecklistItem, useGetChecklist, getGetChecklistQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { uiText } from "@/contexts/LanguageContext";
 
 interface ConfirmationItem {
   id: string;
@@ -162,8 +163,8 @@ export function ChecklistSetupModal() {
                   <ShieldCheck className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-bold text-sm leading-tight">Checklist di Conferma</p>
-                  <p className="text-[10px] text-muted-foreground">Criteri per validare l'entrata in un trade</p>
+                  <p className="font-bold text-sm leading-tight">{uiText("auto.ui.7d079ed9b3")}</p>
+                  <p className="text-[10px] text-muted-foreground">{uiText("auto.ui.6092d086e4")}</p>
                 </div>
               </div>
               <button onClick={() => setShow(false)} className="text-muted-foreground hover:text-foreground p-1">
@@ -181,12 +182,12 @@ export function ChecklistSetupModal() {
                   className="p-5 space-y-4"
                 >
                   <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-2">
-                    <p className="text-sm font-semibold text-primary">Cos'è una checklist di conferma?</p>
+                    <p className="text-sm font-semibold text-primary">{uiText("checklist_setup.what_title")}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Non è una routine generica — è il tuo <span className="text-foreground font-medium">gate di validazione</span> prima di premere "Buy/Sell". Ogni criterio che spunti rappresenta una confluenza che riduce il rischio e aumenta la probabilità del trade.
+                      {uiText("checklist_setup.what_body_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.validation_gate")}</span> {uiText("checklist_setup.what_body_after")}
                     </p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Prima di ogni entrata, scorri la lista: se non riesci a spuntare tutti i criteri, <span className="text-foreground font-medium">il trade non è pronto</span>.
+                      {uiText("checklist_setup.review_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.trade_not_ready")}</span>.
                     </p>
                   </div>
 

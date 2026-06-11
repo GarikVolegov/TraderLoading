@@ -107,6 +107,40 @@ export function getSafeReturnTo(value: unknown): string {
   return value;
 }
 
+export function getOidcUnavailableRedirect(returnTo: unknown): string {
+  const safeReturnTo = getSafeReturnTo(returnTo);
+  if (safeReturnTo === "/") return "/sign-in";
+  return `/sign-in?redirect_url=${encodeURIComponent(safeReturnTo)}`;
+}
+
+function isMissingOidcConfigurationError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes("OIDC_CLIENT_ID or REPL_ID")
+  );
+}
+
+function handleMissingOidcConfiguration(
+  res: Response,
+  error: unknown,
+  returnTo?: unknown,
+): boolean {
+  if (!isMissingOidcConfigurationError(error)) return false;
+
+  logger.warn(
+    { err: error },
+    "OIDC login unavailable because provider configuration is missing",
+  );
+
+  if (process.env.NODE_ENV === "production") {
+    res.status(503).json({ error: "oidc_not_configured" });
+    return true;
+  }
+
+  res.redirect(getOidcUnavailableRedirect(returnTo));
+  return true;
+}
+
 export function isAllowedMobileRedirectUri(value: string): boolean {
   let url: URL;
   try {
@@ -172,7 +206,14 @@ router.get("/auth/user", (req: Request, res: Response) => {
 });
 
 router.get("/login", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
+  let config: oidc.Configuration;
+  try {
+    config = await getOidcConfig();
+  } catch (error) {
+    if (handleMissingOidcConfiguration(res, error, req.query.returnTo)) return;
+    throw error;
+  }
+
   const callbackUrl = `${getOrigin(req)}/api/callback`;
 
   const returnTo = getSafeReturnTo(req.query.returnTo);
@@ -203,7 +244,16 @@ router.get("/login", async (req: Request, res: Response) => {
 // Query params are not validated because the OIDC provider may include
 // parameters not expressed in the schema.
 router.get("/callback", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
+  let config: oidc.Configuration;
+  try {
+    config = await getOidcConfig();
+  } catch (error) {
+    if (handleMissingOidcConfiguration(res, error, req.cookies?.return_to)) {
+      return;
+    }
+    throw error;
+  }
+
   const callbackUrl = `${getOrigin(req)}/api/callback`;
 
   const codeVerifier = req.cookies?.code_verifier;
@@ -268,12 +318,19 @@ router.get("/callback", async (req: Request, res: Response) => {
 });
 
 router.get("/logout", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
   const origin = getOrigin(req);
-  const oidcSettings = getValidatedOidcSettings();
-
   const sid = getSessionId(req);
   await clearSession(res, sid);
+
+  let config: oidc.Configuration;
+  let oidcSettings: ReturnType<typeof getValidatedOidcSettings>;
+  try {
+    config = await getOidcConfig();
+    oidcSettings = getValidatedOidcSettings();
+  } catch (error) {
+    if (handleMissingOidcConfiguration(res, error)) return;
+    throw error;
+  }
 
   const endSessionUrl = oidc.buildEndSessionUrl(config, {
     client_id: oidcSettings.clientId,

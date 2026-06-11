@@ -15,6 +15,7 @@ assert.match(adminPage, /unpublishAdminContentItem/);
 assert.match(adminPage, /getAdminSupportOverview/);
 assert.match(adminPage, /getAdminSystemOverview/);
 assert.match(adminPage, /getAdminSubscriptions/);
+assert.match(adminPage, /billingQueryKey/);
 assert.match(adminPage, /updateAdminSubscription/);
 assert.match(adminPage, /getAdminUsers/);
 assert.match(adminPage, /getAdminUserDetail/);
@@ -31,9 +32,17 @@ assert.match(adminPage, /AdminSupportPage/);
 assert.match(adminPage, /AdminSystemPage/);
 assert.match(adminPage, /AdminSubscriptionsPage/);
 assert.match(adminPage, /subscriptionAction\.mutate/);
+assert.match(adminPage, /queryClient\.invalidateQueries\(\{ queryKey: billingQueryKey \}\)/);
 assert.match(adminPage, /manualOverride/);
 assert.match(adminPage, /Pro - 7 euro/);
-assert.match(adminPage, /submitSubscriptionUpdate\(row\.userId, "free", "active", null\)/);
+assert.match(adminPage, /rowReasons/);
+assert.match(adminPage, /setRowReason/);
+assert.match(adminPage, /reasonForRow\(row\.userId\)/);
+assert.match(
+  adminPage,
+  /submitSubscriptionUpdate\(\s*row\.userId,\s*"free",\s*"active",\s*null,\s*rowReason,\s*\)/,
+);
+assert.doesNotMatch(adminPage, /!reasonReady \|\|\s*!row\.userId/);
 assert.doesNotMatch(adminPage, /starter/);
 assert.doesNotMatch(adminPage, /team/);
 assert.match(adminPage, /AdminUserDetailTabs/);

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { DEFAULT_CHART_ANALYSIS_STATE } from "./chartAnalysisTypes.js";
 import {
   createReplaySavedTradeIdsStorageKey,
   createReplayStorageKey,
@@ -20,6 +21,13 @@ const payload = serializeReplayState({
     { id: 1, direction: "buy", entryPrice: 1.1, entryIndex: 120, exitPrice: 1.105, exitIndex: 130, result: "win", pips: 50 },
   ],
   openTrade: { id: 2, direction: "sell", entryPrice: 1.2, entryIndex: 145 },
+  analysisState: {
+    ...DEFAULT_CHART_ANALYSIS_STATE,
+    indicators: {
+      ...DEFAULT_CHART_ANALYSIS_STATE.indicators,
+      vwap: { ...DEFAULT_CHART_ANALYSIS_STATE.indicators.vwap, enabled: false },
+    },
+  },
 });
 
 assert.equal(createReplayStorageKey("session-7"), "traderloading:chart-replay:session-7");
@@ -31,6 +39,7 @@ assert.equal(restored?.activeInterval, "H1");
 assert.equal(restored?.revealedCount, 150);
 assert.equal(restored?.trades.length, 1);
 assert.equal(restored?.openTrade?.direction, "sell");
+assert.equal(restored?.analysisState?.indicators.vwap.enabled, false);
 
 assert.equal(parsePersistedReplayState(payload, "GBP/USD"), null);
 assert.equal(parsePersistedReplayState("{bad json", "EUR/USD"), null);

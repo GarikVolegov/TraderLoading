@@ -17,6 +17,8 @@ import logger from "../lib/logger.js";
 type SubscriptionLike = {
   plan: string;
   status: string;
+  source?: string | null;
+  manualOverride?: boolean | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   currentPeriodEnd: Date | null;
@@ -38,6 +40,7 @@ export interface BillingRouterOptions {
   config?: StripeBillingConfig;
   getSubscription?: (userId: string) => Promise<SubscriptionLike | null>;
   createCheckoutSession?: (user: NonNullable<Request["user"]>) => Promise<{ clientSecret: string | null }>;
+  confirmCheckoutSession?: (user: NonNullable<Request["user"]>, sessionId: string) => Promise<SubscriptionLike | null>;
   cancelSubscription?: (userId: string, subscriptionId: string) => Promise<SubscriptionLike | null>;
   resumeSubscription?: (userId: string, subscriptionId: string) => Promise<SubscriptionLike | null>;
   listInvoices?: (userId: string, customerId: string) => Promise<BillingInvoice[]>;
@@ -63,12 +66,20 @@ function serializeBillingStatus(subscription: SubscriptionLike | null) {
     plan,
     pro: isProSubscription(subscription),
     status: subscription?.status ?? "free",
+    source: subscription?.source ?? null,
+    manualOverride: subscription?.manualOverride === true,
     currentPeriodEnd: subscription?.currentPeriodEnd?.toISOString?.() ?? null,
     cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd === true,
     stripeCustomerId: subscription?.stripeCustomerId ?? null,
     stripeSubscriptionId: maskStripeId(subscription?.stripeSubscriptionId),
     ...capabilities,
   };
+}
+
+export function shouldPreserveManualSubscriptionOverride(
+  subscription: Pick<SubscriptionLike, "manualOverride" | "source"> | null | undefined,
+): boolean {
+  return subscription?.manualOverride === true && subscription.source === "manual";
 }
 
 async function defaultCreateCheckoutSession(user: NonNullable<Request["user"]>): Promise<{ clientSecret: string | null }> {
@@ -103,7 +114,9 @@ async function defaultCreateCheckoutSession(user: NonNullable<Request["user"]>):
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
-    ui_mode: "embedded" as Stripe.Checkout.SessionCreateParams.UiMode,
+    // "embedded" è stato rinominato "embedded_page" dall'API Stripe corrente
+    // (SDK pinnato su 2026-05-27.dahlia); il valore vecchio viene rifiutato con 400.
+    ui_mode: "embedded_page",
     customer: customerId,
     line_items: [{ price: config.priceId, quantity: 1 }],
     return_url: `${config.appBaseUrl}/billing/return?session_id={CHECKOUT_SESSION_ID}`,
@@ -115,7 +128,19 @@ async function defaultCreateCheckoutSession(user: NonNullable<Request["user"]>):
   return { clientSecret: session.client_secret };
 }
 
-async function upsertStripeSubscriptionForUser(userId: string, subscription: Stripe.Subscription): Promise<void> {
+async function upsertStripeSubscriptionForUser(
+  userId: string,
+  subscription: Stripe.Subscription,
+  options: { preserveManualOverride?: boolean } = {},
+): Promise<void> {
+  if (options.preserveManualOverride) {
+    const existing = await getUserSubscription(userId);
+    if (shouldPreserveManualSubscriptionOverride(existing)) {
+      logger.info({ userId, subscriptionId: subscription.id }, "Stripe subscription event ignored because manual admin override is active");
+      return;
+    }
+  }
+
   const item = subscription.items.data[0];
   const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id ?? null;
   await db
@@ -148,6 +173,32 @@ async function upsertStripeSubscriptionForUser(userId: string, subscription: Str
         updatedAt: new Date(),
       },
     });
+}
+
+// Conferma lato server una Checkout Session al ritorno da Stripe. È il
+// fallback al webhook: in locale (o se il webhook non è configurato/ritarda)
+// è l'unico modo per riflettere subito il pagamento sul piano dell'utente.
+async function defaultConfirmCheckoutSession(
+  user: NonNullable<Request["user"]>,
+  sessionId: string,
+): Promise<SubscriptionLike | null> {
+  const { stripe } = requireConfiguredStripe();
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  const sessionUserId = session.client_reference_id ?? session.metadata?.userId ?? null;
+  if (sessionUserId !== user.id) {
+    throw Object.assign(new Error("Checkout session does not belong to user"), {
+      code: "session_user_mismatch",
+    });
+  }
+
+  const subscriptionId =
+    typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+  if (subscriptionId) {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    await upsertStripeSubscriptionForUser(user.id, subscription);
+  }
+
+  return getUserSubscription(user.id);
 }
 
 function requireConfiguredStripe() {
@@ -244,6 +295,32 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
     }
   });
 
+  router.post("/billing/confirm-session", async (req, res) => {
+    const user = requireBillingUser(req);
+    if (!user) {
+      res.status(401).json({ error: "Autenticazione richiesta." });
+      return;
+    }
+
+    const sessionId = typeof req.body?.sessionId === "string" ? req.body.sessionId.trim() : "";
+    if (!sessionId) {
+      res.status(400).json({ error: "invalid_session_id" });
+      return;
+    }
+
+    try {
+      const confirm = options.confirmCheckoutSession ?? defaultConfirmCheckoutSession;
+      res.json(serializeBillingStatus(await confirm(user, sessionId)));
+    } catch (error) {
+      if ((error as { code?: string }).code === "session_user_mismatch") {
+        res.status(403).json({ error: "session_user_mismatch" });
+        return;
+      }
+      if (handleStripeRouteError(error, res)) return;
+      throw error;
+    }
+  });
+
   router.post("/billing/cancel", async (req, res) => {
     const user = requireBillingUser(req);
     if (!user) {
@@ -335,7 +412,7 @@ async function upsertStripeSubscription(subscription: Stripe.Subscription): Prom
     return;
   }
 
-  await upsertStripeSubscriptionForUser(userId, subscription);
+  await upsertStripeSubscriptionForUser(userId, subscription, { preserveManualOverride: true });
 }
 
 async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<void> {
@@ -367,9 +444,12 @@ async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<v
 export function createStripeWebhookRouter(): IRouter {
   const router: IRouter = Router();
 
-  router.post("/billing/webhook", async (req, res) => {
+  router.post("/", async (req, res) => {
     const config = getStripeBillingConfig();
-    if (!config.secretKey) {
+    // Senza webhookSecret il webhook resta disattivato: accettare eventi non
+    // firmati permetterebbe a chiunque di assegnarsi il piano Pro con un POST.
+    // L'aggiornamento del piano passa comunque da /billing/confirm-session.
+    if (!config.secretKey || !config.webhookSecret) {
       res.status(503).json({ error: "stripe_not_configured" });
       return;
     }
@@ -377,12 +457,13 @@ export function createStripeWebhookRouter(): IRouter {
     const stripe = createStripeClient(config.secretKey);
     try {
       const signature = req.headers["stripe-signature"];
+      if (typeof signature !== "string") {
+        res.status(400).json({ error: "stripe_webhook_invalid" });
+        return;
+      }
       const payload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(String(req.body ?? ""));
-      const event =
-        config.webhookSecret && typeof signature === "string"
-          ? stripe.webhooks.constructEvent(payload, signature, config.webhookSecret)
-          : JSON.parse(payload.toString("utf8"));
-      await handleStripeEvent(event as Stripe.Event, stripe);
+      const event = stripe.webhooks.constructEvent(payload, signature, config.webhookSecret);
+      await handleStripeEvent(event, stripe);
       res.json({ received: true });
     } catch (error) {
       logger.warn({ err: error }, "Stripe webhook rejected");

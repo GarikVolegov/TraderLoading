@@ -1,3 +1,4 @@
+import { uiText } from "@/contexts/LanguageContext";
 import { ShieldCheck } from "lucide-react";
 import { FxBlueAccountSyncWizard } from "./FxBlueAccountSyncWizard";
 import { useBrokerHub } from "./useBrokerHub";
@@ -14,9 +15,9 @@ export function CloudAccountConnect() {
           Collegamento unico
         </div>
         <div className="mt-3 grid gap-2 text-muted-foreground">
-          <p>Il Broker Hub accetta solo FX Blue Account Sync per collegare nuovi conti.</p>
-          <p>Il profilo creato è sempre in Sola lettura e non può inviare ordini live.</p>
-          <p>Completa il setup su FX Blue, poi incolla il riferimento pubblico del profilo per verificare la sincronizzazione.</p>
+          <p>{uiText("auto.ui.3c4819ed3b")}</p>
+          <p>{uiText("auto.ui.3c0a279be4")}</p>
+          <p>{uiText("auto.ui.37acde5cd0")}</p>
         </div>
       </aside>
     </div>

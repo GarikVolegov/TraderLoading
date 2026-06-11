@@ -1,3 +1,4 @@
+import { uiText } from "@/contexts/LanguageContext";
 import { ShieldCheck } from "lucide-react";
 import { FxBlueAccountSyncWizard } from "./FxBlueAccountSyncWizard";
 import { type useBrokerHub } from "./useBrokerHub";
@@ -12,10 +13,10 @@ export function ConnectAccountWizard({ hub, onConnected }: { hub: ReturnType<typ
           Sicurezza e compatibilità
         </div>
         <div className="mt-3 grid gap-2 text-muted-foreground">
-          <p>FX Blue Account Sync è l'unico metodo di collegamento disponibile nel Broker Hub.</p>
-          <p>La connessione resta in Sola lettura: saldo, equity, posizioni e storico vengono sincronizzati senza abilitare ordini live.</p>
-          <p>Usa su FX Blue solo la password investor/read-only, mai la password master del conto.</p>
-          <p>La frequenza di aggiornamento dipende da FX Blue, piattaforma e broker.</p>
+          <p>{uiText("auto.ui.5ce1c6b130")}</p>
+          <p>{uiText("auto.ui.7dec2397a6")}</p>
+          <p>{uiText("auto.ui.548d5b8f70")}</p>
+          <p>{uiText("auto.ui.9f3e2c591e")}</p>
         </div>
       </aside>
     </div>

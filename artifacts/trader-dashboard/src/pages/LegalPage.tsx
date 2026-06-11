@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { FileText, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { uiText } from "@/contexts/LanguageContext";
 
 type LegalPageProps = {
   kind: "privacy" | "terms";
@@ -30,7 +31,7 @@ function LegalBlock({
 function PrivacyContent() {
   return (
     <>
-      <LegalBlock title="Dati che trattiamo">
+      <LegalBlock title={uiText("auto.ui.d030bfc02f")}>
         <p>
           TraderLoading tratta dati di account, email, profilo, preferenze,
           sessioni di accesso, notifiche push, diario di trading, immagini
@@ -44,7 +45,7 @@ function PrivacyContent() {
         </p>
       </LegalBlock>
 
-      <LegalBlock title="Finalita e basi giuridiche">
+      <LegalBlock title={uiText("auto.ui.8047f34324")}>
         <p>
           Usiamo i dati per erogare il servizio, proteggere l'account,
           sincronizzare dispositivi, inviare notifiche richieste, fornire
@@ -57,7 +58,7 @@ function PrivacyContent() {
         </p>
       </LegalBlock>
 
-      <LegalBlock title="Diritti dell'utente">
+      <LegalBlock title={uiText("auto.ui.3b9ea39a32")}>
         <p>
           Puoi richiedere accesso, rettifica, esportazione o cancellazione dei
           dati. Se hai creato un account, puoi eliminarlo direttamente da
@@ -69,7 +70,7 @@ function PrivacyContent() {
         </p>
       </LegalBlock>
 
-      <LegalBlock title="Contatti privacy">
+        <LegalBlock title={uiText("legal.privacy_contacts")}>
         <p>
           Per richieste GDPR, privacy o cancellazione dati puoi scrivere a:
         </p>
@@ -88,7 +89,7 @@ function PrivacyContent() {
 function TermsContent() {
   return (
     <>
-      <LegalBlock title="Scopo del servizio">
+      <LegalBlock title={uiText("auto.ui.8133c4c74f")}>
         <p>
           TraderLoading e uno strumento di produttivita per trader: journal,
           routine, backtest, news macro, notifiche operative e gestione della
@@ -97,7 +98,7 @@ function TermsContent() {
         </p>
       </LegalBlock>
 
-      <LegalBlock title="Rischio finanziario">
+      <LegalBlock title={uiText("auto.ui.2f936a4626")}>
         <p>
           Il trading comporta rischio elevato di perdita del capitale. Ogni
           decisione di investimento resta esclusiva responsabilita dell'utente.
@@ -105,7 +106,7 @@ function TermsContent() {
         </p>
       </LegalBlock>
 
-      <LegalBlock title="Account e uso corretto">
+      <LegalBlock title={uiText("auto.ui.c39cf6613d")}>
         <p>
           L'utente e responsabile della sicurezza delle proprie credenziali e
           dell'accuratezza dei dati inseriti. E vietato usare l'app per attivita
@@ -113,7 +114,7 @@ function TermsContent() {
         </p>
       </LegalBlock>
 
-      <LegalBlock title="Supporto e modifiche">
+      <LegalBlock title={uiText("auto.ui.fc7746fb89")}>
         <p>
           Possiamo aggiornare funzionalita e termini per ragioni operative,
           legali o di sicurezza. Le modifiche rilevanti saranno comunicate in
@@ -168,7 +169,7 @@ export default function LegalPage({ kind }: LegalPageProps) {
         {isPrivacy ? <PrivacyContent /> : <TermsContent />}
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border/45 py-5 text-sm text-muted-foreground">
-          <span>TraderLoading - documenti legali</span>
+          <span>{uiText("auto.ui.1afd756360")}</span>
           <div className="flex gap-4">
             <Link href="/privacy" className="hover:text-foreground">
               Privacy

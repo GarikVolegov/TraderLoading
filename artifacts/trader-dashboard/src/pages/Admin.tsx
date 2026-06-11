@@ -38,6 +38,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { billingQueryKey } from "@/lib/billingApi";
+import { uiText } from "@/contexts/LanguageContext";
 import {
   getAdminAudit,
   getAdminContentItems,
@@ -263,7 +265,7 @@ function AdminDashboardPage() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <h1 className="text-2xl font-semibold">{uiText("admin.dashboard.title")}</h1>
           <p className="text-sm text-muted-foreground">
             Vista operativa su utenti, trading data e attivita admin.
           </p>
@@ -287,7 +289,7 @@ function AdminDashboardPage() {
         </div>
       ) : dashboard.isError ? (
         <AdminErrorState
-          title="Dashboard non disponibile"
+          title={uiText("admin.dashboard.unavailable")}
           description="Le metriche admin non sono state caricate. Riprova o controlla i log API."
         />
       ) : (
@@ -333,7 +335,7 @@ function AdminDashboardPage() {
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
             <section className="rounded-lg border border-border bg-card/80 p-4">
-              <h2 className="text-sm font-semibold">Azioni urgenti</h2>
+              <h2 className="text-sm font-semibold">{uiText("auto.ui.ebc9cfde58")}</h2>
               <div className="mt-3 space-y-2">
                 {(dashboard.data?.urgentActions ?? []).map((item) => (
                   <Link
@@ -351,7 +353,7 @@ function AdminDashboardPage() {
             </section>
             <section className="rounded-lg border border-border bg-card/80 p-4">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold">Audit recente</h2>
+                <h2 className="text-sm font-semibold">{uiText("auto.ui.4dd1c1fe89")}</h2>
                 <Link
                   href="/admin/security"
                   className="text-xs font-medium text-primary hover:underline"
@@ -390,7 +392,7 @@ function AdminUsersPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Utenti</h1>
+          <h1 className="text-2xl font-semibold">{uiText("admin.users.title")}</h1>
           <p className="text-sm text-muted-foreground">
             Cerca, filtra e apri i profili operativi.
           </p>
@@ -407,7 +409,7 @@ function AdminUsersPage() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="pl-9"
-            placeholder="Cerca email, nome o user id"
+            placeholder={uiText("auto.ui.a09bda942e")}
           />
         </div>
         <select
@@ -417,16 +419,16 @@ function AdminUsersPage() {
           }
           className="min-h-10 rounded-md border border-border bg-background px-3 text-sm"
         >
-          <option value="all">Tutti gli stati</option>
-          <option value="active">Attivi</option>
-          <option value="suspended">Sospesi</option>
-          <option value="banned">Bannati</option>
+          <option value="all">{uiText("auto.ui.bb894e3bb7")}</option>
+          <option value="active">{uiText("auto.ui.ded055b716")}</option>
+          <option value="suspended">{uiText("auto.ui.1d2fb38e6f")}</option>
+          <option value="banned">{uiText("auto.ui.fffe3601b7")}</option>
         </select>
       </div>
 
       {users.isError ? (
         <AdminErrorState
-          title="Utenti non disponibili"
+          title={uiText("auto.ui.dd9b118f73")}
           description="La ricerca utenti non ha risposto correttamente."
         />
       ) : (
@@ -434,12 +436,12 @@ function AdminUsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Utente</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Stato</TableHead>
-                <TableHead>Livello</TableHead>
+                <TableHead>{uiText("auto.ui.cef52217ee")}</TableHead>
+                <TableHead>{uiText("auto.ui.84add5b295")}</TableHead>
+                <TableHead>{uiText("auto.ui.148c60ecba")}</TableHead>
+                <TableHead>{uiText("auto.ui.227771829c")}</TableHead>
                 <TableHead>XP</TableHead>
-                <TableHead className="text-right">Azione</TableHead>
+                <TableHead className="text-right">{uiText("auto.ui.f18824e55d")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -507,10 +509,10 @@ function AdminUserDetailTabs({ detail }: { detail: AdminUserDetail }) {
   return (
     <Tabs defaultValue="overview" className="space-y-4">
       <TabsList>
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="security">Security</TabsTrigger>
-        <TabsTrigger value="trading">Trading</TabsTrigger>
-        <TabsTrigger value="audit">Audit</TabsTrigger>
+        <TabsTrigger value="overview">{uiText("auto.ui.0efc2e6be4")}</TabsTrigger>
+        <TabsTrigger value="security">{uiText("auto.ui.f25ce1b8a3")}</TabsTrigger>
+        <TabsTrigger value="trading">{uiText("auto.ui.49352196f6")}</TabsTrigger>
+        <TabsTrigger value="audit">{uiText("auto.ui.fa1703dd78")}</TabsTrigger>
       </TabsList>
       <TabsContent value="overview" className="space-y-4">
         <div className="grid gap-3 md:grid-cols-3">
@@ -534,18 +536,18 @@ function AdminUserDetailTabs({ detail }: { detail: AdminUserDetail }) {
           />
         </div>
         <section className="rounded-lg border border-border bg-card/80 p-4">
-          <h2 className="text-sm font-semibold">Profilo</h2>
+          <h2 className="text-sm font-semibold">{uiText("auto.ui.afedc6c955")}</h2>
           <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
             <div>
-              <dt className="text-xs text-muted-foreground">User ID</dt>
+              <dt className="text-xs text-muted-foreground">{uiText("auto.ui.23bf49dab1")}</dt>
               <dd className="font-mono text-xs">{user.userId ?? "-"}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Nome</dt>
+              <dt className="text-xs text-muted-foreground">{uiText("auto.ui.13030dd962")}</dt>
               <dd>{user.name}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Livello</dt>
+              <dt className="text-xs text-muted-foreground">{uiText("auto.ui.227771829c")}</dt>
               <dd>{user.level}</dd>
             </div>
             <div>
@@ -557,7 +559,7 @@ function AdminUserDetailTabs({ detail }: { detail: AdminUserDetail }) {
       </TabsContent>
       <TabsContent value="security">
         <section className="rounded-lg border border-border bg-card/80 p-4">
-          <h2 className="text-sm font-semibold">Ultimi login</h2>
+          <h2 className="text-sm font-semibold">{uiText("auto.ui.7ef3c32295")}</h2>
           <div className="mt-3 space-y-2">
             {detail.loginAccess.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
@@ -586,7 +588,7 @@ function AdminUserDetailTabs({ detail }: { detail: AdminUserDetail }) {
       </TabsContent>
       <TabsContent value="trading">
         <section className="rounded-lg border border-border bg-card/80 p-4">
-          <h2 className="text-sm font-semibold">Diagnostica trading</h2>
+          <h2 className="text-sm font-semibold">{uiText("auto.ui.fc2aef325d")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Primo riepilogo operativo. I dettagli broker arriveranno nella
             prossima slice dedicata ai provider.
@@ -654,7 +656,7 @@ function AdminUserDetailPage() {
   if (detail.isError || !detail.data) {
     return (
       <AdminErrorState
-        title="Utente non trovato"
+        title={uiText("auto.ui.6e0c705c78")}
         description="Il profilo richiesto non esiste o non hai permessi sufficienti."
       />
     );
@@ -678,7 +680,7 @@ function AdminUserDetailPage() {
           <Input
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="Motivo obbligatorio per azioni admin"
+            placeholder={uiText("auto.ui.591f0a108f")}
           />
           <div className="flex flex-wrap gap-2">
             <Button
@@ -755,7 +757,7 @@ function AdminTradingPage() {
   return (
     <div className="space-y-5">
       <OperationalPageHeader
-        title="Trading"
+        title={uiText("auto.ui.49352196f6")}
         description="Diagnostica aggregata su broker, import e backtest."
         onRefresh={() => trading.refetch()}
         refreshing={trading.isFetching}
@@ -764,7 +766,7 @@ function AdminTradingPage() {
         <OperationalLoadingGrid />
       ) : trading.isError ? (
         <AdminErrorState
-          title="Trading non disponibile"
+          title={uiText("admin.trading.unavailable")}
           description="Le metriche trading admin non sono state caricate."
         />
       ) : (
@@ -809,17 +811,17 @@ function AdminTradingPage() {
           </div>
           <section className="overflow-hidden rounded-lg border border-border bg-card/80">
             <div className="border-b border-border p-4">
-              <h2 className="text-sm font-semibold">Ultimi trade importati</h2>
+              <h2 className="text-sm font-semibold">{uiText("auto.ui.219d729ca5")}</h2>
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ticket</TableHead>
-                  <TableHead>Utente</TableHead>
-                  <TableHead>Symbol</TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead>PnL</TableHead>
-                  <TableHead>Data</TableHead>
+                  <TableHead>{uiText("auto.ui.a7677e84b6")}</TableHead>
+                  <TableHead>{uiText("auto.ui.cef52217ee")}</TableHead>
+                  <TableHead>{uiText("auto.ui.3f84ef531f")}</TableHead>
+                  <TableHead>{uiText("auto.ui.148c60ecba")}</TableHead>
+                  <TableHead>{uiText("auto.ui.64f7a1d46b")}</TableHead>
+                  <TableHead>{uiText("auto.ui.e5e429bcc9")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -880,7 +882,7 @@ function AdminContentInventoryTable({
     <section className="overflow-hidden rounded-lg border border-border bg-card/80">
       <div className="flex flex-col gap-1 border-b border-border p-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-sm font-semibold">Publishing queue</h2>
+          <h2 className="text-sm font-semibold">{uiText("admin.content.publishing_queue")}</h2>
           <p className="text-xs text-muted-foreground">
             Contenuti library ordinati per ultimo aggiornamento.
           </p>
@@ -890,12 +892,12 @@ function AdminContentInventoryTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Contenuto</TableHead>
-            <TableHead>Collection</TableHead>
-            <TableHead>Livello</TableHead>
-            <TableHead>Stato</TableHead>
-            <TableHead>Aggiornato</TableHead>
-            <TableHead className="text-right">Azione</TableHead>
+            <TableHead>{uiText("auto.ui.fd19042867")}</TableHead>
+            <TableHead>{uiText("auto.ui.30c54a96f8")}</TableHead>
+            <TableHead>{uiText("auto.ui.227771829c")}</TableHead>
+            <TableHead>{uiText("auto.ui.148c60ecba")}</TableHead>
+            <TableHead>{uiText("auto.ui.4e35f7f30b")}</TableHead>
+            <TableHead className="text-right">{uiText("auto.ui.f18824e55d")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -974,7 +976,7 @@ function AdminContentPage() {
   return (
     <div className="space-y-5">
       <OperationalPageHeader
-        title="Content"
+        title={uiText("auto.ui.4f9be057f0")}
         description="Inventario publishing: library, missioni, milestone, quote e community."
         onRefresh={() => {
           content.refetch();
@@ -986,7 +988,7 @@ function AdminContentPage() {
         <OperationalLoadingGrid />
       ) : content.isError || contentItems.isError ? (
         <AdminErrorState
-          title="Content non disponibile"
+          title={uiText("admin.content.unavailable")}
           description="L'inventario contenuti non e stato caricato."
         />
       ) : (
@@ -1031,7 +1033,7 @@ function AdminContentPage() {
           </div>
           <Alert variant={contentAction.isError ? "destructive" : "default"}>
             <BookOpen className="h-4 w-4" aria-hidden="true" />
-            <AlertTitle>Motivo azione editoriale</AlertTitle>
+            <AlertTitle>{uiText("auto.ui.99ad88bfd8")}</AlertTitle>
             <AlertDescription>
               Inserisci un motivo prima di pubblicare o ritirare un contenuto.
               Ogni modifica viene scritta nell'audit trail.
@@ -1041,8 +1043,8 @@ function AdminContentPage() {
             <Input
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              placeholder="Es. Revisione editoriale completata"
-              aria-label="Motivo azione contenuto"
+              placeholder={uiText("auto.ui.070e39fc1a")}
+              aria-label={uiText("auto.ui.54e00a6d80")}
             />
             <Button
               variant="outline"
@@ -1091,7 +1093,7 @@ function AdminSubscriptionBadge({ row }: { row: AdminSubscriptionRow }) {
         {formatAdminSubscriptionPlan(row.plan)}
       </Badge>
       <Badge variant={statusVariant(row.status)}>{row.status}</Badge>
-      {row.manualOverride && <Badge variant="outline">manualOverride</Badge>}
+      {row.manualOverride && <Badge variant="outline">{uiText("auto.ui.6467ac9d18")}</Badge>}
     </div>
   );
 }
@@ -1106,6 +1108,7 @@ function AdminSubscriptionsPage() {
     useState<AdminSubscriptionStatus>("active");
   const [currentPeriodEnd, setCurrentPeriodEnd] = useState("");
   const [reason, setReason] = useState("");
+  const [rowReasons, setRowReasons] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const subscriptions = useQuery({
     queryKey: ["admin", "subscriptions", query],
@@ -1117,22 +1120,31 @@ function AdminSubscriptionsPage() {
       plan,
       status,
       periodEnd,
+      reason: actionReason,
     }: {
       userId: string;
       plan: AdminSubscriptionPlan;
       status: AdminSubscriptionStatus;
       periodEnd: string | null;
+      reason: string;
     }) =>
       updateAdminSubscription(userId, {
         plan,
         status,
         currentPeriodEnd: periodEnd,
-        reason,
+        reason: actionReason,
       }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       setFormError("");
+      setRowReasons((current) => {
+        if (!(variables.userId in current)) return current;
+        const next = { ...current };
+        delete next[variables.userId];
+        return next;
+      });
       queryClient.invalidateQueries({ queryKey: ["admin", "subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "audit"] });
+      queryClient.invalidateQueries({ queryKey: billingQueryKey });
     },
     onError: () => {
       setFormError("Aggiornamento non riuscito. Controlla piano, stato e motivo.");
@@ -1150,18 +1162,29 @@ function AdminSubscriptionsPage() {
     );
   }
 
+  function setRowReason(userId: string | null, value: string) {
+    if (!userId) return;
+    setRowReasons((current) => ({ ...current, [userId]: value }));
+  }
+
+  function reasonForRow(userId: string | null) {
+    return userId ? rowReasons[userId] ?? "" : "";
+  }
+
   function submitSubscriptionUpdate(
     userId = selectedUserId,
     plan = selectedPlan,
     status = selectedStatus,
     periodEnd: string | null = currentPeriodEnd.trim() || null,
+    reasonOverride = reason,
   ) {
     const trimmedUserId = userId.trim();
+    const trimmedReason = reasonOverride.trim();
     if (!trimmedUserId) {
       setFormError("Seleziona o inserisci uno userId.");
       return;
     }
-    if (!reasonReady) {
+    if (trimmedReason.length < 3) {
       setFormError("Inserisci un motivo di almeno 3 caratteri.");
       return;
     }
@@ -1174,13 +1197,14 @@ function AdminSubscriptionsPage() {
       plan,
       status,
       periodEnd,
+      reason: trimmedReason,
     });
   }
 
   return (
     <div className="space-y-5">
       <OperationalPageHeader
-        title="Abbonamenti"
+        title={uiText("auto.ui.3aab61c71b")}
         description="Gestione manuale piani Free e Pro - 7 euro con audit obbligatorio."
         onRefresh={() => subscriptions.refetch()}
         refreshing={subscriptions.isFetching}
@@ -1189,7 +1213,7 @@ function AdminSubscriptionsPage() {
         <OperationalLoadingGrid />
       ) : subscriptions.isError ? (
         <AdminErrorState
-          title="Abbonamenti non disponibili"
+          title={uiText("admin.subscriptions.unavailable")}
           description="La lista abbonamenti non e stata caricata."
         />
       ) : (
@@ -1226,8 +1250,8 @@ function AdminSubscriptionsPage() {
               <Input
                 value={selectedUserId}
                 onChange={(event) => setSelectedUserId(event.target.value)}
-                placeholder="userId"
-                aria-label="User ID abbonamento"
+                placeholder={uiText("auto.ui.db36668fa9")}
+                aria-label={uiText("auto.ui.285965bc52")}
               />
               <select
                 value={selectedPlan}
@@ -1235,7 +1259,7 @@ function AdminSubscriptionsPage() {
                   setSelectedPlan(event.target.value as AdminSubscriptionPlan)
                 }
                 className="min-h-10 rounded-md border border-input bg-background px-3 text-sm"
-                aria-label="Piano abbonamento"
+                aria-label={uiText("auto.ui.11d32f98cf")}
               >
                 {ADMIN_SUBSCRIPTION_PLANS.map((plan) => (
                   <option key={plan} value={plan}>
@@ -1251,7 +1275,7 @@ function AdminSubscriptionsPage() {
                   )
                 }
                 className="min-h-10 rounded-md border border-input bg-background px-3 text-sm"
-                aria-label="Stato abbonamento"
+                aria-label={uiText("auto.ui.acf887cf83")}
               >
                 {ADMIN_SUBSCRIPTION_STATUSES.map((status) => (
                   <option key={status} value={status}>
@@ -1263,13 +1287,13 @@ function AdminSubscriptionsPage() {
                 type="date"
                 value={currentPeriodEnd}
                 onChange={(event) => setCurrentPeriodEnd(event.target.value)}
-                aria-label="Fine periodo abbonamento"
+                aria-label={uiText("auto.ui.87ac54e8c3")}
               />
               <Input
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
-                placeholder="Motivo obbligatorio"
-                aria-label="Motivo modifica abbonamento"
+                placeholder={uiText("auto.ui.227b4de3d7")}
+                aria-label={uiText("auto.ui.aa8323105a")}
               />
               <Button
                 onClick={() => submitSubscriptionUpdate()}
@@ -1296,8 +1320,8 @@ function AdminSubscriptionsPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 className="pl-9"
-                placeholder="Cerca per nome, email, userId o piano"
-                aria-label="Cerca abbonamenti"
+                placeholder={uiText("auto.ui.7ebdfafcb6")}
+                aria-label={uiText("auto.ui.36803b1ce6")}
               />
             </div>
             <Button
@@ -1314,60 +1338,71 @@ function AdminSubscriptionsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Utente</TableHead>
-                  <TableHead>Abbonamento</TableHead>
-                  <TableHead>Periodo</TableHead>
-                  <TableHead>Ultima modifica</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
+                  <TableHead>{uiText("auto.ui.cef52217ee")}</TableHead>
+                  <TableHead>{uiText("auto.ui.b776b1b8f3")}</TableHead>
+                  <TableHead>{uiText("auto.ui.b4d82e0125")}</TableHead>
+                  <TableHead>{uiText("auto.ui.a78d223f07")}</TableHead>
+                  <TableHead className="text-right">{uiText("auto.ui.2fc8d47e75")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(subscriptions.data?.subscriptions ?? []).map((row) => (
-                  <TableRow key={row.profileId}>
-                    <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => selectRow(row)}
-                        className="text-left"
-                      >
-                        <div className="font-medium">{row.name}</div>
-                        <div className="font-mono text-xs text-muted-foreground">
-                          {row.userId}
+                {(subscriptions.data?.subscriptions ?? []).map((row) => {
+                  const rowReason = reasonForRow(row.userId);
+                  const effectiveReason = rowReason || reason;
+                  const rowReasonReady = effectiveReason.trim().length >= 3;
+
+                  return (
+                    <TableRow key={row.profileId}>
+                      <TableCell>
+                        <button
+                          type="button"
+                          onClick={() => selectRow(row)}
+                          className="text-left"
+                        >
+                          <div className="font-medium">{row.name}</div>
+                          <div className="font-mono text-xs text-muted-foreground">
+                            {row.userId}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {row.email ?? "email non disponibile"}
+                          </div>
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <AdminSubscriptionBadge row={row} />
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Source: {row.source}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {formatOptionalAdminDate(row.currentPeriodEnd)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {formatOptionalAdminDate(row.updatedAt)}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {row.email ?? "email non disponibile"}
+                          {row.updatedBy ?? "nessun override"}
                         </div>
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <AdminSubscriptionBadge row={row} />
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Source: {row.source}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {formatOptionalAdminDate(row.currentPeriodEnd)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {formatOptionalAdminDate(row.updatedAt)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {row.updatedBy ?? "nessun override"}
-                      </div>
-                    </TableCell>
+                        <Input
+                          value={rowReason}
+                          onChange={(event) => setRowReason(row.userId, event.target.value)}
+                          placeholder={uiText("auto.ui.7c3b5fbd20")}
+                          className="mt-2 h-8 text-xs"
+                        />
+                      </TableCell>
                     <TableCell className="space-x-2 text-right">
                       <Button
                         variant="outline"
                         size="sm"
                         disabled={
                           subscriptionAction.isPending ||
-                          !reasonReady ||
+                          !rowReasonReady ||
                           !row.userId
                         }
                         onClick={() =>
                           row.userId &&
-                          submitSubscriptionUpdate(row.userId, "pro", "active")
+                          submitSubscriptionUpdate(row.userId, "pro", "active", null, effectiveReason)
                         }
                       >
                         Upgrade Pro
@@ -1377,19 +1412,20 @@ function AdminSubscriptionsPage() {
                         size="sm"
                         disabled={
                           subscriptionAction.isPending ||
-                          !reasonReady ||
+                          !rowReasonReady ||
                           !row.userId
                         }
                         onClick={() =>
                           row.userId &&
-                          submitSubscriptionUpdate(row.userId, "free", "active", null)
+                          submitSubscriptionUpdate(row.userId, "free", "active", null, effectiveReason)
                         }
                       >
                         Downgrade Free
                       </Button>
                     </TableCell>
-                  </TableRow>
-                ))}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             {(subscriptions.data?.subscriptions ?? []).length === 0 && (
@@ -1414,7 +1450,7 @@ function AdminSupportPage() {
   return (
     <div className="space-y-5">
       <OperationalPageHeader
-        title="Supporto"
+        title={uiText("auto.ui.6f2eaf5d94")}
         description="Triage account e segnali utili per assistere utenti reali."
         onRefresh={() => support.refetch()}
         refreshing={support.isFetching}
@@ -1423,7 +1459,7 @@ function AdminSupportPage() {
         <OperationalLoadingGrid />
       ) : support.isError ? (
         <AdminErrorState
-          title="Supporto non disponibile"
+          title={uiText("admin.support.unavailable")}
           description="La vista support non e stata caricata."
         />
       ) : (
@@ -1455,7 +1491,7 @@ function AdminSupportPage() {
             />
           </div>
           <section className="rounded-lg border border-border bg-card/80 p-4">
-            <h2 className="text-sm font-semibold">Ultimi accessi</h2>
+            <h2 className="text-sm font-semibold">{uiText("auto.ui.f08d782f0a")}</h2>
             <div className="mt-3 space-y-2">
               {(support.data?.recentLoginAccess ?? []).map((item) => (
                 <div
@@ -1487,7 +1523,7 @@ function AdminSupportPage() {
 function RuntimeFlagList({ flags }: { flags: AdminSystemOverview["flags"] }) {
   return (
     <section className="rounded-lg border border-border bg-card/80 p-4">
-      <h2 className="text-sm font-semibold">Runtime flags</h2>
+      <h2 className="text-sm font-semibold">{uiText("auto.ui.1d011abdd4")}</h2>
       <div className="mt-3 grid gap-2 md:grid-cols-2">
         {flags.map((flag) => (
           <div
@@ -1516,7 +1552,7 @@ function AdminSystemPage() {
   return (
     <div className="space-y-5">
       <OperationalPageHeader
-        title="Sistema"
+        title={uiText("auto.ui.c004160342")}
         description="Readiness API, configurazione runtime e superfici operative."
         onRefresh={() => system.refetch()}
         refreshing={system.isFetching}
@@ -1525,7 +1561,7 @@ function AdminSystemPage() {
         <OperationalLoadingGrid />
       ) : system.isError ? (
         <AdminErrorState
-          title="Sistema non disponibile"
+          title={uiText("admin.system.unavailable")}
           description="La vista runtime non e stata caricata."
         />
       ) : (
@@ -1559,18 +1595,18 @@ function AdminSystemPage() {
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
             <RuntimeFlagList flags={system.data?.flags ?? []} />
             <section className="rounded-lg border border-border bg-card/80 p-4">
-              <h2 className="text-sm font-semibold">Runtime inventory</h2>
+              <h2 className="text-sm font-semibold">{uiText("auto.ui.d57f61bdf1")}</h2>
               <dl className="mt-3 grid gap-3 text-sm">
                 <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
-                  <dt className="text-muted-foreground">Versione</dt>
+                  <dt className="text-muted-foreground">{uiText("auto.ui.3344676015")}</dt>
                   <dd className="font-mono text-xs">{runtime?.version ?? "-"}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
-                  <dt className="text-muted-foreground">Push subscriptions</dt>
+                  <dt className="text-muted-foreground">{uiText("auto.ui.ebc56aa4ac")}</dt>
                   <dd>{metrics?.pushSubscriptions ?? 0}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
-                  <dt className="text-muted-foreground">User status rows</dt>
+                  <dt className="text-muted-foreground">{uiText("auto.ui.e85836e710")}</dt>
                   <dd>{metrics?.adminUserStatuses ?? 0}</dd>
                 </div>
               </dl>
@@ -1604,7 +1640,7 @@ function AdminSecurityPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Sicurezza</h1>
+          <h1 className="text-2xl font-semibold">{uiText("admin.security.title")}</h1>
           <p className="text-sm text-muted-foreground">
             Audit log admin con filtri per attore e target.
           </p>
@@ -1623,17 +1659,17 @@ function AdminSecurityPage() {
         <Input
           value={actor}
           onChange={(event) => setActor(event.target.value)}
-          placeholder="Filtra actor user id"
+          placeholder={uiText("auto.ui.3650c115b4")}
         />
         <Input
           value={targetId}
           onChange={(event) => setTargetId(event.target.value)}
-          placeholder="Filtra target id"
+          placeholder={uiText("auto.ui.01af999d30")}
         />
       </div>
       {audit.isError ? (
         <AdminErrorState
-          title="Audit non disponibile"
+          title={uiText("auto.ui.87e782d865")}
           description="Il log sicurezza non e stato caricato."
         />
       ) : (
@@ -1641,11 +1677,11 @@ function AdminSecurityPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Azione</TableHead>
-                <TableHead>Attore</TableHead>
-                <TableHead>Target</TableHead>
-                <TableHead>Motivo</TableHead>
-                <TableHead>Data</TableHead>
+                <TableHead>{uiText("auto.ui.f18824e55d")}</TableHead>
+                <TableHead>{uiText("auto.ui.6fe7fde0da")}</TableHead>
+                <TableHead>{uiText("auto.ui.61ad50a9b9")}</TableHead>
+                <TableHead>{uiText("auto.ui.cbeec536b2")}</TableHead>
+                <TableHead>{uiText("auto.ui.e5e429bcc9")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

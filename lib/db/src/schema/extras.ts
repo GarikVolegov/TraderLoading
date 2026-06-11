@@ -40,6 +40,7 @@ export const userSettingsTable = pgTable("user_settings", {
   selectedPairs: text("selected_pairs"),
   notificationPrefs: text("notification_prefs"),
   alarmConfigs: text("alarm_configs"),
+  onboardingTutorialCompletedAt: timestamp("onboarding_tutorial_completed_at"),
 }, (t) => [uniqueIndex("user_settings_user_idx").on(t.userId)]);
 
 export const pushSubscriptionsTable = pgTable("push_subscriptions", {

@@ -1,4 +1,12 @@
+import { ipKeyGenerator } from "express-rate-limit";
+
 type SecurityEnv = Partial<Record<string, string>>;
+type RateLimitKeyRequest = {
+  ip?: string;
+  socket?: {
+    remoteAddress?: string;
+  };
+};
 type HelmetOptions = {
   contentSecurityPolicy?: {
     directives?: {
@@ -22,6 +30,7 @@ const ALLOWED_UPLOAD_DIRS = new Set([
   "milestone-files",
   "avatars",
   "brain",
+  "wiki",
 ]);
 const ALLOWED_UPLOAD_EXTENSIONS = new Set([
   ".csv",
@@ -138,6 +147,11 @@ export function getRateLimitConfig(env: SecurityEnv = process.env): {
       Number.isFinite(windowMs) && windowMs > 0 ? windowMs : 15 * 60 * 1000,
     limit: Number.isFinite(limit) && limit > 0 ? limit : defaultLimit,
   };
+}
+
+export function getRateLimitKey(req: RateLimitKeyRequest): string {
+  const address = req.ip ?? req.socket?.remoteAddress;
+  return address ? ipKeyGenerator(address) : "unknown";
 }
 
 export function isAllowedUploadPath(rawPath: string): boolean {

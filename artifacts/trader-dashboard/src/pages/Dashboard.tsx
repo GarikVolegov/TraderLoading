@@ -23,7 +23,7 @@ import {
   GripVertical, Check, RotateCcw,
   Clock, BookOpen, Sunrise, Target, ClipboardCheck,
   CalendarDays, BarChart2, TrendingUp, BookMarked,
-  Eye, EyeOff, Wallet, ArrowUpRight,
+  Eye, EyeOff, Wallet, ArrowUpRight, Activity,
 } from "lucide-react";
 
 import { PageLayout } from "@/components/PageLayout";
@@ -40,6 +40,7 @@ import { RoutineWidget } from "@/components/RoutineWidget";
 import { JournalWidget } from "@/components/JournalWidget";
 import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
+import { TradingViewWatchlistWidget } from "@/components/TradingViewWatchlistWidget";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── Widget registry ───────────────────────────────────────────────────────────
@@ -57,6 +58,7 @@ interface WidgetDef {
 const WIDGET_DEFS: WidgetDef[] = [
   { id: "clock",      label: "Orologio & Sessioni",  icon: Clock,          route: "/clock",                  component: ClockWidget },
   { id: "account",    label: "Broker Hub",           icon: Wallet,         route: "/broker",                 component: BrokerHubWidget },
+  { id: "tradingview-watchlist", label: "Watchlist Realtime", icon: Activity, component: TradingViewWatchlistWidget },
   { id: "quote",      label: "Citazione del Giorno", icon: BookOpen,                                         component: QuoteWidget },
   { id: "routine",    label: "Routine Giornaliera",  icon: Sunrise,        route: "/routine",                component: RoutineWidget },
   { id: "missions",   label: "Missioni Giornaliere", icon: Target,         route: "/missions",               component: MissionsWidget },
@@ -72,6 +74,7 @@ const WIDGET_DEFS: WidgetDef[] = [
 const DEFAULT_ORDER = [
   "clock",
   "quote",
+  "tradingview-watchlist",
   "account",
   "missions",
   "routine",
@@ -256,6 +259,7 @@ function SortableWidget({
 // ─── Drag ghost (overlay) ─────────────────────────────────────────────────────
 
 function WidgetGhost({ def }: { def: WidgetDef }) {
+  const { t } = useLanguage();
   const Icon = def.icon;
   return (
     <div
@@ -267,7 +271,7 @@ function WidgetGhost({ def }: { def: WidgetDef }) {
       </div>
       <div>
         <p className="text-sm font-bold font-mono">{def.label}</p>
-        <p className="text-[10px] text-muted-foreground/50 mt-0.5">Trascina per riposizionare</p>
+        <p className="text-[10px] text-muted-foreground/50 mt-0.5">{t("dashboard.drag_hint")}</p>
       </div>
       <GripVertical className="w-4 h-4 text-primary/40 ml-auto" />
     </div>
@@ -400,7 +404,7 @@ export default function Dashboard() {
               className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold shadow-lg shadow-primary/25 transition-all duration-200"
             >
               <Check className="w-4 h-4" strokeWidth={3} />
-              Fatto
+              {t("dashboard.done")}
             </motion.button>
           </div>
         ) : undefined}
@@ -419,9 +423,9 @@ export default function Dashboard() {
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-primary/20 bg-primary/5">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
               <p className="text-xs text-primary/80 font-medium">
-                <strong>Modalità modifica attiva</strong> — Trascina i widget per riorganizzare.
-                Usa <Eye className="inline w-3 h-3 mx-0.5" /> per mostrare/nascondere ogni widget.
-                Premi <strong>Fatto</strong> per salvare.
+                <strong>{t("dashboard.edit_active")}</strong> - {t("dashboard.edit_active_desc")}
+                <Eye className="inline w-3 h-3 mx-0.5" /> {t("dashboard.visibility_desc")}
+                {t("dashboard.done_desc", { done: t("dashboard.done") })}
               </p>
             </div>
           </motion.div>

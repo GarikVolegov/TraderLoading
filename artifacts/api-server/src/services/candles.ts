@@ -25,24 +25,29 @@ const COINGECKO_IDS: Record<string, string> = {
 };
 
 const YAHOO_INTERVAL: Record<string, string> = {
-  M15: "15m", M30: "30m", H1: "1h", H4: "4h", D1: "1d", W1: "1wk",
+  M5: "5m", M15: "15m", M30: "30m", H1: "1h", H4: "4h", D1: "1d", W1: "1wk",
 };
 
 const YAHOO_RANGE: Record<string, string> = {
-  M15: "60d", M30: "60d", H1: "2y", H4: "2y", D1: "2y", W1: "2y",
+  M5: "60d", M15: "60d", M30: "60d", H1: "2y", H4: "2y", D1: "2y", W1: "2y",
 };
 
 const TWELVE_INTERVAL: Record<string, string> = {
-  M15: "15min", M30: "30min", H1: "1h", H4: "4h", D1: "1day", W1: "1week",
+  M5: "5min", M15: "15min", M30: "30min", H1: "1h", H4: "4h", D1: "1day", W1: "1week",
 };
 
 const TWELVE_OUTPUTSIZE: Record<string, number> = {
-  M15: 5000, M30: 5000, H1: 5000, H4: 5000, D1: 5000, W1: 5000,
+  M5: 5000, M15: 5000, M30: 5000, H1: 5000, H4: 5000, D1: 5000, W1: 5000,
 };
 
 const MIN_REPLAY_CANDLES: Record<string, number> = {
+  M5: 120,
   M15: 120,
   M30: 120,
+  H1: 120,
+  H4: 120,
+  D1: 120,
+  W1: 120,
 };
 
 export function isTwelveDataEnabled(apiKey = process.env.TWELVEDATA_API_KEY): boolean {
@@ -93,15 +98,35 @@ function unixDayStart(date: string): number {
   return Math.floor(new Date(`${date}T00:00:00.000Z`).getTime() / 1000);
 }
 
+function getMinReplayCandles(interval: string): number {
+  return MIN_REPLAY_CANDLES[interval] ?? 120;
+}
+
+function hasEnoughReplayCandles(result: CandlesResult, interval: string): boolean {
+  return result.candles.length >= getMinReplayCandles(interval);
+}
+
+function insufficientCandlesMessage(symbol: string, interval: string, count: number): string {
+  return `Servono almeno ${getMinReplayCandles(interval)} candele per avviare il replay ${symbol} ${interval}. Disponibili: ${count}. Prova una data piu recente, un timeframe piu alto o configura TwelveData per storico intraday piu profondo.`;
+}
+
 function candleCacheKey(symbol: string, interval: string, startDate: string | null): string {
-  return `candles:v1:${symbol}:${interval}:${startDate ?? "latest"}`;
+  return `candles:v2:${symbol}:${interval}:${startDate ?? "latest"}`;
 }
 
 function candleCacheTtlSeconds(interval: string, startDate: string | null): number {
   if (startDate) return 24 * 60 * 60;
-  if (interval === "M15" || interval === "M30") return 15 * 60;
+  if (isIntradayReplayInterval(interval)) return 15 * 60;
   if (interval === "H1" || interval === "H4") return 60 * 60;
   return 6 * 60 * 60;
+}
+
+function isIntradayReplayInterval(interval: string): boolean {
+  return interval === "M5" || interval === "M15" || interval === "M30";
+}
+
+function unavailableIntradayHistoryMessage(symbol: string, interval: string, startDate: string): string {
+  return `Storico intraday non disponibile per ${symbol} ${interval} dalla data ${startDate}. Prova una data piu recente, un timeframe piu alto o configura TwelveData per storico intraday piu profondo.`;
 }
 
 function buildYahooChartUrl(symbol: string, interval: string, options: CandlesRequestOptions = {}): string {
@@ -226,7 +251,7 @@ async function fetchCoinGecko(symbol: string, interval: string, _options: Candle
   if (!coinId) throw new Error(`CoinGecko: symbol ${symbol} unsupported`);
 
   const daysMap: Record<string, number> = {
-    M15: 90, M30: 90, H1: 365, H4: 365, D1: 1825, W1: 1825,
+    M5: 90, M15: 90, M30: 90, H1: 365, H4: 365, D1: 1825, W1: 1825,
   };
   const days = daysMap[interval] || 365;
 
@@ -257,7 +282,7 @@ type FetchFn = (symbol: string, interval: string, options?: CandlesRequestOption
 
 function getFallbackChain(symbol: string, interval: string): Array<{ name: string; fn: FetchFn }> {
   const chain: Array<{ name: string; fn: FetchFn }> = [];
-  const isIntraday = interval === "M15" || interval === "M30";
+  const isIntraday = isIntradayReplayInterval(interval);
   const canUseTwelveData = isTwelveDataEnabled() && TWELVE_SYMBOLS[symbol];
   if (isIntraday && canUseTwelveData) {
     chain.push({ name: "TwelveData", fn: fetchTwelveData });
@@ -286,23 +311,25 @@ export async function getCandles(symbol: string, interval: string, options: Cand
   const requestOptions = startDate ? { ...options, startDate } : options;
   const cacheKey = candleCacheKey(symbol, interval, startDate);
   const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL && hasEnoughReplayCandles(cached.data, interval)) {
     return cached.data;
   }
 
   const distributedCached = await getJsonCache<CandlesResult>(cacheKey);
-  if (distributedCached) {
+  if (distributedCached && hasEnoughReplayCandles(distributedCached, interval)) {
     cache.set(cacheKey, { data: distributedCached, timestamp: Date.now() });
     return distributedCached;
   }
 
   const errors: string[] = [];
+  let bestCandlesCount = 0;
   const chain = getFallbackChain(symbol, interval);
 
   for (const { name, fn } of chain) {
     try {
       const candles = await fn(symbol, interval, requestOptions);
-      const minCandles = MIN_REPLAY_CANDLES[interval] ?? 1;
+      bestCandlesCount = Math.max(bestCandlesCount, candles.length);
+      const minCandles = getMinReplayCandles(interval);
       if (candles.length < minCandles) {
         throw new Error(`insufficient candles (${candles.length}/${minCandles})`);
       }
@@ -319,9 +346,17 @@ export async function getCandles(symbol: string, interval: string, options: Cand
   }
 
   const stale = cache.get(cacheKey);
-  if (stale) {
+  if (stale && hasEnoughReplayCandles(stale.data, interval)) {
     console.log(`[candles] Serving stale cache for ${symbol} ${interval}`);
     return stale.data;
+  }
+
+  if (bestCandlesCount > 0 && bestCandlesCount < getMinReplayCandles(interval)) {
+    throw new Error(insufficientCandlesMessage(symbol, interval, bestCandlesCount));
+  }
+
+  if (startDate && isIntradayReplayInterval(interval) && errors.some((error) => error.includes("Yahoo HTTP 422"))) {
+    throw new Error(unavailableIntradayHistoryMessage(symbol, interval, startDate));
   }
 
   throw new Error(`All data sources failed for ${symbol} ${interval}: ${errors.join("; ")}`);

@@ -34,6 +34,7 @@ import {
 import { useBackground } from "@/contexts/BackgroundContext";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { calculateBacktestStats } from "@/lib/backtestStats";
+import { uiText } from "@/contexts/LanguageContext";
 import { calculateManualBacktestTradeResult } from "@/lib/backtestTradeResult";
 
 const ALL_BT_PAIRS = [
@@ -42,7 +43,7 @@ const ALL_BT_PAIRS = [
   "BTC/USD", "ETH/USD",
 ];
 
-const TIMEFRAMES = ["M15", "M30", "H1", "H4", "D1", "W1"];
+const TIMEFRAMES = ["M5", "M15", "M30", "H1", "H4", "D1", "W1"];
 
 function NewSessionForm({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
@@ -90,18 +91,18 @@ function NewSessionForm({ onClose }: { onClose: () => void }) {
   return (
     <Card>
       <CardContent className="p-4 sm:p-6 space-y-4">
-        <h3 className="text-lg font-bold">Nuova Sessione Backtest</h3>
+        <h3 className="text-lg font-bold">{uiText("auto.ui.3d5ce24cbb")}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground uppercase tracking-wider">Nome Sessione</label>
+            <label className="text-xs text-muted-foreground uppercase tracking-wider">{uiText("backtest.session_name")}</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="es. Strategia Breakout Londra" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground uppercase tracking-wider">Strategia</label>
+            <label className="text-xs text-muted-foreground uppercase tracking-wider">{uiText("backtest.strategy")}</label>
             <Input value={strategy} onChange={(e) => setStrategy(e.target.value)} placeholder="es. Breakout + FVG" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground uppercase tracking-wider">Coppia</label>
+            <label className="text-xs text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.569cf0cb1d")}</label>
             <select
               value={pair}
               onChange={(e) => setPair(e.target.value)}
@@ -111,7 +112,7 @@ function NewSessionForm({ onClose }: { onClose: () => void }) {
                 const userLabelCount = userPairs.length;
                 if (userLabelCount > 0 && i === userLabelCount) {
                   return [
-                    <option key="__sep" disabled>── Avanzati ──</option>,
+                    <option key="__sep" disabled>{uiText("auto.ui.aba10da8de")}</option>,
                     <option key={p} value={p}>{p}</option>
                   ];
                 }
@@ -120,7 +121,7 @@ function NewSessionForm({ onClose }: { onClose: () => void }) {
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground uppercase tracking-wider">Timeframe</label>
+            <label className="text-xs text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.85decb73d1")}</label>
             <div className="flex flex-wrap gap-1.5">
               {TIMEFRAMES.map((tf) => (
                 <button
@@ -139,7 +140,7 @@ function NewSessionForm({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div className="flex gap-3 justify-end">
-          <Button variant="ghost" onClick={onClose}>Annulla</Button>
+          <Button variant="ghost" onClick={onClose}>{uiText("auto.ui.6c3de5381b")}</Button>
           <Button onClick={handleSubmit} disabled={!name.trim() || createMutation.isPending}>
             <Plus className="w-4 h-4 mr-2" />
             Crea Sessione
@@ -261,7 +262,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
   };
 
   const handleDeleteTrade = async (id: number) => {
-    if (!confirm("Eliminare questo trade?")) return;
+    if (!confirm(uiText("auto.ui.4ac4839dab"))) return;
     await deleteTrade.mutateAsync({ id });
     qc.invalidateQueries({ queryKey: getGetBacktestTradesQueryKey(session.id) });
   };
@@ -365,11 +366,11 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
                   <Input type="number" step="any" value={takeProfit} onChange={(e) => setTakeProfit(e.target.value)} placeholder="1.09200" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Lotti</label>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.f80408f58a")}</label>
                   <Input type="number" step="0.01" value={lotSize} onChange={(e) => setLotSize(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Data</label>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.e5e429bcc9")}</label>
                   <Input type="date" value={tradeDate} onChange={(e) => setTradeDate(e.target.value)} />
                 </div>
               </div>
@@ -418,7 +419,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
 
       {trades && trades.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Trade Salvati</h4>
+          <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.9ab0b1b974")}</h4>
           <AnimatePresence>
             {trades.map((trade, idx) => (
               <motion.div
@@ -495,6 +496,21 @@ function StatBox({ label, value, color, icon }: { label: string; value: string |
   );
 }
 
+function formatSignedPips(totalPips: string): string {
+  const numericPips = parseFloat(totalPips);
+  if (!Number.isFinite(numericPips)) return "0.0";
+  return `${numericPips > 0 ? "+" : ""}${totalPips}`;
+}
+
+function SessionMetric({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-border/30 bg-secondary/20 px-2 py-2 text-center">
+      <p className="text-[9px] uppercase tracking-wider text-muted-foreground truncate">{label}</p>
+      <p className={`mt-0.5 font-mono text-sm font-bold tabular-nums truncate ${color}`}>{value}</p>
+    </div>
+  );
+}
+
 export default function Backtest() {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -504,7 +520,7 @@ export default function Backtest() {
   const [activeSession, setActiveSession] = useState<BacktestSession | null>(null);
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Eliminare questa sessione e tutti i trade?")) return;
+    if (!confirm(uiText("auto.ui.7006c72ada"))) return;
     await deleteMutation.mutateAsync({ id });
     qc.invalidateQueries({ queryKey: getGetBacktestSessionsQueryKey() });
     toast({ description: "Sessione eliminata." });
@@ -524,8 +540,8 @@ export default function Backtest() {
     <PageLayout>
       <ProUpgradeGate feature="backtest">
       <PageHeader
-        title="Backtest"
-        subtitle="Replay su grafici reali. Testa le tue strategie come su FX Replay."
+        title={uiText("auto.ui.c6e3b65510")}
+        subtitle={uiText("auto.ui.a5c0238dec")}
         action={
           <Button onClick={() => setShowNew(!showNew)}>
             <Plus className="w-4 h-4 mr-2" />
@@ -550,7 +566,7 @@ export default function Backtest() {
         <Card className="border-dashed border-white/10">
           <CardContent className="px-4 py-12 sm:p-16 text-center">
             <FlaskConical className="w-12 h-12 mx-auto mb-4 opacity-20" />
-            <h3 className="text-xl font-bold mb-2">Nessuna sessione di backtest</h3>
+            <h3 className="text-xl font-bold mb-2">{uiText("backtest.empty_title")}</h3>
             <p className="text-muted-foreground max-w-md mx-auto mb-6">
               Crea una sessione per iniziare a fare replay su grafici reali e testare le tue strategie.
             </p>
@@ -563,7 +579,20 @@ export default function Backtest() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>
-            {sessions.map((session, idx) => (
+            {sessions.map((session, idx) => {
+              const stats = session.stats;
+              const totalPips = parseFloat(stats.totalPips);
+              const winRateColor = stats.total === 0
+                ? "text-muted-foreground"
+                : stats.winRate >= 50 ? "text-green-400" : "text-red-400";
+              const avgRRColor = stats.avgRR == null
+                ? "text-muted-foreground"
+                : parseFloat(stats.avgRR) >= 1 ? "text-green-400" : "text-orange-400";
+              const profitColor = totalPips > 0
+                ? "text-green-400"
+                : totalPips < 0 ? "text-red-400" : "text-muted-foreground";
+
+              return (
               <motion.div
                 key={session.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -594,6 +623,11 @@ export default function Backtest() {
                     Strategia: {session.strategy}
                   </p>
                 )}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <SessionMetric label="Win Rate" value={`${stats.winRate}%`} color={winRateColor} />
+                  <SessionMetric label="R:R" value={stats.avgRR ?? "--"} color={avgRRColor} />
+                  <SessionMetric label="Profitto" value={formatSignedPips(stats.totalPips)} color={profitColor} />
+                </div>
                 <div className="flex items-center justify-between mt-auto pt-3 border-t border-border/30">
                   <span className="text-[10px] text-muted-foreground/50">
                     {format(parseISO(session.createdAt), "d MMM yyyy", { locale: it })}
@@ -601,7 +635,8 @@ export default function Backtest() {
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
               </motion.div>
-            ))}
+              );
+            })}
           </AnimatePresence>
         </div>
       )}

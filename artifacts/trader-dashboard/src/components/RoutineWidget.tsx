@@ -14,6 +14,7 @@ import { useGetFriends } from "@workspace/api-client-react";
 import { saveRoutineCompletion, SessionModal, type Answers } from "@/pages/Routine";
 import { getRoutineMetrics, loadCustomRoutines, loadRoutineCompletions } from "@/pages/Routine.storage";
 import { recordRoutineCompletion } from "@/lib/routineApi";
+import { uiText } from "@/contexts/LanguageContext";
 import {
   getNextRoutineProgram,
   getRoutineSocialMetrics,
@@ -245,7 +246,7 @@ export function RoutineWidget() {
             <ProgressRing done={done} total={2} />
 
             <div className="min-w-0 flex-1">
-              <p className="text-lg font-bold leading-tight tracking-normal text-foreground">Routine</p>
+              <p className="text-lg font-bold leading-tight tracking-normal text-foreground">{uiText("auto.ui.482273d7cc")}</p>
               <p className="mt-2 truncate text-sm leading-tight text-muted-foreground">{statusCopy}</p>
             </div>
 

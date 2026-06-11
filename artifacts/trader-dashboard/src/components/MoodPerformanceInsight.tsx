@@ -7,6 +7,7 @@ import {
   useGetJournalEntries,
 } from "@workspace/api-client-react";
 import { MOOD_EMOJIS } from "@/lib/zenEmojis";
+import { uiText } from "@/contexts/LanguageContext";
 import {
   computeMoodPerformance,
   MIN_TRADES_FOR_SIGNAL,
@@ -44,7 +45,7 @@ export function MoodPerformanceInsight() {
     <div className="rounded-2xl border border-border/30 bg-card/60 p-5 backdrop-blur-sm">
       <div className="mb-1 flex items-center gap-2">
         <BrainCircuit className="h-4 w-4 text-primary" />
-        <h3 className="text-base font-bold">Umore & Performance</h3>
+        <h3 className="text-base font-bold">{uiText("auto.ui.b4b5dba840")}</h3>
       </div>
       <p className="mb-4 text-xs text-muted-foreground">
         Win rate dei tuoi trade in base allo stato d'animo dichiarato al check-in di inizio sessione.
@@ -52,11 +53,11 @@ export function MoodPerformanceInsight() {
 
       {isLoading ? (
         <div className="flex min-h-[8rem] items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" aria-label="Caricamento insight" />
+          <Loader2 className="h-5 w-5 animate-spin text-primary" aria-label={uiText("mood_performance.loading_aria")} />
         </div>
       ) : stats.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/45 bg-secondary/20 p-6 text-center">
-          <p className="text-sm font-bold">Ancora nessun dato</p>
+          <p className="text-sm font-bold">{uiText("mood_performance.no_data")}</p>
           <p className="mx-auto mt-1 max-w-xs text-xs leading-snug text-muted-foreground">
             Compila il check-in a inizio sessione e registra i trade nel Diario: qui vedrai come il tuo
             stato d'animo influenza i risultati.

@@ -4,7 +4,29 @@ import { createServer } from "node:http";
 
 process.env.DATABASE_URL ??= "postgres://user:pass@127.0.0.1:5432/test";
 
-const { createBillingRouter } = await import("./billing.js");
+const { createBillingRouter, shouldPreserveManualSubscriptionOverride } = await import("./billing.js");
+
+assert.equal(
+  shouldPreserveManualSubscriptionOverride({
+    source: "manual",
+    manualOverride: false,
+  }),
+  false,
+);
+assert.equal(
+  shouldPreserveManualSubscriptionOverride({
+    source: "manual",
+    manualOverride: true,
+  }),
+  true,
+);
+assert.equal(
+  shouldPreserveManualSubscriptionOverride({
+    source: "stripe",
+    manualOverride: false,
+  }),
+  false,
+);
 
 async function startBillingServer(options = {}) {
   const app = express();
@@ -39,6 +61,8 @@ async function startBillingServer(options = {}) {
       plan: "free",
       pro: false,
       status: "free",
+      source: null,
+      manualOverride: false,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
       stripeCustomerId: null,
@@ -57,6 +81,8 @@ async function startBillingServer(options = {}) {
     getSubscription: async () => ({
       plan: "pro",
       status: "active",
+      source: "stripe",
+      manualOverride: false,
       stripeCustomerId: "cus_1234567890",
       stripeSubscriptionId: "sub_1234567890",
       currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
@@ -70,6 +96,8 @@ async function startBillingServer(options = {}) {
       plan: string;
       pro: boolean;
       status: string;
+      source: string | null;
+      manualOverride: boolean;
       stripeCustomerId: string;
       stripeSubscriptionId: string;
       canCancel: boolean;
@@ -79,11 +107,52 @@ async function startBillingServer(options = {}) {
     assert.equal(body.plan, "pro");
     assert.equal(body.pro, true);
     assert.equal(body.status, "active");
+    assert.equal(body.source, "stripe");
+    assert.equal(body.manualOverride, false);
     assert.equal(body.stripeCustomerId, "cus_1234567890");
     assert.equal(body.stripeSubscriptionId, "sub_...7890");
     assert.equal(body.canCancel, true);
     assert.equal(body.canResume, false);
     assert.equal(body.canViewInvoices, true);
+  } finally {
+    await server.close();
+  }
+}
+
+{
+  const server = await startBillingServer({
+    getSubscription: async () => ({
+      plan: "pro",
+      status: "active",
+      source: "manual",
+      manualOverride: true,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    }),
+  });
+  try {
+    const response = await fetch(`${server.base}/billing/me`);
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as {
+      plan: string;
+      pro: boolean;
+      status: string;
+      source: string | null;
+      manualOverride: boolean;
+      canCancel: boolean;
+      canResume: boolean;
+      canViewInvoices: boolean;
+    };
+    assert.equal(body.plan, "pro");
+    assert.equal(body.pro, true);
+    assert.equal(body.status, "active");
+    assert.equal(body.source, "manual");
+    assert.equal(body.manualOverride, true);
+    assert.equal(body.canCancel, false);
+    assert.equal(body.canResume, false);
+    assert.equal(body.canViewInvoices, false);
   } finally {
     await server.close();
   }

@@ -10,6 +10,7 @@ import {
 } from "@workspace/api-client-react";
 import { MOOD_EMOJIS } from "@/lib/zenEmojis";
 import { buildTodayReport, type ReportEntry, type TodayReport } from "@/lib/todayReport";
+import { uiText } from "@/contexts/LanguageContext";
 
 export type { TodayReport } from "@/lib/todayReport";
 
@@ -42,7 +43,7 @@ export function EveningTradeReport({ onApply }: { onApply: (report: TodayReport)
   if (entriesLoading) {
     return (
       <div className="flex items-center justify-center rounded-xl border border-border/30 bg-card/50 px-4 py-4">
-        <Loader2 className="h-4 w-4 animate-spin text-primary" aria-label="Caricamento report" />
+        <Loader2 className="h-4 w-4 animate-spin text-primary" aria-label={uiText("auto.ui.6374503707")} />
       </div>
     );
   }
@@ -56,7 +57,7 @@ export function EveningTradeReport({ onApply }: { onApply: (report: TodayReport)
     <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/5 p-4">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-indigo-300" />
-        <p className="text-sm font-bold">Report automatico di oggi</p>
+        <p className="text-sm font-bold">{uiText("auto.ui.ab6c48a0d9")}</p>
       </div>
 
       {!hasTrades ? (

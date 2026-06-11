@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Check, ChevronDown, BarChart2, TrendingUp, ArrowRight, Sparkles } from "lucide-react";
 import { PAIR_CATALOG, CATEGORY_LABELS, type PairEntry } from "@workspace/pair-catalog";
+import { uiText } from "@/contexts/LanguageContext";
 
 interface PairOnboardingScreenProps {
   initialPairs?: string[];
@@ -93,8 +94,8 @@ export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboa
                 <TrendingUp className="w-5 h-5 text-primary" />
               </div>
               <span className="font-bold text-lg tracking-tight">
-                <span className="text-foreground">TRADER</span>
-                <span className="text-primary">LOADING</span>
+                <span className="text-foreground">{uiText("auto.ui.e8678d1358")}</span>
+                <span className="text-primary">{uiText("auto.ui.bb8af24286")}</span>
               </span>
             </div>
             <h1 className="text-xl font-bold text-foreground leading-tight">
@@ -112,15 +113,15 @@ export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboa
                 <TrendingUp className="w-6 h-6 text-primary" />
               </div>
               <span className="font-bold text-xl tracking-tight">
-                <span className="text-foreground">TRADER</span>
-                <span className="text-primary">LOADING</span>
+                <span className="text-foreground">{uiText("auto.ui.e8678d1358")}</span>
+                <span className="text-primary">{uiText("auto.ui.bb8af24286")}</span>
               </span>
             </div>
 
             <div className="space-y-2 mb-8">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-primary">Onboarding</span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-primary">{uiText("auto.ui.8d49e065a3")}</span>
               </div>
               <h1 className="text-2xl font-bold text-foreground leading-snug">
                 Quali strumenti di trading segui?
@@ -169,7 +170,7 @@ export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboa
             {selected.length === 0 && (
               <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30">
                 <BarChart2 className="w-12 h-12 mb-3" />
-                <p className="text-sm">Nessun strumento selezionato</p>
+                <p className="text-sm">{uiText("auto.ui.c866ba72d1")}</p>
               </div>
             )}
 
@@ -205,7 +206,7 @@ export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboa
                 ref={searchRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cerca pair... (EUR, gold, BTC, US30…)"
+                placeholder={uiText("auto.ui.fc6365d5eb")}
                 className={[
                   "w-full pl-10 pr-9 py-3 rounded-2xl border text-sm",
                   "bg-card/60 border-border/60 text-foreground placeholder:text-muted-foreground/40",
@@ -349,7 +350,7 @@ export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboa
               <div className="py-16 text-center text-muted-foreground">
                 <Search className="w-12 h-12 mx-auto mb-3 opacity-15" />
                 <p className="text-sm font-medium">Nessun risultato per "{search}"</p>
-                <p className="text-xs mt-1 opacity-60">Prova con EUR, gold, BTC o US30</p>
+                <p className="text-xs mt-1 opacity-60">{uiText("auto.ui.9a19ccc23c")}</p>
               </div>
             )}
           </div>

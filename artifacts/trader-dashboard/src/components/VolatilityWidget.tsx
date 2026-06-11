@@ -10,6 +10,7 @@ import { BarChart, Bar, Cell, ResponsiveContainer, ReferenceLine, Tooltip } from
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
 import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
+import { uiText } from "@/contexts/LanguageContext";
 
 interface VolatilityResult {
   pair: string; currentPrice: number; todayPips: number;
@@ -76,7 +77,7 @@ export function VolatilityWidget() {
             <TrendingUp className="w-4 h-4 text-warning" />
           </div>
           <div>
-            <p className="widget-title">Volatilità & ADR</p>
+            <p className="widget-title">{uiText("auto.ui.de8919508a")}</p>
             {data && (
               <p className="widget-subtitle">
                 <span className={`font-semibold ${
@@ -155,19 +156,19 @@ export function VolatilityWidget() {
             {/* Metric cards */}
             <div className="grid grid-cols-3 gap-2">
               <div className="metric-card border-emerald-400/40 bg-emerald-500/12">
-                <span className="metric-label text-emerald-200">Oggi</span>
+                <span className="metric-label text-emerald-200">{uiText("auto.ui.6ca10960a1")}</span>
                 <span className="metric-value text-emerald-300">{data.todayPips}</span>
                 <span className="metric-unit">{data.pipUnit}</span>
               </div>
               <div className="metric-card">
-                <span className="metric-label">Media 1Y</span>
+                <span className="metric-label">{uiText("auto.ui.e598e168c1")}</span>
                 <span className="metric-value">{data.y1}</span>
                 <span className="metric-unit">{data.pipUnit}</span>
               </div>
               <div className="metric-card">
-                <span className="metric-label">Peak</span>
+                <span className="metric-label">{uiText("auto.ui.c83dbbd3e6")}</span>
                 <span className="metric-value">{data.peakDay?.slice(0, 3)}</span>
-                <span className="metric-unit">giorno</span>
+                <span className="metric-unit">{uiText("auto.ui.2287204815")}</span>
               </div>
             </div>
 
@@ -203,7 +204,7 @@ export function VolatilityWidget() {
 
             {/* Bar chart */}
             <div>
-              <p className="text-[9px] text-muted-foreground mb-1.5">Ultimi 10 giorni</p>
+              <p className="text-[9px] text-muted-foreground mb-1.5">{uiText("auto.ui.bb9c89b228")}</p>
               <div className="h-[72px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={last10} barSize={10} margin={{ top: 2, right: 0, left: -30, bottom: 0 }}>
@@ -233,7 +234,7 @@ export function VolatilityWidget() {
               </div>
             </div>
 
-            <p className="text-[9px] text-center text-muted-foreground">Range giornaliero H-L</p>
+            <p className="text-[9px] text-center text-muted-foreground">{uiText("auto.ui.6e28dfe791")}</p>
           </motion.div>
         )}
       </CardContent>

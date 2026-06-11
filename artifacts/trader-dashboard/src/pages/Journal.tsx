@@ -25,7 +25,7 @@ import {
   type Idea,
 } from "@workspace/api-client-react";
 import { downloadICS } from "@/utils/icsExport";
-import { useLanguage, useDateLocale } from "@/contexts/LanguageContext";
+import { useLanguage, useDateLocale, uiText } from "@/contexts/LanguageContext";
 import { getJournalRecapPeriod, isJournalRecapEditable } from "@/lib/journalRecapPeriods";
 import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTradeContent";
 import { PnlHeatmap } from "@/components/PnlHeatmap";
@@ -76,13 +76,13 @@ function SyncedTradeDetails({ content }: { content: string }) {
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
         {parsed.direction && (
           <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground/60">Direzione</span>
+            <span className="text-muted-foreground/60">{uiText("auto.ui.fdd6ae3476")}</span>
             <span className={`rounded px-1.5 py-px font-bold border text-[10px] ${directionClass}`}>{parsed.direction}</span>
           </div>
         )}
         {parsed.volume != null && (
           <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground/60">Volume</span>
+            <span className="text-muted-foreground/60">{uiText("auto.ui.3b18e8e332")}</span>
             <span className="font-mono text-foreground/90">{parsed.volume}</span>
           </div>
         )}
@@ -526,7 +526,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                         type="number"
                         min="1"
                         max="3650"
-                        placeholder="N"
+                        placeholder={uiText("auto.ui.b51a60734d")}
                         value={customDays}
                         onChange={(e) => {
                           setCustomDays(e.target.value);
@@ -541,7 +541,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                         }}
                         className="w-14 px-2 py-1 text-[11px] rounded-lg bg-secondary/50 border border-border hover:border-primary/50 focus:border-primary/50 focus:outline-none text-center"
                       />
-                      <span className="text-[10px] text-muted-foreground">gg</span>
+                      <span className="text-[10px] text-muted-foreground">{uiText("auto.ui.f3226f91f7")}</span>
                     </div>
                   </div>
                   {newDeadline ? (

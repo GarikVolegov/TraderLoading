@@ -12,6 +12,9 @@ export interface BillingStatus {
   plan: BillingStatusPlan;
   status: BillingStatusStatus;
   pro: boolean;
+  /** Subscription source, for example Stripe checkout or manual admin override. */
+  source: string | null;
+  manualOverride: boolean;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   stripeCustomerId: string | null;

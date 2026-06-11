@@ -5,6 +5,7 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
+import type { BacktestSessionStats } from "./backtestSessionStats";
 
 export interface BacktestSession {
   id: number;
@@ -15,4 +16,5 @@ export interface BacktestSession {
   notes?: string | null;
   userId?: string | null;
   createdAt: string;
+  stats: BacktestSessionStats;
 }

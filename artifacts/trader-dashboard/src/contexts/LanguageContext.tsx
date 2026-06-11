@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { it, enUS, es, fr, de } from "date-fns/locale";
 import type { Locale } from "date-fns";
-import { DICT, type Language } from "@/lib/i18n";
+import { detectLanguageFromLocales, DICT, type Language } from "@/lib/i18n";
 
 export type { Language };
 
@@ -31,11 +31,24 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
+function getInitialLanguage(): Language {
+  const stored = localStorage.getItem(STORAGE_KEY) as Language | null;
+  if (stored && stored in LANGUAGES) return stored;
+
+  const browserLocales = [
+    ...(Array.isArray(navigator.languages) ? navigator.languages : []),
+    navigator.language,
+  ];
+
+  return detectLanguageFromLocales(browserLocales) ?? "it";
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLangState] = useState<Language>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as Language | null;
-    return stored && stored in LANGUAGES ? stored : "it";
-  });
+  const [language, setLangState] = useState<Language>(getInitialLanguage);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   const setLanguage = (lang: Language) => {
     localStorage.setItem(STORAGE_KEY, lang);
@@ -68,4 +81,20 @@ export function useLanguage() {
 export function useDateLocale(): Locale {
   const { language } = useLanguage();
   return DATE_FNS_LOCALES[language];
+}
+
+export function uiText(key: string, vars?: Record<string, string | number>): string {
+  const language = detectLanguageFromLocales([document.documentElement.lang, localStorage.getItem(STORAGE_KEY)]) ?? "it";
+  let str = DICT[language]?.[key] ?? DICT.it?.[key] ?? key;
+  if (vars) {
+    Object.entries(vars).forEach(([k, v]) => {
+      str = str.replaceAll(`{${k}}`, String(v));
+    });
+  }
+  return str;
+}
+
+export function I18nText({ k, vars }: { k: string; vars?: Record<string, string | number> }) {
+  const { t } = useLanguage();
+  return <>{t(k, vars)}</>;
 }

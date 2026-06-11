@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useAccountBridgeSocket } from "./useAccountBridgeSocket";
 import { useAccountConnections } from "./useAccountConnections";
 import { TradingViewMonitor } from "./TradingViewMonitor";
@@ -23,8 +24,8 @@ function formatNumber(value: number): string {
   return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-function profileTitle(profile: AccountConnectionProfile): string {
-  return profile.mode === "live" ? profile.label : "Conto demo";
+function profileTitle(profile: AccountConnectionProfile, demoLabel: string): string {
+  return profile.mode === "live" ? profile.label : demoLabel;
 }
 
 function ConnectionStatusPanel({
@@ -36,6 +37,7 @@ function ConnectionStatusPanel({
   lastError: string | null;
   reconnect: () => void;
 }) {
+  const { t } = useLanguage();
   const isRealMt5 = snapshot.mode === "live" && snapshot.adapter === "mt5-local-socket";
 
   return (
@@ -48,25 +50,25 @@ function ConnectionStatusPanel({
         }`}
       >
         {snapshot.mode === "live"
-          ? "Conto reale MT5 attivo. Gli ordini live richiedono conferma e ack dal bridge locale."
-          : "Demo adapter attivo. Gli ordini sono simulati."}
+          ? t("account_bridge.live_active")
+          : t("account_bridge.demo_active")}
       </div>
 
       {isRealMt5 && (
         <div className="grid gap-3 rounded-xl border border-border/40 bg-card/60 p-4 text-sm md:grid-cols-3">
           <div>
-            <p className="text-[11px] uppercase text-muted-foreground">Account</p>
-            <p className="mt-1 font-mono font-bold">{snapshot.account?.login ?? "MT5 collegato"}</p>
+            <p className="text-[11px] uppercase text-muted-foreground">{t("account_bridge.account")}</p>
+            <p className="mt-1 font-mono font-bold">{snapshot.account?.login ?? t("account_bridge.mt5_connected")}</p>
             {snapshot.account?.name && <p className="text-xs text-muted-foreground">{snapshot.account.name}</p>}
           </div>
           <div>
-            <p className="text-[11px] uppercase text-muted-foreground">Broker / Server</p>
-            <p className="mt-1 font-mono font-bold">{snapshot.account?.broker ?? "Broker MT5"}</p>
+            <p className="text-[11px] uppercase text-muted-foreground">{t("account_bridge.broker_server")}</p>
+            <p className="mt-1 font-mono font-bold">{snapshot.account?.broker ?? t("account_bridge.mt5_broker")}</p>
             {snapshot.account?.server && <p className="text-xs text-muted-foreground">{snapshot.account.server}</p>}
           </div>
           <div>
-            <p className="text-[11px] uppercase text-muted-foreground">Trading</p>
-            <p className="mt-1 font-mono font-bold">{snapshot.orderEnabled ? "Ordini abilitati" : "Solo lettura"}</p>
+            <p className="text-[11px] uppercase text-muted-foreground">{t("account_bridge.trading")}</p>
+            <p className="mt-1 font-mono font-bold">{snapshot.orderEnabled ? t("account_bridge.orders_enabled") : t("account_bridge.read_only")}</p>
             <p className="text-xs text-muted-foreground">
               {snapshot.account?.tradeMode ?? "real"} {snapshot.account?.leverage ? `- 1:${snapshot.account.leverage}` : ""}
             </p>
@@ -78,10 +80,10 @@ function ConnectionStatusPanel({
         <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <span className="flex items-center gap-2">
             <WifiOff className="h-4 w-4" />
-            {lastError ?? snapshot.error ?? "Account bridge non connesso"}
+            {lastError ?? snapshot.error ?? t("account_bridge.not_connected")}
           </span>
           <Button variant="outline" size="sm" onClick={reconnect}>
-            Riconnetti
+            {t("account_bridge.reconnect")}
           </Button>
         </div>
       )}
@@ -94,6 +96,7 @@ function ConnectPanel({
 }: {
   onConnected: () => void;
 }) {
+  const { t } = useLanguage();
   const { saveProfile, activateProfile, message } = useAccountConnections();
   const [label, setLabel] = useState("FP Trading");
   const [host, setHost] = useState("127.0.0.1");
@@ -119,10 +122,10 @@ function ConnectPanel({
         orderAckTimeoutMs: 10_000,
       });
       await activateProfile(profile.id);
-      setLocalMessage("Profilo attivato");
+      setLocalMessage(t("account_bridge.profile_activated"));
       onConnected();
     } catch (error) {
-      setLocalMessage(error instanceof Error ? error.message : "Connessione non riuscita");
+      setLocalMessage(error instanceof Error ? error.message : t("account_bridge.connection_failed"));
     } finally {
       setSaving(false);
     }
@@ -133,16 +136,16 @@ function ConnectPanel({
       <div className="space-y-3 rounded-xl border border-border/40 bg-card/60 p-4">
         <div className="flex items-center gap-2 text-sm font-bold">
           <PlugZap className="h-4 w-4 text-primary" />
-          Collega conto FP Trading
+          {t("account_bridge.connect_fp")}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="account-label">Nome profilo</Label>
+          <Label htmlFor="account-label">{t("account_bridge.profile_name")}</Label>
           <Input id="account-label" value={label} onChange={(event) => setLabel(event.target.value)} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="terminal-path">Percorso terminal64.exe</Label>
+          <Label htmlFor="terminal-path">{t("account_bridge.terminal_path")}</Label>
           <Input
             id="terminal-path"
             value={terminalPath}
@@ -153,11 +156,11 @@ function ConnectPanel({
 
         <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
           <div className="space-y-2">
-            <Label htmlFor="bridge-host">Host bridge</Label>
+            <Label htmlFor="bridge-host">{t("account_bridge.bridge_host")}</Label>
             <Input id="bridge-host" value={host} onChange={(event) => setHost(event.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bridge-port">Porta</Label>
+            <Label htmlFor="bridge-port">{t("account_bridge.port")}</Label>
             <Input
               id="bridge-port"
               type="number"
@@ -171,25 +174,25 @@ function ConnectPanel({
 
         <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/25 px-3 py-2">
           <div>
-            <p className="text-sm font-bold">Ordini reali</p>
-            <p className="text-xs text-muted-foreground">Disattivato = solo lettura</p>
+            <p className="text-sm font-bold">{t("account_bridge.real_orders")}</p>
+            <p className="text-xs text-muted-foreground">{t("account_bridge.real_orders_desc")}</p>
           </div>
           <Switch checked={orderEnabled} onCheckedChange={setOrderEnabled} />
         </div>
 
         <Button className="w-full gap-2" onClick={connect} disabled={saving || !label.trim()}>
           <PlugZap className="h-4 w-4" />
-          {saving ? "Collegamento..." : "Salva e collega"}
+          {saving ? t("account_bridge.connecting") : t("account_bridge.save_connect")}
         </Button>
         {(localMessage || message) && <p className="text-xs text-muted-foreground">{localMessage ?? message}</p>}
       </div>
 
       <div className="rounded-xl border border-border/40 bg-secondary/20 p-4 text-sm">
-        <p className="font-bold">Sicurezza conto reale</p>
+        <p className="font-bold">{t("account_bridge.real_security")}</p>
         <div className="mt-3 grid gap-2 text-muted-foreground">
-          <p>Le credenziali FP Trading restano dentro MetaTrader.</p>
-          <p>Il profilo salva solo host, porta, terminale e permessi operativi.</p>
-          <p>Gli ordini live passano solo se il profilo ha ordini reali abilitati.</p>
+          <p>{t("account_bridge.security_1")}</p>
+          <p>{t("account_bridge.security_2")}</p>
+          <p>{t("account_bridge.security_3")}</p>
         </div>
       </div>
     </div>
@@ -201,6 +204,7 @@ function AccountsPanel({
 }: {
   onActivated: () => void;
 }) {
+  const { t } = useLanguage();
   const { connections, loading, message, activateProfile, deleteProfile, testProfile } = useAccountConnections();
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -218,13 +222,13 @@ function AccountsPanel({
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-bold">
         <ListChecks className="h-4 w-4 text-primary" />
-        Conti collegati
+        {t("account_bridge.connected_accounts")}
       </div>
 
-      {loading && <div className="rounded-xl border border-border/40 bg-secondary/20 p-4 text-sm">Caricamento...</div>}
+      {loading && <div className="rounded-xl border border-border/40 bg-secondary/20 p-4 text-sm">{t("common.loading")}</div>}
       {!loading && connections.profiles.length === 0 && (
         <div className="rounded-xl border border-border/40 bg-secondary/20 p-4 text-sm text-muted-foreground">
-          Nessun conto collegato.
+          {t("account_bridge.no_accounts")}
         </div>
       )}
 
@@ -236,7 +240,7 @@ function AccountsPanel({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="font-bold">{profileTitle(profile)}</p>
+                    <p className="font-bold">{profileTitle(profile, t("account_bridge.demo_account"))}</p>
                     {active && <CheckCircle2 className="h-4 w-4 text-primary" />}
                   </div>
                   <p className="mt-1 font-mono text-xs text-muted-foreground">
@@ -253,7 +257,7 @@ function AccountsPanel({
                     disabled={busyId === profile.id}
                     onClick={() => run(profile.id, activateProfile)}
                   >
-                    {active ? "Attivo" : "Attiva"}
+                    {active ? t("account_bridge.active") : t("account_bridge.activate")}
                   </Button>
                   <Button
                     size="sm"
@@ -261,7 +265,7 @@ function AccountsPanel({
                     disabled={busyId === profile.id}
                     onClick={() => run(profile.id, testProfile)}
                   >
-                    Test
+                    {t("account_bridge.test")}
                   </Button>
                   <Button
                     size="sm"
@@ -275,10 +279,10 @@ function AccountsPanel({
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
                 <span className="rounded-full border border-border/40 px-2 py-1">
-                  {profile.orderEnabled ? "Ordini live abilitati" : "Solo lettura"}
+                  {profile.orderEnabled ? t("account_bridge.live_orders_enabled") : t("account_bridge.read_only")}
                 </span>
                 <span className="rounded-full border border-border/40 px-2 py-1">
-                  Diario {profile.importJournal ? "attivo" : "off"}
+                  {t("account_bridge.journal")} {profile.importJournal ? t("account_bridge.journal_active") : t("account_bridge.journal_off")}
                 </span>
               </div>
             </div>
@@ -308,16 +312,17 @@ function OrderPanel({
   submit: () => void;
   primarySymbol: string;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
       <div className="space-y-3 rounded-xl border border-border/40 bg-card/60 p-4">
         <div className="flex items-center gap-2 text-sm font-bold">
           <Send className="h-4 w-4 text-primary" />
-          Ticket ordine
+          {t("account_bridge.order_ticket")}
         </div>
         <Input
           value={draft.symbol}
-          aria-label="Simbolo"
+          aria-label={t("account_bridge.symbol")}
           onChange={(event) => setDraft((prev) => ({ ...prev, symbol: event.target.value.toUpperCase() }))}
         />
         <div className="grid grid-cols-2 gap-2">
@@ -342,7 +347,7 @@ function OrderPanel({
           type="number"
           step="0.01"
           value={draft.volume}
-          aria-label="Volume"
+          aria-label={t("account_bridge.volume")}
           onChange={(event) => setDraft((prev) => ({ ...prev, volume: Number(event.target.value) }))}
         />
         <div className="grid grid-cols-2 gap-2">
@@ -350,7 +355,7 @@ function OrderPanel({
             type="number"
             step="any"
             placeholder="SL"
-            aria-label="Stop loss"
+            aria-label={t("account_bridge.stop_loss")}
             onChange={(event) =>
               setDraft((prev) => ({ ...prev, stopLoss: event.target.value ? Number(event.target.value) : undefined }))
             }
@@ -359,7 +364,7 @@ function OrderPanel({
             type="number"
             step="any"
             placeholder="TP"
-            aria-label="Take profit"
+            aria-label={t("account_bridge.take_profit")}
             onChange={(event) =>
               setDraft((prev) => ({
                 ...prev,
@@ -370,13 +375,13 @@ function OrderPanel({
         </div>
         <Button className="w-full gap-2" disabled={!canSend} onClick={submit}>
           <Send className="h-4 w-4" />
-          {snapshot.mode === "live" ? "Invia live" : "Invia demo"}
+          {snapshot.mode === "live" ? t("account_bridge.send_live") : t("account_bridge.send_demo")}
         </Button>
         {lastOrderMessage && <p className="text-xs text-muted-foreground">{lastOrderMessage}</p>}
         {!snapshot.orderEnabled && snapshot.mode === "live" && (
           <p className="flex items-center gap-1.5 text-xs text-amber-400">
             <AlertTriangle className="h-3.5 w-3.5" />
-            Ordini live disabilitati dal profilo attivo.
+            {t("account_bridge.live_orders_disabled")}
           </p>
         )}
       </div>
@@ -387,13 +392,14 @@ function OrderPanel({
 }
 
 function MetricsGrid({ snapshot }: { snapshot: ReturnType<typeof useAccountBridgeSocket>["snapshot"] }) {
+  const { t } = useLanguage();
   return (
     <div className="grid gap-3 md:grid-cols-4">
       {[
-        ["Balance", snapshot.metrics.balance],
-        ["Equity", snapshot.metrics.equity],
-        ["Free margin", snapshot.metrics.freeMargin],
-        ["Daily P/L", snapshot.metrics.dailyProfit],
+        [t("account_bridge.metric.balance"), snapshot.metrics.balance],
+        [t("account_bridge.metric.equity"), snapshot.metrics.equity],
+        [t("account_bridge.metric.free_margin"), snapshot.metrics.freeMargin],
+        [t("account_bridge.metric.daily_pl"), snapshot.metrics.dailyProfit],
       ].map(([label, value]) => (
         <div key={label} className="rounded-xl border border-border/40 bg-secondary/25 p-3">
           <p className="text-[11px] uppercase text-muted-foreground">{label}</p>
@@ -405,11 +411,12 @@ function MetricsGrid({ snapshot }: { snapshot: ReturnType<typeof useAccountBridg
 }
 
 function OpenTrades({ snapshot }: { snapshot: ReturnType<typeof useAccountBridgeSocket>["snapshot"] }) {
+  const { t } = useLanguage();
   return (
     <div className="rounded-xl border border-border/40 bg-card/60 p-4">
-      <p className="mb-3 text-sm font-bold">Posizioni aperte</p>
+      <p className="mb-3 text-sm font-bold">{t("account_bridge.open_positions")}</p>
       <div className="space-y-2">
-        {snapshot.openTrades.length === 0 && <p className="text-sm text-muted-foreground">Nessuna posizione aperta.</p>}
+        {snapshot.openTrades.length === 0 && <p className="text-sm text-muted-foreground">{t("account_bridge.no_open_positions")}</p>}
         {snapshot.openTrades.map((trade) => (
           <div
             key={trade.ticket}
@@ -430,6 +437,7 @@ function OpenTrades({ snapshot }: { snapshot: ReturnType<typeof useAccountBridge
 }
 
 export function AccountBridgeWorkspace({ initialTab = "connect" }: { initialTab?: AccountBridgeWorkspaceTab }) {
+  const { t } = useLanguage();
   const { snapshot, lastError, lastOrderMessage, reconnect, sendOrder } = useAccountBridgeSocket();
   const [tab, setTab] = useState<AccountBridgeWorkspaceTab>(initialTab);
   const [draft, setDraft] = useState<AccountOrderDraft>({ symbol: "EURUSD", direction: "buy", volume: 0.1 });
@@ -444,7 +452,7 @@ export function AccountBridgeWorkspace({ initialTab = "connect" }: { initialTab?
   }, [initialTab]);
 
   const submit = () => {
-    const label = snapshot.mode === "live" ? "Inviare ordine LIVE?" : "Inviare ordine demo?";
+    const label = snapshot.mode === "live" ? t("account_bridge.confirm_live") : t("account_bridge.confirm_demo");
     if (!window.confirm(label)) return;
     sendOrder(draft);
   };
@@ -463,15 +471,15 @@ export function AccountBridgeWorkspace({ initialTab = "connect" }: { initialTab?
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="connect" className="gap-2">
             <PlugZap className="h-3.5 w-3.5" />
-            Collega
+            {t("account_bridge.tab.connect")}
           </TabsTrigger>
           <TabsTrigger value="accounts" className="gap-2">
             <ListChecks className="h-3.5 w-3.5" />
-            Conti
+            {t("account_bridge.tab.accounts")}
           </TabsTrigger>
           <TabsTrigger value="order" className="gap-2">
             <Send className="h-3.5 w-3.5" />
-            Ordine
+            {t("account_bridge.tab.order")}
           </TabsTrigger>
         </TabsList>
 

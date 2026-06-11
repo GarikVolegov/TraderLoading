@@ -21,6 +21,7 @@ import { getUploadsDir } from "./lib/uploads";
 import {
   createCorsOptions,
   createHelmetOptions,
+  getRateLimitKey,
   getRateLimitConfig,
   parseTrustProxy,
   publicUploadGuard,
@@ -46,7 +47,7 @@ app.use(helmet(createHelmetOptions()));
 app.use(cors(createCorsOptions()));
 app.use(compression({ threshold: 1024 }));
 app.use(cookieParser());
-app.use("/api", express.raw({ type: "application/json" }), createStripeWebhookRouter());
+app.use("/api/billing/webhook", express.raw({ type: "application/json" }), createStripeWebhookRouter());
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
@@ -69,6 +70,7 @@ app.use(
   "/api",
   rateLimit({
     ...getRateLimitConfig(),
+    keyGenerator: getRateLimitKey,
     legacyHeaders: false,
     standardHeaders: true,
   }),
