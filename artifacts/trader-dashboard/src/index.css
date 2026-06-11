@@ -36,6 +36,11 @@
   --color-warning: hsl(var(--warning));
   --color-warning-foreground: hsl(var(--warning-foreground));
 
+  --color-profit: hsl(var(--profit));
+  --color-loss: hsl(var(--loss));
+  --color-brand-soft: hsl(var(--brand-soft));
+  --color-brand-deep: hsl(var(--brand-deep));
+
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -51,49 +56,58 @@
 }
 
 :root {
-  --background: 222 47% 3%;
-  --foreground: 210 40% 98%;
-  
-  --card: 226 43% 10%;
-  --card-foreground: 210 40% 98%;
-  
-  --popover: 226 43% 8%;
-  --popover-foreground: 210 40% 98%;
-  
-  --primary: 142 71% 45%;
-  --primary-foreground: 222 47% 6%;
-  
-  --secondary: 222 35% 14%;
-  --secondary-foreground: 210 40% 98%;
-  
-  --muted: 225 28% 14%;
-  --muted-foreground: 215 20% 65%;
-  
-  --accent: 217 91% 60%;
-  --accent-foreground: 210 40% 98%;
-  
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
+  /* C2-Verde sobria (Gate A 11/06/2026): superfici desaturate, brand verde smorzato,
+     semantica trading attenuata ma distinta dal brand */
+  --background: 222 35% 4%;
+  --foreground: 210 25% 96%;
 
-  --success: 142 71% 45%;
-  --success-foreground: 222 47% 6%;
-  
-  --warning: 38 92% 50%;
-  --warning-foreground: 222 47% 6%;
+  --card: 224 28% 9%;
+  --card-foreground: 210 25% 96%;
 
-  --border: 215 25% 27%;
-  --input: 215 25% 24%;
-  --ring: 142 71% 45%;
+  --popover: 224 28% 7%;
+  --popover-foreground: 210 25% 96%;
 
-  --session-asian: 262 83% 65%;
-  --session-london: 35 100% 55%;
-  --session-ny: 150 100% 40%;
-  --session-volume: 215 20% 65%;
-  --session-closed: 0 84% 60%;
+  /* brand: chrome interattivo, CTA, focus — NON significa "profitto" */
+  --primary: 145 38% 48%;
+  --primary-foreground: 150 35% 6%;
+  --brand-soft: 148 40% 60%;
+  --brand-deep: 152 32% 33%;
 
-  --tl-surface-panel: 226 43% 10%;
-  --tl-surface-raised: 224 32% 14%;
-  --tl-border-strong: 215 25% 32%;
+  --secondary: 222 22% 13%;
+  --secondary-foreground: 210 25% 96%;
+
+  --muted: 223 18% 13%;
+  --muted-foreground: 217 12% 64%;
+
+  --accent: 217 50% 58%;
+  --accent-foreground: 210 25% 96%;
+
+  --destructive: 0 60% 58%;
+  --destructive-foreground: 210 25% 96%;
+
+  /* semantica trading: direzione mercato → profit/loss; stato → success/warning */
+  --profit: 142 48% 46%;
+  --loss: 0 60% 58%;
+
+  --success: 142 48% 46%;
+  --success-foreground: 150 35% 6%;
+
+  --warning: 28 65% 55%;
+  --warning-foreground: 30 35% 7%;
+
+  --border: 218 16% 26%;
+  --input: 218 16% 23%;
+  --ring: 145 38% 48%;
+
+  --session-asian: 262 45% 64%;
+  --session-london: 35 60% 56%;
+  --session-ny: 150 50% 42%;
+  --session-volume: 217 12% 64%;
+  --session-closed: 0 60% 58%;
+
+  --tl-surface-panel: 224 28% 9%;
+  --tl-surface-raised: 223 20% 13%;
+  --tl-border-strong: 218 16% 31%;
   --tl-shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.28);
 
   --radius: 0.625rem;
@@ -129,8 +143,8 @@
     z-index: -1;
     pointer-events: none;
     background-image:
-      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(224 55% 5%) 100%),
-      radial-gradient(ellipse 70% 45% at 85% -10%, hsl(var(--primary) / 0.055) 0%, transparent 55%),
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(224 38% 5%) 100%),
+      radial-gradient(ellipse 70% 45% at 85% -10%, hsl(var(--primary) / 0.045) 0%, transparent 55%),
       linear-gradient(hsl(var(--border) / 0.035) 1px, transparent 1px),
       linear-gradient(90deg, hsl(var(--border) / 0.025) 1px, transparent 1px);
     background-size: auto, auto, 48px 48px, 48px 48px;
@@ -201,7 +215,18 @@
 
 @layer components {
   .tl-panel {
-    @apply rounded-[0.625rem] border border-border/60 bg-card/88 text-card-foreground shadow-[var(--tl-shadow-panel)] backdrop-blur-md;
+    @apply relative rounded-[0.625rem] border border-border/60 bg-card/88 text-card-foreground shadow-[var(--tl-shadow-panel)] backdrop-blur-md;
+  }
+  /* hairline brand appena percettibile in cima (Gate A: C2-Verde) */
+  .tl-panel::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 14px;
+    right: 14px;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4) 50%, transparent);
   }
 
   .tl-panel-muted {
@@ -291,7 +316,7 @@
     color: transparent;
     -webkit-background-clip: text;
     background-clip: text;
-    background-image: linear-gradient(135deg, hsl(var(--primary)), #34d399);
+    background-image: linear-gradient(135deg, hsl(var(--brand-deep)), hsl(var(--primary)) 55%, hsl(var(--brand-soft)));
   }
 
   /* ── Ambient card glow variant ────────────────────────────────── */
@@ -527,8 +552,8 @@
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 8px  hsl(var(--primary) / 0.25), 0 0 20px hsl(var(--primary) / 0.05); }
-  50%       { box-shadow: 0 0 20px hsl(var(--primary) / 0.5),  0 0 50px hsl(var(--primary) / 0.15); }
+  0%, 100% { box-shadow: 0 0 8px  hsl(var(--primary) / 0.18), 0 0 20px hsl(var(--primary) / 0.04); }
+  50%       { box-shadow: 0 0 16px hsl(var(--primary) / 0.35), 0 0 40px hsl(var(--primary) / 0.1); }
 }
 
 @keyframes fade-in-up {
