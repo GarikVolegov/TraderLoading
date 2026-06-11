@@ -28,6 +28,7 @@ import accountBridgeRouter from "./account-bridge.js";
 import brokersRouter from "./brokers.js";
 import routinesRouter from "./routines.js";
 import libraryRouter from "./library.js";
+import wikiRouter from "./wiki.js";
 import adminRouter from "./admin.js";
 import billingRouter from "./billing.js";
 import {
@@ -72,5 +73,6 @@ router.use(accountBridgeRouter);
 router.use(brokersRouter);
 router.use(routinesRouter);
 router.use(libraryRouter);
+router.use(wikiRouter);
 
 export default router;
