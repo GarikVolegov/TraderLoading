@@ -9,7 +9,8 @@ const source = read("artifacts/api-server/src/services/candles.ts");
 
 assert.match(source, /import \{\s*getJsonCache,\s*setJsonCache\s*\} from "\.\.\/lib\/cache\.js"/);
 assert.match(source, /function candleCacheKey/);
-assert.match(source, /candles:v1:\$\{symbol\}:\$\{interval\}/);
+// v2: la chiave include startDate per il replay storico.
+assert.match(source, /candles:v2:\$\{symbol\}:\$\{interval\}:\$\{startDate \?\? "latest"\}/);
 assert.match(source, /function candleCacheTtlSeconds/);
 assert.match(source, /await getJsonCache<CandlesResult>/);
 assert.match(source, /await setJsonCache/);

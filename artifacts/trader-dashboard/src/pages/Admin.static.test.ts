@@ -40,7 +40,7 @@ assert.match(adminPage, /setRowReason/);
 assert.match(adminPage, /reasonForRow\(row\.userId\)/);
 assert.match(
   adminPage,
-  /submitSubscriptionUpdate\(\s*row\.userId,\s*"free",\s*"active",\s*null,\s*rowReason,\s*\)/,
+  /submitSubscriptionUpdate\(\s*row\.userId,\s*"free",\s*"active",\s*null,\s*effectiveReason,?\s*\)/,
 );
 assert.doesNotMatch(adminPage, /!reasonReady \|\|\s*!row\.userId/);
 assert.doesNotMatch(adminPage, /starter/);
@@ -57,10 +57,16 @@ assert.match(adminPage, /component=\{AdminSupportPage\}/);
 assert.match(adminPage, /component=\{AdminSystemPage\}/);
 assert.match(adminPage, /component=\{AdminSubscriptionsPage\}/);
 assert.doesNotMatch(adminPage, /AdminComingSoon/);
-assert.match(shell, /Dashboard/);
-assert.match(shell, /Utenti/);
-assert.match(shell, /Sicurezza/);
-assert.match(shell, /Abbonamenti/);
+// Le label di navigazione sono passate all'i18n: chiavi nella shell, copy nel catalogo.
+const i18nDict = fs.readFileSync("src/lib/i18n.ts", "utf8");
+assert.match(shell, /labelKey: "admin\.nav\.dashboard"/);
+assert.match(shell, /labelKey: "admin\.nav\.users"/);
+assert.match(shell, /labelKey: "admin\.nav\.security"/);
+assert.match(shell, /labelKey: "admin\.nav\.subscriptions"/);
+assert.match(i18nDict, /"admin\.nav\.dashboard":\s*"Dashboard"/);
+assert.match(i18nDict, /"admin\.nav\.users":\s*"Utenti"/);
+assert.match(i18nDict, /"admin\.nav\.security":\s*"Sicurezza"/);
+assert.match(i18nDict, /"admin\.nav\.subscriptions":\s*"Abbonamenti"/);
 assert.match(shell, /billing\.subscriptions\.write/);
 assert.match(shell, /permissions/);
 assert.match(shell, /mobile-admin-navigation/);
