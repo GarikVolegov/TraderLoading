@@ -12,15 +12,18 @@ import {
   MessageSquare,
   CreditCard,
   RefreshCw,
+  Save,
   Search,
   Server,
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
+  Trash2,
+  Upload,
   Users,
   Wifi,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Link, Route, Switch, useLocation, useRoute } from "wouter";
 import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -29,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -57,6 +61,10 @@ import {
   revokeAdminUserSessions,
   suspendAdminUser,
   type AdminAuditRecord,
+  type AdminLibraryContent,
+  type AdminLibraryContentPayload,
+  type AdminLibraryContentType,
+  type AdminMilestonePayload,
   type AdminContentItem,
   type AdminSubscriptionPlan,
   type AdminSubscriptionRow,
@@ -64,8 +72,18 @@ import {
   type AdminSystemOverview,
   type AdminUserDetail,
   type AdminUserRow,
+  createAdminLibraryContent,
+  deleteAdminLibraryContent,
+  deleteAdminMilestoneFile,
+  getAdminLibraryContents,
+  getAdminMilestoneDetail,
   unpublishAdminContentItem,
   updateAdminSubscription,
+  updateAdminLibraryContent,
+  updateAdminMilestone,
+  uploadAdminLibraryFile,
+  uploadAdminMilestoneFile,
+  toggleAdminMilestoneFileDownloadable,
 } from "@/lib/adminApi";
 
 type AdminUserStatusFilter = "all" | "active" | "suspended" | "banned";
@@ -97,6 +115,37 @@ const ADMIN_SUBSCRIPTION_STATUSES: AdminSubscriptionStatus[] = [
   "past_due",
   "canceled",
 ];
+
+const ADMIN_LIBRARY_CONTENT_TYPES: AdminLibraryContentType[] = [
+  "document",
+  "mindmap",
+  "video",
+];
+
+const DEFAULT_ADMIN_LIBRARY_FORM: AdminLibraryContentPayload = {
+  collectionId: null,
+  type: "document",
+  title: "",
+  description: "",
+  bodyMarkdown: "",
+  fileUrl: null,
+  fileName: null,
+  fileSize: 0,
+  mimeType: null,
+  embedUrl: null,
+  tags: [],
+  requiredLevel: 0,
+  orderIndex: 0,
+  published: false,
+};
+
+const DEFAULT_ADMIN_MILESTONE_FORM: AdminMilestonePayload = {
+  title: "",
+  description: "",
+  skills: [],
+  badgeEmoji: "T",
+  badgeColor: "#22c55e",
+};
 
 function useAdminMe() {
   return useQuery({ queryKey: ["admin", "me"], queryFn: getAdminMe });
@@ -941,6 +990,519 @@ function AdminContentInventoryTable({
   );
 }
 
+function formatAdminFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function parseAdminStringList(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function tagsFromLibraryContent(content: AdminLibraryContent): string {
+  try {
+    const parsed = JSON.parse(content.tags);
+    return Array.isArray(parsed) ? parsed.map(String).join(", ") : "";
+  } catch {
+    return "";
+  }
+}
+
+function skillsFromMilestone(raw: string | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function contentTypeLabel(type: AdminLibraryContentType): string {
+  if (type === "video") return "Video";
+  if (type === "mindmap") return "Mappa mentale";
+  return "Documento";
+}
+
+function AdminLibraryContentManager() {
+  const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [tagInput, setTagInput] = useState("");
+  const [form, setForm] = useState<AdminLibraryContentPayload>(DEFAULT_ADMIN_LIBRARY_FORM);
+  const contents = useQuery({
+    queryKey: ["admin", "library", "contents"],
+    queryFn: getAdminLibraryContents,
+  });
+  const saveContent = useMutation({
+    mutationFn: () => {
+      const payload: AdminLibraryContentPayload = {
+        ...form,
+        title: form.title.trim(),
+        description: form.description.trim(),
+        bodyMarkdown: form.bodyMarkdown?.trim() ?? "",
+        embedUrl: form.embedUrl?.trim() || null,
+        tags: parseAdminStringList(tagInput),
+        requiredLevel: Number(form.requiredLevel) || 0,
+        orderIndex: Number(form.orderIndex) || 0,
+      };
+      return editingId
+        ? updateAdminLibraryContent(editingId, payload)
+        : createAdminLibraryContent(payload);
+    },
+    onSuccess: () => {
+      setEditingId(null);
+      setTagInput("");
+      setForm(DEFAULT_ADMIN_LIBRARY_FORM);
+      queryClient.invalidateQueries({ queryKey: ["admin", "library", "contents"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-content-items"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "overview"] });
+    },
+  });
+  const uploadFile = useMutation({
+    mutationFn: uploadAdminLibraryFile,
+    onSuccess: (file) => {
+      setForm((current) => ({
+        ...current,
+        fileUrl: file.fileUrl,
+        fileName: file.fileName,
+        fileSize: file.fileSize,
+        mimeType: file.mimeType,
+      }));
+    },
+  });
+  const deleteContent = useMutation({
+    mutationFn: deleteAdminLibraryContent,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "library", "contents"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-content-items"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "overview"] });
+    },
+  });
+
+  function editContent(content: AdminLibraryContent) {
+    setEditingId(content.id);
+    setTagInput(tagsFromLibraryContent(content));
+    setForm({
+      collectionId: content.collectionId,
+      type: content.type,
+      title: content.title,
+      description: content.description,
+      bodyMarkdown: content.bodyMarkdown,
+      fileUrl: content.fileUrl,
+      fileName: content.fileName,
+      fileSize: content.fileSize,
+      mimeType: content.mimeType,
+      embedUrl: content.embedUrl,
+      tags: parseAdminStringList(tagsFromLibraryContent(content)),
+      requiredLevel: content.requiredLevel,
+      orderIndex: content.orderIndex,
+      published: content.published,
+    });
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) uploadFile.mutate(file);
+    event.currentTarget.value = "";
+  }
+
+  function submitContent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!form.title.trim()) return;
+    saveContent.mutate();
+  }
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px)_1fr]">
+      <form onSubmit={submitContent} className="space-y-3 rounded-lg border border-border bg-card/80 p-4">
+        <div>
+          <h2 className="text-sm font-semibold">
+            {editingId ? "Modifica contenuto biblioteca" : "Nuovo contenuto biblioteca"}
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Carica documenti, video o contenuti testuali sbloccabili per livello.
+          </p>
+        </div>
+        <select
+          value={form.type}
+          onChange={(event) =>
+            setForm((current) => ({ ...current, type: event.target.value as AdminLibraryContentType }))
+          }
+          className="min-h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          aria-label="Tipo contenuto biblioteca"
+        >
+          {ADMIN_LIBRARY_CONTENT_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {contentTypeLabel(type)}
+            </option>
+          ))}
+        </select>
+        <Input
+          value={form.title}
+          onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+          placeholder="Titolo"
+          aria-label="Titolo contenuto biblioteca"
+        />
+        <Textarea
+          value={form.description}
+          onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+          placeholder="Descrizione breve"
+          aria-label="Descrizione contenuto biblioteca"
+          className="min-h-20"
+        />
+        {form.type === "video" ? (
+          <Input
+            value={form.embedUrl ?? ""}
+            onChange={(event) => setForm((current) => ({ ...current, embedUrl: event.target.value }))}
+            placeholder="Link YouTube, Vimeo o embed"
+            aria-label="Link video biblioteca"
+          />
+        ) : (
+          <Textarea
+            value={form.bodyMarkdown ?? ""}
+            onChange={(event) => setForm((current) => ({ ...current, bodyMarkdown: event.target.value }))}
+            placeholder="Note, testo o contenuto markdown"
+            aria-label="Testo contenuto biblioteca"
+            className="min-h-24"
+          />
+        )}
+        {form.type === "document" && (
+          <div className="rounded-md border border-dashed border-border p-3">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted">
+              <Upload className="h-4 w-4" aria-hidden="true" />
+              {uploadFile.isPending ? "Caricamento..." : "Carica file"}
+              <input type="file" className="hidden" onChange={handleFileChange} />
+            </label>
+            {form.fileName && (
+              <p className="mt-2 truncate text-xs text-muted-foreground">
+                {form.fileName} - {formatAdminFileSize(form.fileSize ?? 0)}
+              </p>
+            )}
+          </div>
+        )}
+        <Input
+          value={tagInput}
+          onChange={(event) => setTagInput(event.target.value)}
+          placeholder="Tag separati da virgola"
+          aria-label="Tag biblioteca"
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input
+            type="number"
+            min={0}
+            value={form.requiredLevel}
+            onChange={(event) => setForm((current) => ({ ...current, requiredLevel: Number(event.target.value) }))}
+            aria-label="Livello sblocco biblioteca"
+          />
+          <Input
+            type="number"
+            value={form.orderIndex}
+            onChange={(event) => setForm((current) => ({ ...current, orderIndex: Number(event.target.value) }))}
+            aria-label="Ordine biblioteca"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.published}
+            onChange={(event) => setForm((current) => ({ ...current, published: event.target.checked }))}
+          />
+          Pubblica subito
+        </label>
+        {(saveContent.isError || uploadFile.isError) && (
+          <p className="text-xs text-destructive">Salvataggio o upload non riuscito.</p>
+        )}
+        <div className="flex flex-wrap justify-end gap-2">
+          {editingId && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setEditingId(null);
+                setTagInput("");
+                setForm(DEFAULT_ADMIN_LIBRARY_FORM);
+              }}
+            >
+              Annulla
+            </Button>
+          )}
+          <Button type="submit" disabled={!form.title.trim() || saveContent.isPending || uploadFile.isPending}>
+            <Save className="mr-2 h-4 w-4" aria-hidden="true" />
+            {editingId ? "Aggiorna" : "Crea"}
+          </Button>
+        </div>
+      </form>
+
+      <section className="overflow-hidden rounded-lg border border-border bg-card/80">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Contenuto</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Livello</TableHead>
+              <TableHead>Stato</TableHead>
+              <TableHead className="text-right">Azioni</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(contents.data ?? []).map((content) => (
+              <TableRow key={content.id}>
+                <TableCell>
+                  <div className="font-medium">{content.title}</div>
+                  <div className="max-w-sm truncate text-xs text-muted-foreground">
+                    {content.fileName ?? content.embedUrl ?? content.description}
+                  </div>
+                </TableCell>
+                <TableCell>{contentTypeLabel(content.type)}</TableCell>
+                <TableCell>{content.requiredLevel}</TableCell>
+                <TableCell>
+                  <Badge variant={content.published ? "default" : "secondary"}>
+                    {content.published ? "Pubblicato" : "Bozza"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="space-x-2 text-right">
+                  <Button type="button" size="sm" variant="outline" onClick={() => editContent(content)}>
+                    Modifica
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => deleteContent.mutate(content.id)}
+                    disabled={deleteContent.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {contents.isLoading && <div className="p-4 text-sm text-muted-foreground">Caricamento contenuti...</div>}
+        {!contents.isLoading && (contents.data ?? []).length === 0 && (
+          <div className="p-4 text-sm text-muted-foreground">Nessun contenuto biblioteca.</div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function AdminMilestonesContentManager() {
+  const queryClient = useQueryClient();
+  const [level, setLevel] = useState(1);
+  const [skillInput, setSkillInput] = useState("");
+  const [form, setForm] = useState<AdminMilestonePayload>(DEFAULT_ADMIN_MILESTONE_FORM);
+  const detail = useQuery({
+    queryKey: ["admin", "milestones", level],
+    queryFn: () => getAdminMilestoneDetail(level),
+  });
+  const saveMilestone = useMutation({
+    mutationFn: () =>
+      updateAdminMilestone(level, {
+        ...form,
+        title: form.title.trim(),
+        description: form.description.trim(),
+        skills: parseAdminStringList(skillInput),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "milestones", level] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "overview"] });
+    },
+  });
+  const uploadFile = useMutation({
+    mutationFn: (file: File) => uploadAdminMilestoneFile(level, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "milestones", level] });
+    },
+  });
+  const toggleDownloadable = useMutation({
+    mutationFn: ({ fileId, downloadable }: { fileId: number; downloadable: boolean }) =>
+      toggleAdminMilestoneFileDownloadable(fileId, downloadable),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "milestones", level] });
+    },
+  });
+  const deleteFile = useMutation({
+    mutationFn: deleteAdminMilestoneFile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "milestones", level] });
+    },
+  });
+
+  useEffect(() => {
+    const milestone = detail.data?.milestone;
+    if (!milestone) {
+      setForm(DEFAULT_ADMIN_MILESTONE_FORM);
+      setSkillInput("");
+      return;
+    }
+    const skills = skillsFromMilestone(milestone.skills);
+    setForm({
+      title: milestone.title,
+      description: milestone.description,
+      skills,
+      badgeEmoji: milestone.badgeEmoji,
+      badgeColor: milestone.badgeColor,
+    });
+    setSkillInput(skills.join(", "));
+  }, [detail.data?.milestone]);
+
+  function handleMilestoneUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) uploadFile.mutate(file);
+    event.currentTarget.value = "";
+  }
+
+  function submitMilestone(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    saveMilestone.mutate();
+  }
+
+  const files = detail.data?.files ?? [];
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px)_1fr]">
+      <form onSubmit={submitMilestone} className="space-y-3 rounded-lg border border-border bg-card/80 p-4">
+        <div>
+          <h2 className="text-sm font-semibold">Contenuto traguardo</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Aggiorna testo, competenze, badge e risorse del livello selezionato.
+          </p>
+        </div>
+        <Input
+          type="number"
+          min={1}
+          value={level}
+          onChange={(event) => setLevel(Math.max(1, Number(event.target.value) || 1))}
+          aria-label="Livello traguardo"
+        />
+        <Input
+          value={form.title}
+          onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+          placeholder="Titolo traguardo"
+          aria-label="Titolo traguardo"
+        />
+        <Textarea
+          value={form.description}
+          onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+          placeholder="Descrizione traguardo"
+          aria-label="Descrizione traguardo"
+          className="min-h-24"
+        />
+        <Input
+          value={skillInput}
+          onChange={(event) => setSkillInput(event.target.value)}
+          placeholder="Skill separate da virgola"
+          aria-label="Skill traguardo"
+        />
+        <div className="grid gap-3 sm:grid-cols-[120px_1fr]">
+          <Input
+            value={form.badgeEmoji}
+            onChange={(event) => setForm((current) => ({ ...current, badgeEmoji: event.target.value }))}
+            placeholder="Badge"
+            aria-label="Badge traguardo"
+          />
+          <Input
+            type="color"
+            value={form.badgeColor}
+            onChange={(event) => setForm((current) => ({ ...current, badgeColor: event.target.value }))}
+            aria-label="Colore badge traguardo"
+          />
+        </div>
+        <div className="rounded-md border border-dashed border-border p-3">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted">
+            <Upload className="h-4 w-4" aria-hidden="true" />
+            {uploadFile.isPending ? "Caricamento..." : "Carica file traguardo"}
+            <input type="file" className="hidden" onChange={handleMilestoneUpload} />
+          </label>
+        </div>
+        {(saveMilestone.isError || uploadFile.isError) && (
+          <p className="text-xs text-destructive">Operazione traguardo non riuscita.</p>
+        )}
+        <div className="flex justify-end">
+          <Button type="submit" disabled={saveMilestone.isPending || detail.isFetching}>
+            <Save className="mr-2 h-4 w-4" aria-hidden="true" />
+            Salva traguardo
+          </Button>
+        </div>
+      </form>
+
+      <section className="overflow-hidden rounded-lg border border-border bg-card/80">
+        <div className="border-b border-border p-4">
+          <h2 className="text-sm font-semibold">File livello {level}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Gestisci allegati e download disponibili agli utenti.
+          </p>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>File</TableHead>
+              <TableHead>Dimensione</TableHead>
+              <TableHead>Download</TableHead>
+              <TableHead className="text-right">Azioni</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {files.map((file) => (
+              <TableRow key={file.id}>
+                <TableCell>
+                  <div className="font-medium">{file.fileName}</div>
+                  <a
+                    href={file.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Apri file
+                  </a>
+                </TableCell>
+                <TableCell>{formatAdminFileSize(file.fileSize)}</TableCell>
+                <TableCell>
+                  <Badge variant={file.downloadable ? "default" : "secondary"}>
+                    {file.downloadable ? "Abilitato" : "Bloccato"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="space-x-2 text-right">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      toggleDownloadable.mutate({ fileId: file.id, downloadable: !file.downloadable })
+                    }
+                    disabled={toggleDownloadable.isPending}
+                  >
+                    {file.downloadable ? "Blocca" : "Abilita"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => deleteFile.mutate(file.id)}
+                    disabled={deleteFile.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {detail.isLoading && <div className="p-4 text-sm text-muted-foreground">Caricamento traguardo...</div>}
+        {!detail.isLoading && files.length === 0 && (
+          <div className="p-4 text-sm text-muted-foreground">Nessun file caricato per questo livello.</div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function AdminContentPage() {
   const queryClient = useQueryClient();
   const [reason, setReason] = useState("");
@@ -1031,46 +1593,61 @@ function AdminContentPage() {
               icon={MessageSquare}
             />
           </div>
-          <Alert variant={contentAction.isError ? "destructive" : "default"}>
-            <BookOpen className="h-4 w-4" aria-hidden="true" />
-            <AlertTitle>{uiText("auto.ui.99ad88bfd8")}</AlertTitle>
-            <AlertDescription>
-              Inserisci un motivo prima di pubblicare o ritirare un contenuto.
-              Ogni modifica viene scritta nell'audit trail.
-            </AlertDescription>
-          </Alert>
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <Input
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              placeholder={uiText("auto.ui.070e39fc1a")}
-              aria-label={uiText("auto.ui.54e00a6d80")}
-            />
-            <Button
-              variant="outline"
-              onClick={() => {
-                content.refetch();
-                contentItems.refetch();
-              }}
-              disabled={content.isFetching || contentItems.isFetching}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
-              Aggiorna
-            </Button>
-          </div>
-          {!reasonReady && (
-            <p className="text-xs text-muted-foreground">
-              Il motivo deve avere almeno 3 caratteri per abilitare le azioni.
-            </p>
-          )}
-          <AdminContentInventoryTable
-            items={contentItems.data?.items ?? []}
-            actionPending={contentAction.isPending || !reasonReady}
-            onAction={(item, action) => {
-              if (!reasonReady) return;
-              contentAction.mutate({ item, action });
-            }}
-          />
+          <Tabs defaultValue="inventory" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="inventory">Inventario</TabsTrigger>
+              <TabsTrigger value="library">Biblioteca</TabsTrigger>
+              <TabsTrigger value="milestones">Traguardi</TabsTrigger>
+            </TabsList>
+            <TabsContent value="inventory" className="space-y-4">
+              <Alert variant={contentAction.isError ? "destructive" : "default"}>
+                <BookOpen className="h-4 w-4" aria-hidden="true" />
+                <AlertTitle>{uiText("auto.ui.99ad88bfd8")}</AlertTitle>
+                <AlertDescription>
+                  Inserisci un motivo prima di pubblicare o ritirare un contenuto.
+                  Ogni modifica viene scritta nell'audit trail.
+                </AlertDescription>
+              </Alert>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <Input
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  placeholder={uiText("auto.ui.070e39fc1a")}
+                  aria-label={uiText("auto.ui.54e00a6d80")}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    content.refetch();
+                    contentItems.refetch();
+                  }}
+                  disabled={content.isFetching || contentItems.isFetching}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+                  Aggiorna
+                </Button>
+              </div>
+              {!reasonReady && (
+                <p className="text-xs text-muted-foreground">
+                  Il motivo deve avere almeno 3 caratteri per abilitare le azioni.
+                </p>
+              )}
+              <AdminContentInventoryTable
+                items={contentItems.data?.items ?? []}
+                actionPending={contentAction.isPending || !reasonReady}
+                onAction={(item, action) => {
+                  if (!reasonReady) return;
+                  contentAction.mutate({ item, action });
+                }}
+              />
+            </TabsContent>
+            <TabsContent value="library">
+              <AdminLibraryContentManager />
+            </TabsContent>
+            <TabsContent value="milestones">
+              <AdminMilestonesContentManager />
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>

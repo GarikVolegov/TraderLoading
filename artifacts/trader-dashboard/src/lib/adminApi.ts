@@ -1,4 +1,4 @@
-import { apiJSON } from "./apiFetch";
+import { apiJSON, apiRequest } from "./apiFetch";
 
 export type AdminRole =
   | "super_admin"
@@ -215,6 +215,89 @@ export interface AdminSubscriptionsOverview {
   subscriptions: AdminSubscriptionRow[];
 }
 
+export type AdminLibraryContentType = "document" | "mindmap" | "video";
+
+export interface AdminLibraryUploadResult {
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+}
+
+export interface AdminLibraryContent {
+  id: number;
+  collectionId: number | null;
+  type: AdminLibraryContentType;
+  title: string;
+  description: string;
+  bodyMarkdown: string;
+  fileUrl: string | null;
+  fileName: string | null;
+  fileSize: number;
+  mimeType: string | null;
+  embedUrl: string | null;
+  mindmap: unknown | null;
+  tags: string;
+  requiredLevel: number;
+  orderIndex: number;
+  published: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AdminLibraryContentPayload {
+  collectionId?: number | null;
+  type: AdminLibraryContentType;
+  title: string;
+  description: string;
+  bodyMarkdown?: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number;
+  mimeType?: string | null;
+  embedUrl?: string | null;
+  tags?: string[];
+  requiredLevel: number;
+  orderIndex: number;
+  published: boolean;
+}
+
+export interface AdminMilestone {
+  id: number;
+  level: number;
+  title: string;
+  description: string;
+  skills: string;
+  badgeEmoji: string;
+  badgeColor: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminMilestoneFile {
+  id: number;
+  level: number;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  mimeType: string;
+  downloadable: boolean;
+  createdAt: string;
+}
+
+export interface AdminMilestoneDetail {
+  milestone: AdminMilestone | null;
+  files: AdminMilestoneFile[];
+}
+
+export interface AdminMilestonePayload {
+  title: string;
+  description: string;
+  skills: string[];
+  badgeEmoji: string;
+  badgeColor: string;
+}
+
 export function getAdminMe() {
   return apiJSON<AdminMe>("/admin/me");
 }
@@ -314,6 +397,82 @@ export function updateAdminSubscription(
       body: JSON.stringify(payload),
     },
   );
+}
+
+async function parseUploadResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const error = (await response.json().catch(() => ({ error: response.statusText }))) as { error?: string };
+    throw new Error(error.error ?? `HTTP ${response.status}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+export function getAdminLibraryContents() {
+  return apiJSON<AdminLibraryContent[]>("library/contents");
+}
+
+export function createAdminLibraryContent(payload: AdminLibraryContentPayload) {
+  return apiJSON<AdminLibraryContent>("library/contents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminLibraryContent(id: number, payload: AdminLibraryContentPayload) {
+  return apiJSON<AdminLibraryContent>(`library/contents/${encodeURIComponent(String(id))}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAdminLibraryContent(id: number) {
+  return apiJSON<{ success: true }>(`library/contents/${encodeURIComponent(String(id))}`, {
+    method: "DELETE",
+  });
+}
+
+export async function uploadAdminLibraryFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return parseUploadResponse<AdminLibraryUploadResult>(
+    await apiRequest("library/upload", { method: "POST", body: formData }),
+  );
+}
+
+export function getAdminMilestoneDetail(level: number) {
+  return apiJSON<AdminMilestoneDetail>(`milestones/${encodeURIComponent(String(level))}`);
+}
+
+export function updateAdminMilestone(level: number, payload: AdminMilestonePayload) {
+  return apiJSON<AdminMilestone>(`milestones/${encodeURIComponent(String(level))}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function uploadAdminMilestoneFile(level: number, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return parseUploadResponse<AdminMilestoneFile>(
+    await apiRequest(`milestones/${encodeURIComponent(String(level))}/files`, { method: "POST", body: formData }),
+  );
+}
+
+export function toggleAdminMilestoneFileDownloadable(fileId: number, downloadable: boolean) {
+  return apiJSON<AdminMilestoneFile>(`milestones/files/${encodeURIComponent(String(fileId))}/downloadable`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ downloadable }),
+  });
+}
+
+export function deleteAdminMilestoneFile(fileId: number) {
+  return apiJSON<{ ok: true }>(`milestones/files/${encodeURIComponent(String(fileId))}`, {
+    method: "DELETE",
+  });
 }
 
 export function getAdminUsers(
