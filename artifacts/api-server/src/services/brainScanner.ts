@@ -13,10 +13,12 @@ import { renderCandleChartPng, bufferToDataUrl } from "./chartImage.js";
 import { analyzeChart, representativeLevels } from "./brainAnalyst.js";
 import { buildAnalysisContext } from "./knowledgeGraph.js";
 import { isBrainConfigured } from "./llmClient.js";
-import { getUserNotificationLanguage, sendPushToUser } from "../routes/push.js";
+import { getUserNotificationLanguage, sendPushToUser, type SchedulerHandle } from "../routes/push.js";
 import { getServerNotificationCopy } from "./notifications/notificationCopy.js";
+import logger from "../lib/logger.js";
+import { resolveUploadPath } from "../lib/uploads.js";
 
-const BRAIN_UPLOADS_DIR = path.join(process.cwd(), "uploads", "brain");
+const BRAIN_UPLOADS_DIR = resolveUploadPath("brain");
 const _lastNotified = new Map<string, number>();
 
 async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
@@ -27,7 +29,7 @@ async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<v
       try {
         await fn(items[current]);
       } catch (err) {
-        console.warn("[brain-scan] task error:", err instanceof Error ? err.message : err);
+        logger.warn({ err }, "Brain scan task error");
       }
     }
   });
@@ -148,19 +150,25 @@ async function scanUser(cfg: typeof brainScanConfigTable.$inferSelect): Promise<
     .where(eq(brainScanConfigTable.id, cfg.id));
 }
 
-export function startBrainScanner(): void {
+const noopScheduler: SchedulerHandle = {
+  async close() {},
+};
+
+export function startBrainScanner(): SchedulerHandle {
   if (process.env.BRAIN_SCAN_ENABLED !== "true") {
-    console.log("[brain-scan] disabled (BRAIN_SCAN_ENABLED != 'true')");
-    return;
+    logger.info("Brain scanner disabled because BRAIN_SCAN_ENABLED is not true");
+    return noopScheduler;
   }
   if (!isBrainConfigured()) {
-    console.log("[brain-scan] no LLM provider configured - scanner disabled");
-    return;
+    logger.info("Brain scanner disabled because no LLM provider is configured");
+    return noopScheduler;
   }
 
-  console.log("[brain-scan] autonomous scanner started");
+  logger.info("Autonomous brain scanner started");
+  let isClosing = false;
+  let activeRun: Promise<void> | null = null;
 
-  cron.schedule("* * * * *", async () => {
+  async function runScannerTick(): Promise<void> {
     try {
       const configs = await db.select().from(brainScanConfigTable)
         .where(eq(brainScanConfigTable.enabled, true));
@@ -173,11 +181,28 @@ export function startBrainScanner(): void {
 
       for (const cfg of due) {
         await scanUser(cfg).catch((err) =>
-          console.warn("[brain-scan] scanUser error:", err instanceof Error ? err.message : err),
+          logger.warn({ err }, "Brain scan user task failed"),
         );
       }
     } catch (err) {
-      console.error("[brain-scan] tick error:", err);
+      logger.error({ err }, "Brain scanner tick failed");
     }
+  }
+
+  const task = cron.schedule("* * * * *", () => {
+    if (isClosing || activeRun) return;
+    activeRun = runScannerTick().finally(() => {
+      activeRun = null;
+    });
   });
+
+  return {
+    async close() {
+      isClosing = true;
+      task.stop();
+      task.destroy();
+      if (activeRun) await activeRun;
+      logger.info("Autonomous brain scanner stopped");
+    },
+  };
 }

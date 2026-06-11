@@ -15,6 +15,7 @@ import {
   type Mission,
 } from "@workspace/api-client-react";
 import { downloadICS } from "@/utils/icsExport";
+import { uiText } from "@/contexts/LanguageContext";
 
 function exportMissionToCalendar(mission: Mission) {
   const today = new Date();
@@ -86,8 +87,8 @@ export default function Missions() {
             <Target className="h-4.5 w-4.5" />
           </div>
         }
-        title="Missioni Giornaliere"
-        subtitle="XP, livello e avanzamento quotidiano"
+        title={uiText("auto.ui.0a38d7a6de")}
+        subtitle={uiText("auto.ui.41e9873ac5")}
       />
 
       {/* Profilo / statistiche */}
@@ -96,7 +97,7 @@ export default function Missions() {
           <CardContent className="p-4">
             <div className="flex items-center gap-4">
               <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/10">
-                <span className="text-[9px] uppercase tracking-wider text-primary/70">Livello</span>
+                <span className="text-[9px] uppercase tracking-wider text-primary/70">{uiText("auto.ui.227771829c")}</span>
                 <span className="font-mono text-2xl font-bold text-primary">{profile?.level ?? "—"}</span>
               </div>
               <div className="min-w-0 flex-1">
@@ -192,7 +193,7 @@ export default function Missions() {
                     <button
                       onClick={() => exportMissionToCalendar(mission)}
                       className="rounded-lg p-1 text-muted-foreground/40 transition-colors hover:bg-secondary/50 hover:text-muted-foreground"
-                      title="Aggiungi al calendario"
+                      title={uiText("auto.ui.89d9091dcd")}
                     >
                       <CalendarPlus className="h-3.5 w-3.5" />
                     </button>

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, checkinsTable } from "@workspace/db";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, desc } from "drizzle-orm";
 import { getUserId } from "./profile.js";
 
 const router: IRouter = Router();
@@ -21,6 +21,15 @@ router.get("/checkins/today", async (req, res) => {
     .where(and(userFilter(userId), eq(checkinsTable.date, today)))
     .limit(1);
   res.json(checkin || null);
+});
+
+router.get("/checkins", async (req, res) => {
+  const userId = getUserId(req);
+  const checkins = await db.select().from(checkinsTable)
+    .where(userFilter(userId))
+    .orderBy(desc(checkinsTable.date), desc(checkinsTable.id))
+    .limit(365);
+  res.json(checkins);
 });
 
 router.post("/checkins", async (req, res) => {

@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useBackground, type TradingSessionConfig } from "@/contexts/BackgroundContext";
 import { getLocalClockHours, getLocalTimeZoneLabel, isMarketClosedSession, isTradingSession, normalizeLocalSessionTime, type MarketSessionConfig } from "@/lib/marketSessions";
+import { uiText } from "@/contexts/LanguageContext";
 
 // ─── helpers (stessa logica di ClockWidget, qui estesa) ──────────────────────────
 function parseTime(t: string): number {
@@ -86,7 +87,7 @@ export default function Clock() {
             <ClockIcon className="h-4.5 w-4.5" />
           </div>
         }
-        title="Orologio & Sessioni"
+        title={uiText("auto.ui.87a7806fa2")}
         subtitle={`Sessioni operative, countdown apertura/chiusura e orari solo locali (${localTimeZoneLabel})`}
         badge={
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
@@ -129,16 +130,16 @@ export default function Clock() {
                       <span className="truncate font-bold">{s.name}</span>
                     </div>
                     {active && closed ? (
-                      <span className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-400">MERCATO CHIUSO</span>
+                      <span className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-400">{uiText("clock.market_closed_badge")}</span>
                     ) : active ? (
-                      <span className="shrink-0 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-bold text-green-400">ATTIVA</span>
+                      <span className="shrink-0 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-bold text-green-400">{uiText("clock.active_badge")}</span>
                     ) : (
-                      <span className="shrink-0 rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">chiusa</span>
+                      <span className="shrink-0 rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">{uiText("auto.ui.df95f7d698")}</span>
                     )}
                   </div>
 
                   <div className="rounded-lg bg-secondary/30 p-2 text-center">
-                    <div className="text-[10px] uppercase text-muted-foreground">Orario locale</div>
+                    <div className="text-[10px] uppercase text-muted-foreground">{uiText("auto.ui.90375ddfc3")}</div>
                     <div className="font-mono text-xs font-bold">{normalizeLocalSessionTime(s.openUTC)}–{normalizeLocalSessionTime(s.closeUTC)}</div>
                   </div>
 
@@ -156,7 +157,7 @@ export default function Clock() {
                     </div>
                   ) : (
                     <div className="flex items-center justify-between rounded-lg border border-border/30 px-2.5 py-1.5 text-[11px]">
-                      <span className="text-muted-foreground">Apre tra</span>
+                      <span className="text-muted-foreground">{uiText("auto.ui.0e1a8d402a")}</span>
                       <span className="font-mono font-bold">{formatCountdown(untilOpen)}</span>
                     </div>
                   )}

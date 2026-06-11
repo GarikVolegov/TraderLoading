@@ -1,7 +1,0 @@
-[agent] in ascolto su http://127.0.0.1:8765
-[agent] le credenziali ricevute restano solo qui (in memoria), non vengono salvate.
-[agent] login conto ****3456 @ ICMarkets-Demo (demo, ordini OFF)
-[agent] ordine buy 0.1 EURUSD → ticket T1780830522045-1
-[agent] logout — credenziali azzerate
-[agent] login conto ****8899 @ Pepperstone-Live02 (demo, ordini OFF)
-[agent] ordine buy 0.1 EURUSD → ticket T1780830689315-2

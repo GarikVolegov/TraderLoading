@@ -25,8 +25,11 @@ import {
   type Idea,
 } from "@workspace/api-client-react";
 import { downloadICS } from "@/utils/icsExport";
-import { useLanguage, useDateLocale } from "@/contexts/LanguageContext";
+import { useLanguage, useDateLocale, uiText } from "@/contexts/LanguageContext";
 import { getJournalRecapPeriod, isJournalRecapEditable } from "@/lib/journalRecapPeriods";
+import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTradeContent";
+import { PnlHeatmap } from "@/components/PnlHeatmap";
+import { TradeChartSnapshot } from "@/components/TradeChartSnapshot";
 import {
   emptyJournalRecapFields,
   fetchJournalRecap,
@@ -37,6 +40,89 @@ import {
 
 type Tab = "trades" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
 
+function SyncedTradeDetails({ content }: { content: string }) {
+  const parsed = useMemo(() => parseTradeContent(content), [content]);
+  if (!parsed) return null;
+
+  const profit = parsed.profit ?? 0;
+  const profitClass = profit > 0 ? "text-success" : profit < 0 ? "text-destructive" : "text-muted-foreground";
+  const profitSign = profit > 0 ? "+" : "";
+  const duration = tradeDuration(parsed);
+  const rMultiple = tradeRMultiple(parsed);
+  const directionClass = parsed.direction === "BUY"
+    ? "bg-success/10 text-success border-success/30"
+    : "bg-destructive/10 text-destructive border-destructive/30";
+
+  return (
+    <div className="mb-6 flex-grow space-y-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className={`font-mono text-2xl font-bold ${profitClass}`}>
+          {parsed.profit != null ? `${profitSign}${profit.toFixed(2)} ${parsed.currency ?? ""}`.trim() : "—"}
+        </span>
+        <div className="flex items-center gap-1.5">
+          {rMultiple != null && (
+            <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold font-mono ${rMultiple >= 0 ? "border-success/30 text-success" : "border-destructive/30 text-destructive"}`}>
+              {rMultiple >= 0 ? "+" : ""}{rMultiple}R
+            </span>
+          )}
+          {duration && (
+            <span className="rounded-md border border-border/50 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {duration}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+        {parsed.direction && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">{uiText("auto.ui.fdd6ae3476")}</span>
+            <span className={`rounded px-1.5 py-px font-bold border text-[10px] ${directionClass}`}>{parsed.direction}</span>
+          </div>
+        )}
+        {parsed.volume != null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">{uiText("auto.ui.3b18e8e332")}</span>
+            <span className="font-mono text-foreground/90">{parsed.volume}</span>
+          </div>
+        )}
+        {parsed.entryPrice != null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">Entry</span>
+            <span className="font-mono text-foreground/90">{parsed.entryPrice}</span>
+          </div>
+        )}
+        {parsed.exitPrice != null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">Exit</span>
+            <span className="font-mono text-foreground/90">{parsed.exitPrice}</span>
+          </div>
+        )}
+        {parsed.stopLoss != null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">Stop Loss</span>
+            <span className="font-mono text-foreground/90">{parsed.stopLoss}</span>
+          </div>
+        )}
+        {parsed.takeProfit != null && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground/60">Take Profit</span>
+            <span className="font-mono text-foreground/90">{parsed.takeProfit}</span>
+          </div>
+        )}
+      </div>
+
+      <TradeChartSnapshot parsed={parsed} />
+
+      {parsed.comment && (
+        <p className="border-t border-border/30 pt-2 text-sm text-muted-foreground/80 line-clamp-2 whitespace-pre-wrap">
+          {parsed.comment}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function TradesTab() {
   const { t } = useLanguage();
   const dateLocale = useDateLocale();
@@ -44,8 +130,20 @@ function TradesTab() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
-  const { data: entries, isLoading } = useGetJournalEntries();
+  const { data: entries, isLoading } = useGetJournalEntries({
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 10_000 },
+  });
   const deleteMutation = useDeleteJournalEntry();
+
+  // Deep-link dalla command palette: /journal?new=1 apre subito il form nuovo trade.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      setEditingEntry(null);
+      setIsModalOpen(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   const getResultConfig = (result: string) => {
     switch (result) {
@@ -55,6 +153,9 @@ function TradesTab() {
       default: return { label: "–", class: "bg-white/5 text-muted-foreground border-white/10" };
     }
   };
+
+  const isSyncedTrade = (entry: JournalEntry) =>
+    (entry.tags ?? "").toLowerCase().split(",").map((tag) => tag.trim()).some((tag) => tag === "account-import" || tag === "fxblue");
 
   const handleDelete = async (id: number) => {
     if (!confirm(t("journal.delete_confirm"))) return;
@@ -76,6 +177,10 @@ function TradesTab() {
         </Button>
       </div>
 
+      <div className="mb-4 sm:mb-6">
+        <PnlHeatmap entries={entries} />
+      </div>
+
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {[1, 2, 3].map(i => (
@@ -89,6 +194,7 @@ function TradesTab() {
               .sort((a, b) => new Date(b.tradeDate).getTime() - new Date(a.tradeDate).getTime())
               .map((entry, idx) => {
                 const resConfig = getResultConfig(entry.result);
+                const syncedTrade = isSyncedTrade(entry);
                 return (
                   <motion.div
                     key={entry.id}
@@ -107,6 +213,13 @@ function TradesTab() {
                         {resConfig.label}
                       </div>
                     </div>
+
+                    {syncedTrade && (
+                      <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+                        <RefreshCw className="h-3 w-3" />
+                        Sync FX Blue
+                      </div>
+                    )}
 
                     <h3 className="text-xl font-bold mb-2 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
                       {entry.title}
@@ -134,14 +247,18 @@ function TradesTab() {
                       </div>
                     )}
 
-                    <p className="text-sm text-muted-foreground/80 line-clamp-3 mb-6 flex-grow">
-                      {entry.content || t("journal.no_note")}
-                    </p>
+                    {syncedTrade && entry.content && parseTradeContent(entry.content) ? (
+                      <SyncedTradeDetails content={entry.content} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground/80 line-clamp-3 mb-6 flex-grow">
+                        {entry.content || t("journal.no_note")}
+                      </p>
+                    )}
 
                     <div className="flex justify-end gap-2 mt-auto pt-4 border-t border-border/50 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="sm" className="h-8" onClick={() => { setEditingEntry(entry); setIsModalOpen(true); }}>
                         <Edit2 className="w-4 h-4 mr-2" />
-                        {t("journal.edit")}
+                        {syncedTrade ? "Commenta" : t("journal.edit")}
                       </Button>
                       <Button variant="ghost" size="sm" className="h-8 text-destructive hover:bg-destructive/20" onClick={() => handleDelete(entry.id)}>
                         <Trash2 className="w-4 h-4" />
@@ -409,7 +526,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                         type="number"
                         min="1"
                         max="3650"
-                        placeholder="N"
+                        placeholder={uiText("auto.ui.b51a60734d")}
                         value={customDays}
                         onChange={(e) => {
                           setCustomDays(e.target.value);
@@ -424,7 +541,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                         }}
                         className="w-14 px-2 py-1 text-[11px] rounded-lg bg-secondary/50 border border-border hover:border-primary/50 focus:border-primary/50 focus:outline-none text-center"
                       />
-                      <span className="text-[10px] text-muted-foreground">gg</span>
+                      <span className="text-[10px] text-muted-foreground">{uiText("auto.ui.f3226f91f7")}</span>
                     </div>
                   </div>
                   {newDeadline ? (
@@ -648,7 +765,9 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
   const dateLocale = useDateLocale();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: entries, isLoading } = useGetJournalEntries();
+  const { data: entries, isLoading } = useGetJournalEntries({
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 10_000 },
+  });
   const [offset, setOffset] = useState(0);
 
   const periodInfo = useMemo(() => {

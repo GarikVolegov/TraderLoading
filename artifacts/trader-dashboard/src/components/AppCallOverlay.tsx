@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TrendingUp, X, AlarmClock, BellOff } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { reportClientError } from "@/lib/clientErrorReporter";
 
 export interface FiringAlarm {
@@ -112,6 +113,7 @@ export function AppCallOverlay({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const stopRingRef = useRef<(() => void) | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (!alarm) return;
@@ -238,7 +240,7 @@ export function AppCallOverlay({
                 >
                   <X className="w-7 h-7 text-destructive" />
                 </button>
-                <span className="text-xs text-muted-foreground">Chiudi</span>
+                <span className="text-xs text-muted-foreground">{t("common.close")}</span>
               </div>
 
               {/* Snooze (only if snoozeMins > 0) */}
@@ -274,7 +276,7 @@ export function AppCallOverlay({
                   >
                     <AlarmClock className="w-8 h-8 text-primary" />
                   </button>
-                  <span className="text-xs text-muted-foreground">OK</span>
+                  <span className="text-xs text-muted-foreground">{t("common.ok")}</span>
                 </div>
               )}
             </motion.div>

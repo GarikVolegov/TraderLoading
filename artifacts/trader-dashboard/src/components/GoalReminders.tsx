@@ -3,7 +3,7 @@ import { useGetIdeas } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { getNotificationCopy, shouldNotifyOnce } from "@/lib/notifications";
+import { deliverBrowserNotification, getNotificationCopy, shouldNotifyOnce } from "@/lib/notifications";
 
 export function GoalReminders() {
   const { data: ideas } = useGetIdeas();
@@ -33,19 +33,16 @@ export function GoalReminders() {
         const dedupeKey = `goal-reminder:${goal.id}:${dayKey}`;
         if (!shouldNotifyOnce(localStorage, dedupeKey, new Date(), 20 * 60 * 60 * 1000)) return;
 
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification(copy.titles.goalReminder, {
-            body: goal.content,
-            icon: "/app-icon-192.png",
-            tag: `goal-reminder-${goal.id}`,
-          });
-        } else {
-          toast({
+        void deliverBrowserNotification({
+          title: copy.titles.goalReminder,
+          body: goal.content,
+          tag: `goal-reminder-${goal.id}`,
+          showToast: () => toast({
             title: copy.titles.goalReminder,
             description: goal.content,
             duration: 8000,
-          });
-        }
+          }),
+        });
       }, delay);
       timersRef.current.push(timer);
     }

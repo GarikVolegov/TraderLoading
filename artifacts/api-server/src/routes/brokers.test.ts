@@ -22,7 +22,20 @@ try {
 
   const app = express();
   app.use(express.json());
-  app.use("/api", createBrokersRouter(runtime));
+  app.use((req, _res, next) => {
+    const testUserId = req.headers["x-test-user"];
+    if (typeof testUserId === "string") {
+      req.user = {
+        id: testUserId,
+        email: null,
+        firstName: null,
+        lastName: null,
+        profileImageUrl: null,
+      };
+    }
+    next();
+  });
+  app.use("/api", createBrokersRouter(runtime, { requireProAccess: async () => true }));
   const server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -31,7 +44,7 @@ try {
 
   const createdRes = await fetch(`${base}/profiles`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({
       label: "Demo terminal",
       brokerName: "TraderLoading",
@@ -39,36 +52,102 @@ try {
       accountId: "DEMO-1",
       environment: "demo",
       tradingEnabled: true,
+      ownerUserId: "attacker",
     }),
   });
   assert.equal(createdRes.status, 201);
-  const created = (await createdRes.json()) as { profile: { id: string } };
+  const created = (await createdRes.json()) as { profile: { id: string; ownerUserId: string } };
+  assert.equal(created.profile.ownerUserId, "user-one");
 
-  const connectRes = await fetch(`${base}/profiles/${created.profile.id}/connect`, { method: "POST" });
+  const anonymousListRes = await fetch(`${base}/profiles`);
+  assert.equal(anonymousListRes.status, 401);
+
+  const otherUserListRes = await fetch(`${base}/profiles`, {
+    headers: { "x-test-user": "user-two" },
+  });
+  assert.equal(otherUserListRes.status, 200);
+  const otherUserList = (await otherUserListRes.json()) as { profiles: unknown[] };
+  assert.equal(otherUserList.profiles.length, 0);
+
+  const otherUserConnectRes = await fetch(`${base}/profiles/${created.profile.id}/connect`, {
+    method: "POST",
+    headers: { "x-test-user": "user-two" },
+  });
+  assert.equal(otherUserConnectRes.status, 404);
+
+  const connectRes = await fetch(`${base}/profiles/${created.profile.id}/connect`, {
+    method: "POST",
+    headers: { "x-test-user": "user-one" },
+  });
   assert.equal(connectRes.status, 200);
   const connected = (await connectRes.json()) as { snapshot: { status: string } };
   assert.equal(connected.snapshot.status, "connected");
 
   const orderRes = await fetch(`${base}/profiles/${created.profile.id}/orders`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({ symbol: "EURUSD", side: "buy", type: "market", volume: 0.1 }),
   });
   assert.equal(orderRes.status, 200);
   const order = (await orderRes.json()) as { accepted: boolean };
   assert.equal(order.accepted, true);
 
-  const snapshotRes = await fetch(`${base}/profiles/${created.profile.id}/snapshot`);
+  const snapshotRes = await fetch(`${base}/profiles/${created.profile.id}/snapshot`, {
+    headers: { "x-test-user": "user-one" },
+  });
   assert.equal(snapshotRes.status, 200);
   const snapshot = (await snapshotRes.json()) as { positions: unknown[] };
   assert.equal(snapshot.positions.length, 1);
 
-  const historyRes = await fetch(`${base}/profiles/${created.profile.id}/history`);
+  const historyRes = await fetch(`${base}/profiles/${created.profile.id}/history`, {
+    headers: { "x-test-user": "user-one" },
+  });
   assert.equal(historyRes.status, 200);
   const history = (await historyRes.json()) as unknown[];
   assert.equal(history.length, 1);
 
   await new Promise<void>((resolve) => server.close(() => resolve()));
+
+  const deniedApp = express();
+  deniedApp.use(express.json());
+  deniedApp.use((req, _res, next) => {
+    req.user = {
+      id: "free-user",
+      email: null,
+      firstName: null,
+      lastName: null,
+      profileImageUrl: null,
+    };
+    next();
+  });
+  deniedApp.use("/api", createBrokersRouter(runtime, {
+    requireProAccess: async (_req, res) => {
+      res.status(402).json({ error: "pro_required", feature: "broker" });
+      return false;
+    },
+  }));
+  const deniedServer = createServer(deniedApp);
+  await new Promise<void>((resolve) => deniedServer.listen(0, "127.0.0.1", resolve));
+  const deniedAddress = deniedServer.address();
+  assert.ok(deniedAddress && typeof deniedAddress === "object");
+  const deniedBase = `http://127.0.0.1:${deniedAddress.port}/api/brokers`;
+
+  const catalogResponse = await fetch(`${deniedBase}/catalog`);
+  assert.equal(catalogResponse.status, 200);
+
+  for (const [path, init] of [
+    ["/fxblue/setup-intents", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }],
+    ["/connect-intents", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }],
+    ["/profiles", undefined],
+  ] as const) {
+    const response = await fetch(`${deniedBase}${path}`, init);
+    assert.equal(response.status, 402, `${path} should require Pro`);
+    const body = (await response.json()) as { error: string; feature: string };
+    assert.equal(body.error, "pro_required");
+    assert.equal(body.feature, "broker");
+  }
+
+  await new Promise<void>((resolve) => deniedServer.close(() => resolve()));
 } finally {
   await rm(tempDir, { recursive: true, force: true });
 }

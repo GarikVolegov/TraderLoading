@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { getTextClient } from "./llmClient.js";
 import { capText } from "./knowledgeProcessor.js";
+import { buildWikiAnalysisContext } from "./wikiGraph.js";
 
 // ─── Knowledge graph (GraphRAG in-app) ──────────────────────────────────────────
 // 1) ingestSource: trasforma il testo di una sorgente in nodi/archi via LLM.
@@ -200,7 +201,7 @@ export async function buildAnalysisContext(
     : or(eq(brainGraphNodesTable.strategyId, strategyId), isNull(brainGraphNodesTable.strategyId));
 
   const nodes = await db.select().from(brainGraphNodesTable).where(and(u, s));
-  if (nodes.length === 0) return "";
+  if (nodes.length === 0) return await buildWikiAnalysisContext(userId, `${instrument} ${timeframe}`);
 
   const inst = norm(instrument);
   const tf = norm(timeframe);
@@ -257,7 +258,13 @@ export async function buildAnalysisContext(
     lines.push(...relLines);
   }
 
-  return capText(lines.join("\n"), 6000);
+  const wikiContext = await buildWikiAnalysisContext(userId, `${instrument} ${timeframe}`);
+  if (wikiContext) {
+    lines.push("[Wiki personale utente]");
+    lines.push(wikiContext);
+  }
+
+  return capText(lines.join("\n"), 8000);
 }
 
 /** Conteggi del grafo per tipo (per la mini-mappa del cervello in UI). */

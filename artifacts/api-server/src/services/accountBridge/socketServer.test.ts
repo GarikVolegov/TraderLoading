@@ -7,6 +7,7 @@ import type { AccountBridgeEvent } from "./types.js";
 
 const app = express();
 const server = createServer(app);
+let authCalls = 0;
 const bridge = attachAccountBridgeWebSocket(server, {
   adapter: "demo",
   mode: "demo",
@@ -15,6 +16,12 @@ const bridge = attachAccountBridgeWebSocket(server, {
   importJournal: false,
   orderEnabled: false,
   orderAckTimeoutMs: 10_000,
+}, {
+  authenticate: async () => {
+    authCalls += 1;
+    return { userId: "socket-test-user", source: "session" };
+  },
+  requireProAccess: async () => true,
 });
 
 await new Promise<void>((resolve) => {
@@ -59,9 +66,79 @@ assert.ok(received.some((event) => event.type === "snapshot" && event.snapshot.s
 assert.ok(received.some((event) => event.type === "positions_update" && event.openTrades.length === 1));
 assert.ok(received.some((event) => event.type === "order_ack" && event.result.accepted));
 assert.equal(received.filter((event) => event.type === "order_ack").length, 1);
+assert.equal(authCalls, 1);
 
 socket.close();
 await bridge.close();
 await new Promise<void>((resolve) => server.close(() => resolve()));
+
+{
+  const freeServer = createServer(express());
+  const freeBridge = attachAccountBridgeWebSocket(freeServer, {
+    adapter: "demo",
+    mode: "demo",
+    host: "127.0.0.1",
+    port: 8765,
+    importJournal: false,
+    orderEnabled: false,
+    orderAckTimeoutMs: 10_000,
+  }, {
+    authenticate: async () => ({ userId: "free-user", source: "session" }),
+    requireProAccess: async () => false,
+  } as never);
+
+  await new Promise<void>((resolve) => {
+    freeServer.listen(0, "127.0.0.1", resolve);
+  });
+  const freeAddress = freeServer.address();
+  assert.ok(freeAddress && typeof freeAddress === "object");
+
+  const freeSocket = new WebSocket(`ws://127.0.0.1:${freeAddress.port}/api/account/ws`);
+  const statusCode = await new Promise<number>((resolve, reject) => {
+    freeSocket.on("open", () => reject(new Error("Free account bridge socket opened")));
+    freeSocket.on("unexpected-response", (_request, response) => {
+      resolve(response.statusCode ?? 0);
+    });
+    freeSocket.on("error", reject);
+  });
+
+  assert.equal(statusCode, 402);
+  await freeBridge.close();
+  await new Promise<void>((resolve) => freeServer.close(() => resolve()));
+}
+
+{
+  const rejectedServer = createServer(express());
+  const rejectedBridge = attachAccountBridgeWebSocket(rejectedServer, {
+    adapter: "demo",
+    mode: "demo",
+    host: "127.0.0.1",
+    port: 8765,
+    importJournal: false,
+    orderEnabled: false,
+    orderAckTimeoutMs: 10_000,
+  }, {
+    authenticate: async () => null,
+  });
+
+  await new Promise<void>((resolve) => {
+    rejectedServer.listen(0, "127.0.0.1", resolve);
+  });
+  const rejectedAddress = rejectedServer.address();
+  assert.ok(rejectedAddress && typeof rejectedAddress === "object");
+
+  const rejectedSocket = new WebSocket(`ws://127.0.0.1:${rejectedAddress.port}/api/account/ws`);
+  const closeCode = await new Promise<number>((resolve, reject) => {
+    rejectedSocket.on("open", () => reject(new Error("Unauthenticated socket opened")));
+    rejectedSocket.on("unexpected-response", (_request, response) => {
+      resolve(response.statusCode ?? 0);
+    });
+    rejectedSocket.on("error", reject);
+  });
+
+  assert.equal(closeCode, 401);
+  await rejectedBridge.close();
+  await new Promise<void>((resolve) => rejectedServer.close(() => resolve()));
+}
 
 console.log("account bridge socket checks passed");

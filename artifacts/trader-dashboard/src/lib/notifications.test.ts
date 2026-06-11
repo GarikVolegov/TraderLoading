@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   DEFAULT_NOTIFICATION_PREFS,
+  deliverBrowserNotification,
   getNotificationCopy,
   normalizeNotificationPrefs,
   shouldNotifyOnce,
@@ -38,5 +39,33 @@ const storage = new MemoryStorage();
 assert.equal(shouldNotifyOnce(storage, "goal-1", new Date("2026-06-07T09:00:00"), 60_000), true);
 assert.equal(shouldNotifyOnce(storage, "goal-1", new Date("2026-06-07T09:00:30"), 60_000), false);
 assert.equal(shouldNotifyOnce(storage, "goal-1", new Date("2026-06-07T09:02:00"), 60_000), true);
+
+const delivered: Array<{ title: string; options?: NotificationOptions }> = [];
+const serviceWorkerRegistration = {
+  showNotification: async (title: string, options?: NotificationOptions) => {
+    delivered.push({ title, options });
+  },
+} as ServiceWorkerRegistration;
+
+assert.equal(
+  await deliverBrowserNotification({
+    title: "Sessione Londra aperta",
+    body: "Controlla il piano.",
+    tag: "session-london",
+    getPermission: () => "granted",
+    getServiceWorkerRegistration: async () => serviceWorkerRegistration,
+  }),
+  "service-worker",
+);
+assert.deepEqual(delivered, [
+  {
+    title: "Sessione Londra aperta",
+    options: {
+      body: "Controlla il piano.",
+      icon: "/app-icon-192.png",
+      tag: "session-london",
+    },
+  },
+]);
 
 console.log("notification helper checks passed");

@@ -1,15 +1,26 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { ProfileWidget } from "@/components/ProfileWidget";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { BackgroundPresetsManager } from "@/components/BackgroundPresetsManager";
+import { BillingSubscriptionPanel } from "@/components/BillingSubscriptionPanel";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Image,
   Upload,
@@ -98,13 +109,10 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, useClerk } from "@clerk/react";
 import { usePinLock } from "@/contexts/PinLockContext";
-import {
-  useLanguage,
-  LANGUAGES,
-  type Language,
-} from "@/contexts/LanguageContext";
+import { useLanguage, LANGUAGES, type Language, uiText } from "@/contexts/LanguageContext";
 import { getPairLabel } from "@workspace/pair-catalog";
 import { PairSelectionModal } from "@/components/PairSelectionModal";
+import { AppTutorialWizard } from "@/components/AppTutorialWizard";
 import { ScheduledCallsSettings } from "@/components/ScheduledCallsSettings";
 import {
   usePushNotifications,
@@ -148,6 +156,23 @@ const FONT_OPTIONS = [
   label: string;
   sample: string;
 }[];
+
+const WEEKDAY_OPTIONS = [
+  { id: 1, label: "L", title: "Lunedì" },
+  { id: 2, label: "M", title: "Martedì" },
+  { id: 3, label: "M", title: "Mercoledì" },
+  { id: 4, label: "G", title: "Giovedì" },
+  { id: 5, label: "V", title: "Venerdì" },
+  { id: 6, label: "S", title: "Sabato" },
+  { id: 0, label: "D", title: "Domenica" },
+] as const;
+
+function getSessionDaysForUi(session: MarketSessionConfig): number[] {
+  if (!Array.isArray(session.days) || session.days.length === 0) {
+    return WEEKDAY_OPTIONS.map((day) => day.id);
+  }
+  return session.days;
+}
 
 function FontSettings() {
   const { fontChoice, setFontChoice } = useBackground();
@@ -241,9 +266,9 @@ function DarknessSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex justify-between text-sm text-muted-foreground">
-          <span>Chiaro</span>
+          <span>{uiText("auto.ui.0e54e61cc2")}</span>
           <span className="font-mono text-foreground">{darkness}%</span>
-          <span>Scuro</span>
+          <span>{uiText("auto.ui.396cdde350")}</span>
         </div>
         <input
           type="range"
@@ -359,7 +384,7 @@ function BackgroundSettings() {
             onClick={() => fileRef.current?.click()}
           >
             <Image className="w-10 h-10 mb-3 opacity-30" />
-            <p className="text-sm font-medium">Nessuno sfondo personalizzato</p>
+            <p className="text-sm font-medium">{uiText("settings.background.none_custom")}</p>
             <p className="text-xs opacity-60 mt-1">
               Clicca per selezionare un'immagine
             </p>
@@ -428,7 +453,7 @@ function TradingSettings() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [localSessions, setLocalSessions] =
-    useState<TradingSessionConfig[]>(tradingSessions);
+    useState<MarketSessionConfig[]>(tradingSessions as MarketSessionConfig[]);
   const [localDivisor, setLocalDivisor] = useState(String(lotDivisor));
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
@@ -436,7 +461,7 @@ function TradingSettings() {
   const localTimeZoneLabel = getLocalTimeZoneLabel();
 
   useEffect(() => {
-    setLocalSessions(tradingSessions);
+    setLocalSessions(tradingSessions as MarketSessionConfig[]);
   }, [tradingSessions]);
   useEffect(() => {
     setLocalDivisor(String(lotDivisor));
@@ -447,7 +472,7 @@ function TradingSettings() {
 
   const overlapError = detectOverlap(localSessions);
 
-  const saveSessions = (sessions: TradingSessionConfig[]) => {
+  const saveSessions = (sessions: MarketSessionConfig[]) => {
     setLocalSessions(sessions);
     setTradingSessions(sessions);
     clearTimeout(debounceRef.current);
@@ -506,13 +531,34 @@ function TradingSettings() {
             : session.color === "session-closed"
               ? "session-ny"
               : session.color,
+        days:
+          kind === "market_closed"
+            ? Array.isArray(session.days) && session.days.length > 0
+              ? session.days
+              : [6, 0]
+            : undefined,
+      };
+    });
+    saveSessions(updated);
+  };
+
+  const handleClosedSessionDayToggle = (idx: number, day: number) => {
+    const updated = localSessions.map((session, i) => {
+      if (i !== idx) return session;
+      const selected = getSessionDaysForUi(session);
+      const nextDays = selected.includes(day)
+        ? selected.filter((value) => value !== day)
+        : [...selected, day];
+      return {
+        ...session,
+        days: nextDays.sort((a, b) => a - b),
       };
     });
     saveSessions(updated);
   };
 
   const handleAddSession = () => {
-    const newSession: TradingSessionConfig = {
+    const newSession: MarketSessionConfig = {
       id: `custom-${Date.now()}`,
       name: `Sessione ${localSessions.length + 1}`,
       openUTC: "07:00",
@@ -527,13 +573,14 @@ function TradingSettings() {
   };
 
   const handleAddClosedSession = () => {
-    const newSession: TradingSessionConfig = {
+    const newSession: MarketSessionConfig = {
       id: `closed-${Date.now()}`,
       name: "Mercato chiuso",
       openUTC: "22:00",
       closeUTC: "23:59",
       color: "session-closed",
       kind: "market_closed",
+      days: [6, 0],
       enabled: true,
     };
     saveSessions([...localSessions, newSession]);
@@ -590,9 +637,7 @@ function TradingSettings() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-primary" />
-          Trading
-        </CardTitle>
+          <TrendingUp className="w-5 h-5 text-primary" />{uiText("auto.ui.49352196f6")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
@@ -632,12 +677,10 @@ function TradingSettings() {
                     handleSessionChange(idx, "name", e.target.value)
                   }
                   className="text-sm font-semibold flex-1 bg-secondary/40 border-border/30 rounded-lg"
-                  placeholder="Nome sessione"
+                  placeholder={uiText("auto.ui.26ce432557")}
                 />
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-muted-foreground font-medium">
-                    Attiva
-                  </span>
+                  <span className="text-xs text-muted-foreground font-medium">{uiText("auto.ui.97ec36f1ec")}</span>
                   <Switch
                     checked={session.enabled}
                     onCheckedChange={(checked) =>
@@ -648,7 +691,7 @@ function TradingSettings() {
                     <button
                       onClick={() => handleDeleteSession(idx)}
                       className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      title="Elimina sessione"
+                      title={uiText("auto.ui.c4446f0733")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -670,8 +713,8 @@ function TradingSettings() {
                     }
                     className="h-10 w-full rounded-lg border border-border/30 bg-secondary/40 px-3 text-sm text-foreground"
                   >
-                    <option value="trading">Sessione operativa</option>
-                    <option value="market_closed">Mercato chiuso</option>
+                    <option value="trading">{uiText("auto.ui.7b780520ff")}</option>
+                    <option value="market_closed">{uiText("auto.ui.aafe59a8f3")}</option>
                   </select>
                 </div>
                 <div className="flex items-end">
@@ -716,6 +759,34 @@ function TradingSettings() {
                   />
                 </div>
               </div>
+              {isMarketClosedSession(session as MarketSessionConfig) && (
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                    Giorni chiusura
+                  </label>
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {WEEKDAY_OPTIONS.map((day) => {
+                      const selected = getSessionDaysForUi(session as MarketSessionConfig).includes(day.id);
+                      return (
+                        <button
+                          key={day.id}
+                          type="button"
+                          title={day.title}
+                          aria-pressed={selected}
+                          onClick={() => handleClosedSessionDayToggle(idx, day.id)}
+                          className={`h-8 rounded-md border text-xs font-bold transition-colors ${
+                            selected
+                              ? "border-red-400/70 bg-red-500/15 text-red-200"
+                              : "border-border/40 bg-secondary/30 text-muted-foreground hover:border-red-400/40 hover:text-red-200"
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </motion.div>
           ))}
 
@@ -839,14 +910,14 @@ function QuotesSettings() {
 
         <div className="space-y-2 rounded-lg border border-border p-3">
           <Input
-            placeholder="Citazione"
+            placeholder={uiText("auto.ui.1d52ab1e92")}
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
             className="text-sm"
           />
           <div className="flex gap-2">
             <Input
-              placeholder="Autore"
+              placeholder={uiText("auto.ui.a6403a2baa")}
               value={newAuthor}
               onChange={(e) => setNewAuthor(e.target.value)}
               className="text-sm flex-1"
@@ -891,16 +962,12 @@ function QuotesSettings() {
                         size="sm"
                         onClick={() => handleUpdate(q.id)}
                         disabled={updateMutation.isPending}
-                      >
-                        Salva
-                      </Button>
+                      >{uiText("auto.ui.c5965db5f2")}</Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => setEditingId(null)}
-                      >
-                        Annulla
-                      </Button>
+                      >{uiText("auto.ui.6c3de5381b")}</Button>
                     </div>
                   </div>
                 ) : (
@@ -1032,9 +1099,7 @@ function MissionTemplatesSettings() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Target className="w-5 h-5 text-primary" />
-          Missioni Giornaliere
-        </CardTitle>
+          <Target className="w-5 h-5 text-primary" />{uiText("auto.ui.0a38d7a6de")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
@@ -1044,13 +1109,13 @@ function MissionTemplatesSettings() {
 
         <div className="space-y-2 rounded-lg border border-border p-3">
           <Input
-            placeholder="Titolo missione"
+            placeholder={uiText("auto.ui.120ae9b81a")}
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             className="text-sm"
           />
           <Input
-            placeholder="Descrizione"
+            placeholder={uiText("auto.ui.07dfa30eec")}
             value={newDesc}
             onChange={(e) => setNewDesc(e.target.value)}
             className="text-sm"
@@ -1114,16 +1179,12 @@ function MissionTemplatesSettings() {
                         size="sm"
                         onClick={() => handleUpdate(t.id)}
                         disabled={updateMutation.isPending}
-                      >
-                        Salva
-                      </Button>
+                      >{uiText("auto.ui.c5965db5f2")}</Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => setEditingId(null)}
-                      >
-                        Annulla
-                      </Button>
+                      >{uiText("auto.ui.6c3de5381b")}</Button>
                     </div>
                   </div>
                 ) : (
@@ -1178,6 +1239,7 @@ function NotificationSettings() {
   const { language } = useLanguage();
   const notificationCopy = getNotificationCopy(language);
   const push = usePushNotifications();
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
 
   const [reminderTime, setReminderTime] = useState("");
   const [preMacro, setPreMacro] = useState("15");
@@ -1346,16 +1408,21 @@ function NotificationSettings() {
       await push.unsubscribe();
       toast({ description: ui.pushOff });
     } else {
-      const ok = await push.subscribe();
-      if (ok) toast({ description: ui.pushOn });
-      else if (
-        push.permission === "denied" ||
-        ("Notification" in window && Notification.permission === "denied")
-      ) {
-        toast({ description: ui.deniedToast, variant: "destructive" });
-      } else {
-        toast({ description: ui.pushUnavailable, variant: "destructive" });
-      }
+      setShowPushPrompt(true);
+    }
+  };
+
+  const confirmPushActivation = async () => {
+    setShowPushPrompt(false);
+    const ok = await push.subscribe();
+    if (ok) toast({ description: ui.pushOn });
+    else if (
+      push.permission === "denied" ||
+      ("Notification" in window && Notification.permission === "denied")
+    ) {
+      toast({ description: ui.deniedToast, variant: "destructive" });
+    } else {
+      toast({ description: ui.pushUnavailable, variant: "destructive" });
     }
   };
 
@@ -1363,6 +1430,31 @@ function NotificationSettings() {
 
   return (
     <div className="space-y-4">
+      <AlertDialog open={showPushPrompt} onOpenChange={setShowPushPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{uiText("auto.ui.98661e9e19")}</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Vuoi ricevere alert utili sulle sessioni, le missioni e gli
+                eventi macro? Puoi scegliere quali notifiche ricevere e
+                disattivarle in qualsiasi momento.
+              </span>
+              <span className="block">
+                TraderLoading userà il permesso solo per avvisi operativi
+                collegati alla tua routine, non per pubblicità.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{uiText("settings.push.not_now")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmPushActivation}>
+              Attiva notifiche
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Push notifications master toggle */}
       <Card>
         <CardHeader className="pb-3">
@@ -1926,7 +2018,7 @@ function ChecklistSettings() {
         </label>
         <div className="flex gap-2">
           <Input
-            placeholder="Es. Analizza timeframe superiore..."
+            placeholder={uiText("auto.ui.cba892ec78")}
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
@@ -1965,15 +2057,15 @@ function ChecklistSettings() {
         </div>
       ) : (
         <div className="text-center py-6 text-sm text-muted-foreground">
-          <p>Nessun elemento nella checklist</p>
-          <p className="text-xs mt-1">Aggiungine uno per iniziare</p>
+          <p>{uiText("auto.ui.dfb6f163d7")}</p>
+          <p className="text-xs mt-1">{uiText("auto.ui.83fe33d1ef")}</p>
         </div>
       )}
     </div>
   );
 }
 
-function AuthSection({ login }: { login: () => void }) {
+function AuthSection({ login, signup }: { login: () => void; signup: () => void }) {
   return (
     <Card>
       <CardHeader>
@@ -1992,11 +2084,146 @@ function AuthSection({ login }: { login: () => void }) {
             <LogIn className="w-4 h-4 mr-2" />
             Accedi
           </Button>
-          <Button onClick={login} variant="outline" className="w-full">
+          <Button onClick={signup} variant="outline" className="w-full">
             <UserPlus className="w-4 h-4 mr-2" />
             Registrati
           </Button>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AccountExportSection() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <FileText className="w-5 h-5 text-primary" />
+          Esporta dati
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Scarica un file JSON con profilo, preferenze, journal, routine,
+          backtest e dati trading collegati al tuo account. Segreti broker,
+          password e log interni di sicurezza non vengono inclusi.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => {
+            window.location.href = "/api/account/export";
+          }}
+        >
+          <FileText className="w-4 h-4" />
+          Esporta dati
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AccountDeletionSection({ onDeleted }: { onDeleted: () => void }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const canDelete = confirmation.trim().toUpperCase() === "ELIMINA";
+
+  const handleDelete = async () => {
+    if (!canDelete || deleting) return;
+    setDeleting(true);
+    try {
+      const response = await fetch("/api/account", {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(
+          typeof data?.error === "string"
+            ? data.error
+            : "Non siamo riusciti a eliminare l'account.",
+        );
+      }
+      toast({ description: "Account eliminato. I dati collegati sono stati rimossi." });
+      setOpen(false);
+      onDeleted();
+    } catch (error) {
+      reportClientError(error, {
+        context: "account deletion",
+        fallbackMessage:
+          "Non siamo riusciti a eliminare l'account. Contatta il supporto.",
+        toast,
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Card className="border-destructive/35 bg-destructive/5">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base text-destructive">
+          <Trash2 className="w-5 h-5" />
+          Elimina account
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Cancella profilo, diario, dati di trading, notifiche, social, chat e
+          connessioni broker collegate al tuo account. Alcuni log tecnici minimi
+          possono restare per sicurezza, antifrode o obblighi legali.
+        </p>
+        <AlertDialog open={open} onOpenChange={setOpen}>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-destructive/50 text-destructive hover:bg-destructive/10"
+            onClick={() => setOpen(true)}
+          >
+            <Trash2 className="w-4 h-4" />
+            Elimina account
+          </Button>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{uiText("auto.ui.f5e7dd8614")}</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <span className="block">
+                  Questa azione elimina in modo permanente profilo, preferenze,
+                  journal, immagini, backtest, messaggi, notifiche push e
+                  connessioni broker salvate.
+                </span>
+                <span className="block">
+                  {uiText("settings.delete.confirm_before")} <span className="font-mono text-foreground">{uiText("settings.delete.confirm_token")}</span>.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Input
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              placeholder={uiText("auto.ui.d4d34d9f18")}
+              aria-label={uiText("auto.ui.527bbda0b4")}
+              autoComplete="off"
+            />
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>{uiText("auto.ui.6c3de5381b")}</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={!canDelete || deleting}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void handleDelete();
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? "Eliminazione..." : "Elimina definitivamente"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
@@ -2146,9 +2373,7 @@ function RewardsLibrarySection() {
               <span className="text-primary font-bold">{nextMilestone}</span>
             </span>
           ) : (
-            <span className="text-xs text-primary font-semibold">
-              Tutti i contenuti sbloccati!
-            </span>
+            <span className="text-xs text-primary font-semibold">{uiText("auto.ui.195e8d38db")}</span>
           )}
         </div>
         {nextMilestone && (
@@ -2198,9 +2423,7 @@ function RewardsLibrarySection() {
       {/* Locked milestones */}
       {lockedMilestones.length > 0 && (
         <div className="space-y-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Contenuti bloccati
-          </p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.cdb9f9ede9")}</p>
           {lockedMilestones.map((m) => {
             const count = REWARDS.filter((r) => r.milestone === m).length;
             return (
@@ -2234,7 +2457,7 @@ function RewardsLibrarySection() {
       {unlocked.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <Library className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm font-medium">Raggiungi il livello 5</p>
+          <p className="text-sm font-medium">{uiText("settings.library.level_5")}</p>
           <p className="text-xs mt-1">
             Il tuo primo contenuto si sbloccherà al livello 5
           </p>
@@ -2394,30 +2617,30 @@ function SupportSection() {
         </h3>
         <div className="space-y-3">
           <a
-            href="mailto:support@traderloading.app"
+            href="mailto:assistenza@traderloading.com"
             className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"
           >
             <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shrink-0">
               <Mail className="w-4 h-4" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold">Scrivi al supporto</p>
+              <p className="text-sm font-semibold">{uiText("settings.support.write")}</p>
               <p className="text-xs text-muted-foreground">
-                support@traderloading.app
+                assistenza@traderloading.com
               </p>
             </div>
             <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </a>
 
           <a
-            href="mailto:feedback@traderloading.app?subject=Feedback%20TraderLOADING"
+            href="mailto:assistenza@traderloading.com?subject=Feedback%20TraderLoading"
             className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"
           >
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
               <MessageSquare className="w-4 h-4" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold">Invia un feedback</p>
+              <p className="text-sm font-semibold">{uiText("settings.support.feedback")}</p>
               <p className="text-xs text-muted-foreground">
                 Suggerimenti, idee, miglioramenti
               </p>
@@ -2430,7 +2653,7 @@ function SupportSection() {
       {/* Version info */}
       <div className="pt-2 border-t border-border/30 text-center">
         <p className="text-xs text-muted-foreground/50 font-mono">
-          TraderLOADING · v1.0 · Fatto con ♥ per i trader disciplinati
+          TraderLoading · v1.0 · Fatto con ♥ per i trader disciplinati
         </p>
       </div>
     </div>
@@ -2519,9 +2742,44 @@ const HELP_FAQS = [
 
 function HelpSection() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const { t } = useLanguage();
 
   return (
     <div className="space-y-8">
+      <AppTutorialWizard
+        open={tutorialOpen}
+        onSkip={() => setTutorialOpen(false)}
+        onFinish={() => setTutorialOpen(false)}
+      />
+
+      <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+              <LifeBuoy className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">
+                {t("settings.help.review_tutorial")}
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                {t("settings.help.review_tutorial_desc")}
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => setTutorialOpen(true)}
+          >
+            {t("settings.help.review_tutorial")}
+          </Button>
+        </div>
+      </div>
+
       {/* Quick start */}
       <div>
         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">
@@ -2624,16 +2882,16 @@ function HelpSection() {
           Hai ancora bisogno di aiuto?
         </h3>
         <a
-          href="mailto:support@traderloading.app?subject=Richiesta%20assistenza"
+          href="mailto:assistenza@traderloading.com?subject=Richiesta%20assistenza"
           className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-purple-400/30 hover:bg-secondary/40 transition-all group"
         >
           <div className="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
             <CircleHelp className="w-4 h-4" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold">Contatta il supporto</p>
+            <p className="text-sm font-semibold">{uiText("settings.support.contact")}</p>
             <p className="text-xs text-muted-foreground">
-              support@traderloading.app
+              assistenza@traderloading.com
             </p>
           </div>
           <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-purple-400 transition-colors" />
@@ -2675,7 +2933,7 @@ function TermsSection() {
         <FileText className="w-5 h-5 text-pink-400 mt-0.5 shrink-0" />
         <div>
           <p className="text-sm font-semibold text-foreground">
-            Termini di utilizzo · TraderLOADING
+            Termini di utilizzo · TraderLoading
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
             Ultimo aggiornamento: {TERMS_UPDATED}. Utilizzando l'app accetti i
@@ -2685,9 +2943,9 @@ function TermsSection() {
       </div>
 
       <div className="space-y-6">
-        <TermsBlock title="Scopo dell'applicazione">
+        <TermsBlock title={uiText("auto.ui.ab1929adc0")}>
           <p>
-            TraderLOADING è uno strumento di supporto alla disciplina e
+            TraderLoading è uno strumento di supporto alla disciplina e
             all'organizzazione personale per trader. Non fornisce consigli
             finanziari, segnali di trading o raccomandazioni di investimento di
             alcun tipo.
@@ -2698,7 +2956,7 @@ function TermsSection() {
           </p>
         </TermsBlock>
 
-        <TermsBlock title="Disclaimer finanziario">
+        <TermsBlock title={uiText("auto.ui.4f66fb5174")}>
           <p>
             Il trading su mercati finanziari comporta un rischio elevato di
             perdita del capitale. I risultati passati non garantiscono risultati
@@ -2712,19 +2970,19 @@ function TermsSection() {
           </p>
         </TermsBlock>
 
-        <TermsBlock title="Raccolta e uso dei dati">
+        <TermsBlock title={uiText("settings.terms.data_collection")}>
           <p>
             L'app raccoglie e archivia i seguenti dati personali dell'utente:
           </p>
           <ul className="list-disc list-inside space-y-0.5 text-xs">
-            <li>Indirizzo email e nome (tramite sistema di autenticazione)</li>
-            <li>Dati del diario di trading inseriti volontariamente</li>
+            <li>{uiText("auto.ui.d8e57f9607")}</li>
+            <li>{uiText("auto.ui.c088dd722f")}</li>
             <li>
               Indirizzo IP al momento dell'accesso (visibile in Sicurezza →
               Accessi recenti)
             </li>
-            <li>User-agent del browser / dispositivo</li>
-            <li>Preferenze e impostazioni dell'app</li>
+            <li>{uiText("auto.ui.27d7686804")}</li>
+            <li>{uiText("auto.ui.d45c9040cb")}</li>
           </ul>
           <p>
             I dati sono archiviati in database sicuri. Non vengono venduti né
@@ -2733,7 +2991,23 @@ function TermsSection() {
           </p>
         </TermsBlock>
 
-        <TermsBlock title="Account e sicurezza">
+        <TermsBlock title={uiText("auto.ui.032fd86405")}>
+          <p>
+            Usiamo i dati per fornire autenticazione, sincronizzazione,
+            sicurezza dell'account, notifiche operative e funzioni di diario,
+            backtest, community e broker. Non vendiamo dati personali e non li
+            usiamo per pubblicita comportamentale.
+          </p>
+          <p>
+            Puoi chiedere accesso, esportazione, rettifica o cancellazione dei
+            dati da Impostazioni → Account oppure scrivendo a
+            assistenza@traderloading.com. I consensi facoltativi, come notifiche e
+            comunicazioni prodotto, possono essere revocati in qualsiasi
+            momento.
+          </p>
+        </TermsBlock>
+
+        <TermsBlock title={uiText("auto.ui.f2b7cf6583")}>
           <p>
             L'utente è responsabile della sicurezza delle proprie credenziali.
             In caso di accesso non autorizzato è necessario contattare il
@@ -2742,11 +3016,11 @@ function TermsSection() {
           </p>
         </TermsBlock>
 
-        <TermsBlock title="Proprietà intellettuale">
+        <TermsBlock title={uiText("auto.ui.3e92bce63a")}>
           <p>
             Tutti i contenuti dell'app (interfaccia, testi, grafica, logiche di
             gamification, contenuti formativi della Biblioteca) sono di
-            proprietà esclusiva di TraderLOADING. È vietata la riproduzione,
+            proprietà esclusiva di TraderLoading. È vietata la riproduzione,
             copia o ridistribuzione senza autorizzazione scritta.
           </p>
           <p>
@@ -2755,7 +3029,7 @@ function TermsSection() {
           </p>
         </TermsBlock>
 
-        <TermsBlock title="Limitazione di responsabilità">
+        <TermsBlock title={uiText("auto.ui.7cbeb972b3")}>
           <p>
             L'app è fornita «così com'è». Non garantiamo la disponibilità
             continua del servizio né l'assenza di bug. Non siamo responsabili
@@ -2764,7 +3038,7 @@ function TermsSection() {
           </p>
         </TermsBlock>
 
-        <TermsBlock title="Modifiche ai termini">
+        <TermsBlock title={uiText("auto.ui.b961fe3a36")}>
           <p>
             Ci riserviamo il diritto di aggiornare questi termini in qualsiasi
             momento. Le modifiche saranno comunicate tramite notifica in-app.
@@ -2773,17 +3047,17 @@ function TermsSection() {
           </p>
         </TermsBlock>
 
-        <TermsBlock title="Contatti legali">
+        <TermsBlock title={uiText("auto.ui.5f39b18401")}>
           <p>
             Per richieste relative a privacy, cancellazione dati o questioni
             legali:
           </p>
           <a
-            href="mailto:legal@traderloading.app"
+            href="mailto:assistenza@traderloading.com"
             className="inline-flex items-center gap-1.5 text-pink-400 hover:text-pink-300 transition-colors text-xs font-medium"
           >
             <Mail className="w-3.5 h-3.5" />
-            legal@traderloading.app
+            assistenza@traderloading.com
             <ExternalLink className="w-3 h-3" />
           </a>
         </TermsBlock>
@@ -2791,7 +3065,7 @@ function TermsSection() {
 
       <div className="pt-2 border-t border-border/30 text-center">
         <p className="text-xs text-muted-foreground/50 font-mono">
-          TraderLOADING · Termini v1.0 · Aggiornato il {TERMS_UPDATED}
+          TraderLoading · Termini v1.0 · Aggiornato il {TERMS_UPDATED}
         </p>
       </div>
     </div>
@@ -2800,6 +3074,7 @@ function TermsSection() {
 
 type TileId =
   | "profilo"
+  | "abbonamento"
   | "pairs"
   | "audio"
   | "aspetto"
@@ -2826,6 +3101,32 @@ interface SettingsTile {
   glow: string;
 }
 
+const SETTINGS_TILE_IDS: TileId[] = [
+  "profilo",
+  "abbonamento",
+  "pairs",
+  "audio",
+  "aspetto",
+  "notifiche",
+  "sicurezza",
+  "lingua",
+  "trading",
+  "missioni",
+  "citazioni",
+  "checklist",
+  "account",
+  "biblioteca",
+  "traguardi",
+  "supporto",
+  "aiuto",
+  "termini",
+];
+
+function getRequestedSection(search: string): TileId | null {
+  const requested = new URLSearchParams(search).get("section");
+  return SETTINGS_TILE_IDS.includes(requested as TileId) ? (requested as TileId) : null;
+}
+
 export default function Settings() {
   const { isSignedIn, isLoaded } = useAuth();
   const { signOut } = useClerk();
@@ -2835,13 +3136,17 @@ export default function Settings() {
   const isAuthenticated = !!isSignedIn;
   const isLoading = !isLoaded;
   const login = () => navigate("/sign-in");
+  const signup = () => navigate("/sign-up");
   const logout = () => {
     void signOut({ redirectUrl: "/" });
   };
+  const searchString = useSearch();
+  const requestedSection = getRequestedSection(searchString);
   const [activeDesktopSection, setActiveDesktopSection] =
-    useState<TileId>("audio");
+    useState<TileId>(requestedSection ?? "audio");
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     pairs: false,
+    abbonamento: false,
     audio: false,
     aspetto: false,
     notifiche: false,
@@ -2857,7 +3162,16 @@ export default function Settings() {
     supporto: false,
     aiuto: false,
     termini: false,
+    ...(requestedSection ? { [requestedSection]: true } : {}),
   });
+
+  // Reagisce ai cambi di query string anche a componente già montato
+  // (es. click sul badge Pro del TopNav mentre si è già su /settings).
+  useEffect(() => {
+    if (!requestedSection) return;
+    setActiveDesktopSection(requestedSection);
+    setOpenSections((prev) => (prev[requestedSection] ? prev : { ...prev, [requestedSection]: true }));
+  }, [requestedSection]);
 
   const tiles: SettingsTile[] = [
     {
@@ -2875,6 +3189,14 @@ export default function Settings() {
       subtitle: t("settings.tile.pairs_sub"),
       color: "text-indigo-400",
       glow: "group-hover:shadow-indigo-400/20",
+    },
+    {
+      id: "abbonamento",
+      icon: <Star className="w-6 h-6" />,
+      label: "Abbonamento",
+      subtitle: "Piano Pro, rinnovo e fatture",
+      color: "text-primary",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "audio",
@@ -3010,6 +3332,7 @@ export default function Settings() {
 
   const tileContent: Record<TileId, React.ReactNode> = {
     profilo: <ProfileWidget />,
+    abbonamento: <BillingSubscriptionPanel />,
     pairs: <PairPreferencesSettings />,
     audio: <AudioPlayer />,
     aspetto: (
@@ -3056,9 +3379,15 @@ export default function Settings() {
         >
           <LogOut className="w-4 h-4 mr-2" /> {t("settings.account.logout")}
         </Button>
+        <AccountExportSection />
+        <AccountDeletionSection
+          onDeleted={() => {
+            void signOut({ redirectUrl: "/" });
+          }}
+        />
       </div>
     ) : !isLoading ? (
-      <AuthSection login={login} />
+      <AuthSection login={login} signup={signup} />
     ) : (
       <p className="text-sm text-muted-foreground">
         {t("settings.account.loading")}
@@ -3069,8 +3398,8 @@ export default function Settings() {
   return (
     <PageLayout>
       <PageHeader
-        title="Impostazioni"
-        subtitle="Configura il tuo ambiente di trading"
+        title={uiText("auto.ui.8f710ac6af")}
+        subtitle={uiText("auto.ui.8d80245829")}
       />
       <div className="space-y-6 max-w-5xl mx-auto">
         <motion.div

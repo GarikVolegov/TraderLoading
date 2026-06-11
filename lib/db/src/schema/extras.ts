@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, serial, text, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
 
 export const ideasTable = pgTable("ideas", {
   id: serial("id").primaryKey(),
@@ -40,7 +40,8 @@ export const userSettingsTable = pgTable("user_settings", {
   selectedPairs: text("selected_pairs"),
   notificationPrefs: text("notification_prefs"),
   alarmConfigs: text("alarm_configs"),
-});
+  onboardingTutorialCompletedAt: timestamp("onboarding_tutorial_completed_at"),
+}, (t) => [uniqueIndex("user_settings_user_idx").on(t.userId)]);
 
 export const pushSubscriptionsTable = pgTable("push_subscriptions", {
   id: serial("id").primaryKey(),
@@ -49,7 +50,10 @@ export const pushSubscriptionsTable = pgTable("push_subscriptions", {
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-}, (t) => [uniqueIndex("push_sub_endpoint_idx").on(t.endpoint)]);
+}, (t) => [
+  uniqueIndex("push_sub_endpoint_idx").on(t.endpoint),
+  index("push_subscriptions_user_idx").on(t.userId),
+]);
 
 export const quotesTable = pgTable("quotes", {
   id: serial("id").primaryKey(),
@@ -75,7 +79,7 @@ export const loginAccessTable = pgTable("login_access", {
   ipAddress: text("ip_address").notNull(),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [index("login_access_user_created_idx").on(t.userId, t.createdAt)]);
 
 export type Idea = typeof ideasTable.$inferSelect;
 export type ChecklistItem = typeof checklistItemsTable.$inferSelect;

@@ -1,4 +1,5 @@
-import { endOfWeek, isSameDay, isWithinInterval, parseISO, startOfWeek } from "date-fns";
+import { isSameDay, isWithinInterval, parseISO, startOfDay, subDays } from "date-fns";
+import { parseTradeContent } from "../lib/parseTradeContent.js";
 
 export type JournalWidgetEntry = {
   id: number;
@@ -39,6 +40,24 @@ export function getJournalResultMeta(result: string): { label: string; tone: Jou
   return { label: "Non segnato", tone: "muted" };
 }
 
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+export function getJournalEntryNetPnl(entry: JournalWidgetEntry | null | undefined): number | null {
+  const parsed = parseTradeContent(entry?.content);
+  if (!parsed || typeof parsed.profit !== "number") return null;
+  return round2(parsed.profit + (parsed.commission ?? 0) + (parsed.swap ?? 0));
+}
+
+export function getJournalEntryEffectiveResult(entry: JournalWidgetEntry | null | undefined): string {
+  const netPnl = getJournalEntryNetPnl(entry);
+  if (netPnl == null) return entry?.result ?? "none";
+  if (netPnl > 0) return "win";
+  if (netPnl < 0) return "loss";
+  return "breakeven";
+}
+
 function getComparableEntryDate(entry: JournalWidgetEntry): Date | null {
   return safeParseJournalDate(entry.tradeDate) ?? safeParseJournalDate(entry.createdAt);
 }
@@ -48,8 +67,8 @@ export function getJournalWidgetSummary(
   now: Date = new Date(),
 ): JournalWidgetSummary {
   const list = entries ?? [];
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+  const rangeStart = startOfDay(subDays(now, 7));
+  const rangeEnd = now;
 
   const validTradeDates = list
     .map((entry) => ({ entry, date: safeParseJournalDate(entry.tradeDate) }))
@@ -57,12 +76,12 @@ export function getJournalWidgetSummary(
 
   const todayCount = validTradeDates.filter(({ date }) => isSameDay(date, now)).length;
   const weeklyEntries = validTradeDates
-    .filter(({ date }) => isWithinInterval(date, { start: weekStart, end: weekEnd }))
+    .filter(({ date }) => isWithinInterval(date, { start: rangeStart, end: rangeEnd }))
     .map(({ entry }) => entry);
 
-  const wins = weeklyEntries.filter((entry) => entry.result === "win").length;
-  const losses = weeklyEntries.filter((entry) => entry.result === "loss").length;
-  const breakevens = weeklyEntries.filter((entry) => entry.result === "breakeven").length;
+  const wins = weeklyEntries.filter((entry) => getJournalEntryEffectiveResult(entry) === "win").length;
+  const losses = weeklyEntries.filter((entry) => getJournalEntryEffectiveResult(entry) === "loss").length;
+  const breakevens = weeklyEntries.filter((entry) => getJournalEntryEffectiveResult(entry) === "breakeven").length;
   const total = weeklyEntries.length;
 
   const latestEntry = [...list].sort((a, b) => {

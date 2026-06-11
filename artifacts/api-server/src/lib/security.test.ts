@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   createCorsOptions,
+  createHelmetOptions,
+  getRateLimitKey,
   getRateLimitConfig,
+  isAllowedWebSocketOrigin,
   isAllowedUploadPath,
   parseTrustProxy,
   publicUploadGuard,
@@ -33,6 +37,42 @@ assert.equal(productionCors.origin("https://app.example.com"), true);
 assert.equal(productionCors.origin("http://localhost:5173"), false);
 assert.equal(productionCors.origin(undefined), true);
 
+assert.equal(
+  isAllowedWebSocketOrigin("https://app.example.com", "api.example.com", {
+    NODE_ENV: "production",
+    API_CORS_ORIGINS: "https://app.example.com",
+  }),
+  true,
+);
+assert.equal(
+  isAllowedWebSocketOrigin("https://api.example.com", "api.example.com", {
+    NODE_ENV: "production",
+    API_CORS_ORIGINS: "",
+  }),
+  true,
+);
+assert.equal(
+  isAllowedWebSocketOrigin("https://evil.example", "api.example.com", {
+    NODE_ENV: "production",
+    API_CORS_ORIGINS: "https://app.example.com",
+  }),
+  false,
+);
+assert.equal(
+  isAllowedWebSocketOrigin("http://localhost:5173", "127.0.0.1:3001", {
+    NODE_ENV: "development",
+  }),
+  true,
+);
+
+const helmetOptions = createHelmetOptions();
+assert.deepEqual(helmetOptions.contentSecurityPolicy?.directives?.imgSrc, [
+  "'self'",
+  "data:",
+  "blob:",
+  "https:",
+]);
+
 assert.equal(parseTrustProxy({ TRUST_PROXY: "1" }), 1);
 assert.equal(parseTrustProxy({ TRUST_PROXY: "loopback" }), "loopback");
 assert.equal(parseTrustProxy({ NODE_ENV: "production" }), 1);
@@ -49,13 +89,21 @@ assert.deepEqual(
   getRateLimitConfig({ RATE_LIMIT_WINDOW_MS: "-1", RATE_LIMIT_MAX: "nope" }),
   {
     windowMs: 15 * 60 * 1000,
-    limit: 300,
+    limit: 2000,
   },
 );
 assert.deepEqual(getRateLimitConfig({ NODE_ENV: "development" }), {
   windowMs: 15 * 60 * 1000,
   limit: 5000,
 });
+assert.equal(
+  getRateLimitKey({ socket: { remoteAddress: "127.0.0.1" } }),
+  "127.0.0.1",
+);
+assert.equal(getRateLimitKey({}), "unknown");
+
+const appSource = readFileSync(new URL("../app.ts", import.meta.url), "utf8");
+assert.match(appSource, /keyGenerator:\s*getRateLimitKey/);
 
 assert.equal(isAllowedUploadPath("/post-images/post-1.png"), true);
 assert.equal(isAllowedUploadPath("/bg-1.png"), true);

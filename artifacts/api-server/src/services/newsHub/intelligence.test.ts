@@ -19,6 +19,7 @@ const cpi = classifyNewsArticle(
   { pairs: "XAUUSD", lang: "it" },
 );
 assert.equal(cpi.relevant, true);
+assert.equal(cpi.article.primaryAssets?.[0], "USD");
 assert.ok(cpi.article.primaryAssets?.includes("XAU"));
 assert.ok(cpi.article.primaryAssets?.includes("USD"));
 assert.deepEqual(cpi.article.affectedPairs, ["XAU/USD"]);
@@ -56,10 +57,34 @@ const companyTranscript = classifyNewsArticle(
 assert.equal(companyTranscript.relevant, false);
 assert.ok((companyTranscript.article.matchConfidence ?? 1) < 0.45);
 
+const nzdUsd = classifyNewsArticle(
+  article(
+    "NZD/USD nears 0.5830 as weaker dollar supports the kiwi",
+    "The RBNZ-Fed policy split helps New Zealand dollar buyers while USD softens.",
+  ),
+  { pairs: "XAUUSD", lang: "it" },
+);
+assert.equal(nzdUsd.relevant, false);
+assert.equal(nzdUsd.article.affectedPairs?.includes("XAU/USD"), false);
+assert.ok((nzdUsd.article.matchConfidence ?? 1) < 0.45);
+
+const nzdDominant = classifyNewsArticle(
+  article(
+    "New Zealand Dollar rises on easing geopolitical risk, RBNZ rate-hike expectations",
+    "The kiwi advances as traders reassess the RBNZ path and broader risk appetite.",
+  ),
+  { pairs: "XAUUSD", lang: "it" },
+);
+assert.equal(nzdDominant.relevant, false);
+assert.equal(nzdDominant.article.affectedPairs?.includes("XAU/USD"), false);
+assert.ok((nzdDominant.article.matchConfidence ?? 1) < 0.45);
+
 const filtered = enrichAndFilterNews(
   [
     article("Bitcoin rallies as ETF demand grows", "Crypto traders increase risk exposure."),
     article("Gold.com Inc. earnings call transcript Q3 2026", "Shares rise after management discusses revenue guidance."),
+    article("NZD/USD nears 0.5830 as weaker dollar supports the kiwi", "The RBNZ-Fed policy split helps New Zealand dollar buyers while USD softens."),
+    article("New Zealand Dollar rises on easing geopolitical risk, RBNZ rate-hike expectations", "The kiwi advances as traders reassess the RBNZ path and broader risk appetite."),
     article("Fed officials warn inflation remains sticky", "The dollar climbs while gold traders watch real yields."),
     article("Gold spot price holds near record highs", "Bullion demand remains resilient."),
   ],
@@ -68,6 +93,8 @@ const filtered = enrichAndFilterNews(
 assert.equal(filtered.length, 2);
 assert.equal(filtered.some((item) => item.title.includes("Bitcoin")), false);
 assert.equal(filtered.some((item) => item.title.includes("Gold.com Inc.")), false);
+assert.equal(filtered.some((item) => item.title.includes("NZD/USD")), false);
+assert.equal(filtered.some((item) => item.title.includes("New Zealand Dollar")), false);
 assert.equal(filtered[0]?.affectedPairs?.includes("XAU/USD"), true);
 
 console.log("news intelligence checks passed");

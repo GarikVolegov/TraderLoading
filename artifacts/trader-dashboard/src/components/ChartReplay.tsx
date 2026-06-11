@@ -27,11 +27,25 @@ import {
   applyFormingCandleForAnchor,
   DEFAULT_REPLAY_VISIBLE_CANDLES,
   getReplayIntervalSeconds,
+  resolveReplayDateAvailability,
   resolveReplayPointCloseTime,
   resolveReplayStartIndex,
   resolveReplayWindowForCloseAnchor,
 } from "./chartReplayWindow";
 import { createReplayStorageKey, parsePersistedReplayState, serializeReplayState } from "./chartReplayPersistence";
+import { ChartAnalysisOverlay } from "./ChartAnalysisOverlay";
+import { ChartAnalysisPanel } from "./ChartAnalysisPanel";
+import { ChartAnalysisToolbar } from "./ChartAnalysisToolbar";
+import {
+  DEFAULT_CHART_ANALYSIS_STATE,
+  type ChartAnalysisState,
+  type ChartDrawing,
+  type DrawingTool,
+  type SessionBoxId,
+} from "./chartAnalysisTypes";
+import { createDrawing } from "./chartAnalysisPersistence";
+import { calculateDailyVwap, hasEstimatedVolume, type AnalysisCandle } from "./chartIndicators";
+import { uiText } from "@/contexts/LanguageContext";
 
 const START_BALANCE = 10_000;
 const LOT_SIZES = ["0.01", "0.05", "0.10", "0.25", "0.50", "1.00"];
@@ -68,7 +82,7 @@ interface ChartReplayProps {
 
 const SPEEDS = [1, 2, 5, 10];
 const START_VISIBLE = DEFAULT_REPLAY_VISIBLE_CANDLES;
-const TIMEFRAMES = ["M15", "M30", "H1", "H4", "D1", "W1"];
+const TIMEFRAMES = ["M5", "M15", "M30", "H1", "H4", "D1", "W1"];
 
 function getPipMultiplier(symbol: string): number {
   const s = symbol.replace("/", "").toUpperCase();
@@ -110,11 +124,12 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const slLineRef = useRef<ISeriesApi<"Line"> | null>(null);
   const tpLineRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const vwapLineRef = useRef<ISeriesApi<"Line"> | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const volSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
 
   const [activeInterval, setActiveInterval] = useState(restoredState?.activeInterval ?? initialInterval);
-  const [allCandles, setAllCandles] = useState<CandlestickData<Time>[]>([]);
+  const [allCandles, setAllCandles] = useState<AnalysisCandle[]>([]);
   const [allVolumes, setAllVolumes] = useState<{ time: Time; value: number; color: string }[]>([]);
   const [startIndex, setStartIndex] = useState(restoredState?.startIndex ?? 0);
   const [revealedCount, setRevealedCount] = useState(restoredState?.revealedCount ?? START_VISIBLE);
@@ -125,6 +140,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
   const [speed, setSpeed] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateWarning, setDateWarning] = useState<string | null>(null);
 
   const [startDate, setStartDate] = useState(restoredState?.startDate ?? "");
   const [trades, setTrades] = useState<ReplayTrade[]>(restoredState?.trades ?? []);
@@ -139,8 +155,14 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
   const [tpInput, setTPInput] = useState("");
   const [showTradePanel, setShowTradePanel] = useState(false);
   const [showTrades, setShowTrades] = useState(true);
+  const [showAnalysisPanel, setShowAnalysisPanel] = useState(false);
+  const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
+  const [analysisState, setAnalysisState] = useState<ChartAnalysisState>(
+    restoredState?.analysisState ?? DEFAULT_CHART_ANALYSIS_STATE,
+  );
 
   const tradeIdCounter = useRef(restoredTradeId);
+  const analysisHistoryRef = useRef<ChartAnalysisState[]>([]);
   const playingRef = useRef(false);
   const speedRef = useRef(speed);
   const revealedRef = useRef(revealedCount);
@@ -169,15 +191,16 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
     playingRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    fetchReplayCandles({ symbol: s, interval: activeInterval }, { signal: controller.signal })
+    fetchReplayCandles({ symbol: s, interval: activeInterval, startDate: startDate || undefined }, { signal: controller.signal })
       .then((data) => {
         if (controller.signal.aborted) return;
-        const candles: CandlestickData<Time>[] = data.candles.map((c) => ({
+        const candles: AnalysisCandle[] = data.candles.map((c) => ({
           time: c.time as Time,
           open: c.open,
           high: c.high,
           low: c.low,
           close: c.close,
+          volume: c.volume,
         }));
         const volumes = data.candles
           .filter((c: ReplayCandleRaw) => c.volume != null)
@@ -242,11 +265,12 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
         lotSize,
         trades,
         openTrade,
+        analysisState,
       }));
     } catch {
       // Storage can fail in private mode or under quota; in-memory replay remains usable.
     }
-  }, [storageKey, loading, symbol, activeInterval, startDate, revealedCount, startIndex, balance, lotSize, trades, openTrade]);
+  }, [storageKey, loading, symbol, activeInterval, startDate, revealedCount, startIndex, balance, lotSize, trades, openTrade, analysisState]);
 
   const replayCandles = useMemo(() => allCandles.slice(startIndex), [allCandles, startIndex]);
   const visibleCandles = useMemo(() => replayCandles.slice(0, revealedCount), [replayCandles, revealedCount]);
@@ -338,6 +362,14 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
       lastValueVisible: false,
     });
 
+    const vwapLine = chart.addSeries(LineSeries, {
+      color: DEFAULT_CHART_ANALYSIS_STATE.indicators.vwap.color,
+      lineWidth: 2,
+      crosshairMarkerVisible: false,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+
     const volSeries = chart.addSeries(HistogramSeries, {
       color: "rgba(120,120,120,0.3)",
       priceFormat: { type: "volume" },
@@ -353,12 +385,17 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
     candleSeriesRef.current = candleSeries;
     slLineRef.current = slLine;
     tpLineRef.current = tpLine;
+    vwapLineRef.current = vwapLine;
     markersRef.current = seriesMarkers;
     volSeriesRef.current = volSeries;
 
     const handleResize = () => {
       if (chartContainerRef.current) {
         chart.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+          height: chartContainerRef.current.clientHeight,
+        });
+        setChartSize({
           width: chartContainerRef.current.clientWidth,
           height: chartContainerRef.current.clientHeight,
         });
@@ -374,6 +411,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
       candleSeriesRef.current = null;
       slLineRef.current = null;
       tpLineRef.current = null;
+      vwapLineRef.current = null;
       markersRef.current = null;
       volSeriesRef.current = null;
     };
@@ -444,8 +482,20 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
       const replayVolumes = allVolumes.slice(startIndex, startIndex + revealedCount);
       volSeriesRef.current.setData(replayVolumes);
     }
+    if (vwapLineRef.current) {
+      if (analysisState.indicators.vwap.enabled) {
+        const lineWidth = Math.max(1, Math.min(4, Math.floor(analysisState.indicators.vwap.lineWidth))) as 1 | 2 | 3 | 4;
+        vwapLineRef.current.applyOptions({
+          color: analysisState.indicators.vwap.color,
+          lineWidth,
+        });
+        vwapLineRef.current.setData(calculateDailyVwap(visibleCandles));
+      } else {
+        vwapLineRef.current.setData([]);
+      }
+    }
     chartRef.current?.timeScale().fitContent();
-  }, [visibleCandles, trades, openTrade, showTrades, symbol, allVolumes, startIndex, revealedCount]);
+  }, [visibleCandles, trades, openTrade, showTrades, symbol, allVolumes, startIndex, revealedCount, analysisState.indicators.vwap]);
 
   useEffect(() => {
     const trade = openTradeRef.current;
@@ -708,7 +758,9 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
   };
 
   const handleApplyDate = (date: string) => {
-    setStartDate(date);
+    const next = resolveReplayDateAvailability(date, dataRange);
+    setDateWarning(next.warning);
+    setStartDate(next.date);
     setReplayPointCloseTime(null);
     setTrades([]);
     setOpenTrade(null);
@@ -716,6 +768,49 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
     setTPInput("");
     onTradesChange?.([]);
   };
+
+  const pushAnalysisHistory = useCallback(() => {
+    analysisHistoryRef.current = [...analysisHistoryRef.current.slice(-24), analysisState];
+  }, [analysisState]);
+
+  const updateAnalysisState = useCallback((updater: (state: ChartAnalysisState) => ChartAnalysisState, recordHistory = false) => {
+    if (recordHistory) pushAnalysisHistory();
+    setAnalysisState((prev) => updater(prev));
+  }, [pushAnalysisHistory]);
+
+  const handleToolChange = useCallback((activeTool: DrawingTool) => {
+    setAnalysisState((prev) => ({ ...prev, activeTool, selectedDrawingId: activeTool === "select" ? prev.selectedDrawingId : null }));
+  }, []);
+
+  const handleCreateDrawing = useCallback((draft: Omit<ChartDrawing, "id" | "createdAt">) => {
+    pushAnalysisHistory();
+    setAnalysisState((prev) => ({
+      ...prev,
+      drawings: [...prev.drawings, createDrawing(draft.kind, draft.points, draft.style)],
+      activeTool: "select",
+    }));
+  }, [pushAnalysisHistory]);
+
+  const handleUndoAnalysis = useCallback(() => {
+    const previous = analysisHistoryRef.current.pop();
+    if (previous) setAnalysisState(previous);
+  }, []);
+
+  const handleDeleteSelectedDrawing = useCallback(() => {
+    if (!analysisState.selectedDrawingId) return;
+    pushAnalysisHistory();
+    setAnalysisState((prev) => ({
+      ...prev,
+      drawings: prev.drawings.filter((drawing) => drawing.id !== prev.selectedDrawingId),
+      selectedDrawingId: null,
+    }));
+  }, [analysisState.selectedDrawingId, pushAnalysisHistory]);
+
+  const handleClearDrawings = useCallback(() => {
+    if (analysisState.drawings.length === 0) return;
+    pushAnalysisHistory();
+    setAnalysisState((prev) => ({ ...prev, drawings: [], selectedDrawingId: null }));
+  }, [analysisState.drawings.length, pushAnalysisHistory]);
 
   const stats = useMemo(() => {
     if (trades.length === 0) return null;
@@ -736,6 +831,13 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
   }, [openTrade, currentPrice, pipMultiplier]);
 
   const progress = replayCandles.length > 0 ? Math.round((revealedCount / replayCandles.length) * 100) : 0;
+  const analysisEstimatedVolume = useMemo(() => hasEstimatedVolume(visibleCandles), [visibleCandles]);
+  const coordinateApi = useMemo(() => ({
+    timeToCoordinate: (time: Time) => chartRef.current?.timeScale().timeToCoordinate(time) ?? null,
+    priceToCoordinate: (price: number) => candleSeriesRef.current?.priceToCoordinate(price) ?? null,
+    coordinateToTime: (x: number) => chartRef.current?.timeScale().coordinateToTime(x) ?? null,
+    coordinateToPrice: (y: number) => candleSeriesRef.current?.coordinateToPrice(y) ?? null,
+  }), []);
 
   return (
     <div data-testid="chart-replay" className="space-y-3 min-w-0 overflow-hidden">
@@ -758,7 +860,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
               )}
               <span
                 className="hidden sm:inline-flex p-1 rounded text-primary"
-                title="Data di inizio backtest"
+                title={uiText("auto.ui.be3542d584")}
               >
                 <Calendar className="w-3.5 h-3.5" />
               </span>
@@ -793,9 +895,9 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
 
         <div className="px-3 py-2 border-b border-border/30 flex flex-col min-[420px]:flex-row min-[420px]:items-center gap-2 bg-card/40">
             <Calendar className="w-4 h-4 text-primary shrink-0" />
-            <span className="text-xs text-muted-foreground shrink-0">Inizia dal</span>
+            <span className="text-xs text-muted-foreground shrink-0">{uiText("auto.ui.15a469ac0a")}</span>
             <input
-              aria-label="Data di inizio backtest"
+              aria-label={uiText("auto.ui.be3542d584")}
               type="date"
               value={startDate}
               min={dataRange.min}
@@ -807,13 +909,16 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
               <button
                 onClick={() => handleApplyDate("")}
                 className="text-xs text-orange-400 hover:text-orange-300 shrink-0"
-              >
-                Reset
-              </button>
+              >{uiText("auto.ui.44c57abd88")}</button>
             )}
             {!loading && (
               <span className="text-[10px] text-muted-foreground/70 min-[420px]:ml-auto">
                 Avvio con {visibleCandles.length} candele visibili
+              </span>
+            )}
+            {dateWarning && (
+              <span className="text-[10px] text-orange-400 min-[420px]:basis-full min-[420px]:pl-6">
+                {dateWarning}
               </span>
             )}
           </div>
@@ -840,16 +945,76 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
           {error && (
             <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
               <p className="text-red-400 text-sm mb-2">Errore: {error}</p>
-              <p className="text-xs text-muted-foreground">Verifica che il simbolo sia supportato.</p>
+              <p className="text-xs text-muted-foreground">{uiText("auto.ui.2a4273657d")}</p>
             </div>
           )}
           {!loading && !error && allCandles.length === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-              <p className="text-muted-foreground text-sm mb-1">Nessuna candela disponibile</p>
+              <p className="text-muted-foreground text-sm mb-1">{uiText("chart_replay.no_candles")}</p>
               <p className="text-xs text-muted-foreground/60">
                 Prova un timeframe diverso o un altro simbolo.
               </p>
             </div>
+          )}
+          {!loading && !error && allCandles.length > 0 && (
+            <>
+              <ChartAnalysisToolbar
+                analysisState={analysisState}
+                panelOpen={showAnalysisPanel}
+                onToolChange={handleToolChange}
+                onTogglePanel={() => setShowAnalysisPanel((prev) => !prev)}
+                onToggleVwap={() => updateAnalysisState((prev) => ({
+                  ...prev,
+                  indicators: {
+                    ...prev.indicators,
+                    vwap: { ...prev.indicators.vwap, enabled: !prev.indicators.vwap.enabled },
+                  },
+                }))}
+                onToggleVolumeProfile={() => updateAnalysisState((prev) => ({
+                  ...prev,
+                  indicators: {
+                    ...prev.indicators,
+                    volumeProfile: { ...prev.indicators.volumeProfile, enabled: !prev.indicators.volumeProfile.enabled },
+                  },
+                }))}
+                onUndo={handleUndoAnalysis}
+                onDeleteSelected={handleDeleteSelectedDrawing}
+                onClearDrawings={handleClearDrawings}
+              />
+              {showAnalysisPanel && (
+                <ChartAnalysisPanel
+                  analysisState={analysisState}
+                  estimatedVolume={analysisEstimatedVolume}
+                  onVwapChange={(vwap) => updateAnalysisState((prev) => ({
+                    ...prev,
+                    indicators: { ...prev.indicators, vwap },
+                  }))}
+                  onVolumeProfileChange={(volumeProfile) => updateAnalysisState((prev) => ({
+                    ...prev,
+                    indicators: { ...prev.indicators, volumeProfile },
+                  }))}
+                  onSessionChange={(id: SessionBoxId, session) => updateAnalysisState((prev) => ({
+                    ...prev,
+                    sessionBoxes: { ...prev.sessionBoxes, [id]: session },
+                  }))}
+                  onDefaultDrawingStyleChange={(defaultDrawingStyle) => updateAnalysisState((prev) => ({
+                    ...prev,
+                    defaultDrawingStyle,
+                  }))}
+                />
+              )}
+              <ChartAnalysisOverlay
+                width={chartSize.width}
+                height={chartSize.height}
+                visibleCandles={visibleCandles}
+                currentTime={replayPointCloseTime}
+                analysisState={analysisState}
+                coordinateApi={coordinateApi}
+                interactionDisabled={settingSL || settingTP}
+                onCreateDrawing={handleCreateDrawing}
+                onSelectDrawing={(selectedDrawingId) => setAnalysisState((prev) => ({ ...prev, selectedDrawingId }))}
+              />
+            </>
           )}
           <div
             ref={chartContainerRef}
@@ -876,7 +1041,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
                 className="h-9 w-9 p-0"
                 onClick={() => goBack(10)}
                 disabled={revealedCount <= START_VISIBLE}
-                title="Indietro 10 candele"
+                title={uiText("auto.ui.a538b3c9fe")}
               >
                 <SkipBack className="w-4 h-4" />
               </Button>
@@ -886,7 +1051,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
                 className="h-9 w-9 p-0"
                 onClick={() => goBack(1)}
                 disabled={revealedCount <= START_VISIBLE}
-                title="Indietro 1 candela"
+                title={uiText("auto.ui.ed584feea3")}
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
@@ -905,7 +1070,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
                 className="h-9 w-9 p-0"
                 onClick={() => advanceCandle(1)}
                 disabled={isPlaying || revealedCount >= replayCandles.length}
-                title="Avanti 1 candela"
+                title={uiText("auto.ui.b7ba5e0977")}
               >
                 <SkipForward className="w-4 h-4" />
               </Button>
@@ -915,7 +1080,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
                 className="h-9 w-9 p-0"
                 onClick={() => advanceCandle(10)}
                 disabled={isPlaying || revealedCount >= replayCandles.length}
-                title="Avanti 10 candele"
+                title={uiText("auto.ui.6cf34558a4")}
               >
                 <ChevronRight className="w-4 h-4" />
                 <ChevronRight className="w-4 h-4 -ml-3" />
@@ -943,7 +1108,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
                 variant="ghost" size="sm"
                 className="h-9 w-9 p-0 text-orange-400"
                 onClick={handleReset}
-                title="Reset"
+                title={uiText("auto.ui.44c57abd88")}
               >
                 <RotateCcw className="w-4 h-4" />
               </Button>
@@ -957,7 +1122,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <Wallet className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="text-[11px] text-muted-foreground">Saldo virtuale:</span>
+              <span className="text-[11px] text-muted-foreground">{uiText("auto.ui.8fe47aba1a")}</span>
               <span className={`text-sm font-mono font-bold ${balance >= START_BALANCE ? "text-green-400" : "text-red-400"}`}>
                 ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
@@ -968,7 +1133,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
               )}
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              <span className="text-[10px] text-muted-foreground mr-1">Lotti:</span>
+              <span className="text-[10px] text-muted-foreground mr-1">{uiText("auto.ui.b46714e7fd")}</span>
               {LOT_SIZES.map((ls) => (
                 <button
                   key={ls}
@@ -1055,7 +1220,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
                       ? "border-red-500 bg-red-500/20 text-red-400"
                       : "border-red-500/30 text-red-400/60 hover:border-red-500/60"
                   }`}
-                  title="Clicca sul grafico"
+                  title={uiText("auto.ui.f06f5e5e62")}
                 >
                   <MousePointer2 className="w-3 h-3" />
                 </button>
@@ -1079,7 +1244,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
                       ? "border-green-500 bg-green-500/20 text-green-400"
                       : "border-green-500/30 text-green-400/60 hover:border-green-500/60"
                   }`}
-                  title="Clicca sul grafico"
+                  title={uiText("auto.ui.f06f5e5e62")}
                 >
                   <MousePointer2 className="w-3 h-3" />
                 </button>
@@ -1123,7 +1288,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
             </div>
           </div>
           <div className="rounded-xl bg-card/40 border border-border/30 p-2 text-center">
-            <div className="text-[10px] text-muted-foreground">Pips</div>
+            <div className="text-[10px] text-muted-foreground">{uiText("auto.ui.800c4c5f30")}</div>
             <div className={`text-sm font-bold font-mono ${parseFloat(stats.totalPips) >= 0 ? "text-green-400" : "text-red-400"}`}>
               {parseFloat(stats.totalPips) >= 0 ? "+" : ""}{stats.totalPips}
             </div>

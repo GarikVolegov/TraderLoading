@@ -1,21 +1,22 @@
 import { Link, useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, BookOpen, MessageCircle, Wrench, Brain, BrainCircuit, Settings, FlaskConical, Sunrise } from "lucide-react";
+import { LayoutDashboard, BookOpen, MessageCircle, Brain, BrainCircuit, Settings, FlaskConical, Sunrise, Library, Network } from "lucide-react";
 import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const NAV_ITEMS = [
   { href: "/",        icon: LayoutDashboard, labelKey: "nav.home",    isChat: false },
   { href: "/journal", icon: BookOpen,         labelKey: "nav.journal", isChat: false },
-  { href: "/tools",   icon: Wrench,           labelKey: "nav.tools",   isChat: false },
+  { href: "/backtest", icon: FlaskConical,    labelKey: "nav.backtest", isChat: false },
   { href: "/zen",     icon: Brain,            labelKey: "nav.zen",     isChat: false },
   { href: "/chat",    icon: MessageCircle,    labelKey: "nav.chat",    isChat: true  },
 ] as const;
 
 const SECONDARY_ITEMS = [
+  { href: "/library",  icon: Library,     labelKey: "nav.library"  },
+  { href: "/wiki",     icon: Network,     labelKey: "nav.wiki"     },
   { href: "/brain",    icon: BrainCircuit, labelKey: "nav.brain"    },
   { href: "/routine",  icon: Sunrise,     labelKey: "nav.routine"  },
-  { href: "/backtest", icon: FlaskConical, labelKey: "nav.backtest" },
   { href: "/settings", icon: Settings,     labelKey: "nav.settings" },
 ] as const;
 
@@ -130,22 +131,24 @@ function NavItem({
   return (
     <Link
       href={href}
-      className="relative flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 py-2"
+      className={`relative flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-full py-2 transition-colors duration-200 ${
+        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+      }`}
     >
       <AnimatePresence>
         {isActive && (
           <motion.div
             layoutId="nav-indicator-mobile"
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-8 sm:w-10 h-0.5 bg-primary rounded-full"
-            initial={{ opacity: 0, scaleX: 0 }}
-            animate={{ opacity: 1, scaleX: 1 }}
-            exit={{ opacity: 0, scaleX: 0 }}
+            className="absolute inset-x-1.5 bottom-1.5 top-1.5 rounded-full border border-primary/20 bg-primary/10 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.10),0_0_22px_hsl(var(--primary)/0.14)]"
+            initial={{ opacity: 0, scale: 0.86 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.86 }}
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
           />
         )}
       </AnimatePresence>
 
-      <div className="relative">
+      <div className="relative z-10">
         <motion.div
           animate={{ scale: isActive ? 1.15 : 1, y: isActive ? -1 : 0 }}
           transition={{ type: "spring", stiffness: 500, damping: 25 }}
@@ -170,7 +173,7 @@ function NavItem({
       <motion.span
         animate={{ opacity: isActive ? 1 : 0.5 }}
         transition={{ duration: 0.15 }}
-        className={`text-[10px] sm:text-[11px] font-medium transition-colors duration-200 ${
+        className={`relative z-10 text-[10px] sm:text-[11px] font-medium transition-colors duration-200 ${
           isActive ? "text-primary" : "text-muted-foreground"
         }`}
       >
@@ -198,10 +201,10 @@ export function BottomNav() {
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }}
-        className="fixed bottom-0 left-0 right-0 z-50 lg:hidden"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] left-0 right-0 z-50 px-3 sm:px-4 lg:hidden"
       >
-        <div className="bg-card/95 backdrop-blur-2xl border-t border-border/50 shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
-          <div className="flex items-center max-w-lg mx-auto px-1 safe-bottom">
+        <div className="mx-auto max-w-lg overflow-hidden rounded-full border border-white/10 bg-card/70 shadow-[0_18px_60px_rgba(0,0,0,0.38),inset_0_1px_0_hsl(var(--foreground)/0.16),inset_0_-1px_0_hsl(var(--background)/0.38)] backdrop-blur-2xl supports-[backdrop-filter]:bg-card/55">
+          <div className="flex items-center px-1">
             {NAV_ITEMS.map((item) => (
               <NavItem
                 key={item.href}
@@ -212,7 +215,6 @@ export function BottomNav() {
               />
             ))}
           </div>
-          <div className="h-[env(safe-area-inset-bottom,0px)]" />
         </div>
       </motion.nav>
 
@@ -234,7 +236,7 @@ export function BottomNav() {
             <div className="w-11 h-11 rounded-lg border border-primary/25 flex items-center justify-center shrink-0 overflow-hidden bg-background shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
               <img
                 src={`${import.meta.env.BASE_URL}app-icon-192.png`}
-                alt="TraderLOADING"
+                alt="TraderLoading"
                 className="h-full w-full object-cover"
               />
             </div>
@@ -292,13 +294,13 @@ export function BottomNav() {
         >
           <Link
             href="/settings"
-            aria-label="Apri impostazioni profilo"
-            title="Impostazioni profilo"
+            aria-label={t("profile.open_settings")}
+            title={t("profile.settings")}
             className="mx-auto flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-primary/35 bg-card/70 p-0.5 shadow-[0_0_14px_hsl(var(--primary)/0.08)] transition-colors hover:border-primary hover:bg-primary/10"
           >
             <img
               src={avatarSrc}
-              alt={`Profilo di ${profileName}`}
+              alt={t("profile.alt", { name: profileName })}
               className="h-full w-full rounded-[10px] object-cover"
             />
           </Link>

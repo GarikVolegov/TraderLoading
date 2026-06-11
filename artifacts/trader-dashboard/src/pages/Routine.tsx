@@ -5,7 +5,9 @@ import { Link, useLocation } from "wouter";
 import confetti from "canvas-confetti";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { EveningTradeReport, type TodayReport } from "@/components/EveningTradeReport";
 import { getRoutineStartProgram } from "./Routine.helpers";
+import { uiText } from "@/contexts/LanguageContext";
 import {
   appendRoutineCompletion,
   createCustomRoutine,
@@ -358,7 +360,7 @@ function BreathingStep({ program, onReady }: { program: Program; onReady: () => 
           animate={{ opacity: 1, y: 0 }}
           className="text-center space-y-3"
         >
-          <p className="text-primary font-semibold">Respirazione completata</p>
+          <p className="text-primary font-semibold">{uiText("routine.breathing_completed")}</p>
           <p className="text-sm text-muted-foreground/60">
             La mente è centrata. Procedi con il passo successivo.
           </p>
@@ -432,7 +434,7 @@ function GratitudeStep({
             value={values[i]}
             onChange={(e) => set(i, e.target.value)}
             rows={2}
-            placeholder="Scrivi qualcosa…"
+            placeholder={uiText("auto.ui.c32454a77d")}
             className="w-full rounded-xl border border-border/50 bg-card/60 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/30 resize-none focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-all"
           />
         </motion.div>
@@ -692,8 +694,23 @@ function TradeReviewStep({ answers, onChange }: { answers: Answers; onChange: (a
   const set = (k: string, v: string) =>
     onChange({ ...answers, tradeReview: { ...review, [k]: v } });
 
+  const applyReport = (report: TodayReport) =>
+    onChange({
+      ...answers,
+      tradeReview: {
+        ...review,
+        win: String(report.win),
+        loss: String(report.loss),
+        be: String(report.be),
+        ...(report.netPnl != null
+          ? { pnl: `${report.netPnl >= 0 ? "+" : ""}${report.netPnl.toFixed(2)} ${report.currency}`.trim() }
+          : {}),
+      },
+    });
+
   return (
     <div className="flex flex-col gap-4 w-full max-w-lg mx-auto">
+      <EveningTradeReport onApply={applyReport} />
       <div className="grid grid-cols-3 gap-3">
         {[
           { key: "win",   label: "Win",   color: "#10b981" },
@@ -722,7 +739,7 @@ function TradeReviewStep({ answers, onChange }: { answers: Answers; onChange: (a
           type="text"
           value={review.pnl ?? ""}
           onChange={(e) => set("pnl", e.target.value)}
-          placeholder="es. +45 pips / +€120"
+          placeholder={uiText("auto.ui.b7480644da")}
           className="w-full rounded-xl border border-border/50 bg-card/60 px-4 py-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/60 transition-all"
         />
       </div>
@@ -837,7 +854,7 @@ function CompleteStep({ program, answers }: { program: Program; answers: Answers
           <div className="col-span-2 flex items-center gap-3 px-4 py-3 rounded-xl border border-border/30 bg-card/50">
             <Smile className="w-4 h-4 text-muted-foreground/60 shrink-0" />
             <div>
-              <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Stato emotivo</p>
+              <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{uiText("auto.ui.ef9fdf32a7")}</p>
               <p className="text-sm font-semibold capitalize">{emotion}</p>
             </div>
           </div>
@@ -847,13 +864,13 @@ function CompleteStep({ program, answers }: { program: Program; answers: Answers
           <>
             {goals.target && (
               <div className="px-4 py-3 rounded-xl border border-border/30 bg-card/50">
-                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Target</p>
+                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{uiText("auto.ui.61ad50a9b9")}</p>
                 <p className="text-sm font-bold font-mono text-primary">{goals.target}</p>
               </div>
             )}
             {goals.maxloss && (
               <div className="px-4 py-3 rounded-xl border border-border/30 bg-card/50">
-                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Max Loss</p>
+                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{uiText("auto.ui.bd6c02c7a4")}</p>
                 <p className="text-sm font-bold font-mono text-red-400">{goals.maxloss}</p>
               </div>
             )}
@@ -865,11 +882,11 @@ function CompleteStep({ program, answers }: { program: Program; answers: Answers
             {(review.win || review.loss) && (
               <div className="col-span-2 flex gap-4 px-4 py-3 rounded-xl border border-border/30 bg-card/50">
                 <div>
-                  <p className="text-[10px] text-green-400 uppercase tracking-wider">Win</p>
+                  <p className="text-[10px] text-green-400 uppercase tracking-wider">{uiText("auto.ui.4973f4c599")}</p>
                   <p className="text-lg font-bold font-mono text-green-400">{review.win || "0"}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-red-400 uppercase tracking-wider">Loss</p>
+                  <p className="text-[10px] text-red-400 uppercase tracking-wider">{uiText("auto.ui.12e24a7d8a")}</p>
                   <p className="text-lg font-bold font-mono text-red-400">{review.loss || "0"}</p>
                 </div>
                 <div>
@@ -1252,7 +1269,7 @@ function ProgramCard({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-primary/80">
               <CheckCircle2 className="w-5 h-5 text-primary" />
-              <span className="font-semibold">Sessione completata oggi</span>
+              <span className="font-semibold">{uiText("auto.ui.15d05cfce6")}</span>
             </div>
             <button
               onClick={() => {
@@ -1322,10 +1339,10 @@ function RoutineStatsPanel({
     >
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary/80">Dettagli progressi</p>
-          <h2 className="mt-1 text-xl font-bold font-mono tracking-tight">Metriche salvate</h2>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary/80">{uiText("auto.ui.4a1b499566")}</p>
+          <h2 className="mt-1 text-xl font-bold font-mono tracking-tight">{uiText("auto.ui.8f36b4e767")}</h2>
         </div>
-        <p className="text-xs text-muted-foreground/50">Storico reale di tutte le routine svolte</p>
+        <p className="text-xs text-muted-foreground/50">{uiText("auto.ui.1932f475b0")}</p>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -1400,8 +1417,8 @@ function CreateRoutinePanel({
     <div className="rounded-3xl border border-border/30 bg-card/35 p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary/80">Nuove routine</p>
-          <h2 className="mt-1 text-xl font-bold font-mono tracking-tight">Routine personalizzate</h2>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary/80">{uiText("auto.ui.b3be33fc49")}</p>
+          <h2 className="mt-1 text-xl font-bold font-mono tracking-tight">{uiText("auto.ui.0619dc0d1f")}</h2>
         </div>
         <button
           type="button"
@@ -1423,40 +1440,40 @@ function CreateRoutinePanel({
           >
             <div className="mt-4 grid gap-3 rounded-2xl border border-border/25 bg-background/25 p-3 sm:grid-cols-2">
               <label className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">Nome</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">{uiText("auto.ui.13030dd962")}</span>
                 <input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
-                  placeholder="Es. Pre market focus"
+                  placeholder={uiText("auto.ui.0f3c4e89d3")}
                   className="h-10 w-full rounded-xl border border-border/35 bg-background/40 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/35 focus:border-primary/45"
                 />
               </label>
               <label className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">Orario</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">{uiText("auto.ui.9386b1dfe1")}</span>
                 <input
                   value={timeLabel}
                   onChange={(event) => setTimeLabel(event.target.value)}
-                  placeholder="Es. 14:00"
+                  placeholder={uiText("auto.ui.269ebe5fdb")}
                   className="h-10 w-full rounded-xl border border-border/35 bg-background/40 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/35 focus:border-primary/45"
                 />
               </label>
               <label className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">Base</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">{uiText("auto.ui.077fe9c54e")}</span>
                 <select
                   value={template}
                   onChange={(event) => setTemplate(event.target.value as Program)}
                   className="h-10 w-full rounded-xl border border-border/35 bg-background/40 px-3 text-sm outline-none transition-colors focus:border-primary/45"
                 >
-                  <option value="morning">Programma mattutino</option>
-                  <option value="evening">Programma serale</option>
+                  <option value="morning">{uiText("auto.ui.afa4f508d2")}</option>
+                  <option value="evening">{uiText("auto.ui.61246e3a00")}</option>
                 </select>
               </label>
               <label className="space-y-1.5 sm:col-span-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">Descrizione</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">{uiText("auto.ui.07dfa30eec")}</span>
                 <textarea
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
-                  placeholder="Focus, obiettivo o contesto della routine"
+                  placeholder={uiText("auto.ui.02b595a212")}
                   className="min-h-20 w-full resize-none rounded-xl border border-border/35 bg-background/40 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/35 focus:border-primary/45"
                 />
               </label>
@@ -1560,10 +1577,10 @@ function FriendCompetitionPanel({
     >
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary/80">Sfida amici</p>
-          <h2 className="mt-1 text-xl font-bold font-mono tracking-tight">Chi sta vincendo</h2>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary/80">{uiText("auto.ui.36d44db864")}</p>
+          <h2 className="mt-1 text-xl font-bold font-mono tracking-tight">{uiText("auto.ui.5c594d8d25")}</h2>
         </div>
-        <p className="text-xs text-muted-foreground/50">Rispetto routine, streak e qualità degli step</p>
+        <p className="text-xs text-muted-foreground/50">{uiText("auto.ui.e67915b391")}</p>
       </div>
 
       {loading ? (
@@ -1611,7 +1628,7 @@ function FriendCompetitionPanel({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold">
                     {row.name}
-                    {row.isCurrentUser && <span className="ml-1.5 text-[10px] text-primary/80">(tu)</span>}
+                    {row.isCurrentUser && <span className="ml-1.5 text-[10px] text-primary/80">{uiText("auto.ui.7f73d79689")}</span>}
                   </p>
                   <p className="text-xs text-muted-foreground/50">
                     {row.totalCompletions} routine · streak {row.currentStreakDays}g · qualità {row.avgQualityScore}%
@@ -1731,8 +1748,8 @@ export default function Routine() {
     <>
       <PageLayout>
         <PageHeader
-          title="Programma del Trader"
-          subtitle="Sessioni guidate mattutine e serali per un trading disciplinato"
+          title={uiText("auto.ui.a984f8837e")}
+          subtitle={uiText("auto.ui.63798f6ffe")}
           badge={
             <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary uppercase tracking-wider">
               Interattivo
@@ -1775,7 +1792,7 @@ export default function Routine() {
               </div>
             )}
             {!isMorningActive && !isEveningActive && (
-              <span className="text-xs text-muted-foreground/35 font-mono">Nessuna sessione attiva</span>
+              <span className="text-xs text-muted-foreground/35 font-mono">{uiText("auto.ui.d23e045373")}</span>
             )}
           </div>
         </motion.div>

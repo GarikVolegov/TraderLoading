@@ -1,13 +1,13 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { FileText, ArrowRight, Loader2, AlertCircle, ArrowUp, ArrowDown, RefreshCw, X } from "lucide-react";
+import { FileText, Loader2, AlertCircle, ArrowUp, ArrowDown, RefreshCw, X } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, ReferenceLine, Tooltip, CartesianGrid, XAxis } from "recharts";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
 import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
+import { uiText } from "@/contexts/LanguageContext";
 
 interface CotReport {
   market: string;
@@ -53,13 +53,13 @@ export function CotWidget() {
   }, [cotFilter.items, data?.reports]);
 
   return (
-    <Card className="relative overflow-hidden bg-card/60 backdrop-blur-sm border-border/30 flex flex-col">
-      <CardHeader className="pb-3 px-4 pt-4 border-b border-border/30">
+    <Card className="relative overflow-hidden bg-card/88 backdrop-blur-sm border-border/60 flex flex-col">
+      <CardHeader className="pb-3 px-4 pt-4 border-b border-border/45">
         <CardTitle className="flex items-center gap-2 text-sm">
           <FileText className="w-4 h-4 text-primary" />
           COT Report
           {data?.fallback && (
-            <span className="text-[9px] text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-full">Esempio</span>
+            <span className="text-[9px] text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-full">{uiText("auto.ui.aaded9e59f")}</span>
           )}
           <div className="ml-auto flex items-center gap-1.5">
             <button
@@ -69,11 +69,6 @@ export function CotWidget() {
             >
               <RefreshCw className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} />
             </button>
-            <Link href="/tools">
-              <button className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
-                Dettaglio <ArrowRight className="w-3 h-3" />
-              </button>
-            </Link>
           </div>
         </CardTitle>
       </CardHeader>
@@ -120,7 +115,7 @@ export function CotWidget() {
                     className={`p-2 rounded-xl border text-center transition-all ${
                       isSelected
                         ? "border-primary bg-primary/10"
-                        : "border-border bg-secondary/30 hover:border-primary/30"
+                        : "border-border/60 bg-secondary/55 hover:border-primary/40"
                     }`}
                   >
                     <p className="text-xs font-bold font-mono">{r.currency}</p>
@@ -148,7 +143,7 @@ export function CotWidget() {
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="p-3 rounded-xl border border-border bg-secondary/20 space-y-2">
+                  <div className="p-3 rounded-xl border border-border/60 bg-secondary/50 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-bold font-mono text-sm">{selected.currency}</span>
@@ -168,7 +163,7 @@ export function CotWidget() {
                         { label: "Comm.", net: selected.commNet, color: selected.commNet >= 0 ? "text-primary" : "text-destructive" },
                         { label: "Retail", net: selected.retailNet, color: selected.retailNet >= 0 ? "text-primary" : "text-destructive" },
                       ].map((item) => (
-                        <div key={item.label} className="p-1.5 rounded-lg bg-secondary/40 border border-border">
+                        <div key={item.label} className="p-1.5 rounded-lg bg-secondary/55 border border-border/60">
                           <p className="text-[9px] text-muted-foreground">{item.label}</p>
                           <p className={`text-xs font-bold font-mono ${item.color}`}>
                             {item.net >= 0 ? "+" : ""}
@@ -188,13 +183,15 @@ export function CotWidget() {
                                 <stop offset="95%" stopColor={selected.nonCommNet >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0} />
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                            <XAxis dataKey="date" tick={{ fontSize: 8, fill: "#666" }} interval={Math.floor(selected.history.length / 3)} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.45} vertical={false} />
+                            <XAxis dataKey="date" tick={{ fontSize: 8, fill: "hsl(var(--muted-foreground))" }} interval={Math.floor(selected.history.length / 3)} />
                             <Tooltip
-                              contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "10px" }}
+                              contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--popover-foreground))", fontSize: "10px", boxShadow: "0 14px 36px rgba(0,0,0,0.5)" }}
+                              labelStyle={{ color: "hsl(var(--popover-foreground))", fontWeight: 700 }}
+                              itemStyle={{ color: "hsl(var(--popover-foreground))", fontWeight: 700 }}
                               formatter={(v: number) => [`${(v / 1000).toFixed(0)}k`, "Non-Comm Net"]}
                             />
-                            <ReferenceLine y={0} stroke="#555" strokeDasharray="3 2" />
+                            <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 2" strokeOpacity={0.65} />
                             <Area
                               type="monotone"
                               dataKey="nonCommNet"
@@ -214,7 +211,7 @@ export function CotWidget() {
 
             {data.fetchedAt && (
               <p className="text-[9px] text-center text-muted-foreground">
-                CFTC · {new Date(data.fetchedAt).toLocaleDateString("it-IT")} · aggiornato ogni venerdì
+                Aggiornato {new Date(data.fetchedAt).toLocaleDateString("it-IT")} · ogni venerdì
               </p>
             )}
           </motion.div>

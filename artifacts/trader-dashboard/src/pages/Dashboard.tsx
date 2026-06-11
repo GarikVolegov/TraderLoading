@@ -23,7 +23,7 @@ import {
   GripVertical, Check, RotateCcw,
   Clock, BookOpen, Sunrise, Target, ClipboardCheck,
   CalendarDays, BarChart2, TrendingUp, BookMarked,
-  Eye, EyeOff, Wallet, ArrowUpRight,
+  Eye, EyeOff, Wallet, ArrowUpRight, Activity,
 } from "lucide-react";
 
 import { PageLayout } from "@/components/PageLayout";
@@ -38,7 +38,9 @@ import { VolatilityWidget } from "@/components/VolatilityWidget";
 import { CotWidget } from "@/components/CotWidget";
 import { RoutineWidget } from "@/components/RoutineWidget";
 import { JournalWidget } from "@/components/JournalWidget";
+import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
+import { TradingViewWatchlistWidget } from "@/components/TradingViewWatchlistWidget";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── Widget registry ───────────────────────────────────────────────────────────
@@ -49,30 +51,35 @@ interface WidgetDef {
   icon: React.ElementType;
   /** Rotta della pagina dedicata aperta al click. Assente = widget non cliccabile. */
   route?: string;
+  bodyHandlesOwnClicks?: boolean;
   component: React.ComponentType;
 }
 
 const WIDGET_DEFS: WidgetDef[] = [
   { id: "clock",      label: "Orologio & Sessioni",  icon: Clock,          route: "/clock",                  component: ClockWidget },
   { id: "account",    label: "Broker Hub",           icon: Wallet,         route: "/broker",                 component: BrokerHubWidget },
+  { id: "tradingview-watchlist", label: "Watchlist Realtime", icon: Activity, component: TradingViewWatchlistWidget },
   { id: "quote",      label: "Citazione del Giorno", icon: BookOpen,                                         component: QuoteWidget },
   { id: "routine",    label: "Routine Giornaliera",  icon: Sunrise,        route: "/routine",                component: RoutineWidget },
   { id: "missions",   label: "Missioni Giornaliere", icon: Target,         route: "/missions",               component: MissionsWidget },
   { id: "checklist",  label: "Checklist Pre-Trade",  icon: ClipboardCheck, route: "/checklist",              component: ChecklistDashboardWidget },
+  { id: "lot",        label: "Dimensionamento",      icon: BarChart2,                                      component: LotCalculatorWidget },
   { id: "journal",    label: "Diario Trading",       icon: BookOpen,       route: "/journal",                component: JournalWidget },
-  { id: "calendar",   label: "Calendario Avanzato",  icon: CalendarDays,   route: "/calendar",               component: CalendarWidget },
-  { id: "sentiment",  label: "Sentiment di Mercato", icon: BarChart2,      route: "/tools?tab=sentiment",    component: SentimentWidget },
-  { id: "volatility", label: "Volatilita & ADR",     icon: TrendingUp,     route: "/tools?tab=volatility",   component: VolatilityWidget },
-  { id: "cot",        label: "COT Report",           icon: BookMarked,     route: "/tools?tab=cot",          component: CotWidget },
+  { id: "calendar",   label: "Calendario Avanzato",  icon: CalendarDays,   route: "/calendar",               component: CalendarWidget, bodyHandlesOwnClicks: true },
+  { id: "sentiment",  label: "Sentiment di Mercato", icon: BarChart2,                                      component: SentimentWidget },
+  { id: "volatility", label: "Volatilita & ADR",     icon: TrendingUp,                                     component: VolatilityWidget },
+  { id: "cot",        label: "COT Report",           icon: BookMarked,                                     component: CotWidget },
 ];
 
 const DEFAULT_ORDER = [
   "clock",
   "quote",
+  "tradingview-watchlist",
   "account",
   "missions",
   "routine",
   "checklist",
+  "lot",
   "journal",
   "sentiment",
   "volatility",
@@ -142,9 +149,10 @@ function SortableWidget({
 
   const Icon = def.icon;
   const isOpenable = !isEditing && !isHidden && !isDragActive && !!def.route;
+  const isBodyOpenable = isOpenable && !def.bodyHandlesOwnClicks;
 
   const handleOpen = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!isOpenable) return;
+    if (!isBodyOpenable) return;
     const target = event.target as HTMLElement;
     if (target.closest("button,a,input,select,textarea,label")) return;
     onOpen(def.id);
@@ -176,30 +184,26 @@ function SortableWidget({
             isEditing && !isDragging
               ? "shadow-[0_0_0_2px_hsl(var(--primary)/0.25),0_4px_20px_rgba(0,0,0,0.3)]"
               : ""
-          } ${isOpenable ? "cursor-pointer hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.3),0_18px_42px_rgba(0,0,0,0.25)]" : ""}`}
+          } ${isBodyOpenable ? "cursor-pointer hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.3),0_18px_42px_rgba(0,0,0,0.25)]" : ""}`}
           style={{ borderRadius: "0.625rem" }}
-          role={isOpenable ? "button" : undefined}
-          tabIndex={isOpenable ? 0 : undefined}
-          aria-label={isOpenable ? `Apri ${def.label}` : undefined}
           onClick={handleOpen}
-          onKeyDown={(event) => {
-            if (!isOpenable) return;
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              onOpen(def.id);
-            }
-          }}
         >
           <def.component />
 
           {/* Affordance "apri pagina" — appare solo all'hover, non occupa spazio */}
           {isOpenable && (
-            <div
+            <button
+              type="button"
               style={{ height: "2.25rem", width: "2.25rem" }}
-              className="pointer-events-none absolute bottom-2.5 right-2.5 z-[5] flex items-center justify-center rounded-full border border-primary/30 bg-card/85 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100"
+              className="absolute bottom-2.5 right-2.5 z-[5] flex items-center justify-center rounded-full border border-primary/30 bg-card/85 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-primary/10 group-hover:opacity-100 focus-visible:opacity-100"
+              aria-label={`Apri pagina ${def.label}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen(def.id);
+              }}
             >
               <ArrowUpRight className="h-3.5 w-3.5" />
-            </div>
+            </button>
           )}
         </motion.div>
       )}
@@ -255,6 +259,7 @@ function SortableWidget({
 // ─── Drag ghost (overlay) ─────────────────────────────────────────────────────
 
 function WidgetGhost({ def }: { def: WidgetDef }) {
+  const { t } = useLanguage();
   const Icon = def.icon;
   return (
     <div
@@ -266,7 +271,7 @@ function WidgetGhost({ def }: { def: WidgetDef }) {
       </div>
       <div>
         <p className="text-sm font-bold font-mono">{def.label}</p>
-        <p className="text-[10px] text-muted-foreground/50 mt-0.5">Trascina per riposizionare</p>
+        <p className="text-[10px] text-muted-foreground/50 mt-0.5">{t("dashboard.drag_hint")}</p>
       </div>
       <GripVertical className="w-4 h-4 text-primary/40 ml-auto" />
     </div>
@@ -399,7 +404,7 @@ export default function Dashboard() {
               className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold shadow-lg shadow-primary/25 transition-all duration-200"
             >
               <Check className="w-4 h-4" strokeWidth={3} />
-              Fatto
+              {t("dashboard.done")}
             </motion.button>
           </div>
         ) : undefined}
@@ -418,9 +423,9 @@ export default function Dashboard() {
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-primary/20 bg-primary/5">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
               <p className="text-xs text-primary/80 font-medium">
-                <strong>Modalità modifica attiva</strong> — Trascina i widget per riorganizzare.
-                Usa <Eye className="inline w-3 h-3 mx-0.5" /> per mostrare/nascondere ogni widget.
-                Premi <strong>Fatto</strong> per salvare.
+                <strong>{t("dashboard.edit_active")}</strong> - {t("dashboard.edit_active_desc")}
+                <Eye className="inline w-3 h-3 mx-0.5" /> {t("dashboard.visibility_desc")}
+                {t("dashboard.done_desc", { done: t("dashboard.done") })}
               </p>
             </div>
           </motion.div>

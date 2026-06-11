@@ -17,6 +17,9 @@ import {
 } from "../services/newsHub/ranking.js";
 import { cleanNewsText, createTranslationMemo } from "../services/newsHub/contentQuality.js";
 import { buildNewsDeepDive } from "../services/newsHub/deepDive.js";
+import { articleKey as personalizationArticleKey, type NewsFeedbackEntry, type NewsPreferences } from "../services/newsHub/personalization.js";
+import { selectCuratedNews } from "../services/newsHub/curation.js";
+import { filterTradingDecisionRelevantNews } from "../services/newsHub/tradingRelevance.js";
 
 const router: IRouter = Router();
 
@@ -82,7 +85,13 @@ const NEWS_FEED_CORPUS_LIMIT = 80;
 // Drop articles older than this so the feed stays "as recent as possible".
 // Undated and clearly-stale items are excluded (with a floor so the feed is
 // never emptied on a quiet news day).
-const NEWS_MAX_AGE_HOURS = 96;
+const NEWS_MAX_AGE_HOURS = 72;
+
+// Curated feed sizing: keep a wide curated corpus for the chronological
+// infinite scroll, but guarantee a floor so quiet news days never leave the
+// feed empty (curation relaxes its threshold to backfill up to the floor).
+const NEWS_CURATED_FEED_LIMIT = 40;
+const NEWS_CURATED_FEED_FLOOR = 10;
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
@@ -466,6 +475,12 @@ function computeImpact(text: string): { score: number; key: string } {
 }
 
 function detectSentiment(text: string): "bullish" | "bearish" | "neutral" {
+  // A headline leading with an explicit call wins over bag-of-words counting
+  // ("Bullish for gold: inflation could send real yields lower" counts one
+  // bullish and one bearish word but is unambiguous).
+  const lead = text.slice(0, 40);
+  if (/\b(bullish|rialzista)\b/i.test(lead)) return "bullish";
+  if (/\b(bearish|ribassista)\b/i.test(lead)) return "bearish";
   const b = (text.match(/surges?|rally|rallies|gains?|rises?|risen|higher|strong|beats?|above.forecast|hawkish|boost/ig) ?? []).length;
   const e = (text.match(/falls?|dropped?|drops?|declines?|lower|weak|misses?|below.forecast|dovish|recession|crisis|concern/ig) ?? []).length;
   return b > e ? "bullish" : e > b ? "bearish" : "neutral";
@@ -496,7 +511,10 @@ function enrichHeuristically(
 ): NewsArticle[] {
   const reasons = IMPACT_REASONS[lang] ?? IMPACT_REASONS.en;
   return articles.map((a) => {
-    const text = `${a.title} ${a.summary}`;
+    // The impact/sentiment/pair regexes are English: analyze the original
+    // (untranslated) text, falling back to the translated one. Running them on
+    // the Italian translation made most patterns miss ("gold" → "oro").
+    const text = `${a.originalTitle ?? a.title} ${a.originalSummary ?? a.summary}`;
     const { score, key } = computeImpact(text);
     const affectedPairs = detectAffectedPairs(text, pairCurrencies, pairsStr);
     const sentiment = a.sentiment ?? detectSentiment(text);
@@ -560,11 +578,17 @@ async function enrichWithLLM(
   const formattedPairs = formatPairsForPrompt(pairsStr);
   const currencyFocus = pairCurrencies.length > 0 ? pairCurrencies.join(", ") : "USD, EUR, XAU";
 
-  const enrichedById = new Map<number, LlmEnrichItem>();
-  let agentSummary = "";
   const limit = Math.min(LLM_ENRICH_MAX, articles.length);
 
-  for (let start = 0; start < limit; start += LLM_ENRICH_CHUNK) {
+  const chunkStarts: number[] = [];
+  for (let start = 0; start < limit; start += LLM_ENRICH_CHUNK) chunkStarts.push(start);
+
+  // Enrich each chunk independently and in parallel. The previous serial loop
+  // stacked two slow free-model round-trips back to back, which was the main
+  // cause of the /api/news serverless timeout. Each chunk fails soft.
+  const enrichChunk = async (
+    start: number,
+  ): Promise<{ start: number; items: LlmEnrichItem[]; agentSummary?: string } | null> => {
     const slice = articles.slice(start, start + LLM_ENRICH_CHUNK);
     const batch = slice.map((a, i) => ({ id: start + i, title: a.title, summary: a.summary.slice(0, 200) }));
     try {
@@ -599,24 +623,36 @@ sentiment MUST be one of: "bullish", "bearish", "neutral". Return one object per
 
       const raw = completion.choices[0]?.message?.content ?? "";
       const jsonMatch = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim().match(/\{[\s\S]*\}/);
-      if (!jsonMatch) { console.warn("[news/llm] risposta non-JSON, salto chunk"); continue; }
+      if (!jsonMatch) { console.warn("[news/llm] risposta non-JSON, salto chunk"); return null; }
       const parsed = JSON.parse(jsonMatch[0]) as LlmEnrichResult;
-      if (start === 0 && typeof parsed.agentSummary === "string") agentSummary = parsed.agentSummary;
-      if (Array.isArray(parsed.articles)) {
-        parsed.articles.forEach((item, i) => {
-          const id = typeof item.id === "number" ? item.id : start + i;
-          enrichedById.set(id, item);
-        });
-      }
+      return {
+        start,
+        items: Array.isArray(parsed.articles) ? parsed.articles : [],
+        agentSummary: typeof parsed.agentSummary === "string" ? parsed.agentSummary : undefined,
+      };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("401") || msg.includes("403") || msg.includes("429")) {
         markKeyInvalid();
         console.warn("[news/llm] chiave non valida o rate limit — fallback euristico");
-        break;
+      } else {
+        console.warn("[news/llm] errore:", msg);
       }
-      console.warn("[news/llm] errore:", msg);
+      return null;
     }
+  };
+
+  const chunkResults = await Promise.all(chunkStarts.map(enrichChunk));
+
+  const enrichedById = new Map<number, LlmEnrichItem>();
+  let agentSummary = "";
+  for (const result of chunkResults) {
+    if (!result) continue;
+    if (result.start === 0 && result.agentSummary) agentSummary = result.agentSummary;
+    result.items.forEach((item, i) => {
+      const id = typeof item.id === "number" ? item.id : result.start + i;
+      enrichedById.set(id, item);
+    });
   }
 
   if (enrichedById.size === 0) return null;
@@ -649,39 +685,116 @@ function isUsdMacroArticle(article: NewsArticle): boolean {
   );
 }
 
-// ─── Route ────────────────────────────────────────────────────────────────────
+// ─── Snapshot cache (stale-while-revalidate over Postgres) ────────────────────
 
-export async function getNewsData(input: { noCache?: boolean; pairs?: string; lang?: string } = {}): Promise<NewsResponse> {
-  const noCache    = input.noCache === true;
+// Serve a stored snapshot without rebuilding while it is younger than this.
+const NEWS_SNAPSHOT_FRESH_MS = (() => {
+  const raw = Number(process.env.NEWS_SNAPSHOT_FRESH_MS ?? 10 * 60_000);
+  return Number.isFinite(raw) && raw > 0 ? raw : 10 * 60_000;
+})();
+
+// Hard ceiling for the LLM enrichment step so a build never approaches the
+// serverless function timeout. Falls back to the heuristic when exceeded.
+const NEWS_LLM_BUDGET_MS = (() => {
+  const raw = Number(process.env.NEWS_LLM_BUDGET_MS ?? 18_000);
+  return Number.isFinite(raw) && raw > 0 ? raw : 18_000;
+})();
+
+// Translate/enrich at most this many RSS candidates — the corpus is trimmed to
+// NEWS_FEED_CORPUS_LIMIT anyway, so processing the whole RSS haul is wasted time.
+const NEWS_BUILD_CANDIDATE_LIMIT = 90;
+// Bump when the snapshot payload shape/ordering changes so stored snapshots
+// from older builds are not served (v6: original-text enrichment, hard-noise +
+// clickbait exclusions, per-language near-duplicate dedupe).
+const NEWS_ASSET_CACHE_VERSION = "asset-impact-v9";
+
+function newsCacheKey(input: { pairs?: string; lang?: string }): { cacheKey: string; pairsStr: string; lang: string } {
+  const pairsStr = input.pairs || "";
+  const lang = sanitizeNewsLang(input.lang);
+  const pairCurrencies = pairsToCurrencies(pairsStr);
+  const baseCacheKey = pairCurrencies.length > 0 ? pairCurrencies.sort().join(",") : "all";
+  return { cacheKey: `${NEWS_ASSET_CACHE_VERSION}:${baseCacheKey}:${lang}`, pairsStr, lang };
+}
+
+// Resolve to `fallback` if `promise` has not settled within `ms`. The underlying
+// work keeps running but its late result is ignored.
+function withBudget<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) { settled = true; resolve(fallback); }
+    }, ms);
+    promise.then(
+      (value) => { if (!settled) { settled = true; clearTimeout(timer); resolve(value); } },
+      () => { if (!settled) { settled = true; clearTimeout(timer); resolve(fallback); } },
+    );
+  });
+}
+
+// DB is imported lazily so loading this module never requires DATABASE_URL
+// (tests, RSS-only contexts). When unavailable the snapshot cache is skipped and
+// the feed is simply built inline.
+async function readNewsSnapshot(cacheKey: string): Promise<{ payload: NewsResponse; updatedAt: Date } | null> {
+  try {
+    const { db, newsSnapshotsTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const rows = await db
+      .select()
+      .from(newsSnapshotsTable)
+      .where(eq(newsSnapshotsTable.cacheKey, cacheKey))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    const updatedAt = row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt as unknown as string);
+    return { payload: row.payload as NewsResponse, updatedAt };
+  } catch (err) {
+    console.warn("[news] snapshot read skipped:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+async function writeNewsSnapshot(cacheKey: string, payload: NewsResponse): Promise<void> {
+  try {
+    const { db, newsSnapshotsTable } = await import("@workspace/db");
+    const now = new Date();
+    await db
+      .insert(newsSnapshotsTable)
+      .values({ cacheKey, payload, fetchedAt: now, updatedAt: now })
+      .onConflictDoUpdate({ target: newsSnapshotsTable.cacheKey, set: { payload, updatedAt: now } });
+  } catch (err) {
+    console.warn("[news] snapshot write skipped:", err instanceof Error ? err.message : err);
+  }
+}
+
+// ─── Feed build (heavy pipeline: RSS + translation + enrichment) ──────────────
+
+async function buildNewsData(input: { pairs?: string; lang?: string } = {}): Promise<NewsResponse> {
   const pairsStr   = input.pairs || "";
   const lang       = sanitizeNewsLang(input.lang);
   const pairCurrencies = pairsToCurrencies(pairsStr);
-  const baseCacheKey   = pairCurrencies.length > 0 ? pairCurrencies.sort().join(",") : "all";
-  const cacheKey       = `${baseCacheKey}:${lang}`;
-
-  // Check request-scoped cache.
-  if (!noCache) {
-    const cached = NEWS_CACHE.get(cacheKey);
-    if (cached) return cached;
-  }
 
   let articles: NewsArticle[] = [];
   let source: "ai" | "rss" = "rss";
   let agentSummary: string | undefined;
   let nextRefreshAt: string | undefined;
   const formattedPairs = formatPairsForPrompt(pairsStr);
-  const cacheTtl = newsCacheTtlMs();
+  // The real refresh cadence is the snapshot freshness window, not the small
+  // in-process cache TTL: the UI countdown must reflect when a rebuild can
+  // actually produce new content.
+  const refreshIntervalMs = NEWS_SNAPSHOT_FRESH_MS;
   const freshnessWindowHours = newsFreshnessWindowHours();
 
   // 1. Fetch RSS (sempre attivo, gratuito)
   try {
     const rssArticles = await fetchRSSNews(pairCurrencies.length > 0 ? pairCurrencies : ["USD", "XAU"], pairsStr);
-    const withImages = normalizeNewsSources(rssArticles).map((a, i) => ({
-      ...a,
-      originalTitle: a.originalTitle ?? a.title,
-      originalSummary: a.originalSummary ?? a.summary,
-      imageUrl: a.imageUrl ?? buildNewsImageUrl(undefined, a.sentiment, i),
-    }));
+    const withImages = normalizeNewsSources(rssArticles)
+      .slice(0, NEWS_BUILD_CANDIDATE_LIMIT)
+      .map((a, i) => ({
+        ...a,
+        originalTitle: a.originalTitle ?? a.title,
+        originalSummary: a.originalSummary ?? a.summary,
+        imageUrl: a.imageUrl ?? buildNewsImageUrl(undefined, a.sentiment, i),
+      }));
     const translated = lang !== "en"
       ? await Promise.all(
           withImages.map(async (a) => {
@@ -695,8 +808,14 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
     const enriched = enrichHeuristically(translated, pairCurrencies, pairsStr, lang);
 
     // 3. LLM enrichment — REAL sentiment via the configured provider (OpenRouter
-    //    by default). Falls back to the heuristic when the LLM is unavailable.
-    const llmResult = await enrichWithLLM(enriched, pairCurrencies, pairsStr, lang);
+    //    by default). Bounded by NEWS_LLM_BUDGET_MS and falls back to the
+    //    heuristic when the LLM is slow/unavailable, so the build stays well
+    //    under the serverless timeout.
+    const llmResult = await withBudget(
+      enrichWithLLM(enriched, pairCurrencies, pairsStr, lang),
+      NEWS_LLM_BUDGET_MS,
+      null,
+    );
     if (llmResult && llmResult.articles.length > 0) {
       articles = llmResult.articles;
       agentSummary = llmResult.agentSummary || heuristicAgentSummary(llmResult.articles, formattedPairs, lang);
@@ -724,11 +843,19 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
     const nowMs = Date.now();
     const recent = sorted.filter((a) => a.publishedAt && nowMs - new Date(a.publishedAt).getTime() <= maxAgeMs);
     articles = recent.length > 0 ? recent : sorted.slice(0, 12);
+    // Curated chronological feed: quality-gate first, then keep a wide set of
+    // the most important articles ordered newest-first for the scroll.
+    articles = selectCuratedNews(filterTradingDecisionRelevantNews(articles), {
+      pairs: pairsStr,
+      limit: NEWS_CURATED_FEED_LIMIT,
+      minKeep: NEWS_CURATED_FEED_FLOOR,
+      sort: "chronological",
+    });
     source = "ai";  // enrichment (euristico o Groq) conta come AI
-    nextRefreshAt = new Date(Date.now() + cacheTtl).toISOString();
+    nextRefreshAt = new Date(Date.now() + refreshIntervalMs).toISOString();
   } catch {
     articles = [];
-    nextRefreshAt = new Date(Date.now() + cacheTtl).toISOString();
+    nextRefreshAt = new Date(Date.now() + refreshIntervalMs).toISOString();
   }
 
   const watchedPairs = pairsStr
@@ -738,9 +865,9 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
       }).filter(Boolean)
     : [];
 
-  articles = articles.map((article) => ({
+  articles = articles.map((article, index) => ({
     ...article,
-    deepDive: article.deepDive ?? buildNewsDeepDive(article, { lang }),
+    deepDive: article.deepDive ?? buildNewsDeepDive(article, { lang, variantSeed: index }),
   }));
 
   const freshArticles = articles.filter((article) => !article.isFallback);
@@ -764,19 +891,181 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
     freshnessWindowHours,
   };
 
-  NEWS_CACHE.set(cacheKey, result);
   return result;
 }
 
+// ─── Public accessor (stale-while-revalidate over the snapshot cache) ─────────
+
+export async function getNewsData(input: { noCache?: boolean; pairs?: string; lang?: string } = {}): Promise<NewsResponse> {
+  const noCache = input.noCache === true;
+  const { cacheKey, pairsStr, lang } = newsCacheKey(input);
+
+  // L1: in-process cache (only helps a warm instance).
+  if (!noCache) {
+    const cached = NEWS_CACHE.get(cacheKey);
+    if (cached) return cached;
+  }
+
+  // L2: shared Postgres snapshot. Serve it directly while still fresh — this is
+  // the fast path that keeps /api/news well under the serverless timeout and
+  // gives every invocation the same stable corpus (so pagination cannot
+  // duplicate or drop articles between pages).
+  const snapshot = await readNewsSnapshot(cacheKey);
+  if (snapshot && !noCache && Date.now() - snapshot.updatedAt.getTime() <= NEWS_SNAPSHOT_FRESH_MS) {
+    NEWS_CACHE.set(cacheKey, snapshot.payload);
+    return snapshot.payload;
+  }
+
+  // Stale, missing, or forced: rebuild (internally time-bounded) and persist.
+  try {
+    const fresh = await buildNewsData({ pairs: pairsStr, lang });
+    // A transient provider outage yields an empty build: better the previous
+    // snapshot than blanking the feed (and persisting the blank) for the whole
+    // freshness window.
+    if (fresh.articles.length === 0 && snapshot && snapshot.payload.articles.length > 0) {
+      NEWS_CACHE.set(cacheKey, snapshot.payload);
+      return snapshot.payload;
+    }
+    NEWS_CACHE.set(cacheKey, fresh);
+    void writeNewsSnapshot(cacheKey, fresh);
+    return fresh;
+  } catch (err) {
+    console.warn("[news] build failed:", err instanceof Error ? err.message : err);
+    // Better stale than a 504: fall back to the last stored snapshot if present.
+    if (snapshot) {
+      NEWS_CACHE.set(cacheKey, snapshot.payload);
+      return snapshot.payload;
+    }
+    throw err;
+  }
+}
+
+// ─── Per-user personalization ("train the feed with my info") ─────────────────
+
+function newsUserId(req: unknown): string | undefined {
+  return (req as { user?: { id?: string } }).user?.id;
+}
+
+async function readNewsPreferences(userId: string): Promise<NewsPreferences> {
+  try {
+    const { db, newsPreferencesTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const [row] = await db.select().from(newsPreferencesTable).where(eq(newsPreferencesTable.userId, userId)).limit(1);
+    if (!row) return { keywords: [], profile: "" };
+    let keywords: string[] = [];
+    try { const v = JSON.parse(row.keywords); if (Array.isArray(v)) keywords = v.map(String); } catch { /* ignore */ }
+    return { keywords, profile: row.profile ?? "" };
+  } catch (err) {
+    console.warn("[news] preferences read skipped:", err instanceof Error ? err.message : err);
+    return { keywords: [], profile: "" };
+  }
+}
+
+async function writeNewsPreferences(userId: string, prefs: NewsPreferences): Promise<void> {
+  const { db, newsPreferencesTable } = await import("@workspace/db");
+  const now = new Date();
+  const keywords = JSON.stringify(prefs.keywords.map((k) => String(k).trim()).filter(Boolean).slice(0, 40));
+  const profile = (prefs.profile ?? "").slice(0, 2000);
+  await db
+    .insert(newsPreferencesTable)
+    .values({ userId, keywords, profile, updatedAt: now })
+    .onConflictDoUpdate({ target: newsPreferencesTable.userId, set: { keywords, profile, updatedAt: now } });
+}
+
+async function readNewsFeedback(userId: string): Promise<NewsFeedbackEntry[]> {
+  try {
+    const { db, newsFeedbackTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const rows = await db.select().from(newsFeedbackTable).where(eq(newsFeedbackTable.userId, userId)).limit(500);
+    return rows.map((r) => ({ articleKey: r.articleKey, source: r.source, vote: r.vote }));
+  } catch (err) {
+    console.warn("[news] feedback read skipped:", err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
+async function upsertNewsFeedback(userId: string, entry: NewsFeedbackEntry): Promise<void> {
+  const { db, newsFeedbackTable } = await import("@workspace/db");
+  await db
+    .insert(newsFeedbackTable)
+    .values({ userId, articleKey: entry.articleKey, source: entry.source, vote: entry.vote })
+    .onConflictDoUpdate({
+      target: [newsFeedbackTable.userId, newsFeedbackTable.articleKey],
+      set: { vote: entry.vote, source: entry.source },
+    });
+}
+
+router.get("/news/preferences", async (req, res) => {
+  const userId = newsUserId(req);
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  res.json(await readNewsPreferences(userId));
+});
+
+router.put("/news/preferences", async (req, res) => {
+  const userId = newsUserId(req);
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  const body = req.body ?? {};
+  const keywords = Array.isArray(body.keywords) ? body.keywords.map((k: unknown) => String(k)) : [];
+  const profile = typeof body.profile === "string" ? body.profile : "";
+  try {
+    await writeNewsPreferences(userId, { keywords, profile });
+    res.json({ keywords, profile });
+  } catch (err) {
+    console.error("[news] preferences write:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
+router.post("/news/feedback", async (req, res) => {
+  const userId = newsUserId(req);
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  const body = req.body ?? {};
+  const articleKey = typeof body.articleKey === "string" ? body.articleKey : "";
+  const source = typeof body.source === "string" ? body.source : "";
+  const vote = body.vote === 1 || body.vote === -1 || body.vote === 0 ? body.vote : 0;
+  if (!articleKey) { res.status(400).json({ error: "articleKey richiesto" }); return; }
+  try {
+    await upsertNewsFeedback(userId, { articleKey, source, vote });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[news] feedback write:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
 router.get("/news", async (req, res) => {
-  const result = await getNewsData({
-    noCache: req.query.nocache === "1",
-    pairs: (req.query.pairs as string) || "",
-    lang: req.query.lang as string | undefined,
-  });
+  let result: NewsResponse;
+  try {
+    result = await getNewsData({
+      noCache: req.query.nocache === "1",
+      pairs: (req.query.pairs as string) || "",
+      lang: req.query.lang as string | undefined,
+    });
+  } catch (err) {
+    console.error("[news] feed unavailable:", err instanceof Error ? err.message : err);
+    res.status(503).json({ error: "Feed notizie temporaneamente non disponibile" });
+    return;
+  }
+
+  // Personalization in a chronological feed: direct 👎 votes hide the article,
+  // everything else keeps its time position (re-ranking by keyword boost would
+  // break the newest-first ordering the feed guarantees).
+  let articles = result.articles;
+  const userId = newsUserId(req);
+  if (userId) {
+    try {
+      const feedback = await readNewsFeedback(userId);
+      const downvoted = new Set(feedback.filter((entry) => entry.vote === -1).map((entry) => entry.articleKey));
+      if (downvoted.size > 0) {
+        articles = articles.filter((article) => !downvoted.has(personalizationArticleKey(article)));
+      }
+    } catch (err) {
+      console.warn("[news] personalization skipped:", err instanceof Error ? err.message : err);
+    }
+  }
 
   const limitParam = Number.parseInt((req.query.limit as string) ?? "", 10);
-  const page = paginateNews(result.articles, {
+  const page = paginateNews(articles, {
     cursor: (req.query.cursor as string) ?? null,
     limit: Number.isFinite(limitParam) ? limitParam : DEFAULT_NEWS_PAGE_SIZE,
   });

@@ -17,11 +17,15 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AccountKeyBackupResponse,
   AuthUserEnvelope,
   AvatarResponse,
   BacktestSession,
   BacktestTrade,
   BeginBrowserLoginParams,
+  BillingCheckoutSession,
+  BillingInvoices,
+  BillingStatus,
   CalendarEvent,
   ChatMessageRecord,
   ChatMessagesResponse,
@@ -38,6 +42,8 @@ import type {
   CreateJournalEntryRequest,
   CreateMissionTemplateRequest,
   CreateQuoteRequest,
+  CreateWikiTextSourceRequest,
+  CreateWikiUrlSourceRequest,
   DeleteBacktestSession200,
   DeleteBacktestTrade200,
   DeleteResponse,
@@ -59,13 +65,18 @@ import type {
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
   NewsResponse,
+  PaymentRequiredError,
   PendingFriendRequest,
   PublicKeyRecord,
   PublicKeyResponse,
+  QueryWikiRequest,
   Quote,
+  ReadinessStatus,
+  SaveAccountKeyBackupBody,
   SavePublicKeyBody,
   SearchUsersParams,
   SendMessageBody,
+  StripeNotConfiguredError,
   UnreadCountResponse,
   UpdateChecklistItemRequest,
   UpdateIdeaRequest,
@@ -77,9 +88,13 @@ import type {
   UploadImageResponse,
   UploadJournalImageBody,
   UploadProfileAvatarBody,
+  UploadWikiSourceBody,
   UserProfile,
   UserSearchResult,
   UserSettings,
+  WikiAnswer,
+  WikiGraph,
+  WikiSource,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -90,6 +105,745 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary List private wiki sources
+ */
+export const getListWikiSourcesUrl = () => {
+  return `/api/wiki/sources`;
+};
+
+export const listWikiSources = async (
+  options?: RequestInit,
+): Promise<WikiSource[]> => {
+  return customFetch<WikiSource[]>(getListWikiSourcesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListWikiSourcesQueryKey = () => {
+  return [`/api/wiki/sources`] as const;
+};
+
+export const getListWikiSourcesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWikiSources>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiSources>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWikiSourcesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listWikiSources>>> = ({
+    signal,
+  }) => listWikiSources({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiSources>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListWikiSourcesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listWikiSources>>
+>;
+export type ListWikiSourcesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List private wiki sources
+ */
+
+export function useListWikiSources<
+  TData = Awaited<ReturnType<typeof listWikiSources>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiSources>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListWikiSourcesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a text note to the private wiki
+ */
+export const getCreateWikiTextSourceUrl = () => {
+  return `/api/wiki/sources/text`;
+};
+
+export const createWikiTextSource = async (
+  createWikiTextSourceRequest: CreateWikiTextSourceRequest,
+  options?: RequestInit,
+): Promise<WikiSource> => {
+  return customFetch<WikiSource>(getCreateWikiTextSourceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createWikiTextSourceRequest),
+  });
+};
+
+export const getCreateWikiTextSourceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWikiTextSource>>,
+    TError,
+    { data: BodyType<CreateWikiTextSourceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createWikiTextSource>>,
+  TError,
+  { data: BodyType<CreateWikiTextSourceRequest> },
+  TContext
+> => {
+  const mutationKey = ["createWikiTextSource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createWikiTextSource>>,
+    { data: BodyType<CreateWikiTextSourceRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createWikiTextSource(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateWikiTextSourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createWikiTextSource>>
+>;
+export type CreateWikiTextSourceMutationBody =
+  BodyType<CreateWikiTextSourceRequest>;
+export type CreateWikiTextSourceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a text note to the private wiki
+ */
+export const useCreateWikiTextSource = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWikiTextSource>>,
+    TError,
+    { data: BodyType<CreateWikiTextSourceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createWikiTextSource>>,
+  TError,
+  { data: BodyType<CreateWikiTextSourceRequest> },
+  TContext
+> => {
+  return useMutation(getCreateWikiTextSourceMutationOptions(options));
+};
+
+/**
+ * @summary Upload a file to the private wiki
+ */
+export const getUploadWikiSourceUrl = () => {
+  return `/api/wiki/sources/upload`;
+};
+
+export const uploadWikiSource = async (
+  uploadWikiSourceBody: UploadWikiSourceBody,
+  options?: RequestInit,
+): Promise<WikiSource> => {
+  const formData = new FormData();
+  formData.append(`file`, uploadWikiSourceBody.file);
+  if (uploadWikiSourceBody.title !== undefined) {
+    formData.append(`title`, uploadWikiSourceBody.title);
+  }
+
+  return customFetch<WikiSource>(getUploadWikiSourceUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getUploadWikiSourceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadWikiSource>>,
+    TError,
+    { data: BodyType<UploadWikiSourceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadWikiSource>>,
+  TError,
+  { data: BodyType<UploadWikiSourceBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadWikiSource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadWikiSource>>,
+    { data: BodyType<UploadWikiSourceBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return uploadWikiSource(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadWikiSourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadWikiSource>>
+>;
+export type UploadWikiSourceMutationBody = BodyType<UploadWikiSourceBody>;
+export type UploadWikiSourceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload a file to the private wiki
+ */
+export const useUploadWikiSource = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadWikiSource>>,
+    TError,
+    { data: BodyType<UploadWikiSourceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadWikiSource>>,
+  TError,
+  { data: BodyType<UploadWikiSourceBody> },
+  TContext
+> => {
+  return useMutation(getUploadWikiSourceMutationOptions(options));
+};
+
+/**
+ * @summary Import a URL into the private wiki
+ */
+export const getCreateWikiUrlSourceUrl = () => {
+  return `/api/wiki/sources/url`;
+};
+
+export const createWikiUrlSource = async (
+  createWikiUrlSourceRequest: CreateWikiUrlSourceRequest,
+  options?: RequestInit,
+): Promise<WikiSource> => {
+  return customFetch<WikiSource>(getCreateWikiUrlSourceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createWikiUrlSourceRequest),
+  });
+};
+
+export const getCreateWikiUrlSourceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWikiUrlSource>>,
+    TError,
+    { data: BodyType<CreateWikiUrlSourceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createWikiUrlSource>>,
+  TError,
+  { data: BodyType<CreateWikiUrlSourceRequest> },
+  TContext
+> => {
+  const mutationKey = ["createWikiUrlSource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createWikiUrlSource>>,
+    { data: BodyType<CreateWikiUrlSourceRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createWikiUrlSource(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateWikiUrlSourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createWikiUrlSource>>
+>;
+export type CreateWikiUrlSourceMutationBody =
+  BodyType<CreateWikiUrlSourceRequest>;
+export type CreateWikiUrlSourceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Import a URL into the private wiki
+ */
+export const useCreateWikiUrlSource = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWikiUrlSource>>,
+    TError,
+    { data: BodyType<CreateWikiUrlSourceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createWikiUrlSource>>,
+  TError,
+  { data: BodyType<CreateWikiUrlSourceRequest> },
+  TContext
+> => {
+  return useMutation(getCreateWikiUrlSourceMutationOptions(options));
+};
+
+/**
+ * @summary Delete a private wiki source
+ */
+export const getDeleteWikiSourceUrl = (id: number) => {
+  return `/api/wiki/sources/${id}`;
+};
+
+export const deleteWikiSource = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteWikiSourceUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteWikiSourceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWikiSource>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteWikiSource>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteWikiSource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteWikiSource>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteWikiSource(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteWikiSourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteWikiSource>>
+>;
+
+export type DeleteWikiSourceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a private wiki source
+ */
+export const useDeleteWikiSource = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWikiSource>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteWikiSource>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteWikiSourceMutationOptions(options));
+};
+
+/**
+ * @summary Get private wiki graph summary
+ */
+export const getGetWikiGraphUrl = () => {
+  return `/api/wiki/graph`;
+};
+
+export const getWikiGraph = async (
+  options?: RequestInit,
+): Promise<WikiGraph> => {
+  return customFetch<WikiGraph>(getGetWikiGraphUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetWikiGraphQueryKey = () => {
+  return [`/api/wiki/graph`] as const;
+};
+
+export const getGetWikiGraphQueryOptions = <
+  TData = Awaited<ReturnType<typeof getWikiGraph>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getWikiGraph>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetWikiGraphQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getWikiGraph>>> = ({
+    signal,
+  }) => getWikiGraph({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getWikiGraph>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetWikiGraphQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getWikiGraph>>
+>;
+export type GetWikiGraphQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get private wiki graph summary
+ */
+
+export function useGetWikiGraph<
+  TData = Awaited<ReturnType<typeof getWikiGraph>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getWikiGraph>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetWikiGraphQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List private wiki graph communities
+ */
+export const getListWikiCommunitiesUrl = () => {
+  return `/api/wiki/communities`;
+};
+
+export const listWikiCommunities = async (
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getListWikiCommunitiesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListWikiCommunitiesQueryKey = () => {
+  return [`/api/wiki/communities`] as const;
+};
+
+export const getListWikiCommunitiesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWikiCommunities>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiCommunities>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWikiCommunitiesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listWikiCommunities>>
+  > = ({ signal }) => listWikiCommunities({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiCommunities>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListWikiCommunitiesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listWikiCommunities>>
+>;
+export type ListWikiCommunitiesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List private wiki graph communities
+ */
+
+export function useListWikiCommunities<
+  TData = Awaited<ReturnType<typeof listWikiCommunities>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiCommunities>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListWikiCommunitiesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Ask the private wiki a question
+ */
+export const getQueryWikiUrl = () => {
+  return `/api/wiki/query`;
+};
+
+export const queryWiki = async (
+  queryWikiRequest: QueryWikiRequest,
+  options?: RequestInit,
+): Promise<WikiAnswer> => {
+  return customFetch<WikiAnswer>(getQueryWikiUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(queryWikiRequest),
+  });
+};
+
+export const getQueryWikiMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof queryWiki>>,
+    TError,
+    { data: BodyType<QueryWikiRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof queryWiki>>,
+  TError,
+  { data: BodyType<QueryWikiRequest> },
+  TContext
+> => {
+  const mutationKey = ["queryWiki"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof queryWiki>>,
+    { data: BodyType<QueryWikiRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return queryWiki(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QueryWikiMutationResult = NonNullable<
+  Awaited<ReturnType<typeof queryWiki>>
+>;
+export type QueryWikiMutationBody = BodyType<QueryWikiRequest>;
+export type QueryWikiMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Ask the private wiki a question
+ */
+export const useQueryWiki = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof queryWiki>>,
+    TError,
+    { data: BodyType<QueryWikiRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof queryWiki>>,
+  TError,
+  { data: BodyType<QueryWikiRequest> },
+  TContext
+> => {
+  return useMutation(getQueryWikiMutationOptions(options));
+};
+
+/**
+ * @summary Rebuild the private wiki graph
+ */
+export const getReindexWikiUrl = () => {
+  return `/api/wiki/reindex`;
+};
+
+export const reindexWiki = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getReindexWikiUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getReindexWikiMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reindexWiki>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reindexWiki>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["reindexWiki"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reindexWiki>>,
+    void
+  > = () => {
+    return reindexWiki(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReindexWikiMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reindexWiki>>
+>;
+
+export type ReindexWikiMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Rebuild the private wiki graph
+ */
+export const useReindexWiki = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reindexWiki>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reindexWiki>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getReindexWikiMutationOptions(options));
+};
 
 /**
  * @summary Health check
@@ -158,6 +912,560 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Readiness check
+ */
+export const getReadinessCheckUrl = () => {
+  return `/api/readyz`;
+};
+
+export const readinessCheck = async (
+  options?: RequestInit,
+): Promise<ReadinessStatus> => {
+  return customFetch<ReadinessStatus>(getReadinessCheckUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getReadinessCheckQueryKey = () => {
+  return [`/api/readyz`] as const;
+};
+
+export const getReadinessCheckQueryOptions = <
+  TData = Awaited<ReturnType<typeof readinessCheck>>,
+  TError = ErrorType<ReadinessStatus>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof readinessCheck>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getReadinessCheckQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof readinessCheck>>> = ({
+    signal,
+  }) => readinessCheck({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof readinessCheck>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ReadinessCheckQueryResult = NonNullable<
+  Awaited<ReturnType<typeof readinessCheck>>
+>;
+export type ReadinessCheckQueryError = ErrorType<ReadinessStatus>;
+
+/**
+ * @summary Readiness check
+ */
+
+export function useReadinessCheck<
+  TData = Awaited<ReturnType<typeof readinessCheck>>,
+  TError = ErrorType<ReadinessStatus>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof readinessCheck>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getReadinessCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Service status
+ */
+export const getServiceStatusUrl = () => {
+  return `/api/status`;
+};
+
+export const serviceStatus = async (
+  options?: RequestInit,
+): Promise<ReadinessStatus> => {
+  return customFetch<ReadinessStatus>(getServiceStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getServiceStatusQueryKey = () => {
+  return [`/api/status`] as const;
+};
+
+export const getServiceStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof serviceStatus>>,
+  TError = ErrorType<ReadinessStatus>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof serviceStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getServiceStatusQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof serviceStatus>>> = ({
+    signal,
+  }) => serviceStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof serviceStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ServiceStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof serviceStatus>>
+>;
+export type ServiceStatusQueryError = ErrorType<ReadinessStatus>;
+
+/**
+ * @summary Service status
+ */
+
+export function useServiceStatus<
+  TData = Awaited<ReturnType<typeof serviceStatus>>,
+  TError = ErrorType<ReadinessStatus>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof serviceStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getServiceStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get the current user's subscription status
+ */
+export const getGetBillingStatusUrl = () => {
+  return `/api/billing/me`;
+};
+
+export const getBillingStatus = async (
+  options?: RequestInit,
+): Promise<BillingStatus> => {
+  return customFetch<BillingStatus>(getGetBillingStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBillingStatusQueryKey = () => {
+  return [`/api/billing/me`] as const;
+};
+
+export const getGetBillingStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBillingStatus>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillingStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBillingStatus>>
+  > = ({ signal }) => getBillingStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBillingStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBillingStatus>>
+>;
+export type GetBillingStatusQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get the current user's subscription status
+ */
+
+export function useGetBillingStatus<
+  TData = Awaited<ReturnType<typeof getBillingStatus>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBillingStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a Stripe Embedded Checkout session for Pro
+ */
+export const getCreateBillingCheckoutSessionUrl = () => {
+  return `/api/billing/checkout-session`;
+};
+
+export const createBillingCheckoutSession = async (
+  options?: RequestInit,
+): Promise<BillingCheckoutSession> => {
+  return customFetch<BillingCheckoutSession>(
+    getCreateBillingCheckoutSessionUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getCreateBillingCheckoutSessionMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBillingCheckoutSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBillingCheckoutSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["createBillingCheckoutSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBillingCheckoutSession>>,
+    void
+  > = () => {
+    return createBillingCheckoutSession(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBillingCheckoutSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBillingCheckoutSession>>
+>;
+
+export type CreateBillingCheckoutSessionMutationError = ErrorType<
+  ErrorEnvelope | StripeNotConfiguredError
+>;
+
+/**
+ * @summary Create a Stripe Embedded Checkout session for Pro
+ */
+export const useCreateBillingCheckoutSession = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBillingCheckoutSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBillingCheckoutSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getCreateBillingCheckoutSessionMutationOptions(options));
+};
+
+/**
+ * @summary Cancel Pro renewal at period end
+ */
+export const getCancelBillingSubscriptionUrl = () => {
+  return `/api/billing/cancel`;
+};
+
+export const cancelBillingSubscription = async (
+  options?: RequestInit,
+): Promise<BillingStatus> => {
+  return customFetch<BillingStatus>(getCancelBillingSubscriptionUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCancelBillingSubscriptionMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelBillingSubscription>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelBillingSubscription>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["cancelBillingSubscription"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelBillingSubscription>>,
+    void
+  > = () => {
+    return cancelBillingSubscription(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelBillingSubscriptionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelBillingSubscription>>
+>;
+
+export type CancelBillingSubscriptionMutationError = ErrorType<
+  ErrorEnvelope | StripeNotConfiguredError
+>;
+
+/**
+ * @summary Cancel Pro renewal at period end
+ */
+export const useCancelBillingSubscription = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelBillingSubscription>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cancelBillingSubscription>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getCancelBillingSubscriptionMutationOptions(options));
+};
+
+/**
+ * @summary Resume a Pro subscription scheduled for cancellation
+ */
+export const getResumeBillingSubscriptionUrl = () => {
+  return `/api/billing/resume`;
+};
+
+export const resumeBillingSubscription = async (
+  options?: RequestInit,
+): Promise<BillingStatus> => {
+  return customFetch<BillingStatus>(getResumeBillingSubscriptionUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getResumeBillingSubscriptionMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resumeBillingSubscription>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resumeBillingSubscription>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["resumeBillingSubscription"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resumeBillingSubscription>>,
+    void
+  > = () => {
+    return resumeBillingSubscription(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResumeBillingSubscriptionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resumeBillingSubscription>>
+>;
+
+export type ResumeBillingSubscriptionMutationError = ErrorType<
+  ErrorEnvelope | StripeNotConfiguredError
+>;
+
+/**
+ * @summary Resume a Pro subscription scheduled for cancellation
+ */
+export const useResumeBillingSubscription = <
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resumeBillingSubscription>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resumeBillingSubscription>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getResumeBillingSubscriptionMutationOptions(options));
+};
+
+/**
+ * @summary List current user's Stripe invoices
+ */
+export const getGetBillingInvoicesUrl = () => {
+  return `/api/billing/invoices`;
+};
+
+export const getBillingInvoices = async (
+  options?: RequestInit,
+): Promise<BillingInvoices> => {
+  return customFetch<BillingInvoices>(getGetBillingInvoicesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBillingInvoicesQueryKey = () => {
+  return [`/api/billing/invoices`] as const;
+};
+
+export const getGetBillingInvoicesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBillingInvoices>>,
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingInvoices>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillingInvoicesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBillingInvoices>>
+  > = ({ signal }) => getBillingInvoices({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingInvoices>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBillingInvoicesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBillingInvoices>>
+>;
+export type GetBillingInvoicesQueryError = ErrorType<
+  ErrorEnvelope | StripeNotConfiguredError
+>;
+
+/**
+ * @summary List current user's Stripe invoices
+ */
+
+export function useGetBillingInvoices<
+  TData = Awaited<ReturnType<typeof getBillingInvoices>>,
+  TError = ErrorType<ErrorEnvelope | StripeNotConfiguredError>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingInvoices>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBillingInvoicesQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -1922,6 +3230,81 @@ export function useGetTodayCheckin<
 }
 
 /**
+ * @summary List session check-ins (most recent first)
+ */
+export const getGetCheckinsUrl = () => {
+  return `/api/checkins`;
+};
+
+export const getCheckins = async (
+  options?: RequestInit,
+): Promise<Checkin[]> => {
+  return customFetch<Checkin[]>(getGetCheckinsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCheckinsQueryKey = () => {
+  return [`/api/checkins`] as const;
+};
+
+export const getGetCheckinsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCheckins>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCheckins>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCheckinsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCheckins>>> = ({
+    signal,
+  }) => getCheckins({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCheckins>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCheckinsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCheckins>>
+>;
+export type GetCheckinsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List session check-ins (most recent first)
+ */
+
+export function useGetCheckins<
+  TData = Awaited<ReturnType<typeof getCheckins>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCheckins>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCheckinsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Create a session check-in
  */
 export const getCreateCheckinUrl = () => {
@@ -3614,7 +4997,7 @@ export const getGetBacktestSessionsQueryKey = () => {
 
 export const getGetBacktestSessionsQueryOptions = <
   TData = Awaited<ReturnType<typeof getBacktestSessions>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof getBacktestSessions>>,
@@ -3641,7 +5024,7 @@ export const getGetBacktestSessionsQueryOptions = <
 export type GetBacktestSessionsQueryResult = NonNullable<
   Awaited<ReturnType<typeof getBacktestSessions>>
 >;
-export type GetBacktestSessionsQueryError = ErrorType<unknown>;
+export type GetBacktestSessionsQueryError = ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Get all backtest sessions
@@ -3649,7 +5032,7 @@ export type GetBacktestSessionsQueryError = ErrorType<unknown>;
 
 export function useGetBacktestSessions<
   TData = Awaited<ReturnType<typeof getBacktestSessions>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof getBacktestSessions>>,
@@ -3687,7 +5070,7 @@ export const createBacktestSession = async (
 };
 
 export const getCreateBacktestSessionMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3729,13 +5112,14 @@ export type CreateBacktestSessionMutationResult = NonNullable<
 >;
 export type CreateBacktestSessionMutationBody =
   BodyType<CreateBacktestSessionRequest>;
-export type CreateBacktestSessionMutationError = ErrorType<unknown>;
+export type CreateBacktestSessionMutationError =
+  ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Create a backtest session
  */
 export const useCreateBacktestSession = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3775,7 +5159,7 @@ export const deleteBacktestSession = async (
 };
 
 export const getDeleteBacktestSessionMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3816,13 +5200,14 @@ export type DeleteBacktestSessionMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteBacktestSession>>
 >;
 
-export type DeleteBacktestSessionMutationError = ErrorType<unknown>;
+export type DeleteBacktestSessionMutationError =
+  ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Delete a backtest session
  */
 export const useDeleteBacktestSession = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3864,7 +5249,7 @@ export const getGetBacktestTradesQueryKey = (id: number) => {
 
 export const getGetBacktestTradesQueryOptions = <
   TData = Awaited<ReturnType<typeof getBacktestTrades>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(
   id: number,
   options?: {
@@ -3899,7 +5284,7 @@ export const getGetBacktestTradesQueryOptions = <
 export type GetBacktestTradesQueryResult = NonNullable<
   Awaited<ReturnType<typeof getBacktestTrades>>
 >;
-export type GetBacktestTradesQueryError = ErrorType<unknown>;
+export type GetBacktestTradesQueryError = ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Get trades for a backtest session
@@ -3907,7 +5292,7 @@ export type GetBacktestTradesQueryError = ErrorType<unknown>;
 
 export function useGetBacktestTrades<
   TData = Awaited<ReturnType<typeof getBacktestTrades>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(
   id: number,
   options?: {
@@ -3949,7 +5334,7 @@ export const createBacktestTrade = async (
 };
 
 export const getCreateBacktestTradeMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3991,13 +5376,13 @@ export type CreateBacktestTradeMutationResult = NonNullable<
 >;
 export type CreateBacktestTradeMutationBody =
   BodyType<CreateBacktestTradeRequest>;
-export type CreateBacktestTradeMutationError = ErrorType<unknown>;
+export type CreateBacktestTradeMutationError = ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Add a trade to a backtest session
  */
 export const useCreateBacktestTrade = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4034,7 +5419,7 @@ export const deleteBacktestTrade = async (
 };
 
 export const getDeleteBacktestTradeMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4075,13 +5460,13 @@ export type DeleteBacktestTradeMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteBacktestTrade>>
 >;
 
-export type DeleteBacktestTradeMutationError = ErrorType<unknown>;
+export type DeleteBacktestTradeMutationError = ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Delete a backtest trade
  */
 export const useDeleteBacktestTrade = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4284,7 +5669,7 @@ export const getGetLeaderboardQueryKey = () => {
 
 export const getGetLeaderboardQueryOptions = <
   TData = Awaited<ReturnType<typeof getLeaderboard>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof getLeaderboard>>,
@@ -4311,7 +5696,7 @@ export const getGetLeaderboardQueryOptions = <
 export type GetLeaderboardQueryResult = NonNullable<
   Awaited<ReturnType<typeof getLeaderboard>>
 >;
-export type GetLeaderboardQueryError = ErrorType<unknown>;
+export type GetLeaderboardQueryError = ErrorType<PaymentRequiredError>;
 
 /**
  * @summary Get trader leaderboard ranked by XP
@@ -4319,7 +5704,7 @@ export type GetLeaderboardQueryError = ErrorType<unknown>;
 
 export function useGetLeaderboard<
   TData = Awaited<ReturnType<typeof getLeaderboard>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PaymentRequiredError>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof getLeaderboard>>,
@@ -4926,6 +6311,168 @@ export const useSavePublicKey = <
   TContext
 > => {
   return useMutation(getSavePublicKeyMutationOptions(options));
+};
+
+/**
+ * @summary Get the authenticated user's account-backed E2EE key pair
+ */
+export const getGetAccountKeyBackupUrl = () => {
+  return `/api/chat/key-backup`;
+};
+
+export const getAccountKeyBackup = async (
+  options?: RequestInit,
+): Promise<AccountKeyBackupResponse> => {
+  return customFetch<AccountKeyBackupResponse>(getGetAccountKeyBackupUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAccountKeyBackupQueryKey = () => {
+  return [`/api/chat/key-backup`] as const;
+};
+
+export const getGetAccountKeyBackupQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAccountKeyBackup>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAccountKeyBackup>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAccountKeyBackupQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAccountKeyBackup>>
+  > = ({ signal }) => getAccountKeyBackup({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAccountKeyBackup>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAccountKeyBackupQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAccountKeyBackup>>
+>;
+export type GetAccountKeyBackupQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the authenticated user's account-backed E2EE key pair
+ */
+
+export function useGetAccountKeyBackup<
+  TData = Awaited<ReturnType<typeof getAccountKeyBackup>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAccountKeyBackup>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAccountKeyBackupQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save the authenticated user's account-backed E2EE key pair
+ */
+export const getSaveAccountKeyBackupUrl = () => {
+  return `/api/chat/key-backup`;
+};
+
+export const saveAccountKeyBackup = async (
+  saveAccountKeyBackupBody: SaveAccountKeyBackupBody,
+  options?: RequestInit,
+): Promise<AccountKeyBackupResponse> => {
+  return customFetch<AccountKeyBackupResponse>(getSaveAccountKeyBackupUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(saveAccountKeyBackupBody),
+  });
+};
+
+export const getSaveAccountKeyBackupMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveAccountKeyBackup>>,
+    TError,
+    { data: BodyType<SaveAccountKeyBackupBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveAccountKeyBackup>>,
+  TError,
+  { data: BodyType<SaveAccountKeyBackupBody> },
+  TContext
+> => {
+  const mutationKey = ["saveAccountKeyBackup"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveAccountKeyBackup>>,
+    { data: BodyType<SaveAccountKeyBackupBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveAccountKeyBackup(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveAccountKeyBackupMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveAccountKeyBackup>>
+>;
+export type SaveAccountKeyBackupMutationBody =
+  BodyType<SaveAccountKeyBackupBody>;
+export type SaveAccountKeyBackupMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save the authenticated user's account-backed E2EE key pair
+ */
+export const useSaveAccountKeyBackup = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveAccountKeyBackup>>,
+    TError,
+    { data: BodyType<SaveAccountKeyBackupBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveAccountKeyBackup>>,
+  TError,
+  { data: BodyType<SaveAccountKeyBackupBody> },
+  TContext
+> => {
+  return useMutation(getSaveAccountKeyBackupMutationOptions(options));
 };
 
 /**

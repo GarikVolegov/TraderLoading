@@ -9,6 +9,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: billing
+    description: Subscription billing and entitlement operations
   - name: Auth
     description: Browser and mobile authentication endpoints.
   - name: profile
@@ -31,6 +33,8 @@ tags:
     description: Friendship management
   - name: chat
     description: E2E encrypted chat
+  - name: wiki
+    description: Private user knowledge base and graph search
   - name: backtest
     description: Backtesting sessions and trades
   - name: quotes
@@ -38,6 +42,150 @@ tags:
   - name: checkins
     description: Daily session check-ins
 paths:
+  /wiki/sources:
+    get:
+      operationId: listWikiSources
+      tags: [wiki]
+      summary: List private wiki sources
+      responses:
+        "200":
+          description: Wiki sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WikiSource"
+
+  /wiki/sources/text:
+    post:
+      operationId: createWikiTextSource
+      tags: [wiki]
+      summary: Add a text note to the private wiki
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWikiTextSourceRequest"
+      responses:
+        "202":
+          description: Source queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiSource"
+
+  /wiki/sources/upload:
+    post:
+      operationId: uploadWikiSource
+      tags: [wiki]
+      summary: Upload a file to the private wiki
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+              required: [file]
+      responses:
+        "202":
+          description: Source queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiSource"
+
+  /wiki/sources/url:
+    post:
+      operationId: createWikiUrlSource
+      tags: [wiki]
+      summary: Import a URL into the private wiki
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWikiUrlSourceRequest"
+      responses:
+        "202":
+          description: Source queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiSource"
+
+  /wiki/sources/{id}:
+    delete:
+      operationId: deleteWikiSource
+      tags: [wiki]
+      summary: Delete a private wiki source
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+
+  /wiki/graph:
+    get:
+      operationId: getWikiGraph
+      tags: [wiki]
+      summary: Get private wiki graph summary
+      responses:
+        "200":
+          description: Wiki graph
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiGraph"
+
+  /wiki/communities:
+    get:
+      operationId: listWikiCommunities
+      tags: [wiki]
+      summary: List private wiki graph communities
+      responses:
+        "200":
+          description: Communities
+
+  /wiki/query:
+    post:
+      operationId: queryWiki
+      tags: [wiki]
+      summary: Ask the private wiki a question
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryWikiRequest"
+      responses:
+        "200":
+          description: Answer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiAnswer"
+
+  /wiki/reindex:
+    post:
+      operationId: reindexWiki
+      tags: [wiki]
+      summary: Rebuild the private wiki graph
+      responses:
+        "200":
+          description: Reindex result
+
   /healthz:
     get:
       operationId: healthCheck
@@ -50,6 +198,173 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /readyz:
+    get:
+      operationId: readinessCheck
+      tags: [health]
+      summary: Readiness check
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+        "503":
+          description: Dependency check failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+  /status:
+    get:
+      operationId: serviceStatus
+      tags: [health]
+      summary: Service status
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+        "503":
+          description: Dependency check failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+
+  /billing/me:
+    get:
+      operationId: getBillingStatus
+      tags: [billing]
+      summary: Get the current user's subscription status
+      responses:
+        "200":
+          description: Billing entitlement status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /billing/checkout-session:
+    post:
+      operationId: createBillingCheckoutSession
+      tags: [billing]
+      summary: Create a Stripe Embedded Checkout session for Pro
+      responses:
+        "200":
+          description: Checkout session client secret
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingCheckoutSession"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Stripe billing is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeNotConfiguredError"
+
+  /billing/cancel:
+    post:
+      operationId: cancelBillingSubscription
+      tags: [billing]
+      summary: Cancel Pro renewal at period end
+      responses:
+        "200":
+          description: Updated billing entitlement status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Stripe billing is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeNotConfiguredError"
+
+  /billing/resume:
+    post:
+      operationId: resumeBillingSubscription
+      tags: [billing]
+      summary: Resume a Pro subscription scheduled for cancellation
+      responses:
+        "200":
+          description: Updated billing entitlement status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Stripe billing is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeNotConfiguredError"
+
+  /billing/invoices:
+    get:
+      operationId: getBillingInvoices
+      tags: [billing]
+      summary: List current user's Stripe invoices
+      responses:
+        "200":
+          description: Billing invoice list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingInvoices"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Stripe billing is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeNotConfiguredError"
 
   /auth/user:
     get:
@@ -436,6 +751,19 @@ paths:
                 nullable: true
 
   /checkins:
+    get:
+      operationId: getCheckins
+      tags: [checkins]
+      summary: List session check-ins (most recent first)
+      responses:
+        "200":
+          description: List of check-ins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Checkin"
     post:
       operationId: createCheckin
       tags: [checkins]
@@ -832,6 +1160,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BacktestSession"
+        "402":
+          description: Pro subscription required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequiredError"
     post:
       operationId: createBacktestSession
       tags: [backtest]
@@ -849,6 +1183,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BacktestSession"
+        "402":
+          description: Pro subscription required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequiredError"
 
   /backtest/sessions/{id}:
     delete:
@@ -871,6 +1211,12 @@ paths:
                 properties:
                   ok:
                     type: boolean
+        "402":
+          description: Pro subscription required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequiredError"
 
   /backtest/sessions/{id}/trades:
     get:
@@ -892,6 +1238,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BacktestTrade"
+        "402":
+          description: Pro subscription required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequiredError"
     post:
       operationId: createBacktestTrade
       tags: [backtest]
@@ -915,6 +1267,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BacktestTrade"
+        "402":
+          description: Pro subscription required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequiredError"
 
   /backtest/trades/{id}:
     delete:
@@ -937,6 +1295,12 @@ paths:
                 properties:
                   ok:
                     type: boolean
+        "402":
+          description: Pro subscription required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequiredError"
 
   /settings:
     get:
@@ -982,6 +1346,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/GetLeaderboardResponseItem"
+        "402":
+          description: Pro subscription required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequiredError"
 
   /friends/search:
     get:
@@ -1124,6 +1494,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/PublicKeyRecord"
 
+  /chat/key-backup:
+    get:
+      operationId: getAccountKeyBackup
+      tags: [chat]
+      summary: Get the authenticated user's account-backed E2EE key pair
+      responses:
+        "200":
+          description: Account key backup status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeyBackupResponse"
+    put:
+      operationId: saveAccountKeyBackup
+      tags: [chat]
+      summary: Save the authenticated user's account-backed E2EE key pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveAccountKeyBackupBody"
+      responses:
+        "200":
+          description: Account key backup saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeyBackupResponse"
+
   /chat/keys/{userId}:
     get:
       operationId: getPublicKey
@@ -1254,6 +1654,110 @@ components:
         type: string
 
   schemas:
+    WikiSource:
+      type: object
+      properties:
+        id:
+          type: integer
+        kind:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [queued, processing, ready, error, pending_transcription]
+        error:
+          type: string
+          nullable: true
+        fileUrl:
+          type: string
+          nullable: true
+        fileName:
+          type: string
+          nullable: true
+        mimeType:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, kind, title, status]
+
+    CreateWikiTextSourceRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required: [content]
+
+    CreateWikiUrlSourceRequest:
+      type: object
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required: [url]
+
+    QueryWikiRequest:
+      type: object
+      properties:
+        question:
+          type: string
+      required: [question]
+
+    WikiGraph:
+      type: object
+      properties:
+        stats:
+          type: object
+          properties:
+            sources:
+              type: integer
+            nodes:
+              type: integer
+            edges:
+              type: integer
+            communities:
+              type: integer
+        nodes:
+          type: array
+          items:
+            type: object
+        edges:
+          type: array
+          items:
+            type: object
+        communities:
+          type: array
+          items:
+            type: object
+
+    WikiAnswer:
+      type: object
+      properties:
+        answer:
+          type: string
+        citations:
+          type: array
+          items:
+            type: object
+        nodes:
+          type: array
+          items:
+            type: object
+      required: [answer, citations, nodes]
+
     HealthStatus:
       type: object
       properties:
@@ -1261,6 +1765,175 @@ components:
           type: string
       required:
         - status
+
+    BillingStatus:
+      type: object
+      required:
+        - plan
+        - status
+        - pro
+        - source
+        - manualOverride
+        - currentPeriodEnd
+        - cancelAtPeriodEnd
+        - stripeCustomerId
+        - stripeSubscriptionId
+        - canCancel
+        - canResume
+        - canViewInvoices
+      properties:
+        plan:
+          type: string
+          enum: [free, pro]
+        status:
+          type: string
+          enum:
+            - free
+            - none
+            - trialing
+            - active
+            - past_due
+            - canceled
+            - incomplete
+            - incomplete_expired
+            - unpaid
+            - paused
+        pro:
+          type: boolean
+        source:
+          type: string
+          nullable: true
+          description: Subscription source, for example Stripe checkout or manual admin override.
+        manualOverride:
+          type: boolean
+        currentPeriodEnd:
+          type: string
+          nullable: true
+        cancelAtPeriodEnd:
+          type: boolean
+        stripeCustomerId:
+          type: string
+          nullable: true
+        stripeSubscriptionId:
+          type: string
+          nullable: true
+          description: Masked Stripe subscription id for display.
+        canCancel:
+          type: boolean
+        canResume:
+          type: boolean
+        canViewInvoices:
+          type: boolean
+
+    BillingCheckoutSession:
+      type: object
+      required:
+        - clientSecret
+      properties:
+        clientSecret:
+          type: string
+          nullable: true
+
+    BillingInvoices:
+      type: object
+      required:
+        - invoices
+      properties:
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingInvoice"
+
+    BillingInvoice:
+      type: object
+      required:
+        - id
+        - number
+        - status
+        - amountPaid
+        - currency
+        - hostedInvoiceUrl
+        - periodStart
+        - periodEnd
+      properties:
+        id:
+          type: string
+        number:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        amountPaid:
+          type: number
+        currency:
+          type: string
+        hostedInvoiceUrl:
+          type: string
+          nullable: true
+        periodStart:
+          type: string
+          nullable: true
+        periodEnd:
+          type: string
+          nullable: true
+
+    PaymentRequiredError:
+      type: object
+      required:
+        - error
+        - feature
+        - message
+      properties:
+        error:
+          type: string
+          const: pro_required
+        feature:
+          type: string
+          enum: [backtest, leaderboard, broker]
+        message:
+          type: string
+
+    StripeNotConfiguredError:
+      type: object
+      required:
+        - error
+        - missing
+      properties:
+        error:
+          type: string
+          const: stripe_not_configured
+        missing:
+          type: array
+          items:
+            type: string
+
+    ReadinessStatus:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        uptimeSeconds:
+          type: number
+        version:
+          type: string
+        checks:
+          type: object
+          required: [database]
+          properties:
+            database:
+              type: object
+              required: [status, latencyMs]
+              properties:
+                status:
+                  type: string
+                  enum: [ok, error]
+                latencyMs:
+                  type: number
+                error:
+                  type: string
 
     AuthUser:
       type: object
@@ -1815,6 +2488,13 @@ components:
             - trading
             - market_closed
           description: "Session kind. Missing means trading for backward compatibility."
+        days:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+          description: "Optional JavaScript weekday numbers: 0 Sunday through 6 Saturday. Missing or empty means every day."
         enabled:
           type: boolean
       required:
@@ -1872,6 +2552,10 @@ components:
           minimum: 0
         maxDailyLoss:
           type: integer
+          nullable: true
+        onboardingTutorialCompletedAt:
+          type: string
+          format: date-time
           nullable: true
         selectedPairs:
           type: array
@@ -1951,6 +2635,10 @@ components:
           minimum: 0
         maxDailyLoss:
           type: integer
+          nullable: true
+        onboardingTutorialCompletedAt:
+          type: string
+          format: date-time
           nullable: true
         selectedPairs:
           type: array
@@ -2095,6 +2783,36 @@ components:
       required:
         - publicKeyJwk
 
+    SaveAccountKeyBackupBody:
+      type: object
+      properties:
+        publicKeyJwk:
+          type: object
+        privateKeyJwk:
+          type: object
+      required:
+        - publicKeyJwk
+        - privateKeyJwk
+
+    AccountKeyBackupResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        hasBackup:
+          type: boolean
+        publicKeyJwk:
+          type: object
+          nullable: true
+        privateKeyJwk:
+          type: object
+          nullable: true
+      required:
+        - userId
+        - hasBackup
+        - publicKeyJwk
+        - privateKeyJwk
+
     PublicKeyRecord:
       type: object
       properties:
@@ -2187,6 +2905,9 @@ components:
       properties:
         position:
           type: integer
+        userId:
+          type: string
+          nullable: true
         name:
           type: string
         avatarUrl:
@@ -2198,6 +2919,7 @@ components:
           type: integer
       required:
         - position
+        - userId
         - name
         - level
         - xp
@@ -2248,12 +2970,42 @@ components:
           nullable: true
         createdAt:
           type: string
+        stats:
+          $ref: "#/components/schemas/BacktestSessionStats"
       required:
         - id
         - name
         - pair
         - timeframe
         - createdAt
+        - stats
+
+    BacktestSessionStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        breakevens:
+          type: integer
+        winRate:
+          type: integer
+        avgRR:
+          type: string
+          nullable: true
+        totalPips:
+          type: string
+      required:
+        - total
+        - wins
+        - losses
+        - breakevens
+        - winRate
+        - avgRR
+        - totalPips
 
     CreateBacktestSessionRequest:
       type: object

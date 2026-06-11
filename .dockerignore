@@ -6,6 +6,7 @@
 .superpowers
 .worktrees
 node_modules
+artifacts/api-server/uploads
 dist
 tmp
 out-tsc

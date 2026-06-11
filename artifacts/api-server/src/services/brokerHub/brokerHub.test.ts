@@ -7,6 +7,15 @@ import { normalizeBrokerOrder } from "./orderValidation.js";
 import { mapCTraderPosition, mapMt5Trade } from "./mappers.js";
 import { createBrokerProfileStore } from "./profileStore.js";
 import { createBrokerHubRuntime } from "./runtime.js";
+import type { BrokerConnector, BrokerSnapshot } from "./types.js";
+
+function createDeferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
 
 const tempDir = await mkdtemp(join(tmpdir(), "broker-hub-"));
 
@@ -93,9 +102,26 @@ try {
     port: 8765,
     bridgeTokenRef: "mt5-token",
   });
+  const fxBlueProfile = await store.saveProfile({
+    label: "FX Blue account",
+    brokerName: "FX Blue",
+    kind: "fxblue-account-sync",
+    providerKind: "fxblue-account-sync",
+    providerUserId: "trader-one",
+    accountId: "123456",
+    environment: "live",
+    tradingEnabled: true,
+    investorPassword: "must-not-persist",
+  });
+  assert.equal(fxBlueProfile.kind, "fxblue-account-sync");
+  assert.equal(fxBlueProfile.route, "fxblue_account_sync");
+  assert.equal(fxBlueProfile.health, "waiting_for_fxblue_sync");
+  assert.equal(fxBlueProfile.tradingEnabled, true);
+  assert.equal(fxBlueProfile.capabilities.placeOrders, false);
+  assert.equal("investorPassword" in (fxBlueProfile as object), false);
 
   const profiles = await store.listProfiles();
-  assert.equal(profiles.profiles.length, 2);
+  assert.equal(profiles.profiles.length, 3);
   assert.equal("password" in (profiles.profiles[0] as object), false);
   assert.equal(profiles.profiles[1]?.kind, "mt5-vps-bridge");
   assert.equal(profiles.profiles[1]?.host, "100.64.1.2");
@@ -130,6 +156,88 @@ try {
 
   await vault.setSecret(mt5Profile.id, "bridgeToken", "bridge-secret");
   assert.equal(await vault.getSecret(mt5Profile.id, "bridgeToken"), "bridge-secret");
+
+  const shutdownStore = createBrokerProfileStore(join(tempDir, "shutdown-profiles.json"));
+  const shutdownProfile = await shutdownStore.saveProfile({
+    label: "FX Blue shutdown",
+    brokerName: "FX Blue",
+    kind: "fxblue-account-sync",
+    providerKind: "fxblue-account-sync",
+    accountId: "987654",
+    environment: "live",
+  });
+  const connectGate = createDeferred();
+  const connectStarted = createDeferred();
+  let connects = 0;
+  let disconnects = 0;
+  const snapshot = (): BrokerSnapshot => ({
+    profileId: shutdownProfile.id,
+    status: "connected",
+    kind: "fxblue-account-sync",
+    providerKind: "fxblue-account-sync",
+    brokerName: "FX Blue",
+    tradingEnabled: false,
+    accounts: [],
+    metrics: { balance: 0, equity: 0, margin: 0, freeMargin: 0, currency: "USD", dailyProfit: 0 },
+    positions: [],
+    orders: [],
+    lastUpdated: new Date().toISOString(),
+  });
+  const shutdownRuntime = createBrokerHubRuntime({
+    store: shutdownStore,
+    autoSyncIntervalMs: 1,
+    connectorFactory: (): BrokerConnector => ({
+      async connect() {
+        connects += 1;
+        connectStarted.resolve();
+        await connectGate.promise;
+        return snapshot();
+      },
+      async disconnect() {
+        disconnects += 1;
+      },
+      async getAccounts() {
+        return [];
+      },
+      async getSnapshot() {
+        return snapshot();
+      },
+      async getPositions() {
+        return [];
+      },
+      async getOrders() {
+        return [];
+      },
+      async getDealsHistory() {
+        return [];
+      },
+      async placeOrder() {
+        return { accepted: false };
+      },
+      async modifyOrder() {
+        return { accepted: false };
+      },
+      async closePosition() {
+        return { accepted: false };
+      },
+      onEvent() {
+        return () => undefined;
+      },
+    }),
+  });
+  const foregroundConnect = shutdownRuntime.connectProfile(shutdownProfile.id);
+  await connectStarted.promise;
+  let closeSettled = false;
+  const closeRuntime = shutdownRuntime.close().then(() => {
+    closeSettled = true;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(closeSettled, false);
+  connectGate.resolve();
+  await Promise.all([foregroundConnect, closeRuntime]);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(connects, 1);
+  assert.equal(disconnects, 1);
 } finally {
   await rm(tempDir, { recursive: true, force: true });
 }

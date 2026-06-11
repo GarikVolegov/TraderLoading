@@ -1,6 +1,6 @@
 {
-  "name": "TraderLOADING",
-  "short_name": "TraderLOADING",
+  "name": "TraderLoading",
+  "short_name": "TraderLoading",
   "description": "Trading dashboard with AI-powered macro news, volatility analysis, and advanced trading tools",
   "start_url": "/",
   "scope": "/",

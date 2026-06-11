@@ -4,6 +4,8 @@ import { WebSocket, WebSocketServer } from "ws";
 import { createAccountBridgeRuntime, type AccountBridgeRuntime } from "./accountBridgeRuntime.js";
 import { accountBridgeRuntime } from "./accountBridgeRuntimeSingleton.js";
 import type { AccountBridgeConfig, AccountBridgeEvent } from "./types.js";
+import { closeWebSocketServer } from "../webSocketShutdown.js";
+import { authorizeWebSocketUpgrade, type WebSocketSecurityOptions } from "../webSocketAuth.js";
 
 type ClientMessage = {
   type?: string;
@@ -14,6 +16,11 @@ type ClientMessage = {
 export interface AccountBridgeWebSocketServer {
   service: AccountBridgeRuntime;
   close(): Promise<void>;
+}
+
+async function defaultRequireAccountBridgePro(auth: { userId: string }): Promise<boolean> {
+  const { isUserPro } = await import("../../lib/billing.js");
+  return isUserPro(auth.userId);
 }
 
 function send(client: WebSocket, event: AccountBridgeEvent): void {
@@ -37,16 +44,25 @@ function isRuntime(value: AccountBridgeConfig | AccountBridgeRuntime): value is 
 export function attachAccountBridgeWebSocket(
   server: Server,
   config: AccountBridgeConfig | AccountBridgeRuntime = accountBridgeRuntime,
+  security: WebSocketSecurityOptions = {},
 ): AccountBridgeWebSocketServer {
   const service = isRuntime(config) ? config : createAccountBridgeRuntime(config);
   const wss = new WebSocketServer({ noServer: true });
+  const socketSecurity: WebSocketSecurityOptions = {
+    ...security,
+    requireProAccess: security.requireProAccess ?? defaultRequireAccountBridgePro,
+  };
   let started = false;
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "", "http://localhost");
     if (url.pathname !== "/api/account/ws") return;
-    wss.handleUpgrade(request, socket, head, (client) => {
-      wss.emit("connection", client, request);
-    });
+    void (async () => {
+      const auth = await authorizeWebSocketUpgrade(request, socket, socketSecurity);
+      if (!auth) return;
+      wss.handleUpgrade(request, socket, head, (client) => {
+        wss.emit("connection", client, request);
+      });
+    })();
   };
 
   server.on("upgrade", onUpgrade);
@@ -100,9 +116,7 @@ export function attachAccountBridgeWebSocket(
     async close(): Promise<void> {
       server.off("upgrade", onUpgrade);
       await service.stop();
-      await new Promise<void>((resolve) => {
-        wss.close(() => resolve());
-      });
+      await closeWebSocketServer(wss);
     },
   };
 }

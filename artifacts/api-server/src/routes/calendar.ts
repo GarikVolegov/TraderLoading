@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { getJsonCache, setJsonCache } from "../lib/cache.js";
 
 const router: IRouter = Router();
 
@@ -21,8 +22,8 @@ interface CalendarEvent {
 }
 
 // ─── Cache (4 ore — evita rate-limit di Forex Factory) ────────────────────────
-let cache: { data: CalendarEvent[]; ts: number } | null = null;
-const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 ore
+const CACHE_KEY = "calendar:forex-factory:this-week";
+const CACHE_TTL_SECONDS = 4 * 60 * 60;
 
 // URL mirror pubblico (alternativa diretta a Forex Factory)
 const FF_URLS = [
@@ -87,23 +88,18 @@ function buildFallback(): CalendarEvent[] {
 router.get("/calendar", async (_req, res) => {
   const noCache = _req.query.nocache === "1";
 
-  if (!noCache && cache && Date.now() - cache.ts < CACHE_TTL) {
-    res.json(cache.data);
+  const cached = noCache ? null : await getJsonCache<CalendarEvent[]>(CACHE_KEY);
+  if (cached) {
+    res.json(cached);
     return;
   }
 
   try {
     const events = await fetchCalendarEvents();
-    cache = { data: events, ts: Date.now() };
+    await setJsonCache(CACHE_KEY, events, CACHE_TTL_SECONDS);
     res.json(events);
   } catch (err) {
     console.error("[calendar] fetch error:", err instanceof Error ? err.message : err);
-
-    // Ritorna la cache stale se disponibile, altrimenti fallback vuoto
-    if (cache) {
-      res.json(cache.data);
-      return;
-    }
 
     const fallback = buildFallback();
     res.json(fallback);

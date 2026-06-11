@@ -2,7 +2,23 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createBrokerProfileStore } from "./profileStore.js";
+import { createBrokerProfileStore, createBrokerProfileStoreFromBackend } from "./profileStore.js";
+
+class MemoryProfileBackend {
+  private data: unknown;
+  writeDelayMs = 0;
+
+  async read(): Promise<unknown> {
+    return JSON.parse(JSON.stringify(this.data ?? null));
+  }
+
+  async write(data: unknown): Promise<void> {
+    if (this.writeDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, this.writeDelayMs));
+    }
+    this.data = JSON.parse(JSON.stringify(data));
+  }
+}
 
 const tempDir = await mkdtemp(join(tmpdir(), "broker-profile-store-"));
 
@@ -70,6 +86,53 @@ try {
   assert.equal(smartLink.capabilities.requiresTerminal, true);
   assert.equal(smartLink.terminalDetected, true);
   assert.equal(smartLink.accountLoginMode, "terminal_session");
+
+  const sharedBackend = new MemoryProfileBackend();
+  const firstStore = createBrokerProfileStoreFromBackend(sharedBackend);
+  const persisted = await firstStore.saveProfile({
+    label: "FX Blue Live",
+    brokerName: "FP Trading",
+    kind: "fxblue-account-sync",
+    providerKind: "fxblue-account-sync",
+    accountId: "82364482",
+    environment: "live",
+    route: "fxblue_account_sync",
+    connectionStatus: "connected",
+  });
+  await firstStore.activateProfile(persisted.id);
+
+  const secondStore = createBrokerProfileStoreFromBackend(sharedBackend);
+  const reloaded = await secondStore.listProfiles();
+  assert.equal(reloaded.activeProfileId, persisted.id);
+  assert.equal(reloaded.profiles[0]?.id, persisted.id);
+  assert.equal(reloaded.profiles[0]?.connectionStatus, "connected");
+
+  const concurrentBackend = new MemoryProfileBackend();
+  concurrentBackend.writeDelayMs = 20;
+  const concurrentStoreA = createBrokerProfileStoreFromBackend(concurrentBackend);
+  const concurrentStoreB = createBrokerProfileStoreFromBackend(concurrentBackend);
+  const [alpha, beta] = await Promise.all([
+    concurrentStoreA.saveProfile({
+      label: "Alpha",
+      brokerName: "FP Trading",
+      kind: "fxblue-account-sync",
+      providerKind: "fxblue-account-sync",
+      accountId: "111",
+      environment: "live",
+    }),
+    concurrentStoreB.saveProfile({
+      label: "Beta",
+      brokerName: "FP Trading",
+      kind: "fxblue-account-sync",
+      providerKind: "fxblue-account-sync",
+      accountId: "222",
+      environment: "live",
+    }),
+  ]);
+  const concurrentList = await concurrentStoreA.listProfiles();
+  assert.equal(concurrentList.profiles.some((item) => item.id === alpha.id), true);
+  assert.equal(concurrentList.profiles.some((item) => item.id === beta.id), true);
+  assert.equal(concurrentList.profiles.length, 2);
 } finally {
   await rm(tempDir, { recursive: true, force: true });
 }

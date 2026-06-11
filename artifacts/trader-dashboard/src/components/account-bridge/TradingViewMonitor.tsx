@@ -9,6 +9,7 @@ import {
   normalizeTradingViewPreferences,
 } from "./tradingViewConfig";
 import { getLocalTimeZone } from "@/lib/marketSessions";
+import { uiText } from "@/contexts/LanguageContext";
 
 declare global {
   interface Window {
@@ -93,7 +94,7 @@ export function TradingViewMonitor({ brokerSymbol }: { brokerSymbol?: string }) 
           value={prefs.symbol}
           onChange={(event) => setPrefs((prev) => ({ ...prev, symbol: event.target.value.toUpperCase() }))}
           className="h-8 min-w-[150px] flex-1 rounded-lg border border-border bg-secondary/50 px-2 font-mono text-xs"
-          aria-label="TradingView symbol"
+          aria-label={uiText("auto.ui.1100dd2fca")}
         />
         <div className="flex gap-1 overflow-x-auto">
           {TRADING_VIEW_TIMEFRAMES.map((timeframe) => (
@@ -120,7 +121,7 @@ export function TradingViewMonitor({ brokerSymbol }: { brokerSymbol?: string }) 
             })
           }
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 text-muted-foreground hover:text-primary"
-          title="Reset chart"
+          title={uiText("auto.ui.aa07593c0a")}
         >
           <RefreshCw className="h-3.5 w-3.5" />
         </button>

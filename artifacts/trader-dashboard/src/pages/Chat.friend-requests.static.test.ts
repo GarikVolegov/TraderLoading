@@ -17,7 +17,12 @@ assert.match(source, /acceptedFriends/);
 assert.match(source, /messageContacts/);
 assert.match(source, /friendUserId/);
 assert.match(source, /min-w-\[260px\]/);
-assert.match(source, /aria-label="Messaggio vocale"/);
+// L'aria-label del vocale è passata all'i18n: chiave in pagina, copy nel catalogo.
+assert.match(source, /aria-label=\{uiText\("auto\.ui\.fe60a4fba4"\)\}/);
+assert.match(
+  fs.readFileSync("src/lib/i18n.ts", "utf8"),
+  /"auto\.ui\.fe60a4fba4":\s*"Messaggio vocale"/,
+);
 assert.match(source, /"video" \| "file"/);
 assert.match(source, /social\/upload-file/);
 assert.match(source, /<video/);
@@ -34,6 +39,11 @@ assert.match(source, /className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3"/)
 assert.match(source, /className="h-full min-h-0"/);
 assert.match(source, /className="flex-1 min-h-0 overflow-hidden"/);
 assert.match(source, /style=\{\{ height: "calc\(100dvh - 180px\)" \}\}/);
+assert.match(source, /function ClassificaTab\(\{ currentUserId \}/);
+assert.match(source, /const \[viewingProfile, setViewingProfile\] = useState<string \| null>\(null\);/);
+assert.match(source, /onClick=\{\(\) => canViewProfile && entry\.userId && setViewingProfile\(entry\.userId\)\}/);
+assert.match(source, /<Avatar\s+name=\{entry\.name\}\s+avatarUrl=\{entry\.avatarUrl\}\s+size="sm"/);
+assert.match(source, /<UserProfileModal[\s\S]*userId=\{viewingProfile\}[\s\S]*currentUserId=\{currentUserId\}/);
 
 assert.match(socialRoute, /upload-file/);
 assert.match(socialRoute, /chat-files/);

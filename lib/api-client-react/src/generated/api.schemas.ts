@@ -5,8 +5,190 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
+export type WikiSourceStatus =
+  (typeof WikiSourceStatus)[keyof typeof WikiSourceStatus];
+
+export const WikiSourceStatus = {
+  queued: "queued",
+  processing: "processing",
+  ready: "ready",
+  error: "error",
+  pending_transcription: "pending_transcription",
+} as const;
+
+export interface WikiSource {
+  id: number;
+  kind: string;
+  title: string;
+  status: WikiSourceStatus;
+  error?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  createdAt?: string;
+}
+
+export interface CreateWikiTextSourceRequest {
+  title?: string;
+  content: string;
+  tags?: string[];
+}
+
+export interface CreateWikiUrlSourceRequest {
+  url: string;
+  title?: string;
+  tags?: string[];
+}
+
+export interface QueryWikiRequest {
+  question: string;
+}
+
+export type WikiGraphStats = {
+  sources?: number;
+  nodes?: number;
+  edges?: number;
+  communities?: number;
+};
+
+export type WikiGraphNodesItem = { [key: string]: unknown };
+
+export type WikiGraphEdgesItem = { [key: string]: unknown };
+
+export type WikiGraphCommunitiesItem = { [key: string]: unknown };
+
+export interface WikiGraph {
+  stats?: WikiGraphStats;
+  nodes?: WikiGraphNodesItem[];
+  edges?: WikiGraphEdgesItem[];
+  communities?: WikiGraphCommunitiesItem[];
+}
+
+export type WikiAnswerCitationsItem = { [key: string]: unknown };
+
+export type WikiAnswerNodesItem = { [key: string]: unknown };
+
+export interface WikiAnswer {
+  answer: string;
+  citations: WikiAnswerCitationsItem[];
+  nodes: WikiAnswerNodesItem[];
+}
+
 export interface HealthStatus {
   status: string;
+}
+
+export type BillingStatusPlan =
+  (typeof BillingStatusPlan)[keyof typeof BillingStatusPlan];
+
+export const BillingStatusPlan = {
+  free: "free",
+  pro: "pro",
+} as const;
+
+export type BillingStatusStatus =
+  (typeof BillingStatusStatus)[keyof typeof BillingStatusStatus];
+
+export const BillingStatusStatus = {
+  free: "free",
+  none: "none",
+  trialing: "trialing",
+  active: "active",
+  past_due: "past_due",
+  canceled: "canceled",
+  incomplete: "incomplete",
+  incomplete_expired: "incomplete_expired",
+  unpaid: "unpaid",
+  paused: "paused",
+} as const;
+
+export interface BillingStatus {
+  plan: BillingStatusPlan;
+  status: BillingStatusStatus;
+  pro: boolean;
+  /** Subscription source, for example Stripe checkout or manual admin override. */
+  source: string | null;
+  manualOverride: boolean;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  stripeCustomerId: string | null;
+  /** Masked Stripe subscription id for display. */
+  stripeSubscriptionId: string | null;
+  canCancel: boolean;
+  canResume: boolean;
+  canViewInvoices: boolean;
+}
+
+export interface BillingCheckoutSession {
+  clientSecret: string | null;
+}
+
+export interface BillingInvoice {
+  id: string;
+  number: string | null;
+  status: string | null;
+  amountPaid: number;
+  currency: string;
+  hostedInvoiceUrl: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+}
+
+export interface BillingInvoices {
+  invoices: BillingInvoice[];
+}
+
+export type PaymentRequiredErrorFeature =
+  (typeof PaymentRequiredErrorFeature)[keyof typeof PaymentRequiredErrorFeature];
+
+export const PaymentRequiredErrorFeature = {
+  backtest: "backtest",
+  leaderboard: "leaderboard",
+  broker: "broker",
+} as const;
+
+export interface PaymentRequiredError {
+  error: "pro_required";
+  feature: PaymentRequiredErrorFeature;
+  message: string;
+}
+
+export interface StripeNotConfiguredError {
+  error: "stripe_not_configured";
+  missing: string[];
+}
+
+export type ReadinessStatusStatus =
+  (typeof ReadinessStatusStatus)[keyof typeof ReadinessStatusStatus];
+
+export const ReadinessStatusStatus = {
+  ok: "ok",
+  degraded: "degraded",
+} as const;
+
+export type ReadinessStatusChecksDatabaseStatus =
+  (typeof ReadinessStatusChecksDatabaseStatus)[keyof typeof ReadinessStatusChecksDatabaseStatus];
+
+export const ReadinessStatusChecksDatabaseStatus = {
+  ok: "ok",
+  error: "error",
+} as const;
+
+export type ReadinessStatusChecksDatabase = {
+  status: ReadinessStatusChecksDatabaseStatus;
+  latencyMs: number;
+  error?: string;
+};
+
+export type ReadinessStatusChecks = {
+  database: ReadinessStatusChecksDatabase;
+};
+
+export interface ReadinessStatus {
+  status: ReadinessStatusStatus;
+  uptimeSeconds?: number;
+  version?: string;
+  checks: ReadinessStatusChecks;
 }
 
 export interface AuthUser {
@@ -366,6 +548,8 @@ export interface TradingSessionConfig {
   color: string;
   /** Session kind. Missing means trading for backward compatibility. */
   kind?: TradingSessionConfigKind;
+  /** Optional JavaScript weekday numbers: 0 Sunday through 6 Saturday. Missing or empty means every day. */
+  days?: number[];
   enabled: boolean;
 }
 
@@ -426,6 +610,7 @@ export interface UserSettings {
   /** @minimum 0 */
   preMacroMinutes: number;
   maxDailyLoss?: number | null;
+  onboardingTutorialCompletedAt?: string | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UserSettingsBackgroundPresetsItem[] | null;
 }
@@ -486,6 +671,7 @@ export interface UpdateUserSettingsRequest {
   /** @minimum 0 */
   preMacroMinutes?: number;
   maxDailyLoss?: number | null;
+  onboardingTutorialCompletedAt?: string | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UpdateUserSettingsRequestBackgroundPresetsItem[] | null;
 }
@@ -564,6 +750,30 @@ export interface SavePublicKeyBody {
   publicKeyJwk: SavePublicKeyBodyPublicKeyJwk;
 }
 
+export type SaveAccountKeyBackupBodyPublicKeyJwk = { [key: string]: unknown };
+
+export type SaveAccountKeyBackupBodyPrivateKeyJwk = { [key: string]: unknown };
+
+export interface SaveAccountKeyBackupBody {
+  publicKeyJwk: SaveAccountKeyBackupBodyPublicKeyJwk;
+  privateKeyJwk: SaveAccountKeyBackupBodyPrivateKeyJwk;
+}
+
+export type AccountKeyBackupResponsePublicKeyJwk = {
+  [key: string]: unknown;
+} | null;
+
+export type AccountKeyBackupResponsePrivateKeyJwk = {
+  [key: string]: unknown;
+} | null;
+
+export interface AccountKeyBackupResponse {
+  userId: string;
+  hasBackup: boolean;
+  publicKeyJwk: AccountKeyBackupResponsePublicKeyJwk;
+  privateKeyJwk: AccountKeyBackupResponsePrivateKeyJwk;
+}
+
 export interface PublicKeyRecord {
   id: number;
   userId: string;
@@ -605,6 +815,7 @@ export interface UnreadCountResponse {
 
 export interface GetLeaderboardResponseItem {
   position: number;
+  userId: string | null;
   name: string;
   avatarUrl?: string | null;
   level: number;
@@ -630,6 +841,16 @@ export interface CalendarEvent {
   previous?: string | null;
 }
 
+export interface BacktestSessionStats {
+  total: number;
+  wins: number;
+  losses: number;
+  breakevens: number;
+  winRate: number;
+  avgRR: string | null;
+  totalPips: string;
+}
+
 export interface BacktestSession {
   id: number;
   name: string;
@@ -639,6 +860,7 @@ export interface BacktestSession {
   notes?: string | null;
   userId?: string | null;
   createdAt: string;
+  stats: BacktestSessionStats;
 }
 
 export interface CreateBacktestSessionRequest {
@@ -717,6 +939,11 @@ export interface CreateBacktestTradeRequest {
  * Opaque session token — `Bearer <sid>`.
  */
 export type AuthorizationSessionHeaderParameter = string;
+
+export type UploadWikiSourceBody = {
+  file: Blob;
+  title?: string;
+};
 
 export type BeginBrowserLoginParams = {
   returnTo?: string;

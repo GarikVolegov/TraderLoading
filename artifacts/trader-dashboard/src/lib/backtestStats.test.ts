@@ -40,4 +40,32 @@ assert.deepEqual(stats, {
 assert.equal(calculateBacktestStats([]), null);
 assert.equal(calculateBacktestStats(undefined), null);
 
+assert.deepEqual(
+  calculateBacktestStats([
+    {
+      direction: "buy",
+      entryPrice: "1.0000",
+      exitPrice: "0.9950",
+      result: "loss",
+      pips: "-50.0",
+    },
+    {
+      direction: "sell",
+      entryPrice: "1.1000",
+      exitPrice: "1.0980",
+      result: "win",
+      pips: "20.0",
+    },
+  ]),
+  {
+    total: 2,
+    wins: 1,
+    losses: 1,
+    breakevens: 0,
+    winRate: 50,
+    avgRR: null,
+    totalPips: "-30.0",
+  },
+);
+
 console.log("backtest stats checks passed");

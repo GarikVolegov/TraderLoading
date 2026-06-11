@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import compression from "compression";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -15,19 +16,24 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import { loggingMiddleware } from "./middlewares/loggingMiddleware";
 import logger from "./lib/logger";
+import { captureError } from "./lib/observability";
+import { getUploadsDir } from "./lib/uploads";
 import {
   createCorsOptions,
+  createHelmetOptions,
+  getRateLimitKey,
   getRateLimitConfig,
   parseTrustProxy,
   publicUploadGuard,
 } from "./lib/security";
 import healthRouter from "./routes/health";
+import { createStripeWebhookRouter } from "./routes/billing";
 import router from "./routes";
 
 const app: Express = express();
 app.set("trust proxy", parseTrustProxy());
 
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+const UPLOADS_DIR = getUploadsDir();
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
@@ -37,9 +43,11 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 // ── Logging distribuito: deve stare PRIMA di cors/json per catturare tutto ──
 app.use(loggingMiddleware);
 
-app.use(helmet());
+app.use(helmet(createHelmetOptions()));
 app.use(cors(createCorsOptions()));
+app.use(compression({ threshold: 1024 }));
 app.use(cookieParser());
+app.use("/api/billing/webhook", express.raw({ type: "application/json" }), createStripeWebhookRouter());
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
@@ -62,6 +70,7 @@ app.use(
   "/api",
   rateLimit({
     ...getRateLimitConfig(),
+    keyGenerator: getRateLimitKey,
     legacyHeaders: false,
     standardHeaders: true,
   }),
@@ -123,6 +132,7 @@ app.use(
     res: express.Response,
     _next: express.NextFunction,
   ) => {
+    captureError(err, { surface: "express" });
     logger.error({ err }, "Unhandled API error");
     if (res.headersSent) return;
     res.status(500).json({ error: "Internal server error" });

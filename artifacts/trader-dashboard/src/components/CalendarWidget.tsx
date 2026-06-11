@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Calendar, RefreshCw, TrendingUp, ChevronDown, ChevronUp, SlidersHorizontal, Target, CheckCircle2, Circle } from "lucide-react";
+import { Calendar, RefreshCw, TrendingUp, ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useGetEconomicCalendar, getGetEconomicCalendarQueryKey, useUpdateUserSettings, useGetMissions } from "@workspace/api-client-react";
+import { useGetEconomicCalendar, getGetEconomicCalendarQueryKey, useUpdateUserSettings } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { refreshEconomicCalendar } from "@/lib/calendarApi";
+import { uiText } from "@/contexts/LanguageContext";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "CNY"] as const;
 
@@ -13,7 +14,7 @@ const IMPACT_CONFIG = {
   High: { color: "bg-red-500", border: "border-red-500/30", text: "text-red-400", label: "Alto" },
   Medium: { color: "bg-orange-500", border: "border-orange-500/30", text: "text-orange-400", label: "Medio" },
   Low: { color: "bg-yellow-500", border: "border-yellow-500/30", text: "text-yellow-400", label: "Basso" },
-  Holiday: { color: "bg-blue-500", border: "border-blue-500/30", text: "text-blue-400", label: "Festivo" },
+  Holiday: { color: "bg-white", border: "border-white/40", text: "text-white", label: "Festivo" },
 } as const;
 
 type Impact = keyof typeof IMPACT_CONFIG;
@@ -28,7 +29,6 @@ export function CalendarWidget() {
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const { data: missions } = useGetMissions();
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60_000);
@@ -141,7 +141,7 @@ export function CalendarWidget() {
         {filtersOpen && (
           <div className="space-y-3 pb-3 border-b border-border/30 animate-in slide-in-from-top-2 duration-200">
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Valuta</p>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{uiText("auto.ui.04fe77cf1d")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {CURRENCIES.map((c) => (
                   <button
@@ -160,9 +160,9 @@ export function CalendarWidget() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Impatto</p>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{uiText("auto.ui.f150e87d33")}</p>
               <div className="flex flex-wrap gap-1.5">
-                {(Object.keys(IMPACT_CONFIG) as Impact[]).filter(i => i !== "Holiday").map((impact) => {
+                {(Object.keys(IMPACT_CONFIG) as Impact[]).map((impact) => {
                   const cfg = IMPACT_CONFIG[impact];
                   return (
                     <button
@@ -233,7 +233,7 @@ export function CalendarWidget() {
                           <span className={`w-2 h-2 rounded-full ${cfg.color} shrink-0 ${isPast ? "opacity-50" : ""}`} />
                           <span className="text-xs font-bold text-muted-foreground">{event.country}</span>
                           {isPast && (
-                            <span className="text-[10px] text-muted-foreground/60 ml-auto">uscito</span>
+                            <span className="text-[10px] text-muted-foreground/60 ml-auto">{uiText("auto.ui.de16ab599c")}</span>
                           )}
                         </div>
                         <p className={`text-sm font-medium truncate ${isPast ? "text-muted-foreground" : "text-foreground"}`}>{event.title}</p>
@@ -250,13 +250,13 @@ export function CalendarWidget() {
                         <div className="grid grid-cols-2 gap-2 pt-2.5">
                           {event.forecast && (
                             <div className="bg-secondary/30 rounded-md p-2 text-center">
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Previsione</p>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{uiText("auto.ui.dcb2dd9945")}</p>
                               <p className="text-sm font-mono font-bold text-foreground">{event.forecast}</p>
                             </div>
                           )}
                           {event.previous && (
                             <div className="bg-secondary/30 rounded-md p-2 text-center">
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Precedente</p>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{uiText("auto.ui.4dfefd8dd2")}</p>
                               <p className="text-sm font-mono font-bold text-foreground">{event.previous}</p>
                             </div>
                           )}
@@ -270,42 +270,6 @@ export function CalendarWidget() {
           )}
         </div>
 
-        {missions && missions.length > 0 && (
-          <div className="pt-3 border-t border-border/30">
-            <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Target className="w-3.5 h-3.5" />
-              Missioni di Oggi
-            </p>
-            <div className="space-y-1">
-              {missions.map((m) => (
-                <div
-                  key={m.id}
-                  className={`rounded-lg border p-2.5 flex items-center gap-3 transition-colors ${
-                    m.completed
-                      ? "bg-primary/5 border-primary/20 opacity-60"
-                      : "bg-secondary/20 border-accent/20 hover:bg-secondary/40"
-                  }`}
-                >
-                  <div className="shrink-0">
-                    {m.completed ? (
-                      <CheckCircle2 className="w-4 h-4 text-primary" />
-                    ) : (
-                      <Circle className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${m.completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                      {m.title}
-                    </p>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-accent bg-secondary/60 px-1.5 py-0.5 rounded shrink-0">
-                    {m.xpReward} XP
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

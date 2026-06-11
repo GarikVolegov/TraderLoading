@@ -15,7 +15,7 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { title: "TraderLOADING", body: event.data.text() };
+    payload = { title: "TraderLoading", body: event.data.text() };
   }
 
   const { title, body, icon, badge, tag, data = {}, requireInteraction, vibrate, actions } = payload;
@@ -34,7 +34,7 @@ self.addEventListener("push", (event) => {
     actions: Array.isArray(actions) ? actions : [],
   };
 
-  event.waitUntil(self.registration.showNotification(title || "TraderLOADING", options));
+  event.waitUntil(self.registration.showNotification(title || "TraderLoading", options));
 });
 
 self.addEventListener("notificationclick", (event) => {

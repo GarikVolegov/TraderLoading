@@ -32,6 +32,26 @@ export function resolveReplayStartIndex(
   return Math.min(startIndex, maxFullWindowStart);
 }
 
+export function resolveReplayDateAvailability(
+  date: string,
+  range: { min: string; max: string },
+): { date: string; warning: string | null } {
+  if (!date || !range.min || !range.max) return { date, warning: null };
+  if (date < range.min) {
+    return {
+      date: range.min,
+      warning: `La data selezionata non e disponibile per questo simbolo/timeframe. Il replay parte dalla prima data disponibile: ${range.min}.`,
+    };
+  }
+  if (date > range.max) {
+    return {
+      date: range.max,
+      warning: `La data selezionata non e ancora disponibile. Il replay parte dall'ultima data disponibile: ${range.max}.`,
+    };
+  }
+  return { date, warning: null };
+}
+
 export function resolveReplayWindowForAnchor(
   candles: Array<Pick<CandlestickData<Time>, "time">>,
   anchorTime: number,

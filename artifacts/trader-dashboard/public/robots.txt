@@ -1,0 +1,29 @@
+# TraderLoading — https://traderloading.com
+# Public surface: landing + auth pages. App routes require login and
+# render no indexable content for crawlers.
+
+User-agent: *
+Allow: /$
+Allow: /sign-in
+Allow: /sign-up
+Allow: /privacy
+Allow: /terms
+Disallow: /journal
+Disallow: /backtest
+Disallow: /zen
+Disallow: /chat
+Disallow: /news
+Disallow: /brain
+Disallow: /routine
+Disallow: /broker
+Disallow: /calendar
+Disallow: /milestones
+Disallow: /missions
+Disallow: /clock
+Disallow: /checklist
+Disallow: /library
+Disallow: /settings
+Disallow: /tools
+Disallow: /api/
+
+Sitemap: https://traderloading.com/sitemap.xml

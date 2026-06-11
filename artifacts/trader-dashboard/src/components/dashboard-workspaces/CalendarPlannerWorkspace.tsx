@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { uiText } from "@/contexts/LanguageContext";
 import {
   useGetEconomicCalendar,
   useGetIdeas,
@@ -288,9 +289,18 @@ function buildAgendaItems({
     manual: item,
   }));
 
-  return [...marketItems, ...ideaItems, ...missionItems, ...newsItems, ...journalItems, ...manualAgendaItems]
+  const merged = [...marketItems, ...ideaItems, ...missionItems, ...newsItems, ...journalItems, ...manualAgendaItems]
     .filter((item) => toDate(item.startAt))
     .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+
+  // Dedup: import multipli (es. stesso trade FX Blue) producono voci identiche
+  const seen = new Set<string>();
+  return merged.filter((item) => {
+    const key = `${item.source}|${item.title}|${item.startAt}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function CalendarPlannerWorkspace() {
@@ -301,6 +311,7 @@ export function CalendarPlannerWorkspace() {
   const [notes, setNotes] = useState("");
   const [startAt, setStartAt] = useState(() => toDateTimeInputValue(new Date()));
   const [endAt, setEndAt] = useState("");
+  const [showPast, setShowPast] = useState(false);
 
   const { data: events, isLoading: eventsLoading } = useGetEconomicCalendar();
   const { data: ideas, isLoading: ideasLoading } = useGetIdeas();
@@ -325,7 +336,7 @@ export function CalendarPlannerWorkspace() {
     [events, ideas, missions, macroNews?.articles, journal, manualItems],
   );
 
-  const groupedAgenda = useMemo(() => {
+  const { pastGroups, upcomingGroups } = useMemo(() => {
     const groups = new Map<string, { date: Date; items: AgendaItem[] }>();
 
     agendaItems.forEach((item) => {
@@ -340,8 +351,16 @@ export function CalendarPlannerWorkspace() {
       }
     });
 
-    return Array.from(groups.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+    const sorted = Array.from(groups.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return {
+      pastGroups: sorted.filter((g) => g.date < startOfToday),
+      upcomingGroups: sorted.filter((g) => g.date >= startOfToday),
+    };
   }, [agendaItems]);
+
+  const groupedAgenda = showPast ? [...pastGroups, ...upcomingGroups] : upcomingGroups;
 
   const summary = useMemo(() => {
     const now = new Date();
@@ -423,7 +442,7 @@ export function CalendarPlannerWorkspace() {
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="Titolo"
+            placeholder={uiText("auto.ui.b2f23da948")}
             className="h-10 rounded-lg border border-border/50 bg-secondary/40 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary/50"
           />
           <select
@@ -442,9 +461,9 @@ export function CalendarPlannerWorkspace() {
             onChange={(event) => setPriority(event.target.value as Priority)}
             className="h-10 rounded-lg border border-border/50 bg-secondary/40 px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50"
           >
-            <option value="low">Bassa</option>
-            <option value="medium">Media</option>
-            <option value="high">Alta</option>
+            <option value="low">{uiText("auto.ui.48407d9070")}</option>
+            <option value="medium">{uiText("auto.ui.0c77aeece8")}</option>
+            <option value="high">{uiText("auto.ui.ef9168c3d7")}</option>
           </select>
         </div>
 
@@ -464,7 +483,7 @@ export function CalendarPlannerWorkspace() {
           <input
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder="Note opzionali"
+            placeholder={uiText("auto.ui.2c34336594")}
             className="h-10 rounded-lg border border-border/50 bg-secondary/40 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary/50"
           />
           <Button type="submit" disabled={!title.trim() || !startAt} className="h-10 gap-2">
@@ -477,10 +496,21 @@ export function CalendarPlannerWorkspace() {
       <section className="rounded-xl border border-border/40 bg-card/55 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-3 border-b border-border/35 px-4 py-3">
           <div>
-            <h3 className="text-sm font-bold text-foreground">Agenda unificata</h3>
-            <p className="text-xs text-muted-foreground">Market, obiettivi, missioni, news, journal e note manuali.</p>
+            <h3 className="text-sm font-bold text-foreground">{uiText("auto.ui.74f7975180")}</h3>
+            <p className="text-xs text-muted-foreground">{uiText("auto.ui.7f0e33e333")}</p>
           </div>
-          {isLoading && <span className="text-xs text-muted-foreground">Sync...</span>}
+          <div className="flex items-center gap-2">
+            {pastGroups.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowPast((v) => !v)}
+                className="rounded-md border border-border/40 bg-secondary/30 px-2 py-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {showPast ? "Nascondi passati" : `Mostra passati (${pastGroups.length})`}
+              </button>
+            )}
+            {isLoading && <span className="text-xs text-muted-foreground">{uiText("auto.ui.371102259c")}</span>}
+          </div>
         </div>
 
         {groupedAgenda.length === 0 ? (
@@ -564,7 +594,7 @@ function AgendaRow({
             type="button"
             onClick={() => onDeleteManual(item.manual!.id)}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground opacity-100 transition-colors hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
-            aria-label="Elimina item manuale"
+            aria-label={uiText("auto.ui.ca7cf8f6ca")}
           >
             <Trash2 className="h-4 w-4" />
           </button>

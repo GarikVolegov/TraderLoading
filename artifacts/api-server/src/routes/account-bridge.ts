@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { createConnection } from "node:net";
 import { accountBridgeRuntime } from "../services/accountBridge/accountBridgeRuntimeSingleton.js";
 import type { AccountBridgeRuntime } from "../services/accountBridge/accountBridgeRuntime.js";
@@ -12,6 +12,8 @@ import {
 interface AccountBridgeRouterOptions {
   store?: AccountProfileStore;
   runtime?: AccountBridgeRuntime;
+  env?: Record<string, string | undefined>;
+  requireProAccess?: (req: Request, res: Response) => Promise<boolean>;
 }
 
 function messageFrom(error: unknown): string {
@@ -48,6 +50,25 @@ export function createAccountBridgeRouter(options: AccountBridgeRouterOptions = 
   const router = Router();
   const store = options.store ?? createAccountProfileStore();
   const runtime = options.runtime ?? accountBridgeRuntime;
+  const env = options.env ?? process.env;
+
+  if (env.NODE_ENV === "production") {
+    router.use("/account/connections", (_req, res) => {
+      res.status(410).json({ error: "Legacy account bridge routes are disabled in production." });
+    });
+    return router;
+  }
+
+  const requireProAccess =
+    options.requireProAccess ??
+    (async (req: Request, res: Response) => {
+      const { requireProFeature } = await import("../lib/billing.js");
+      return requireProFeature(req, res, "broker");
+    });
+
+  router.use("/account/connections", async (req, res, next) => {
+    if (await requireProAccess(req, res)) next();
+  });
 
   router.get("/account/connections", async (_req, res) => {
     try {

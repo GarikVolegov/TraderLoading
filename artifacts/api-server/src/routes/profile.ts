@@ -4,9 +4,11 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { profileTable, journalEntriesTable } from "@workspace/db";
+import { accountTradesTable, profileTable } from "@workspace/db";
 import { UpdateProfileBody, UpdateProfileResponse, GetProfileResponse, GetLeaderboardResponse } from "@workspace/api-zod";
 import { eq, isNull, and, ne, sql, isNotNull, desc } from "drizzle-orm";
+import { resolveUploadPath } from "../lib/uploads.js";
+import { requireProFeature } from "../lib/billing.js";
 
 const router: IRouter = Router();
 
@@ -41,7 +43,7 @@ function getLevelName(level: number): string {
   return `Trader Livello ${level}`;
 }
 
-const AVATARS_DIR = path.join(process.cwd(), "uploads", "avatars");
+const AVATARS_DIR = resolveUploadPath("avatars");
 if (!fs.existsSync(AVATARS_DIR)) {
   fs.mkdirSync(AVATARS_DIR, { recursive: true });
 }
@@ -125,17 +127,16 @@ async function generateUniqueName(base: string): Promise<string> {
 }
 
 async function computeWinRate(userId: string | null): Promise<{ winRate: number | null; totalTrades: number }> {
-  const filter = userId ? eq(journalEntriesTable.userId, userId) : isNull(journalEntriesTable.userId);
-  const entries = await db
-    .select({ result: journalEntriesTable.result })
-    .from(journalEntriesTable)
-    .where(filter);
+  const filter = userId ? eq(accountTradesTable.userId, userId) : eq(accountTradesTable.userId, "guest");
+  const trades = await db
+    .select({ profit: accountTradesTable.profit })
+    .from(accountTradesTable)
+    .where(and(filter, eq(accountTradesTable.status, "closed"), isNotNull(accountTradesTable.profit)));
 
-  const withResult = entries.filter(e => e.result && e.result !== "none");
-  const totalTrades = withResult.length;
+  const totalTrades = trades.length;
   if (totalTrades === 0) return { winRate: null, totalTrades: 0 };
 
-  const wins = withResult.filter(e => e.result === "win").length;
+  const wins = trades.filter((trade) => Number(trade.profit) > 0).length;
   const winRate = Math.round((wins / totalTrades) * 100);
   return { winRate, totalTrades };
 }
@@ -332,7 +333,8 @@ router.post("/profile/avatar/generate", async (req, res) => {
   }
 });
 
-router.get("/leaderboard", async (_req, res) => {
+router.get("/leaderboard", async (req, res) => {
+  if (!(await requireProFeature(req, res, "leaderboard"))) return;
   const profiles = await db.select()
     .from(profileTable)
     .where(isNotNull(profileTable.userId))

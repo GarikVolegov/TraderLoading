@@ -3,7 +3,7 @@ import { useGetUserSettings, useGetMissions } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { getNotificationCopy, shouldNotifyOnce } from "@/lib/notifications";
+import { deliverBrowserNotification, getNotificationCopy, shouldNotifyOnce } from "@/lib/notifications";
 
 export function DailyAlarmNotifier() {
   const { data: settings } = useGetUserSettings();
@@ -33,15 +33,12 @@ export function DailyAlarmNotifier() {
       const total = missions?.length ?? 0;
       const body = total > 0 ? copy.messages.dailyMissions(pending, total) : copy.messages.dailyEmpty;
 
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(copy.titles.dailyReminder, {
-          body,
-          icon: "/app-icon-192.png",
-          tag: "daily-alarm",
-        });
-      } else {
-        toast({ title: copy.titles.dailyReminder, description: body, duration: 8000 });
-      }
+      void deliverBrowserNotification({
+        title: copy.titles.dailyReminder,
+        body,
+        tag: "daily-alarm",
+        showToast: () => toast({ title: copy.titles.dailyReminder, description: body, duration: 8000 }),
+      });
     }, delay);
 
     return () => {

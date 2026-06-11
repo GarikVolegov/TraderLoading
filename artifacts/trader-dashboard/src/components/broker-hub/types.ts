@@ -5,6 +5,7 @@ export type BrokerKind =
   | "snaptrade-brokerage"
   | "ctrader-open-api"
   | "mt5-vps-bridge"
+  | "fxblue-account-sync"
   | "demo";
 export type BrokerEnvironment = "demo" | "live";
 export type BrokerStatus = "offline" | "connecting" | "connected" | "error";
@@ -16,9 +17,10 @@ export type ConnectorRoute =
   | "file_import"
   | "manual"
   | "optional_cloud"
-  | "advanced_ea";
-export type ConnectionHealth = "connected" | "stale" | "waiting_for_companion" | "import_only" | "error";
-export type BrokerHubTab = "connect" | "accounts" | "terminal" | "order" | "history";
+  | "advanced_ea"
+  | "fxblue_account_sync";
+export type ConnectionHealth = "connected" | "stale" | "waiting_for_companion" | "waiting_for_fxblue_sync" | "import_only" | "error";
+export type BrokerHubTab = "connect" | "accounts" | "history";
 export type BrokerConnectionIntentStatus = "created" | "verification_required" | "ready_to_complete" | "completed" | "error";
 export type BrokerConnectionRequiredAction =
   | "start_authorization"
@@ -128,7 +130,11 @@ export interface BrokerDeal {
   volume: number;
   entryPrice?: number;
   exitPrice?: number;
+  stopLoss?: number;
+  takeProfit?: number;
   profit?: number;
+  commission?: number;
+  swap?: number;
   openedAt?: string;
   closedAt?: string;
   source: BrokerKind;

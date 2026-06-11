@@ -34,6 +34,17 @@ export const userPublicKeysTable = pgTable("user_public_keys", {
   uniqueIndex("idx_user_public_keys_user").on(table.userId),
 ]);
 
+export const userE2eeKeyBackupsTable = pgTable("user_e2ee_key_backups", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  publicKeyJwk: text("public_key_jwk").notNull(),
+  privateKeyJwk: text("private_key_jwk").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_user_e2ee_key_backups_user").on(table.userId),
+]);
+
 export const globalChatMessagesTable = pgTable("global_chat_messages", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
@@ -48,4 +59,5 @@ export const globalChatMessagesTable = pgTable("global_chat_messages", {
 export type Friendship = typeof friendshipsTable.$inferSelect;
 export type ChatMessage = typeof chatMessagesTable.$inferSelect;
 export type UserPublicKey = typeof userPublicKeysTable.$inferSelect;
+export type UserE2eeKeyBackup = typeof userE2eeKeyBackupsTable.$inferSelect;
 export type GlobalChatMessage = typeof globalChatMessagesTable.$inferSelect;

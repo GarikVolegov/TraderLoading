@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
+import { uiText } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBackground } from "@/contexts/BackgroundContext";
@@ -12,7 +14,6 @@ import {
   Activity,
   Check,
   ExternalLink,
-  ShieldCheck,
   Clock,
 } from "lucide-react";
 import {
@@ -34,6 +35,7 @@ import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
 import { reportClientError } from "@/lib/clientErrorReporter";
 
 const API = "/api";
+const MACRO_NEWS_QUERY_VERSION = "asset-impact-v2";
 
 interface MacroArticleDeepDive {
   whatHappened: string;
@@ -53,11 +55,14 @@ interface MacroArticle {
   sources?: string[];
   resolvedUrl?: string | null;
   sourceUrl?: string | null;
-  citationUrls?: string[]; // real Perplexity-verified source URLs
+  citationUrls?: string[];
   verified?: boolean;
   category?: string;
   timestamp?: string;
   imageUrl?: string | null;
+  imageKeywords?: string[];
+  affectedPairs?: string[];
+  primaryAssets?: string[];
   url?: string | null;
   deepDive?: MacroArticleDeepDive;
 }
@@ -65,6 +70,7 @@ interface MacroArticle {
 interface MacroNewsData {
   articles: MacroArticle[];
   sentiment: string;
+  sentimentIntensity?: string;
   summary: string;
   fetchedAt: string;
   citationUrls?: string[];
@@ -83,6 +89,9 @@ const ALL_CURRENCIES = [
 ];
 
 const STORAGE_KEY = "macro-news-currencies";
+const MARQUEE_PIXELS_PER_SECOND = 72;
+const MIN_MARQUEE_DURATION_SECONDS = 18;
+const DEFAULT_MARQUEE_DURATION_SECONDS = 30;
 
 const CURRENCY_FLAGS: Record<string, string> = {
   EUR: "\u{1F1EA}\u{1F1FA}",
@@ -143,11 +152,6 @@ function saveCurrencies(currencies: string[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(currencies));
 }
 
-function searchSourceUrl(source: string, title: string): string {
-  const q = encodeURIComponent(`${source} ${title}`);
-  return `https://www.google.com/search?q=${q}`;
-}
-
 function preferredMacroArticleUrl(
   article: Pick<MacroArticle, "url" | "resolvedUrl">,
 ): string | null {
@@ -157,14 +161,6 @@ function preferredMacroArticleUrl(
     : (article.url ?? null);
 }
 
-function extractDomain(url: string): string {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, "");
-    return host.length > 28 ? host.slice(0, 26) + "…" : host;
-  } catch {
-    return url.slice(0, 28);
-  }
-}
 
 const CATEGORY_LABELS: Record<string, { label: string; cls: string }> = {
   "banca-centrale": {
@@ -201,6 +197,101 @@ const CATEGORY_LABELS: Record<string, { label: string; cls: string }> = {
   },
 };
 
+function macroArticleDataTypeLabel(article: Pick<MacroArticle, "category">): string {
+  return article.category && CATEGORY_LABELS[article.category]
+    ? CATEGORY_LABELS[article.category].label
+    : "Dato macro";
+}
+
+function macroArticleAssetLabels(
+  article: Pick<MacroArticle, "affectedPairs" | "primaryAssets" | "currency">,
+): string[] {
+  const primaryAssets = uniqueText(article.primaryAssets ?? []).filter(
+    (asset) => asset.toUpperCase() !== "GLOBALE",
+  );
+  if (primaryAssets.length > 0) return primaryAssets;
+
+  const affectedPairs = uniqueText(article.affectedPairs ?? []);
+  if (affectedPairs.length > 0) return affectedPairs;
+
+  return article.currency ? [article.currency] : ["GLOBALE"];
+}
+
+const ASSET_IMAGE_KEYWORDS: Record<string, string[]> = {
+  EUR: ["euro", "europe", "centralbank"],
+  USD: ["dollar", "wallstreet", "federalreserve"],
+  GBP: ["london", "pound", "bankofengland"],
+  JPY: ["tokyo", "yen", "bankofjapan"],
+  CHF: ["switzerland", "franc", "bank"],
+  CAD: ["canada", "dollar", "economy"],
+  AUD: ["australia", "dollar", "economy"],
+  NZD: ["newzealand", "dollar", "economy"],
+  XAU: ["gold", "bullion", "vault"],
+  GLOBALE: ["global", "economy", "markets"],
+};
+
+function stableImageLock(text: string): number {
+  let hash = 1;
+  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) % 997;
+  return hash || 1;
+}
+
+function representativeMacroKeywords(
+  article: Pick<MacroArticle, "currency" | "title" | "summary" | "imageKeywords">,
+): string[] {
+  const text = `${article.title} ${article.summary}`.toLowerCase();
+  const keywords: string[] = [];
+  const add = (...items: string[]) => {
+    for (const item of items) if (item && !keywords.includes(item)) keywords.push(item);
+  };
+
+  if (/trump|white house|donald/.test(text)) add("donaldtrump", "gold", "tradeagreement");
+  if (/gold|xau|bullion/.test(text)) add("gold", "bullion", "vault");
+  if (/silver|xag/.test(text)) add("silver", "preciousmetals");
+  if (/fed|fomc|powell|federal reserve/.test(text)) add("federalreserve", "centralbank");
+  if (/cpi|inflation|pce|price index/.test(text)) add("inflation", "economy");
+  if (/jobs|payroll|employment|unemployment/.test(text)) add("jobsreport", "economy");
+  if (/oil|crude|petrol|energy/.test(text)) add("oil", "energy");
+  if (/china|beijing/.test(text)) add("china", "trade");
+  if (/war|conflict|geopolit|sanction/.test(text)) add("geopolitics", "conflict");
+  if (/election|vote|government/.test(text)) add("election", "politics");
+  add(...(article.imageKeywords ?? []));
+  add(...(ASSET_IMAGE_KEYWORDS[article.currency] ?? ASSET_IMAGE_KEYWORDS.GLOBALE));
+  return keywords.slice(0, 3);
+}
+
+function representativeMacroImageUrl(
+  article: Pick<MacroArticle, "currency" | "title" | "summary" | "imageKeywords">,
+): string {
+  const keywords = representativeMacroKeywords(article).map((keyword) => encodeURIComponent(keyword));
+  const query = keywords.length > 0 ? keywords.join(",") : "global,economy,markets";
+  const lock = stableImageLock(`${article.title} ${article.summary}`);
+  return `https://loremflickr.com/800/400/${query}?lock=${lock}`;
+}
+
+function handleMacroNewsImageError(
+  event: React.SyntheticEvent<HTMLImageElement>,
+  article: Pick<MacroArticle, "currency" | "title" | "summary" | "imageKeywords">,
+) {
+  const image = event.currentTarget;
+  const fallback = representativeMacroImageUrl(article);
+  if (image.src !== fallback) {
+    image.src = fallback;
+  }
+}
+
+function uniqueText(items: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of items) {
+    const clean = item?.trim();
+    if (!clean || seen.has(clean)) continue;
+    seen.add(clean);
+    out.push(clean);
+  }
+  return out;
+}
+
 function MacroNewsDetailDialog({
   article,
   open,
@@ -212,10 +303,11 @@ function MacroNewsDetailDialog({
 }) {
   if (!article) return null;
   const detailUrl = preferredMacroArticleUrl(article);
+  const assetLabels = macroArticleAssetLabels(article);
   const deepDive = article.deepDive ?? {
     whatHappened: article.summary || article.title,
-    whyItMatters: `La notizia riguarda ${article.currency} e puo' modificare aspettative, flussi o volatilita' sull'asset monitorato.`,
-    possibleImpact: `Impatto ${article.impact} su ${article.currency}. Direzione stimata: ${article.direction}.`,
+    whyItMatters: `La notizia riguarda ${assetLabels.join(", ")} e può modificare aspettative, flussi o volatilità sull'asset monitorato.`,
+    possibleImpact: `Impatto ${article.impact} su ${assetLabels.join(", ")}. Direzione stimata: ${article.direction}.`,
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -235,31 +327,25 @@ function MacroNewsDetailDialog({
               </span>
             )}
             <span className="font-mono text-xs font-bold text-muted-foreground">
-              {CURRENCY_FLAGS[article.currency] ?? "\u{1F4CA}"}{" "}
-              {article.currency}
+              {assetLabels.join(", ")}
             </span>
           </div>
           <DialogTitle className="text-xl leading-snug pt-2">
             {article.title}
           </DialogTitle>
-          <DialogDescription className="flex items-center gap-2 flex-wrap">
-            <span>{article.source}</span>
-            {article.timestamp && (
-              <>
-                <span>·</span>
-                <span>{formatItalianNewsRelativeTime(article.timestamp)}</span>
-              </>
-            )}
-          </DialogDescription>
+          {article.timestamp && (
+            <DialogDescription className="flex items-center gap-2 flex-wrap">
+              <span>{formatItalianNewsRelativeTime(article.timestamp)}</span>
+            </DialogDescription>
+          )}
         </DialogHeader>
 
-        {article.imageUrl && (
-          <img
-            src={article.imageUrl}
-            alt=""
-            className="w-full max-h-64 object-cover rounded-lg border border-border/40"
-          />
-        )}
+        <img
+          src={article.imageUrl || representativeMacroImageUrl(article)}
+          alt=""
+          className="w-full max-h-64 object-cover rounded-lg border border-border/40"
+          onError={(event) => handleMacroNewsImageError(event, article)}
+        />
 
         <div className="space-y-4">
           <p className="text-sm leading-relaxed text-foreground/90">
@@ -268,9 +354,9 @@ function MacroNewsDetailDialog({
 
           <div className="grid gap-3">
             {[
-              ["Cosa e' successo", deepDive.whatHappened],
-              ["Perche' influenza l'asset", deepDive.whyItMatters],
-              ["Come puo' impattare", deepDive.possibleImpact],
+              ["Cosa è successo", deepDive.whatHappened],
+              ["Perché influenza l'asset", deepDive.whyItMatters],
+              ["Come può impattare", deepDive.possibleImpact],
             ].map(([label, value]) => (
               <div key={label} className="rounded-lg border border-primary/15 bg-primary/5 p-3">
                 <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">
@@ -310,7 +396,7 @@ function MacroNewsDetailDialog({
                 className="inline-flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 <ExternalLink className="w-4 h-4" />
-                Apri fonte originale
+                Apri articolo
               </a>
             )}
             {article.sourceUrl && article.sourceUrl !== detailUrl && (
@@ -321,7 +407,7 @@ function MacroNewsDetailDialog({
                 className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary"
               >
                 <ExternalLink className="w-4 h-4" />
-                Sito fonte
+                Apri articolo
               </a>
             )}
           </div>
@@ -363,6 +449,10 @@ export function MacroNewsTicker() {
   const [selectedCurrencies, setSelectedCurrencies] =
     useState<string[]>(loadCurrencies);
   const forceNextRef = useRef(false);
+  const marqueeTrackRef = useRef<HTMLDivElement | null>(null);
+  const [marqueeDurationSeconds, setMarqueeDurationSeconds] = useState(
+    DEFAULT_MARQUEE_DURATION_SECONDS,
+  );
   const { selectedCurrencies: contextCurrencies } = useBackground();
 
   const pairDerivedCurrencies = useMemo(() => {
@@ -399,7 +489,7 @@ export function MacroNewsTicker() {
   );
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ["macro-news", currenciesKey],
+    queryKey: ["macro-news", MACRO_NEWS_QUERY_VERSION, currenciesKey],
     queryFn: () => {
       const force = forceNextRef.current;
       forceNextRef.current = false;
@@ -412,19 +502,65 @@ export function MacroNewsTicker() {
 
   const tickerItems = useMemo(() => {
     if (!data?.articles?.length) return [];
-    return data.articles.map((a) => {
-      const flag = CURRENCY_FLAGS[a.currency] ?? "\u{1F4CA}";
-      const dot = IMPACT_DOT[a.impact] ?? "\u26AA";
-      const impactLabel = a.impact ? a.impact.toUpperCase() : "";
-      const sourceCount = a.sources?.length ?? (a.source ? 1 : 0);
-      const srcLabel =
-        sourceCount > 0
-          ? ` [${sourceCount} ${sourceCount === 1 ? "fonte" : "fonti"}]`
-          : "";
-      const verifiedMark = sourceCount >= 3 ? " \u2713" : "";
-      return `${dot} ${flag} ${a.currency}: ${a.title} \u2014 ${impactLabel}${srcLabel}${verifiedMark}`;
-    });
+    const seenTitles = new Set<string>();
+    return data.articles
+      .filter((a) => {
+        const key = `${a.currency}|${a.title}`;
+        if (seenTitles.has(key)) return false;
+        seenTitles.add(key);
+        return true;
+      })
+      .map((a) => {
+        const flag = CURRENCY_FLAGS[a.currency] ?? "\u{1F4CA}";
+        const dot = IMPACT_DOT[a.impact] ?? "\u26AA";
+        const impactLabel = a.impact ? a.impact.toUpperCase() : "";
+        return `${dot} ${flag} ${a.currency}: ${a.title} \u2014 ${impactLabel}`;
+      });
   }, [data]);
+
+  useEffect(() => {
+    const track = marqueeTrackRef.current;
+    if (!track || tickerItems.length === 0) {
+      setMarqueeDurationSeconds(DEFAULT_MARQUEE_DURATION_SECONDS);
+      return;
+    }
+
+    const measureDuration = () => {
+      const distance = track.scrollWidth / 2;
+      if (!Number.isFinite(distance) || distance <= 0) return;
+
+      const nextDuration = Math.max(
+        MIN_MARQUEE_DURATION_SECONDS,
+        Math.round(distance / MARQUEE_PIXELS_PER_SECOND),
+      );
+      setMarqueeDurationSeconds((current) =>
+        current === nextDuration ? current : nextDuration,
+      );
+    };
+
+    measureDuration();
+    window.addEventListener("resize", measureDuration);
+
+    if (typeof ResizeObserver === "undefined") {
+      return () => window.removeEventListener("resize", measureDuration);
+    }
+
+    const resizeObserver = new ResizeObserver(measureDuration);
+    resizeObserver.observe(track);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", measureDuration);
+    };
+  }, [tickerItems]);
+
+  const marqueeStyle = useMemo(
+    () =>
+      ({
+        "--marquee-duration": `${marqueeDurationSeconds}s`,
+      }) as CSSProperties & Record<"--marquee-duration", string>,
+    [marqueeDurationSeconds],
+  );
 
   const toggleCurrency = useCallback((cur: string) => {
     setSelectedCurrencies((prev) => {
@@ -455,7 +591,7 @@ export function MacroNewsTicker() {
           <div className="flex items-center gap-2">
             <Loader2 className="w-3 h-3 animate-spin text-primary" />
             <span className="text-xs text-muted-foreground">
-              Analisi macro AI...
+              Analisi macro...
             </span>
           </div>
         ) : isError ? (
@@ -464,7 +600,11 @@ export function MacroNewsTicker() {
           </span>
         ) : tickerItems.length > 0 ? (
           <div className="overflow-hidden whitespace-nowrap mask-fade">
-            <div className="inline-flex animate-marquee gap-8">
+            <div
+              ref={marqueeTrackRef}
+              className="inline-flex animate-marquee gap-8"
+              style={marqueeStyle}
+            >
               {tickerItems.map((item, i) => (
                 <span
                   key={i}
@@ -485,7 +625,7 @@ export function MacroNewsTicker() {
           </div>
         ) : (
           <span className="text-xs text-muted-foreground">
-            Clicca per il briefing macro AI
+            Apri briefing macro
           </span>
         )}
       </div>
@@ -500,10 +640,10 @@ export function MacroNewsTicker() {
               <div>
                 <SheetTitle className="text-base flex items-center gap-2">
                   <Brain className="w-4 h-4 text-primary" />
-                  Agente Notizie Macro
+                  Notizie macro
                 </SheetTitle>
                 <SheetDescription className="text-xs mt-0.5">
-                  Briefing AI verificato su fonti multiple
+                  Briefing aggiornato
                   {fetchedTimeAgo && (
                     <span className="ml-2 text-muted-foreground/60 inline-flex items-center gap-1">
                       <Clock className="w-2.5 h-2.5" />
@@ -610,6 +750,9 @@ export function MacroNewsTicker() {
                 >
                   <Activity className="w-3.5 h-3.5" />
                   {data.sentiment.toUpperCase()}
+                  {data.sentimentIntensity && (
+                    <span className="opacity-70 font-bold">· {data.sentimentIntensity.toUpperCase()}</span>
+                  )}
                 </div>
                 {data.summary && (
                   <p className="text-xs text-muted-foreground italic flex-1 line-clamp-2">
@@ -622,7 +765,7 @@ export function MacroNewsTicker() {
             {isFetching && !data && (
               <div className="flex flex-col items-center py-8 gap-2 text-muted-foreground">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-sm">Analisi macro in corso...</p>
+                <p className="text-sm">{uiText("macro_news.analysis_loading")}</p>
                 <p className="text-xs text-muted-foreground/60">
                   Può richiedere 10-20 secondi
                 </p>
@@ -647,24 +790,9 @@ export function MacroNewsTicker() {
                           setSelectedArticle(article);
                         }
                       }}
-                      className="rounded-2xl border border-border bg-card/60 overflow-hidden cursor-pointer hover:border-primary/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="rounded-xl border border-border bg-card/60 p-3.5 cursor-pointer hover:border-primary/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
-                      {article.imageUrl && (
-                        <div className="w-full h-28 overflow-hidden">
-                          <img
-                            src={article.imageUrl}
-                            alt=""
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            onError={(e) => {
-                              (
-                                e.currentTarget as HTMLImageElement
-                              ).parentElement!.style.display = "none";
-                            }}
-                          />
-                        </div>
-                      )}
-                      <div className="p-3.5 space-y-2">
+                      <div className="space-y-2">
                         <div className="flex items-start justify-between gap-3">
                           <h4 className="text-sm font-semibold leading-tight flex-1">
                             <button
@@ -679,18 +807,18 @@ export function MacroNewsTicker() {
                             </button>
                           </h4>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground/60">
+                              Asset
+                            </span>
                             <span className="font-mono text-xs font-bold text-muted-foreground">
-                              {CURRENCY_FLAGS[article.currency] ?? "\u{1F4CA}"}{" "}
-                              {article.currency}
+                              {macroArticleAssetLabels(article).join(", ")}
                             </span>
                             {DIRECTION_ICONS[article.direction] ??
                               DIRECTION_ICONS.neutrale}
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          {article.summary}
-                        </p>
                         <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground/60">{uiText("auto.ui.f150e87d33")}</span>
                           <span
                             className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
                               IMPACT_STYLES[article.impact] ??
@@ -710,117 +838,30 @@ export function MacroNewsTicker() {
                           >
                             {article.direction}
                           </span>
+                          <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground/60">
+                            Tipo dato
+                          </span>
                           {/* Category badge — geopolitical, macro, energy, etc. */}
-                          {article.category &&
-                            CATEGORY_LABELS[article.category] && (
-                              <span
-                                className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-semibold border ${CATEGORY_LABELS[article.category].cls}`}
-                              >
-                                {CATEGORY_LABELS[article.category].label}
-                              </span>
-                            )}
-                          {/* Verification badge: Perplexity citations > AI-named sources */}
-                          {article.verified ? (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
-                              <ShieldCheck className="w-2.5 h-2.5" />
-                              {article.citationUrls &&
-                              article.citationUrls.length > 0
-                                ? `${article.citationUrls.length} URL REALI`
-                                : article.sources && article.sources.length >= 3
-                                  ? `${article.sources.length} FONTI`
-                                  : "VERIFICATO"}
-                            </span>
-                          ) : article.sources && article.sources.length > 0 ? (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold border border-yellow-500/30 bg-yellow-500/10 text-yellow-400">
-                              <ShieldCheck className="w-2.5 h-2.5" />
-                              {article.sources.length}{" "}
-                              {article.sources.length === 1 ? "FONTE" : "FONTI"}
-                            </span>
-                          ) : null}
+                          <span
+                            className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-semibold border ${
+                              article.category && CATEGORY_LABELS[article.category]
+                                ? CATEGORY_LABELS[article.category].cls
+                                : "border-border bg-secondary/40 text-muted-foreground"
+                            }`}
+                          >
+                            {macroArticleDataTypeLabel(article)}
+                          </span>
                           {article.timestamp && (
                             <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/60 ml-auto">
                               <Clock className="w-2.5 h-2.5" />
                               {formatItalianNewsRelativeTime(article.timestamp)}
                             </span>
                           )}
+                          <span className="text-[10px] font-semibold text-primary/70">
+                            Approfondisci
+                          </span>
                         </div>
 
-                        {/* Sources — real Perplexity citation URLs take priority over named sources */}
-                        {((article.citationUrls &&
-                          article.citationUrls.length > 0) ||
-                          (article.sources && article.sources.length > 0)) && (
-                          <div className="pt-1.5 border-t border-border/30">
-                            <div className="flex items-center gap-1 mb-1.5">
-                              <span className="text-[9px] text-muted-foreground/50 font-semibold uppercase tracking-wide">
-                                {article.citationUrls &&
-                                article.citationUrls.length > 0 ? (
-                                  <>
-                                    Fonti verificate (
-                                    {article.citationUrls.length}
-                                    <span className="text-emerald-400">
-                                      {" "}
-                                      · Perplexity
-                                    </span>
-                                    )
-                                  </>
-                                ) : (
-                                  <>
-                                    Fonti ({article.sources!.length}
-                                    {article.sources!.length >= 3 ? (
-                                      <span className="text-emerald-400">
-                                        {" "}
-                                        · verificato
-                                      </span>
-                                    ) : (
-                                      <span className="text-yellow-400">
-                                        {" "}
-                                        · min 3
-                                      </span>
-                                    )}
-                                    )
-                                  </>
-                                )}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {/* Prefer real citation URLs (verified by Perplexity's web search) */}
-                              {article.citationUrls &&
-                              article.citationUrls.length > 0
-                                ? article.citationUrls.map((url, si) => (
-                                    <a
-                                      key={si}
-                                      href={url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(event) =>
-                                        event.stopPropagation()
-                                      }
-                                      title={url}
-                                      className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-medium border border-emerald-500/30 bg-emerald-500/8 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all"
-                                    >
-                                      <ExternalLink className="w-2.5 h-2.5 shrink-0" />
-                                      {extractDomain(url)}
-                                    </a>
-                                  ))
-                                : /* Fallback: named sources with Google search link */
-                                  article.sources!.map((src, si) => (
-                                    <a
-                                      key={si}
-                                      href={searchSourceUrl(src, article.title)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(event) =>
-                                        event.stopPropagation()
-                                      }
-                                      className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-medium border border-blue-500/25 bg-blue-500/8 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/40 transition-all"
-                                    >
-                                      <ExternalLink className="w-2.5 h-2.5 shrink-0" />
-                                      {src}
-                                    </a>
-                                  ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </motion.div>
                   ))}
@@ -838,7 +879,7 @@ export function MacroNewsTicker() {
             )}
 
             <p className="text-[10px] text-muted-foreground/50 text-center pt-2">
-              Generato con AI &middot; Non costituisce consulenza finanziaria
+              Informazione di mercato. Non costituisce consulenza finanziaria
             </p>
           </div>
         </SheetContent>

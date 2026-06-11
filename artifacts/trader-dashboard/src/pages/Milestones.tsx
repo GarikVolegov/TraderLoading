@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from "framer-motion";
 import {
   Trophy,
   Lock,
@@ -32,8 +32,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { formatFileSize } from "@/lib/fileFormatting";
+import { uiText } from "@/contexts/LanguageContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const XP_PER_LEVEL = 500;
 
 const LEVEL_NAMES: Record<number, string> = {
   1: "Novizio Consapevole",
@@ -142,6 +145,28 @@ function fileIcon(mimeType: string): React.ReactNode {
 
 // ─── NFT Certificate Card ─────────────────────────────────────────────────────
 
+// Rarity tiers by level — higher levels get rarer, fancier holographic foils.
+const RARITY_TIERS = [
+  { min: 17, label: "MYTHIC",    holo: ["#ff5edb", "#a855f7", "#22d3ee", "#34d399"] },
+  { min: 13, label: "LEGENDARY", holo: ["#fde68a", "#fbbf24", "#f59e0b", "#fb923c"] },
+  { min: 9,  label: "EPIC",      holo: ["#c4b5fd", "#a855f7", "#7c3aed", "#6366f1"] },
+  { min: 5,  label: "RARE",      holo: ["#7dd3fc", "#38bdf8", "#0ea5e9", "#22d3ee"] },
+  { min: 1,  label: "COMMON",    holo: ["#6ee7b7", "#34d399", "#10b981", "#059669"] },
+];
+function rarityFor(level: number) {
+  return RARITY_TIERS.find((t) => level >= t.min) ?? RARITY_TIERS[RARITY_TIERS.length - 1];
+}
+// Deterministic FNV-1a hash → unique on-chain-style id + hue per certificate.
+function certHash(cert: { id: number; level: number; userId: string }): string {
+  let h = 2166136261;
+  const s = `${cert.userId}:${cert.level}:${cert.id}`;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
 function CertificateCard({ cert }: { cert: Certificate }) {
   const date = new Date(cert.awardedAt).toLocaleDateString("it-IT", {
     day: "numeric",
@@ -149,119 +174,150 @@ function CertificateCard({ cert }: { cert: Certificate }) {
     year: "numeric",
   });
   const color = BADGE_COLORS[(cert.level - 1) % BADGE_COLORS.length];
+  const emoji = BADGE_EMOJIS[(cert.level - 1) % BADGE_EMOJIS.length];
+  const tier = rarityFor(cert.level);
+  const hash = certHash(cert);
+  const hue = (parseInt(hash.slice(0, 2), 16) / 255) * 360;
+  const holo = `linear-gradient(115deg, ${tier.holo[0]}, ${tier.holo[1]}, ${tier.holo[2]}, ${tier.holo[3]}, ${tier.holo[0]})`;
+
+  // Pointer-driven 3D tilt + holographic sheen.
+  const px = useMotionValue(0.5);
+  const py = useMotionValue(0.5);
+  const rotateX = useSpring(useTransform(py, [0, 1], [10, -10]), { stiffness: 160, damping: 16 });
+  const rotateY = useSpring(useTransform(px, [0, 1], [-10, 10]), { stiffness: 160, damping: 16 });
+  const sheenX = useTransform(px, [0, 1], ["-10%", "110%"]);
+  const sheenBg = useTransform(sheenX, (x) => `linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.5) ${x}, transparent 65%)`);
+  const sheenOpacity = useMotionValue(0);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.92 }}
-      animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ scale: 1.02, y: -2 }}
-      className="relative shrink-0 w-64 rounded-2xl overflow-hidden cursor-pointer select-none"
-      style={{
-        background: `linear-gradient(135deg, #0a0f1e 0%, #111827 50%, #0a0f1e 100%)`,
-        border: `1px solid ${color}40`,
-        boxShadow: `0 0 20px ${color}20, 0 4px 24px rgba(0,0,0,0.5)`,
-      }}
-    >
-      {/* Watermark grid */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)",
-          backgroundSize: "10px 10px",
+    <div className="shrink-0" style={{ perspective: 1100 }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        onMouseMove={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          px.set((e.clientX - r.left) / r.width);
+          py.set((e.clientY - r.top) / r.height);
+          sheenOpacity.set(1);
         }}
-      />
-      {/* Glow top */}
-      <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-16 rounded-full blur-2xl opacity-30"
-        style={{ background: color }}
-      />
+        onMouseLeave={() => {
+          px.set(0.5);
+          py.set(0.5);
+          sheenOpacity.set(0);
+        }}
+        style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+        className="relative w-64 rounded-[1.25rem] cursor-pointer select-none"
+      >
+        {/* Animated holographic foil border */}
+        <motion.div
+          aria-hidden
+          className="absolute -inset-px rounded-[1.25rem] opacity-70"
+          style={{ background: holo, backgroundSize: "300% 300%" }}
+          animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+        />
 
-      <div className="relative p-5">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5">
-            <Trophy className="w-3.5 h-3.5" style={{ color }} />
-            <span
-              className="text-[10px] font-bold uppercase tracking-[0.15em]"
-              style={{ color }}
-            >
-              Certificato NFT
-            </span>
-          </div>
-          <span className="text-[10px] text-muted-foreground/50 font-mono">
-            #{cert.id.toString().padStart(4, "0")}
-          </span>
-        </div>
-
-        {/* Badge */}
-        <div className="flex justify-center mb-3">
-          <div className="relative">
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
-              style={{
-                background: `radial-gradient(circle, ${color}20 0%, ${color}08 100%)`,
-                border: `2px solid ${color}50`,
-              }}
-            >
-              {BADGE_EMOJIS[(cert.level - 1) % BADGE_EMOJIS.length]}
-            </div>
-            <div
-              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-white"
-              style={{ background: color }}
-            >
-              {cert.level}
-            </div>
-          </div>
-        </div>
-
-        {/* Title */}
-        <div className="text-center mb-3">
-          <p className="text-xs font-black text-white leading-tight">
-            {cert.levelName}
-          </p>
-          {cert.milestoneTitle && (
-            <p className="text-[10px] text-muted-foreground/70 mt-0.5 leading-snug">
-              {cert.milestoneTitle}
-            </p>
-          )}
-        </div>
-
-        {/* Divider */}
+        {/* Card body */}
         <div
-          className="h-px mb-3"
+          className="relative rounded-[1.2rem] overflow-hidden"
           style={{
-            background: `linear-gradient(to right, transparent, ${color}50, transparent)`,
+            background: "linear-gradient(160deg, #070d1a 0%, #0d1426 48%, #070b16 100%)",
+            boxShadow: `0 18px 40px -12px rgba(0,0,0,0.85), 0 0 26px ${tier.holo[1]}33`,
           }}
-        />
+        >
+          {/* Per-certificate unique iridescent wash (seeded hue) */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-[0.16]"
+            style={{ background: `radial-gradient(120% 80% at ${20 + (hue % 60)}% 0%, hsl(${hue} 90% 60%), transparent 60%)` }}
+          />
+          {/* Guilloché security grid */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-[0.04]"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg,#fff 0 1px,transparent 1px 7px),repeating-linear-gradient(-45deg,#fff 0 1px,transparent 1px 7px)",
+            }}
+          />
+          {/* Pointer-following holographic sheen */}
+          <motion.div
+            aria-hidden
+            className="absolute inset-0 pointer-events-none mix-blend-overlay"
+            style={{ opacity: sheenOpacity, background: sheenBg }}
+          />
 
-        {/* Footer */}
-        <div className="text-center">
-          <p className="text-[10px] font-semibold text-white/80 truncate">
-            {cert.userName}
-          </p>
-          <p className="text-[9px] text-muted-foreground/50 mt-0.5">{date}</p>
+          <div className="relative p-5" style={{ transform: "translateZ(40px)" }}>
+            {/* Header: rarity tier + serial */}
+            <div className="flex items-center justify-between mb-3">
+              <span
+                className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em]"
+                style={{ background: `${tier.holo[1]}1f`, color: tier.holo[0], border: `1px solid ${tier.holo[1]}55` }}
+              >
+                {tier.label}
+              </span>
+              <span className="text-[9px] text-white/40 font-mono">#{cert.id.toString().padStart(4, "0")}</span>
+            </div>
+
+            {/* Floating badge */}
+            <div className="flex justify-center mb-3">
+              <motion.div
+                className="relative"
+                animate={{ y: [0, -4, 0] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <div className="absolute inset-0 rounded-full blur-xl opacity-50" style={{ background: tier.holo[1] }} />
+                <div
+                  className="relative w-[4.5rem] h-[4.5rem] rounded-full flex items-center justify-center text-4xl"
+                  style={{
+                    background: `radial-gradient(circle, ${color}22 0%, ${color}08 100%)`,
+                    border: `2px solid ${color}66`,
+                    boxShadow: `inset 0 0 18px ${color}33`,
+                  }}
+                >
+                  {emoji}
+                </div>
+                <div
+                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-[#06101d]"
+                  style={{ background: holo, backgroundSize: "200% 200%" }}
+                >
+                  {cert.level}
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Level name + milestone */}
+            <div className="text-center mb-3">
+              <p className="text-sm font-black text-white leading-tight">{cert.levelName}</p>
+              {cert.milestoneTitle && (
+                <p className="text-[10px] text-white/55 mt-0.5 leading-snug line-clamp-2">{cert.milestoneTitle}</p>
+              )}
+            </div>
+
+            <div className="h-px mb-3" style={{ background: `linear-gradient(to right, transparent, ${tier.holo[1]}66, transparent)` }} />
+
+            {/* Holder */}
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {cert.avatarUrl ? (
+                <img src={cert.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover border" style={{ borderColor: `${color}66` }} />
+              ) : (
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white" style={{ background: color }}>
+                  {(cert.userName || "T").charAt(0).toUpperCase()}
+                </div>
+              )}
+              <p className="text-[11px] font-bold text-white/85 truncate max-w-[10rem]">{cert.userName}</p>
+            </div>
+
+            {/* Footer: date + on-chain-style hash */}
+            <div className="text-center">
+              <p className="text-[9px] text-white/40">{date}</p>
+              <p className="mt-1 text-[8px] font-mono text-white/30 flex items-center justify-center gap-1">
+                <Sparkles className="w-2.5 h-2.5" style={{ color: tier.holo[0] }} />
+                0x{hash}
+              </p>
+            </div>
+          </div>
         </div>
-
-        {/* Corner accents */}
-        <div
-          className="absolute top-2 left-2 w-3 h-3 border-t border-l rounded-tl-sm opacity-40"
-          style={{ borderColor: color }}
-        />
-        <div
-          className="absolute top-2 right-2 w-3 h-3 border-t border-r rounded-tr-sm opacity-40"
-          style={{ borderColor: color }}
-        />
-        <div
-          className="absolute bottom-2 left-2 w-3 h-3 border-b border-l rounded-bl-sm opacity-40"
-          style={{ borderColor: color }}
-        />
-        <div
-          className="absolute bottom-2 right-2 w-3 h-3 border-b border-r rounded-br-sm opacity-40"
-          style={{ borderColor: color }}
-        />
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -397,7 +453,7 @@ function MilestoneEditor({
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="es. Padronanza del Risk Management"
+            placeholder={uiText("auto.ui.5a8bc536be")}
             className="w-full h-9 px-3 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50"
           />
         </div>
@@ -435,13 +491,11 @@ function MilestoneEditor({
           </div>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            Descrizione
-          </label>
+          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.07dfa30eec")}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descrivi cosa significa raggiungere questo livello, cosa il trader ha dimostrato..."
+            placeholder={uiText("auto.ui.7a0349621f")}
             rows={3}
             className="w-full px-3 py-2 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50 resize-none"
           />
@@ -457,7 +511,7 @@ function MilestoneEditor({
               onKeyDown={(e) =>
                 e.key === "Enter" && (e.preventDefault(), addSkill())
               }
-              placeholder="es. Gestione del rischio"
+              placeholder={uiText("auto.ui.3e04830784")}
               className="flex-1 h-9 px-3 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50"
             />
             <button
@@ -685,9 +739,9 @@ function LevelRow({
 
         {/* XP needed */}
         <div className="shrink-0 text-right mr-2 hidden sm:block">
-          <p className="text-[10px] text-muted-foreground/50">XP richiesti</p>
+          <p className="text-[10px] text-muted-foreground/50">{uiText("auto.ui.00f59e3a8e")}</p>
           <p className="text-xs font-mono font-bold text-muted-foreground">
-            {((level - 1) * 500).toLocaleString()}
+            {((level - 1) * XP_PER_LEVEL).toLocaleString()}
           </p>
         </div>
 
@@ -700,7 +754,7 @@ function LevelRow({
               setEditing((s) => !s);
             }}
             className="shrink-0 p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-            title="Modifica traguardo"
+            title={uiText("auto.ui.d24714bb3d")}
           >
             <Edit3 className="w-3.5 h-3.5" />
           </button>
@@ -792,14 +846,14 @@ function LevelRow({
                                     href={f.fileUrl}
                                     download={f.fileName}
                                     className="shrink-0 p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-                                    title="Scarica"
+                                    title={uiText("auto.ui.bf03edb19e")}
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </a>
                                 ) : (
                                   <div
                                     className="shrink-0 p-1.5 rounded-lg bg-secondary/30 text-muted-foreground/30"
-                                    title="Download non disponibile"
+                                    title={uiText("auto.ui.c4a952844c")}
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </div>
@@ -869,8 +923,8 @@ export default function Milestones() {
     <PageLayout>
       <div className="max-w-2xl mx-auto px-4 pb-24 pt-4 space-y-6">
         <PageHeader
-          title="Traguardi"
-          subtitle="Il tuo percorso di crescita come trader"
+          title={uiText("auto.ui.689daf8e42")}
+          subtitle={uiText("auto.ui.f1e28afebb")}
           icon={<Trophy className="w-5 h-5 text-primary" />}
         />
 
@@ -901,7 +955,7 @@ export default function Milestones() {
                   Prossimo livello
                 </p>
                 <p className="text-xs font-bold text-primary">
-                  −{profile.xpToNextLevel} XP
+                  {profile.xpToNextLevel.toLocaleString()} XP mancanti
                 </p>
               </div>
             </div>
@@ -909,7 +963,7 @@ export default function Milestones() {
               <div
                 className="h-full rounded-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-500"
                 style={{
-                  width: `${Math.round(((500 - profile.xpToNextLevel) / 500) * 100)}%`,
+                  width: `${Math.round(((XP_PER_LEVEL - profile.xpToNextLevel) / XP_PER_LEVEL) * 100)}%`,
                 }}
               />
             </div>
@@ -921,7 +975,7 @@ export default function Milestones() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Award className="w-4 h-4 text-yellow-400" />
-              <h3 className="text-sm font-bold">I tuoi Certificati NFT</h3>
+              <h3 className="text-sm font-bold">{uiText("auto.ui.4314491bc5")}</h3>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/15 text-yellow-400 border border-yellow-500/30">
                 {certificates.length}
               </span>

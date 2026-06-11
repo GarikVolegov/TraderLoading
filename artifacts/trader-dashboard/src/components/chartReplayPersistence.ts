@@ -1,3 +1,6 @@
+import type { ChartAnalysisState } from "./chartAnalysisTypes";
+import { parseAnalysisState, serializeAnalysisState } from "./chartAnalysisPersistence";
+
 export interface PersistedReplayTrade {
   id: number;
   direction: "buy" | "sell";
@@ -24,6 +27,7 @@ export interface PersistedReplayState {
   lotSize: string;
   trades: PersistedReplayTrade[];
   openTrade: PersistedReplayTrade | null;
+  analysisState?: ChartAnalysisState;
   savedAt: string;
 }
 
@@ -37,6 +41,7 @@ export interface ReplayStateDraft {
   lotSize: string;
   trades: PersistedReplayTrade[];
   openTrade: PersistedReplayTrade | null;
+  analysisState?: ChartAnalysisState;
 }
 
 export function createReplayStorageKey(key: string): string {
@@ -93,6 +98,7 @@ export function serializeReplayState(draft: ReplayStateDraft): string {
     lotSize: draft.lotSize,
     trades: draft.trades.filter(isTrade),
     openTrade: draft.openTrade && isTrade(draft.openTrade) ? draft.openTrade : null,
+    analysisState: draft.analysisState ? JSON.parse(serializeAnalysisState(draft.analysisState)) as ChartAnalysisState : undefined,
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(state);
@@ -121,6 +127,7 @@ export function parsePersistedReplayState(raw: string | null, symbol: string): P
       lotSize: data.lotSize,
       trades: data.trades.filter(isTrade),
       openTrade: data.openTrade && isTrade(data.openTrade) ? data.openTrade : null,
+      analysisState: data.analysisState ? parseAnalysisState(JSON.stringify(data.analysisState)) : undefined,
       savedAt: typeof data.savedAt === "string" ? data.savedAt : new Date(0).toISOString(),
     };
   } catch {

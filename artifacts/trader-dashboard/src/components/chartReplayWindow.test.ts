@@ -4,6 +4,7 @@ import {
   DEFAULT_REPLAY_VISIBLE_CANDLES,
   getReplayIntervalSeconds,
   applyFormingCandleForAnchor,
+  resolveReplayDateAvailability,
   resolveReplayPointCloseTime,
   resolveReplayStartIndex,
   resolveReplayWindowForAnchor,
@@ -20,6 +21,18 @@ assert.equal(resolveReplayStartIndex(candles, "2026-01-11", DEFAULT_REPLAY_VISIB
 assert.equal(resolveReplayStartIndex(candles, "2026-06-30", DEFAULT_REPLAY_VISIBLE_CANDLES), 80);
 assert.equal(resolveReplayStartIndex(candles, "2027-01-01", DEFAULT_REPLAY_VISIBLE_CANDLES), 80);
 assert.equal(resolveReplayStartIndex(candles.slice(0, 20), "2026-01-11", DEFAULT_REPLAY_VISIBLE_CANDLES), 0);
+assert.deepEqual(resolveReplayDateAvailability("2025-12-01", { min: "2026-01-01", max: "2026-07-19" }), {
+  date: "2026-01-01",
+  warning: "La data selezionata non e disponibile per questo simbolo/timeframe. Il replay parte dalla prima data disponibile: 2026-01-01.",
+});
+assert.deepEqual(resolveReplayDateAvailability("2026-08-01", { min: "2026-01-01", max: "2026-07-19" }), {
+  date: "2026-07-19",
+  warning: "La data selezionata non e ancora disponibile. Il replay parte dall'ultima data disponibile: 2026-07-19.",
+});
+assert.deepEqual(resolveReplayDateAvailability("2026-02-01", { min: "2026-01-01", max: "2026-07-19" }), {
+  date: "2026-02-01",
+  warning: null,
+});
 
 const anchored = resolveReplayWindowForAnchor(candles, base + 150 * day, DEFAULT_REPLAY_VISIBLE_CANDLES);
 assert.equal(anchored.revealedCount, DEFAULT_REPLAY_VISIBLE_CANDLES);
@@ -33,6 +46,7 @@ assert.equal(shortAnchored.startIndex, 0);
 assert.equal(shortAnchored.revealedCount, 20);
 
 assert.equal(getReplayIntervalSeconds("M15"), 15 * 60);
+assert.equal(getReplayIntervalSeconds("M5"), 5 * 60);
 assert.equal(getReplayIntervalSeconds("H1"), 60 * 60);
 assert.equal(getReplayIntervalSeconds("D1"), 24 * 60 * 60);
 

@@ -4,7 +4,9 @@ import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
 import { getNewsData } from "./news.js";
 import { cleanNewsText } from "../services/newsHub/contentQuality.js";
 import { macroNewsFromNewsHub, pairsFromMacroCurrencies } from "../services/newsHub/macroNewsAdapter.js";
+import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
+import { getVolatilityUnit, YAHOO_VOLATILITY_PAIRS } from "../services/volatility.js";
 
 const router = Router();
 
@@ -184,46 +186,13 @@ router.get("/tools/sentiment", async (req, res) => {
 
 // ─── 3. VOLATILITY (Mataf-methodology via Yahoo Finance OHLCV) ────────────────
 
-const YAHOO_PAIRS: Record<string, string> = {
-  "EURUSD": "EURUSD=X",
-  "GBPUSD": "GBPUSD=X",
-  "USDJPY": "JPY=X",
-  "USDCHF": "CHF=X",
-  "AUDUSD": "AUDUSD=X",
-  "USDCAD": "CAD=X",
-  "NZDUSD": "NZDUSD=X",
-  "EURGBP": "EURGBP=X",
-  "EURJPY": "EURJPY=X",
-  "GBPJPY": "GBPJPY=X",
-  "XAUUSD": "GC=F",
-  "XAGUSD": "SI=F",
-  "USDMXN": "MXN=X",
-  "USDZAR": "ZAR=X",
-};
-
-// Pip multiplier: how many pips per 1.0 of price movement
-const PIP_MULTIPLIER: Record<string, number> = {
-  "USDJPY": 100, "EURJPY": 100, "GBPJPY": 100, "CADJPY": 100, "AUDJPY": 100,
-  "XAUUSD": 10,  "XAGUSD": 100,
-};
-const DEFAULT_PIP = 10000;
-
-function getPipMultiplier(pair: string) {
-  for (const [k, v] of Object.entries(PIP_MULTIPLIER)) {
-    if (pair.includes(k.slice(3)) && k.slice(3) === "JPY") return v;
-    if (pair === k) return v;
-  }
-  if (pair.endsWith("JPY")) return 100;
-  return DEFAULT_PIP;
-}
-
 function avgPips(arr: number[]) {
   return arr.length ? parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)) : 0;
 }
 
 router.get("/tools/volatility", async (req, res) => {
   const pair = (req.query["pair"] as string ?? "EURUSD").toUpperCase();
-  const ticker = YAHOO_PAIRS[pair];
+  const ticker = YAHOO_VOLATILITY_PAIRS[pair];
 
   if (!ticker) {
     res.status(400).json({ error: `Pair ${pair} non supportato` });
@@ -259,7 +228,7 @@ router.get("/tools/volatility", async (req, res) => {
 
     if (!quote || !timestamps.length) throw new Error("Dati insufficienti da Yahoo Finance");
 
-    const pip = getPipMultiplier(pair);
+    const { multiplier: pip, pipUnit } = getVolatilityUnit(pair);
 
     // Build per-day pip ranges (H-L) — exactly Mataf's method
     const ranges: { ts: number; pips: number; close: number }[] = [];
@@ -335,7 +304,7 @@ router.get("/tools/volatility", async (req, res) => {
       w1Pct, m1Pct, m3Pct, m6Pct, y1Pct,
       label,
       peakDay,
-      pipUnit: pip === 100 ? "pip (JPY)" : pip === 10 ? "pip (XAU)" : "pip",
+      pipUnit,
       last30,
       // legacy fields for backwards compat
       daily5: w1,
@@ -837,21 +806,38 @@ async function fetchCotData(): Promise<void> {
   }
 }
 
+let activeCotFetch: Promise<void> | null = null;
+
+function runCotFetch(): Promise<void> {
+  activeCotFetch = fetchCotData().finally(() => {
+    activeCotFetch = null;
+  });
+  return activeCotFetch;
+}
+
 // Cron: ogni venerdì alle 21:00 UTC (30 min dopo pubblicazione CFTC)
-cron.schedule("0 21 * * 5", () => {
+const cotTask = cron.schedule("0 21 * * 5", () => {
   console.info("[tools/cot] Cron triggered — fetching new COT data");
-  fetchCotData().catch(console.error);
+  runCotFetch().catch(console.error);
 }, { timezone: "UTC" });
 
+export const cotScheduler = {
+  async close(): Promise<void> {
+    cotTask.stop();
+    cotTask.destroy();
+    await activeCotFetch;
+  },
+};
+
 // Fetch iniziale al boot del server
-fetchCotData().catch(console.error);
+runCotFetch().catch(console.error);
 
 router.get("/tools/cot", async (req, res) => {
   const now = Date.now();
   const isStale = cotCache ? now >= cotCache.expiresAt : true;
 
   if (!cotCache || isStale) {
-    await fetchCotData();
+    await runCotFetch();
   }
 
   const cache = cotCache!;
@@ -887,8 +873,11 @@ interface MacroNewsResult {
     timestamp?: string | null;
     imageUrl?: string | null;
     imageKeywords?: string[];
+    affectedPairs?: string[];
+    primaryAssets?: string[];
   }>;
   sentiment: string;
+  sentimentIntensity?: string;
   summary: string;
   fetchedAt: string;
   citationUrls?: string[];     // all Perplexity citations for the full query
@@ -896,6 +885,7 @@ interface MacroNewsResult {
 
 const macroNewsCache = new Map<string, { data: MacroNewsResult; expiresAt: number }>();
 const MACRO_NEWS_TTL = 2 * 60 * 1000;
+const MACRO_NEWS_ASSET_CACHE_VERSION = "asset-impact-v2";
 const VALID_CURRENCIES = new Set(["EUR", "USD", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "XAU"]);
 
 function normalizeCurrencies(raw: string): { key: string; label: string } {
@@ -913,19 +903,85 @@ function normalizeCurrencies(raw: string): { key: string; label: string } {
   return { key: unique.join(",").toLowerCase(), label: unique.join(", ") };
 }
 
-function buildMacroImageUrl(keywords: string[] | undefined, currency: string, index = 0): string {
-  const lock = (index * 37 + 1) % 1000 || 1;
-  const kws = (keywords ?? []).filter(Boolean).slice(0, 3);
-  if (kws.length > 0) {
-    return `https://loremflickr.com/800/400/${kws.join(",")}?lock=${lock}`;
-  }
-  const fallbacks: Record<string, string> = {
-    EUR: "europe,economy", USD: "dollar,wallstreet", GBP: "london,finance",
-    JPY: "tokyo,japan,finance", CHF: "switzerland,bank", CAD: "canada,economy",
-    AUD: "australia,economy", NZD: "newzealand,economy", XAU: "gold,bullion",
-    GLOBALE: "global,economy,finance",
+const ASSET_IMAGE_KEYWORDS: Record<string, string[]> = {
+  EUR: ["euro", "europe", "centralbank"],
+  USD: ["dollar", "wallstreet", "federalreserve"],
+  GBP: ["london", "pound", "bankofengland"],
+  JPY: ["tokyo", "yen", "bankofjapan"],
+  CHF: ["switzerland", "franc", "bank"],
+  CAD: ["canada", "dollar", "economy"],
+  AUD: ["australia", "dollar", "economy"],
+  NZD: ["newzealand", "dollar", "economy"],
+  XAU: ["gold", "bullion", "vault"],
+  GLOBALE: ["global", "economy", "markets"],
+};
+
+function stableImageLock(text: string, index: number): number {
+  let hash = index + 1;
+  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) % 997;
+  return hash || 1;
+}
+
+function buildMacroImageKeywords(keywords: string[] | undefined, currency: string, context = ""): string[] {
+  const text = context.toLowerCase();
+  const out: string[] = [];
+  const add = (...items: string[]) => {
+    for (const item of items) if (item && !out.includes(item)) out.push(item);
   };
-  return `https://loremflickr.com/800/400/${fallbacks[currency] ?? "finance,trading"}?lock=${lock}`;
+
+  if (/trump|white house|donald/.test(text)) add("donaldtrump", "gold", "tradeagreement");
+  if (/gold|xau|bullion/.test(text)) add("gold", "bullion", "vault");
+  if (/silver|xag/.test(text)) add("silver", "preciousmetals");
+  if (/fed|fomc|powell|federal reserve/.test(text)) add("federalreserve", "centralbank");
+  if (/cpi|inflation|pce|price index/.test(text)) add("inflation", "economy");
+  if (/jobs|payroll|employment|unemployment/.test(text)) add("jobsreport", "economy");
+  if (/oil|crude|petrol|energy/.test(text)) add("oil", "energy");
+  if (/china|beijing/.test(text)) add("china", "trade");
+  if (/war|conflict|geopolit|sanction/.test(text)) add("geopolitics", "conflict");
+  if (/election|vote|government/.test(text)) add("election", "politics");
+  add(...(keywords ?? []));
+  add(...(ASSET_IMAGE_KEYWORDS[currency] ?? ASSET_IMAGE_KEYWORDS.GLOBALE));
+  return out.slice(0, 3);
+}
+
+function buildMacroImageUrl(keywords: string[] | undefined, currency: string, index = 0, context = ""): string {
+  const kws = buildMacroImageKeywords(keywords, currency, context).map((keyword) => encodeURIComponent(keyword));
+  const query = kws.length > 0 ? kws.join(",") : "global,economy,markets";
+  const lock = stableImageLock(context || `${currency} macro news`, index);
+  return `https://loremflickr.com/800/400/${query}?lock=${lock}`;
+}
+
+function uniqueMacroToolImageUrl(
+  article: Pick<MacroNewsResult["articles"][number], "title" | "summary" | "currency" | "imageUrl" | "imageKeywords">,
+  index: number,
+  seen: Set<string>,
+): string {
+  const sourceImage = article.imageUrl?.trim();
+  if (sourceImage && !seen.has(sourceImage)) {
+    seen.add(sourceImage);
+    return sourceImage;
+  }
+
+  const context = `${article.title} ${article.summary}`;
+  for (let offset = 0; offset < 20; offset++) {
+    const fallback = buildMacroImageUrl(article.imageKeywords, article.currency, index + offset * 97, context);
+    if (!seen.has(fallback)) {
+      seen.add(fallback);
+      return fallback;
+    }
+  }
+
+  const fallback = buildMacroImageUrl(article.imageKeywords, article.currency, index + seen.size * 193, context);
+  seen.add(fallback);
+  return fallback;
+}
+
+function ensureUniqueMacroToolImageUrls<T extends Pick<MacroNewsResult["articles"][number], "title" | "summary" | "currency" | "imageUrl" | "imageKeywords">>(articles: T[]): T[] {
+  const seenImageUrls = new Set<string>();
+  return articles.map((article, index) => ({
+    ...article,
+    imageUrl: uniqueMacroToolImageUrl(article, index, seenImageUrls),
+  }));
 }
 
 async function translateMacroArticle(
@@ -1060,9 +1116,20 @@ Rispondi SOLO con questo JSON (summary in ${langName}):
 
   console.log(`[tools/macro-news/groq] OK — ${articles.length} articoli classificati con Llama`);
 
+  // RISK ON/OFF from the deterministic regime (consistent with every other path),
+  // using Groq's per-article currency/impact/direction as input.
+  const regime = computeRiskRegime(articles.map((a) => ({
+    title: a.title,
+    summary: a.summary,
+    impactScore: a.impact === "alto" ? 9 : a.impact === "medio" ? 6 : 3,
+    impactDirection: a.direction,
+    primaryAssets: a.currency ? [a.currency] : [],
+  })));
+
   return {
-    articles,
-    sentiment: (parsed.sentiment as string) || rssResult.sentiment,
+    articles: ensureUniqueMacroToolImageUrls(articles),
+    sentiment: regime.regime,
+    sentimentIntensity: regime.intensity ?? undefined,
     summary: parsed.summary || "",
     fetchedAt: new Date().toISOString(),
   };
@@ -1152,7 +1219,7 @@ Genera 6-8 articoli bilanciati tra macro e geopolitica. imageKeywords: 2-3 parol
 
   const totalArticles = Math.max((parsed.articles ?? []).length, 1);
 
-  const articles = (parsed.articles ?? []).map((a, i) => {
+  const articles = ensureUniqueMacroToolImageUrls((parsed.articles ?? []).map((a, i) => {
     const rawSources = Array.isArray(a.sources) && a.sources.length > 0
       ? a.sources
       : a.source ? [a.source] : [];
@@ -1178,9 +1245,9 @@ Genera 6-8 articoli bilanciati tra macro e geopolitica. imageKeywords: 2-3 parol
       sources: dedupedSources,
       citationUrls: articleCitationUrls,
       verified,
-      imageUrl: buildMacroImageUrl(a.imageKeywords, a.currency ?? "GLOBALE", i),
+      imageUrl: buildMacroImageUrl(a.imageKeywords, a.currency ?? "GLOBALE", i, `${a.title ?? ""} ${a.summary ?? ""}`),
     };
-  });
+  }));
 
   // Warn in dev if Perplexity returned no citations (may indicate key/model issue)
   if (realCitationUrls.length === 0) {
@@ -1189,9 +1256,18 @@ Genera 6-8 articoli bilanciati tra macro e geopolitica. imageKeywords: 2-3 parol
     console.log(`[macro-news] Perplexity returned ${realCitationUrls.length} real citation URLs for ${totalArticles} articles`);
   }
 
+  const regime = computeRiskRegime(articles.map((a) => ({
+    title: a.title,
+    summary: a.summary,
+    impactScore: a.impact === "alto" ? 9 : a.impact === "medio" ? 6 : 3,
+    impactDirection: a.direction,
+    primaryAssets: a.currency ? [a.currency] : [],
+  })));
+
   return {
     articles,
-    sentiment: parsed.sentiment ?? "neutrale",
+    sentiment: regime.regime,
+    sentimentIntensity: regime.intensity ?? undefined,
     summary: parsed.summary ?? "",
     fetchedAt: new Date().toISOString(),
     citationUrls: realCitationUrls,
@@ -1334,39 +1410,55 @@ async function fetchMacroRSSFallback(currenciesInput: string, lang = "it"): Prom
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 
-  // Add fallback image for articles without one, with unique index
-  const withImages = deduped.map((a, i) => ({
-    ...a,
-    imageUrl: a.imageUrl ?? buildMacroImageUrl(undefined, a.currency, i),
-  }));
+  const articles = ensureUniqueMacroToolImageUrls(deduped.map((a) => ({ ...a, imageKeywords: undefined })));
 
   // Translate title+summary if needed
-  const articles = lang !== "en"
+  const translatedArticles = lang !== "en"
     ? await Promise.all(
-        withImages.map(async (a) => {
+        articles.map(async (a) => {
           const { title, summary } = await translateMacroArticle(a.title, a.summary, lang, a.source);
           return { ...a, title, summary };
         })
       )
-    : withImages;
+    : articles;
 
-  const bullCount = articles.filter((a) => a.direction === "bullish").length;
-  const bearCount = articles.filter((a) => a.direction === "bearish").length;
-  const sentiment = bullCount > bearCount ? "risk-on" : bearCount > bullCount ? "risk-off" : "neutrale";
+  const regime = computeRiskRegime(translatedArticles.map((a) => ({
+    title: a.title,
+    summary: a.summary,
+    impactScore: a.impact === "alto" ? 9 : a.impact === "medio" ? 6 : 3,
+    impactDirection: a.direction,
+    primaryAssets: a.currency ? [a.currency] : [],
+  })));
 
   return {
-    articles,
-    sentiment,
+    articles: translatedArticles,
+    sentiment: regime.regime,
+    sentimentIntensity: regime.intensity ?? undefined,
     summary: `Notizie in tempo reale da ${RSS_MACRO_FEEDS.map((f) => f.source).join(", ")}`,
     fetchedAt: new Date().toISOString(),
   };
 }
 
-async function fetchMacroNews(currencyLabel: string, currenciesRaw = "", lang = "it"): Promise<MacroNewsResult> {
+async function fetchMacroNews(
+  currencyLabel: string,
+  currenciesRaw = "",
+  lang = "it",
+  options: { forceRefresh?: boolean } = {},
+): Promise<MacroNewsResult> {
   const pairs = pairsFromMacroCurrencies(currenciesRaw);
+  const forceRefresh = options.forceRefresh === true;
   if (pairs) {
-    const news = await getNewsData({ noCache: true, pairs, lang });
-    return macroNewsFromNewsHub(news) as MacroNewsResult;
+    try {
+      const news = await withTimeout(
+        getNewsData({ noCache: forceRefresh === true, pairs, lang }),
+        NEWS_HUB_MACRO_TIMEOUT_MS,
+        "NewsHub",
+      );
+      return macroNewsFromNewsHub(news, { pairs }) as MacroNewsResult;
+    } catch (err) {
+      console.warn("[tools/macro-news] NewsHub timed out, falling back to RSS:", err instanceof Error ? err.message : String(err));
+      return fetchMacroRSSFallback(currenciesRaw, lang);
+    }
   }
 
   try {
@@ -1383,6 +1475,22 @@ function sanitizeLang(raw: string | undefined): string {
   return VALID_LANGS.has(l) ? l : "it";
 }
 
+const NEWS_HUB_MACRO_TIMEOUT_MS = process.env.VERCEL ? 25_000 : 45_000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timeout = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 router.get("/tools/macro-news", async (req, res) => {
   let currenciesInput = (req.query.currencies as string) || "";
   const pairsInput = (req.query.pairs as string) || "";
@@ -1393,7 +1501,7 @@ router.get("/tools/macro-news", async (req, res) => {
     currenciesInput = derived.join(",");
   }
   const { key: baseKey, label } = normalizeCurrencies(currenciesInput);
-  const key = `${baseKey}:${lang}`;
+  const key = `${MACRO_NEWS_ASSET_CACHE_VERSION}:${baseKey}:${lang}`;
   const forceRefresh = req.query.force === "1";
 
   const cached = macroNewsCache.get(key);
@@ -1403,7 +1511,7 @@ router.get("/tools/macro-news", async (req, res) => {
   }
 
   try {
-    const result = await fetchMacroNews(label, currenciesInput, lang);
+    const result = await fetchMacroNews(label, currenciesInput, lang, { forceRefresh });
     macroNewsCache.set(key, { data: result, expiresAt: Date.now() + MACRO_NEWS_TTL });
     res.json(result);
   } catch (err) {
@@ -1426,7 +1534,7 @@ router.post("/tools/macro-news", async (req, res) => {
     }
   }
   const { key: baseKey, label } = normalizeCurrencies(currencyInput);
-  const key = `${baseKey}:${lang}`;
+  const key = `${MACRO_NEWS_ASSET_CACHE_VERSION}:${baseKey}:${lang}`;
 
   const cached = macroNewsCache.get(key);
   if (cached && Date.now() < cached.expiresAt) {
@@ -1447,7 +1555,7 @@ router.post("/tools/macro-news", async (req, res) => {
 
 // ─── SUPPORTED PAIRS LIST ─────────────────────────────────────────────────────
 router.get("/tools/pairs", (req, res) => {
-  res.json({ pairs: Object.keys(YAHOO_PAIRS) });
+  res.json({ pairs: Object.keys(YAHOO_VOLATILITY_PAIRS) });
 });
 
 export default router;

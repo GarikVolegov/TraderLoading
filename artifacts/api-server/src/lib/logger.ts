@@ -1,6 +1,8 @@
 import pino from "pino";
 import { AsyncLocalStorage } from "node:async_hooks";
 
+type LoggerEnv = Partial<Record<string, string>>;
+
 // ─── AsyncLocalStorage per il contesto della richiesta ───────────────────────
 export interface RequestContext {
   requestId: string;
@@ -25,18 +27,40 @@ export function getRequestId(): string | undefined {
 }
 
 // ─── Logger base ─────────────────────────────────────────────────────────────
-const baseLogger = pino({
-  level: process.env.LOG_LEVEL ?? "info",
-  transport:
-    process.env.NODE_ENV === "development"
-      ? { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:standard" } }
-      : undefined,
-  formatters: {
-    level(label) {
-      return { level: label };
+export function createLoggerOptions(env: LoggerEnv = process.env): pino.LoggerOptions {
+  return {
+    level: env.LOG_LEVEL ?? "info",
+    transport:
+      env.NODE_ENV === "development"
+        ? { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:standard" } }
+        : undefined,
+    redact: {
+      paths: [
+        "authorization",
+        "cookie",
+        "headers.authorization",
+        "headers.cookie",
+        "*.authorization",
+        "*.cookie",
+        "*.token",
+        "*.password",
+        "*.access_token",
+        "*.refresh_token",
+        "*.clientSecret",
+        "err.config.headers.Authorization",
+        "err.response.config.headers.Authorization",
+      ],
+      censor: "[REDACTED]",
     },
-  },
-});
+    formatters: {
+      level(label) {
+        return { level: label };
+      },
+    },
+  };
+}
+
+const baseLogger = pino(createLoggerOptions());
 
 // ─── Logger proxy: inietta automaticamente requestId da AsyncLocalStorage ────
 export const logger = new Proxy(baseLogger, {

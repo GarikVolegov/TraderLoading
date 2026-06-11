@@ -1,0 +1,67 @@
+<h2>Pagina auth integrata nell'app</h2>
+<p class="subtitle">Direzione A: accesso come parte del command center TraderLoading, non come pagina Clerk esterna.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: /sign-in e /sign-up</div>
+  <div class="mockup-body">
+    <div style="min-height:520px;background:#020617;color:#f8fafc;border-radius:12px;overflow:hidden;position:relative;border:1px solid rgba(51,65,85,.75);font-family:Fira Sans,system-ui,sans-serif;">
+      <div style="position:absolute;inset:0;background-image:linear-gradient(180deg,rgba(15,23,42,.2),#020617 70%),linear-gradient(rgba(51,65,85,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(51,65,85,.12) 1px,transparent 1px);background-size:auto,44px 44px,44px 44px;"></div>
+      <div style="position:absolute;right:8%;top:8%;width:280px;height:280px;border:1px solid rgba(34,197,94,.18);border-radius:999px;box-shadow:0 0 80px rgba(34,197,94,.08);"></div>
+      <div style="position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:24px;align-items:center;min-height:520px;padding:38px;">
+        <section style="display:flex;flex-direction:column;gap:22px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:42px;height:42px;border-radius:10px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);display:grid;place-items:center;color:#22c55e;font-weight:800;">TL</div>
+            <div>
+              <div style="font-family:Fira Code,monospace;font-weight:800;letter-spacing:.04em;">TRADER<span style="color:#22c55e">LOADING</span></div>
+              <div style="font-size:12px;color:#94a3b8;">Secure trader workspace</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:#22c55e;font-weight:700;text-transform:uppercase;letter-spacing:.14em;">Sessione protetta</div>
+            <h1 style="font-family:Fira Code,monospace;font-size:38px;line-height:1.08;margin:12px 0 12px;">Accedi al tuo centro operativo.</h1>
+            <p style="color:#94a3b8;max-width:460px;line-height:1.55;margin:0;">Journal, news macro, rischio e routine restano sincronizzati sul tuo account.</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:480px;">
+            <div style="border:1px solid rgba(51,65,85,.8);background:rgba(14,18,35,.78);border-radius:8px;padding:13px;">
+              <div style="font-family:Fira Code,monospace;font-weight:800;color:#22c55e;">2FA</div>
+              <div style="font-size:11px;color:#94a3b8;">Ready</div>
+            </div>
+            <div style="border:1px solid rgba(51,65,85,.8);background:rgba(14,18,35,.78);border-radius:8px;padding:13px;">
+              <div style="font-family:Fira Code,monospace;font-weight:800;color:#f59e0b;">Live</div>
+              <div style="font-size:11px;color:#94a3b8;">Market flow</div>
+            </div>
+            <div style="border:1px solid rgba(51,65,85,.8);background:rgba(14,18,35,.78);border-radius:8px;padding:13px;">
+              <div style="font-family:Fira Code,monospace;font-weight:800;color:#60a5fa;">Sync</div>
+              <div style="font-size:11px;color:#94a3b8;">Cloud data</div>
+            </div>
+          </div>
+        </section>
+        <section style="justify-self:end;width:min(100%,430px);border:1px solid rgba(51,65,85,.9);background:rgba(7,17,31,.92);border-radius:12px;box-shadow:0 28px 70px rgba(0,0,0,.45);padding:24px;">
+          <div style="height:44px;border-radius:8px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.28);margin-bottom:18px;display:flex;align-items:center;justify-content:center;color:#22c55e;font-weight:800;">Clerk form styled by app theme</div>
+          <div style="height:38px;border-radius:8px;background:#0d1527;border:1px solid #334155;margin-bottom:10px;"></div>
+          <div style="height:38px;border-radius:8px;background:#0d1527;border:1px solid #334155;margin-bottom:16px;"></div>
+          <div style="height:42px;border-radius:8px;background:#22c55e;margin-bottom:16px;"></div>
+          <div style="height:1px;background:#334155;margin-bottom:16px;"></div>
+          <div style="height:38px;border-radius:8px;background:#0d1527;border:1px solid #334155;"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">OK</div>
+    <div class="content">
+      <h3>Approva questa direzione</h3>
+      <p>Creo una shell auth riutilizzabile per sign-in e sign-up, mantenendo Clerk ma vestendolo come l'app.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">R</div>
+    <div class="content">
+      <h3>Rivedi il visual</h3>
+      <p>Possiamo renderla piu minimale, piu premium, o piu densa da trading terminal.</p>
+    </div>
+  </div>
+</div>

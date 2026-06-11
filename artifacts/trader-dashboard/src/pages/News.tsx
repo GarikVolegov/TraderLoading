@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Newspaper, TrendingUp, TrendingDown, Minus, RefreshCw,
-  ExternalLink, Rss, Cpu, ShieldCheck, Clock, ChevronDown,
-  ChevronUp, Zap, Bot,
+  ExternalLink, Clock, ChevronDown,
+  ChevronUp, Zap, ThumbsUp, ThumbsDown, SlidersHorizontal, X,
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { useLanguage, useDateLocale } from "@/contexts/LanguageContext";
@@ -27,9 +27,10 @@ import {
   fetchNews,
   type Article,
   type NewsData,
-  type NewsProviderStatus,
   type NewsSocketMessage,
 } from "@/lib/newsApi";
+import { apiJSON } from "@/lib/apiFetch";
+import { simpleStatusLabel } from "@/lib/uiCopyPolicy";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -234,6 +235,7 @@ function RefreshCountdown({ nextRefreshAt }: { nextRefreshAt?: string }) {
 // ─── Article Card ─────────────────────────────────────────────────────────────
 
 function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { t } = useLanguage();
   const explanation = article ? article.relevanceReason ?? article.impactReason : undefined;
   if (!article) return null;
   const detailUrl = preferredArticleUrl(article);
@@ -250,7 +252,6 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
           </div>
           <DialogTitle className="text-xl leading-snug pt-2">{article.title}</DialogTitle>
           <DialogDescription className="flex items-center gap-2 flex-wrap">
-            <span>{article.source}</span>
             {article.publishedAt && (
               <>
                 <span>·</span>
@@ -270,9 +271,9 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
           {deepDive ? (
             <div className="grid gap-3">
               {[
-                ["Cosa e' successo", deepDive.whatHappened],
-                ["Perche' influenza l'asset", deepDive.whyItMatters],
-                ["Come puo' impattare", deepDive.possibleImpact],
+                ["Cosa è successo", deepDive.whatHappened],
+                ["Perché influenza l'asset", deepDive.whyItMatters],
+                ["Come può impattare", deepDive.possibleImpact],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-primary/15 bg-primary/5 p-3">
                   <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">{label}</p>
@@ -282,7 +283,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
             </div>
           ) : explanation && (
             <div className="rounded-lg border border-primary/15 bg-primary/5 p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">Impatto per il trading</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">{t("news.impact_for_trading")}</p>
               <p className="text-sm text-muted-foreground leading-relaxed">{explanation}</p>
             </div>
           )}
@@ -295,7 +296,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
 
           {(article.originalTitle || article.originalSummary) && (
             <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Originale</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">{t("news.original")}</p>
               {article.originalTitle && <p className="text-sm font-semibold text-muted-foreground">{article.originalTitle}</p>}
               {article.originalSummary && <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed">{article.originalSummary}</p>}
             </div>
@@ -310,7 +311,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
                 className="inline-flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 <ExternalLink className="w-4 h-4" />
-                Apri fonte originale
+                Apri articolo
               </a>
             )}
             {article.sourceUrl && article.sourceUrl !== detailUrl && (
@@ -321,7 +322,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
                 className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary"
               >
                 <ExternalLink className="w-4 h-4" />
-                Sito fonte
+                Apri articolo
               </a>
             )}
           </div>
@@ -331,7 +332,8 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
   );
 }
 
-function ArticleCard({ article, idx, isAI, onOpen }: { article: Article; idx: number; isAI: boolean; onOpen: (article: Article) => void }) {
+function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Article; idx: number; isAI: boolean; onOpen: (article: Article) => void; vote: number; onVote: (vote: number) => void }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const explanation = article.relevanceReason ?? article.impactReason;
   const hasImpactDetails = isAI && (article.impactScore || (article.affectedPairs && article.affectedPairs.length > 0) || explanation);
@@ -403,7 +405,7 @@ function ArticleCard({ article, idx, isAI, onOpen }: { article: Article; idx: nu
           {/* Affected pairs */}
           {isAI && article.affectedPairs && article.affectedPairs.length > 0 && (
             <div className="flex items-center gap-1 flex-wrap">
-              <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider font-medium">Impatta:</span>
+              <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider font-medium">{t("news.impacts")}</span>
               {article.affectedPairs.map((p) => <PairBadge key={p} pair={p} />)}
             </div>
           )}
@@ -438,45 +440,113 @@ function ArticleCard({ article, idx, isAI, onOpen }: { article: Article; idx: nu
 
           {/* Footer */}
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50 flex-wrap mt-auto pt-1 border-t border-border/20">
-            <span className="font-medium text-muted-foreground/70">{article.source}</span>
             {article.publishedAt && (
               <>
                 <span>·</span>
                 <TimeAgo iso={article.publishedAt} />
               </>
             )}
-            {article.verified && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 ml-auto">
-                <ShieldCheck className="w-2.5 h-2.5" />
-                {article.citationUrls && article.citationUrls.length > 0
-                  ? `${article.citationUrls.length} URL`
-                  : article.sources && article.sources.length >= 2
-                    ? `${article.sources.length} FONTI`
-                    : "✓"}
-              </span>
-            )}
-          </div>
-
-          {/* Citation URLs */}
-          {article.citationUrls && article.citationUrls.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {article.citationUrls.map((url, si) => {
-                let domain = url;
-                try { domain = new URL(url).hostname.replace(/^www\./, ""); } catch { /* */ }
-                return (
-                  <a key={si} href={url} target="_blank" rel="noopener noreferrer" title={url}
-                    onClick={(event) => event.stopPropagation()}
-                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium border border-emerald-500/25 bg-emerald-500/8 text-emerald-400 hover:bg-emerald-500/20 transition-all">
-                    <ExternalLink className="w-2 h-2 shrink-0" />
-                    {domain.length > 22 ? domain.slice(0, 20) + "…" : domain}
-                  </a>
-                );
-              })}
+            <div className="ml-auto flex items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
+              <button type="button" title={t("news.more_like_this")} aria-label={t("news.more_like_this")}
+                onClick={() => onVote(vote === 1 ? 0 : 1)}
+                className={`p-1 rounded transition-colors hover:bg-emerald-500/15 ${vote === 1 ? "text-emerald-400" : "text-muted-foreground/40"}`}>
+                <ThumbsUp className="w-3 h-3" />
+              </button>
+              <button type="button" title={t("news.less_like_this")} aria-label={t("news.less_like_this")}
+                onClick={() => onVote(vote === -1 ? 0 : -1)}
+                className={`p-1 rounded transition-colors hover:bg-red-500/15 ${vote === -1 ? "text-red-400" : "text-muted-foreground/40"}`}>
+                <ThumbsDown className="w-3 h-3" />
+              </button>
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
     </motion.div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+// ─── Feed training panel (per-user keywords + profile) ────────────────────────
+
+function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const { data } = useQuery<{ keywords: string[]; profile: string }>({
+    queryKey: ["news-preferences"],
+    queryFn: () => apiJSON("news/preferences"),
+  });
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [profile, setProfile] = useState("");
+  const [kwInput, setKwInput] = useState("");
+  const loadedRef = useRef(false);
+  useEffect(() => {
+    if (data && !loadedRef.current) {
+      loadedRef.current = true;
+      setKeywords(data.keywords ?? []);
+      setProfile(data.profile ?? "");
+    }
+  }, [data]);
+
+  const save = useMutation({
+    mutationFn: () => apiJSON("news/preferences", { method: "PUT", body: JSON.stringify({ keywords, profile }) }),
+    onSuccess: () => onApplied(),
+  });
+
+  const addKw = () => {
+    const k = kwInput.trim();
+    if (k && !keywords.includes(k)) setKeywords([...keywords, k]);
+    setKwInput("");
+  };
+
+  return (
+    <div className="tl-panel p-3 sm:p-4">
+      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 text-sm font-semibold">
+        <SlidersHorizontal className="w-4 h-4 text-primary" />
+        Addestra il feed con le tue info
+        {open ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          <div>
+            <label className="text-xs text-muted-foreground">{t("news.personalization.keywords")}</label>
+            {keywords.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {keywords.map((k) => (
+                  <span key={k} className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                    {k}
+                    <button type="button" onClick={() => setKeywords(keywords.filter((x) => x !== k))} className="hover:text-red-400"><X className="w-3 h-3" /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <input
+              value={kwInput}
+              onChange={(e) => setKwInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKw(); } }}
+              placeholder={t("news.personalization.keywords_placeholder")}
+              className="mt-1.5 w-full rounded-lg border border-border/60 bg-secondary/40 px-3 py-2 text-sm outline-none focus:border-primary/50"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">{t("news.personalization.strategy")}</label>
+            <textarea
+              value={profile}
+              onChange={(e) => setProfile(e.target.value)}
+              placeholder={t("news.personalization.strategy_placeholder")}
+              className="mt-1.5 w-full min-h-20 rounded-lg border border-border/60 bg-secondary/40 px-3 py-2 text-sm outline-none focus:border-primary/50"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-muted-foreground/60">{t("news.personalization.feedback_hint")}</p>
+            <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
+              {save.isPending && <RefreshCw className="w-4 h-4 mr-1 animate-spin" />}
+              Salva e ri-ordina
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -490,10 +560,19 @@ export default function News() {
   const queryKey = useMemo(() => createNewsQueryKey(selectedPairsKey, language), [language, selectedPairsKey]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "fallback" | "error">("connecting");
-  const [providerStatuses, setProviderStatuses] = useState<NewsProviderStatus[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [votes, setVotes] = useState<Record<string, number>>({});
+  const voteMutation = useMutation({
+    mutationFn: (payload: { articleKey: string; source: string; vote: number }) =>
+      apiJSON("news/feedback", { method: "POST", body: JSON.stringify(payload) }),
+  });
+  const handleVote = (article: Article, v: number) => {
+    const key = articleKey(article);
+    setVotes((prev) => ({ ...prev, [key]: v }));
+    voteMutation.mutate({ articleKey: key, source: article.source, vote: v });
+  };
 
   const { data, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery<NewsData>({
@@ -541,18 +620,12 @@ export default function News() {
         qc.setQueryData<InfiniteData<NewsData>>(queryKey, (current) =>
           mergeSnapshotMeta(prependLiveArticles(current, message.snapshot.articles), message.snapshot),
         );
-        setProviderStatuses(message.snapshot.providerStatuses ?? []);
         setLiveStatus("live");
       }
       if (message.type === "news_article") {
         qc.setQueryData<InfiniteData<NewsData>>(queryKey, (current) => prependLiveArticles(current, [message.article]));
       }
-      if (message.type === "news_provider_status") {
-        setProviderStatuses((current) => {
-          const others = current.filter((status) => status.provider !== message.status.provider);
-          return [...others, message.status].sort((a, b) => a.provider.localeCompare(b.provider));
-        });
-      }
+      if (message.type === "news_provider_status" && message.status.status === "error") setLiveStatus("error");
       if (message.type === "news_error") setLiveStatus("error");
     });
 
@@ -572,18 +645,9 @@ export default function News() {
 
   const newsData = data?.pages?.[0];
   const isAI = newsData?.source === "ai";
-  const visibleProviderStatuses = providerStatuses.length > 0 ? providerStatuses : newsData?.providerStatuses ?? [];
   const liveLabel =
-    liveStatus === "live" ? "Live socket" :
-    liveStatus === "connecting" ? "Connessione live" :
-    liveStatus === "fallback" ? "Fallback HTTP" :
-    "Live non disponibile";
+    liveStatus === "connecting" ? "Aggiornamento" : simpleStatusLabel(liveStatus);
   const hasFreshArticles = (newsData?.freshArticlesCount ?? articles.filter((article) => !article.isFallback).length) > 0;
-  const primarySource = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const article of articles) counts.set(article.source, (counts.get(article.source) ?? 0) + 1);
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
-  }, [articles]);
   const freshnessLabel = hasFreshArticles
     ? `Ultime ${newsData?.freshnessWindowHours ?? 48}h`
     : articles.length > 0
@@ -601,9 +665,6 @@ export default function News() {
       setIsRefreshing(false);
     }
   };
-
-  const SourceIcon = isAI ? Cpu : Rss;
-  const sourceLabel = isAI ? t("news.source.ai") : t("news.source.rss");
 
   return (
     <PageLayout>
@@ -629,11 +690,11 @@ export default function News() {
             className="tl-panel flex gap-3 border-primary/20 bg-primary/5 p-4"
           >
             <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
-              <Bot className="w-4 h-4 text-primary" />
+              <Newspaper className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="text-xs font-bold text-primary/80 uppercase tracking-wider">Analisi AI Agent</span>
+                <span className="text-xs font-bold text-primary/80 uppercase tracking-wider">{t("news.market_summary")}</span>
                 {newsData.watchedPairs && newsData.watchedPairs.length > 0 && (
                   <div className="flex gap-1 flex-wrap">
                     {newsData.watchedPairs.map((p) => <PairBadge key={p} pair={p} />)}
@@ -646,32 +707,16 @@ export default function News() {
         )}
       </AnimatePresence>
 
-      {/* Meta bar (source, time, countdown) */}
+      {/* Meta bar */}
       {newsData && (
-        <div className="flex items-center gap-3 text-xs text-muted-foreground/60 flex-wrap">
-          <span className="inline-flex items-center gap-1.5">
-            <SourceIcon className="w-3.5 h-3.5" />
-            {sourceLabel}
-          </span>
-          {primarySource && (
-            <>
-              <span>Â·</span>
-              <span>Fonte principale: {primarySource}</span>
-            </>
-          )}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground/70 flex-wrap">
           {newsData.fetchedAt && (
-            <>
-              <span>·</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
               <TimeAgo iso={newsData.fetchedAt} />
-            </>
+            </span>
           )}
-          {isAI && newsData.nextRefreshAt && (
-            <>
-              <span>·</span>
-              <RefreshCountdown nextRefreshAt={newsData.nextRefreshAt} />
-            </>
-          )}
-          <span>Â·</span>
+          {isAI && newsData.nextRefreshAt && <RefreshCountdown nextRefreshAt={newsData.nextRefreshAt} />}
           <span
             className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-semibold ${
               liveStatus === "live"
@@ -691,28 +736,7 @@ export default function News() {
         </div>
       )}
 
-      {visibleProviderStatuses.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {visibleProviderStatuses.map((status) => (
-            <span
-              key={status.provider}
-              title={status.message}
-              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                status.status === "connected"
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                  : status.status === "error"
-                    ? "border-red-500/30 bg-red-500/10 text-red-400"
-                    : status.status === "disabled"
-                      ? "border-white/10 bg-white/5 text-muted-foreground"
-                      : "border-amber-500/30 bg-amber-500/10 text-amber-300"
-              }`}
-            >
-              {status.provider}
-              <span className="opacity-70">{status.transport}</span>
-            </span>
-          ))}
-        </div>
-      )}
+      <FeedTrainingPanel onApplied={() => { qc.invalidateQueries({ queryKey: ["news-preferences"] }); qc.invalidateQueries({ queryKey }); }} />
 
       {/* News grid */}
       {isLoading ? (
@@ -725,7 +749,7 @@ export default function News() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {articles.map((article, idx) => (
-              <ArticleCard key={`${articleKey(article)}-${idx}`} article={article} idx={idx} isAI={isAI} onOpen={setSelectedArticle} />
+              <ArticleCard key={`${articleKey(article)}-${idx}`} article={article} idx={idx} isAI={isAI} onOpen={setSelectedArticle} vote={votes[articleKey(article)] ?? 0} onVote={(v) => handleVote(article, v)} />
             ))}
           </div>
 
@@ -762,3 +786,5 @@ export default function News() {
     </PageLayout>
   );
 }
+
+

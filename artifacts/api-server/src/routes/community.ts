@@ -4,8 +4,10 @@ import path from "path";
 import fs from "fs";
 import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, voicePresenceTable, profileTable } from "@workspace/db";
 import { eq, and, desc, asc, sql, lt } from "drizzle-orm";
+import { consumeSignals, pushSignal } from "../services/callSignaling.js";
+import { resolveUploadPath } from "../lib/uploads.js";
 
-const COMMUNITY_FILES_DIR = path.join(process.cwd(), "uploads", "community-files");
+const COMMUNITY_FILES_DIR = resolveUploadPath("community-files");
 if (!fs.existsSync(COMMUNITY_FILES_DIR)) fs.mkdirSync(COMMUNITY_FILES_DIR, { recursive: true });
 
 const communityFileStorage = multer.diskStorage({
@@ -437,18 +439,17 @@ router.get("/community/voice/:channelId/presence", async (req, res) => {
   }
 });
 
-// ─── Voice signaling (WebRTC SDP/ICE exchange for voice channels) ─────────────
-const voiceSignals: Record<string, { from: string; to: string; type: string; data: string; ts: number }[]> = {};
+// ─── Voice signaling (WebRTC SDP/ICE exchange, Postgres-backed) ───────────────
+// DB-backed (see services/callSignaling) so signaling survives across the
+// serverless instances that a sender and a polling recipient may land on.
 
 router.post("/community/voice/:channelId/signal", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
     const { to, type, data } = req.body;
-    const key = `${req.params.channelId}:${to}`;
-    if (!voiceSignals[key]) voiceSignals[key] = [];
-    voiceSignals[key].push({ from: userId, to, type, data, ts: Date.now() });
-    if (voiceSignals[key].length > 20) voiceSignals[key] = voiceSignals[key].slice(-20);
+    if (!to || !type) { res.status(400).json({ error: "Parametri mancanti" }); return; }
+    await pushSignal({ scope: `voice:${req.params.channelId}`, to, from: userId, type, data: data ?? "" });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
@@ -459,9 +460,7 @@ router.get("/community/voice/:channelId/signals", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const key = `${req.params.channelId}:${userId}`;
-    const signals = (voiceSignals[key] ?? []).filter(s => s.ts > Date.now() - 30_000);
-    voiceSignals[key] = [];
+    const signals = await consumeSignals(`voice:${req.params.channelId}`, userId);
     res.json({ signals });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });

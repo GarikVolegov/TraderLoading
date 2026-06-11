@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -12,7 +12,9 @@ export const journalEntriesTable = pgTable("journal_entries", {
   userId: text("user_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("journal_entries_user_created_idx").on(table.userId, table.createdAt),
+]);
 
 export const journalTagsTable = pgTable("journal_tags", {
   id: serial("id").primaryKey(),
@@ -30,7 +32,7 @@ export const journalImagesTable = pgTable("journal_images", {
   entryId: serial("entry_id").notNull().references(() => journalEntriesTable.id, { onDelete: "cascade" }),
   filePath: text("file_path").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [index("journal_images_entry_idx").on(table.entryId)]);
 
 export const journalRecapsTable = pgTable("journal_recaps", {
   id: serial("id").primaryKey(),

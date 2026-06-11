@@ -8,10 +8,263 @@
 import * as zod from "zod";
 
 /**
+ * @summary List private wiki sources
+ */
+export const ListWikiSourcesResponseItem = zod.object({
+  id: zod.number(),
+  kind: zod.string(),
+  title: zod.string(),
+  status: zod.enum([
+    "queued",
+    "processing",
+    "ready",
+    "error",
+    "pending_transcription",
+  ]),
+  error: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  fileName: zod.string().nullish(),
+  mimeType: zod.string().nullish(),
+  createdAt: zod.date().optional(),
+});
+export const ListWikiSourcesResponse = zod.array(ListWikiSourcesResponseItem);
+
+/**
+ * @summary Add a text note to the private wiki
+ */
+export const CreateWikiTextSourceBody = zod.object({
+  title: zod.string().optional(),
+  content: zod.string(),
+  tags: zod.array(zod.string()).optional(),
+});
+
+/**
+ * @summary Upload a file to the private wiki
+ */
+export const UploadWikiSourceBody = zod.object({
+  file: zod.instanceof(File),
+  title: zod.string().optional(),
+});
+
+/**
+ * @summary Import a URL into the private wiki
+ */
+export const CreateWikiUrlSourceBody = zod.object({
+  url: zod.string(),
+  title: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
+});
+
+/**
+ * @summary Delete a private wiki source
+ */
+export const DeleteWikiSourceParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Get private wiki graph summary
+ */
+export const GetWikiGraphResponse = zod.object({
+  stats: zod
+    .object({
+      sources: zod.number().optional(),
+      nodes: zod.number().optional(),
+      edges: zod.number().optional(),
+      communities: zod.number().optional(),
+    })
+    .optional(),
+  nodes: zod.array(zod.object({}).passthrough()).optional(),
+  edges: zod.array(zod.object({}).passthrough()).optional(),
+  communities: zod.array(zod.object({}).passthrough()).optional(),
+});
+
+/**
+ * @summary Ask the private wiki a question
+ */
+export const QueryWikiBody = zod.object({
+  question: zod.string(),
+});
+
+export const QueryWikiResponse = zod.object({
+  answer: zod.string(),
+  citations: zod.array(zod.object({}).passthrough()),
+  nodes: zod.array(zod.object({}).passthrough()),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
+});
+
+/**
+ * @summary Readiness check
+ */
+export const ReadinessCheckResponse = zod.object({
+  status: zod.enum(["ok", "degraded"]),
+  uptimeSeconds: zod.number().optional(),
+  version: zod.string().optional(),
+  checks: zod.object({
+    database: zod.object({
+      status: zod.enum(["ok", "error"]),
+      latencyMs: zod.number(),
+      error: zod.string().optional(),
+    }),
+  }),
+});
+
+/**
+ * @summary Service status
+ */
+export const ServiceStatusResponse = zod.object({
+  status: zod.enum(["ok", "degraded"]),
+  uptimeSeconds: zod.number().optional(),
+  version: zod.string().optional(),
+  checks: zod.object({
+    database: zod.object({
+      status: zod.enum(["ok", "error"]),
+      latencyMs: zod.number(),
+      error: zod.string().optional(),
+    }),
+  }),
+});
+
+/**
+ * @summary Get the current user's subscription status
+ */
+export const GetBillingStatusResponse = zod.object({
+  plan: zod.enum(["free", "pro"]),
+  status: zod.enum([
+    "free",
+    "none",
+    "trialing",
+    "active",
+    "past_due",
+    "canceled",
+    "incomplete",
+    "incomplete_expired",
+    "unpaid",
+    "paused",
+  ]),
+  pro: zod.boolean(),
+  source: zod
+    .string()
+    .nullable()
+    .describe(
+      "Subscription source, for example Stripe checkout or manual admin override.",
+    ),
+  manualOverride: zod.boolean(),
+  currentPeriodEnd: zod.string().nullable(),
+  cancelAtPeriodEnd: zod.boolean(),
+  stripeCustomerId: zod.string().nullable(),
+  stripeSubscriptionId: zod
+    .string()
+    .nullable()
+    .describe("Masked Stripe subscription id for display."),
+  canCancel: zod.boolean(),
+  canResume: zod.boolean(),
+  canViewInvoices: zod.boolean(),
+});
+
+/**
+ * @summary Create a Stripe Embedded Checkout session for Pro
+ */
+export const CreateBillingCheckoutSessionResponse = zod.object({
+  clientSecret: zod.string().nullable(),
+});
+
+/**
+ * @summary Cancel Pro renewal at period end
+ */
+export const CancelBillingSubscriptionResponse = zod.object({
+  plan: zod.enum(["free", "pro"]),
+  status: zod.enum([
+    "free",
+    "none",
+    "trialing",
+    "active",
+    "past_due",
+    "canceled",
+    "incomplete",
+    "incomplete_expired",
+    "unpaid",
+    "paused",
+  ]),
+  pro: zod.boolean(),
+  source: zod
+    .string()
+    .nullable()
+    .describe(
+      "Subscription source, for example Stripe checkout or manual admin override.",
+    ),
+  manualOverride: zod.boolean(),
+  currentPeriodEnd: zod.string().nullable(),
+  cancelAtPeriodEnd: zod.boolean(),
+  stripeCustomerId: zod.string().nullable(),
+  stripeSubscriptionId: zod
+    .string()
+    .nullable()
+    .describe("Masked Stripe subscription id for display."),
+  canCancel: zod.boolean(),
+  canResume: zod.boolean(),
+  canViewInvoices: zod.boolean(),
+});
+
+/**
+ * @summary Resume a Pro subscription scheduled for cancellation
+ */
+export const ResumeBillingSubscriptionResponse = zod.object({
+  plan: zod.enum(["free", "pro"]),
+  status: zod.enum([
+    "free",
+    "none",
+    "trialing",
+    "active",
+    "past_due",
+    "canceled",
+    "incomplete",
+    "incomplete_expired",
+    "unpaid",
+    "paused",
+  ]),
+  pro: zod.boolean(),
+  source: zod
+    .string()
+    .nullable()
+    .describe(
+      "Subscription source, for example Stripe checkout or manual admin override.",
+    ),
+  manualOverride: zod.boolean(),
+  currentPeriodEnd: zod.string().nullable(),
+  cancelAtPeriodEnd: zod.boolean(),
+  stripeCustomerId: zod.string().nullable(),
+  stripeSubscriptionId: zod
+    .string()
+    .nullable()
+    .describe("Masked Stripe subscription id for display."),
+  canCancel: zod.boolean(),
+  canResume: zod.boolean(),
+  canViewInvoices: zod.boolean(),
+});
+
+/**
+ * @summary List current user's Stripe invoices
+ */
+export const GetBillingInvoicesResponse = zod.object({
+  invoices: zod.array(
+    zod.object({
+      id: zod.string(),
+      number: zod.string().nullable(),
+      status: zod.string().nullable(),
+      amountPaid: zod.number(),
+      currency: zod.string(),
+      hostedInvoiceUrl: zod.string().nullable(),
+      periodStart: zod.string().nullable(),
+      periodEnd: zod.string().nullable(),
+    }),
+  ),
 });
 
 /**
@@ -295,6 +548,19 @@ export const GetTodayCheckinResponse = zod
     createdAt: zod.string(),
   })
   .nullable();
+
+/**
+ * @summary List session check-ins (most recent first)
+ */
+export const GetCheckinsResponseItem = zod.object({
+  id: zod.number(),
+  mood: zod.string(),
+  sessionName: zod.string(),
+  note: zod.string().nullish(),
+  date: zod.string(),
+  createdAt: zod.string(),
+});
+export const GetCheckinsResponse = zod.array(GetCheckinsResponseItem);
 
 /**
  * @summary Create a session check-in
@@ -665,6 +931,15 @@ export const GetBacktestSessionsResponseItem = zod.object({
   notes: zod.string().nullish(),
   userId: zod.string().nullish(),
   createdAt: zod.string(),
+  stats: zod.object({
+    total: zod.number(),
+    wins: zod.number(),
+    losses: zod.number(),
+    breakevens: zod.number(),
+    winRate: zod.number(),
+    avgRR: zod.string().nullable(),
+    totalPips: zod.string(),
+  }),
 });
 export const GetBacktestSessionsResponse = zod.array(
   GetBacktestSessionsResponseItem,
@@ -690,6 +965,15 @@ export const CreateBacktestSessionResponse = zod.object({
   notes: zod.string().nullish(),
   userId: zod.string().nullish(),
   createdAt: zod.string(),
+  stats: zod.object({
+    total: zod.number(),
+    wins: zod.number(),
+    losses: zod.number(),
+    breakevens: zod.number(),
+    winRate: zod.number(),
+    avgRR: zod.string().nullable(),
+    totalPips: zod.string(),
+  }),
 });
 
 /**
@@ -784,6 +1068,9 @@ export const DeleteBacktestTradeResponse = zod.object({
 export const getUserSettingsResponseBackgroundDarknessMin = 0;
 export const getUserSettingsResponseBackgroundDarknessMax = 90;
 
+export const getUserSettingsResponseTradingSessionsItemDaysItemMin = 0;
+export const getUserSettingsResponseTradingSessionsItemDaysItemMax = 6;
+
 export const getUserSettingsResponsePreMacroMinutesMin = 0;
 
 export const GetUserSettingsResponse = zod.object({
@@ -820,6 +1107,17 @@ export const GetUserSettingsResponse = zod.object({
           .describe(
             "Session kind. Missing means trading for backward compatibility.",
           ),
+        days: zod
+          .array(
+            zod
+              .number()
+              .min(getUserSettingsResponseTradingSessionsItemDaysItemMin)
+              .max(getUserSettingsResponseTradingSessionsItemDaysItemMax),
+          )
+          .optional()
+          .describe(
+            "Optional JavaScript weekday numbers: 0 Sunday through 6 Saturday. Missing or empty means every day.",
+          ),
         enabled: zod.boolean(),
       }),
     )
@@ -830,6 +1128,7 @@ export const GetUserSettingsResponse = zod.object({
   dailyReminderTime: zod.string().nullish(),
   preMacroMinutes: zod.number().min(getUserSettingsResponsePreMacroMinutesMin),
   maxDailyLoss: zod.number().nullish(),
+  onboardingTutorialCompletedAt: zod.date().nullish(),
   selectedPairs: zod.array(zod.string()).nullish(),
   backgroundPresets: zod
     .array(
@@ -848,6 +1147,9 @@ export const GetUserSettingsResponse = zod.object({
  */
 export const updateUserSettingsBodyBackgroundDarknessMin = 0;
 export const updateUserSettingsBodyBackgroundDarknessMax = 90;
+
+export const updateUserSettingsBodyTradingSessionsItemDaysItemMin = 0;
+export const updateUserSettingsBodyTradingSessionsItemDaysItemMax = 6;
 
 export const updateUserSettingsBodyPreMacroMinutesMin = 0;
 
@@ -881,6 +1183,17 @@ export const UpdateUserSettingsBody = zod.object({
           .describe(
             "Session kind. Missing means trading for backward compatibility.",
           ),
+        days: zod
+          .array(
+            zod
+              .number()
+              .min(updateUserSettingsBodyTradingSessionsItemDaysItemMin)
+              .max(updateUserSettingsBodyTradingSessionsItemDaysItemMax),
+          )
+          .optional()
+          .describe(
+            "Optional JavaScript weekday numbers: 0 Sunday through 6 Saturday. Missing or empty means every day.",
+          ),
         enabled: zod.boolean(),
       }),
     )
@@ -894,6 +1207,7 @@ export const UpdateUserSettingsBody = zod.object({
     .min(updateUserSettingsBodyPreMacroMinutesMin)
     .optional(),
   maxDailyLoss: zod.number().nullish(),
+  onboardingTutorialCompletedAt: zod.date().nullish(),
   selectedPairs: zod.array(zod.string()).nullish(),
   backgroundPresets: zod
     .array(
@@ -909,6 +1223,9 @@ export const UpdateUserSettingsBody = zod.object({
 
 export const updateUserSettingsResponseBackgroundDarknessMin = 0;
 export const updateUserSettingsResponseBackgroundDarknessMax = 90;
+
+export const updateUserSettingsResponseTradingSessionsItemDaysItemMin = 0;
+export const updateUserSettingsResponseTradingSessionsItemDaysItemMax = 6;
 
 export const updateUserSettingsResponsePreMacroMinutesMin = 0;
 
@@ -946,6 +1263,17 @@ export const UpdateUserSettingsResponse = zod.object({
           .describe(
             "Session kind. Missing means trading for backward compatibility.",
           ),
+        days: zod
+          .array(
+            zod
+              .number()
+              .min(updateUserSettingsResponseTradingSessionsItemDaysItemMin)
+              .max(updateUserSettingsResponseTradingSessionsItemDaysItemMax),
+          )
+          .optional()
+          .describe(
+            "Optional JavaScript weekday numbers: 0 Sunday through 6 Saturday. Missing or empty means every day.",
+          ),
         enabled: zod.boolean(),
       }),
     )
@@ -958,6 +1286,7 @@ export const UpdateUserSettingsResponse = zod.object({
     .number()
     .min(updateUserSettingsResponsePreMacroMinutesMin),
   maxDailyLoss: zod.number().nullish(),
+  onboardingTutorialCompletedAt: zod.date().nullish(),
   selectedPairs: zod.array(zod.string()).nullish(),
   backgroundPresets: zod
     .array(
@@ -976,6 +1305,7 @@ export const UpdateUserSettingsResponse = zod.object({
  */
 export const GetLeaderboardResponseItem = zod.object({
   position: zod.number(),
+  userId: zod.string().nullable(),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   level: zod.number(),
@@ -1084,6 +1414,31 @@ export const SavePublicKeyResponse = zod.object({
   userId: zod.string(),
   publicKeyJwk: zod.string(),
   createdAt: zod.string().optional(),
+});
+
+/**
+ * @summary Get the authenticated user's account-backed E2EE key pair
+ */
+export const GetAccountKeyBackupResponse = zod.object({
+  userId: zod.string(),
+  hasBackup: zod.boolean(),
+  publicKeyJwk: zod.object({}).passthrough().nullable(),
+  privateKeyJwk: zod.object({}).passthrough().nullable(),
+});
+
+/**
+ * @summary Save the authenticated user's account-backed E2EE key pair
+ */
+export const SaveAccountKeyBackupBody = zod.object({
+  publicKeyJwk: zod.object({}).passthrough(),
+  privateKeyJwk: zod.object({}).passthrough(),
+});
+
+export const SaveAccountKeyBackupResponse = zod.object({
+  userId: zod.string(),
+  hasBackup: zod.boolean(),
+  publicKeyJwk: zod.object({}).passthrough().nullable(),
+  privateKeyJwk: zod.object({}).passthrough().nullable(),
 });
 
 /**

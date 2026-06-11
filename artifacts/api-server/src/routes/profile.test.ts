@@ -11,4 +11,15 @@ assert.doesNotMatch(
   "GET /profile must not mutate streak; streak should update only after real user actions",
 );
 
+assert.match(
+  source,
+  /accountTradesTable/,
+  "profile win rate must be computed from synchronized account trade history",
+);
+assert.doesNotMatch(
+  source.match(/async function computeWinRate[\s\S]*?\n}/)?.[0] ?? "",
+  /journalEntriesTable/,
+  "profile win rate must not be computed from manual journal entries",
+);
+
 console.log("profile route streak read checks passed");

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -15,6 +15,7 @@ export const profileTable = pgTable("profile", {
   yearsExperience: integer("years_experience"),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
+  index("profile_user_idx").on(table.userId),
   uniqueIndex("profile_name_unique_authenticated")
     .on(sql`lower(${table.name})`)
     .where(sql`${table.userId} IS NOT NULL`),

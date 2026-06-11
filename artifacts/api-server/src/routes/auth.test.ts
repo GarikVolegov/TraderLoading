@@ -7,6 +7,7 @@ const {
   createOidcCookieOptions,
   createSessionCookieOptions,
   getOrigin,
+  getOidcUnavailableRedirect,
   getSafeReturnTo,
   getValidatedOidcSettings,
   isAllowedMobileRedirectUri,
@@ -71,6 +72,12 @@ try {
   assert.equal(getSafeReturnTo("/dashboard?tab=1"), "/dashboard?tab=1");
   assert.equal(getSafeReturnTo("https://evil.example/phish"), "/");
   assert.equal(getSafeReturnTo("//evil.example/phish"), "/");
+  assert.equal(getOidcUnavailableRedirect(undefined), "/sign-in");
+  assert.equal(
+    getOidcUnavailableRedirect("/settings?tab=subscription"),
+    "/sign-in?redirect_url=%2Fsettings%3Ftab%3Dsubscription",
+  );
+  assert.equal(getOidcUnavailableRedirect("https://evil.example"), "/sign-in");
 
   assert.deepEqual(
     getValidatedOidcSettings({

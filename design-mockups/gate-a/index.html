@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gate A — Confronto varianti premium</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0b0d12; color: #e8eaf0; padding: 24px; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  p.sub { color: #9aa3b5; font-size: 13px; margin-bottom: 20px; }
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 1200px) { .row { grid-template-columns: 1fr; } }
+  .col h2 { font-size: 13px; margin-bottom: 8px; font-weight: 600; }
+  .col h2 a { color: #c9a24b; text-decoration: none; font-weight: 400; font-size: 12px; margin-left: 8px; }
+  .frame {
+    width: 100%; aspect-ratio: 9 / 10; border: 1px solid #2a2f3d; border-radius: 10px; overflow: hidden;
+  }
+  .frame iframe {
+    width: 200%; height: 200%; border: 0;
+    transform: scale(0.5); transform-origin: 0 0;
+  }
+</style>
+</head>
+<body>
+  <h1>Gate A — Direzione premium/luxury</h1>
+  <p class="sub">Scelta utente: base C, ma più sobria e neutra. Confronto tra i due raffinamenti (in alto) e le varianti originali (in basso).</p>
+  <div class="row" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 24px;">
+    <div class="col">
+      <h2>C2 — Sobria (oro smorzato ovunque) <a href="variant-c2.html" target="_blank">apri ↗</a></h2>
+      <div class="frame"><iframe src="variant-c2.html"></iframe></div>
+    </div>
+    <div class="col">
+      <h2>C3 — Monocroma (oro solo dove conta) <a href="variant-c3.html" target="_blank">apri ↗</a></h2>
+      <div class="frame"><iframe src="variant-c3.html"></iframe></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <h2>A — Champagne Gold (conservativa) <a href="variant-a.html" target="_blank">apri ↗</a></h2>
+      <div class="frame"><iframe src="variant-a.html"></iframe></div>
+    </div>
+    <div class="col">
+      <h2>B — Heritage (charcoal caldo + serif) <a href="variant-b.html" target="_blank">apri ↗</a></h2>
+      <div class="frame"><iframe src="variant-b.html"></iframe></div>
+    </div>
+    <div class="col">
+      <h2>C — Bronzo→Oro (gradiente, mono) <a href="variant-c.html" target="_blank">apri ↗</a></h2>
+      <div class="frame"><iframe src="variant-c.html"></iframe></div>
+    </div>
+  </div>
+</body>
+</html>

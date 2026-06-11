@@ -27,7 +27,11 @@ function vaultPath(): string {
 }
 
 function keyMaterial(raw?: string): Buffer {
-  const source = raw || process.env.BROKER_VAULT_KEY || "traderloading-local-development-vault-key";
+  const configuredKey = raw || process.env.BROKER_VAULT_KEY;
+  if (!configuredKey && process.env.NODE_ENV === "production") {
+    throw new Error("BROKER_VAULT_KEY must be set in production");
+  }
+  const source = configuredKey || "traderloading-local-development-vault-key";
   if (/^[a-f0-9]{64}$/i.test(source)) return Buffer.from(source, "hex");
   return createHash("sha256").update(source).digest();
 }

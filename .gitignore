@@ -50,4 +50,12 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.local-logs/
+.local-postgres/
+.superpowers/
 .worktrees/
+
+.vercel
+
+# Runtime uploads are persisted outside git/deployment images in production.
+artifacts/api-server/uploads/

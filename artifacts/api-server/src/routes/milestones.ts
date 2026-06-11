@@ -10,11 +10,12 @@ import {
   profileTable,
 } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
-import { getUserId, getLevelName } from "./profile.js";
+import { getUserId, getLevelName, computeLevel } from "./profile.js";
+import { resolveUploadPath } from "../lib/uploads.js";
 
 const router: IRouter = Router();
 
-const MILESTONE_FILES_DIR = path.join(process.cwd(), "uploads", "milestone-files");
+const MILESTONE_FILES_DIR = resolveUploadPath("milestone-files");
 if (!fs.existsSync(MILESTONE_FILES_DIR)) fs.mkdirSync(MILESTONE_FILES_DIR, { recursive: true });
 
 const milestoneFileStorage = multer.diskStorage({
@@ -223,6 +224,48 @@ router.get("/milestones/certificates/me", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
+    // Backfill: ensure a certificate exists for EVERY level the user has already
+    // reached. The level-up trigger only fires the moment a mission completion
+    // crosses a level, so users who leveled up earlier (or via other XP) had no
+    // certificates and the gallery looked empty — this is why they "weren't created".
+    const [profile] = await db
+      .select({ name: profileTable.name, avatarUrl: profileTable.avatarUrl, xp: profileTable.xp })
+      .from(profileTable)
+      .where(eq(profileTable.userId, userId))
+      .limit(1);
+
+    if (profile) {
+      const currentLevel = computeLevel(profile.xp ?? 0).level;
+      const existing = await db
+        .select({ level: levelCertificatesTable.level })
+        .from(levelCertificatesTable)
+        .where(eq(levelCertificatesTable.userId, userId));
+      const have = new Set(existing.map((c) => c.level));
+
+      if (currentLevel >= 1 && have.size < currentLevel) {
+        const milestones = await db
+          .select({ level: levelMilestonesTable.level, title: levelMilestonesTable.title })
+          .from(levelMilestonesTable);
+        const titleByLevel = new Map(milestones.map((m) => [m.level, m.title]));
+
+        const missing = [];
+        for (let l = 1; l <= currentLevel; l++) {
+          if (have.has(l)) continue;
+          missing.push({
+            userId,
+            userName: profile.name ?? "Trader",
+            avatarUrl: profile.avatarUrl ?? null,
+            level: l,
+            levelName: getLevelName(l),
+            milestoneTitle: titleByLevel.get(l) ?? "",
+          });
+        }
+        if (missing.length > 0) {
+          await db.insert(levelCertificatesTable).values(missing).onConflictDoNothing();
+        }
+      }
+    }
+
     const certs = await db
       .select()
       .from(levelCertificatesTable)
@@ -230,6 +273,7 @@ router.get("/milestones/certificates/me", async (req, res) => {
       .orderBy(asc(levelCertificatesTable.level));
     res.json(certs);
   } catch (err) {
+    console.error("certificates/me error:", err);
     res.status(500).json({ error: "Errore interno" });
   }
 });

@@ -1,16 +1,16 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  TrendingUp, ArrowRight, Loader2, AlertCircle,
+  TrendingUp, Loader2, AlertCircle,
   ChevronDown, ArrowUp, ArrowDown, RefreshCw,
 } from "lucide-react";
 import { BarChart, Bar, Cell, ResponsiveContainer, ReferenceLine, Tooltip } from "recharts";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
 import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
+import { uiText } from "@/contexts/LanguageContext";
 
 interface VolatilityResult {
   pair: string; currentPrice: number; todayPips: number;
@@ -69,7 +69,7 @@ export function VolatilityWidget() {
   const last10 = data?.last30.slice(-10) ?? [];
 
   return (
-    <Card className="relative overflow-hidden bg-card/60 backdrop-blur-sm border-border/30 flex flex-col">
+    <Card className="volatility-contrast-card relative overflow-hidden bg-card/80 backdrop-blur-sm border-border/60 flex flex-col">
       {/* Header */}
       <div className="widget-header">
         <div className="flex items-center gap-2.5">
@@ -77,12 +77,12 @@ export function VolatilityWidget() {
             <TrendingUp className="w-4 h-4 text-warning" />
           </div>
           <div>
-            <p className="widget-title">Volatilità & ADR</p>
+            <p className="widget-title">{uiText("auto.ui.de8919508a")}</p>
             {data && (
               <p className="widget-subtitle">
                 <span className={`font-semibold ${
-                  data.label.includes("Alta")  ? "text-destructive/70" :
-                  data.label.includes("Bassa") ? "text-blue-400/70"   : "text-primary/70"
+                  data.label.includes("Alta")  ? "text-red-300" :
+                  data.label.includes("Bassa") ? "text-sky-300"   : "text-emerald-300"
                 }`}>{data.label}</span>
               </p>
             )}
@@ -92,15 +92,10 @@ export function VolatilityWidget() {
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground/50 hover:text-foreground transition-colors"
+            className="p-1.5 rounded-lg hover:bg-secondary/70 text-muted-foreground hover:text-foreground transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
           </button>
-          <Link href="/tools">
-            <span className="link-pill">
-              Dettaglio <ArrowRight className="w-3 h-3" />
-            </span>
-          </Link>
         </div>
       </div>
 
@@ -160,20 +155,20 @@ export function VolatilityWidget() {
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
             {/* Metric cards */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="metric-card border-primary/20 bg-primary/5">
-                <span className="metric-label text-primary/60">Oggi</span>
-                <span className="metric-value text-primary">{data.todayPips}</span>
+              <div className="metric-card border-emerald-400/40 bg-emerald-500/12">
+                <span className="metric-label text-emerald-200">{uiText("auto.ui.6ca10960a1")}</span>
+                <span className="metric-value text-emerald-300">{data.todayPips}</span>
                 <span className="metric-unit">{data.pipUnit}</span>
               </div>
               <div className="metric-card">
-                <span className="metric-label">Media 1Y</span>
+                <span className="metric-label">{uiText("auto.ui.e598e168c1")}</span>
                 <span className="metric-value">{data.y1}</span>
                 <span className="metric-unit">{data.pipUnit}</span>
               </div>
               <div className="metric-card">
-                <span className="metric-label">Peak</span>
+                <span className="metric-label">{uiText("auto.ui.c83dbbd3e6")}</span>
                 <span className="metric-value">{data.peakDay?.slice(0, 3)}</span>
-                <span className="metric-unit">giorno</span>
+                <span className="metric-unit">{uiText("auto.ui.2287204815")}</span>
               </div>
             </div>
 
@@ -181,7 +176,7 @@ export function VolatilityWidget() {
             <div className="rounded-xl border border-border/40 overflow-hidden">
               <div className="grid grid-cols-5 bg-secondary/50 border-b border-border/30">
                 {periods.map(p => (
-                  <div key={p.short} className="py-1.5 text-center text-[9px] font-bold text-muted-foreground/60 uppercase tracking-wider">
+                  <div key={p.short} className="py-1.5 text-center text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
                     {p.short}
                   </div>
                 ))}
@@ -189,14 +184,14 @@ export function VolatilityWidget() {
               <div className="grid grid-cols-5">
                 {periods.map(p => {
                   const ratio = data.y1 > 0 ? p.value / data.y1 : 1;
-                  const pipColor = ratio > 1.25 ? "text-destructive" : ratio < 0.75 ? "text-blue-400" : "text-primary";
+                  const pipColor = ratio > 1.25 ? "text-red-300" : ratio < 0.75 ? "text-sky-300" : "text-emerald-300";
                   const volPct = p.short !== "1Y" ? Math.abs((ratio - 1) * 100) : null;
                   const volUp = ratio > 1;
                   return (
                     <div key={p.short} className="py-2 flex flex-col items-center border-r border-border/20 last:border-r-0">
                       <span className={`text-xs font-bold font-mono ${pipColor}`}>{p.value}</span>
                       {volPct != null && (
-                        <span className={`text-[9px] flex items-center gap-0.5 mt-0.5 ${volUp ? "text-destructive/60" : "text-blue-400/60"}`}>
+                        <span className={`text-[9px] flex items-center gap-0.5 mt-0.5 font-semibold ${volUp ? "text-red-300" : "text-sky-300"}`}>
                           {volUp ? <ArrowUp className="w-2 h-2" /> : <ArrowDown className="w-2 h-2" />}
                           {volPct.toFixed(0)}%
                         </span>
@@ -209,25 +204,28 @@ export function VolatilityWidget() {
 
             {/* Bar chart */}
             <div>
-              <p className="text-[9px] text-muted-foreground/50 mb-1.5">Ultimi 10 giorni</p>
+              <p className="text-[9px] text-muted-foreground mb-1.5">{uiText("auto.ui.bb9c89b228")}</p>
               <div className="h-[72px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={last10} barSize={10} margin={{ top: 2, right: 0, left: -30, bottom: 0 }}>
                     <Tooltip
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "10px", padding: "4px 8px" }}
+                      contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--popover-foreground))", fontSize: "10px", padding: "4px 8px", boxShadow: "0 14px 36px rgba(0,0,0,0.5)" }}
+                      labelStyle={{ color: "hsl(var(--popover-foreground))", fontWeight: 700 }}
+                      itemStyle={{ color: "hsl(var(--popover-foreground))", fontWeight: 700 }}
+                      cursor={{ fill: "hsl(var(--foreground) / 0.06)" }}
                       formatter={(v: number) => [`${v} ${data.pipUnit}`, ""]}
                       labelFormatter={() => ""}
                     />
-                    <ReferenceLine y={data.y1} stroke="hsl(var(--border))" strokeDasharray="3 2" />
+                    <ReferenceLine y={data.y1} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 2" strokeOpacity={0.65} />
                     <Bar dataKey="pips" radius={[3, 3, 0, 0]}>
                       {last10.map((entry, i) => (
                         <Cell
                           key={i}
                           fill={
-                            entry.pips > data.y1 * 1.25 ? "#ef4444" :
-                            entry.pips < data.y1 * 0.75 ? "#60a5fa" : "#22c55e"
+                            entry.pips > data.y1 * 1.25 ? "#f87171" :
+                            entry.pips < data.y1 * 0.75 ? "#7dd3fc" : "#34d399"
                           }
-                          fillOpacity={0.85}
+                          fillOpacity={0.95}
                         />
                       ))}
                     </Bar>
@@ -236,7 +234,7 @@ export function VolatilityWidget() {
               </div>
             </div>
 
-            <p className="text-[9px] text-center text-muted-foreground/40">Fonte: Yahoo Finance · Range H-L</p>
+            <p className="text-[9px] text-center text-muted-foreground">{uiText("auto.ui.6e28dfe791")}</p>
           </motion.div>
         )}
       </CardContent>

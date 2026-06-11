@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import {
+  completeFxBlueSetupIntent,
   completeBrokerConnectionIntent,
   closeBrokerPosition,
   connectBrokerProfile,
   createCompanionPairing,
+  createFxBlueSetupIntent,
   createBrokerHubUrl,
   createBrokerConnectionIntent,
   deleteBrokerProfile,
@@ -19,6 +21,7 @@ import {
   saveBrokerProfile,
   startMt5SmartLink,
   stopMt5SmartLink,
+  verifyFxBlueProfile,
   verifyBrokerConnectionIntent,
   verifyBrokerConnectionIntentSoft,
 } from "./brokerHubApi.js";
@@ -102,6 +105,101 @@ try {
     assert.equal(calls[0]?.url, "https://api.example.test/api/brokers/connect-intents");
     assert.equal(calls[0]?.init?.method, "POST");
     assert.equal(calls[0]?.init?.body, JSON.stringify({ brokerName: "FP Trading" }));
+  }
+
+  {
+    const payload = {
+      platform: "MT5" as const,
+      brokerName: "FP Trading",
+      server: "FPTrading-Live",
+      accountNumber: "123456",
+      environment: "live" as const,
+      investorPassword: "read-only-secret",
+    };
+    const calls = mockFetch(() =>
+      Response.json(
+        {
+          intent: { id: "fxblue-i1", status: "created" },
+          fxBlueUrl: "https://diagnostics.fxblue.com/accountsync.aspx",
+          instructions: ["Open FX Blue"],
+        },
+        { status: 201 },
+      ),
+    );
+
+    const result = await createFxBlueSetupIntent(payload, { baseUrl: "https://api.example.test" });
+
+    assert.equal(result.intent.id, "fxblue-i1");
+    assert.equal(result.fxBlueUrl, "https://diagnostics.fxblue.com/accountsync.aspx");
+    assert.equal(calls[0]?.url, "https://api.example.test/api/brokers/fxblue/setup-intents");
+    assert.equal(calls[0]?.init?.body, JSON.stringify(payload));
+  }
+
+  {
+    const payload = {
+      platform: "MT5" as const,
+      brokerName: "FP Trading",
+      server: "FPTradingLLC-Live",
+      accountNumber: "82364482",
+      environment: "live" as const,
+    };
+    const calls = mockFetch(() =>
+      Response.json(
+        {
+          intent: { id: "fxblue-existing-1", status: "created" },
+          fxBlueUrl: "https://diagnostics.fxblue.com/accountsync.aspx",
+          instructions: ["Open FX Blue"],
+        },
+        { status: 201 },
+      ),
+    );
+
+    const result = await createFxBlueSetupIntent(payload, { baseUrl: "https://api.example.test" });
+
+    assert.equal(result.intent.id, "fxblue-existing-1");
+    assert.equal(calls[0]?.init?.body, JSON.stringify(payload));
+  }
+
+  {
+    mockFetch(() => new Response("", { status: 404 }));
+
+    await assert.rejects(
+      createFxBlueSetupIntent(
+        {
+          platform: "MT5",
+          brokerName: "FP Trading",
+          server: "FPTradingLLC-Live",
+          accountNumber: "82364482",
+          environment: "live",
+        },
+        { baseUrl: "https://api.example.test" },
+      ),
+      /Broker request failed \(HTTP 404\)/,
+    );
+  }
+
+  {
+    const calls = mockFetch(() => Response.json({ intent: { id: "fxblue-i1", status: "profile_verified" }, snapshot: { status: "connected" } }));
+
+    const result = await verifyFxBlueProfile("fxblue-i1", { fxBlueProfileRef: "trader-one" }, { baseUrl: "https://api.example.test" });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.data.intent?.status, "profile_verified");
+    assert.equal(calls[0]?.url, "https://api.example.test/api/brokers/fxblue/setup-intents/fxblue-i1/verify-profile");
+    assert.equal(calls[0]?.init?.body, JSON.stringify({ fxBlueProfileRef: "trader-one" }));
+  }
+
+  {
+    const calls = mockFetch(() =>
+      Response.json({ intent: { id: "fxblue-i1", status: "completed" }, profile: { id: "p1" }, snapshot: { status: "connected" } }, { status: 201 }),
+    );
+
+    const result = await completeFxBlueSetupIntent("fxblue-i1", { baseUrl: "https://api.example.test" });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.data.profile?.id, "p1");
+    assert.equal(calls[0]?.url, "https://api.example.test/api/brokers/fxblue/setup-intents/fxblue-i1/complete");
+    assert.equal(calls[0]?.init?.method, "POST");
   }
 
   {

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import express from "express";
+import type { Request, Response } from "express";
 import { createServer } from "node:http";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -24,7 +25,7 @@ try {
 
   const app = express();
   app.use(express.json());
-  app.use("/api", createAccountBridgeRouter({ store, runtime }));
+  app.use("/api", createAccountBridgeRouter({ store, runtime, requireProAccess: async () => true }));
 
   const server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -69,6 +70,36 @@ try {
 
   const deleteResponse = await fetch(`${baseUrl}/${created.profile.id}`, { method: "DELETE" });
   assert.equal(deleteResponse.status, 204);
+
+  const productionApp = express();
+  productionApp.use(express.json());
+  productionApp.use(createAccountBridgeRouter({ store, runtime, env: { NODE_ENV: "production" } }));
+  const productionServer = createServer(productionApp);
+  await new Promise<void>((resolve) => productionServer.listen(0, "127.0.0.1", resolve));
+  const productionAddress = productionServer.address();
+  assert.ok(productionAddress && typeof productionAddress === "object");
+  const productionResponse = await fetch(`http://127.0.0.1:${productionAddress.port}/account/connections`);
+  assert.equal(productionResponse.status, 410);
+  await new Promise<void>((resolve) => productionServer.close(() => resolve()));
+
+  const deniedApp = express();
+  deniedApp.use(express.json());
+  deniedApp.use("/api", createAccountBridgeRouter({
+    store,
+    runtime,
+    requireProAccess: async (_req: Request, res: Response) => {
+      res.status(402).json({ error: "pro_required", feature: "broker" });
+      return false;
+    },
+  } as never));
+  const deniedServer = createServer(deniedApp);
+  await new Promise<void>((resolve) => deniedServer.listen(0, "127.0.0.1", resolve));
+  const deniedAddress = deniedServer.address();
+  assert.ok(deniedAddress && typeof deniedAddress === "object");
+  const deniedResponse = await fetch(`http://127.0.0.1:${deniedAddress.port}/api/account/connections`);
+  assert.equal(deniedResponse.status, 402);
+  assert.deepEqual(await deniedResponse.json(), { error: "pro_required", feature: "broker" });
+  await new Promise<void>((resolve) => deniedServer.close(() => resolve()));
 
   await runtime.stop();
   await new Promise<void>((resolve) => server.close(() => resolve()));

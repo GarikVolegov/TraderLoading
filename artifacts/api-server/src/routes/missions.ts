@@ -14,7 +14,24 @@ type MissionSeed = {
   xpReward: number;
 };
 
-const DEFAULT_MISSIONS: MissionSeed[] = [];
+// Fallback per chi non ha ancora configurato template personalizzati in Impostazioni.
+const DEFAULT_MISSIONS: MissionSeed[] = [
+  {
+    title: "Checklist pre-trade",
+    description: "Spunta tutti i criteri d'entrata prima di aprire una posizione",
+    xpReward: 10,
+  },
+  {
+    title: "Aggiorna il diario",
+    description: "Registra o sincronizza almeno un trade di oggi nel Diario",
+    xpReward: 15,
+  },
+  {
+    title: "Check-in emotivo",
+    description: "Registra il tuo stato d'animo all'apertura della sessione",
+    xpReward: 10,
+  },
+];
 
 async function ensureTodayMissions(userId: string | null) {
   const today = new Date().toISOString().slice(0, 10);

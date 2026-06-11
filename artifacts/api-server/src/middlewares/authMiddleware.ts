@@ -1,7 +1,7 @@
 import { getAuth } from "@clerk/express";
 import { type Request, type Response, type NextFunction } from "express";
 import type { AuthUser } from "@workspace/api-zod";
-import { db, loginAccessTable } from "@workspace/db";
+import { adminUserStatusTable, db, loginAccessTable } from "@workspace/db";
 import { and, eq, gte } from "drizzle-orm";
 import logger, { requestContext, type RequestContext } from "../lib/logger";
 import { getSession, getSessionId, type SessionData } from "../lib/auth";
@@ -25,8 +25,20 @@ declare global {
 const recentAccess = new Map<string, number>();
 const DEDUP_TTL = 60 * 60 * 1000; // 1 hour
 
+function pruneExpiredAccess(now: number) {
+  for (const [key, loggedAt] of recentAccess) {
+    if (now - loggedAt >= DEDUP_TTL) recentAccess.delete(key);
+  }
+}
+
 function getClientIp(req: Request): string {
   return req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+export function isAccountAllowedByAdminStatus(
+  status: { status: string } | null | undefined,
+): boolean {
+  return !status || status.status === "active";
 }
 
 async function recordAccess(
@@ -39,6 +51,7 @@ async function recordAccess(
   const last = recentAccess.get(key);
   if (last && now - last < DEDUP_TTL) return; // already logged recently
 
+  pruneExpiredAccess(now);
   recentAccess.set(key, now);
 
   // Also check DB — avoid duplicates surviving a server restart (within 1 h)
@@ -68,6 +81,7 @@ async function recordAccess(
 type AuthMiddlewareDeps = {
   getClerkUserId?: (req: Request) => string | null | undefined;
   getStoredSession?: (sid: string) => Promise<SessionData | null>;
+  getAdminStatus?: (userId: string) => Promise<{ status: string } | null>;
   recordAccess?: (
     userId: string,
     ip: string,
@@ -89,6 +103,17 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
   const getClerkUserId =
     deps.getClerkUserId ?? ((req: Request) => getAuth(req).userId);
   const getStoredSession = deps.getStoredSession ?? getSession;
+  const getAdminStatus =
+    deps.getAdminStatus ??
+    (async (userId: string) => {
+      const [adminStatus] = await db
+        .select({ status: adminUserStatusTable.status })
+        .from(adminUserStatusTable)
+        .where(eq(adminUserStatusTable.userId, userId))
+        .limit(1);
+
+      return adminStatus ?? null;
+    });
   const recordLoginAccess = deps.recordAccess ?? recordAccess;
   const warn =
     deps.warn ??
@@ -135,6 +160,19 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
     }
 
     if (req.user) {
+      let adminStatus: { status: string } | null = null;
+      try {
+        adminStatus = await getAdminStatus(req.user.id);
+      } catch (error) {
+        warn(error, "Admin status lookup failed");
+      }
+
+      if (!isAccountAllowedByAdminStatus(adminStatus ?? null)) {
+        req.user = undefined;
+        next();
+        return;
+      }
+
       const ip = getClientIp(req);
       const ua = req.headers["user-agent"];
       recordLoginAccess(req.user.id, ip, ua).catch((error) => {

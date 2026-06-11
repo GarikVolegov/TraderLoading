@@ -9,6 +9,7 @@ import type {
   ConnectionHealth,
   ConnectorRoute,
 } from "./types.js";
+import { createDatabaseBrokerProfileStore } from "./databaseProfileStore.js";
 
 export interface BrokerProfileList {
   activeProfileId: string | null;
@@ -23,7 +24,16 @@ export interface BrokerProfileStore {
   getProfile(id: string): Promise<BrokerAccountProfile | null>;
 }
 
+export interface BrokerProfileStoreBackend {
+  read(): Promise<unknown>;
+  write(data: BrokerProfileList): Promise<void>;
+  update?<T>(
+    mutate: (current: unknown) => Promise<{ data: BrokerProfileList; result: T }> | { data: BrokerProfileList; result: T },
+  ): Promise<T>;
+}
+
 const DEFAULT_STORE: BrokerProfileList = { activeProfileId: null, profiles: [] };
+const backendLocks = new WeakMap<BrokerProfileStoreBackend, Promise<void>>();
 
 function defaultPath(): string {
   return join(process.cwd(), ".local", "broker-profiles.json");
@@ -54,6 +64,7 @@ function readKind(value: unknown): BrokerKind {
     value === "snaptrade-brokerage" ||
     value === "ctrader-open-api" ||
     value === "mt5-vps-bridge" ||
+    value === "fxblue-account-sync" ||
     value === "demo"
     ? value
     : "demo";
@@ -75,6 +86,7 @@ function defaultRoute(kind: BrokerProviderKind): ConnectorRoute {
   if (kind === "ctrader-open-api") return "official_oauth";
   if (kind === "snaptrade-brokerage") return "broker_portal";
   if (kind === "metaapi-metatrader") return "optional_cloud";
+  if (kind === "fxblue-account-sync") return "fxblue_account_sync";
   if (kind === "demo") return "manual";
   return "local_companion";
 }
@@ -87,16 +99,25 @@ function readRoute(value: unknown, kind: BrokerProviderKind): ConnectorRoute {
     value === "file_import" ||
     value === "manual" ||
     value === "optional_cloud" ||
-    value === "advanced_ea"
+    value === "advanced_ea" ||
+    value === "fxblue_account_sync"
     ? value
     : defaultRoute(kind);
 }
 
 function readHealth(value: unknown, route: ConnectorRoute, connectionStatus: BrokerAccountProfile["connectionStatus"]): ConnectionHealth {
-  if (value === "connected" || value === "stale" || value === "waiting_for_companion" || value === "import_only" || value === "error") {
+  if (
+    value === "connected" ||
+    value === "stale" ||
+    value === "waiting_for_companion" ||
+    value === "waiting_for_fxblue_sync" ||
+    value === "import_only" ||
+    value === "error"
+  ) {
     return value;
   }
   if (route === "smartlink_mt5" || route === "local_companion") return connectionStatus === "connected" ? "connected" : "waiting_for_companion";
+  if (route === "fxblue_account_sync") return connectionStatus === "connected" ? "connected" : "waiting_for_fxblue_sync";
   if (route === "file_import" || route === "manual") return "import_only";
   return connectionStatus === "connected" ? "connected" : "stale";
 }
@@ -114,6 +135,7 @@ function isProfile(value: unknown): value is BrokerAccountProfile {
       profile.kind === "snaptrade-brokerage" ||
       profile.kind === "ctrader-open-api" ||
       profile.kind === "mt5-vps-bridge" ||
+      profile.kind === "fxblue-account-sync" ||
       profile.kind === "demo")
   );
 }
@@ -122,7 +144,7 @@ function defaultCapabilities(kind: BrokerProviderKind): BrokerCapabilities {
   if (kind === "demo") {
     return { readAccount: true, readPositions: true, readHistory: true, placeOrders: true, closePositions: true, realtimeUpdates: false, requiresTerminal: false };
   }
-  if (kind === "snaptrade-brokerage") {
+  if (kind === "snaptrade-brokerage" || kind === "fxblue-account-sync") {
     return { readAccount: true, readPositions: true, readHistory: true, placeOrders: false, closePositions: false, realtimeUpdates: false, requiresTerminal: false };
   }
   if (kind === "traderloading-mt5-smartlink" || kind === "metatrader-local-companion") {
@@ -180,6 +202,12 @@ function sanitize(raw: unknown, existing?: BrokerAccountProfile): BrokerAccountP
     brokerName: brokerName || "Broker",
     kind,
     providerKind,
+    ownerUserId:
+      typeof data.ownerUserId === "string"
+        ? data.ownerUserId
+        : data.ownerUserId === null
+          ? null
+          : existing?.ownerUserId,
     providerUserId: readString(data.providerUserId, existing?.providerUserId) || undefined,
     providerAccountId: readString(data.providerAccountId, existing?.providerAccountId) || undefined,
     accountId: readString(data.accountId, existing?.accountId ?? (kind === "demo" ? "DEMO-1" : "")),
@@ -225,46 +253,134 @@ async function writeStore(path: string, data: BrokerProfileList): Promise<void> 
   await rename(temp, path);
 }
 
-export function createBrokerProfileStore(path = defaultPath()): BrokerProfileStore {
+function createFileBackend(path: string): BrokerProfileStoreBackend {
+  return {
+    read: () => readStore(path),
+    write: (data) => writeStore(path, data),
+  };
+}
+
+async function updateBackend<T>(
+  backend: BrokerProfileStoreBackend,
+  mutate: (current: BrokerProfileList) => Promise<{ data: BrokerProfileList; result: T }> | { data: BrokerProfileList; result: T },
+): Promise<T> {
+  if (backend.update) {
+    return backend.update((current) => mutate(cleanStore(current)));
+  }
+
+  const previous = backendLocks.get(backend) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  backendLocks.set(
+    backend,
+    previous.catch(() => undefined).then(() => current),
+  );
+
+  await previous.catch(() => undefined);
+  try {
+    const currentData = cleanStore(await backend.read());
+    const next = await mutate(currentData);
+    await backend.write(next.data);
+    return next.result;
+  } finally {
+    release();
+  }
+}
+
+export function createBrokerProfileStoreFromBackend(backend: BrokerProfileStoreBackend): BrokerProfileStore {
   return {
     async listProfiles(): Promise<BrokerProfileList> {
-      const data = await readStore(path);
+      const data = cleanStore(await backend.read());
       return { activeProfileId: data.activeProfileId, profiles: data.profiles.map((profile) => ({ ...profile })) };
     },
 
     async getProfile(id: string): Promise<BrokerAccountProfile | null> {
-      const data = await readStore(path);
+      const data = cleanStore(await backend.read());
       const profile = data.profiles.find((item) => item.id === id);
       return profile ? { ...profile } : null;
     },
 
     async saveProfile(raw: unknown): Promise<BrokerAccountProfile> {
-      const data = await readStore(path);
-      const incoming = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
-      const existing =
-        typeof incoming.id === "string" ? data.profiles.find((profile) => profile.id === incoming.id) : undefined;
-      const profile = sanitize(raw, existing);
-      const profiles = existing
-        ? data.profiles.map((item) => (item.id === profile.id ? profile : item))
-        : [...data.profiles, profile];
-      await writeStore(path, { activeProfileId: data.activeProfileId, profiles });
-      return { ...profile };
+      return updateBackend(backend, (data) => {
+        const incoming = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+        const existing =
+          typeof incoming.id === "string" ? data.profiles.find((profile) => profile.id === incoming.id) : undefined;
+        const profile = sanitize(raw, existing);
+        const profiles = existing
+          ? data.profiles.map((item) => (item.id === profile.id ? profile : item))
+          : [...data.profiles, profile];
+        return {
+          data: { activeProfileId: data.activeProfileId, profiles },
+          result: { ...profile },
+        };
+      });
     },
 
     async activateProfile(id: string): Promise<BrokerAccountProfile> {
-      const data = await readStore(path);
-      const profile = data.profiles.find((item) => item.id === id);
-      if (!profile) throw new Error("Broker profile not found");
-      await writeStore(path, { activeProfileId: id, profiles: data.profiles });
-      return { ...profile };
+      return updateBackend(backend, (data) => {
+        const profile = data.profiles.find((item) => item.id === id);
+        if (!profile) throw new Error("Broker profile not found");
+        return {
+          data: { activeProfileId: id, profiles: data.profiles },
+          result: { ...profile },
+        };
+      });
     },
 
     async deleteProfile(id: string): Promise<void> {
-      const data = await readStore(path);
-      await writeStore(path, {
-        activeProfileId: data.activeProfileId === id ? null : data.activeProfileId,
-        profiles: data.profiles.filter((profile) => profile.id !== id),
+      await updateBackend(backend, (data) => {
+        return {
+          data: {
+            activeProfileId: data.activeProfileId === id ? null : data.activeProfileId,
+            profiles: data.profiles.filter((profile) => profile.id !== id),
+          },
+          result: undefined,
+        };
       });
+    },
+  };
+}
+
+export function createBrokerProfileStore(path = defaultPath()): BrokerProfileStore {
+  return createBrokerProfileStoreFromBackend(createFileBackend(path));
+}
+
+interface DefaultBrokerProfileStoreOptions {
+  filePath?: string;
+  env?: Record<string, string | undefined>;
+}
+
+export function createDefaultBrokerProfileStore(options: DefaultBrokerProfileStoreOptions = {}): BrokerProfileStore {
+  const env = options.env ?? process.env;
+  const fileStore = createBrokerProfileStore(options.filePath);
+  let storePromise: Promise<BrokerProfileStore> | null = null;
+
+  async function resolveStore(): Promise<BrokerProfileStore> {
+    if (!storePromise) {
+      storePromise = env.DATABASE_URL
+        ? createDatabaseBrokerProfileStore()
+        : Promise.resolve(fileStore);
+    }
+    return storePromise;
+  }
+
+  return {
+    async listProfiles() {
+      return (await resolveStore()).listProfiles();
+    },
+    async saveProfile(raw: unknown) {
+      return (await resolveStore()).saveProfile(raw);
+    },
+    async activateProfile(id: string) {
+      return (await resolveStore()).activateProfile(id);
+    },
+    async deleteProfile(id: string) {
+      return (await resolveStore()).deleteProfile(id);
+    },
+    async getProfile(id: string) {
+      return (await resolveStore()).getProfile(id);
     },
   };
 }
