@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   DEFAULT_TRADING_VIEW_WATCHLIST_SYMBOLS,
   TRADING_VIEW_WATCHLIST_STORAGE_KEY,
+  buildTradingViewChartUrl,
   buildTradingViewSingleTickerConfig,
   normalizeTradingViewSymbol,
   normalizeTradingViewWatchlistSettings,
@@ -39,6 +40,11 @@ assert.equal(config.locale, "it");
 assert.equal(config.isTransparent, true);
 assert.equal(config.symbol, "FX:EURUSD");
 assert.equal(config.width, "100%");
+
+assert.equal(
+  buildTradingViewChartUrl("OANDA:XAUUSD"),
+  "https://www.tradingview.com/chart/?symbol=OANDA%3AXAUUSD",
+);
 
 assert.deepEqual(
   suggestTradingViewSymbols("eurusd").map((item) => item.symbol).slice(0, 4),
@@ -94,5 +100,8 @@ assert.match(source, /max-h-\[min\(720px,calc\(100dvh-2rem\)\)\]/);
 assert.match(source, /max-h-\[280px\]/);
 assert.match(source, /TradingViewWatchlistSettings/);
 assert.match(source, /onerror/);
+assert.match(source, /href=\{buildTradingViewChartUrl\(symbol\)\}/);
+assert.match(source, /target="_blank"/);
+assert.match(source, /h-\[96px\]/);
 
 console.log("tradingview watchlist widget checks passed");

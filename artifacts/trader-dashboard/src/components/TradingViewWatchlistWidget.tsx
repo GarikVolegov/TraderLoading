@@ -40,6 +40,7 @@ export const DEFAULT_TRADING_VIEW_WATCHLIST_SYMBOLS = ["FX:EURUSD", "OANDA:XAUUS
 
 const TRADING_VIEW_SINGLE_TICKER_SCRIPT =
   "https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js";
+const TRADING_VIEW_CHART_URL = "https://www.tradingview.com/chart/";
 
 const SYMBOL_PATTERN = /^[A-Z0-9_./-]+:[A-Z0-9_./-]+$/;
 
@@ -216,6 +217,12 @@ export function buildTradingViewSingleTickerConfig(symbol: string): TradingViewS
   };
 }
 
+export function buildTradingViewChartUrl(symbol: string): string {
+  const url = new URL(TRADING_VIEW_CHART_URL);
+  url.searchParams.set("symbol", symbol);
+  return url.toString();
+}
+
 export const tradingViewWatchlistStorage = {
   load(storage: Storage | null = typeof window === "undefined" ? null : window.localStorage) {
     if (!storage) return { symbols: DEFAULT_TRADING_VIEW_WATCHLIST_SYMBOLS, invalidSymbols: [] };
@@ -257,7 +264,7 @@ function TradingViewSingleTickerEmbed({
 
     container.innerHTML = "";
     const widgetTarget = document.createElement("div");
-    widgetTarget.className = "tradingview-widget-container__widget min-h-[74px]";
+    widgetTarget.className = "tradingview-widget-container__widget h-[96px]";
     container.appendChild(widgetTarget);
 
     const script = document.createElement("script");
@@ -273,7 +280,7 @@ function TradingViewSingleTickerEmbed({
     };
   }, [configKey, onError, symbol]);
 
-  return <div ref={containerRef} className="tradingview-widget-container min-h-[74px] w-full overflow-hidden" />;
+  return <div ref={containerRef} className="tradingview-widget-container h-[96px] w-full overflow-hidden" />;
 }
 
 function SymbolEditorDialog({
@@ -469,14 +476,14 @@ export function TradingViewWatchlistWidget() {
 
   return (
     <Card className="relative overflow-hidden border-border/30 bg-card/60">
-      <div className="widget-header">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="widget-icon border border-primary/20 bg-primary/10">
-            <Activity className="h-4 w-4 text-primary" />
+      <div className="flex items-center justify-between border-b border-border/40 px-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+            <Activity className="h-3.5 w-3.5 text-primary" />
           </div>
           <div className="min-w-0">
-            <p className="widget-title">{uiText("auto.ui.b97144823c")}</p>
-            <p className="truncate text-[10px] text-muted-foreground">{uiText("auto.ui.1867f40365")}</p>
+            <p className="truncate font-mono text-[13px] font-bold">{uiText("auto.ui.b97144823c")}</p>
+            <p className="truncate text-[9px] leading-tight text-muted-foreground">{uiText("auto.ui.1867f40365")}</p>
           </div>
         </div>
         <button
@@ -489,18 +496,26 @@ export function TradingViewWatchlistWidget() {
         </button>
       </div>
 
-      <CardContent className="space-y-3 p-3 pt-0">
+      <CardContent className="space-y-2 p-2">
         {symbols.length === 0 ? (
-          <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/50 bg-secondary/15 p-4 text-center">
+          <div className="flex min-h-[116px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border/50 bg-secondary/15 p-3 text-center">
             <p className="text-sm font-bold">{uiText("auto.ui.c739bbc172")}</p>
             <p className="max-w-[240px] text-xs text-muted-foreground">{uiText("tradingview.watchlist.empty_desc")}</p>
             <Button type="button" size="sm" onClick={() => setEditorOpen(true)}>{uiText("auto.ui.33357d724e")}</Button>
           </div>
         ) : (
-          <div className="max-h-[360px] space-y-2 overflow-y-auto overflow-x-hidden pr-1">
+          <div className="max-h-[220px] space-y-1.5 overflow-y-auto overflow-x-hidden pr-1">
             {symbols.map((symbol) => (
-              <div key={symbol} className="overflow-hidden rounded-lg border border-border/35 bg-background/25">
+              <div key={symbol} className="relative overflow-hidden rounded-md border border-border/35 bg-background/25">
                 <TradingViewSingleTickerEmbed symbol={symbol} reloadKey={reloadKey} onError={handleEmbedError} />
+                <a
+                  href={buildTradingViewChartUrl(symbol)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute inset-0 z-10 block touch-manipulation rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+                  aria-label={`Apri ${symbol} su TradingView`}
+                  title={`Apri ${symbol} su TradingView`}
+                />
               </div>
             ))}
           </div>

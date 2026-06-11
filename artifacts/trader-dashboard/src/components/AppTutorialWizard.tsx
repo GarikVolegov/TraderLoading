@@ -8,7 +8,6 @@ import {
   FlaskConical,
   LayoutDashboard,
   MessageCircle,
-  MoreHorizontal,
 } from "lucide-react";
 import {
   Dialog,
@@ -61,12 +60,6 @@ export function AppTutorialWizard({
         tint: "text-emerald-400",
         companionIcon: MessageCircle,
       },
-      {
-        icon: MoreHorizontal,
-        title: t("app_tutorial.slide_more_title"),
-        body: t("app_tutorial.slide_more_body"),
-        tint: "text-violet-400",
-      },
     ],
     [t],
   );
@@ -102,7 +95,7 @@ export function AppTutorialWizard({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="mt-5 grid grid-cols-5 gap-1.5 md:grid-cols-1">
+            <div className="mt-5 grid grid-cols-4 gap-1.5 md:grid-cols-1">
               {slides.map((slide, slideIndex) => {
                 const StepIcon = slide.icon;
                 const active = slideIndex === index;

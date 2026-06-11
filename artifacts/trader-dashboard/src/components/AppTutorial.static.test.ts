@@ -22,7 +22,7 @@ assert.match(wrapperSource, /getGetUserSettingsQueryKey/);
 const wizardSource = fs.readFileSync("src/components/AppTutorialWizard.tsx", "utf8");
 assert.match(wizardSource, /Dialog/);
 assert.match(wizardSource, /app_tutorial\.slide_dashboard_title/);
-assert.match(wizardSource, /app_tutorial\.slide_more_title/);
+assert.doesNotMatch(wizardSource, /app_tutorial\.slide_more_title/);
 assert.match(wizardSource, /onSkip/);
 assert.match(wizardSource, /onFinish/);
 
@@ -45,8 +45,6 @@ const requiredKeys = [
   "app_tutorial.slide_tools_body",
   "app_tutorial.slide_zen_community_title",
   "app_tutorial.slide_zen_community_body",
-  "app_tutorial.slide_more_title",
-  "app_tutorial.slide_more_body",
   "settings.help.review_tutorial",
   "settings.help.review_tutorial_desc",
 ] as const;
