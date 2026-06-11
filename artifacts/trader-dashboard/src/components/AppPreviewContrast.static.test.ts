@@ -5,14 +5,19 @@ const cssSource = readFileSync(new URL("../index.css", import.meta.url), "utf8")
 const cardSource = readFileSync(new URL("./ui/card.tsx", import.meta.url), "utf8");
 const chartSource = readFileSync(new URL("./ui/chart.tsx", import.meta.url), "utf8");
 const tooltipSource = readFileSync(new URL("./ui/tooltip.tsx", import.meta.url), "utf8");
+const widgetShellSource = readFileSync(new URL("./ui/widget-shell.tsx", import.meta.url), "utf8");
+const metricCardSource = readFileSync(new URL("./ui/metric-card.tsx", import.meta.url), "utf8");
 const volatilitySource = readFileSync(new URL("./VolatilityWidget.tsx", import.meta.url), "utf8");
 const cotSource = readFileSync(new URL("./CotWidget.tsx", import.meta.url), "utf8");
 
-assert.match(cssSource, /\.widget-header \{\s+@apply [^;]*border-border\/45/s);
-assert.match(cssSource, /\.widget-subtitle \{\s+@apply [^;]*text-muted-foreground\/80/s);
-assert.match(cssSource, /\.metric-card \{\s+@apply [^;]*border-border\/60[^;]*bg-secondary\/55/s);
-assert.match(cssSource, /\.metric-label \{\s+@apply [^;]*text-muted-foreground\/85/s);
-assert.match(cssSource, /\.metric-unit \{\s+@apply [^;]*text-muted-foreground\/75/s);
+// Header/metric dei widget: consolidati nei componenti ui/widget-shell e ui/metric-card
+assert.match(widgetShellSource, /border-border\/45/);
+assert.match(widgetShellSource, /text-muted-foreground\/80/);
+assert.match(metricCardSource, /border-border\/60 bg-secondary\/55/);
+assert.match(metricCardSource, /text-muted-foreground\/85/);
+assert.match(metricCardSource, /text-muted-foreground\/75/);
+// Le vecchie classi CSS sparse non devono tornare
+assert.doesNotMatch(cssSource, /\.widget-header|\.metric-card|\.badge-success|\.tl-icon-button|\.card-hover/);
 assert.match(cssSource, /\.link-pill \{\s+@apply [^;]*text-muted-foreground\/80/s);
 assert.match(cssSource, /\.dashboard-widget-shell :is\(\.bg-card\\\/60, \.bg-card\\\/80, \.bg-card\\\/40\) \{\s+background-color: hsl\(var\(--card\) \/ 0\.88\);/s);
 assert.match(cssSource, /\.dashboard-widget-shell :is\(\.bg-secondary\\\/20, \.bg-secondary\\\/30, \.bg-secondary\\\/40\) \{\s+background-color: hsl\(var\(--secondary\) \/ 0\.55\);/s);

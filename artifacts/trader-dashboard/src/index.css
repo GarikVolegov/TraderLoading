@@ -241,24 +241,6 @@
     @apply flex flex-wrap items-center gap-2 rounded-[0.625rem] border border-border/55 bg-card/82 px-3 py-2;
   }
 
-  .tl-icon-button {
-    @apply inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border/60 bg-card/85 text-muted-foreground transition-colors hover:border-primary/55 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:pointer-events-none disabled:opacity-45;
-  }
-
-  /* ── Card lift effect ─────────────────────────────────────────── */
-  .card-hover {
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-                box-shadow 0.2s ease,
-                border-color 0.2s ease;
-  }
-  .card-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px hsl(var(--border));
-  }
-  .card-hover:active {
-    transform: translateY(0) scale(0.99);
-  }
-
   /* ── Metric / stat number display ─────────────────────────────── */
   .stat-number {
     @apply font-mono font-bold tabular-nums tracking-tighter;
@@ -268,26 +250,6 @@
   }
   .stat-number-xl {
     @apply font-mono font-bold tabular-nums tracking-tighter text-3xl sm:text-4xl;
-  }
-
-  /* ── Inline badge pills ───────────────────────────────────────── */
-  .badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border;
-  }
-  .badge-success {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border bg-success/10 text-success border-success/25;
-  }
-  .badge-danger {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border bg-destructive/10 text-destructive border-destructive/25;
-  }
-  .badge-warning {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border bg-warning/10 text-warning border-warning/25;
-  }
-  .badge-muted {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border bg-white/5 text-muted-foreground border-white/10;
-  }
-  .badge-primary {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border bg-primary/10 text-primary border-primary/25;
   }
 
   /* ── Section label ────────────────────────────────────────────── */
@@ -335,34 +297,6 @@
   .text-win  { color: hsl(var(--success)); }
   .text-loss { color: hsl(var(--destructive)); }
   .text-be   { color: hsl(var(--warning)); }
-
-  /* ── Consistent widget header ─────────────────────────────────── */
-  .widget-header {
-    @apply flex items-center justify-between px-4 pt-4 pb-3 border-b border-border/45;
-  }
-  .widget-icon {
-    @apply w-8 h-8 rounded-xl flex items-center justify-center shrink-0;
-  }
-  .widget-title {
-    @apply text-sm font-bold font-mono tracking-tight;
-  }
-  .widget-subtitle {
-    @apply text-[10px] text-muted-foreground/80 leading-none mt-0.5;
-  }
-
-  /* ── Pro metric card ──────────────────────────────────────────── */
-  .metric-card {
-    @apply flex flex-col items-center justify-center rounded-xl border border-border/60 bg-secondary/55 p-2.5 text-center gap-0.5 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.04)];
-  }
-  .metric-label {
-    @apply text-[9px] text-muted-foreground/85 uppercase tracking-wider leading-none;
-  }
-  .metric-value {
-    @apply text-lg font-bold font-mono tabular-nums leading-tight;
-  }
-  .metric-unit {
-    @apply text-[9px] text-muted-foreground/75 leading-none;
-  }
 
   /* ── Card with top accent ─────────────────────────────────────── */
   .card-accent-top {

@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { WidgetHeader } from "@/components/ui/widget-shell";
+import { MetricCard } from "@/components/ui/metric-card";
 import {
   TrendingUp, Loader2, AlertCircle,
   ChevronDown, ArrowUp, ArrowDown, RefreshCw,
@@ -71,24 +73,19 @@ export function VolatilityWidget() {
   return (
     <Card className="volatility-contrast-card relative overflow-hidden bg-card/80 backdrop-blur-sm border-border/60 flex flex-col">
       {/* Header */}
-      <div className="widget-header">
-        <div className="flex items-center gap-2.5">
-          <div className="widget-icon bg-warning/10 border border-warning/20">
-            <TrendingUp className="w-4 h-4 text-warning" />
-          </div>
-          <div>
-            <p className="widget-title">{uiText("auto.ui.de8919508a")}</p>
-            {data && (
-              <p className="widget-subtitle">
-                <span className={`font-semibold ${
-                  data.label.includes("Alta")  ? "text-red-300" :
-                  data.label.includes("Bassa") ? "text-sky-300"   : "text-emerald-300"
-                }`}>{data.label}</span>
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
+      <WidgetHeader
+        icon={<TrendingUp className="w-4 h-4 text-warning" />}
+        iconClassName="bg-warning/10 border border-warning/20"
+        title={uiText("auto.ui.de8919508a")}
+        subtitle={
+          data ? (
+            <span className={`font-semibold ${
+              data.label.includes("Alta")  ? "text-destructive" :
+              data.label.includes("Bassa") ? "text-accent"      : "text-success"
+            }`}>{data.label}</span>
+          ) : undefined
+        }
+        actions={
           <button
             onClick={() => refetch()}
             disabled={isFetching}
@@ -96,8 +93,8 @@ export function VolatilityWidget() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
           </button>
-        </div>
-      </div>
+        }
+      />
 
       <CardContent className="p-4 space-y-3 flex-1">
         {/* Pair selector */}
@@ -155,21 +152,9 @@ export function VolatilityWidget() {
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
             {/* Metric cards */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="metric-card border-emerald-400/40 bg-emerald-500/12">
-                <span className="metric-label text-emerald-200">{uiText("auto.ui.6ca10960a1")}</span>
-                <span className="metric-value text-emerald-300">{data.todayPips}</span>
-                <span className="metric-unit">{data.pipUnit}</span>
-              </div>
-              <div className="metric-card">
-                <span className="metric-label">{uiText("auto.ui.e598e168c1")}</span>
-                <span className="metric-value">{data.y1}</span>
-                <span className="metric-unit">{data.pipUnit}</span>
-              </div>
-              <div className="metric-card">
-                <span className="metric-label">{uiText("auto.ui.c83dbbd3e6")}</span>
-                <span className="metric-value">{data.peakDay?.slice(0, 3)}</span>
-                <span className="metric-unit">{uiText("auto.ui.2287204815")}</span>
-              </div>
+              <MetricCard tone="brand" label={uiText("auto.ui.6ca10960a1")} value={data.todayPips} unit={data.pipUnit} />
+              <MetricCard label={uiText("auto.ui.e598e168c1")} value={data.y1} unit={data.pipUnit} />
+              <MetricCard label={uiText("auto.ui.c83dbbd3e6")} value={data.peakDay?.slice(0, 3)} unit={uiText("auto.ui.2287204815")} />
             </div>
 
             {/* Period table */}
@@ -184,14 +169,14 @@ export function VolatilityWidget() {
               <div className="grid grid-cols-5">
                 {periods.map(p => {
                   const ratio = data.y1 > 0 ? p.value / data.y1 : 1;
-                  const pipColor = ratio > 1.25 ? "text-red-300" : ratio < 0.75 ? "text-sky-300" : "text-emerald-300";
+                  const pipColor = ratio > 1.25 ? "text-destructive" : ratio < 0.75 ? "text-accent" : "text-success";
                   const volPct = p.short !== "1Y" ? Math.abs((ratio - 1) * 100) : null;
                   const volUp = ratio > 1;
                   return (
                     <div key={p.short} className="py-2 flex flex-col items-center border-r border-border/20 last:border-r-0">
                       <span className={`text-xs font-bold font-mono ${pipColor}`}>{p.value}</span>
                       {volPct != null && (
-                        <span className={`text-[9px] flex items-center gap-0.5 mt-0.5 font-semibold ${volUp ? "text-red-300" : "text-sky-300"}`}>
+                        <span className={`text-[9px] flex items-center gap-0.5 mt-0.5 font-semibold ${volUp ? "text-destructive" : "text-accent"}`}>
                           {volUp ? <ArrowUp className="w-2 h-2" /> : <ArrowDown className="w-2 h-2" />}
                           {volPct.toFixed(0)}%
                         </span>
@@ -222,8 +207,8 @@ export function VolatilityWidget() {
                         <Cell
                           key={i}
                           fill={
-                            entry.pips > data.y1 * 1.25 ? "#f87171" :
-                            entry.pips < data.y1 * 0.75 ? "#7dd3fc" : "#34d399"
+                            entry.pips > data.y1 * 1.25 ? "hsl(var(--destructive))" :
+                            entry.pips < data.y1 * 0.75 ? "hsl(var(--accent))" : "hsl(var(--success))"
                           }
                           fillOpacity={0.95}
                         />

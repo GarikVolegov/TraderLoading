@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { WidgetHeader } from "@/components/ui/widget-shell";
 import { Activity, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
@@ -107,22 +108,19 @@ export function SentimentWidget() {
   return (
     <Card className="relative overflow-hidden flex flex-col bg-card/60 backdrop-blur-sm border-border/30">
       {/* Header */}
-      <div className="widget-header">
-        <div className="flex items-center gap-2.5">
-          <div className="widget-icon bg-primary/10 border border-primary/20">
-            <Activity className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <p className="widget-title">{uiText("auto.ui.52bfe34c30")}</p>
-            {data?.live && (
-              <span className="inline-flex items-center gap-1 text-[9px] text-green-400">
-                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                LIVE
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
+      <WidgetHeader
+        icon={<Activity className="w-4 h-4 text-primary" />}
+        iconClassName="bg-primary/10 border border-primary/20"
+        title={uiText("auto.ui.52bfe34c30")}
+        subtitle={
+          data?.live ? (
+            <span className="inline-flex items-center gap-1 text-[9px] text-success">
+              <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" />
+              LIVE
+            </span>
+          ) : undefined
+        }
+        actions={
           <button
             onClick={() => refetch()}
             disabled={isFetching}
@@ -130,8 +128,8 @@ export function SentimentWidget() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
           </button>
-        </div>
-      </div>
+        }
+      />
 
       <CardContent className="p-4 space-y-3 flex-1">
         {isLoading && (
