@@ -28,11 +28,18 @@ import accountBridgeRouter from "./account-bridge.js";
 import brokersRouter from "./brokers.js";
 import routinesRouter from "./routines.js";
 import libraryRouter from "./library.js";
-import wikiRouter from "./wiki.js";
 import adminRouter from "./admin.js";
 import billingRouter from "./billing.js";
+import {
+  ANONYMOUS_FALLBACK_PREFIXES,
+  createProductionAuthGate,
+} from "../middlewares/productionAuthGate.js";
 
 const router: IRouter = Router();
+
+// In produzione le rotte col fallback anonimo richiedono il login: senza gate
+// il bucket userId IS NULL sarebbe condiviso fra tutti i visitatori.
+router.use(ANONYMOUS_FALLBACK_PREFIXES, createProductionAuthGate());
 
 router.use(healthRouter);
 router.use(authRouter);
@@ -65,6 +72,5 @@ router.use(accountBridgeRouter);
 router.use(brokersRouter);
 router.use(routinesRouter);
 router.use(libraryRouter);
-router.use(wikiRouter);
 
 export default router;
