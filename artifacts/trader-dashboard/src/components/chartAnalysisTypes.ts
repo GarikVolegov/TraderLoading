@@ -83,7 +83,7 @@ export const DEFAULT_DRAWING_STYLE: DrawingStyle = {
   strokeWidth: 2,
   opacity: 0.92,
   lineStyle: "solid",
-  fill: "#22c55e",
+  fill: "#4ca973",
   fillOpacity: 0.12,
 };
 

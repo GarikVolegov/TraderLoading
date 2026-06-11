@@ -144,7 +144,7 @@ const DEFAULT_ADMIN_MILESTONE_FORM: AdminMilestonePayload = {
   description: "",
   skills: [],
   badgeEmoji: "T",
-  badgeColor: "#22c55e",
+  badgeColor: "#4ca973",
 };
 
 function useAdminMe() {

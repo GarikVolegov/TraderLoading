@@ -179,8 +179,8 @@ export function CotWidget() {
                           <AreaChart data={selected.history} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
                             <defs>
                               <linearGradient id={`cotWidGrad-${selected.currency}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={selected.nonCommNet >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0.3} />
-                                <stop offset="95%" stopColor={selected.nonCommNet >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0} />
+                                <stop offset="5%" stopColor={selected.nonCommNet >= 0 ? "hsl(var(--profit))" : "hsl(var(--loss))"} stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={selected.nonCommNet >= 0 ? "hsl(var(--profit))" : "hsl(var(--loss))"} stopOpacity={0} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.45} vertical={false} />
@@ -195,7 +195,7 @@ export function CotWidget() {
                             <Area
                               type="monotone"
                               dataKey="nonCommNet"
-                              stroke={selected.nonCommNet >= 0 ? "#22c55e" : "#ef4444"}
+                              stroke={selected.nonCommNet >= 0 ? "hsl(var(--profit))" : "hsl(var(--loss))"}
                               strokeWidth={1.5}
                               fill={`url(#cotWidGrad-${selected.currency})`}
                               dot={false}

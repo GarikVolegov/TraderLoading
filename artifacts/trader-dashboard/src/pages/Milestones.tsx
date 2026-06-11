@@ -68,7 +68,7 @@ function getLevelName(level: number): string {
 }
 
 const BADGE_COLORS = [
-  "#22c55e",
+  "#4ca973",
   "#3b82f6",
   "#a855f7",
   "#f59e0b",
@@ -344,7 +344,7 @@ function MilestoneEditor({
   );
   const [badgeEmoji, setBadgeEmoji] = useState(milestone?.badgeEmoji ?? "🏆");
   const [badgeColor, setBadgeColor] = useState(
-    milestone?.badgeColor ?? "#22c55e",
+    milestone?.badgeColor ?? "#4ca973",
   );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);

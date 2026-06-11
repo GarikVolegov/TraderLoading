@@ -130,7 +130,7 @@ const EMOTIONS_MORNING = [
   { id: "tense",      label: "Teso",      emoji: "😤", color: "#f97316" },
   { id: "neutral",    label: "Neutro",    emoji: "😐", color: "#6b7280" },
   { id: "calm",       label: "Calmo",     emoji: "😌", color: "#3b82f6" },
-  { id: "confident",  label: "Fiducioso", emoji: "💪", color: "#10b981" },
+  { id: "confident",  label: "Fiducioso", emoji: "💪", color: "#3dae66" },
   { id: "energetic",  label: "Energico",  emoji: "⚡", color: "#f59e0b" },
 ];
 
@@ -139,7 +139,7 @@ const EMOTIONS_EVENING = [
   { id: "tired",      label: "Stanco",    emoji: "😴", color: "#6b7280" },
   { id: "neutral",    label: "Neutro",    emoji: "😐", color: "#6b7280" },
   { id: "satisfied",  label: "Soddisfatto",emoji: "😊",color: "#3b82f6" },
-  { id: "happy",      label: "Felice",    emoji: "🎉", color: "#10b981" },
+  { id: "happy",      label: "Felice",    emoji: "🎉", color: "#3dae66" },
   { id: "proud",      label: "Orgoglioso",emoji: "🏆", color: "#f59e0b" },
 ];
 
@@ -228,7 +228,7 @@ function EmotionQuizStep({
 // ─── Breathing Step ───────────────────────────────────────────────────────────
 
 const MORNING_PHASES = [
-  { name: "Inspira",    duration: 4, scale: 1.0,  color: "#10b981" },
+  { name: "Inspira",    duration: 4, scale: 1.0,  color: "#3dae66" },
   { name: "Trattieni", duration: 4, scale: 1.0,  color: "#3b82f6" },
   { name: "Espira",    duration: 4, scale: 0.58, color: "#8b5cf6" },
   { name: "Riposa",    duration: 4, scale: 0.58, color: "#6b7280" },
@@ -304,8 +304,8 @@ function BreathingStep({ program, onReady }: { program: Program; onReady: () => 
           className="relative rounded-full flex flex-col items-center justify-center border-2"
           animate={{
             scale: done ? 1 : phase.scale,
-            borderColor: done ? "#10b981" : phase.color,
-            backgroundColor: done ? "#10b98115" : `${phase.color}10`,
+            borderColor: done ? "#3dae66" : phase.color,
+            backgroundColor: done ? "#3dae6615" : `${phase.color}10`,
           }}
           transition={{ duration: phase.duration * 0.9, ease: "easeInOut" }}
           style={{ width: 180, height: 180 }}
@@ -346,7 +346,7 @@ function BreathingStep({ program, onReady }: { program: Program; onReady: () => 
               <div
                 key={i}
                 className="w-2 h-2 rounded-full transition-all duration-500"
-                style={{ backgroundColor: i < cycle ? "#10b981" : "#374151" }}
+                style={{ backgroundColor: i < cycle ? "#3dae66" : "#374151" }}
               />
             ))}
           </div>
@@ -713,8 +713,8 @@ function TradeReviewStep({ answers, onChange }: { answers: Answers; onChange: (a
       <EveningTradeReport onApply={applyReport} />
       <div className="grid grid-cols-3 gap-3">
         {[
-          { key: "win",   label: "Win",   color: "#10b981" },
-          { key: "loss",  label: "Loss",  color: "#ef4444" },
+          { key: "win",   label: "Win",   color: "#3dae66" },
+          { key: "loss",  label: "Loss",  color: "#d45454" },
           { key: "be",    label: "B/E",   color: "#6b7280" },
         ].map(({ key, label, color }) => (
           <div key={key} className="flex flex-col gap-1">

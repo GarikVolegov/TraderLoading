@@ -18,12 +18,13 @@ interface SentimentSymbol {
 }
 
 function FearGreedArc({ score }: { score: number }) {
+  // Scala fear/greed desaturata (C2-Verde sobria)
   const zones = [
-    { label: "Panico",    min: 0,  max: 30,  color: "#ef4444" },
-    { label: "Paura",     min: 30, max: 45,  color: "#f97316" },
-    { label: "Neutrale",  min: 45, max: 55,  color: "#eab308" },
-    { label: "Ottimismo", min: 55, max: 70,  color: "#84cc16" },
-    { label: "Euforia",   min: 70, max: 100, color: "#22c55e" },
+    { label: "Panico",    min: 0,  max: 30,  color: "#d45454" },
+    { label: "Paura",     min: 30, max: 45,  color: "#d78742" },
+    { label: "Neutrale",  min: 45, max: 55,  color: "#c4a943" },
+    { label: "Ottimismo", min: 55, max: 70,  color: "#8fae4f" },
+    { label: "Euforia",   min: 70, max: 100, color: "#3dae66" },
   ];
   const zone = zones.find(z => score >= z.min && score < z.max) ?? zones[2];
   const clamp = Math.min(Math.max(score, 2), 98);
@@ -42,17 +43,17 @@ function FearGreedArc({ score }: { score: number }) {
         {/* Gradient background */}
         <div
           className="absolute inset-0 opacity-20 rounded-lg"
-          style={{ background: "linear-gradient(to right, #ef4444, #f97316, #eab308, #84cc16, #22c55e)" }}
+          style={{ background: "linear-gradient(to right, #d45454, #d78742, #c4a943, #8fae4f, #3dae66)" }}
         />
         {/* Wave SVG */}
         <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
           <defs>
             <linearGradient id="sg2" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%"   stopColor="#ef4444" />
-              <stop offset="30%"  stopColor="#f97316" />
-              <stop offset="50%"  stopColor="#eab308" />
-              <stop offset="70%"  stopColor="#84cc16" />
-              <stop offset="100%" stopColor="#22c55e" />
+              <stop offset="0%"   stopColor="#d45454" />
+              <stop offset="30%"  stopColor="#d78742" />
+              <stop offset="50%"  stopColor="#c4a943" />
+              <stop offset="70%"  stopColor="#8fae4f" />
+              <stop offset="100%" stopColor="#3dae66" />
             </linearGradient>
           </defs>
           <path
