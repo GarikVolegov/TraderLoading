@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "ms-vscode.vscode-typescript-next",
+    "ms-vscode.vscode-json",
+    "dbaeumer.vscode-eslint",
+    "eamodio.gitlens"
+  ]
+}

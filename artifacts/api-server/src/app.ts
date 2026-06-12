@@ -55,14 +55,22 @@ app.use("/api", healthRouter);
 
 serveFrontendApp(app);
 
-app.use(
-  clerkMiddleware((req) => ({
-    publishableKey: publishableKeyFromHost(
-      getClerkProxyHost(req) ?? "",
-      process.env.CLERK_PUBLISHABLE_KEY,
-    ),
-  })),
-);
+const clerkSecretKey = process.env.CLERK_SECRET_KEY?.trim();
+const shouldUseClerkMiddleware =
+  process.env.NODE_ENV === "production" || Boolean(clerkSecretKey);
+
+if (shouldUseClerkMiddleware) {
+  app.use(
+    clerkMiddleware((req) => ({
+      publishableKey: publishableKeyFromHost(
+        getClerkProxyHost(req) ?? "",
+        process.env.CLERK_PUBLISHABLE_KEY,
+      ),
+    })),
+  );
+} else {
+  logger.warn("Clerk disabled for local development because CLERK_SECRET_KEY is not configured");
+}
 
 app.use(authMiddleware);
 

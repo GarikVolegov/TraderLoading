@@ -1,0 +1,14 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "files.exclude": {
+    "**/.git": true,
+    "**/node_modules": true,
+    "**/.local-logs": true
+  },
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.local-logs": true,
+    "**/dist": true
+  }
+}

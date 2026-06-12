@@ -1,0 +1,78 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev: install dependencies",
+      "type": "shell",
+      "command": "pnpm install",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Dev: start local stack",
+      "type": "shell",
+      "command": "pnpm run start:local",
+      "problemMatcher": [],
+      "group": "build",
+      "isBackground": true
+    },
+    {
+      "label": "Dev: start frontend only",
+      "type": "shell",
+      "command": "pnpm --filter @workspace/trader-dashboard run dev",
+      "options": {
+        "env": {
+          "BASE_PATH": "/",
+          "PORT": "5173",
+          "VITE_API_BASE": "http://127.0.0.1:3001"
+        }
+      },
+      "problemMatcher": [],
+      "group": "build",
+      "isBackground": true
+    },
+    {
+      "label": "Dev: start API only",
+      "type": "shell",
+      "command": "pnpm --filter ./scripts exec tsx local/startApiDev.ts",
+      "options": {
+        "env": {
+          "BASE_PATH": "/",
+          "NODE_ENV": "development",
+          "PORT": "3001"
+        }
+      },
+      "problemMatcher": [],
+      "group": "build",
+      "isBackground": true
+    },
+    {
+      "label": "Dev: verify project",
+      "type": "shell",
+      "command": "pnpm run verify",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Dev: verify runtime",
+      "type": "shell",
+      "command": "pnpm run verify:runtime",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Dev: smoke runtime",
+      "type": "shell",
+      "command": "pnpm run smoke:runtime",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Dev: regenerate OpenAPI client",
+      "type": "shell",
+      "command": "pnpm run codegen",
+      "problemMatcher": [],
+      "group": "build"
+    }
+  ]
+}

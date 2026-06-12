@@ -101,7 +101,17 @@ function setAuthenticatedUser(req: Request, user: AuthUser) {
 
 export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
   const getClerkUserId =
-    deps.getClerkUserId ?? ((req: Request) => getAuth(req).userId);
+    deps.getClerkUserId ??
+    ((req: Request) => {
+      if (
+        process.env.NODE_ENV !== "production" &&
+        !process.env.CLERK_SECRET_KEY?.trim()
+      ) {
+        return null;
+      }
+
+      return getAuth(req).userId;
+    });
   const getStoredSession = deps.getStoredSession ?? getSession;
   const getAdminStatus =
     deps.getAdminStatus ??
