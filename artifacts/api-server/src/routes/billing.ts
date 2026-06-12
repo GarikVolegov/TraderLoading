@@ -291,6 +291,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
       res.json({ clientSecret: session.clientSecret });
     } catch (error) {
       if (handleStripeRouteError(error, res)) return;
+      console.error("[checkout-session] error:", error instanceof Error ? error.stack ?? error.message : error);
       throw error;
     }
   });
