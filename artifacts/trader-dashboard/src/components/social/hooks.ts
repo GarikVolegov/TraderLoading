@@ -16,6 +16,10 @@ import type {
   StoryGroup,
   SocialUser,
   SocialProfileResponse,
+  CommunityType,
+  CommunityDetail,
+  CommunityMsg,
+  VoiceParticipant,
 } from "./types";
 
 export function usePostComments(postId: number | null) {
@@ -102,4 +106,42 @@ export function useFriendSearch(q: string) {
       },
     },
   );
+}
+
+export function useCommunities() {
+  return useQuery<CommunityType[]>({
+    queryKey: ["communities"],
+    queryFn: () => apiJSON("community"),
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useCommunityDetail(id: number | null) {
+  return useQuery<CommunityDetail>({
+    queryKey: ["community", id],
+    queryFn: () => apiJSON(`community/${id}`),
+    enabled: id !== null,
+    staleTime: 10_000,
+  });
+}
+
+export function useCommunityMessages(channelId: number | null) {
+  return useQuery<{ messages: CommunityMsg[]; nextCursor: number | null }>({
+    queryKey: ["communityMessages", channelId],
+    queryFn: () => apiJSON(`community/channels/${channelId}/messages`),
+    enabled: channelId !== null,
+    refetchInterval: 3_000,
+    staleTime: 0,
+  });
+}
+
+export function useVoicePresence(channelId: number | null, enabled: boolean) {
+  return useQuery<VoiceParticipant[]>({
+    queryKey: ["voicePresence", channelId],
+    queryFn: () => apiJSON(`community/voice/${channelId}/presence`),
+    enabled: channelId !== null && enabled,
+    refetchInterval: 5_000,
+    staleTime: 0,
+  });
 }

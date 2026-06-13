@@ -102,3 +102,45 @@ export type FriendRelationshipStatus =
 export type FriendSearchResult = UserSearchResult & {
   relationshipStatus?: FriendRelationshipStatus;
 };
+
+export interface CommunityType {
+  id: number;
+  name: string;
+  description: string;
+  iconEmoji: string;
+  memberCount: number;
+  isMember: boolean;
+  creatorId: string;
+  isPublic: boolean;
+  createdAt: string;
+}
+
+export interface ChannelType {
+  id: number;
+  communityId: number;
+  name: string;
+  type: "text" | "voice";
+  position: number;
+}
+
+export interface CommunityDetail extends CommunityType {
+  channels: ChannelType[];
+  myRole: string | null;
+}
+
+export interface CommunityMsg {
+  id: number;
+  channelId: number;
+  userId: string;
+  userName: string;
+  avatarUrl: string | null;
+  content: string;
+  imageUrl: string | null;
+  createdAt: string;
+}
+
+export interface VoiceParticipant {
+  userId: string;
+  userName: string;
+  avatarUrl: string | null;
+}

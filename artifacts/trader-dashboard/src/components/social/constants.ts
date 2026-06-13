@@ -19,3 +19,21 @@ export const ICE_SERVERS = [
     credential: "openrelayproject",
   },
 ];
+
+export const COMMUNITY_EMOJIS = [
+  "🏛️",
+  "📊",
+  "💹",
+  "🎯",
+  "🧠",
+  "⚡",
+  "🔥",
+  "🚀",
+  "💎",
+  "🌐",
+  "📈",
+  "🏆",
+  "🤝",
+  "🛡️",
+  "⚙️",
+];
