@@ -8,59 +8,20 @@ import { PageHeader } from "@/components/PageHeader";
 import { EveningTradeReport, type TodayReport } from "@/components/EveningTradeReport";
 import { getRoutineStartProgram } from "./Routine.helpers";
 import { uiText } from "@/contexts/LanguageContext";
-import {
-  appendRoutineCompletion,
-  createCustomRoutine,
-  getRoutineMetrics,
-  loadCustomRoutines,
-  loadRoutineCompletions,
-  type CustomRoutine,
-} from "./Routine.storage";
-import {
-  fetchRoutineCompetition,
-  recordRoutineCompletion,
-  routineCompetitionQueryKey,
-  type RoutineCompetitionEntry,
-} from "@/lib/routineApi";
-import {
-  Sunrise, Moon, X, ChevronRight, ChevronLeft, Wind,
-  Smile, Heart, Star, CheckCircle2, Target, RotateCcw,
-  Flame, Clock, Play, SkipForward, Check, TrendingUp,
-  Eye, ClipboardCheck, CalendarDays, Zap, BookOpen,
-  Plus, BarChart3, Layers, Activity, Crown, Trophy, User,
-} from "lucide-react";
+import { createCustomRoutine, getRoutineMetrics, loadCustomRoutines, loadRoutineCompletions, type CustomRoutine } from "./Routine.storage";
+import { fetchRoutineCompetition, recordRoutineCompletion, routineCompetitionQueryKey, type RoutineCompetitionEntry } from "@/lib/routineApi";
+import { Sunrise, Moon, X, ChevronRight, ChevronLeft, Wind, Smile, Heart, Star, CheckCircle2, Target, RotateCcw, Flame, Clock, Play, SkipForward, Check, TrendingUp, Eye, ClipboardCheck, CalendarDays, Zap, BookOpen, Plus, Layers, Crown, Trophy, User } from "lucide-react";
+import type {
+  Program,
+  SessionStep,
+  Answers,
+  ActiveRoutineSession,
+} from "@/components/routine/types";
+import { loadCompletion, saveRoutineCompletion } from "@/components/routine/completion";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export type Program = "morning" | "evening";
-type StepType =
-  | "emotion-quiz"
-  | "breathing"
-  | "gratitude"
-  | "visualization"
-  | "checklist"
-  | "goals"
-  | "trade-review"
-  | "reflection"
-  | "tomorrow"
-  | "complete";
-
-interface SessionStep {
-  type: StepType;
-  title: string;
-  subtitle: string;
-  icon: React.ElementType;
-  skippable?: boolean;
-}
-
-export type Answers = Record<string, unknown>;
-
-interface ActiveRoutineSession {
-  program: Program;
-  routineId: string;
-  routineTitle: string;
-  markDailyProgram: boolean;
-}
+// Re-exported so existing @/pages/Routine consumers (RoutineWidget) keep working.
+export type { Program, Answers };
+export { saveRoutineCompletion };
 
 // ─── Program step definitions ─────────────────────────────────────────────────
 
@@ -83,45 +44,6 @@ const EVENING_STEPS: SessionStep[] = [
   { type: "tomorrow",       title: "Piano di domani",          subtitle: "Prepara il focus per la prossima sessione",icon: CalendarDays },
   { type: "complete",       title: "Buona notte!",             subtitle: "Riposa bene. Domani torni più forte",     icon: Moon },
 ];
-
-// ─── localStorage helpers ─────────────────────────────────────────────────────
-
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function loadCompletion(p: Program): boolean {
-  try {
-    const raw = localStorage.getItem(`tl_session_${p}_v2`);
-    if (!raw) return false;
-    const { date } = JSON.parse(raw) as { date: string };
-    return date === todayKey();
-  } catch { return false; }
-}
-
-export function saveRoutineCompletion(
-  p: Program,
-  answers: Answers,
-  options: {
-    routineId?: string;
-    routineTitle?: string;
-    markDailyProgram?: boolean;
-  } = {},
-) {
-  if (options.markDailyProgram !== false) {
-    localStorage.setItem(
-      `tl_session_${p}_v2`,
-      JSON.stringify({ date: todayKey(), answers }),
-    );
-  }
-
-  appendRoutineCompletion({
-    routineId: options.routineId ?? p,
-    routineTitle: options.routineTitle ?? (p === "morning" ? "Programma Mattutino" : "Programma Serale"),
-    template: p,
-    answers,
-  });
-}
 
 // ─── Emotion Quiz Step ────────────────────────────────────────────────────────
 
