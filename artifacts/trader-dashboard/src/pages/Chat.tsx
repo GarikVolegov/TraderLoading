@@ -1,138 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, type ReactNode } from "react";
+import { motion } from "framer-motion";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
-import { useLanguage, uiText } from "@/contexts/LanguageContext";
-import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
-import { useE2EEKeys } from "@/hooks/useE2EEKeys";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@workspace/replit-auth-web";
-import { getSharedKey, encryptMessage, decryptMessage } from "@/lib/e2ee";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  useGetPublicKey,
-  useSendChatMessage,
-  useGetChatMessages,
-  useGetUnreadCount,
-  useGetProfile,
-  getGetChatMessagesQueryKey,
-  getGetFriendsQueryKey,
-  getGetPendingFriendRequestsQueryKey,
-  getGetPublicKeyQueryKey,
-  getSearchUsersQueryKey,
-  getGetUnreadCountQueryKey,
-  useGetFriends,
-  useGetPendingFriendRequests,
-  useRespondToFriendRequest,
-  useSearchUsers,
-  useSendFriendRequest,
-  type FriendListItem,
-  type UserSearchResult,
-} from "@workspace/api-client-react";
-import {
-  Send,
-  MessageCircle,
-  Shield,
-  Loader2,
-  LogIn,
-  Globe,
-  Lock,
-  Trophy,
-  Crown,
-  Medal,
-  Award,
-  User,
-  Heart,
-  Plus,
-  X,
-  Camera,
-  FileText,
-  ArrowLeft,
-  Search,
-  UserPlus,
-  UserCheck,
-  UserMinus,
-  Clock,
-  Users,
-  ChevronRight,
-  Trash2,
-  Smile,
-  ImageIcon,
-  Mic,
-  MicOff,
-  Phone,
-  PhoneOff,
-  PhoneCall,
-  StopCircle,
-  Reply,
-  Hash,
-  Volume2,
-  Radio,
-  Headphones,
-  Settings2,
-  VolumeX,
-  ChevronDown,
-  ChevronUp,
-  MessageSquare,
-  Download,
-  Paperclip,
-  File,
-  ToggleLeft,
-  ToggleRight,
-  FolderOpen,
-} from "lucide-react";
-import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
-import { formatFileSize } from "@/lib/fileFormatting";
-import { formatIntlRelativeTime } from "@/lib/relativeTime";
-import {
-  fetchLeaderboard,
-  leaderboardQueryKey,
-  type LeaderboardEntry,
-} from "@/lib/leaderboardApi";
-import { reportClientError } from "@/lib/clientErrorReporter";
-import { ICE_SERVERS, COMMUNITY_EMOJIS } from "@/components/social/constants";
-import { fmtDur, fileIcon } from "@/components/social/format";
-import { Avatar } from "@/components/social/Avatar";
-import { PositionBadge } from "@/components/social/PositionBadge";
-import type {
-  DecryptedMsg,
-  Post,
-  StoryGroup,
-  SocialUser,
-  PostComment,
-  CommunityFile,
-  SocialProfileResponse,
-  CallSignal,
-  VoiceSignal,
-  FriendRelationshipStatus,
-  FriendSearchResult,
-  CommunityType,
-  ChannelType,
-  CommunityDetail,
-  CommunityMsg,
-  VoiceParticipant,
-} from "@/components/social/types";
-import {
-  usePostComments,
-  useCommunityFiles,
-  useFeed,
-  useStories,
-  useMutualFollowers,
-  useLeaderboard,
-  useFollowStatus,
-  useUserProfile,
-  useSocialSearch,
-  useFriendSearch,
-  useCommunities,
-  useCommunityDetail,
-  useCommunityMessages,
-  useVoicePresence,
-} from "@/components/social/hooks";
-import { UserProfileModal } from "@/components/social/UserProfileModal";
-import { StoryViewer } from "@/components/social/StoryViewer";
-import { CreatePostModal } from "@/components/social/CreatePostModal";
-import { PostCard } from "@/components/social/PostCard";
+import { Loader2, LogIn, Globe, Lock, Trophy, Radio } from "lucide-react";
+import type { SocialUser } from "@/components/social/types";
 import { SocialTab } from "@/components/social/SocialTab";
 import { MessaggiTab } from "@/components/social/MessaggiTab";
 import { ClassificaTab } from "@/components/social/ClassificaTab";
@@ -143,7 +17,7 @@ import { CommunityTab } from "@/components/social/CommunityTab";
 type Tab = "social" | "messaggi" | "classifica" | "comunita";
 
 export default function Chat() {
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
   const { isAuthenticated, isLoading: authLoading, login, user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("social");
   const [pendingChat, setPendingChat] = useState<SocialUser | null>(null);
@@ -189,7 +63,7 @@ export default function Chat() {
       </PageLayout>
     );
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  const tabs: { id: Tab; label: string; icon: ReactNode }[] = [
     {
       id: "social",
       label: t("chat.tab.social"),
