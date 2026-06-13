@@ -33,8 +33,10 @@ export function PostCard({
 
   const like = useMutation({
     mutationFn: () =>
-      apiJSON(`social/posts/${post.id}/like`, { method: "POST" }),
-    onSuccess: (data: { liked: boolean }) => {
+      apiJSON<{ liked: boolean }>(`social/posts/${post.id}/like`, {
+        method: "POST",
+      }),
+    onSuccess: (data) => {
       setLiked(data.liked);
       setCount((c) => (data.liked ? c + 1 : c - 1));
     },
