@@ -25,7 +25,7 @@ function createRingtone(
   type: FiringAlarm["sound"],
 ): () => void {
   let stopped = false;
-  let timeouts: ReturnType<typeof setTimeout>[] = [];
+  const timeouts: ReturnType<typeof setTimeout>[] = [];
 
   const scheduleBeep = (
     delay: number,

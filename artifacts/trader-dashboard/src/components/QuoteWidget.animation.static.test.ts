@@ -17,7 +17,7 @@ assert.match(
 
 assert.match(
   source,
-  /key=\{\`\$\{quote\.text\}\s*::\s*\$\{quote\.author \?\? ""\}\`\}/,
+  /key=\{`\$\{quote\.text\}\s*::\s*\$\{quote\.author \?\? ""\}`\}/,
   "Animated quote content should be keyed by text and author",
 );
 
