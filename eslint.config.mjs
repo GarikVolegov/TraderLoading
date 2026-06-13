@@ -81,6 +81,14 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
   },
 
+  // ── api-server is now free of explicit `any`: enforce it as a hard error so
+  // it cannot regress. The frontend keeps `any` at warn (ratchet). The test
+  // override below re-disables it for *.test files. ─────────────────────────
+  {
+    files: ["artifacts/api-server/**/*.ts"],
+    rules: { "@typescript-eslint/no-explicit-any": "error" },
+  },
+
   // ── Test files: looser ───────────────────────────────────────────────────
   {
     files: ["**/*.test.{ts,tsx}", "**/*.static.test.{ts,mjs}"],

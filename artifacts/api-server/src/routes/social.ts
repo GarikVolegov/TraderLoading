@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -69,7 +69,7 @@ const chatFileUpload = multer({
 
 const router: IRouter = Router();
 
-function requireAuth(req: any, res: any): string | null {
+function requireAuth(req: Request, res: Response): string | null {
   const userId = req.user?.id;
   if (!userId) {
     res.status(401).json({ error: "Autenticazione richiesta" });
@@ -224,10 +224,10 @@ router.get("/social/search", async (req, res) => {
   }
 });
 
-router.post("/social/upload-image", (req: any, res: any, next: any) => {
+router.post("/social/upload-image", (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
-  postImageUpload.single("image")(req, res, (err: any) => {
+  postImageUpload.single("image")(req, res, (err) => {
     if (err) { res.status(400).json({ error: err.message ?? "Upload fallito" }); return; }
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
     const imageUrl = `/api/uploads/post-images/${req.file.filename}`;
@@ -235,10 +235,10 @@ router.post("/social/upload-image", (req: any, res: any, next: any) => {
   });
 });
 
-router.post("/social/upload-file", (req: any, res: any) => {
+router.post("/social/upload-file", (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
-  chatFileUpload.single("file")(req, res, (err: any) => {
+  chatFileUpload.single("file")(req, res, (err) => {
     if (err) { res.status(400).json({ error: err.message ?? "Upload fallito" }); return; }
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
     res.json({
@@ -480,10 +480,10 @@ const voiceStorage = multer.diskStorage({
 });
 const voiceUpload = multer({ storage: voiceStorage, limits: { fileSize: 20 * 1024 * 1024 } });
 
-router.post("/social/upload-voice", (req: any, res: any) => {
+router.post("/social/upload-voice", (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
-  voiceUpload.single("audio")(req, res, (err: any) => {
+  voiceUpload.single("audio")(req, res, (err) => {
     if (err || !req.file) { res.status(400).json({ error: "Upload fallito" }); return; }
     res.json({ audioUrl: `/api/uploads/voice/${req.file.filename}` });
   });
@@ -567,14 +567,15 @@ router.delete("/social/posts/:postId/comments/:commentId", async (req, res) => {
 interface StoryReply { from: string; type: string; content: string; createdAt: string; }
 const storyReplies = new Map<string, StoryReply[]>();
 
-router.post("/social/story-reply/:storyId", (req: any, res: any) => {
+router.post("/social/story-reply/:storyId", (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Non autorizzato" }); return; }
   const { content, type = "text" } = req.body;
   if (!content?.trim()) { res.status(400).json({ error: "Contenuto mancante" }); return; }
-  const arr = storyReplies.get(req.params.storyId) ?? [];
+  const storyId = String(req.params.storyId);
+  const arr = storyReplies.get(storyId) ?? [];
   arr.push({ from: userId, type, content: content.trim(), createdAt: new Date().toISOString() });
-  storyReplies.set(req.params.storyId, arr);
+  storyReplies.set(storyId, arr);
   res.json({ ok: true });
 });
 
@@ -582,7 +583,7 @@ router.post("/social/story-reply/:storyId", (req: any, res: any) => {
 // Stored in the DB so the sender and the polling recipient can be served by
 // different serverless instances and still exchange offers/answers/ICE.
 
-router.post("/social/calls/signal", async (req: any, res: any) => {
+router.post("/social/calls/signal", async (req: Request, res: Response) => {
   const from = req.user?.id;
   if (!from) { res.status(401).json({ error: "Non autorizzato" }); return; }
   const { to, type, data, callId } = req.body;
@@ -596,7 +597,7 @@ router.post("/social/calls/signal", async (req: any, res: any) => {
   }
 });
 
-router.get("/social/calls/signals", async (req: any, res: any) => {
+router.get("/social/calls/signals", async (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Non autorizzato" }); return; }
   try {

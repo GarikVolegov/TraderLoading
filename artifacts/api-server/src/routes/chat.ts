@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { db, chatMessagesTable, userPublicKeysTable, userE2eeKeyBackupsTable, friendshipsTable, globalChatMessagesTable, profileTable, followsTable } from "@workspace/db";
 import { eq, or, and, desc, sql, lt, asc } from "drizzle-orm";
 import { getUserNotificationLanguage, sendPushToUser } from "./push.js";
@@ -6,7 +6,7 @@ import { getServerNotificationCopy } from "../services/notifications/notificatio
 
 const router: IRouter = Router();
 
-function requireAuth(req: any, res: any): string | null {
+function requireAuth(req: Request, res: Response): string | null {
   const userId = req.user?.id;
   if (!userId) {
     res.status(401).json({ error: "Autenticazione richiesta" });

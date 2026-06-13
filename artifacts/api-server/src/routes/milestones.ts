@@ -1,4 +1,10 @@
-import { Router, type IRouter } from "express";
+import {
+  Router,
+  type IRouter,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -43,7 +49,7 @@ const milestoneFileUpload = multer({
   },
 });
 
-function requireAuth(req: any, res: any): string | null {
+function requireAuth(req: Request, res: Response): string | null {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return null; }
   return userId;
@@ -54,7 +60,7 @@ function isPlatformAdmin(userId: string): boolean {
   return adminIds.includes(userId);
 }
 
-function requireAdmin(req: any, res: any): string | null {
+function requireAdmin(req: Request, res: Response): string | null {
   const userId = requireAuth(req, res);
   if (!userId) return null;
   if (!isPlatformAdmin(userId)) {
@@ -148,20 +154,20 @@ router.put("/milestones/:level", async (req, res) => {
 });
 
 // ─── POST upload file to milestone (admin only) ───────────────────────────────
-router.post("/milestones/:level/files", (req: any, res: any, next: any) => {
+router.post("/milestones/:level/files", (req: Request, res: Response, next: NextFunction) => {
   const userId = req.user?.id;
   if (!userId || !isPlatformAdmin(userId)) {
     res.status(403).json({ error: "Solo l'amministratore può caricare file" });
     return;
   }
-  milestoneFileUpload.single("file")(req, res, (err: any) => {
+  milestoneFileUpload.single("file")(req, res, (err) => {
     if (err) { res.status(400).json({ error: err.message }); return; }
     next();
   });
-}, async (req: any, res: any) => {
+}, async (req: Request, res: Response) => {
   try {
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
-    const level = parseInt(req.params.level);
+    const level = parseInt(String(req.params.level));
     if (isNaN(level)) { res.status(400).json({ error: "Livello non valido" }); return; }
     const fileUrl = `/api/uploads/milestone-files/${req.file.filename}`;
     const [fileRow] = await db.insert(levelMilestoneFilesTable).values({

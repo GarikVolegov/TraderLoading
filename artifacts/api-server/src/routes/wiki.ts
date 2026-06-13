@@ -67,7 +67,7 @@ router.post("/wiki/sources/text", async (req, res) => {
 router.post("/wiki/sources/upload", async (req, res) => {
   const userId = await requireWikiUser(req, res);
   if (!userId) return;
-  upload.single("file")(req, res, async (err: any) => {
+  upload.single("file")(req, res, async (err) => {
     if (err) {
       res.status(400).json({ error: err.message ?? "Upload fallito" });
       return;

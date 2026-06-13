@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -37,7 +37,7 @@ const upload = multer({
   },
 });
 
-function requireAuth(req: any, res: any): string | null {
+function requireAuth(req: Request, res: Response): string | null {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return null; }
   return userId;
@@ -46,7 +46,7 @@ function isPlatformAdmin(userId: string): boolean {
   const ids = (process.env.PLATFORM_ADMIN_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
   return ids.includes(userId);
 }
-function requireAdmin(req: any, res: any): string | null {
+function requireAdmin(req: Request, res: Response): string | null {
   const userId = requireAuth(req, res);
   if (!userId) return null;
   if (!isPlatformAdmin(userId)) {
@@ -65,13 +65,13 @@ function parseTags(input: unknown): string {
 const CONTENT_TYPES = new Set(["document", "mindmap", "video"]);
 
 // ─── Admin status ─────────────────────────────────────────────────────────────
-router.get("/library/admin/status", (req: any, res) => {
+router.get("/library/admin/status", (req, res) => {
   const userId = req.user?.id;
   res.json({ isAdmin: userId ? isPlatformAdmin(userId) : false });
 });
 
 // ─── Consumer: list published collections ─────────────────────────────────────
-router.get("/library/collections", async (req: any, res) => {
+router.get("/library/collections", async (req, res) => {
   try {
     const isAdmin = req.user?.id ? isPlatformAdmin(req.user.id) : false;
     const rows = await db
@@ -87,7 +87,7 @@ router.get("/library/collections", async (req: any, res) => {
 });
 
 // ─── Consumer: collection + its contents ──────────────────────────────────────
-router.get("/library/collections/:id", async (req: any, res) => {
+router.get("/library/collections/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) { res.status(400).json({ error: "ID non valido" }); return; }
@@ -115,7 +115,7 @@ router.get("/library/collections/:id", async (req: any, res) => {
 });
 
 // ─── Consumer: flat list of contents (client groups by unlock level) ──────────
-router.get("/library/contents", async (req: any, res) => {
+router.get("/library/contents", async (req, res) => {
   try {
     const isAdmin = req.user?.id ? isPlatformAdmin(req.user.id) : false;
     const rows = await db
@@ -131,7 +131,7 @@ router.get("/library/contents", async (req: any, res) => {
 });
 
 // ─── Consumer: single content ─────────────────────────────────────────────────
-router.get("/library/contents/:id", async (req: any, res) => {
+router.get("/library/contents/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) { res.status(400).json({ error: "ID non valido" }); return; }
@@ -153,10 +153,10 @@ router.get("/library/contents/:id", async (req: any, res) => {
 });
 
 // ─── Admin: upload a document/cover file ──────────────────────────────────────
-router.post("/library/upload", (req: any, res) => {
+router.post("/library/upload", (req, res) => {
   const userId = requireAdmin(req, res);
   if (!userId) return;
-  upload.single("file")(req, res, (err: any) => {
+  upload.single("file")(req, res, (err) => {
     if (err) { res.status(400).json({ error: err.message ?? "Upload fallito" }); return; }
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
     res.json({
