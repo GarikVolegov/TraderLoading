@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { readSettingsFeatureSource } from "./settingsFeatureSource";
+
 const dashboard = readFileSync(new URL("./Dashboard.tsx", import.meta.url), "utf8");
-const settings = readFileSync(new URL("./Settings.tsx", import.meta.url), "utf8");
+const settings = readSettingsFeatureSource();
 
 assert.match(dashboard, /URLSearchParams\(window\.location\.search\)\.get\("layout"\) === "edit"/);
 assert.doesNotMatch(dashboard, />\s*Layout\s*</);

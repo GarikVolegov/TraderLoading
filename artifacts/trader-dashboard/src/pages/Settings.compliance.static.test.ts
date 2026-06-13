@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readSettingsFeatureSource } from "./settingsFeatureSource";
 
-const source = readFileSync(new URL("./Settings.tsx", import.meta.url), "utf8");
+const source = readSettingsFeatureSource();
 
 assert.match(
   source,
@@ -30,7 +30,7 @@ assert.match(
 );
 assert.match(
   source,
-  /Privacy e dati/,
+  /Privacy, licenza e disclaimer/,
   "Settings must expose a privacy/data disclosure area",
 );
 assert.match(

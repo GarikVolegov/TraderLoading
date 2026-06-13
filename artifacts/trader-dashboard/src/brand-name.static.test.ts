@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { listSettingsFeatureFiles } from "./pages/settingsFeatureSource";
 
 const officialName = "TraderLoading";
 const forbiddenNames = /TraderLOADING|TRADERLOADING/;
@@ -13,7 +14,7 @@ const files = [
   "src/components/BottomNav.tsx",
   "src/components/TopNav.tsx",
   "src/pages/LandingPage.tsx",
-  "src/pages/Settings.tsx",
+  ...listSettingsFeatureFiles(),
   "src/lib/i18n.ts",
   "src/lib/rewardsLibrary.ts",
 ];
