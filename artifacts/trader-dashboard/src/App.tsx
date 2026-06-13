@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { motion } from "framer-motion";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
@@ -74,7 +74,22 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+// NOTE: we intentionally do NOT wire VITE_CLERK_PROXY_URL into ClerkProvider.
+// This Clerk instance is configured with a custom domain (clerk.<domain>), which
+// clerk-js reaches directly from the publishable key. Routing through the app's
+// own /api/__clerk proxy made clerk-js hit frontend-api.clerk.dev, which cannot
+// attribute a custom-domain instance and returns 400 host_invalid — so Clerk
+// never initialized, useAuth().isLoaded stayed false, and the app showed a
+// permanent black screen. The proxy is only needed for deploys without a custom
+// domain (e.g. *.replit.app); re-add it there with the matching Clerk dashboard
+// proxy configuration, not here.
+
+// A missing/garbage key makes ClerkProvider throw on render, which used to blank
+// the whole app to a black screen. Detect it up front so we can show an
+// actionable message instead. Clerk keys are always `pk_test_…` or `pk_live_…`.
+const hasValidClerkKey =
+  typeof clerkPubKey === "string" &&
+  (clerkPubKey.startsWith("pk_test_") || clerkPubKey.startsWith("pk_live_"));
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
@@ -307,11 +322,70 @@ function AuthenticatedShell() {
   );
 }
 
+function AuthTimeoutScreen() {
+  return (
+    <div
+      role="alert"
+      style={{
+        minHeight: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "1.25rem",
+        padding: "1.5rem",
+        background: "#07111f",
+        color: "#f8fafc",
+        fontFamily: "'Fira Sans', system-ui, -apple-system, sans-serif",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: "2.5rem", lineHeight: 1 }}>⏳</div>
+      <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>
+        Trouble loading
+      </h1>
+      <p style={{ margin: 0, maxWidth: "32rem", color: "#94a3b8", lineHeight: 1.5 }}>
+        Sign-in is taking longer than expected. Check your connection and reload.
+      </p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        style={{
+          cursor: "pointer",
+          border: "none",
+          borderRadius: "0.5rem",
+          padding: "0.75rem 1.5rem",
+          fontWeight: 700,
+          fontSize: "1rem",
+          background: "#22c55e",
+          color: "#031a0d",
+        }}
+      >
+        Reload
+      </button>
+    </div>
+  );
+}
+
 function AppShell() {
   const { isLoaded } = useAuth();
+  const [authTimedOut, setAuthTimedOut] = useState(false);
+
+  // If Clerk never finishes initializing (e.g. its Frontend API is
+  // unreachable), surface an actionable screen rather than an indefinite black
+  // placeholder — the "tutto nero" symptom is precisely isLoaded stuck false.
+  useEffect(() => {
+    if (isLoaded) return;
+    const timer = window.setTimeout(() => setAuthTimedOut(true), 12000);
+    return () => window.clearTimeout(timer);
+  }, [isLoaded]);
 
   if (!isLoaded) {
-    return <div className="min-h-screen bg-[hsl(224,71%,4%)]" />;
+    return authTimedOut ? (
+      <AuthTimeoutScreen />
+    ) : (
+      <div className="min-h-screen bg-[hsl(224,71%,4%)]" />
+    );
   }
 
   return (
@@ -328,13 +402,47 @@ function AppShell() {
   );
 }
 
+function ClerkConfigErrorScreen() {
+  return (
+    <div
+      role="alert"
+      style={{
+        minHeight: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "1.25rem",
+        padding: "1.5rem",
+        background: "#07111f",
+        color: "#f8fafc",
+        fontFamily: "'Fira Sans', system-ui, -apple-system, sans-serif",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: "2.5rem", lineHeight: 1 }}>🔑</div>
+      <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>
+        Authentication is not configured
+      </h1>
+      <p style={{ margin: 0, maxWidth: "34rem", color: "#94a3b8", lineHeight: 1.5 }}>
+        This build is missing a valid Clerk publishable key, so sign-in cannot
+        load. Set <code>VITE_CLERK_PUBLISHABLE_KEY</code> at build time (for the
+        AWS image, pass it as a <code>--build-arg</code>) and redeploy.
+      </p>
+    </div>
+  );
+}
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
+
+  if (!hasValidClerkKey) {
+    return <ClerkConfigErrorScreen />;
+  }
 
   return (
     <ClerkProvider
       publishableKey={clerkPubKey!}
-      proxyUrl={clerkProxyUrl}
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}

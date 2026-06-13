@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   createCorsOptions,
   createHelmetOptions,
+  decodeClerkFrontendApi,
   getRateLimitKey,
   getRateLimitConfig,
   isAllowedWebSocketOrigin,
@@ -65,13 +66,38 @@ assert.equal(
   true,
 );
 
-const helmetOptions = createHelmetOptions();
-assert.deepEqual(helmetOptions.contentSecurityPolicy?.directives?.imgSrc, [
-  "'self'",
-  "data:",
-  "blob:",
-  "https:",
-]);
+const helmetOptions = createHelmetOptions({});
+const csp = helmetOptions.contentSecurityPolicy?.directives;
+assert.deepEqual(csp?.imgSrc, ["'self'", "data:", "blob:", "https:"]);
+// Third parties the app loads must be allowed or the deploy renders a black
+// screen (Clerk auth) or breaks billing (Stripe).
+assert.ok(csp?.scriptSrc?.includes("'self'"));
+assert.ok(csp?.scriptSrc?.includes("https://js.stripe.com"));
+assert.ok(csp?.scriptSrc?.some((s) => s.includes("clerk")));
+assert.ok(csp?.connectSrc?.includes("https://api.stripe.com"));
+assert.ok(csp?.connectSrc?.some((s) => s.includes("clerk")));
+assert.ok(csp?.styleSrc?.includes("'unsafe-inline'"));
+assert.ok(csp?.styleSrc?.includes("https://fonts.googleapis.com"));
+assert.ok(csp?.fontSrc?.includes("https://fonts.gstatic.com"));
+assert.ok(csp?.frameSrc?.includes("https://js.stripe.com"));
+assert.ok(csp?.workerSrc?.includes("blob:"));
+
+// decodeClerkFrontendApi pulls the exact Frontend API host out of the key so
+// custom domains are allow-listed without a wildcard.
+// base64("clerk.example.com$") = Y2xlcmsuZXhhbXBsZS5jb20k
+const cspWithKey = createHelmetOptions({
+  CLERK_PUBLISHABLE_KEY: "pk_live_Y2xlcmsuZXhhbXBsZS5jb20k",
+  APP_BASE_URL: "https://app.example.com",
+}).contentSecurityPolicy?.directives;
+assert.ok(cspWithKey?.scriptSrc?.includes("https://clerk.example.com"));
+assert.ok(cspWithKey?.connectSrc?.includes("https://clerk.example.com"));
+assert.ok(cspWithKey?.connectSrc?.includes("https://app.example.com"));
+assert.equal(decodeClerkFrontendApi(undefined), null);
+assert.equal(decodeClerkFrontendApi("not-a-key"), null);
+assert.equal(
+  decodeClerkFrontendApi("pk_live_Y2xlcmsuZXhhbXBsZS5jb20k"),
+  "clerk.example.com",
+);
 
 assert.equal(parseTrustProxy({ TRUST_PROXY: "1" }), 1);
 assert.equal(parseTrustProxy({ TRUST_PROXY: "loopback" }), "loopback");

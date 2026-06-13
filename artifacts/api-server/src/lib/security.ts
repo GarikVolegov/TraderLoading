@@ -7,11 +7,19 @@ type RateLimitKeyRequest = {
     remoteAddress?: string;
   };
 };
+type CspDirectives = {
+  defaultSrc?: string[];
+  scriptSrc?: string[];
+  connectSrc?: string[];
+  styleSrc?: string[];
+  fontSrc?: string[];
+  imgSrc?: string[];
+  frameSrc?: string[];
+  workerSrc?: string[];
+};
 type HelmetOptions = {
   contentSecurityPolicy?: {
-    directives?: {
-      imgSrc?: string[];
-    };
+    directives?: CspDirectives;
   };
 };
 type UploadGuardRequest = { method?: string; path: string };
@@ -111,11 +119,97 @@ export function isAllowedWebSocketOrigin(
   return false;
 }
 
-export function createHelmetOptions(): HelmetOptions {
+/**
+ * A Clerk publishable key is `pk_(live|test)_` followed by the base64 of the
+ * instance's Frontend API host plus a trailing "$". Decoding it lets us add the
+ * exact host (e.g. clerk.traderloading.com) to the CSP so Clerk works on custom
+ * domains without a wildcard, regardless of whether the FAPI proxy is used.
+ */
+export function decodeClerkFrontendApi(
+  publishableKey: string | undefined,
+): string | null {
+  const key = publishableKey?.trim();
+  if (!key) return null;
+  const prefix = key.startsWith("pk_live_")
+    ? "pk_live_"
+    : key.startsWith("pk_test_")
+      ? "pk_test_"
+      : null;
+  if (!prefix) return null;
+  try {
+    const decoded = Buffer.from(key.slice(prefix.length), "base64").toString(
+      "utf8",
+    );
+    const host = decoded.replace(/\$+$/, "").trim();
+    return /^[a-z0-9.-]+$/i.test(host) ? host : null;
+  } catch {
+    return null;
+  }
+}
+
+function originFromUrl(value: string | undefined): string | null {
+  const raw = value?.trim();
+  if (!raw) return null;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return null;
+  }
+}
+
+export function createHelmetOptions(
+  env: SecurityEnv = process.env,
+): HelmetOptions {
+  // Helmet merges these with its secure defaults per-directive, so anything we
+  // don't list (default-src, object-src 'none', frame-ancestors, base-uri, …)
+  // keeps its hardened default. Each directive we DO set must therefore be
+  // complete. We only ever widen what the app actually needs: its own origin,
+  // Clerk (auth), Stripe (billing) and Google Fonts.
+  const clerkFrontendApi = decodeClerkFrontendApi(env.CLERK_PUBLISHABLE_KEY);
+  const clerkScriptHosts = ["https://*.clerk.accounts.dev", "https://*.clerk.com"];
+  const clerkConnectHosts = [
+    "https://*.clerk.accounts.dev",
+    "https://*.clerk.com",
+    "https://clerk-telemetry.com",
+  ];
+  if (clerkFrontendApi) {
+    clerkScriptHosts.push(`https://${clerkFrontendApi}`);
+    clerkConnectHosts.push(`https://${clerkFrontendApi}`);
+  }
+
+  const extraConnect = [env.APP_BASE_URL, env.VITE_API_BASE]
+    .map(originFromUrl)
+    .filter((origin): origin is string => Boolean(origin));
+
   return {
     contentSecurityPolicy: {
       directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "https://js.stripe.com",
+          "https://challenges.cloudflare.com",
+          ...clerkScriptHosts,
+        ],
+        connectSrc: [
+          "'self'",
+          "https://api.stripe.com",
+          ...clerkConnectHosts,
+          ...extraConnect,
+        ],
+        // Radix, framer-motion and Clerk inject inline styles at runtime.
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
+        frameSrc: [
+          "'self'",
+          "https://js.stripe.com",
+          "https://hooks.stripe.com",
+          "https://challenges.cloudflare.com",
+          ...clerkScriptHosts,
+        ],
+        // Clerk spawns workers from blob URLs; the PWA service worker is 'self'.
+        workerSrc: ["'self'", "blob:"],
       },
     },
   };

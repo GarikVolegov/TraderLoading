@@ -1,8 +1,13 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { RootErrorBoundary } from "./components/RootErrorBoundary";
 import "./index.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <RootErrorBoundary>
+    <App />
+  </RootErrorBoundary>,
+);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

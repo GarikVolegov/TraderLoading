@@ -28,7 +28,10 @@ assert.ok(
 const viteConfig = readText("artifacts/trader-dashboard/vite.config.ts");
 assert.match(viteConfig, /export default defineConfig\(async \(\{\s*command\s*\}\)\s*=>/);
 assert.match(viteConfig, /const isServe = command === "serve"/);
-assert.match(viteConfig, /if \(!isServe\) \{\s*process\.env\.NODE_ENV = "production";\s*\}/s);
+assert.match(viteConfig, /if \(!isServe\) \{\s*process\.env\.NODE_ENV = "production";/s);
+// Production builds must refuse to ship a bundle with a missing Clerk key,
+// which would render a black screen.
+assert.match(viteConfig, /VITE_CLERK_PUBLISHABLE_KEY is missing or invalid/);
 assert.match(viteConfig, /\.\.\.\(isServe\s*\?\s*\[runtimeErrorOverlay\(\)\]\s*:\s*\[\]\)/);
 assert.match(viteConfig, /sourcemap:\s*false/);
 assert.match(viteConfig, /minify:\s*"esbuild"/);
