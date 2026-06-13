@@ -15,7 +15,13 @@ import { Avatar } from "./Avatar";
 import { useMutualFollowers } from "./hooks";
 import type { DecryptedMsg, SocialUser, CallSignal } from "./types";
 
-export function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
+export function MessaggiTab({
+  currentUser,
+  initialPeer,
+}: {
+  currentUser: { id: string };
+  initialPeer?: SocialUser | null;
+}) {
   const { toast } = useToast();
   const {
     keyPair,
@@ -533,6 +539,15 @@ export function MessaggiTab({ currentUser }: { currentUser: { id: string } }) {
     setDecryptedMessages([]);
     setMobileView("chat");
   };
+
+  // Open the conversation requested from another tab (e.g. "Messaggio" on a
+  // profile). pendingChat is a one-shot prop cleared by the parent after use.
+  useEffect(() => {
+    if (!initialPeer) return;
+    setSelectedFriend(initialPeer);
+    setDecryptedMessages([]);
+    setMobileView("chat");
+  }, [initialPeer]);
 
   // Render message bubble
   const renderBubble = (msg: DecryptedMsg) => {

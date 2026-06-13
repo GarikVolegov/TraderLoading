@@ -113,7 +113,10 @@ export default function Chat() {
             />
           )}
           {activeTab === "messaggi" && (
-            <MessaggiTab currentUser={{ id: user?.id ?? "" }} />
+            <MessaggiTab
+              currentUser={{ id: user?.id ?? "" }}
+              initialPeer={pendingChat}
+            />
           )}
           {activeTab === "comunita" && (
             <CommunityTab
