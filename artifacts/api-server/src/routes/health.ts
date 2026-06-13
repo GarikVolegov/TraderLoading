@@ -56,7 +56,14 @@ function sanitizeDependencyCheck(result: DependencyCheckResult): DependencyCheck
 }
 
 function getVersion(version: string | undefined): string {
-  return version ?? process.env.APP_VERSION ?? process.env.npm_package_version ?? "unknown";
+  return (
+    version ??
+    process.env.APP_VERSION ??
+    process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+    process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ??
+    process.env.npm_package_version ??
+    "unknown"
+  );
 }
 
 async function createStatusResponse(options: Required<HealthRouterOptions>): Promise<StatusResponse> {

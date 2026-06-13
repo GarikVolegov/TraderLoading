@@ -142,6 +142,8 @@ app.use(
   ) => {
     captureError(err, { surface: "express" });
     logger.error({ err }, "Unhandled API error");
+    // Vercel tronca i log pino-JSON: lo stack raw su console resta leggibile.
+    console.error("[api] unhandled error:", err instanceof Error ? err.stack ?? err.message : err);
     if (res.headersSent) return;
     res.status(500).json({ error: "Internal server error" });
   },

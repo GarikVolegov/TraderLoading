@@ -244,10 +244,23 @@ async function defaultListInvoices(_userId: string, customerId: string): Promise
   });
 }
 
+function isStripeApiError(error: unknown): error is Error & { type: string } {
+  const type = (error as { type?: unknown }).type;
+  return typeof type === "string" && type.startsWith("Stripe");
+}
+
 function handleStripeRouteError(error: unknown, res: Response): boolean {
   const maybeConfiguredError = error as { code?: string; missing?: string[] };
   if (maybeConfiguredError.code === "stripe_not_configured") {
     res.status(503).json({ error: "stripe_not_configured", missing: maybeConfiguredError.missing ?? [] });
+    return true;
+  }
+  if (isStripeApiError(error)) {
+    // 502: l'upstream Stripe ha rifiutato la chiamata. Il dettaglio resta nei
+    // log (può contenere id cliente/sessione), al client va solo il codice.
+    logger.error({ err: error }, "Stripe API error");
+    console.error("[billing] stripe error:", error.stack ?? error.message);
+    res.status(502).json({ error: "stripe_error" });
     return true;
   }
   return false;
@@ -291,7 +304,6 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
       res.json({ clientSecret: session.clientSecret });
     } catch (error) {
       if (handleStripeRouteError(error, res)) return;
-      console.error("[checkout-session] error:", error instanceof Error ? error.stack ?? error.message : error);
       throw error;
     }
   });
