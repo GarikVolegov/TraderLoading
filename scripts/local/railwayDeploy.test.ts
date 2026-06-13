@@ -38,12 +38,14 @@ assert.equal(railway.deploy?.restartPolicyType, "ALWAYS");
 
 const appSource = readText("artifacts/api-server/src/app.ts");
 assert.match(appSource, /import healthRouter from "\.\/routes\/health"/);
+const clerkMountIndex = appSource.indexOf("clerkMiddleware((");
+assert.ok(clerkMountIndex >= 0, "Clerk middleware mount must exist in app.ts");
 assert.ok(
-  appSource.indexOf('app.use("/api", healthRouter);') < appSource.indexOf("app.use(\n  clerkMiddleware"),
+  appSource.indexOf('app.use("/api", healthRouter);') < clerkMountIndex,
   "Railway healthcheck must be mounted before Clerk/auth middleware",
 );
 assert.ok(
-  appSource.indexOf("serveFrontendApp(app);") < appSource.indexOf("app.use(\n  clerkMiddleware"),
+  appSource.indexOf("serveFrontendApp(app);") < clerkMountIndex,
   "Frontend static app must be served before Clerk/auth middleware",
 );
 assert.match(appSource, /function serveFrontendApp/);

@@ -224,8 +224,9 @@ await run("recovers when manual reconnect races an in-flight connect", async () 
     await Promise.allSettled([firstConnect, secondConnect]);
 
     await waitFor(() => server.activeConnectionCount() === 1, "fresh connection after reconnect race");
-    server.writeSnapshot({ metrics: { balance: 456 }, openTrades: [], closedTrades: [] });
     await waitFor(() => receivedMessageTypes(server).length >= 1, "snapshot request after reconnect race");
+    server.writeSnapshot({ metrics: { balance: 456 }, openTrades: [], closedTrades: [] });
+    await waitFor(async () => (await adapter.getSnapshot()).metrics.balance === 456, "snapshot delivery after reconnect race");
     await waitFor(() => server.activeConnectionCount() === 1, "single active connection after reconnect race");
 
     const snapshot = await adapter.getSnapshot();
@@ -257,6 +258,7 @@ await run("normalizes malformed snapshot payload fields", async () => {
   };
   try {
     await adapter.connect();
+    await waitFor(() => server.connections.length >= 1, "server-side socket registration");
     server.writeSnapshot({
       account: {
         login: "123456",
@@ -358,7 +360,7 @@ await run("reconnects after unexpected close", async () => {
   const adapter = createMt5LocalSocketAdapter(makeConfig(server.port));
   try {
     await adapter.connect();
-    assert.equal(server.activeConnectionCount(), 1);
+    await waitFor(() => server.activeConnectionCount() === 1, "initial MT5 connection");
     server.connections[0]?.destroy();
     await waitFor(() => server.connections.length >= 2 && server.activeConnectionCount() >= 1, "MT5 reconnect");
     assert.equal((await adapter.getSnapshot()).status, "connected");
@@ -398,6 +400,7 @@ await run("clones snapshot events for each listener", async () => {
 
   try {
     await adapter.connect();
+    await waitFor(() => server.connections.length >= 1, "server-side socket registration");
     server.writeSnapshot({ metrics: { balance: 123 }, openTrades: [], closedTrades: [] });
     await waitFor(() => secondListenerBalance === 123, "snapshot listener delivery");
     assert.equal(secondListenerBalance, 123);
