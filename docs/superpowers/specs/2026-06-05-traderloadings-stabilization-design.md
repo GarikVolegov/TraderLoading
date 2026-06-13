@@ -12,7 +12,6 @@ The workspace is a pnpm monorepo with:
 
 - `artifacts/api-server`: Express API server.
 - `artifacts/trader-dashboard`: Vite React dashboard.
-- `artifacts/mockup-sandbox`: Vite mockup sandbox.
 - `lib/db`: Drizzle schema and DB access.
 - `lib/api-spec`: OpenAPI source and Orval codegen.
 - `lib/api-client-react`: generated React Query client.
