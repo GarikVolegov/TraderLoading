@@ -35,6 +35,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Fails the build if the committed generated client drifts from the
+      # OpenAPI spec — keeps generated code reproducible and in sync.
+      - name: Verify codegen is up to date
+        run: |
+          pnpm codegen
+          git diff --exit-code -- lib/api-zod/src/generated lib/api-client-react/src/generated
+
       # Runs orval codegen, then typechecks libs + every artifact.
       - name: Typecheck
         run: pnpm typecheck

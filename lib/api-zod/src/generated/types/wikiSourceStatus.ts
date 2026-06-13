@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type WikiSourceStatus =
-  (typeof WikiSourceStatus)[keyof typeof WikiSourceStatus];
+export type WikiSourceStatus = (typeof WikiSourceStatus)[keyof typeof WikiSourceStatus];
 
 export const WikiSourceStatus = {
   queued: "queued",

@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type BillingStatusPlan =
-  (typeof BillingStatusPlan)[keyof typeof BillingStatusPlan];
+export type BillingStatusPlan = (typeof BillingStatusPlan)[keyof typeof BillingStatusPlan];
 
 export const BillingStatusPlan = {
   free: "free",

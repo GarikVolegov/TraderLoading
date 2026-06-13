@@ -5,8 +5,7 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
-export type WikiSourceStatus =
-  (typeof WikiSourceStatus)[keyof typeof WikiSourceStatus];
+export type WikiSourceStatus = (typeof WikiSourceStatus)[keyof typeof WikiSourceStatus];
 
 export const WikiSourceStatus = {
   queued: "queued",
@@ -78,16 +77,14 @@ export interface HealthStatus {
   status: string;
 }
 
-export type BillingStatusPlan =
-  (typeof BillingStatusPlan)[keyof typeof BillingStatusPlan];
+export type BillingStatusPlan = (typeof BillingStatusPlan)[keyof typeof BillingStatusPlan];
 
 export const BillingStatusPlan = {
   free: "free",
   pro: "pro",
 } as const;
 
-export type BillingStatusStatus =
-  (typeof BillingStatusStatus)[keyof typeof BillingStatusStatus];
+export type BillingStatusStatus = (typeof BillingStatusStatus)[keyof typeof BillingStatusStatus];
 
 export const BillingStatusStatus = {
   free: "free",
@@ -308,8 +305,7 @@ export interface JournalImage {
   url: string;
 }
 
-export type JournalEntryResult =
-  (typeof JournalEntryResult)[keyof typeof JournalEntryResult];
+export type JournalEntryResult = (typeof JournalEntryResult)[keyof typeof JournalEntryResult];
 
 export const JournalEntryResult = {
   win: "win",
@@ -389,9 +385,7 @@ export const IdeaCadence = {
   monthly: "monthly",
 } as const;
 
-export type IdeaImportance =
-  | (typeof IdeaImportance)[keyof typeof IdeaImportance]
-  | null;
+export type IdeaImportance = (typeof IdeaImportance)[keyof typeof IdeaImportance] | null;
 
 export const IdeaImportance = {
   low: "low",
@@ -572,8 +566,7 @@ export const UserSettingsFontChoice = {
   "ibm-plex": "ibm-plex",
 } as const;
 
-export type UserSettingsLanguage =
-  (typeof UserSettingsLanguage)[keyof typeof UserSettingsLanguage];
+export type UserSettingsLanguage = (typeof UserSettingsLanguage)[keyof typeof UserSettingsLanguage];
 
 export const UserSettingsLanguage = {
   it: "it",
@@ -759,13 +752,9 @@ export interface SaveAccountKeyBackupBody {
   privateKeyJwk: SaveAccountKeyBackupBodyPrivateKeyJwk;
 }
 
-export type AccountKeyBackupResponsePublicKeyJwk = {
-  [key: string]: unknown;
-} | null;
+export type AccountKeyBackupResponsePublicKeyJwk = { [key: string]: unknown } | null;
 
-export type AccountKeyBackupResponsePrivateKeyJwk = {
-  [key: string]: unknown;
-} | null;
+export type AccountKeyBackupResponsePrivateKeyJwk = { [key: string]: unknown } | null;
 
 export interface AccountKeyBackupResponse {
   userId: string;
@@ -822,8 +811,7 @@ export interface GetLeaderboardResponseItem {
   xp: number;
 }
 
-export type CalendarEventImpact =
-  (typeof CalendarEventImpact)[keyof typeof CalendarEventImpact];
+export type CalendarEventImpact = (typeof CalendarEventImpact)[keyof typeof CalendarEventImpact];
 
 export const CalendarEventImpact = {
   High: "High",
@@ -879,8 +867,7 @@ export const BacktestTradeDirection = {
   sell: "sell",
 } as const;
 
-export type BacktestTradeResult =
-  (typeof BacktestTradeResult)[keyof typeof BacktestTradeResult];
+export type BacktestTradeResult = (typeof BacktestTradeResult)[keyof typeof BacktestTradeResult];
 
 export const BacktestTradeResult = {
   win: "win",

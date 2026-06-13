@@ -6,6 +6,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type AccountKeyBackupResponsePublicKeyJwk = {
-  [key: string]: unknown;
-} | null;
+export type AccountKeyBackupResponsePublicKeyJwk = { [key: string]: unknown } | null;
