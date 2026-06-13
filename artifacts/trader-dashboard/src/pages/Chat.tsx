@@ -91,291 +91,35 @@ import {
   type LeaderboardEntry,
 } from "@/lib/leaderboardApi";
 import { reportClientError } from "@/lib/clientErrorReporter";
-
-const ICE_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-  // Open Relay (metered.ca) free TURN — required for NAT traversal when a peer
-  // is behind symmetric NAT / mobile / corporate firewall (STUN alone fails).
-  { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
-  { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
-  { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
-];
-
-function fmtDur(s: number) {
-  const m = Math.floor(s / 60);
-  return `${m}:${String(s % 60).padStart(2, "0")}`;
-}
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface DecryptedMsg {
-  id: number;
-  senderId: string;
-  type: "text" | "image" | "voice" | "video" | "file";
-  content: string;
-  createdAt: string;
-  fileName?: string;
-  mimeType?: string;
-  size?: number;
-}
-
-interface Post {
-  id: number;
-  userId: string;
-  userName: string;
-  avatarUrl: string | null;
-  content: string;
-  imageUrl: string | null;
-  isStory: boolean;
-  expiresAt: string | null;
-  likesCount: number;
-  createdAt: string;
-  likedByMe?: boolean;
-  isOwnPost?: boolean;
-}
-
-interface StoryGroup {
-  userId: string;
-  userName: string;
-  avatarUrl: string | null;
-  stories: Post[];
-  isOwn: boolean;
-}
-
-interface SocialUser {
-  userId: string | null;
-  name: string;
-  avatarUrl: string | null;
-  level?: number;
-  xp?: number;
-  isFollowing?: boolean;
-  isMutual?: boolean;
-  hasKey?: boolean;
-}
-
-interface PostComment {
-  id: number;
-  postId: number;
-  userId: string;
-  userName: string;
-  avatarUrl: string | null;
-  content: string;
-  createdAt: string;
-}
-
-interface CommunityFile {
-  id: number;
-  channelId: number;
-  communityId: number;
-  userId: string;
-  userName: string;
-  avatarUrl: string | null;
-  fileName: string;
-  fileSize: number;
-  mimeType: string;
-  fileUrl: string;
-  downloadable: boolean;
-  createdAt: string;
-}
-
-interface SocialProfileResponse {
-  profile: SocialUser;
-  posts: Post[];
-  followersCount: number;
-  followingCount: number;
-  isFollowing: boolean;
-  isMutual: boolean;
-  isOwnProfile: boolean;
-}
-
-interface CallSignal {
-  callId: string;
-  from: string;
-  type: "offer" | "answer" | "ice" | "hangup";
-  data: string;
-}
-
-interface VoiceSignal {
-  from: string;
-  type: "offer" | "answer" | "ice";
-  data: string;
-}
-
-// ─── API helpers ─────────────────────────────────────────────────────────────
-
-function usePostComments(postId: number | null) {
-  return useQuery<PostComment[]>({
-    queryKey: ["post-comments", postId],
-    queryFn: () => apiJSON(`social/posts/${postId}/comments`),
-    enabled: postId !== null,
-    staleTime: 5000,
-  });
-}
-
-function useCommunityFiles(channelId: number | null) {
-  return useQuery<CommunityFile[]>({
-    queryKey: ["communityFiles", channelId],
-    queryFn: () => apiJSON(`community/channels/${channelId}/files`),
-    enabled: channelId !== null,
-    refetchInterval: 10_000,
-    staleTime: 0,
-  });
-}
-
-function fileIcon(mimeType: string): React.ReactNode {
-  if (mimeType.startsWith("image/"))
-    return <ImageIcon className="w-4 h-4 text-blue-400" />;
-  if (mimeType === "application/pdf")
-    return <FileText className="w-4 h-4 text-red-400" />;
-  if (
-    mimeType.includes("sheet") ||
-    mimeType.includes("excel") ||
-    mimeType === "text/csv"
-  )
-    return <File className="w-4 h-4 text-green-400" />;
-  if (mimeType.includes("word"))
-    return <FileText className="w-4 h-4 text-blue-300" />;
-  if (mimeType.includes("zip"))
-    return <File className="w-4 h-4 text-yellow-400" />;
-  return <File className="w-4 h-4 text-muted-foreground" />;
-}
-
-function useFeed() {
-  return useQuery<(Post & { likedByMe: boolean; isOwnPost: boolean })[]>({
-    queryKey: ["social/feed"],
-    queryFn: () => apiJSON("social/feed"),
-    refetchInterval: 8000,
-  });
-}
-
-function useStories() {
-  return useQuery<StoryGroup[]>({
-    queryKey: ["social/stories"],
-    queryFn: () => apiJSON("social/stories"),
-    refetchInterval: 30000,
-  });
-}
-
-function useMutualFollowers() {
-  return useQuery<SocialUser[]>({
-    queryKey: ["social/mutual-followers"],
-    queryFn: () => apiJSON("social/mutual-followers"),
-    refetchInterval: 15000,
-  });
-}
-
-function useLeaderboard() {
-  return useQuery<LeaderboardEntry[]>({
-    queryKey: leaderboardQueryKey,
-    queryFn: () => fetchLeaderboard(),
-  });
-}
-
-function useFollowStatus(targetId: string | null) {
-  return useQuery<{ isFollowing: boolean; isMutual: boolean }>({
-    queryKey: ["social/follow-status", targetId],
-    queryFn: () => apiJSON(`social/follow-status/${targetId}`),
-    enabled: !!targetId,
-  });
-}
-
-function useUserProfile(userId: string | null) {
-  return useQuery<SocialProfileResponse>({
-    queryKey: ["social/profile", userId],
-    queryFn: () => apiJSON(`social/profile/${userId}`),
-    enabled: !!userId,
-  });
-}
-
-function useSocialSearch(q: string) {
-  return useQuery<SocialUser[]>({
-    queryKey: ["social/search", q],
-    queryFn: () => apiJSON(`social/search?q=${encodeURIComponent(q)}`),
-    enabled: q.length >= 2,
-  });
-}
-
-type FriendRelationshipStatus = "none" | "pending_sent" | "pending_received" | "accepted";
-type FriendSearchResult = UserSearchResult & {
-  relationshipStatus?: FriendRelationshipStatus;
-};
-
-function useFriendSearch(q: string) {
-  return useSearchUsers({ q }, {
-    query: {
-      queryKey: getSearchUsersQueryKey({ q }),
-      enabled: q.length >= 2,
-    },
-  });
-}
-
-// ─── Shared components ────────────────────────────────────────────────────────
-
-function Avatar({
-  name,
-  avatarUrl,
-  size = "md",
-  ring,
-}: {
-  name: string;
-  avatarUrl?: string | null;
-  size?: "xs" | "sm" | "md" | "lg";
-  ring?: string;
-}) {
-  const s =
-    size === "xs"
-      ? "w-7 h-7 text-[10px]"
-      : size === "sm"
-        ? "w-9 h-9 text-xs"
-        : size === "lg"
-          ? "w-16 h-16 text-xl"
-          : "w-10 h-10 text-sm";
-  const ringCls = ring ? `ring-2 ${ring}` : "";
-  if (avatarUrl)
-    return (
-      <img
-        src={avatarUrl}
-        alt={name}
-        className={`${s} ${ringCls} rounded-full object-cover border border-border flex-shrink-0`}
-      />
-    );
-  return (
-    <div
-      className={`${s} ${ringCls} rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary flex-shrink-0`}
-    >
-      {name.charAt(0).toUpperCase()}
-    </div>
-  );
-}
-
-function PositionBadge({ position }: { position: number }) {
-  if (position === 1)
-    return (
-      <div className="w-8 h-8 rounded-full bg-yellow-500/20 border border-yellow-500/50 flex items-center justify-center">
-        <Crown className="w-4 h-4 text-yellow-400" />
-      </div>
-    );
-  if (position === 2)
-    return (
-      <div className="w-8 h-8 rounded-full bg-slate-300/20 border border-slate-400/50 flex items-center justify-center">
-        <Medal className="w-4 h-4 text-slate-300" />
-      </div>
-    );
-  if (position === 3)
-    return (
-      <div className="w-8 h-8 rounded-full bg-amber-700/20 border border-amber-600/50 flex items-center justify-center">
-        <Award className="w-4 h-4 text-amber-600" />
-      </div>
-    );
-  return (
-    <div className="w-8 h-8 rounded-full bg-secondary/50 border border-border flex items-center justify-center">
-      <span className="text-xs font-bold font-mono text-muted-foreground">
-        #{position}
-      </span>
-    </div>
-  );
-}
+import { ICE_SERVERS } from "@/components/social/constants";
+import { fmtDur, fileIcon } from "@/components/social/format";
+import { Avatar } from "@/components/social/Avatar";
+import { PositionBadge } from "@/components/social/PositionBadge";
+import type {
+  DecryptedMsg,
+  Post,
+  StoryGroup,
+  SocialUser,
+  PostComment,
+  CommunityFile,
+  SocialProfileResponse,
+  CallSignal,
+  VoiceSignal,
+  FriendRelationshipStatus,
+  FriendSearchResult,
+} from "@/components/social/types";
+import {
+  usePostComments,
+  useCommunityFiles,
+  useFeed,
+  useStories,
+  useMutualFollowers,
+  useLeaderboard,
+  useFollowStatus,
+  useUserProfile,
+  useSocialSearch,
+  useFriendSearch,
+} from "@/components/social/hooks";
 
 // ─── User Profile Modal ───────────────────────────────────────────────────────
 
