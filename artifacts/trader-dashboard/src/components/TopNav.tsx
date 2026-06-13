@@ -3,14 +3,15 @@ import { Link } from "wouter";
 import { Volume2, VolumeX } from "lucide-react";
 import { useAudio } from "@/contexts/AudioContext";
 import { MacroNewsTicker } from "@/components/MacroNewsTicker";
-import { PlanBadge } from "@/components/PlanBadge";
 import { useGetProfile } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBillingStatus } from "@/lib/billingApi";
 
 export function TopNav() {
   const { mode, setMode } = useAudio();
   const { t } = useLanguage();
   const { data: profile } = useGetProfile();
+  const billing = useBillingStatus();
   const isPlaying = mode !== "off";
   const avatarSrc =
     profile && profile.avatarUrl
@@ -62,11 +63,6 @@ export function TopNav() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.35 }}
           >
-            {/* Piano Free/Pro */}
-            <motion.div whileTap={{ scale: 0.92 }} className="hidden min-[360px]:flex items-center">
-              <PlanBadge />
-            </motion.div>
-
             {/* Audio toggle */}
             <motion.button
               type="button"
@@ -93,13 +89,18 @@ export function TopNav() {
                 href="/settings"
                 aria-label={t("profile.open_settings")}
                 title={t("profile.settings")}
-                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-primary/45 bg-card/60 p-0.5 shadow-[0_0_12px_hsl(var(--primary)/0.1)] transition-colors hover:border-primary hover:bg-primary/10"
+                className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-primary/45 bg-card/60 shadow-[0_0_12px_hsl(var(--primary)/0.1)] transition-colors hover:border-primary hover:bg-primary/10"
               >
                 <img
                   src={avatarSrc}
                   alt={t("profile.alt", { name: profileName })}
-                  className="h-full w-full rounded-[6px] object-cover"
+                  className="h-full w-full object-cover"
                 />
+                {!billing.isLoading && (
+                  <span className="absolute inset-x-0 bottom-0 bg-black/55 py-px text-center text-[7px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+                    {billing.data?.pro ? "Pro" : t("billing.status.free")}
+                  </span>
+                )}
               </Link>
             </motion.div>
           </motion.div>
