@@ -377,10 +377,10 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
       queryClient.invalidateQueries({ queryKey: getGetJournalEntriesQueryKey() });
       queryClient.invalidateQueries({ queryKey: journalTagsQueryKey });
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: t("journal_modal.error"),
-        description: err.message || t("common.error"),
+        description: (err instanceof Error && err.message) || t("common.error"),
         variant: "destructive"
       });
     } finally {

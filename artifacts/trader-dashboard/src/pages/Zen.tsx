@@ -98,7 +98,7 @@ function BreathingExercise() {
               className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-card to-card/60 border border-border/50 flex flex-col items-center justify-center shadow-lg"
             >
               <span className={`text-base sm:text-lg font-bold ${config.color} transition-colors duration-500`}>
-                {t(`zen.breathing.${phase}` as any)}
+                {t(`zen.breathing.${phase}`)}
               </span>
               {isActive && (
                 <span className="text-2xl sm:text-3xl font-mono font-bold text-foreground mt-0.5">

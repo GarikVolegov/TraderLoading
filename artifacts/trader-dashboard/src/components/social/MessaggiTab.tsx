@@ -740,9 +740,9 @@ export function MessaggiTab({
               <PhoneCall className="w-3.5 h-3.5" /> Chiamata
             </button>
           )}
-          {(unreadData as any)?.count > 0 && (
+          {(unreadData?.count ?? 0) > 0 && (
             <span className="px-2 py-0.5 text-xs bg-primary text-primary-foreground rounded-full font-bold">
-              {(unreadData as any).count}
+              {unreadData?.count}
             </span>
           )}
         </div>
