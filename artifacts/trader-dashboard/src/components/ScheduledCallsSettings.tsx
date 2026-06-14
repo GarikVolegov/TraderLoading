@@ -49,10 +49,10 @@ export function ScheduledCallsSettings() {
   const [previewCall, setPreviewCall] = useState<ScheduledCallConfig | null>(null);
 
   useEffect(() => {
-    const parsed = parseScheduledCalls((settings as any)?.alarmConfigs);
+    const parsed = parseScheduledCalls(settings?.alarmConfigs);
     setCalls(parsed);
     setSelectedId((current) => current ?? parsed[0]?.id ?? null);
-  }, [(settings as any)?.alarmConfigs]);
+  }, [settings?.alarmConfigs]);
 
   const selected = useMemo(
     () => calls.find((call) => call.id === selectedId) ?? calls[0] ?? null,
@@ -62,7 +62,7 @@ export function ScheduledCallsSettings() {
   const saveCalls = async (nextCalls: ScheduledCallConfig[]) => {
     setCalls(nextCalls);
     await updateSettings.mutateAsync({
-      data: { alarmConfigs: JSON.parse(serializeScheduledCalls(nextCalls)) } as any,
+      data: { alarmConfigs: JSON.parse(serializeScheduledCalls(nextCalls)) },
     });
     await queryClient.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
     toast({ description: "Chiamate programmate salvate." });

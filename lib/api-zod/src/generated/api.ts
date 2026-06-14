@@ -1082,6 +1082,7 @@ export const GetUserSettingsResponse = zod.object({
       }),
     )
     .nullish(),
+  alarmConfigs: zod.record(zod.string(), zod.unknown()).nullish(),
 });
 
 /**
@@ -1150,6 +1151,7 @@ export const UpdateUserSettingsBody = zod.object({
       }),
     )
     .nullish(),
+  alarmConfigs: zod.record(zod.string(), zod.unknown()).nullish(),
 });
 
 export const updateUserSettingsResponseBackgroundDarknessMin = 0;
@@ -1215,6 +1217,7 @@ export const UpdateUserSettingsResponse = zod.object({
       }),
     )
     .nullish(),
+  alarmConfigs: zod.record(zod.string(), zod.unknown()).nullish(),
 });
 
 /**

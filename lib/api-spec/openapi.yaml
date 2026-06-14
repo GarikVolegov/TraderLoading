@@ -2581,6 +2581,10 @@ components:
               - url
               - isDefault
           nullable: true
+        alarmConfigs:
+          type: object
+          additionalProperties: true
+          nullable: true
       required:
         - id
         - backgroundType
@@ -2663,6 +2667,10 @@ components:
               - name
               - url
               - isDefault
+          nullable: true
+        alarmConfigs:
+          type: object
+          additionalProperties: true
           nullable: true
 
     UploadBackgroundResponse:

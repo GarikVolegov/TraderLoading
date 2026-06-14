@@ -583,6 +583,8 @@ export type UserSettingsBackgroundPresetsItem = {
   isDefault: boolean;
 };
 
+export type UserSettingsAlarmConfigs = { [key: string]: unknown } | null;
+
 export interface UserSettings {
   id: number;
   backgroundUrl?: string | null;
@@ -606,6 +608,7 @@ export interface UserSettings {
   onboardingTutorialCompletedAt?: string | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UserSettingsBackgroundPresetsItem[] | null;
+  alarmConfigs?: UserSettingsAlarmConfigs;
 }
 
 export type UpdateUserSettingsRequestBackgroundType =
@@ -645,6 +648,8 @@ export type UpdateUserSettingsRequestBackgroundPresetsItem = {
   isDefault: boolean;
 };
 
+export type UpdateUserSettingsRequestAlarmConfigs = { [key: string]: unknown } | null;
+
 export interface UpdateUserSettingsRequest {
   backgroundUrl?: string | null;
   backgroundType?: UpdateUserSettingsRequestBackgroundType;
@@ -667,6 +672,7 @@ export interface UpdateUserSettingsRequest {
   onboardingTutorialCompletedAt?: string | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UpdateUserSettingsRequestBackgroundPresetsItem[] | null;
+  alarmConfigs?: UpdateUserSettingsRequestAlarmConfigs;
 }
 
 export interface UploadBackgroundResponse {
