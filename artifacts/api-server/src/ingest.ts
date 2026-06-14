@@ -31,21 +31,35 @@ function dayStart(date: string): number {
   return ts;
 }
 
-async function resolveRange(
+// Split [fromTs, toTs) into calendar-month ranges so a deep backfill never holds
+// more than ~one month of M1 bars in memory at once.
+function monthlyChunks(fromTs: number, toTs: number): Array<[number, number]> {
+  const chunks: Array<[number, number]> = [];
+  let cursor = fromTs;
+  while (cursor < toTs) {
+    const d = new Date(cursor * 1000);
+    const next = Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1) / 1000);
+    chunks.push([cursor, Math.min(next, toTs)]);
+    cursor = next;
+  }
+  return chunks;
+}
+
+async function resolveRanges(
   mode: "seed" | "tail",
   symbol: string,
   flags: Record<string, string>,
   now: number,
-): Promise<{ fromTs: number; toTs: number }> {
+): Promise<Array<[number, number]>> {
   if (mode === "seed") {
     const toTs = flags.to ? dayStart(flags.to) : now;
     const years = Number(flags.years ?? DEFAULT_SEED_YEARS);
     const fromTs = flags.from ? dayStart(flags.from) : toTs - years * 365 * DAY;
-    return { fromTs, toTs };
+    return monthlyChunks(fromTs, toTs);
   }
   const watermark = await readWatermark(SYMBOL_ID[symbol as keyof typeof SYMBOL_ID], RES.M1);
   const fromTs = watermark?.lastTs ? watermark.lastTs - TAIL_SAFETY_DAYS * DAY : now - TAIL_COLD_START_DAYS * DAY;
-  return { fromTs, toTs: now };
+  return [[fromTs, now]];
 }
 
 async function main(): Promise<void> {
@@ -69,23 +83,33 @@ async function main(): Promise<void> {
   let totalBars = 0;
 
   for (const symbol of symbols) {
-    if (!sourceForSymbol(symbol)) {
+    const source = sourceForSymbol(symbol);
+    if (!source) {
       console.warn(`[ingest] skip ${symbol}: no data source`);
       continue;
     }
-    try {
-      const { fromTs, toTs } = await resolveRange(mode, symbol, flags, now);
-      const startedAt = Date.now();
-      const result = await seedSymbol(symbol, fromTs, toTs);
-      totalBars += result.written;
-      ok += 1;
-      console.log(
-        `[ingest] ${symbol} ${result.source}: ${result.written} bars in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`,
-      );
-    } catch (err) {
-      failed += 1;
-      console.error(`[ingest] ${symbol} FAILED: ${err instanceof Error ? err.message : String(err)}`);
+    const ranges = await resolveRanges(mode, symbol, flags, now);
+    const startedAt = Date.now();
+    let written = 0;
+    let chunkFailures = 0;
+    // Each chunk is upserted independently, so a transient failure on one month
+    // never loses the months already written.
+    for (const [fromTs, toTs] of ranges) {
+      try {
+        const result = await seedSymbol(symbol, fromTs, toTs, source);
+        written += result.written;
+      } catch (err) {
+        chunkFailures += 1;
+        console.error(`[ingest] ${symbol} chunk ${fromTs}-${toTs} FAILED: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
+    totalBars += written;
+    if (chunkFailures === ranges.length) failed += 1;
+    else ok += 1;
+    console.log(
+      `[ingest] ${symbol} ${source.name}: ${written} bars across ${ranges.length} chunk(s)` +
+        `${chunkFailures ? `, ${chunkFailures} failed` : ""} in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`,
+    );
   }
 
   console.log(`[ingest] done: ${ok} ok, ${failed} failed, ${totalBars} bars written`);
