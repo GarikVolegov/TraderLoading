@@ -48,14 +48,26 @@ export default tseslint.config(
           varsIgnorePattern: "^_",
           args: "after-used",
           argsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_",
+          // `const { secret, ...rest } = x` intentionally drops fields.
+          ignoreRestSiblings: true,
+          // catch vars are `unknown` (useUnknownInCatchVariables) and routinely
+          // handled generically without inspection — don't require their use.
+          caughtErrors: "none",
         },
       ],
-      "@typescript-eslint/no-non-null-assertion": "warn",
-      // Structural/legacy rules: keep visible as backlog, do not hard-block.
+      // Off by design: under strictNullChecks `!` is a deliberate tool where an
+      // invariant the type system can't express guarantees non-null (e.g.
+      // `req.admin!` inside routes gated by the admin-auth middleware).
+      "@typescript-eslint/no-non-null-assertion": "off",
+      // Allow the idiomatic Express type-augmentation patterns (these are the
+      // standard way to type req.user / req.admin, not legacy smells).
+      "@typescript-eslint/no-namespace": ["warn", { allowDeclarations: true }],
+      "@typescript-eslint/no-empty-object-type": [
+        "warn",
+        { allowInterfaces: "with-single-extends" },
+      ],
+      // Remaining structural/legacy rules: visible as backlog, do not hard-block.
       "@typescript-eslint/no-require-imports": "warn",
-      "@typescript-eslint/no-namespace": "warn",
-      "@typescript-eslint/no-empty-object-type": "warn",
       "@typescript-eslint/no-unsafe-function-type": "warn",
       "no-console": "off",
     },
@@ -64,6 +76,8 @@ export default tseslint.config(
   // ── Plain JS / ESM / CJS config & glue files (no TS type info) ────────────
   {
     files: ["**/*.{js,cjs}"],
+    // CommonJS glue (e.g. api/index.js) legitimately uses require().
+    rules: { "@typescript-eslint/no-require-imports": "off" },
     languageOptions: {
       sourceType: "commonjs",
       globals: { ...globals.node },
