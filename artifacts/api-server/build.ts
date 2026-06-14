@@ -80,6 +80,14 @@ async function buildAll() {
     entryPoints: [path.resolve(__dirname, "src/app.ts")],
     outfile: path.resolve(distDir, "vercel.cjs"),
   });
+
+  // Candle warehouse ingestion CLI (seed/tail), run as a separate one-shot/cron
+  // process: `node ./dist/ingest.cjs <seed|tail>`.
+  await esbuild({
+    ...commonBuildOptions,
+    entryPoints: [path.resolve(__dirname, "src/ingest.ts")],
+    outfile: path.resolve(distDir, "ingest.cjs"),
+  });
 }
 
 buildAll().catch((err) => {

@@ -104,6 +104,19 @@ export async function updateIngestionState(
     });
 }
 
+/** Ingestion watermark for a (symbol, res), or null if never ingested. */
+export async function readWatermark(
+  symbolId: number,
+  res: number,
+): Promise<{ firstTs: number | null; lastTs: number | null } | null> {
+  const rows = await db
+    .select({ firstTs: candleIngestionStateTable.firstTs, lastTs: candleIngestionStateTable.lastTs })
+    .from(candleIngestionStateTable)
+    .where(and(eq(candleIngestionStateTable.symbol, symbolId), eq(candleIngestionStateTable.res, res)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 /** Raw base-resolution candles in [fromTs, toTs). */
 export async function readBaseRange(
   symbolId: number,
