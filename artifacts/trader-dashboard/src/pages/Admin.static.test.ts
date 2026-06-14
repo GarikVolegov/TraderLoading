@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { readAdminFeatureSource } from "./adminFeatureSource";
 
-const adminPage = fs.readFileSync("src/pages/Admin.tsx", "utf8");
+const adminPage = readAdminFeatureSource();
 const shell = fs.readFileSync("src/components/admin/AdminShell.tsx", "utf8");
 const app = fs.readFileSync("src/App.tsx", "utf8");
 
