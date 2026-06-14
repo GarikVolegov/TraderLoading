@@ -17,7 +17,7 @@ import {
   Play, Pause, SkipForward, SkipBack, RotateCcw,
   TrendingUp, TrendingDown, X, ChevronRight,
   Eye, EyeOff, Calendar, ChevronLeft, MousePointer2,
-  Wallet,
+  Wallet, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,8 @@ import {
 } from "./chartAnalysisTypes";
 import { createDrawing } from "./chartAnalysisPersistence";
 import { calculateDailyVwap, hasEstimatedVolume, type AnalysisCandle } from "./chartIndicators";
+import MtfContextChart from "./MtfContextChart";
+import { getContextTimeframe } from "./chartMtf";
 import { uiText } from "@/contexts/LanguageContext";
 
 const START_BALANCE = 10_000;
@@ -155,6 +157,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
   const [showTradePanel, setShowTradePanel] = useState(false);
   const [showTrades, setShowTrades] = useState(true);
   const [showAnalysisPanel, setShowAnalysisPanel] = useState(false);
+  const [showMtf, setShowMtf] = useState(false);
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
   const [analysisState, setAnalysisState] = useState<ChartAnalysisState>(
     restoredState?.analysisState ?? DEFAULT_CHART_ANALYSIS_STATE,
@@ -872,6 +875,13 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
                   ? <Eye className="w-3.5 h-3.5 text-primary" />
                   : <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />}
               </button>
+              <button
+                onClick={() => setShowMtf((prev) => !prev)}
+                className="p-1 rounded hover:bg-white/5"
+                title={showMtf ? "Nascondi contesto" : `Mostra contesto ${getContextTimeframe(activeInterval)}`}
+              >
+                <Layers className={`w-3.5 h-3.5 ${showMtf ? "text-primary" : "text-muted-foreground"}`} />
+              </button>
             </div>
           </div>
 
@@ -1021,6 +1031,25 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
             style={{ visibility: loading || error ? "hidden" : "visible" }}
           />
         </div>
+
+        {showMtf && !loading && !error && (
+          <div className="px-3 pt-2 border-t border-border/30">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Contesto {getContextTimeframe(activeInterval)}
+            </span>
+            <MtfContextChart
+              symbol={symbol}
+              htfInterval={getContextTimeframe(activeInterval)}
+              cursorCloseTime={
+                replayPointCloseTime ??
+                resolveReplayPointCloseTime(visibleCandles[visibleCandles.length - 1], activeInterval)
+              }
+              cursorPrice={currentPrice}
+              startDate={startDate || undefined}
+              height={180}
+            />
+          </div>
+        )}
 
         {!loading && !error && (
           <div className="px-3 py-2 border-t border-border/30 space-y-2">
