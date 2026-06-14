@@ -2,6 +2,8 @@
 // Fetch logica condivisa fra la route HTTP (/api/backtest/candles) e il "cervello"
 // vision (analisi on-demand + scanner autonomo). Estratta da routes/candles.ts.
 import { getJsonCache, setJsonCache } from "../lib/cache.js";
+import { mergeTail } from "./aggregate.js";
+import { INTERVAL_SECONDS, symbolId } from "./candleRegistry.js";
 
 const YAHOO_SYMBOLS: Record<string, string> = {
   EURUSD: "EURUSD=X", GBPUSD: "GBPUSD=X", USDJPY: "USDJPY=X",
@@ -299,14 +301,118 @@ function getFallbackChain(symbol: string, interval: string): Array<{ name: strin
   return chain;
 }
 
+function isCandleWarehouseEnabled(): boolean {
+  const value = process.env.CANDLE_WAREHOUSE?.trim().toLowerCase();
+  return value === "1" || value === "true";
+}
+
+// Max candles served in one response, and the over-fetch factor that compensates
+// for weekend/holiday market closures when bounding the SQL scan window so we
+// reliably get ~MAX bars without aggregating the whole history per request.
+const WAREHOUSE_MAX_CANDLES = 5000;
+const WAREHOUSE_OVERFETCH = 3;
+
+async function readWarehouseSeries(
+  symbol: string,
+  interval: string,
+  options: CandlesRequestOptions,
+): Promise<Candle[] | null> {
+  const sid = symbolId(symbol);
+  const intervalSeconds = INTERVAL_SECONDS[interval];
+  if (sid === undefined || !intervalSeconds) return null;
+
+  // Lazy import keeps the DB pool (and @workspace/db) out of the live-only path
+  // and out of unit tests that don't set DATABASE_URL.
+  const { readAggregated } = await import("./ingest/candleStore.js");
+  const now = Math.floor(Date.now() / 1000);
+  const span = WAREHOUSE_MAX_CANDLES * intervalSeconds * WAREHOUSE_OVERFETCH;
+  const startDate = normalizeStartDate(options.startDate);
+
+  if (startDate) {
+    const fromTs = unixDayStart(startDate);
+    const toTs = Math.min(now, fromTs + span);
+    return readAggregated(sid, intervalSeconds, fromTs, toTs, {
+      limit: WAREHOUSE_MAX_CANDLES,
+      fromStart: true,
+    });
+  }
+  return readAggregated(sid, intervalSeconds, now - span, now, {
+    limit: WAREHOUSE_MAX_CANDLES,
+    fromStart: false,
+  });
+}
+
 /**
  * getCandles(symbol, interval)
  * ----------------------------
- * Recupera le candele OHLC con cache 1h, catena di fallback fra le sorgenti e
- * fallback su cache stantia se tutte le sorgenti falliscono. Lancia se non c'è
- * alcun dato disponibile.
+ * DB-first: when the candle warehouse is enabled (CANDLE_WAREHOUSE) and has
+ * enough history, serves from the warehouse (aggregating M1 → interval in SQL),
+ * splicing a fresh live tail onto the latest window. Falls back to the live
+ * source chain when the flag is off or the warehouse lacks enough candles, so
+ * there is zero regression while seeding rolls out.
  */
-export async function getCandles(symbol: string, interval: string, options: CandlesRequestOptions = {}): Promise<CandlesResult> {
+export async function getCandles(
+  symbol: string,
+  interval: string,
+  options: CandlesRequestOptions = {},
+): Promise<CandlesResult> {
+  if (!isCandleWarehouseEnabled()) return fetchLiveCandles(symbol, interval, options);
+
+  const startDate = normalizeStartDate(options.startDate);
+  const warehouseCacheKey = `candles:wh:v1:${symbol}:${interval}:${startDate ?? "latest"}`;
+  try {
+    const cached = await getJsonCache<CandlesResult>(warehouseCacheKey);
+    if (cached && hasEnoughReplayCandles(cached, interval)) return cached;
+
+    const warehouse = await readWarehouseSeries(symbol, interval, options);
+    if (warehouse && warehouse.length >= getMinReplayCandles(interval)) {
+      let result: CandlesResult;
+      if (startDate) {
+        // Deep history is fully covered by the warehouse — no live call needed.
+        result = { symbol, interval, source: "warehouse", candles: warehouse };
+      } else {
+        // Latest window: best-effort splice of a fresh live tail.
+        try {
+          const live = await fetchLiveCandles(symbol, interval, {});
+          result = {
+            symbol,
+            interval,
+            source: "warehouse+live",
+            candles: mergeTail(warehouse, live.candles),
+          };
+        } catch {
+          result = { symbol, interval, source: "warehouse", candles: warehouse };
+        }
+      }
+      await setJsonCache(warehouseCacheKey, result, startDate ? 24 * 60 * 60 : 60);
+      console.log(
+        `[candles] warehouse OK: ${symbol} ${interval} → ${result.candles.length} candles (${result.source})`,
+      );
+      return result;
+    }
+    console.log(
+      `[candles] warehouse miss for ${symbol} ${interval} (have ${warehouse?.length ?? 0}), falling back to live`,
+    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[candles] warehouse read failed for ${symbol} ${interval}: ${msg}`);
+  }
+
+  return fetchLiveCandles(symbol, interval, options);
+}
+
+/**
+ * fetchLiveCandles(symbol, interval)
+ * ----------------------------------
+ * Live source chain (Yahoo → TwelveData → CoinGecko) with 1h cache and stale-cache
+ * fallback. This is the original behavior, now used as the warehouse fallback and
+ * to fetch the fresh tail.
+ */
+async function fetchLiveCandles(
+  symbol: string,
+  interval: string,
+  options: CandlesRequestOptions = {},
+): Promise<CandlesResult> {
   const startDate = normalizeStartDate(options.startDate);
   const requestOptions = startDate ? { ...options, startDate } : options;
   const cacheKey = candleCacheKey(symbol, interval, startDate);
