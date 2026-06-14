@@ -4,7 +4,7 @@
 // same building blocks drive the nightly tail (smaller range from the watermark).
 import { RES, symbolId } from "../candleRegistry.js";
 import { ensurePartitions, updateIngestionState, upsertCandles } from "./candleStore.js";
-import { dukascopySource } from "./dukascopy.js";
+import { sourceForSymbol } from "./sources.js";
 import type { CandleSource } from "./types.js";
 
 export interface SeedResult {
@@ -20,10 +20,11 @@ export async function seedSymbol(
   symbol: string,
   fromTs: number,
   toTs: number,
-  source: CandleSource = dukascopySource,
+  source: CandleSource | undefined = sourceForSymbol(symbol),
 ): Promise<SeedResult> {
   const sid = symbolId(symbol);
   if (sid === undefined) throw new Error(`seed: unknown symbol ${symbol}`);
+  if (!source) throw new Error(`seed: no data source supports ${symbol}`);
   if (!source.supports(symbol)) throw new Error(`seed: ${source.name} does not support ${symbol}`);
 
   const candles = await source.fetchRange(symbol, fromTs, toTs);
