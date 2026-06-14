@@ -15,7 +15,7 @@ import {
 } from "@workspace/api-zod";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { getUserId, getOrCreateProfile, computeLevel } from "./profile.js";
+import { getUserId, getOrCreateProfile } from "./profile.js";
 import {
   getJournalRecapPeriodForDate,
   isJournalRecapPeriodEditable,

@@ -1,4 +1,4 @@
-import { boolean, integer, numeric, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, numeric, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 
 export const backtestSessionsTable = pgTable("backtest_sessions", {
   id: serial("id").primaryKey(),

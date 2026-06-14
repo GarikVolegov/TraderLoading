@@ -1,4 +1,4 @@
-import { Moon, Wind, Smile, Heart, Target, Check, TrendingUp, Eye, ClipboardCheck, CalendarDays, Zap, BookOpen } from "lucide-react";
+import { Moon, Wind, Smile, Heart, Target, TrendingUp, Eye, ClipboardCheck, CalendarDays, Zap, BookOpen } from "lucide-react";
 import type { SessionStep } from "./types";
 
 export const MORNING_STEPS: SessionStep[] = [

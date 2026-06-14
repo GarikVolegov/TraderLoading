@@ -8,7 +8,7 @@ import { getRoutineStartProgram } from "./Routine.helpers";
 import { uiText } from "@/contexts/LanguageContext";
 import { createCustomRoutine, getRoutineMetrics, loadCustomRoutines, loadRoutineCompletions, type CustomRoutine } from "./Routine.storage";
 import { fetchRoutineCompetition, recordRoutineCompletion, routineCompetitionQueryKey, type RoutineCompetitionEntry } from "@/lib/routineApi";
-import { Sunrise, Moon, Wind, Smile, Heart, Check, ClipboardCheck } from "lucide-react";
+import { Sunrise, Moon, Wind, Smile, Heart, ClipboardCheck } from "lucide-react";
 import type { Program, Answers, ActiveRoutineSession } from "@/components/routine/types";
 import { saveRoutineCompletion } from "@/components/routine/completion";
 import { MORNING_STEPS, EVENING_STEPS } from "@/components/routine/sessionSteps";

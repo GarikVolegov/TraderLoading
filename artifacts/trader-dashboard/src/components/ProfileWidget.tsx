@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Edit2, Hexagon, Star, Upload, Sparkles, Check, X, Loader2, Flame, Trophy, TrendingUp, BookOpen } from "lucide-react";
+import { Edit2, Hexagon, Upload, Sparkles, Check, X, Loader2, Flame, Trophy, TrendingUp, BookOpen } from "lucide-react";
 import { getLevelName, getLevelBadge } from "@/utils/levelNames";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";

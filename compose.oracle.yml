@@ -44,7 +44,10 @@ services:
       start_period: 60s
 
   postgres:
-    image: postgres:16-alpine
+    # pgvector-enabled Postgres 16 (drop-in for postgres:16-alpine, same PGDATA
+    # layout). Required by the wiki vector store (migration 0007 runs
+    # `CREATE EXTENSION vector`). Plain postgres:16-alpine lacks the extension.
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     env_file:
       - ${ORACLE_ENV_FILE:-.env.oracle}

@@ -2,6 +2,7 @@
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
+import unusedImports from "eslint-plugin-unused-imports";
 import prettier from "eslint-config-prettier";
 import globals from "globals";
 
@@ -33,11 +34,22 @@ export default tseslint.config(
   // is fully burned down (0 in non-test source) and enforced as an error. The
   // remaining rules stay at "warn" as a ratchet until their backlog is cleared.
   {
+    plugins: { "unused-imports": unusedImports },
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-unused-vars": [
+      // unused-imports owns unused detection: imports are auto-fixable errors,
+      // vars stay a ratchet warning (underscore-prefix to intentionally keep).
+      "@typescript-eslint/no-unused-vars": "off",
+      "unused-imports/no-unused-imports": "error",
+      "unused-imports/no-unused-vars": [
         "warn",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+        {
+          vars: "all",
+          varsIgnorePattern: "^_",
+          args: "after-used",
+          argsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
       ],
       "@typescript-eslint/no-non-null-assertion": "warn",
       // Structural/legacy rules: keep visible as backlog, do not hard-block.

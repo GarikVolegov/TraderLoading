@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type PointerEvent } from "react";
-import type { CandlestickData, Time } from "lightweight-charts";
+import type { Time } from "lightweight-charts";
 import type { ChartAnalysisState, ChartDrawing, ChartPoint } from "./chartAnalysisTypes";
 import { calculateVolumeProfile, type AnalysisCandle } from "./chartIndicators";
 import { getSessionRangesForTime, getEuropeRomeDayRangeForTime } from "./chartSessionTime";

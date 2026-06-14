@@ -8,7 +8,6 @@ import {
   type IChartApi,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
-  type CandlestickData,
   type Time,
   ColorType,
   CrosshairMode,

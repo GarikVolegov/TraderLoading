@@ -11,8 +11,31 @@ import {
   type WikiSource,
 } from "@workspace/db";
 import { getTextClient } from "./llmClient.js";
+import { embedText, embedTexts } from "./embeddingsClient.js";
 import { chunkWikiText } from "./wikiProcessor.js";
 import { capText } from "./knowledgeProcessor.js";
+
+// Reciprocal Rank Fusion: merge several ranked lists into one. Each item gains
+// 1/(k + rank) per list it appears in (rank starts at 1). Robust to the
+// different score scales of keyword overlap vs cosine distance. k=60 is the
+// canonical default. Used to blend keyword and vector retrieval.
+export function fuseRrf<T extends { id: number }>(...lists: T[][]): T[] {
+  const k = 60;
+  const scores = new Map<number, number>();
+  const items = new Map<number, T>();
+  for (const list of lists) {
+    list.forEach((item, idx) => {
+      scores.set(item.id, (scores.get(item.id) ?? 0) + 1 / (k + idx + 1));
+      if (!items.has(item.id)) items.set(item.id, item);
+    });
+  }
+  return [...items.values()].sort((a, b) => (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0));
+}
+
+// Render a vector as a pgvector literal (`[1,2,3]`) for a bound `::vector` cast.
+function vectorLiteral(vec: number[]): string {
+  return `[${vec.join(",")}]`;
+}
 
 const NODE_TYPES = ["concept", "person", "place", "document", "image", "event", "rule", "strategy", "asset", "task", "quote", "custom"] as const;
 const EDGE_CONFIDENCE = ["EXTRACTED", "INFERRED", "AMBIGUOUS"] as const;
@@ -145,13 +168,29 @@ export async function ingestWikiSourceGraph(source: WikiSource): Promise<{ nodes
 
   const chunks = chunkWikiText(source.extractedText);
   if (chunks.length) {
-    await db.insert(wikiChunksTable).values(chunks.map((chunk) => ({
-      userId: source.userId,
-      sourceId: source.id,
-      chunkIndex: chunk.index,
-      text: chunk.text,
-      tokenEstimate: chunk.tokenEstimate,
-    })));
+    const inserted = await db
+      .insert(wikiChunksTable)
+      .values(
+        chunks.map((chunk) => ({
+          userId: source.userId,
+          sourceId: source.id,
+          chunkIndex: chunk.index,
+          text: chunk.text,
+          tokenEstimate: chunk.tokenEstimate,
+        })),
+      )
+      .returning({ id: wikiChunksTable.id, chunkIndex: wikiChunksTable.chunkIndex });
+    // Generate embeddings for semantic search. No-op (all null) when no provider
+    // is configured — those chunks simply remain keyword-only. This also covers
+    // backfill: /wiki/reindex re-runs ingest and re-embeds existing sources.
+    const idByIndex = new Map(inserted.map((row) => [row.chunkIndex, row.id]));
+    const vectors = await embedTexts(chunks.map((chunk) => chunk.text));
+    for (let i = 0; i < chunks.length; i++) {
+      const vec = vectors[i];
+      const id = idByIndex.get(chunks[i].index);
+      if (!vec || id === undefined) continue;
+      await db.update(wikiChunksTable).set({ embedding: vec }).where(eq(wikiChunksTable.id, id));
+    }
   }
 
   const extraction = await extractGraph(source);
@@ -225,26 +264,54 @@ export function isQueryableWikiText(text: string): boolean {
 
 export async function queryWiki(userId: string, question: string): Promise<{ answer: string; citations: Array<{ sourceId: number; title: string; excerpt: string }>; nodes: Array<{ id: number; label: string; type: string }> }> {
   const queryTerms = terms(question);
-  if (queryTerms.length === 0) {
+  const queryVec = await embedText(question);
+  if (queryTerms.length === 0 && !queryVec) {
     return { answer: "Fai una domanda più specifica sulla tua wiki.", citations: [], nodes: [] };
   }
 
-  const chunks = await db.select({
+  const chunkSelect = {
     id: wikiChunksTable.id,
     text: wikiChunksTable.text,
     sourceId: wikiChunksTable.sourceId,
     title: wikiSourcesTable.title,
-  })
-    .from(wikiChunksTable)
-    .innerJoin(wikiSourcesTable, eq(wikiSourcesTable.id, wikiChunksTable.sourceId))
-    .where(eq(wikiChunksTable.userId, userId));
+  };
 
-  const ranked = chunks
-    .filter((chunk) => isQueryableWikiText(chunk.text))
-    .map((chunk) => ({ ...chunk, score: scoreText(`${chunk.title}\n${chunk.text}`, queryTerms) }))
-    .filter((chunk) => chunk.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5);
+  // Keyword candidates: full scan scored by query-term overlap (top 20).
+  const keywordRanked = queryTerms.length
+    ? (
+        await db
+          .select(chunkSelect)
+          .from(wikiChunksTable)
+          .innerJoin(wikiSourcesTable, eq(wikiSourcesTable.id, wikiChunksTable.sourceId))
+          .where(eq(wikiChunksTable.userId, userId))
+      )
+        .filter((chunk) => isQueryableWikiText(chunk.text))
+        .map((chunk) => ({ chunk, score: scoreText(`${chunk.title}\n${chunk.text}`, queryTerms) }))
+        .filter((scored) => scored.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 20)
+        .map((scored) => scored.chunk)
+    : [];
+
+  // Vector candidates: nearest chunks by cosine distance (top 20). Skipped when
+  // no embedding provider; yields nothing until a source has been embedded
+  // (un-reindexed corpus) — in which case we fall back to keyword automatically.
+  const vectorRanked = queryVec
+    ? (
+        await db
+          .select(chunkSelect)
+          .from(wikiChunksTable)
+          .innerJoin(wikiSourcesTable, eq(wikiSourcesTable.id, wikiChunksTable.sourceId))
+          .where(
+            and(eq(wikiChunksTable.userId, userId), sql`${wikiChunksTable.embedding} IS NOT NULL`),
+          )
+          .orderBy(sql`${wikiChunksTable.embedding} <=> ${vectorLiteral(queryVec)}::vector`)
+          .limit(20)
+      ).filter((chunk) => isQueryableWikiText(chunk.text))
+    : [];
+
+  // Blend keyword + vector rankings via RRF and keep the best 5.
+  const ranked = fuseRrf(keywordRanked, vectorRanked).slice(0, 5);
 
   if (ranked.length === 0) {
     const sources = await db.select({
@@ -307,22 +374,47 @@ export async function queryWiki(userId: string, question: string): Promise<{ ans
 export async function buildWikiAnalysisContext(userId: string | null, topic: string): Promise<string> {
   if (!userId) return "";
   const queryTerms = terms(topic);
-  if (queryTerms.length === 0) return "";
-  const rows = await db.select({
+  const queryVec = await embedText(topic);
+  if (queryTerms.length === 0 && !queryVec) return "";
+
+  const rowSelect = {
+    id: wikiChunksTable.id,
     title: wikiSourcesTable.title,
     text: wikiChunksTable.text,
-  })
-    .from(wikiChunksTable)
-    .innerJoin(wikiSourcesTable, eq(wikiSourcesTable.id, wikiChunksTable.sourceId))
-    .where(eq(wikiChunksTable.userId, userId))
-    .limit(80);
+  };
 
-  const ranked = rows
-    .filter((row) => isQueryableWikiText(row.text))
-    .map((row) => ({ ...row, score: scoreText(`${row.title}\n${row.text}`, queryTerms) }))
-    .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 6);
+  const keywordRanked = queryTerms.length
+    ? (
+        await db
+          .select(rowSelect)
+          .from(wikiChunksTable)
+          .innerJoin(wikiSourcesTable, eq(wikiSourcesTable.id, wikiChunksTable.sourceId))
+          .where(eq(wikiChunksTable.userId, userId))
+          .limit(200)
+      )
+        .filter((row) => isQueryableWikiText(row.text))
+        .map((row) => ({ row, score: scoreText(`${row.title}\n${row.text}`, queryTerms) }))
+        .filter((scored) => scored.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 12)
+        .map((scored) => scored.row)
+    : [];
+
+  const vectorRanked = queryVec
+    ? (
+        await db
+          .select(rowSelect)
+          .from(wikiChunksTable)
+          .innerJoin(wikiSourcesTable, eq(wikiSourcesTable.id, wikiChunksTable.sourceId))
+          .where(
+            and(eq(wikiChunksTable.userId, userId), sql`${wikiChunksTable.embedding} IS NOT NULL`),
+          )
+          .orderBy(sql`${wikiChunksTable.embedding} <=> ${vectorLiteral(queryVec)}::vector`)
+          .limit(12)
+      ).filter((row) => isQueryableWikiText(row.text))
+    : [];
+
+  const ranked = fuseRrf(keywordRanked, vectorRanked).slice(0, 6);
   if (!ranked.length) return "";
   return capText(ranked.map((row) => `- ${row.title}: ${row.text}`).join("\n"), 4000);
 }
