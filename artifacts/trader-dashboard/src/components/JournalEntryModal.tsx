@@ -292,7 +292,7 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
       setTitle(entry.title);
       setContent(entry.content);
       setTradeDate(entry.tradeDate);
-      setResult(entry.result as any);
+      setResult(entry.result);
       setTagList(entry.tags ? entry.tags.split(",").map(t => t.trim()).filter(Boolean) : []);
       setExistingImages(entry.images || []);
       setPendingDeletes([]);
@@ -369,7 +369,7 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
       for (const file of pendingFiles) {
         await uploadImageMutation.mutateAsync({
           id: entryId,
-          data: { image: file as any }
+          data: { image: file }
         });
       }
 

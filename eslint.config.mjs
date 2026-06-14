@@ -29,12 +29,12 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
 
   // ── Project-wide rule posture ────────────────────────────────────────────
-  // Discipline already in place (0 @ts-ignore, 0 eslint-disable). These rules
-  // are a RATCHET: noisy ones start as "warn" so CI stays green, then tighten
-  // to "error" as the backlog is burned down.
+  // Discipline already in place (0 @ts-ignore, 0 eslint-disable). no-explicit-any
+  // is fully burned down (0 in non-test source) and enforced as an error. The
+  // remaining rules stay at "warn" as a ratchet until their backlog is cleared.
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
@@ -67,7 +67,7 @@ export default tseslint.config(
 
   // ── Frontend (React) ─────────────────────────────────────────────────────
   {
-    files: ["artifacts/trader-dashboard/**/*.{ts,tsx}", "artifacts/mockup-sandbox/**/*.{ts,tsx}"],
+    files: ["artifacts/trader-dashboard/**/*.{ts,tsx}"],
     languageOptions: { globals: { ...globals.browser } },
     plugins: { "react-hooks": reactHooks },
     rules: {
@@ -79,14 +79,6 @@ export default tseslint.config(
   {
     files: ["artifacts/api-server/**/*.ts", "lib/**/*.ts", "scripts/**/*.ts"],
     languageOptions: { globals: { ...globals.node } },
-  },
-
-  // ── api-server is now free of explicit `any`: enforce it as a hard error so
-  // it cannot regress. The frontend keeps `any` at warn (ratchet). The test
-  // override below re-disables it for *.test files. ─────────────────────────
-  {
-    files: ["artifacts/api-server/**/*.ts"],
-    rules: { "@typescript-eslint/no-explicit-any": "error" },
   },
 
   // ── Test files: looser ───────────────────────────────────────────────────

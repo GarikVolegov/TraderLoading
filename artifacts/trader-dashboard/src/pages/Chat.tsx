@@ -122,7 +122,7 @@ export default function Chat() {
             <CommunityTab
               currentUserId={user?.id ?? ""}
               currentUserName={
-                (user as any)?.name ?? (user as any)?.firstName ?? "Trader"
+                user?.firstName ?? "Trader"
               }
             />
           )}

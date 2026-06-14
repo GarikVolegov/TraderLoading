@@ -89,7 +89,7 @@ function LeaderboardWidgetInner() {
   const { data: profile } = useGetProfile();
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
 
-  const currentUserId = (profile as any)?.userId ?? "";
+  const currentUserId = (profile as { userId?: string } | undefined)?.userId ?? "";
 
   return (
     <>

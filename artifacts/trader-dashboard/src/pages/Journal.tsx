@@ -23,6 +23,7 @@ import {
   getGetIdeasQueryKey,
   type JournalEntry,
   type Idea,
+  type CreateIdeaRequest,
 } from "@workspace/api-client-react";
 import { downloadICS } from "@/utils/icsExport";
 import { useLanguage, useDateLocale, uiText } from "@/contexts/LanguageContext";
@@ -381,7 +382,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
   const handleAdd = async () => {
     if (!newContent.trim()) return;
     try {
-      const data: any = { type, content: newContent.trim() };
+      const data: CreateIdeaRequest = { type, content: newContent.trim() };
       if (type === "goal") {
         data.importance = newImportance;
         if (newDeadline) data.deadlineDate = newDeadline;
