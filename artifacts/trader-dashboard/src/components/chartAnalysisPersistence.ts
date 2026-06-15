@@ -3,11 +3,13 @@ import {
   DEFAULT_DRAWING_STYLE,
   DEFAULT_FIBONACCI_LEVELS,
   DEFAULT_SESSION_BOX_SETTINGS,
+  DEFAULT_MOVING_AVERAGES,
   DEFAULT_VOLUME_PROFILE_SETTINGS,
   DEFAULT_VWAP_SETTINGS,
   type ChartAnalysisState,
   type ChartDrawing,
   type DrawingStyle,
+  type MovingAverageSettings,
   type SessionBoxSettings,
   type VolumeProfileSettings,
   type VwapSettings,
@@ -73,6 +75,24 @@ function parseVwap(value: unknown): VwapSettings {
   };
 }
 
+function parseMovingAverages(value: unknown): MovingAverageSettings[] {
+  if (!Array.isArray(value)) return DEFAULT_MOVING_AVERAGES;
+  const parsed = value
+    .map((item): MovingAverageSettings | null => {
+      const ma = item as Partial<MovingAverageSettings>;
+      if (!ma || typeof ma.id !== "string") return null;
+      return {
+        id: ma.id,
+        type: ma.type === "sma" ? "sma" : "ema",
+        period: finiteNumber(ma.period) ? clamp(Math.floor(ma.period), 1, 500) : 50,
+        color: typeof ma.color === "string" ? ma.color : "#38bdf8",
+        enabled: typeof ma.enabled === "boolean" ? ma.enabled : false,
+      };
+    })
+    .filter((ma): ma is MovingAverageSettings => ma != null);
+  return parsed.length > 0 ? parsed : DEFAULT_MOVING_AVERAGES;
+}
+
 function parseVolumeProfile(value: unknown): VolumeProfileSettings {
   const profile = value as Partial<VolumeProfileSettings>;
   return {
@@ -105,6 +125,7 @@ function normalizeState(data: Partial<PersistedAnalysisState>): ChartAnalysisSta
     indicators: {
       vwap: parseVwap(indicators.vwap),
       volumeProfile: parseVolumeProfile(indicators.volumeProfile),
+      movingAverages: parseMovingAverages(indicators.movingAverages),
     },
     sessionBoxes: {
       asia: parseSession(sessions.asia, DEFAULT_SESSION_BOX_SETTINGS.asia),

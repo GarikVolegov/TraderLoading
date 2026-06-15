@@ -42,6 +42,14 @@ export interface VwapSettings {
   lineWidth: number;
 }
 
+export interface MovingAverageSettings {
+  id: string;
+  type: "ema" | "sma";
+  period: number;
+  color: string;
+  enabled: boolean;
+}
+
 export interface VolumeProfileSettings {
   enabled: boolean;
   rows: number;
@@ -65,6 +73,7 @@ export interface SessionBoxSettings {
 export interface ChartIndicatorSettings {
   vwap: VwapSettings;
   volumeProfile: VolumeProfileSettings;
+  movingAverages: MovingAverageSettings[];
 }
 
 export interface ChartAnalysisState {
@@ -92,6 +101,11 @@ export const DEFAULT_VWAP_SETTINGS: VwapSettings = {
   color: "#f59e0b",
   lineWidth: 2,
 };
+
+export const DEFAULT_MOVING_AVERAGES: MovingAverageSettings[] = [
+  { id: "ema50", type: "ema", period: 50, color: "#38bdf8", enabled: false },
+  { id: "ema200", type: "ema", period: 200, color: "#f472b6", enabled: false },
+];
 
 export const DEFAULT_VOLUME_PROFILE_SETTINGS: VolumeProfileSettings = {
   enabled: true,
@@ -133,6 +147,7 @@ export const DEFAULT_CHART_ANALYSIS_STATE: ChartAnalysisState = {
   indicators: {
     vwap: DEFAULT_VWAP_SETTINGS,
     volumeProfile: DEFAULT_VOLUME_PROFILE_SETTINGS,
+    movingAverages: DEFAULT_MOVING_AVERAGES,
   },
   sessionBoxes: DEFAULT_SESSION_BOX_SETTINGS,
   drawings: [],

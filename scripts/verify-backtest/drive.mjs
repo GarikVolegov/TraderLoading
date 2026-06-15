@@ -188,6 +188,18 @@ async function main() {
       console.log("⚠️ Layers toggle not found");
       await shot(page, "04-no-toggle.png");
     }
+
+    // 🔍 Probe: enable a moving-average overlay (Phase 3 indicator engine).
+    await dismissOverlays(page);
+    const ema50 = page.getByRole("button", { name: /EMA50/i }).first();
+    if (await ema50.count()) {
+      await ema50.click().catch(() => {});
+      await page.waitForTimeout(1800);
+      await shot(page, "06-ema50.png");
+      console.log("🔍 enabled EMA50 overlay");
+    } else {
+      console.log("⚠️ EMA50 toggle not found");
+    }
   } catch (err) {
     console.error("driver error:", err?.message ?? err);
     await shot(page, "99-error.png").catch(() => {});
