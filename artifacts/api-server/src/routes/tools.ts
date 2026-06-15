@@ -329,9 +329,9 @@ const COT_MARKET_MAP: Record<string, string> = {
   "SWISS FRANC": "CHF",
   "CANADIAN DOLLAR": "CAD",
   "AUSTRALIAN DOLLAR": "AUD",
-  "NEW ZEALAND DOLLAR": "NZD",
+  "NZ DOLLAR": "NZD",        // rinominato dal CFTC nel 2022 (ex "NEW ZEALAND DOLLAR")
   "GOLD": "XAU",
-  "US DOLLAR INDEX": "USD",
+  "USD INDEX": "USD",        // rinominato dal CFTC nel 2022 (ex "U.S. DOLLAR INDEX")
 };
 
 const COT_ORDER = ["EUR","GBP","JPY","CHF","CAD","AUD","NZD","XAU","USD"];
@@ -344,10 +344,9 @@ const COT_HISTORY_WEEKS = 12; // settimane di storico da mostrare
 function matchCotCurrency(rawMarket: string): string | null {
   const market = (rawMarket ?? "").toUpperCase().trim();
   if (!market) return null;
-  // ICE U.S. Dollar Index — il nome contiene i punti ("U.S. DOLLAR INDEX")
-  if (market.startsWith("U.S. DOLLAR INDEX") || market.startsWith("US DOLLAR INDEX")) return "USD";
+  // Nome ICE legacy pre-2022 ("U.S. DOLLAR INDEX"); i dati correnti usano "USD INDEX".
+  if (market.startsWith("U.S. DOLLAR INDEX")) return "USD";
   for (const key of Object.keys(COT_MARKET_MAP)) {
-    if (key === "US DOLLAR INDEX") continue; // gestito sopra
     if (market === key || market.startsWith(`${key} - `)) return COT_MARKET_MAP[key];
   }
   return null;
@@ -589,7 +588,6 @@ async function fetchCotFromSocrata(): Promise<CotEntry[] | null> {
     // cross-rate ("EURO FX/BRITISH POUND XRATE") e le varianti ("MICRO GOLD",
     // "GOLD -1 TROY OUNCE"), evitando sia l'attribuzione errata sia un payload enorme.
     const where = Object.keys(COT_MARKET_MAP)
-      .filter((k) => k !== "US DOLLAR INDEX") // non più pubblicato su questo dataset
       .map((k) => `starts_with(market_and_exchange_names, '${k} - ')`)
       .join(" OR ");
 
