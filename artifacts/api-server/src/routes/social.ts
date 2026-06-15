@@ -443,12 +443,12 @@ router.get("/social/mutual-followers", async (req, res) => {
     const followingIds = following.map(r => r.followingId);
     if (followingIds.length === 0) { res.json([]); return; }
 
-    const mutuals = [];
-    for (const fid of followingIds) {
-      const backFollow = await db.select().from(followsTable)
-        .where(and(eq(followsTable.followerId, fid), eq(followsTable.followingId, userId))).limit(1);
-      if (backFollow.length > 0) mutuals.push(fid);
-    }
+    // Mutuals = people I follow who also follow me back. One set query, not one
+    // per followed id (was N round-trips for a user following N people).
+    const backFollows = await db.select({ followerId: followsTable.followerId })
+      .from(followsTable)
+      .where(and(inArray(followsTable.followerId, followingIds), eq(followsTable.followingId, userId)));
+    const mutuals = backFollows.map(r => r.followerId);
     if (mutuals.length === 0) { res.json([]); return; }
 
     const profiles = await db.select({
@@ -457,13 +457,13 @@ router.get("/social/mutual-followers", async (req, res) => {
       avatarUrl: profileTable.avatarUrl,
     }).from(profileTable).where(inArray(profileTable.userId, mutuals));
 
-    const withKeys = await Promise.all(profiles.map(async p => {
-      const [keyRow] = await db.select({ publicKeyJwk: userPublicKeysTable.publicKeyJwk })
-        .from(userPublicKeysTable).where(eq(userPublicKeysTable.userId, p.userId!)).limit(1);
-      return { ...p, hasKey: !!keyRow };
-    }));
+    // Which mutuals have an E2EE public key — one set query, not one per profile.
+    const keyRows = await db.select({ userId: userPublicKeysTable.userId })
+      .from(userPublicKeysTable)
+      .where(inArray(userPublicKeysTable.userId, mutuals));
+    const withKey = new Set(keyRows.map(r => r.userId));
 
-    res.json(withKeys);
+    res.json(profiles.map(p => ({ ...p, hasKey: p.userId ? withKey.has(p.userId) : false })));
   } catch (err) {
     console.error("mutual-followers error:", err);
     res.status(500).json({ error: "Errore interno" });
