@@ -53,10 +53,15 @@ tools/metatrader-companion/   MT5 expert advisor
 ## 5. Infrastructure / deployment
 
 - **Database → Neon** (managed Postgres). `DATABASE_URL` points at Neon in prod; local dev uses a Docker Postgres.
-- **API server → AWS** — `artifacts/api-server` runs on ECS Fargate (`Dockerfile.aws`, [deploy/](deploy/), [infra/](infra/)).
-  Candle-warehouse seed/tail jobs run as Fargate RunTask + EventBridge Scheduler.
+- **API server → Railway** (primary) — single Railpack service builds + serves the frontend, API, WebSockets
+  and cron. Config in [railway.json](railway.json) (`preDeployCommand` runs `db:migrate`); env template
+  [.env.railway.example](.env.railway.example). ⚠️ Railway disk is **ephemeral** → uploads need a mounted Volume
+  (`UPLOADS_DIR=/data/uploads`) or S3/R2. Redis is optional on a single instance (rate-limit falls back to in-memory).
+  Candle-warehouse nightly tail runs as a scheduled GitHub Action ([.github/workflows/candle-tail.yml](.github/workflows/candle-tail.yml)).
+- **API server → AWS / Oracle** (alternative, dormant) — ECS Fargate (`Dockerfile.aws`, [infra/](infra/)) or a
+  self-hosted VM (`Dockerfile.oracle`, [deploy/oracle/](deploy/oracle/)). Kept as fallback; not the active target.
 - **Frontend → Vercel** — `artifacts/trader-dashboard` (React/Vite). ⚠️ Vercel deploys are **BLOCKED** if the
-  commit author email isn't recognized.
+  commit author email isn't recognized. (On Railway the single service serves the frontend too.)
 - **Not on Replit.** (Project has moved off Replit.)
 
 ## 6. Architecture & subsystems

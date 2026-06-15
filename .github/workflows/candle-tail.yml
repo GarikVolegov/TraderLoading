@@ -1,0 +1,41 @@
+name: Candle warehouse tail
+
+# Nightly incremental ingest from each symbol's watermark. Replaces the AWS
+# EventBridge-scheduled Fargate RunTask — keeps the heavy batch OFF the Railway
+# web service (which would spike its memory/usage). Free on GitHub Actions.
+#
+# Requires repo secret DATABASE_URL (Neon pooled connection string).
+# Candle sources (Dukascopy/Binance) are public — no provider keys needed.
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC nightly (matches the former EventBridge tail)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "ingest mode"
+        type: choice
+        options: [tail, seed]
+        default: tail
+
+concurrency:
+  group: candle-tail
+  cancel-in-progress: false
+
+jobs:
+  tail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run candle ingest
+        run: pnpm --filter @workspace/api-server exec tsx src/ingest.ts ${{ github.event.inputs.mode || 'tail' }}
