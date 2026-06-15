@@ -17,5 +17,7 @@ export interface WikiSource {
   fileName?: string | null;
   mimeType?: string | null;
   folderId?: number | null;
+  extractedText?: string;
+  tags?: string;
   createdAt?: Date;
 }

@@ -19,7 +19,6 @@ assert.match(uploadHelper, /export function resolveUploadPath/);
 
 for (const path of [
   "artifacts/api-server/src/app.ts",
-  "artifacts/api-server/src/routes/brain.ts",
   "artifacts/api-server/src/routes/community.ts",
   "artifacts/api-server/src/routes/journal.ts",
   "artifacts/api-server/src/routes/library.ts",
@@ -27,7 +26,6 @@ for (const path of [
   "artifacts/api-server/src/routes/profile.ts",
   "artifacts/api-server/src/routes/settings.ts",
   "artifacts/api-server/src/routes/social.ts",
-  "artifacts/api-server/src/services/brainScanner.ts",
 ]) {
   const source = read(path);
   assert.doesNotMatch(source, /path\.join\(process\.cwd\(\), "uploads"/, `${path} should not hardcode cwd uploads`);

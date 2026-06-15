@@ -12,8 +12,6 @@ assert.equal(getNotificationLanguage(null), "it");
 assert.equal(getServerNotificationCopy("it").sessionTitle("Londra"), "Sessione Londra aperta");
 assert.equal(getServerNotificationCopy("en").sessionTitle("London"), "London session is open");
 assert.equal(getServerNotificationCopy("es").chatBody, "Te ha enviado un mensaje");
-assert.equal(getServerNotificationCopy("fr").brainBody(82, "Contexte"), "Confiance 82% - Contexte");
-assert.equal(getServerNotificationCopy("de").brainTitle("buy", "XAUUSD", "M15"), "Setup BUY - XAUUSD M15");
 assert.equal(getServerNotificationCopy("en").socialFollowBody("Alex"), "Alex started following you");
 assert.equal(getServerNotificationCopy("it").socialLikeBody("Alex"), "Alex ha messo like al tuo post");
 

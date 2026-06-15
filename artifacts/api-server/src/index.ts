@@ -3,7 +3,6 @@ import { closeDbPool } from "@workspace/db";
 import app from "./app";
 import { cotScheduler } from "./routes/tools.js";
 import { startSessionScheduler } from "./routes/push.js";
-import { startBrainScanner } from "./services/brainScanner.js";
 import { attachAccountBridgeWebSocket } from "./services/accountBridge/socketServer.js";
 import { attachBrokerHubWebSocket } from "./services/brokerHub/socketServer.js";
 import { brokerHubRuntime } from "./services/brokerHub/runtime.js";
@@ -45,7 +44,6 @@ const noopCloseHandle: CloseHandle = {
 };
 
 let sessionScheduler: CloseHandle = noopCloseHandle;
-let brainScanner: CloseHandle = noopCloseHandle;
 let isShuttingDown = false;
 
 function closeHttpServer(): Promise<void> {
@@ -91,7 +89,6 @@ async function shutdown(reason: string, exitCode = 0): Promise<void> {
     newsHubSocket.close(),
     newsProviderSockets?.close(),
     sessionScheduler.close(),
-    brainScanner.close(),
     brokerHubRuntime.close(),
     cotScheduler.close(),
     newsHubRuntime.stop(),
@@ -145,7 +142,6 @@ process.on("uncaughtException", (err) => {
 server.listen(port, () => {
   logger.info({ port }, "Server listening");
   sessionScheduler = startSessionScheduler();
-  brainScanner = startBrainScanner();
   newsProviderSockets = attachNewsProviderSockets(newsHubRuntime);
   void newsHubRuntime.refresh({ force: true }).catch((error) => {
     logger.warn({ err: error }, "Initial news refresh failed");

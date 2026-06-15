@@ -70,7 +70,6 @@ assert.deepEqual(
   [...ANONYMOUS_FALLBACK_PREFIXES].sort(),
   [
     "/backtest",
-    "/brain",
     "/checkins",
     "/checklist",
     "/ideas",

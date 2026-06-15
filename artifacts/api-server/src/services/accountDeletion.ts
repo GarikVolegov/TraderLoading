@@ -43,7 +43,7 @@ export function getAccountDeletionDisclosure(): AccountDeletionDisclosure {
     deletedData: [
       "Profilo, impostazioni, preferenze privacy e notifiche push.",
       "Diario di trading, immagini, tag, recap, check-in, routine e missioni.",
-      "Dati di trading sincronizzati, backtest, Brain AI e fonti caricate.",
+      "Dati di trading sincronizzati, backtest e fonti caricate nell'archivio.",
       "Messaggi, chiavi chat, relazioni social, post, commenti e dati community collegati al tuo account.",
       "Connessioni broker, segreti operativi e dati account importati.",
     ],
@@ -165,14 +165,6 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`DELETE FROM journal_recaps WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM journal_tags WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM journal_entries WHERE user_id = ${userId}`);
-
-    await tx.execute(sql`DELETE FROM brain_graph_edges WHERE user_id = ${userId}`);
-    await tx.execute(sql`DELETE FROM brain_graph_nodes WHERE user_id = ${userId}`);
-    await tx.execute(sql`DELETE FROM brain_feedback WHERE user_id = ${userId}`);
-    await tx.execute(sql`DELETE FROM brain_analyses WHERE user_id = ${userId}`);
-    await tx.execute(sql`DELETE FROM brain_knowledge_sources WHERE user_id = ${userId}`);
-    await tx.execute(sql`DELETE FROM brain_scan_config WHERE user_id = ${userId}`);
-    await tx.execute(sql`DELETE FROM brain_strategies WHERE user_id = ${userId}`);
 
     await tx.execute(sql`DELETE FROM backtest_trades WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM backtest_sessions WHERE user_id = ${userId}`);

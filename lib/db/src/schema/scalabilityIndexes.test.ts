@@ -21,11 +21,6 @@ const journalSource = readSchema("./journal.ts");
 assert.match(journalSource, /index\("journal_entries_user_created_idx"\)\.on\(table\.userId, table\.createdAt\)/);
 assert.match(journalSource, /index\("journal_images_entry_idx"\)\.on\(table\.entryId\)/);
 
-const brainSource = readSchema("./brain.ts");
-assert.match(brainSource, /index\("brain_scan_config_enabled_last_run_idx"\)\.on\(table\.enabled, table\.lastRunAt\)/);
-assert.match(brainSource, /index\("brain_graph_nodes_user_strategy_label_idx"\)\.on\(table\.userId, table\.strategyId, table\.label\)/);
-assert.match(brainSource, /index\("brain_graph_edges_user_strategy_from_idx"\)\.on\(table\.userId, table\.strategyId, table\.fromNodeId\)/);
-
 const signalsSource = readSchema("./signals.ts");
 assert.match(signalsSource, /index\("signals_created_idx"\)\.on\(t\.createdAt\)/);
 

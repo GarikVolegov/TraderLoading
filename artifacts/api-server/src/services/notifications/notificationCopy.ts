@@ -4,8 +4,6 @@ interface ServerNotificationCopy {
   sessionTitle: (sessionName: string) => string;
   sessionQuotes: string[];
   chatBody: string;
-  brainTitle: (direction: string, pair: string, timeframe: string) => string;
-  brainBody: (confidence: number, reasoning: string) => string;
   socialFollowBody: (actorName: string) => string;
   socialLikeBody: (actorName: string) => string;
   socialCommentBody: (actorName: string) => string;
@@ -22,8 +20,6 @@ const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
       "Proteggi il capitale prima di tutto. Il profitto viene dopo.",
     ],
     chatBody: "Ti ha inviato un messaggio",
-    brainTitle: (direction, pair, timeframe) => `Setup ${direction.toUpperCase()} - ${pair} ${timeframe}`,
-    brainBody: (confidence, reasoning) => `Confidenza ${Math.round(confidence)}% - ${reasoning}`,
     socialFollowBody: (actorName) => `${actorName} ha iniziato a seguirti`,
     socialLikeBody: (actorName) => `${actorName} ha messo like al tuo post`,
     socialCommentBody: (actorName) => `${actorName} ha commentato il tuo post`,
@@ -38,8 +34,6 @@ const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
       "Protect capital first. Profit comes later.",
     ],
     chatBody: "Sent you a message",
-    brainTitle: (direction, pair, timeframe) => `Setup ${direction.toUpperCase()} - ${pair} ${timeframe}`,
-    brainBody: (confidence, reasoning) => `Confidence ${Math.round(confidence)}% - ${reasoning}`,
     socialFollowBody: (actorName) => `${actorName} started following you`,
     socialLikeBody: (actorName) => `${actorName} liked your post`,
     socialCommentBody: (actorName) => `${actorName} commented on your post`,
@@ -54,8 +48,6 @@ const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
       "Protege el capital primero. El beneficio viene despues.",
     ],
     chatBody: "Te ha enviado un mensaje",
-    brainTitle: (direction, pair, timeframe) => `Setup ${direction.toUpperCase()} - ${pair} ${timeframe}`,
-    brainBody: (confidence, reasoning) => `Confianza ${Math.round(confidence)}% - ${reasoning}`,
     socialFollowBody: (actorName) => `${actorName} ha empezado a seguirte`,
     socialLikeBody: (actorName) => `${actorName} dio like a tu post`,
     socialCommentBody: (actorName) => `${actorName} comento tu post`,
@@ -70,8 +62,6 @@ const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
       "Protegez le capital d'abord. Le profit vient ensuite.",
     ],
     chatBody: "Vous a envoye un message",
-    brainTitle: (direction, pair, timeframe) => `Setup ${direction.toUpperCase()} - ${pair} ${timeframe}`,
-    brainBody: (confidence, reasoning) => `Confiance ${Math.round(confidence)}% - ${reasoning}`,
     socialFollowBody: (actorName) => `${actorName} vous suit maintenant`,
     socialLikeBody: (actorName) => `${actorName} a aime votre post`,
     socialCommentBody: (actorName) => `${actorName} a commente votre post`,
@@ -86,8 +76,6 @@ const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
       "Schuetze zuerst das Kapital. Gewinn kommt danach.",
     ],
     chatBody: "Hat dir eine Nachricht gesendet",
-    brainTitle: (direction, pair, timeframe) => `Setup ${direction.toUpperCase()} - ${pair} ${timeframe}`,
-    brainBody: (confidence, reasoning) => `Konfidenz ${Math.round(confidence)}% - ${reasoning}`,
     socialFollowBody: (actorName) => `${actorName} folgt dir jetzt`,
     socialLikeBody: (actorName) => `${actorName} hat deinen Beitrag geliked`,
     socialCommentBody: (actorName) => `${actorName} hat deinen Beitrag kommentiert`,

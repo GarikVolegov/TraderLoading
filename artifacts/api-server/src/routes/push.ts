@@ -32,7 +32,6 @@ export interface NotificationPrefs {
   goals: boolean;
   dailyReminder: boolean;
   macroEvents: boolean;
-  brain: boolean;
   scheduledCalls: boolean;
 }
 
@@ -43,7 +42,6 @@ export const DEFAULT_NOTIF_PREFS: NotificationPrefs = {
   goals: true,
   dailyReminder: true,
   macroEvents: true,
-  brain: true,
   scheduledCalls: true,
 };
 

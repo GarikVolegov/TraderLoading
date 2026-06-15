@@ -1,8 +1,9 @@
 import { getVisionClient } from "./llmClient.js";
 
 // ─── Knowledge processor ─────────────────────────────────────────────────────────
-// Converte i materiali caricati (PDF, immagini, testo) in TESTO grezzo, che verrà
-// poi trasformato nel grafo di conoscenza da knowledgeGraph.ts.
+// Converte i materiali caricati (PDF, immagini, testo) in TESTO grezzo, salvato
+// poi dall'archivio Wiki per la ricerca testuale lato client. (Il vecchio grafo di
+// conoscenza è stato rimosso; l'OCR via vision client resta per PDF/immagini.)
 
 /** Tronca un testo a `max` caratteri, segnalando il taglio. */
 export function capText(s: string, max = 12000): string {

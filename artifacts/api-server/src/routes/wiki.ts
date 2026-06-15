@@ -17,7 +17,6 @@ import {
 } from "../services/wikiProcessor.js";
 import { createWikiStorageFromEnv } from "../services/wikiStorage.js";
 import { enqueueWikiSourceProcessing, processWikiSourceJob } from "../services/wikiIngest.js";
-import { getWikiGraph, queryWiki } from "../services/wikiGraph.js";
 import { requireProFeature } from "../lib/billing.js";
 
 const router: IRouter = Router();
@@ -334,41 +333,6 @@ router.delete("/wiki/folders/:id", async (req, res) => {
   }
   // FK ON DELETE set null re-homes child folders and contained sources to root.
   res.json({ ok: true });
-});
-
-router.get("/wiki/graph", async (req, res) => {
-  const userId = await requireWikiUser(req, res);
-  if (!userId) return;
-  res.json(await getWikiGraph(userId));
-});
-
-router.get("/wiki/communities", async (req, res) => {
-  const userId = await requireWikiUser(req, res);
-  if (!userId) return;
-  const graph = await getWikiGraph(userId);
-  res.json(graph.communities);
-});
-
-router.post("/wiki/query", async (req, res) => {
-  const userId = await requireWikiUser(req, res);
-  if (!userId) return;
-  const question = String(req.body?.question ?? "").trim();
-  if (!question) {
-    res.status(400).json({ error: "question obbligatoria" });
-    return;
-  }
-  res.json(await queryWiki(userId, question));
-});
-
-router.post("/wiki/reindex", async (req, res) => {
-  const userId = await requireWikiUser(req, res);
-  if (!userId) return;
-  const sources = await db.select().from(wikiSourcesTable).where(eq(wikiSourcesTable.userId, userId));
-  for (const source of sources) {
-    await db.insert(wikiIngestJobsTable).values({ userId, sourceId: source.id, status: "queued", stage: "queued" });
-    enqueueWikiSourceProcessing(source.id);
-  }
-  res.json({ ok: true, reindexed: sources.length });
 });
 
 export { processWikiSourceJob };

@@ -20,6 +20,8 @@ export const ListWikiSourcesResponseItem = zod.object({
   fileName: zod.string().nullish(),
   mimeType: zod.string().nullish(),
   folderId: zod.number().nullish(),
+  extractedText: zod.string().optional(),
+  tags: zod.string().optional(),
   createdAt: zod.date().optional(),
 });
 export const ListWikiSourcesResponse = zod.array(ListWikiSourcesResponseItem);
@@ -78,6 +80,8 @@ export const MoveWikiSourceResponse = zod.object({
   fileName: zod.string().nullish(),
   mimeType: zod.string().nullish(),
   folderId: zod.number().nullish(),
+  extractedText: zod.string().optional(),
+  tags: zod.string().optional(),
   createdAt: zod.date().optional(),
 });
 
@@ -133,81 +137,6 @@ export const UpdateWikiFolderResponse = zod.object({
  */
 export const DeleteWikiFolderParams = zod.object({
   id: zod.coerce.number(),
-});
-
-/**
- * @summary Get private wiki graph summary
- */
-export const GetWikiGraphResponse = zod.object({
-  stats: zod
-    .object({
-      sources: zod.number().optional(),
-      nodes: zod.number().optional(),
-      edges: zod.number().optional(),
-      communities: zod.number().optional(),
-    })
-    .optional(),
-  nodes: zod
-    .array(
-      zod.object({
-        id: zod.number(),
-        label: zod.string(),
-        type: zod.string(),
-        summary: zod.string().optional(),
-        weight: zod.string().optional(),
-        sourceId: zod.number().nullish(),
-        communityId: zod.number().nullish(),
-      }),
-    )
-    .optional(),
-  edges: zod
-    .array(
-      zod.object({
-        id: zod.number(),
-        fromNodeId: zod.number(),
-        toNodeId: zod.number(),
-        relation: zod.string(),
-        confidence: zod.string().optional(),
-        weight: zod.string().optional(),
-      }),
-    )
-    .optional(),
-  communities: zod
-    .array(
-      zod.object({
-        id: zod.number(),
-        label: zod.string(),
-        summary: zod.string().optional(),
-        nodeCount: zod.number(),
-        cohesion: zod.string().optional(),
-      }),
-    )
-    .optional(),
-});
-
-/**
- * @summary List private wiki graph communities
- */
-export const ListWikiCommunitiesResponseItem = zod.object({
-  id: zod.number(),
-  label: zod.string(),
-  summary: zod.string().optional(),
-  nodeCount: zod.number(),
-  cohesion: zod.string().optional(),
-});
-export const ListWikiCommunitiesResponse = zod.array(ListWikiCommunitiesResponseItem);
-
-/**
- * @summary Ask the private wiki a question
- */
-export const QueryWikiBody = zod.object({
-  question: zod.string(),
-});
-
-export const QueryWikiResponse = zod.object({
-  answer: zod.string(),
-  citations: zod.array(zod.object({}).passthrough()),
-  nodes: zod.array(zod.object({}).passthrough()),
 });
 
 /**

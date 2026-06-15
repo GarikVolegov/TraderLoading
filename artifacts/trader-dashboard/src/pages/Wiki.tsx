@@ -3,17 +3,12 @@ import { useDropzone } from "react-dropzone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
-  BrainCircuit,
   CheckCircle2,
   FileText,
-  GitBranch,
   Globe2,
   Layers3,
   Loader2,
-  MessageSquareText,
-  Network,
-  RefreshCw,
-  Send,
+  Search,
   Upload,
   Video,
   Volume2,
@@ -25,7 +20,6 @@ import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { WikiGraphView } from "@/components/WikiGraphView";
 import {
   WikiFolderTree,
   WIKI_SOURCE_DND_TYPE,
@@ -47,40 +41,9 @@ interface WikiSource {
   fileName: string | null;
   mimeType: string | null;
   folderId: number | null;
+  extractedText: string;
+  tags: string;
   createdAt: string;
-}
-
-interface WikiGraphData {
-  stats: { sources: number; nodes: number; edges: number; communities: number };
-  communities: WikiCommunity[];
-  nodes: Array<{
-    id: number;
-    label: string;
-    type: string;
-    communityId: number | null;
-    sourceId: number | null;
-  }>;
-  edges: Array<{ id: number; fromNodeId: number; toNodeId: number; relation: string }>;
-}
-
-interface WikiCommunity {
-  id: number;
-  label: string;
-  summary: string;
-  nodeCount: number;
-  cohesion: string;
-}
-
-interface WikiAnswer {
-  answer: string;
-  citations: Array<{ sourceId: number; title: string; excerpt: string }>;
-  nodes: Array<{ id: number; label: string; type: string }>;
-}
-
-interface SelectedNode {
-  nodeId: number;
-  sourceId: number | null;
-  label: string;
 }
 
 const KIND_ICON: Record<string, typeof FileText> = {
@@ -169,7 +132,18 @@ function SourceRow({ source, onDelete }: { source: WikiSource; onDelete: (id: nu
       </div>
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-sm font-semibold">{source.title}</p>
+          {source.fileUrl ? (
+            <a
+              href={source.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="truncate text-sm font-semibold hover:underline"
+            >
+              {source.title}
+            </a>
+          ) : (
+            <p className="truncate text-sm font-semibold">{source.title}</p>
+          )}
           <StatusPill status={source.status} />
         </div>
         <p className="truncate text-xs text-muted-foreground">
@@ -193,17 +167,25 @@ function SourceRow({ source, onDelete }: { source: WikiSource; onDelete: (id: nu
   );
 }
 
+// Parse the JSON-encoded tag list defensively; the column is a stringified array.
+function parseTags(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function Wiki() {
   const qc = useQueryClient();
   const [noteTitle, setNoteTitle] = useState("");
   const [noteText, setNoteText] = useState("");
   const [url, setUrl] = useState("");
-  const [question, setQuestion] = useState("");
-  const [answers, setAnswers] = useState<WikiAnswer[]>([]);
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | WikiStatus>("all");
   const [kindFilter, setKindFilter] = useState<"all" | WikiKind>("all");
   const [folderFilter, setFolderFilter] = useState<WikiFolderFilter>("all");
-  const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
 
   const { data: sources = [] } = useQuery({
     queryKey: ["wiki", "sources"],
@@ -216,22 +198,8 @@ export default function Wiki() {
         : false,
   });
 
-  const { data: graph } = useQuery({
-    queryKey: ["wiki", "graph"],
-    queryFn: () => apiFetch<WikiGraphData>(`${API}/wiki/graph`),
-    refetchInterval: 15000,
-  });
-
-  const { data: communities = [] } = useQuery({
-    queryKey: ["wiki", "communities"],
-    queryFn: () => apiFetch<WikiCommunity[]>(`${API}/wiki/communities`),
-    refetchInterval: 15000,
-  });
-
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["wiki", "sources"] });
-    qc.invalidateQueries({ queryKey: ["wiki", "graph"] });
-    qc.invalidateQueries({ queryKey: ["wiki", "communities"] });
     qc.invalidateQueries({ queryKey: ["wiki", "folders"] });
   };
 
@@ -274,24 +242,6 @@ export default function Wiki() {
     onSuccess: invalidate,
   });
 
-  const queryMutation = useMutation({
-    mutationFn: () =>
-      apiFetch<WikiAnswer>(`${API}/wiki/query`, {
-        method: "POST",
-        body: JSON.stringify({ question: question.trim() }),
-      }),
-    onSuccess: (answer) => {
-      setAnswers((current) => [answer, ...current].slice(0, 8));
-      setQuestion("");
-      qc.invalidateQueries({ queryKey: ["wiki", "graph"] });
-    },
-  });
-
-  const reindexMutation = useMutation({
-    mutationFn: () => apiFetch(`${API}/wiki/reindex`, { method: "POST", body: "{}" }),
-    onSuccess: invalidate,
-  });
-
   const onDrop = useCallback(
     (files: File[]) => {
       for (const file of files) uploadMutation.mutate(file);
@@ -319,293 +269,58 @@ export default function Wiki() {
     return acc;
   }, [sources]);
 
-  const filteredSources = useMemo(
-    () =>
-      sources.filter(
-        (source) =>
-          (statusFilter === "all" || source.status === statusFilter) &&
-          (kindFilter === "all" || source.kind === kindFilter) &&
-          (folderFilter === "all" ||
-            (folderFilter === "root"
-              ? source.folderId == null
-              : source.folderId === folderFilter)) &&
-          (!selectedNode?.sourceId || source.id === selectedNode.sourceId),
-      ),
-    [kindFilter, sources, statusFilter, folderFilter, selectedNode],
-  );
-
-  const onGraphNodeClick = useCallback(
-    (nodeId: number) => {
-      const node = graph?.nodes.find((candidate) => candidate.id === nodeId);
-      if (!node) return;
-      setSelectedNode((current) =>
-        current?.nodeId === nodeId
-          ? null
-          : { nodeId, sourceId: node.sourceId, label: node.label },
-      );
-    },
-    [graph],
-  );
+  const filteredSources = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return sources.filter((source) => {
+      if (statusFilter !== "all" && source.status !== statusFilter) return false;
+      if (kindFilter !== "all" && source.kind !== kindFilter) return false;
+      if (folderFilter !== "all") {
+        if (folderFilter === "root" ? source.folderId != null : source.folderId !== folderFilter) {
+          return false;
+        }
+      }
+      if (needle) {
+        const haystack = [
+          source.title,
+          source.extractedText ?? "",
+          parseTags(source.tags ?? "[]").join(" "),
+          source.fileName ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [kindFilter, sources, statusFilter, folderFilter, search]);
 
   const uploadError = mutationMessage(uploadMutation.error);
   const textError = mutationMessage(textMutation.error);
   const urlError = mutationMessage(urlMutation.error);
-  const queryError = mutationMessage(queryMutation.error);
   const deleteError = mutationMessage(deleteMutation.error);
-  const reindexError = mutationMessage(reindexMutation.error);
-
-  const statTiles: Array<[string, number]> = [
-    ["Fonti", graph?.stats.sources ?? sources.length],
-    ["Ready", readyCount],
-    ["Nodi", graph?.stats.nodes ?? 0],
-    ["Relazioni", graph?.stats.edges ?? 0],
-  ];
 
   return (
     <PageLayout>
       <ProUpgradeGate feature="wiki">
-        <PageHeader
-          title={uiText("wiki.title")}
-          subtitle={uiText("wiki.subtitle")}
-          action={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => reindexMutation.mutate()}
-              disabled={reindexMutation.isPending}
-            >
-              {reindexMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
-              )}
-              Reindex
-            </Button>
-          }
-        />
+        <PageHeader title={uiText("wiki.title")} subtitle={uiText("wiki.subtitle")} />
 
-        <div className="mt-2 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="mt-2 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-4">
             <Card>
-              <CardContent className="space-y-4 p-4">
-                <ErrorBanner message={uploadError || textError || urlError || reindexError} />
-                <div
-                  {...getRootProps()}
-                  className={`flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 text-center transition-colors ${
-                    isDragActive
-                      ? "border-primary bg-primary/10"
-                      : "border-border/50 bg-card/40 hover:border-primary/40"
-                  }`}
-                >
-                  <input {...getInputProps()} />
-                  {uploadMutation.isPending ? (
-                    <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
-                  ) : (
-                    <Upload className="mb-3 h-8 w-8 text-primary" />
-                  )}
-                  <p className="text-sm font-semibold">{uiText("wiki.upload.drop_title")}</p>
-                  <p className="mt-1 max-w-md text-xs text-muted-foreground">
-                    Carica file locali da qualunque cartella o provider. Se il contenuto e testuale
-                    lo imparo; altrimenti conservo l'originale nella wiki.
-                  </p>
-                  <Button
-                    type="button"
-                    className="mt-4"
-                    onClick={open}
-                    disabled={uploadMutation.isPending}
-                  >
-                    {uploadMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Upload className="mr-2 h-4 w-4" />
-                    )}
-                    Scegli file dal computer
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  <div className="space-y-2">
-                    <Input
-                      placeholder={uiText("wiki.note.title_placeholder")}
-                      value={noteTitle}
-                      onChange={(event) => setNoteTitle(event.target.value)}
-                    />
-                    <textarea
-                      value={noteText}
-                      onChange={(event) => setNoteText(event.target.value)}
-                      placeholder={uiText("wiki.note.placeholder")}
-                      className="min-h-[112px] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                    />
-                    <Button
-                      className="w-full"
-                      disabled={!noteText.trim() || textMutation.isPending}
-                      onClick={() => textMutation.mutate()}
-                    >
-                      {textMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <FileText className="mr-2 h-4 w-4" />
-                      )}
-                      Aggiungi nota
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    <Input
-                      placeholder={uiText("wiki.url.placeholder")}
-                      value={url}
-                      onChange={(event) => setUrl(event.target.value)}
-                    />
-                    <div className="rounded-lg border border-border/45 bg-secondary/20 p-3 text-xs leading-relaxed text-muted-foreground">
-                      Importo il contenuto testuale della pagina, lo pulisco e lo collego al grafo
-                      della tua wiki personale.
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      disabled={!url.trim() || urlMutation.isPending}
-                      onClick={() => urlMutation.mutate()}
-                    >
-                      {urlMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Globe2 className="mr-2 h-4 w-4" />
-                      )}
-                      Importa URL
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Network className="h-4 w-4 text-primary" />
-                  {uiText("wiki.graph.title")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-4 gap-2">
-                  {statTiles.map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="rounded-lg border border-border/40 bg-secondary/20 p-2.5"
-                    >
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {label}
-                      </div>
-                      <div className="mt-1 font-mono text-lg font-bold">{value}</div>
-                    </div>
-                  ))}
-                </div>
-                {selectedNode && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedNode(null)}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs text-primary"
-                  >
-                    <span className="truncate">Nodo: {selectedNode.label}</span>
-                    <X className="h-3 w-3 shrink-0" />
-                  </button>
-                )}
-                <WikiGraphView
-                  nodes={graph?.nodes ?? []}
-                  edges={graph?.edges ?? []}
-                  selectedNodeId={selectedNode?.nodeId ?? null}
-                  onNodeClick={onGraphNodeClick}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Trascina i nodi, usa rotella e mouse per esplorare. Clicca un nodo per filtrare le
-                  fonti collegate.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <MessageSquareText className="h-4 w-4 text-primary" />
-                  {uiText("wiki.ask.title")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ErrorBanner message={queryError} />
-                <div className="flex gap-2">
-                  <Input
-                    value={question}
-                    onChange={(event) => setQuestion(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && question.trim()) queryMutation.mutate();
-                    }}
-                    placeholder={uiText("wiki.ask.placeholder")}
-                  />
-                  <Button
-                    disabled={!question.trim() || queryMutation.isPending}
-                    onClick={() => queryMutation.mutate()}
-                  >
-                    {queryMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                {answers.length === 0 ? (
-                  <div className="rounded-lg border border-border/40 bg-secondary/20 p-6 text-center text-sm text-muted-foreground">
-                    <BrainCircuit className="mx-auto mb-2 h-8 w-8 opacity-40" />
-                    Fai una domanda: Brain AI risponderà solo con ciò che trova nella tua wiki e
-                    mostrerà le fonti.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {answers.map((answer, index) => (
-                      <div
-                        key={index}
-                        className="rounded-lg border border-border/45 bg-card/60 p-3"
-                      >
-                        <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                          {answer.answer}
-                        </p>
-                        {answer.citations.length > 0 && (
-                          <div className="mt-3 space-y-1.5">
-                            {answer.citations.map((citation) => (
-                              <div
-                                key={`${citation.sourceId}-${citation.title}`}
-                                className="rounded-md bg-background/70 px-2 py-1.5 text-xs text-muted-foreground"
-                              >
-                                <span className="font-semibold text-foreground">
-                                  {citation.title}
-                                </span>{" "}
-                                · {citation.excerpt}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="min-w-0 space-y-4">
-            <Card>
-              <CardContent className="p-3">
-                <WikiFolderTree
-                  selected={folderFilter}
-                  onSelect={setFolderFilter}
-                  counts={folderCounts}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-base">{uiText("wiki.sources.title")}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3">
                 <ErrorBanner message={deleteError} />
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder={uiText("wiki.search.placeholder")}
+                    className="pl-9"
+                  />
+                </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <label className="space-y-1 text-xs font-medium text-muted-foreground">
                     Stato
@@ -640,56 +355,128 @@ export default function Wiki() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {uiText("wiki.sources.subtitle")} Trascina una fonte su una cartella per spostarla.
+                  · {readyCount}/{sources.length} pronte
                 </p>
                 {sources.length === 0 ? (
                   <p className="rounded-lg border border-border/40 bg-secondary/20 p-4 text-sm text-muted-foreground">
-                    Nessuna fonte ancora caricata. Aggiungi una nota, un URL o un file per iniziare
-                    a costruire il grafo.
+                    Nessun appunto ancora salvato. Aggiungi una nota, un URL o un file per iniziare a
+                    costruire il tuo archivio di trading.
                   </p>
                 ) : filteredSources.length === 0 ? (
                   <p className="rounded-lg border border-border/40 bg-secondary/20 p-4 text-sm text-muted-foreground">
-                    Nessuna fonte corrisponde ai filtri selezionati.
+                    Nessun appunto corrisponde alla ricerca o ai filtri selezionati.
                   </p>
                 ) : (
-                  filteredSources.map((source) => (
-                    <SourceRow
-                      key={source.id}
-                      source={source}
-                      onDelete={(id) => deleteMutation.mutate(id)}
-                    />
-                  ))
+                  <div className="space-y-2">
+                    {filteredSources.map((source) => (
+                      <SourceRow
+                        key={source.id}
+                        source={source}
+                        onDelete={(id) => deleteMutation.mutate(id)}
+                      />
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
+          </div>
 
-            {communities.length || graph?.communities.length ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <GitBranch className="h-4 w-4 text-primary" />
-                    Comunità
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1.5">
-                  {(communities.length ? communities : graph!.communities)
-                    .slice(0, 8)
-                    .map((community) => (
-                      <div
-                        key={community.id}
-                        className="flex items-center gap-2 rounded-md border border-border/35 px-2 py-1.5"
-                      >
-                        <GitBranch className="h-3.5 w-3.5 text-primary" />
-                        <span className="min-w-0 flex-1 truncate text-xs font-semibold">
-                          {community.label}
-                        </span>
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          {community.nodeCount}
-                        </span>
-                      </div>
-                    ))}
-                </CardContent>
-              </Card>
-            ) : null}
+          <div className="min-w-0 space-y-4">
+            <Card>
+              <CardContent className="space-y-4 p-4">
+                <ErrorBanner message={uploadError || textError || urlError} />
+                <div
+                  {...getRootProps()}
+                  className={`flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 text-center transition-colors ${
+                    isDragActive
+                      ? "border-primary bg-primary/10"
+                      : "border-border/50 bg-card/40 hover:border-primary/40"
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  {uploadMutation.isPending ? (
+                    <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+                  ) : (
+                    <Upload className="mb-3 h-8 w-8 text-primary" />
+                  )}
+                  <p className="text-sm font-semibold">{uiText("wiki.upload.drop_title")}</p>
+                  <p className="mt-1 max-w-md text-xs text-muted-foreground">
+                    Carica i tuoi file (PDF, immagini, note, audio): li conservo nell'archivio e ne
+                    estraggo il testo per la ricerca.
+                  </p>
+                  <Button
+                    type="button"
+                    className="mt-4"
+                    onClick={open}
+                    disabled={uploadMutation.isPending}
+                  >
+                    {uploadMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-2 h-4 w-4" />
+                    )}
+                    Scegli file dal computer
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <Input
+                    placeholder={uiText("wiki.note.title_placeholder")}
+                    value={noteTitle}
+                    onChange={(event) => setNoteTitle(event.target.value)}
+                  />
+                  <textarea
+                    value={noteText}
+                    onChange={(event) => setNoteText(event.target.value)}
+                    placeholder={uiText("wiki.note.placeholder")}
+                    className="min-h-[96px] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                  <Button
+                    className="w-full"
+                    disabled={!noteText.trim() || textMutation.isPending}
+                    onClick={() => textMutation.mutate()}
+                  >
+                    {textMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileText className="mr-2 h-4 w-4" />
+                    )}
+                    Aggiungi nota
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <Input
+                    placeholder={uiText("wiki.url.placeholder")}
+                    value={url}
+                    onChange={(event) => setUrl(event.target.value)}
+                  />
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    disabled={!url.trim() || urlMutation.isPending}
+                    onClick={() => urlMutation.mutate()}
+                  >
+                    {urlMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Globe2 className="mr-2 h-4 w-4" />
+                    )}
+                    Importa URL
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-3">
+                <WikiFolderTree
+                  selected={folderFilter}
+                  onSelect={setFolderFilter}
+                  counts={folderCounts}
+                />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </ProUpgradeGate>

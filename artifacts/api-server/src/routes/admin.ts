@@ -702,7 +702,6 @@ router.get(
         serializeRuntimeFlag("VAPID_PRIVATE_KEY", process.env.VAPID_PRIVATE_KEY),
         serializeRuntimeFlag("SENTRY_DSN", process.env.SENTRY_DSN),
         serializeRuntimeFlag("OPENAI_API_KEY", process.env.OPENAI_API_KEY),
-        serializeRuntimeFlag("BRAIN_SCAN_ENABLED", process.env.BRAIN_SCAN_ENABLED),
       ],
     });
   },

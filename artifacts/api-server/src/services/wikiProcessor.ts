@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { inflateRawSync } from "node:zlib";
-import { describeImage, extractTextFromPdf, bufferToDataUrl } from "./knowledgeProcessor.js";
+import { extractTextFromPdf } from "./knowledgeProcessor.js";
 
 export type WikiSourceKind = "text" | "pdf" | "image" | "office" | "audio" | "video" | "url" | "unknown";
 
@@ -292,8 +292,10 @@ export async function extractWikiText(input: {
     if (looksLikeHtml(input.buffer)) return extractHtmlDisguisedAsPdf(input.buffer, input.filename);
     return { text: await extractPdfTextForWiki(input.buffer, input.filename), status: "ready" };
   }
-  if (input.kind === "image" && input.buffer) {
-    return { text: await describeImage(bufferToDataUrl(input.buffer, input.mimeType)), status: "ready" };
+  if (input.kind === "image") {
+    // Pure archive: images are stored as-is and stay searchable by title/filename
+    // (no AI vision description).
+    return { text: "", status: "ready" };
   }
   if ((input.kind === "audio" || input.kind === "video") && input.localPath) {
     const transcript = await transcribeWithWhisper(input.localPath);

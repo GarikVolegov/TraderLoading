@@ -25,6 +25,8 @@ export interface WikiSource {
   fileName?: string | null;
   mimeType?: string | null;
   folderId?: number | null;
+  extractedText?: string;
+  tags?: string;
   createdAt?: string;
 }
 
@@ -38,10 +40,6 @@ export interface CreateWikiUrlSourceRequest {
   url: string;
   title?: string;
   tags?: string[];
-}
-
-export interface QueryWikiRequest {
-  question: string;
 }
 
 export interface WikiFolder {
@@ -69,57 +67,6 @@ export interface UpdateWikiFolderRequest {
 
 export interface MoveWikiSourceRequest {
   folderId?: number | null;
-}
-
-export interface WikiGraphNode {
-  id: number;
-  label: string;
-  type: string;
-  summary?: string;
-  weight?: string;
-  sourceId?: number | null;
-  communityId?: number | null;
-}
-
-export interface WikiGraphEdge {
-  id: number;
-  fromNodeId: number;
-  toNodeId: number;
-  relation: string;
-  confidence?: string;
-  weight?: string;
-}
-
-export type WikiGraphStats = {
-  sources?: number;
-  nodes?: number;
-  edges?: number;
-  communities?: number;
-};
-
-export interface WikiCommunity {
-  id: number;
-  label: string;
-  summary?: string;
-  nodeCount: number;
-  cohesion?: string;
-}
-
-export interface WikiGraph {
-  stats?: WikiGraphStats;
-  nodes?: WikiGraphNode[];
-  edges?: WikiGraphEdge[];
-  communities?: WikiCommunity[];
-}
-
-export type WikiAnswerCitationsItem = { [key: string]: unknown };
-
-export type WikiAnswerNodesItem = { [key: string]: unknown };
-
-export interface WikiAnswer {
-  answer: string;
-  citations: WikiAnswerCitationsItem[];
-  nodes: WikiAnswerNodesItem[];
 }
 
 export interface HealthStatus {
