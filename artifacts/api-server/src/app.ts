@@ -26,6 +26,8 @@ import {
   parseTrustProxy,
   publicUploadGuard,
 } from "./lib/security";
+import { createRedisRateLimitStore, type RateLimitRedis } from "./lib/rateLimitStore";
+import { getSharedRedisClient } from "./lib/redisClient";
 import healthRouter from "./routes/health";
 import { createStripeWebhookRouter } from "./routes/billing";
 import router from "./routes";
@@ -74,6 +76,24 @@ if (shouldUseClerkMiddleware) {
 
 app.use(authMiddleware);
 
+// Distributed rate limiting: share the counter across Fargate tasks via Redis.
+// Without REDIS_URL we fall back to the default per-process MemoryStore (correct
+// for single-instance local dev) and warn so it is never silently relied on in
+// a horizontally-scaled deployment.
+const rateLimitStore = process.env.REDIS_URL
+  ? createRedisRateLimitStore({
+      getClient: async () => {
+        const pending = getSharedRedisClient();
+        return pending ? ((await pending) as unknown as RateLimitRedis) : null;
+      },
+    })
+  : undefined;
+if (!rateLimitStore) {
+  logger.warn(
+    "Rate limiter is using an in-memory store (REDIS_URL unset); the limit is per-process and not shared across instances",
+  );
+}
+
 app.use(
   "/api",
   rateLimit({
@@ -81,6 +101,7 @@ app.use(
     keyGenerator: getRateLimitKey,
     legacyHeaders: false,
     standardHeaders: true,
+    ...(rateLimitStore ? { store: rateLimitStore } : {}),
   }),
   router,
 );

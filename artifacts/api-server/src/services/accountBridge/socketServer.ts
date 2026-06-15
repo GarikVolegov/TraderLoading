@@ -1,11 +1,16 @@
 import type { IncomingMessage, Server } from "node:http";
 import type { Duplex } from "node:stream";
-import { WebSocket, WebSocketServer } from "ws";
+import { WebSocket } from "ws";
 import { createAccountBridgeRuntime, type AccountBridgeRuntime } from "./accountBridgeRuntime.js";
 import { accountBridgeRuntime } from "./accountBridgeRuntimeSingleton.js";
 import type { AccountBridgeConfig, AccountBridgeEvent } from "./types.js";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
 import { authorizeWebSocketUpgrade, type WebSocketSecurityOptions } from "../webSocketAuth.js";
+import {
+  canSend,
+  createControlWebSocketServer,
+  startHeartbeat,
+} from "../webSocketHeartbeat.js";
 
 type ClientMessage = {
   type?: string;
@@ -24,7 +29,7 @@ async function defaultRequireAccountBridgePro(auth: { userId: string }): Promise
 }
 
 function send(client: WebSocket, event: AccountBridgeEvent): void {
-  if (client.readyState !== WebSocket.OPEN) return;
+  if (!canSend(client)) return;
   client.send(JSON.stringify(event));
 }
 
@@ -47,7 +52,8 @@ export function attachAccountBridgeWebSocket(
   security: WebSocketSecurityOptions = {},
 ): AccountBridgeWebSocketServer {
   const service = isRuntime(config) ? config : createAccountBridgeRuntime(config);
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = createControlWebSocketServer();
+  const stopHeartbeat = startHeartbeat(wss);
   const socketSecurity: WebSocketSecurityOptions = {
     ...security,
     requireProAccess: security.requireProAccess ?? defaultRequireAccountBridgePro,
@@ -115,6 +121,7 @@ export function attachAccountBridgeWebSocket(
     service,
     async close(): Promise<void> {
       server.off("upgrade", onUpgrade);
+      stopHeartbeat();
       await service.stop();
       await closeWebSocketServer(wss);
     },

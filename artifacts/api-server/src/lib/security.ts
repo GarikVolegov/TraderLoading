@@ -6,6 +6,7 @@ type RateLimitKeyRequest = {
   socket?: {
     remoteAddress?: string;
   };
+  user?: { id?: string } | undefined;
 };
 type CspDirectives = {
   defaultSrc?: string[];
@@ -244,8 +245,13 @@ export function getRateLimitConfig(env: SecurityEnv = process.env): {
 }
 
 export function getRateLimitKey(req: RateLimitKeyRequest): string {
+  // Key authenticated traffic by user so clients behind a shared NAT/corporate
+  // proxy each get their own budget; fall back to IP for anonymous requests.
+  // Namespaced so a user id can never collide with an IP bucket.
+  const userId = req.user?.id;
+  if (userId) return `user:${userId}`;
   const address = req.ip ?? req.socket?.remoteAddress;
-  return address ? ipKeyGenerator(address) : "unknown";
+  return address ? `ip:${ipKeyGenerator(address)}` : "ip:unknown";
 }
 
 export function isAllowedUploadPath(rawPath: string): boolean {

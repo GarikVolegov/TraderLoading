@@ -1,4 +1,4 @@
-import { integer, numeric, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { index, integer, numeric, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 
 export const backtestSessionsTable = pgTable("backtest_sessions", {
   id: serial("id").primaryKey(),
@@ -9,7 +9,10 @@ export const backtestSessionsTable = pgTable("backtest_sessions", {
   notes: text("notes"),
   userId: text("user_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  // List a user's sessions newest-first (routes/backtest.ts).
+  index("backtest_sessions_user_created_idx").on(table.userId, table.createdAt),
+]);
 
 export const backtestTradesTable = pgTable("backtest_trades", {
   id: serial("id").primaryKey(),
@@ -26,7 +29,11 @@ export const backtestTradesTable = pgTable("backtest_trades", {
   tradeDate: text("trade_date").notNull(),
   userId: text("user_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  // Fetch trades for a session newest-first and speed the cascade delete on the
+  // session FK (Postgres does not auto-index foreign keys).
+  index("backtest_trades_session_created_idx").on(table.sessionId, table.createdAt),
+]);
 
 export type BacktestSession = typeof backtestSessionsTable.$inferSelect;
 export type BacktestTrade = typeof backtestTradesTable.$inferSelect;

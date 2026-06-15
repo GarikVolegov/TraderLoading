@@ -1,10 +1,15 @@
 import type { IncomingMessage, Server } from "node:http";
 import type { Duplex } from "node:stream";
-import { WebSocket, WebSocketServer } from "ws";
+import { WebSocket } from "ws";
 import { brokerHubRuntime, type BrokerHubRuntime } from "./runtime.js";
 import type { BrokerEvent } from "./types.js";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
 import { authorizeWebSocketUpgrade, type WebSocketAuthContext, type WebSocketSecurityOptions } from "../webSocketAuth.js";
+import {
+  canSend,
+  createControlWebSocketServer,
+  startHeartbeat,
+} from "../webSocketHeartbeat.js";
 
 interface ClientMessage {
   type?: string;
@@ -22,7 +27,7 @@ async function defaultRequireBrokerPro(auth: WebSocketAuthContext): Promise<bool
 }
 
 function send(client: WebSocket, event: BrokerEvent): void {
-  if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(event));
+  if (canSend(client)) client.send(JSON.stringify(event));
 }
 
 function eventProfileId(event: BrokerEvent): string | null {
@@ -44,7 +49,8 @@ export function attachBrokerHubWebSocket(
   runtime: BrokerHubRuntime = brokerHubRuntime,
   security: WebSocketSecurityOptions = {},
 ): BrokerHubWebSocketServer {
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = createControlWebSocketServer();
+  const stopHeartbeat = startHeartbeat(wss);
   const socketSecurity: WebSocketSecurityOptions = {
     ...security,
     requireProAccess: security.requireProAccess ?? defaultRequireBrokerPro,
@@ -139,6 +145,7 @@ export function attachBrokerHubWebSocket(
     async close(): Promise<void> {
       unsubscribe();
       server.off("upgrade", onUpgrade);
+      stopHeartbeat();
       await closeWebSocketServer(wss);
     },
   };

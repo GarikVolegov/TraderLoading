@@ -47,8 +47,9 @@ export const postCommentsTable = pgTable("post_comments", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [
-  index("post_comments_post_idx").on(t.postId),
-  index("post_comments_created_idx").on(t.createdAt),
+  // Comments are listed per post oldest-first: WHERE post_id ORDER BY created_at.
+  // The composite serves filter + sort directly for hot/popular posts.
+  index("post_comments_post_created_idx").on(t.postId, t.createdAt),
 ]);
 
 export type Follow = typeof followsTable.$inferSelect;

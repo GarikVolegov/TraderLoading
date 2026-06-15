@@ -11,6 +11,7 @@ import { newsHubRuntime } from "./services/newsHub/runtimeSingleton.js";
 import { attachNewsHubWebSocket } from "./services/newsHub/socketServer.js";
 import { attachNewsProviderSockets } from "./services/newsHub/providerSockets.js";
 import logger from "./lib/logger";
+import { closeSharedRedisClient } from "./lib/redisClient.js";
 import { captureError, flushObservability, initObservability } from "./lib/observability";
 
 initObservability();
@@ -101,6 +102,11 @@ async function shutdown(reason: string, exitCode = 0): Promise<void> {
     await closeDbPool();
   } catch (err) {
     logger.error({ err }, "Database pool shutdown failed");
+  }
+  try {
+    await closeSharedRedisClient();
+  } catch (err) {
+    logger.error({ err }, "Redis client shutdown failed");
   }
   clearTimeout(forceExit);
   logger.info({ reason }, "Graceful shutdown completed");
