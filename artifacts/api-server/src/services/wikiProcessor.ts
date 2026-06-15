@@ -13,6 +13,20 @@ const AUDIO_EXTS = new Set([".mp3", ".wav", ".m4a", ".ogg", ".webm"]);
 const VIDEO_EXTS = new Set([".mp4", ".mov", ".mkv", ".webm"]);
 const MAX_URL_BYTES = 4 * 1024 * 1024;
 
+// Uploads are buffered in memory (multer.memoryStorage) before being copied to
+// storage, so the per-file cap directly bounds peak RAM per request. At a few
+// concurrent uploads an unbounded cap is an OOM/DoS vector on a 2 GB task.
+// Default 50 MB; raise WIKI_MAX_UPLOAD_MB only if the task memory allows it.
+const DEFAULT_WIKI_UPLOAD_MB = 50;
+
+export function getWikiUploadLimitBytes(
+  env: Partial<Record<string, string>> = process.env,
+): number {
+  const raw = Number(env.WIKI_MAX_UPLOAD_MB);
+  const mb = Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_WIKI_UPLOAD_MB;
+  return Math.floor(mb * 1024 * 1024);
+}
+
 function extname(filename: string): string {
   const index = filename.lastIndexOf(".");
   return index >= 0 ? filename.slice(index).toLowerCase() : "";

@@ -71,6 +71,25 @@ Parameters:
     Type: String
     NoEcho: true
     Description: JSON with DATABASE_URL, CLERK_SECRET_KEY, BROKER_VAULT_KEY, VAPID keys, Stripe keys, and provider API keys.
+  IngestTaskCpu:
+    Type: String
+    Default: "1024"
+    AllowedValues: ["512", "1024", "2048", "4096"]
+    Description: CPU units for the candle warehouse ingestion task.
+  IngestTaskMemory:
+    Type: String
+    Default: "4096"
+    AllowedValues: ["1024", "2048", "3072", "4096", "8192"]
+    Description: Memory (MiB) for the ingestion task; the seed buffers ~one month of M1 bars per chunk.
+  IngestScheduleExpression:
+    Type: String
+    Default: "cron(0 2 * * ? *)"
+    Description: EventBridge Scheduler expression for the nightly tail (default 02:00 UTC).
+  IngestScheduleState:
+    Type: String
+    Default: ENABLED
+    AllowedValues: [ENABLED, DISABLED]
+    Description: Toggle the nightly tail schedule on or off.
 
 Conditions:
   HasAcmCertificate: !Not [!Equals [!Ref AcmCertificateArn, ""]]
@@ -559,6 +578,115 @@ Resources:
       OKActions:
         - !Ref AlarmTopic
 
+  # ─── Candle warehouse ingestion ───────────────────────────────────────────
+  # A standalone Fargate task (same image, different command) backfills/keeps the
+  # candle warehouse fresh. It runs in the private subnets and reaches Dukascopy/
+  # Binance via the same NAT egress the service already uses. NOTE: untested infra
+  # — review before deploying.
+  IngestTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${AppName}-ingest
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: !Ref IngestTaskCpu
+      Memory: !Ref IngestTaskMemory
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: ingest
+          Image: !Ref ContainerImage
+          Essential: true
+          # Default command is the nightly tail; the one-shot seed overrides this
+          # via `aws ecs run-task --overrides` (see the SeedTaskCommand output).
+          Command:
+            - node
+            - ./dist/ingest.cjs
+            - tail
+          Environment:
+            - Name: NODE_ENV
+              Value: production
+            - Name: APP_VERSION
+              Value: !Ref ContainerImage
+            - Name: CANDLE_WAREHOUSE
+              Value: "1"
+            - Name: PGSSLMODE
+              Value: require
+            - Name: PGPOOL_MAX
+              Value: "4"
+            - Name: PG_CONNECTION_TIMEOUT_MS
+              Value: "10000"
+            - Name: SENTRY_ENVIRONMENT
+              Value: production
+            - Name: SENTRY_DSN
+              Value: !Ref SentryDsn
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Sub "${AppSecret}:DATABASE_URL::"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ingest
+
+  IngestSchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: RunIngestTask
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ecs:RunTask
+                Resource: !Sub arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${AppName}-ingest:*
+                Condition:
+                  ArnEquals:
+                    ecs:cluster: !GetAtt Cluster.Arn
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt ExecutionRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: ecs-tasks.amazonaws.com
+
+  IngestTailSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub ${AppName}-ingest-tail
+      Description: Nightly candle warehouse tail ingestion.
+      State: !Ref IngestScheduleState
+      ScheduleExpression: !Ref IngestScheduleExpression
+      ScheduleExpressionTimezone: UTC
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt Cluster.Arn
+        RoleArn: !GetAtt IngestSchedulerRole.Arn
+        RetryPolicy:
+          MaximumRetryAttempts: 2
+        EcsParameters:
+          TaskDefinitionArn: !Ref IngestTaskDefinition
+          LaunchType: FARGATE
+          TaskCount: 1
+          NetworkConfiguration:
+            AwsvpcConfiguration:
+              AssignPublicIp: DISABLED
+              SecurityGroups:
+                - !Ref ServiceSecurityGroup
+              Subnets: !Ref PrivateSubnetIds
+
 Outputs:
   LoadBalancerDnsName:
     Description: Public DNS name for the application load balancer.
@@ -574,3 +702,13 @@ Outputs:
   AlarmTopicArn:
     Condition: HasAlarmEmail
     Value: !Ref AlarmTopic
+  IngestTaskDefinitionArn:
+    Description: Candle ingestion task definition (runs `tail` by default).
+    Value: !Ref IngestTaskDefinition
+  SeedTaskCommand:
+    Description: One-shot 5-year backfill — run once after deploy. Fill in <PRIVATE_SUBNET_IDS>.
+    Value: !Sub >-
+      aws ecs run-task --cluster ${Cluster}
+      --task-definition ${AppName}-ingest --launch-type FARGATE
+      --network-configuration "awsvpcConfiguration={subnets=[<PRIVATE_SUBNET_IDS>],securityGroups=[${ServiceSecurityGroup}],assignPublicIp=DISABLED}"
+      --overrides '{"containerOverrides":[{"name":"ingest","command":["node","./dist/ingest.cjs","seed","--years=5"]}]}'

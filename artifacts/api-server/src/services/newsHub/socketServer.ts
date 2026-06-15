@@ -1,9 +1,14 @@
 import type { IncomingMessage, Server } from "node:http";
 import type { Duplex } from "node:stream";
-import { WebSocket, WebSocketServer } from "ws";
+import { WebSocket } from "ws";
 import type { NewsEvent, NewsRefreshRequest } from "./types.js";
 import type { NewsHubRuntime } from "./runtime.js";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
+import {
+  canSend,
+  createControlWebSocketServer,
+  startHeartbeat,
+} from "../webSocketHeartbeat.js";
 
 type ClientMessage = {
   type?: string;
@@ -23,7 +28,7 @@ export interface NewsHubWebSocketServer {
 }
 
 function send(client: WebSocket, event: NewsEvent): void {
-  if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(event));
+  if (canSend(client)) client.send(JSON.stringify(event));
 }
 
 function parse(raw: WebSocket.RawData): ClientMessage | null {
@@ -66,7 +71,8 @@ function matchesArticle(subscription: ClientSubscription | undefined, event: Ext
 }
 
 export function attachNewsHubWebSocket(server: Server, runtime: NewsHubRuntime): NewsHubWebSocketServer {
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = createControlWebSocketServer();
+  const stopHeartbeat = startHeartbeat(wss);
   const subscriptions = new WeakMap<WebSocket, ClientSubscription>();
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "", "http://localhost");
@@ -119,6 +125,7 @@ export function attachNewsHubWebSocket(server: Server, runtime: NewsHubRuntime):
     async close(): Promise<void> {
       unsubscribe();
       server.off("upgrade", onUpgrade);
+      stopHeartbeat();
       await closeWebSocketServer(wss);
     },
   };

@@ -1,9 +1,9 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, voicePresenceTable, profileTable } from "@workspace/db";
-import { eq, and, desc, asc, sql, lt } from "drizzle-orm";
+import { eq, and, desc, asc, sql, lt, type SQL } from "drizzle-orm";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
 
@@ -41,7 +41,7 @@ const communityFileUpload = multer({
 
 const router: IRouter = Router();
 
-function requireAuth(req: any, res: any): string | null {
+function requireAuth(req: Request, res: Response): string | null {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return null; }
   return userId;
@@ -281,7 +281,7 @@ router.get("/community/channels/:channelId/messages", async (req, res) => {
       .limit(1);
     if (!membership) { res.status(403).json({ error: "Non sei membro di questa community" }); return; }
 
-    const conditions: any[] = [eq(communityMessagesTable.channelId, channelId)];
+    const conditions: SQL[] = [eq(communityMessagesTable.channelId, channelId)];
     if (cursor && !isNaN(cursor)) conditions.push(lt(communityMessagesTable.id, cursor));
 
     const messages = await db
@@ -468,14 +468,14 @@ router.get("/community/voice/:channelId/signals", async (req, res) => {
 });
 
 // ─── Upload file to channel ───────────────────────────────────────────────────
-router.post("/community/channels/:channelId/files", (req: any, res: any, next: any) => {
+router.post("/community/channels/:channelId/files", (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
-  communityFileUpload.single("file")(req, res, async (err: any) => {
+  communityFileUpload.single("file")(req, res, async (err) => {
     if (err) { res.status(400).json({ error: err.message ?? "Upload fallito" }); return; }
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
     try {
-      const channelId = parseInt(req.params.channelId);
+      const channelId = parseInt(String(req.params.channelId));
       const [channel] = await db.select().from(communityChannelsTable).where(eq(communityChannelsTable.id, channelId)).limit(1);
       if (!channel || channel.type !== "text") { res.status(400).json({ error: "Canale non valido" }); return; }
 

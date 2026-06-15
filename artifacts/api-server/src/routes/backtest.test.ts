@@ -81,4 +81,15 @@ assert.deepEqual(enriched[1].stats, {
 
 assert.match(backtestRoute, /res\.json\(attachBacktestSessionStats\(\[session\], \[\]\)\[0\]\)/);
 
+// ── Multi-tenant ownership (IDOR regression) ──
+// Trade reads/writes must be gated by session ownership, and trade deletes
+// scoped to the caller's own rows. Guard against silently dropping these.
+assert.match(backtestRoute, /async function userOwnsSession/);
+const tradesGet = backtestRoute.match(/router\.get\("\/backtest\/sessions\/:id\/trades"[\s\S]*?\n\}\);/)?.[0] ?? "";
+assert.match(tradesGet, /userOwnsSession\(userId, sessionId\)/, "GET trades must verify session ownership");
+const tradesPost = backtestRoute.match(/router\.post\("\/backtest\/sessions\/:id\/trades"[\s\S]*?\n\}\);/)?.[0] ?? "";
+assert.match(tradesPost, /userOwnsSession\(userId, sessionId\)/, "POST trades must verify session ownership");
+const tradeDelete = backtestRoute.match(/router\.delete\("\/backtest\/trades\/:id"[\s\S]*?\n\}\);/)?.[0] ?? "";
+assert.match(tradeDelete, /tradeUserWhere\(userId\)/, "DELETE trade must be scoped to the caller");
+
 console.log("backtest session stats checks passed");

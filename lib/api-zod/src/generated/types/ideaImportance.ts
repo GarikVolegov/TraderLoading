@@ -6,9 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type IdeaImportance =
-  | (typeof IdeaImportance)[keyof typeof IdeaImportance]
-  | null;
+export type IdeaImportance = (typeof IdeaImportance)[keyof typeof IdeaImportance] | null;
 
 export const IdeaImportance = {
   low: "low",

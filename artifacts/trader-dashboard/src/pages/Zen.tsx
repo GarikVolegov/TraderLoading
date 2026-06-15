@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Wind, Eye, BookOpen, Heart, Clock, Play, Pause, RotateCcw, ChevronRight } from "lucide-react";
+import { Eye, BookOpen, Heart, Clock, Play, Pause, RotateCcw, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MoodPerformanceInsight } from "@/components/MoodPerformanceInsight";
 
@@ -98,7 +98,7 @@ function BreathingExercise() {
               className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-card to-card/60 border border-border/50 flex flex-col items-center justify-center shadow-lg"
             >
               <span className={`text-base sm:text-lg font-bold ${config.color} transition-colors duration-500`}>
-                {t(`zen.breathing.${phase}` as any)}
+                {t(`zen.breathing.${phase}`)}
               </span>
               {isActive && (
                 <span className="text-2xl sm:text-3xl font-mono font-bold text-foreground mt-0.5">

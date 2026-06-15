@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetProfile } from "@workspace/api-client-react";
-import { X, Trophy, Lock, ExternalLink, Play, FileText, Presentation, Sparkles, ChevronRight } from "lucide-react";
+import { X, Trophy, ExternalLink, Play, FileText, Presentation, Sparkles, ChevronRight } from "lucide-react";
 import { getRewardsForMilestone, MILESTONES, type Reward, type RewardType } from "@/lib/rewardsLibrary";
 import { useLanguage } from "@/contexts/LanguageContext";
 

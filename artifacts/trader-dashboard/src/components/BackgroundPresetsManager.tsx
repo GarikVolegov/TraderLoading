@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Image, Upload, X, Plus } from "lucide-react";
+import { Image, X, Plus } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useBackground, DEFAULT_BACKGROUND_PRESETS, type BackgroundPreset } from "@/contexts/BackgroundContext";

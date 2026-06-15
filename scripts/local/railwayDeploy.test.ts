@@ -31,7 +31,9 @@ const railway = readJson<{
 }>("railway.json");
 assert.equal(railway.build?.builder, "RAILPACK");
 assert.equal(railway.build?.buildCommand, "pnpm run build:railway");
-assert.equal(railway.deploy?.preDeployCommand, "pnpm run db:push");
+// Hand-authored SQL migrations are the production path (drizzle-kit migrate).
+// db:push would destructively sync and can't represent pgvector/partitioned tables.
+assert.equal(railway.deploy?.preDeployCommand, "pnpm run db:migrate");
 assert.equal(railway.deploy?.startCommand, "pnpm run start:railway");
 assert.equal(railway.deploy?.healthcheckPath, "/api/healthz");
 assert.equal(railway.deploy?.restartPolicyType, "ALWAYS");

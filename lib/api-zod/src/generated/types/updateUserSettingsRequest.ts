@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TradingSessionConfig } from "./tradingSessionConfig";
+import type { UpdateUserSettingsRequestAlarmConfigs } from "./updateUserSettingsRequestAlarmConfigs";
 import type { UpdateUserSettingsRequestBackgroundPresetsItem } from "./updateUserSettingsRequestBackgroundPresetsItem";
 import type { UpdateUserSettingsRequestBackgroundType } from "./updateUserSettingsRequestBackgroundType";
 import type { UpdateUserSettingsRequestFontChoice } from "./updateUserSettingsRequestFontChoice";
@@ -33,4 +34,5 @@ export interface UpdateUserSettingsRequest {
   onboardingTutorialCompletedAt?: Date | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UpdateUserSettingsRequestBackgroundPresetsItem[] | null;
+  alarmConfigs?: UpdateUserSettingsRequestAlarmConfigs;
 }

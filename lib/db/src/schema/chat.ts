@@ -1,4 +1,4 @@
-import { index, pgTable, serial, text, timestamp, uniqueIndex, integer } from "drizzle-orm/pg-core";
+import { index, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const friendshipsTable = pgTable("friendships", {
   id: serial("id").primaryKey(),
@@ -21,7 +21,9 @@ export const chatMessagesTable = pgTable("chat_messages", {
   read: text("read").notNull().default("false"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
-  index("idx_chat_sender_receiver").on(table.senderId, table.receiverId),
+  // Conversation history is keyset-paginated: WHERE sender/receiver AND id < cursor
+  // ORDER BY id DESC LIMIT n. Trailing id serves the range + sort in one scan.
+  index("idx_chat_sender_receiver_id").on(table.senderId, table.receiverId, table.id),
   index("idx_chat_receiver_read").on(table.receiverId, table.read),
 ]);
 

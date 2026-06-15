@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type BacktestTradeResult =
-  (typeof BacktestTradeResult)[keyof typeof BacktestTradeResult];
+export type BacktestTradeResult = (typeof BacktestTradeResult)[keyof typeof BacktestTradeResult];
 
 export const BacktestTradeResult = {
   win: "win",

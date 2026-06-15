@@ -8,7 +8,6 @@ import {
   type IChartApi,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
-  type CandlestickData,
   type Time,
   ColorType,
   CrosshairMode,
@@ -18,7 +17,7 @@ import {
   Play, Pause, SkipForward, SkipBack, RotateCcw,
   TrendingUp, TrendingDown, X, ChevronRight,
   Eye, EyeOff, Calendar, ChevronLeft, MousePointer2,
-  Wallet,
+  Wallet, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +44,9 @@ import {
 } from "./chartAnalysisTypes";
 import { createDrawing } from "./chartAnalysisPersistence";
 import { calculateDailyVwap, hasEstimatedVolume, type AnalysisCandle } from "./chartIndicators";
+import { ema, sma } from "./chartIndicatorEngine";
+import MtfContextChart from "./MtfContextChart";
+import { getContextTimeframe } from "./chartMtf";
 import { uiText } from "@/contexts/LanguageContext";
 
 const START_BALANCE = 10_000;
@@ -125,6 +127,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
   const slLineRef = useRef<ISeriesApi<"Line"> | null>(null);
   const tpLineRef = useRef<ISeriesApi<"Line"> | null>(null);
   const vwapLineRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const maSeriesRef = useRef<Map<string, ISeriesApi<"Line">>>(new Map());
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const volSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
 
@@ -156,6 +159,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
   const [showTradePanel, setShowTradePanel] = useState(false);
   const [showTrades, setShowTrades] = useState(true);
   const [showAnalysisPanel, setShowAnalysisPanel] = useState(false);
+  const [showMtf, setShowMtf] = useState(false);
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
   const [analysisState, setAnalysisState] = useState<ChartAnalysisState>(
     restoredState?.analysisState ?? DEFAULT_CHART_ANALYSIS_STATE,
@@ -304,6 +308,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
 
   useEffect(() => {
     if (!chartContainerRef.current || loading) return;
+    const maSeries = maSeriesRef.current;
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -414,6 +419,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
       vwapLineRef.current = null;
       markersRef.current = null;
       volSeriesRef.current = null;
+      maSeries.clear();
     };
   }, [loading]);
 
@@ -494,8 +500,46 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
         vwapLineRef.current.setData([]);
       }
     }
+
+    // Moving-average overlays: dynamic line series keyed by id, added/removed as
+    // the user toggles them.
+    const chart = chartRef.current;
+    const maSeries = maSeriesRef.current;
+    if (chart) {
+      const closes = visibleCandles.map((candle) => candle.close);
+      const activeIds = new Set<string>();
+      for (const ma of analysisState.indicators.movingAverages) {
+        if (!ma.enabled) continue;
+        activeIds.add(ma.id);
+        let series = maSeries.get(ma.id);
+        if (!series) {
+          series = chart.addSeries(LineSeries, {
+            lineWidth: 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+          });
+          maSeries.set(ma.id, series);
+        }
+        series.applyOptions({ color: ma.color });
+        const values = ma.type === "ema" ? ema(closes, ma.period) : sma(closes, ma.period);
+        const data: { time: Time; value: number }[] = [];
+        for (let i = 0; i < values.length; i++) {
+          const value = values[i];
+          if (value != null) data.push({ time: visibleCandles[i].time, value });
+        }
+        series.setData(data);
+      }
+      for (const [id, series] of maSeries) {
+        if (!activeIds.has(id)) {
+          chart.removeSeries(series);
+          maSeries.delete(id);
+        }
+      }
+    }
+
     chartRef.current?.timeScale().fitContent();
-  }, [visibleCandles, trades, openTrade, showTrades, symbol, allVolumes, startIndex, revealedCount, analysisState.indicators.vwap]);
+  }, [visibleCandles, trades, openTrade, showTrades, symbol, allVolumes, startIndex, revealedCount, analysisState.indicators.vwap, analysisState.indicators.movingAverages]);
 
   useEffect(() => {
     const trade = openTradeRef.current;
@@ -757,6 +801,18 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
     setActiveInterval(tf);
   };
 
+  const toggleMovingAverage = (id: string) => {
+    setAnalysisState((prev) => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        movingAverages: prev.indicators.movingAverages.map((ma) =>
+          ma.id === id ? { ...ma, enabled: !ma.enabled } : ma,
+        ),
+      },
+    }));
+  };
+
   const handleApplyDate = (date: string) => {
     const next = resolveReplayDateAvailability(date, dataRange);
     setDateWarning(next.warning);
@@ -873,6 +929,25 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
                   ? <Eye className="w-3.5 h-3.5 text-primary" />
                   : <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />}
               </button>
+              <button
+                onClick={() => setShowMtf((prev) => !prev)}
+                className="p-1 rounded hover:bg-white/5"
+                title={showMtf ? "Nascondi contesto" : `Mostra contesto ${getContextTimeframe(activeInterval)}`}
+              >
+                <Layers className={`w-3.5 h-3.5 ${showMtf ? "text-primary" : "text-muted-foreground"}`} />
+              </button>
+              {analysisState.indicators.movingAverages.map((ma) => (
+                <button
+                  key={ma.id}
+                  onClick={() => toggleMovingAverage(ma.id)}
+                  className={`px-1.5 py-1 rounded text-[10px] font-bold transition-all hover:bg-white/5 ${ma.enabled ? "" : "text-muted-foreground"}`}
+                  style={ma.enabled ? { color: ma.color } : undefined}
+                  title={`${ma.type.toUpperCase()} ${ma.period}`}
+                >
+                  {ma.type.toUpperCase()}
+                  {ma.period}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -1022,6 +1097,25 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
             style={{ visibility: loading || error ? "hidden" : "visible" }}
           />
         </div>
+
+        {showMtf && !loading && !error && (
+          <div className="px-3 pt-2 border-t border-border/30">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Contesto {getContextTimeframe(activeInterval)}
+            </span>
+            <MtfContextChart
+              symbol={symbol}
+              htfInterval={getContextTimeframe(activeInterval)}
+              cursorCloseTime={
+                replayPointCloseTime ??
+                resolveReplayPointCloseTime(visibleCandles[visibleCandles.length - 1], activeInterval)
+              }
+              cursorPrice={currentPrice}
+              startDate={startDate || undefined}
+              height={180}
+            />
+          </div>
+        )}
 
         {!loading && !error && (
           <div className="px-3 py-2 border-t border-border/30 space-y-2">

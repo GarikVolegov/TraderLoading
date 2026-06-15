@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
+import { readSettingsFeatureSource } from "./settingsFeatureSource";
 
-const settings = fs.readFileSync("src/pages/Settings.tsx", "utf8");
+const settings = readSettingsFeatureSource();
 
 assert.match(settings, /WEEKDAY_OPTIONS/);
 assert.match(settings, /Giorni chiusura/);

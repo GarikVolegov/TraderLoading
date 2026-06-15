@@ -5,8 +5,7 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
-export type WikiSourceStatus =
-  (typeof WikiSourceStatus)[keyof typeof WikiSourceStatus];
+export type WikiSourceStatus = (typeof WikiSourceStatus)[keyof typeof WikiSourceStatus];
 
 export const WikiSourceStatus = {
   queued: "queued",
@@ -25,6 +24,7 @@ export interface WikiSource {
   fileUrl?: string | null;
   fileName?: string | null;
   mimeType?: string | null;
+  folderId?: number | null;
   createdAt?: string;
 }
 
@@ -44,6 +44,52 @@ export interface QueryWikiRequest {
   question: string;
 }
 
+export interface WikiFolder {
+  id: number;
+  name: string;
+  parentId?: number | null;
+  color?: string | null;
+  position: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateWikiFolderRequest {
+  name: string;
+  parentId?: number | null;
+  color?: string;
+}
+
+export interface UpdateWikiFolderRequest {
+  name?: string;
+  parentId?: number | null;
+  color?: string | null;
+  position?: number;
+}
+
+export interface MoveWikiSourceRequest {
+  folderId?: number | null;
+}
+
+export interface WikiGraphNode {
+  id: number;
+  label: string;
+  type: string;
+  summary?: string;
+  weight?: string;
+  sourceId?: number | null;
+  communityId?: number | null;
+}
+
+export interface WikiGraphEdge {
+  id: number;
+  fromNodeId: number;
+  toNodeId: number;
+  relation: string;
+  confidence?: string;
+  weight?: string;
+}
+
 export type WikiGraphStats = {
   sources?: number;
   nodes?: number;
@@ -51,17 +97,19 @@ export type WikiGraphStats = {
   communities?: number;
 };
 
-export type WikiGraphNodesItem = { [key: string]: unknown };
-
-export type WikiGraphEdgesItem = { [key: string]: unknown };
-
-export type WikiGraphCommunitiesItem = { [key: string]: unknown };
+export interface WikiCommunity {
+  id: number;
+  label: string;
+  summary?: string;
+  nodeCount: number;
+  cohesion?: string;
+}
 
 export interface WikiGraph {
   stats?: WikiGraphStats;
-  nodes?: WikiGraphNodesItem[];
-  edges?: WikiGraphEdgesItem[];
-  communities?: WikiGraphCommunitiesItem[];
+  nodes?: WikiGraphNode[];
+  edges?: WikiGraphEdge[];
+  communities?: WikiCommunity[];
 }
 
 export type WikiAnswerCitationsItem = { [key: string]: unknown };
@@ -78,16 +126,14 @@ export interface HealthStatus {
   status: string;
 }
 
-export type BillingStatusPlan =
-  (typeof BillingStatusPlan)[keyof typeof BillingStatusPlan];
+export type BillingStatusPlan = (typeof BillingStatusPlan)[keyof typeof BillingStatusPlan];
 
 export const BillingStatusPlan = {
   free: "free",
   pro: "pro",
 } as const;
 
-export type BillingStatusStatus =
-  (typeof BillingStatusStatus)[keyof typeof BillingStatusStatus];
+export type BillingStatusStatus = (typeof BillingStatusStatus)[keyof typeof BillingStatusStatus];
 
 export const BillingStatusStatus = {
   free: "free",
@@ -308,8 +354,7 @@ export interface JournalImage {
   url: string;
 }
 
-export type JournalEntryResult =
-  (typeof JournalEntryResult)[keyof typeof JournalEntryResult];
+export type JournalEntryResult = (typeof JournalEntryResult)[keyof typeof JournalEntryResult];
 
 export const JournalEntryResult = {
   win: "win",
@@ -389,9 +434,7 @@ export const IdeaCadence = {
   monthly: "monthly",
 } as const;
 
-export type IdeaImportance =
-  | (typeof IdeaImportance)[keyof typeof IdeaImportance]
-  | null;
+export type IdeaImportance = (typeof IdeaImportance)[keyof typeof IdeaImportance] | null;
 
 export const IdeaImportance = {
   low: "low",
@@ -572,8 +615,7 @@ export const UserSettingsFontChoice = {
   "ibm-plex": "ibm-plex",
 } as const;
 
-export type UserSettingsLanguage =
-  (typeof UserSettingsLanguage)[keyof typeof UserSettingsLanguage];
+export type UserSettingsLanguage = (typeof UserSettingsLanguage)[keyof typeof UserSettingsLanguage];
 
 export const UserSettingsLanguage = {
   it: "it",
@@ -589,6 +631,8 @@ export type UserSettingsBackgroundPresetsItem = {
   url: string;
   isDefault: boolean;
 };
+
+export type UserSettingsAlarmConfigs = { [key: string]: unknown } | null;
 
 export interface UserSettings {
   id: number;
@@ -613,6 +657,7 @@ export interface UserSettings {
   onboardingTutorialCompletedAt?: string | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UserSettingsBackgroundPresetsItem[] | null;
+  alarmConfigs?: UserSettingsAlarmConfigs;
 }
 
 export type UpdateUserSettingsRequestBackgroundType =
@@ -652,6 +697,8 @@ export type UpdateUserSettingsRequestBackgroundPresetsItem = {
   isDefault: boolean;
 };
 
+export type UpdateUserSettingsRequestAlarmConfigs = { [key: string]: unknown } | null;
+
 export interface UpdateUserSettingsRequest {
   backgroundUrl?: string | null;
   backgroundType?: UpdateUserSettingsRequestBackgroundType;
@@ -674,6 +721,7 @@ export interface UpdateUserSettingsRequest {
   onboardingTutorialCompletedAt?: string | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UpdateUserSettingsRequestBackgroundPresetsItem[] | null;
+  alarmConfigs?: UpdateUserSettingsRequestAlarmConfigs;
 }
 
 export interface UploadBackgroundResponse {
@@ -759,13 +807,9 @@ export interface SaveAccountKeyBackupBody {
   privateKeyJwk: SaveAccountKeyBackupBodyPrivateKeyJwk;
 }
 
-export type AccountKeyBackupResponsePublicKeyJwk = {
-  [key: string]: unknown;
-} | null;
+export type AccountKeyBackupResponsePublicKeyJwk = { [key: string]: unknown } | null;
 
-export type AccountKeyBackupResponsePrivateKeyJwk = {
-  [key: string]: unknown;
-} | null;
+export type AccountKeyBackupResponsePrivateKeyJwk = { [key: string]: unknown } | null;
 
 export interface AccountKeyBackupResponse {
   userId: string;
@@ -822,8 +866,7 @@ export interface GetLeaderboardResponseItem {
   xp: number;
 }
 
-export type CalendarEventImpact =
-  (typeof CalendarEventImpact)[keyof typeof CalendarEventImpact];
+export type CalendarEventImpact = (typeof CalendarEventImpact)[keyof typeof CalendarEventImpact];
 
 export const CalendarEventImpact = {
   High: "High",
@@ -879,8 +922,7 @@ export const BacktestTradeDirection = {
   sell: "sell",
 } as const;
 
-export type BacktestTradeResult =
-  (typeof BacktestTradeResult)[keyof typeof BacktestTradeResult];
+export type BacktestTradeResult = (typeof BacktestTradeResult)[keyof typeof BacktestTradeResult];
 
 export const BacktestTradeResult = {
   win: "win",

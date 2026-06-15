@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type CalendarEventImpact =
-  (typeof CalendarEventImpact)[keyof typeof CalendarEventImpact];
+export type CalendarEventImpact = (typeof CalendarEventImpact)[keyof typeof CalendarEventImpact];
 
 export const CalendarEventImpact = {
   High: "High",

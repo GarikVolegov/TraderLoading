@@ -24,7 +24,7 @@ export function ScheduledCallRuntime() {
   }, []);
 
   useEffect(() => {
-    const calls = parseScheduledCalls((settings as any)?.alarmConfigs);
+    const calls = parseScheduledCalls(settings?.alarmConfigs);
     const check = () => {
       const now = new Date();
       const minuteKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()} ${now.getHours()}:${now.getMinutes()}`;
@@ -40,7 +40,7 @@ export function ScheduledCallRuntime() {
     check();
     const timer = setInterval(check, 10_000);
     return () => clearInterval(timer);
-  }, [(settings as any)?.alarmConfigs]);
+  }, [settings?.alarmConfigs]);
 
   useEffect(() => {
     return () => {

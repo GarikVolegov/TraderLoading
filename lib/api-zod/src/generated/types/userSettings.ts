@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TradingSessionConfig } from "./tradingSessionConfig";
+import type { UserSettingsAlarmConfigs } from "./userSettingsAlarmConfigs";
 import type { UserSettingsBackgroundPresetsItem } from "./userSettingsBackgroundPresetsItem";
 import type { UserSettingsBackgroundType } from "./userSettingsBackgroundType";
 import type { UserSettingsFontChoice } from "./userSettingsFontChoice";
@@ -34,4 +35,5 @@ export interface UserSettings {
   onboardingTutorialCompletedAt?: Date | null;
   selectedPairs?: string[] | null;
   backgroundPresets?: UserSettingsBackgroundPresetsItem[] | null;
+  alarmConfigs?: UserSettingsAlarmConfigs;
 }

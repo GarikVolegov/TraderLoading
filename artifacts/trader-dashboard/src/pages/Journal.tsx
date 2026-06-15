@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths, addWeeks, addMonths, isWithinInterval } from "date-fns";
+import { format, parseISO, addWeeks, isWithinInterval } from "date-fns";
 import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
@@ -23,6 +23,7 @@ import {
   getGetIdeasQueryKey,
   type JournalEntry,
   type Idea,
+  type CreateIdeaRequest,
 } from "@workspace/api-client-react";
 import { downloadICS } from "@/utils/icsExport";
 import { useLanguage, useDateLocale, uiText } from "@/contexts/LanguageContext";
@@ -381,7 +382,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
   const handleAdd = async () => {
     if (!newContent.trim()) return;
     try {
-      const data: any = { type, content: newContent.trim() };
+      const data: CreateIdeaRequest = { type, content: newContent.trim() };
       if (type === "goal") {
         data.importance = newImportance;
         if (newDeadline) data.deadlineDate = newDeadline;

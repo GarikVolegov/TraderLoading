@@ -14,17 +14,12 @@ export const ListWikiSourcesResponseItem = zod.object({
   id: zod.number(),
   kind: zod.string(),
   title: zod.string(),
-  status: zod.enum([
-    "queued",
-    "processing",
-    "ready",
-    "error",
-    "pending_transcription",
-  ]),
+  status: zod.enum(["queued", "processing", "ready", "error", "pending_transcription"]),
   error: zod.string().nullish(),
   fileUrl: zod.string().nullish(),
   fileName: zod.string().nullish(),
   mimeType: zod.string().nullish(),
+  folderId: zod.number().nullish(),
   createdAt: zod.date().optional(),
 });
 export const ListWikiSourcesResponse = zod.array(ListWikiSourcesResponseItem);
@@ -63,6 +58,84 @@ export const DeleteWikiSourceParams = zod.object({
 });
 
 /**
+ * @summary Move a wiki source into a folder (or to the root)
+ */
+export const MoveWikiSourceParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MoveWikiSourceBody = zod.object({
+  folderId: zod.number().nullish(),
+});
+
+export const MoveWikiSourceResponse = zod.object({
+  id: zod.number(),
+  kind: zod.string(),
+  title: zod.string(),
+  status: zod.enum(["queued", "processing", "ready", "error", "pending_transcription"]),
+  error: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  fileName: zod.string().nullish(),
+  mimeType: zod.string().nullish(),
+  folderId: zod.number().nullish(),
+  createdAt: zod.date().optional(),
+});
+
+/**
+ * @summary List private wiki folders
+ */
+export const ListWikiFoldersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  parentId: zod.number().nullish(),
+  color: zod.string().nullish(),
+  position: zod.number(),
+  createdAt: zod.date().optional(),
+  updatedAt: zod.date().optional(),
+});
+export const ListWikiFoldersResponse = zod.array(ListWikiFoldersResponseItem);
+
+/**
+ * @summary Create a wiki folder
+ */
+export const CreateWikiFolderBody = zod.object({
+  name: zod.string(),
+  parentId: zod.number().nullish(),
+  color: zod.string().optional(),
+});
+
+/**
+ * @summary Rename, recolor or re-parent a wiki folder
+ */
+export const UpdateWikiFolderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateWikiFolderBody = zod.object({
+  name: zod.string().optional(),
+  parentId: zod.number().nullish(),
+  color: zod.string().nullish(),
+  position: zod.number().optional(),
+});
+
+export const UpdateWikiFolderResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  parentId: zod.number().nullish(),
+  color: zod.string().nullish(),
+  position: zod.number(),
+  createdAt: zod.date().optional(),
+  updatedAt: zod.date().optional(),
+});
+
+/**
+ * @summary Delete a wiki folder (sources and child folders move to root)
+ */
+export const DeleteWikiFolderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Get private wiki graph summary
  */
 export const GetWikiGraphResponse = zod.object({
@@ -74,10 +147,55 @@ export const GetWikiGraphResponse = zod.object({
       communities: zod.number().optional(),
     })
     .optional(),
-  nodes: zod.array(zod.object({}).passthrough()).optional(),
-  edges: zod.array(zod.object({}).passthrough()).optional(),
-  communities: zod.array(zod.object({}).passthrough()).optional(),
+  nodes: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+        type: zod.string(),
+        summary: zod.string().optional(),
+        weight: zod.string().optional(),
+        sourceId: zod.number().nullish(),
+        communityId: zod.number().nullish(),
+      }),
+    )
+    .optional(),
+  edges: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        fromNodeId: zod.number(),
+        toNodeId: zod.number(),
+        relation: zod.string(),
+        confidence: zod.string().optional(),
+        weight: zod.string().optional(),
+      }),
+    )
+    .optional(),
+  communities: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+        summary: zod.string().optional(),
+        nodeCount: zod.number(),
+        cohesion: zod.string().optional(),
+      }),
+    )
+    .optional(),
 });
+
+/**
+ * @summary List private wiki graph communities
+ */
+export const ListWikiCommunitiesResponseItem = zod.object({
+  id: zod.number(),
+  label: zod.string(),
+  summary: zod.string().optional(),
+  nodeCount: zod.number(),
+  cohesion: zod.string().optional(),
+});
+export const ListWikiCommunitiesResponse = zod.array(ListWikiCommunitiesResponseItem);
 
 /**
  * @summary Ask the private wiki a question
@@ -152,9 +270,7 @@ export const GetBillingStatusResponse = zod.object({
   source: zod
     .string()
     .nullable()
-    .describe(
-      "Subscription source, for example Stripe checkout or manual admin override.",
-    ),
+    .describe("Subscription source, for example Stripe checkout or manual admin override."),
   manualOverride: zod.boolean(),
   currentPeriodEnd: zod.string().nullable(),
   cancelAtPeriodEnd: zod.boolean(),
@@ -196,9 +312,7 @@ export const CancelBillingSubscriptionResponse = zod.object({
   source: zod
     .string()
     .nullable()
-    .describe(
-      "Subscription source, for example Stripe checkout or manual admin override.",
-    ),
+    .describe("Subscription source, for example Stripe checkout or manual admin override."),
   manualOverride: zod.boolean(),
   currentPeriodEnd: zod.string().nullable(),
   cancelAtPeriodEnd: zod.boolean(),
@@ -233,9 +347,7 @@ export const ResumeBillingSubscriptionResponse = zod.object({
   source: zod
     .string()
     .nullable()
-    .describe(
-      "Subscription source, for example Stripe checkout or manual admin override.",
-    ),
+    .describe("Subscription source, for example Stripe checkout or manual admin override."),
   manualOverride: zod.boolean(),
   currentPeriodEnd: zod.string().nullable(),
   cancelAtPeriodEnd: zod.boolean(),
@@ -271,10 +383,7 @@ export const GetBillingInvoicesResponse = zod.object({
  * @summary Get the currently authenticated user
  */
 export const GetCurrentAuthUserHeader = zod.object({
-  Authorization: zod
-    .string()
-    .optional()
-    .describe("Opaque session token — `Bearer <sid>`."),
+  Authorization: zod.string().optional().describe("Opaque session token — `Bearer <sid>`."),
 });
 
 export const GetCurrentAuthUserResponse = zod.object({
@@ -310,10 +419,7 @@ export const HandleBrowserLoginCallbackQueryParams = zod.object({
  * @summary Clear the session and begin OIDC logout
  */
 export const LogoutBrowserSessionHeader = zod.object({
-  Authorization: zod
-    .string()
-    .optional()
-    .describe("Opaque session token — `Bearer <sid>`."),
+  Authorization: zod.string().optional().describe("Opaque session token — `Bearer <sid>`."),
 });
 
 /**
@@ -336,10 +442,7 @@ export const ExchangeMobileAuthorizationCodeResponse = zod.object({
  * @summary Delete a mobile session token
  */
 export const LogoutMobileSessionHeader = zod.object({
-  Authorization: zod
-    .string()
-    .optional()
-    .describe("Opaque session token — `Bearer <sid>`."),
+  Authorization: zod.string().optional().describe("Opaque session token — `Bearer <sid>`."),
 });
 
 export const LogoutMobileSessionResponse = zod.object({
@@ -431,9 +534,7 @@ export const GetMissionTemplatesResponseItem = zod.object({
   xpReward: zod.number(),
   createdAt: zod.string().optional(),
 });
-export const GetMissionTemplatesResponse = zod.array(
-  GetMissionTemplatesResponseItem,
-);
+export const GetMissionTemplatesResponse = zod.array(GetMissionTemplatesResponseItem);
 
 /**
  * @summary Create a mission template
@@ -638,9 +739,7 @@ export const GetJournalEntriesResponseItem = zod.object({
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
-export const GetJournalEntriesResponse = zod.array(
-  GetJournalEntriesResponseItem,
-);
+export const GetJournalEntriesResponse = zod.array(GetJournalEntriesResponseItem);
 
 /**
  * @summary Create a new journal entry
@@ -762,10 +861,7 @@ export const GetIdeasResponseItem = zod.object({
   cadence: zod.enum(["daily", "weekly", "monthly"]).nullish(),
   recurrence: zod.boolean(),
   createdAt: zod.string(),
-  deadlineDate: zod
-    .string()
-    .nullish()
-    .describe("YYYY-MM-DD deadline date for goals"),
+  deadlineDate: zod.string().nullish().describe("YYYY-MM-DD deadline date for goals"),
   importance: zod.enum(["low", "medium", "high"]).nullish(),
 });
 export const GetIdeasResponse = zod.array(GetIdeasResponseItem);
@@ -776,10 +872,7 @@ export const GetIdeasResponse = zod.array(GetIdeasResponseItem);
 export const CreateIdeaBody = zod.object({
   type: zod.enum(["idea", "goal"]),
   content: zod.string(),
-  deadlineDate: zod
-    .string()
-    .nullish()
-    .describe("YYYY-MM-DD deadline date for goals"),
+  deadlineDate: zod.string().nullish().describe("YYYY-MM-DD deadline date for goals"),
   importance: zod.enum(["low", "medium", "high"]).nullish(),
 });
 
@@ -796,10 +889,7 @@ export const UpdateIdeaBody = zod.object({
   reminderTime: zod.string().nullish(),
   cadence: zod.enum(["daily", "weekly", "monthly"]).nullish(),
   recurrence: zod.boolean().optional(),
-  deadlineDate: zod
-    .string()
-    .nullish()
-    .describe("YYYY-MM-DD deadline date for goals"),
+  deadlineDate: zod.string().nullish().describe("YYYY-MM-DD deadline date for goals"),
   importance: zod.enum(["low", "medium", "high"]).nullish(),
 });
 
@@ -812,10 +902,7 @@ export const UpdateIdeaResponse = zod.object({
   cadence: zod.enum(["daily", "weekly", "monthly"]).nullish(),
   recurrence: zod.boolean(),
   createdAt: zod.string(),
-  deadlineDate: zod
-    .string()
-    .nullish()
-    .describe("YYYY-MM-DD deadline date for goals"),
+  deadlineDate: zod.string().nullish().describe("YYYY-MM-DD deadline date for goals"),
   importance: zod.enum(["low", "medium", "high"]).nullish(),
 });
 
@@ -901,10 +988,7 @@ export const GetMacroNewsResponse = zod.object({
  * @summary Get weekly economic calendar events
  */
 export const GetEconomicCalendarQueryParams = zod.object({
-  nocache: zod
-    .enum(["1"])
-    .optional()
-    .describe("Set to 1 to bypass server cache"),
+  nocache: zod.enum(["1"]).optional().describe("Set to 1 to bypass server cache"),
 });
 
 export const GetEconomicCalendarResponseItem = zod.object({
@@ -915,9 +999,7 @@ export const GetEconomicCalendarResponseItem = zod.object({
   forecast: zod.string().nullish(),
   previous: zod.string().nullish(),
 });
-export const GetEconomicCalendarResponse = zod.array(
-  GetEconomicCalendarResponseItem,
-);
+export const GetEconomicCalendarResponse = zod.array(GetEconomicCalendarResponseItem);
 
 /**
  * @summary Get all backtest sessions
@@ -941,9 +1023,7 @@ export const GetBacktestSessionsResponseItem = zod.object({
     totalPips: zod.string(),
   }),
 });
-export const GetBacktestSessionsResponse = zod.array(
-  GetBacktestSessionsResponseItem,
-);
+export const GetBacktestSessionsResponse = zod.array(GetBacktestSessionsResponseItem);
 
 /**
  * @summary Create a backtest session
@@ -1010,9 +1090,7 @@ export const GetBacktestTradesResponseItem = zod.object({
   userId: zod.string().nullish(),
   createdAt: zod.string(),
 });
-export const GetBacktestTradesResponse = zod.array(
-  GetBacktestTradesResponseItem,
-);
+export const GetBacktestTradesResponse = zod.array(GetBacktestTradesResponseItem);
 
 /**
  * @summary Add a trade to a backtest session
@@ -1077,13 +1155,7 @@ export const GetUserSettingsResponse = zod.object({
   id: zod.number(),
   backgroundUrl: zod.string().nullish(),
   backgroundType: zod.enum(["default", "custom"]),
-  fontChoice: zod.enum([
-    "inter",
-    "jetbrains",
-    "roboto",
-    "space-grotesk",
-    "ibm-plex",
-  ]),
+  fontChoice: zod.enum(["inter", "jetbrains", "roboto", "space-grotesk", "ibm-plex"]),
   backgroundDarkness: zod
     .number()
     .min(getUserSettingsResponseBackgroundDarknessMin)
@@ -1094,19 +1166,13 @@ export const GetUserSettingsResponse = zod.object({
       zod.object({
         id: zod.string(),
         name: zod.string(),
-        openUTC: zod
-          .string()
-          .describe("Legacy field name. Stores local HH:MM time, not UTC."),
-        closeUTC: zod
-          .string()
-          .describe("Legacy field name. Stores local HH:MM time, not UTC."),
+        openUTC: zod.string().describe("Legacy field name. Stores local HH:MM time, not UTC."),
+        closeUTC: zod.string().describe("Legacy field name. Stores local HH:MM time, not UTC."),
         color: zod.string(),
         kind: zod
           .enum(["trading", "market_closed"])
           .optional()
-          .describe(
-            "Session kind. Missing means trading for backward compatibility.",
-          ),
+          .describe("Session kind. Missing means trading for backward compatibility."),
         days: zod
           .array(
             zod
@@ -1140,6 +1206,7 @@ export const GetUserSettingsResponse = zod.object({
       }),
     )
     .nullish(),
+  alarmConfigs: zod.record(zod.string(), zod.unknown()).nullish(),
 });
 
 /**
@@ -1156,9 +1223,7 @@ export const updateUserSettingsBodyPreMacroMinutesMin = 0;
 export const UpdateUserSettingsBody = zod.object({
   backgroundUrl: zod.string().nullish(),
   backgroundType: zod.enum(["default", "custom"]).optional(),
-  fontChoice: zod
-    .enum(["inter", "jetbrains", "roboto", "space-grotesk", "ibm-plex"])
-    .optional(),
+  fontChoice: zod.enum(["inter", "jetbrains", "roboto", "space-grotesk", "ibm-plex"]).optional(),
   backgroundDarkness: zod
     .number()
     .min(updateUserSettingsBodyBackgroundDarknessMin)
@@ -1170,19 +1235,13 @@ export const UpdateUserSettingsBody = zod.object({
       zod.object({
         id: zod.string(),
         name: zod.string(),
-        openUTC: zod
-          .string()
-          .describe("Legacy field name. Stores local HH:MM time, not UTC."),
-        closeUTC: zod
-          .string()
-          .describe("Legacy field name. Stores local HH:MM time, not UTC."),
+        openUTC: zod.string().describe("Legacy field name. Stores local HH:MM time, not UTC."),
+        closeUTC: zod.string().describe("Legacy field name. Stores local HH:MM time, not UTC."),
         color: zod.string(),
         kind: zod
           .enum(["trading", "market_closed"])
           .optional()
-          .describe(
-            "Session kind. Missing means trading for backward compatibility.",
-          ),
+          .describe("Session kind. Missing means trading for backward compatibility."),
         days: zod
           .array(
             zod
@@ -1202,10 +1261,7 @@ export const UpdateUserSettingsBody = zod.object({
   calendarCurrencies: zod.array(zod.string()).nullish(),
   calendarImpacts: zod.array(zod.string()).nullish(),
   dailyReminderTime: zod.string().nullish(),
-  preMacroMinutes: zod
-    .number()
-    .min(updateUserSettingsBodyPreMacroMinutesMin)
-    .optional(),
+  preMacroMinutes: zod.number().min(updateUserSettingsBodyPreMacroMinutesMin).optional(),
   maxDailyLoss: zod.number().nullish(),
   onboardingTutorialCompletedAt: zod.date().nullish(),
   selectedPairs: zod.array(zod.string()).nullish(),
@@ -1219,6 +1275,7 @@ export const UpdateUserSettingsBody = zod.object({
       }),
     )
     .nullish(),
+  alarmConfigs: zod.record(zod.string(), zod.unknown()).nullish(),
 });
 
 export const updateUserSettingsResponseBackgroundDarknessMin = 0;
@@ -1233,13 +1290,7 @@ export const UpdateUserSettingsResponse = zod.object({
   id: zod.number(),
   backgroundUrl: zod.string().nullish(),
   backgroundType: zod.enum(["default", "custom"]),
-  fontChoice: zod.enum([
-    "inter",
-    "jetbrains",
-    "roboto",
-    "space-grotesk",
-    "ibm-plex",
-  ]),
+  fontChoice: zod.enum(["inter", "jetbrains", "roboto", "space-grotesk", "ibm-plex"]),
   backgroundDarkness: zod
     .number()
     .min(updateUserSettingsResponseBackgroundDarknessMin)
@@ -1250,19 +1301,13 @@ export const UpdateUserSettingsResponse = zod.object({
       zod.object({
         id: zod.string(),
         name: zod.string(),
-        openUTC: zod
-          .string()
-          .describe("Legacy field name. Stores local HH:MM time, not UTC."),
-        closeUTC: zod
-          .string()
-          .describe("Legacy field name. Stores local HH:MM time, not UTC."),
+        openUTC: zod.string().describe("Legacy field name. Stores local HH:MM time, not UTC."),
+        closeUTC: zod.string().describe("Legacy field name. Stores local HH:MM time, not UTC."),
         color: zod.string(),
         kind: zod
           .enum(["trading", "market_closed"])
           .optional()
-          .describe(
-            "Session kind. Missing means trading for backward compatibility.",
-          ),
+          .describe("Session kind. Missing means trading for backward compatibility."),
         days: zod
           .array(
             zod
@@ -1282,9 +1327,7 @@ export const UpdateUserSettingsResponse = zod.object({
   calendarCurrencies: zod.array(zod.string()).nullish(),
   calendarImpacts: zod.array(zod.string()).nullish(),
   dailyReminderTime: zod.string().nullish(),
-  preMacroMinutes: zod
-    .number()
-    .min(updateUserSettingsResponsePreMacroMinutesMin),
+  preMacroMinutes: zod.number().min(updateUserSettingsResponsePreMacroMinutesMin),
   maxDailyLoss: zod.number().nullish(),
   onboardingTutorialCompletedAt: zod.date().nullish(),
   selectedPairs: zod.array(zod.string()).nullish(),
@@ -1298,6 +1341,7 @@ export const UpdateUserSettingsResponse = zod.object({
       }),
     )
     .nullish(),
+  alarmConfigs: zod.record(zod.string(), zod.unknown()).nullish(),
 });
 
 /**
@@ -1351,9 +1395,7 @@ export const GetPendingFriendRequestsResponseItem = zod.object({
   senderName: zod.string().nullish(),
   senderAvatar: zod.string().nullish(),
 });
-export const GetPendingFriendRequestsResponse = zod.array(
-  GetPendingFriendRequestsResponseItem,
-);
+export const GetPendingFriendRequestsResponse = zod.array(GetPendingFriendRequestsResponseItem);
 
 /**
  * @summary Accept or reject a friend request

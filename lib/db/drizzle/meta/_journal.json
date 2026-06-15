@@ -43,6 +43,34 @@
       "when": 1781193600000,
       "tag": "0005_brain_ai_wiki",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781884800000,
+      "tag": "0006_candle_warehouse",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781971200000,
+      "tag": "0007_wiki_vector_folders",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782057600000,
+      "tag": "0008_backtest_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782144000000,
+      "tag": "0009_chat_feed_composite_indexes",
+      "breakpoints": true
     }
   ]
 }

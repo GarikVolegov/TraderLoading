@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { readSettingsFeatureSource } from "../pages/settingsFeatureSource";
 
 const settingsEditor = fs.readFileSync("src/components/ScheduledCallsSettings.tsx", "utf8");
 const overlay = fs.readFileSync("src/components/ScheduledCallOverlay.tsx", "utf8");
 const runtime = fs.readFileSync("src/components/ScheduledCallRuntime.tsx", "utf8");
-const settingsPage = fs.readFileSync("src/pages/Settings.tsx", "utf8");
+const settingsPage = readSettingsFeatureSource();
 const app = fs.readFileSync("src/App.tsx", "utf8");
 
 assert.match(settingsEditor, /Chiamate programmate/);

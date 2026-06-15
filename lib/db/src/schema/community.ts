@@ -47,7 +47,9 @@ export const communityMessagesTable = pgTable("community_messages", {
   imageUrl: text("image_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [
-  index("community_messages_channel_idx").on(t.channelId),
+  // Channel chat is keyset-paginated: WHERE channel_id AND id < cursor
+  // ORDER BY id DESC LIMIT n. The composite serves filter + range + sort.
+  index("community_messages_channel_id_idx").on(t.channelId, t.id),
   index("community_messages_created_idx").on(t.createdAt),
 ]);
 

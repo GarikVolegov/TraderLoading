@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { readSettingsFeatureSource } from "../pages/settingsFeatureSource";
 
 const panel = readFileSync(new URL("./BillingSubscriptionPanel.tsx", import.meta.url), "utf8");
-const settings = readFileSync(new URL("../pages/Settings.tsx", import.meta.url), "utf8");
+const settings = readSettingsFeatureSource();
 const i18nDict = readFileSync(new URL("../lib/i18n.ts", import.meta.url), "utf8");
 
 // La copy vive nel catalogo i18n: il componente deve referenziare la chiave e

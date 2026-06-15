@@ -1,7 +1,25 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
 
-const source = fs.readFileSync("src/pages/Chat.tsx", "utf8");
+// The chat/social surface used to live entirely in pages/Chat.tsx. It has been
+// split into a feature folder (components/social/**). These checks assert that
+// the behaviour/copy still exists somewhere in that feature, regardless of the
+// exact file it now lives in — so the test survives further decomposition.
+function readFeatureSource(): string {
+  const files = ["src/pages/Chat.tsx"];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry.name)) files.push(full);
+    }
+  };
+  walk("src/components/social");
+  return files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
+}
+
+const source = readFeatureSource();
 const socialRoute = fs.readFileSync("../api-server/src/routes/social.ts", "utf8");
 
 assert.match(source, /useSearchUsers/);

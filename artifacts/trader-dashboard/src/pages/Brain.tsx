@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDropzone } from "react-dropzone";
-import { motion } from "framer-motion";
 import {
   BrainCircuit, Sparkles, TrendingUp, TrendingDown, MinusCircle,
   ThumbsUp, ThumbsDown, Loader2, Save, Plus, Trash2, Power, Radar,

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, UserPlus, UserMinus, UserCheck, Heart, Lock, Loader2, User } from "lucide-react";

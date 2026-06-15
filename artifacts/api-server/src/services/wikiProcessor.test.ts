@@ -9,7 +9,26 @@ const {
   createPendingTranscriptionText,
   extractOfficeText,
   validateWikiUploadContent,
+  getWikiUploadLimitBytes,
 } = await import("./wikiProcessor.js");
+
+// ── Upload size cap (bounds peak memory for buffered uploads) ──
+assert.equal(getWikiUploadLimitBytes({}), 50 * 1024 * 1024, "default is 50 MB");
+assert.equal(
+  getWikiUploadLimitBytes({ WIKI_MAX_UPLOAD_MB: "25" }),
+  25 * 1024 * 1024,
+  "override is honoured",
+);
+assert.equal(
+  getWikiUploadLimitBytes({ WIKI_MAX_UPLOAD_MB: "-5" }),
+  50 * 1024 * 1024,
+  "invalid override falls back to default",
+);
+assert.equal(
+  getWikiUploadLimitBytes({ WIKI_MAX_UPLOAD_MB: "nope" }),
+  50 * 1024 * 1024,
+  "non-numeric override falls back to default",
+);
 
 function createStoredZip(entries: Array<{ name: string; content: string }>): Buffer {
   const chunks: Buffer[] = [];

@@ -1,10 +1,10 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { db, friendshipsTable, profileTable } from "@workspace/db";
 import { eq, or, and, sql, ilike, inArray } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-function requireAuth(req: any, res: any): string | null {
+function requireAuth(req: Request, res: Response): string | null {
   const userId = req.user?.id;
   if (!userId) {
     res.status(401).json({ error: "Autenticazione richiesta" });

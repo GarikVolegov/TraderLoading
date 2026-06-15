@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type JournalEntryResult =
-  (typeof JournalEntryResult)[keyof typeof JournalEntryResult];
+export type JournalEntryResult = (typeof JournalEntryResult)[keyof typeof JournalEntryResult];
 
 export const JournalEntryResult = {
   win: "win",

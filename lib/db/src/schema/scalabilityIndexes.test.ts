@@ -29,4 +29,18 @@ assert.match(brainSource, /index\("brain_graph_edges_user_strategy_from_idx"\)\.
 const signalsSource = readSchema("./signals.ts");
 assert.match(signalsSource, /index\("signals_created_idx"\)\.on\(t\.createdAt\)/);
 
+const backtestSource = readSchema("./backtest.ts");
+assert.match(backtestSource, /index\("backtest_sessions_user_created_idx"\)\.on\(table\.userId, table\.createdAt\)/);
+assert.match(backtestSource, /index\("backtest_trades_session_created_idx"\)\.on\(table\.sessionId, table\.createdAt\)/);
+
+// Keyset-pagination composites for high-traffic chat/feed reads.
+const chatSource = readSchema("./chat.ts");
+assert.match(chatSource, /index\("idx_chat_sender_receiver_id"\)\.on\(table\.senderId, table\.receiverId, table\.id\)/);
+
+const communitySource = readSchema("./community.ts");
+assert.match(communitySource, /index\("community_messages_channel_id_idx"\)\.on\(t\.channelId, t\.id\)/);
+
+const socialSource = readSchema("./social.ts");
+assert.match(socialSource, /index\("post_comments_post_created_idx"\)\.on\(t\.postId, t\.createdAt\)/);
+
 console.log("database scalability index checks passed");

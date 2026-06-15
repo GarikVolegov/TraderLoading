@@ -124,12 +124,21 @@ assert.deepEqual(getRateLimitConfig({ NODE_ENV: "development" }), {
 });
 assert.equal(
   getRateLimitKey({ socket: { remoteAddress: "127.0.0.1" } }),
-  "127.0.0.1",
+  "ip:127.0.0.1",
 );
-assert.equal(getRateLimitKey({}), "unknown");
+assert.equal(getRateLimitKey({}), "ip:unknown");
+// Authenticated traffic is bucketed per user, not per (possibly shared) IP.
+assert.equal(
+  getRateLimitKey({ user: { id: "user_123" }, ip: "10.0.0.1" }),
+  "user:user_123",
+);
 
 const appSource = readFileSync(new URL("../app.ts", import.meta.url), "utf8");
 assert.match(appSource, /keyGenerator:\s*getRateLimitKey/);
+// The limiter must use the Redis-backed store so the limit is shared across
+// horizontally-scaled instances.
+assert.match(appSource, /createRedisRateLimitStore/);
+assert.match(appSource, /store:\s*rateLimitStore/);
 
 assert.equal(isAllowedUploadPath("/post-images/post-1.png"), true);
 assert.equal(isAllowedUploadPath("/bg-1.png"), true);

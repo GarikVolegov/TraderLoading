@@ -130,8 +130,9 @@ export async function sendPushToUser(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           pushPayload,
         );
-      } catch (err: any) {
-        if (err.statusCode === 410 || err.statusCode === 404) {
+      } catch (err) {
+        const statusCode = (err as { statusCode?: number }).statusCode;
+        if (statusCode === 410 || statusCode === 404) {
           await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.id, sub.id));
         }
       }

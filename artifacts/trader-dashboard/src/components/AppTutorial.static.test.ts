@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { DICT, SUPPORTED_LANGUAGES } from "@/lib/i18n";
+import { readSettingsFeatureSource } from "../pages/settingsFeatureSource";
 
 const appSource = fs.readFileSync("src/App.tsx", "utf8");
-const settingsSource = fs.readFileSync("src/pages/Settings.tsx", "utf8");
+const settingsSource = readSettingsFeatureSource();
 
 assert.match(appSource, /import \{ AppTutorialWrapper \} from "\.\/components\/AppTutorialWrapper"/);
 assert.match(appSource, /<PairOnboardingWrapper \/>\s*<AppTutorialWrapper \/>/);

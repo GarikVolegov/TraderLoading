@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same ref cancels the in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # The frontend build hard-fails without a real Clerk key by design
+      # (guards against shipping a blank screen). CI only needs to prove the
+      # bundle compiles, so build the explicit preview bundle.
+      ALLOW_MISSING_CLERK_KEY: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the pinned version from package.json#packageManager (pnpm@9.12.0).
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Fails the build if the committed generated client drifts from the
+      # OpenAPI spec — keeps generated code reproducible and in sync.
+      - name: Verify codegen is up to date
+        run: |
+          pnpm codegen
+          git diff --exit-code -- lib/api-zod/src/generated lib/api-client-react/src/generated
+
+      # Runs orval codegen, then typechecks libs + every artifact.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Blocking gate. Errors always fail; warnings are ratcheted at the current
+      # count (39) via lint:ci so they can only go down, never up. Lower the
+      # number as warnings are burned down.
+      - name: Lint
+        run: pnpm lint:ci
+
+      - name: Test
+        run: pnpm test
+
+      # Codegen already ran in Typecheck, so build the packages directly to
+      # avoid a second typecheck pass.
+      - name: Build
+        run: pnpm -r --if-present run build

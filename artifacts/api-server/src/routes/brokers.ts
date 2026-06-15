@@ -28,7 +28,6 @@ import type {
   BrokerOrder,
   BrokerPosition,
   BrokerSnapshot,
-  ConnectorRoute,
 } from "../services/brokerHub/types.js";
 
 function message(error: unknown): string {

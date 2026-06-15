@@ -30,6 +30,22 @@ function userWhere(userId: string | null) {
   return userId ? eq(backtestSessionsTable.userId, userId) : isNull(backtestSessionsTable.userId);
 }
 
+function tradeUserWhere(userId: string | null) {
+  return userId ? eq(backtestTradesTable.userId, userId) : isNull(backtestTradesTable.userId);
+}
+
+// Ownership gate: a user may only read/write trades of sessions they own.
+// Without this, any Pro user could read/inject/delete another user's trades by
+// iterating session/trade ids (IDOR).
+async function userOwnsSession(userId: string | null, sessionId: number): Promise<boolean> {
+  const [row] = await db
+    .select({ id: backtestSessionsTable.id })
+    .from(backtestSessionsTable)
+    .where(and(eq(backtestSessionsTable.id, sessionId), userWhere(userId)))
+    .limit(1);
+  return Boolean(row);
+}
+
 function toNumber(value: string | number | null | undefined): number {
   if (typeof value === "number") return value;
   return parseFloat(value ?? "0");
@@ -128,7 +144,10 @@ router.delete("/backtest/sessions/:id", async (req, res) => {
 
 router.get("/backtest/sessions/:id/trades", async (req, res) => {
   if (!(await requireProFeature(req, res, "backtest"))) return;
+  const userId = getUserId(req);
   const sessionId = parseInt(req.params.id);
+  if (Number.isNaN(sessionId)) { res.status(400).json({ error: "Invalid session id" }); return; }
+  if (!(await userOwnsSession(userId, sessionId))) { res.status(404).json({ error: "Session not found" }); return; }
   const trades = await db.select().from(backtestTradesTable)
     .where(eq(backtestTradesTable.sessionId, sessionId))
     .orderBy(desc(backtestTradesTable.createdAt));
@@ -139,6 +158,8 @@ router.post("/backtest/sessions/:id/trades", async (req, res) => {
   if (!(await requireProFeature(req, res, "backtest"))) return;
   const userId = getUserId(req);
   const sessionId = parseInt(req.params.id);
+  if (Number.isNaN(sessionId)) { res.status(400).json({ error: "Invalid session id" }); return; }
+  if (!(await userOwnsSession(userId, sessionId))) { res.status(404).json({ error: "Session not found" }); return; }
   const { direction, entryPrice, exitPrice, stopLoss, takeProfit, lotSize, result, pips, notes, tradeDate } = req.body;
   if (!direction || !entryPrice || !exitPrice || !result || !tradeDate) {
     res.status(400).json({ error: "direction, entryPrice, exitPrice, result, and tradeDate are required" });
@@ -155,8 +176,15 @@ router.post("/backtest/sessions/:id/trades", async (req, res) => {
 
 router.delete("/backtest/trades/:id", async (req, res) => {
   if (!(await requireProFeature(req, res, "backtest"))) return;
+  const userId = getUserId(req);
   const id = parseInt(req.params.id);
-  await db.delete(backtestTradesTable).where(eq(backtestTradesTable.id, id));
+  if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid trade id" }); return; }
+  // Scope the delete to the caller's own trades so a user can't delete others'.
+  const deleted = await db
+    .delete(backtestTradesTable)
+    .where(and(eq(backtestTradesTable.id, id), tradeUserWhere(userId)))
+    .returning({ id: backtestTradesTable.id });
+  if (!deleted.length) { res.status(404).json({ error: "Trade not found" }); return; }
   res.json({ ok: true });
 });
 

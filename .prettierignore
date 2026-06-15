@@ -1,0 +1,19 @@
+# Build output & deps
+**/dist/
+**/node_modules/
+*.tsbuildinfo
+
+# Generated code — owned by orval/drizzle, never hand-format
+lib/api-client-react/src/generated/
+lib/api-zod/src/generated/
+lib/db/drizzle/
+
+# Lockfiles & data
+pnpm-lock.yaml
+.local-postgres/
+.local-logs/
+artifacts/api-server/uploads/
+
+# Vendored / external
+.superpowers/
+.agents/
