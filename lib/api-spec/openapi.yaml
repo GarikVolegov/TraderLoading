@@ -135,6 +135,99 @@ paths:
       responses:
         "200":
           description: Deleted
+    patch:
+      operationId: moveWikiSource
+      tags: [wiki]
+      summary: Move a wiki source into a folder (or to the root)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoveWikiSourceRequest"
+      responses:
+        "200":
+          description: Updated source
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiSource"
+
+  /wiki/folders:
+    get:
+      operationId: listWikiFolders
+      tags: [wiki]
+      summary: List private wiki folders
+      responses:
+        "200":
+          description: Wiki folders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WikiFolder"
+    post:
+      operationId: createWikiFolder
+      tags: [wiki]
+      summary: Create a wiki folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWikiFolderRequest"
+      responses:
+        "201":
+          description: Created folder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiFolder"
+
+  /wiki/folders/{id}:
+    patch:
+      operationId: updateWikiFolder
+      tags: [wiki]
+      summary: Rename, recolor or re-parent a wiki folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWikiFolderRequest"
+      responses:
+        "200":
+          description: Updated folder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiFolder"
+    delete:
+      operationId: deleteWikiFolder
+      tags: [wiki]
+      summary: Delete a wiki folder (sources and child folders move to root)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
 
   /wiki/graph:
     get:
@@ -157,6 +250,12 @@ paths:
       responses:
         "200":
           description: Communities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WikiCommunity"
 
   /wiki/query:
     post:
@@ -1678,6 +1777,9 @@ components:
         mimeType:
           type: string
           nullable: true
+        folderId:
+          type: integer
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1716,6 +1818,100 @@ components:
           type: string
       required: [question]
 
+    WikiFolder:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        parentId:
+          type: integer
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        position:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, name, position]
+
+    CreateWikiFolderRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        parentId:
+          type: integer
+          nullable: true
+        color:
+          type: string
+      required: [name]
+
+    UpdateWikiFolderRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        parentId:
+          type: integer
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        position:
+          type: integer
+
+    MoveWikiSourceRequest:
+      type: object
+      properties:
+        folderId:
+          type: integer
+          nullable: true
+
+    WikiGraphNode:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        type:
+          type: string
+        summary:
+          type: string
+        weight:
+          type: string
+        sourceId:
+          type: integer
+          nullable: true
+        communityId:
+          type: integer
+          nullable: true
+      required: [id, label, type]
+
+    WikiGraphEdge:
+      type: object
+      properties:
+        id:
+          type: integer
+        fromNodeId:
+          type: integer
+        toNodeId:
+          type: integer
+        relation:
+          type: string
+        confidence:
+          type: string
+        weight:
+          type: string
+      required: [id, fromNodeId, toNodeId, relation]
+
     WikiGraph:
       type: object
       properties:
@@ -1733,15 +1929,30 @@ components:
         nodes:
           type: array
           items:
-            type: object
+            $ref: "#/components/schemas/WikiGraphNode"
         edges:
           type: array
           items:
-            type: object
+            $ref: "#/components/schemas/WikiGraphEdge"
         communities:
           type: array
           items:
-            type: object
+            $ref: "#/components/schemas/WikiCommunity"
+
+    WikiCommunity:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        summary:
+          type: string
+        nodeCount:
+          type: integer
+        cohesion:
+          type: string
+      required: [id, label, nodeCount]
 
     WikiAnswer:
       type: object

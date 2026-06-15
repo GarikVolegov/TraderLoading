@@ -19,6 +19,7 @@ export const ListWikiSourcesResponseItem = zod.object({
   fileUrl: zod.string().nullish(),
   fileName: zod.string().nullish(),
   mimeType: zod.string().nullish(),
+  folderId: zod.number().nullish(),
   createdAt: zod.date().optional(),
 });
 export const ListWikiSourcesResponse = zod.array(ListWikiSourcesResponseItem);
@@ -57,6 +58,84 @@ export const DeleteWikiSourceParams = zod.object({
 });
 
 /**
+ * @summary Move a wiki source into a folder (or to the root)
+ */
+export const MoveWikiSourceParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MoveWikiSourceBody = zod.object({
+  folderId: zod.number().nullish(),
+});
+
+export const MoveWikiSourceResponse = zod.object({
+  id: zod.number(),
+  kind: zod.string(),
+  title: zod.string(),
+  status: zod.enum(["queued", "processing", "ready", "error", "pending_transcription"]),
+  error: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  fileName: zod.string().nullish(),
+  mimeType: zod.string().nullish(),
+  folderId: zod.number().nullish(),
+  createdAt: zod.date().optional(),
+});
+
+/**
+ * @summary List private wiki folders
+ */
+export const ListWikiFoldersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  parentId: zod.number().nullish(),
+  color: zod.string().nullish(),
+  position: zod.number(),
+  createdAt: zod.date().optional(),
+  updatedAt: zod.date().optional(),
+});
+export const ListWikiFoldersResponse = zod.array(ListWikiFoldersResponseItem);
+
+/**
+ * @summary Create a wiki folder
+ */
+export const CreateWikiFolderBody = zod.object({
+  name: zod.string(),
+  parentId: zod.number().nullish(),
+  color: zod.string().optional(),
+});
+
+/**
+ * @summary Rename, recolor or re-parent a wiki folder
+ */
+export const UpdateWikiFolderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateWikiFolderBody = zod.object({
+  name: zod.string().optional(),
+  parentId: zod.number().nullish(),
+  color: zod.string().nullish(),
+  position: zod.number().optional(),
+});
+
+export const UpdateWikiFolderResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  parentId: zod.number().nullish(),
+  color: zod.string().nullish(),
+  position: zod.number(),
+  createdAt: zod.date().optional(),
+  updatedAt: zod.date().optional(),
+});
+
+/**
+ * @summary Delete a wiki folder (sources and child folders move to root)
+ */
+export const DeleteWikiFolderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Get private wiki graph summary
  */
 export const GetWikiGraphResponse = zod.object({
@@ -68,10 +147,55 @@ export const GetWikiGraphResponse = zod.object({
       communities: zod.number().optional(),
     })
     .optional(),
-  nodes: zod.array(zod.object({}).passthrough()).optional(),
-  edges: zod.array(zod.object({}).passthrough()).optional(),
-  communities: zod.array(zod.object({}).passthrough()).optional(),
+  nodes: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+        type: zod.string(),
+        summary: zod.string().optional(),
+        weight: zod.string().optional(),
+        sourceId: zod.number().nullish(),
+        communityId: zod.number().nullish(),
+      }),
+    )
+    .optional(),
+  edges: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        fromNodeId: zod.number(),
+        toNodeId: zod.number(),
+        relation: zod.string(),
+        confidence: zod.string().optional(),
+        weight: zod.string().optional(),
+      }),
+    )
+    .optional(),
+  communities: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+        summary: zod.string().optional(),
+        nodeCount: zod.number(),
+        cohesion: zod.string().optional(),
+      }),
+    )
+    .optional(),
 });
+
+/**
+ * @summary List private wiki graph communities
+ */
+export const ListWikiCommunitiesResponseItem = zod.object({
+  id: zod.number(),
+  label: zod.string(),
+  summary: zod.string().optional(),
+  nodeCount: zod.number(),
+  cohesion: zod.string().optional(),
+});
+export const ListWikiCommunitiesResponse = zod.array(ListWikiCommunitiesResponseItem);
 
 /**
  * @summary Ask the private wiki a question

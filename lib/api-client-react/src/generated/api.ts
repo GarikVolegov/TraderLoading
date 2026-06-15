@@ -42,6 +42,7 @@ import type {
   CreateJournalEntryRequest,
   CreateMissionTemplateRequest,
   CreateQuoteRequest,
+  CreateWikiFolderRequest,
   CreateWikiTextSourceRequest,
   CreateWikiUrlSourceRequest,
   DeleteBacktestSession200,
@@ -64,6 +65,7 @@ import type {
   MissionTemplate,
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
+  MoveWikiSourceRequest,
   NewsResponse,
   PaymentRequiredError,
   PendingFriendRequest,
@@ -83,6 +85,7 @@ import type {
   UpdateJournalEntryRequest,
   UpdateProfileRequest,
   UpdateUserSettingsRequest,
+  UpdateWikiFolderRequest,
   UploadBackgroundBody,
   UploadBackgroundResponse,
   UploadImageResponse,
@@ -93,6 +96,8 @@ import type {
   UserSearchResult,
   UserSettings,
   WikiAnswer,
+  WikiCommunity,
+  WikiFolder,
   WikiGraph,
   WikiSource,
 } from "./api.schemas";
@@ -491,6 +496,385 @@ export const useDeleteWikiSource = <TError = ErrorType<unknown>, TContext = unkn
 };
 
 /**
+ * @summary Move a wiki source into a folder (or to the root)
+ */
+export const getMoveWikiSourceUrl = (id: number) => {
+  return `/api/wiki/sources/${id}`;
+};
+
+export const moveWikiSource = async (
+  id: number,
+  moveWikiSourceRequest: MoveWikiSourceRequest,
+  options?: RequestInit,
+): Promise<WikiSource> => {
+  return customFetch<WikiSource>(getMoveWikiSourceUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(moveWikiSourceRequest),
+  });
+};
+
+export const getMoveWikiSourceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof moveWikiSource>>,
+    TError,
+    { id: number; data: BodyType<MoveWikiSourceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof moveWikiSource>>,
+  TError,
+  { id: number; data: BodyType<MoveWikiSourceRequest> },
+  TContext
+> => {
+  const mutationKey = ["moveWikiSource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof moveWikiSource>>,
+    { id: number; data: BodyType<MoveWikiSourceRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return moveWikiSource(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MoveWikiSourceMutationResult = NonNullable<Awaited<ReturnType<typeof moveWikiSource>>>;
+export type MoveWikiSourceMutationBody = BodyType<MoveWikiSourceRequest>;
+export type MoveWikiSourceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Move a wiki source into a folder (or to the root)
+ */
+export const useMoveWikiSource = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof moveWikiSource>>,
+    TError,
+    { id: number; data: BodyType<MoveWikiSourceRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof moveWikiSource>>,
+  TError,
+  { id: number; data: BodyType<MoveWikiSourceRequest> },
+  TContext
+> => {
+  return useMutation(getMoveWikiSourceMutationOptions(options));
+};
+
+/**
+ * @summary List private wiki folders
+ */
+export const getListWikiFoldersUrl = () => {
+  return `/api/wiki/folders`;
+};
+
+export const listWikiFolders = async (options?: RequestInit): Promise<WikiFolder[]> => {
+  return customFetch<WikiFolder[]>(getListWikiFoldersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListWikiFoldersQueryKey = () => {
+  return [`/api/wiki/folders`] as const;
+};
+
+export const getListWikiFoldersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWikiFolders>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listWikiFolders>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWikiFoldersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listWikiFolders>>> = ({ signal }) =>
+    listWikiFolders({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listWikiFolders>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListWikiFoldersQueryResult = NonNullable<Awaited<ReturnType<typeof listWikiFolders>>>;
+export type ListWikiFoldersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List private wiki folders
+ */
+
+export function useListWikiFolders<
+  TData = Awaited<ReturnType<typeof listWikiFolders>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listWikiFolders>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListWikiFoldersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a wiki folder
+ */
+export const getCreateWikiFolderUrl = () => {
+  return `/api/wiki/folders`;
+};
+
+export const createWikiFolder = async (
+  createWikiFolderRequest: CreateWikiFolderRequest,
+  options?: RequestInit,
+): Promise<WikiFolder> => {
+  return customFetch<WikiFolder>(getCreateWikiFolderUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createWikiFolderRequest),
+  });
+};
+
+export const getCreateWikiFolderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWikiFolder>>,
+    TError,
+    { data: BodyType<CreateWikiFolderRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createWikiFolder>>,
+  TError,
+  { data: BodyType<CreateWikiFolderRequest> },
+  TContext
+> => {
+  const mutationKey = ["createWikiFolder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createWikiFolder>>,
+    { data: BodyType<CreateWikiFolderRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createWikiFolder(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateWikiFolderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createWikiFolder>>
+>;
+export type CreateWikiFolderMutationBody = BodyType<CreateWikiFolderRequest>;
+export type CreateWikiFolderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a wiki folder
+ */
+export const useCreateWikiFolder = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWikiFolder>>,
+    TError,
+    { data: BodyType<CreateWikiFolderRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createWikiFolder>>,
+  TError,
+  { data: BodyType<CreateWikiFolderRequest> },
+  TContext
+> => {
+  return useMutation(getCreateWikiFolderMutationOptions(options));
+};
+
+/**
+ * @summary Rename, recolor or re-parent a wiki folder
+ */
+export const getUpdateWikiFolderUrl = (id: number) => {
+  return `/api/wiki/folders/${id}`;
+};
+
+export const updateWikiFolder = async (
+  id: number,
+  updateWikiFolderRequest: UpdateWikiFolderRequest,
+  options?: RequestInit,
+): Promise<WikiFolder> => {
+  return customFetch<WikiFolder>(getUpdateWikiFolderUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateWikiFolderRequest),
+  });
+};
+
+export const getUpdateWikiFolderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateWikiFolder>>,
+    TError,
+    { id: number; data: BodyType<UpdateWikiFolderRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateWikiFolder>>,
+  TError,
+  { id: number; data: BodyType<UpdateWikiFolderRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateWikiFolder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateWikiFolder>>,
+    { id: number; data: BodyType<UpdateWikiFolderRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateWikiFolder(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateWikiFolderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateWikiFolder>>
+>;
+export type UpdateWikiFolderMutationBody = BodyType<UpdateWikiFolderRequest>;
+export type UpdateWikiFolderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Rename, recolor or re-parent a wiki folder
+ */
+export const useUpdateWikiFolder = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateWikiFolder>>,
+    TError,
+    { id: number; data: BodyType<UpdateWikiFolderRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateWikiFolder>>,
+  TError,
+  { id: number; data: BodyType<UpdateWikiFolderRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateWikiFolderMutationOptions(options));
+};
+
+/**
+ * @summary Delete a wiki folder (sources and child folders move to root)
+ */
+export const getDeleteWikiFolderUrl = (id: number) => {
+  return `/api/wiki/folders/${id}`;
+};
+
+export const deleteWikiFolder = async (id: number, options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getDeleteWikiFolderUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteWikiFolderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWikiFolder>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteWikiFolder>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteWikiFolder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteWikiFolder>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteWikiFolder(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteWikiFolderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteWikiFolder>>
+>;
+
+export type DeleteWikiFolderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a wiki folder (sources and child folders move to root)
+ */
+export const useDeleteWikiFolder = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWikiFolder>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteWikiFolder>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteWikiFolderMutationOptions(options));
+};
+
+/**
  * @summary Get private wiki graph summary
  */
 export const getGetWikiGraphUrl = () => {
@@ -557,8 +941,8 @@ export const getListWikiCommunitiesUrl = () => {
   return `/api/wiki/communities`;
 };
 
-export const listWikiCommunities = async (options?: RequestInit): Promise<void> => {
-  return customFetch<void>(getListWikiCommunitiesUrl(), {
+export const listWikiCommunities = async (options?: RequestInit): Promise<WikiCommunity[]> => {
+  return customFetch<WikiCommunity[]>(getListWikiCommunitiesUrl(), {
     ...options,
     method: "GET",
   });

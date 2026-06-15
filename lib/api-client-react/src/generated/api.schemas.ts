@@ -24,6 +24,7 @@ export interface WikiSource {
   fileUrl?: string | null;
   fileName?: string | null;
   mimeType?: string | null;
+  folderId?: number | null;
   createdAt?: string;
 }
 
@@ -43,6 +44,52 @@ export interface QueryWikiRequest {
   question: string;
 }
 
+export interface WikiFolder {
+  id: number;
+  name: string;
+  parentId?: number | null;
+  color?: string | null;
+  position: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateWikiFolderRequest {
+  name: string;
+  parentId?: number | null;
+  color?: string;
+}
+
+export interface UpdateWikiFolderRequest {
+  name?: string;
+  parentId?: number | null;
+  color?: string | null;
+  position?: number;
+}
+
+export interface MoveWikiSourceRequest {
+  folderId?: number | null;
+}
+
+export interface WikiGraphNode {
+  id: number;
+  label: string;
+  type: string;
+  summary?: string;
+  weight?: string;
+  sourceId?: number | null;
+  communityId?: number | null;
+}
+
+export interface WikiGraphEdge {
+  id: number;
+  fromNodeId: number;
+  toNodeId: number;
+  relation: string;
+  confidence?: string;
+  weight?: string;
+}
+
 export type WikiGraphStats = {
   sources?: number;
   nodes?: number;
@@ -50,17 +97,19 @@ export type WikiGraphStats = {
   communities?: number;
 };
 
-export type WikiGraphNodesItem = { [key: string]: unknown };
-
-export type WikiGraphEdgesItem = { [key: string]: unknown };
-
-export type WikiGraphCommunitiesItem = { [key: string]: unknown };
+export interface WikiCommunity {
+  id: number;
+  label: string;
+  summary?: string;
+  nodeCount: number;
+  cohesion?: string;
+}
 
 export interface WikiGraph {
   stats?: WikiGraphStats;
-  nodes?: WikiGraphNodesItem[];
-  edges?: WikiGraphEdgesItem[];
-  communities?: WikiGraphCommunitiesItem[];
+  nodes?: WikiGraphNode[];
+  edges?: WikiGraphEdge[];
+  communities?: WikiCommunity[];
 }
 
 export type WikiAnswerCitationsItem = { [key: string]: unknown };

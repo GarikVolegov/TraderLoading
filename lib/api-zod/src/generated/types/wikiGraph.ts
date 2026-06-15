@@ -5,14 +5,14 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
-import type { WikiGraphCommunitiesItem } from "./wikiGraphCommunitiesItem";
-import type { WikiGraphEdgesItem } from "./wikiGraphEdgesItem";
-import type { WikiGraphNodesItem } from "./wikiGraphNodesItem";
+import type { WikiCommunity } from "./wikiCommunity";
+import type { WikiGraphEdge } from "./wikiGraphEdge";
+import type { WikiGraphNode } from "./wikiGraphNode";
 import type { WikiGraphStats } from "./wikiGraphStats";
 
 export interface WikiGraph {
   stats?: WikiGraphStats;
-  nodes?: WikiGraphNodesItem[];
-  edges?: WikiGraphEdgesItem[];
-  communities?: WikiGraphCommunitiesItem[];
+  nodes?: WikiGraphNode[];
+  edges?: WikiGraphEdge[];
+  communities?: WikiCommunity[];
 }

@@ -6,4 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type WikiGraphEdgesItem = { [key: string]: unknown };
+export interface CreateWikiFolderRequest {
+  name: string;
+  parentId?: number | null;
+  color?: string;
+}
