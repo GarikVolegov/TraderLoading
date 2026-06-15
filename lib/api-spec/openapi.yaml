@@ -229,62 +229,6 @@ paths:
         "200":
           description: Deleted
 
-  /wiki/graph:
-    get:
-      operationId: getWikiGraph
-      tags: [wiki]
-      summary: Get private wiki graph summary
-      responses:
-        "200":
-          description: Wiki graph
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/WikiGraph"
-
-  /wiki/communities:
-    get:
-      operationId: listWikiCommunities
-      tags: [wiki]
-      summary: List private wiki graph communities
-      responses:
-        "200":
-          description: Communities
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/WikiCommunity"
-
-  /wiki/query:
-    post:
-      operationId: queryWiki
-      tags: [wiki]
-      summary: Ask the private wiki a question
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/QueryWikiRequest"
-      responses:
-        "200":
-          description: Answer
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/WikiAnswer"
-
-  /wiki/reindex:
-    post:
-      operationId: reindexWiki
-      tags: [wiki]
-      summary: Rebuild the private wiki graph
-      responses:
-        "200":
-          description: Reindex result
-
   /healthz:
     get:
       operationId: healthCheck
@@ -1780,6 +1724,10 @@ components:
         folderId:
           type: integer
           nullable: true
+        extractedText:
+          type: string
+        tags:
+          type: string
         createdAt:
           type: string
           format: date-time
@@ -1810,13 +1758,6 @@ components:
           items:
             type: string
       required: [url]
-
-    QueryWikiRequest:
-      type: object
-      properties:
-        question:
-          type: string
-      required: [question]
 
     WikiFolder:
       type: object
@@ -1873,101 +1814,6 @@ components:
         folderId:
           type: integer
           nullable: true
-
-    WikiGraphNode:
-      type: object
-      properties:
-        id:
-          type: integer
-        label:
-          type: string
-        type:
-          type: string
-        summary:
-          type: string
-        weight:
-          type: string
-        sourceId:
-          type: integer
-          nullable: true
-        communityId:
-          type: integer
-          nullable: true
-      required: [id, label, type]
-
-    WikiGraphEdge:
-      type: object
-      properties:
-        id:
-          type: integer
-        fromNodeId:
-          type: integer
-        toNodeId:
-          type: integer
-        relation:
-          type: string
-        confidence:
-          type: string
-        weight:
-          type: string
-      required: [id, fromNodeId, toNodeId, relation]
-
-    WikiGraph:
-      type: object
-      properties:
-        stats:
-          type: object
-          properties:
-            sources:
-              type: integer
-            nodes:
-              type: integer
-            edges:
-              type: integer
-            communities:
-              type: integer
-        nodes:
-          type: array
-          items:
-            $ref: "#/components/schemas/WikiGraphNode"
-        edges:
-          type: array
-          items:
-            $ref: "#/components/schemas/WikiGraphEdge"
-        communities:
-          type: array
-          items:
-            $ref: "#/components/schemas/WikiCommunity"
-
-    WikiCommunity:
-      type: object
-      properties:
-        id:
-          type: integer
-        label:
-          type: string
-        summary:
-          type: string
-        nodeCount:
-          type: integer
-        cohesion:
-          type: string
-      required: [id, label, nodeCount]
-
-    WikiAnswer:
-      type: object
-      properties:
-        answer:
-          type: string
-        citations:
-          type: array
-          items:
-            type: object
-        nodes:
-          type: array
-          items:
-            type: object
-      required: [answer, citations, nodes]
 
     HealthStatus:
       type: object

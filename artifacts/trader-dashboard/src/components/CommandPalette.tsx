@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import {
   LayoutDashboard, BookOpen, FlaskConical, Brain, MessageCircle, Library,
-  BrainCircuit, Sunrise, Settings, Newspaper, Landmark, CalendarDays, Trophy,
-  Clock, Target, ClipboardCheck, Plus, Network,
+  Sunrise, Settings, Newspaper, Landmark, CalendarDays, Trophy,
+  Clock, Target, ClipboardCheck, Plus, Archive,
 } from "lucide-react";
 import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem,
@@ -18,7 +18,6 @@ const PAGES = [
   { href: "/zen",        labelKey: "zen.title",         icon: Brain,           keywords: "respirazione meditazione umore insight" },
   { href: "/chat",       labelKey: "nav.chat",          icon: MessageCircle,   keywords: "chat social messaggi" },
   { href: "/news",       labelKey: "news.title",        icon: Newspaper,       keywords: "news macro" },
-  { href: "/brain",      labelKey: "nav.brain",         icon: BrainCircuit,    keywords: "analisi grafico strategia ai" },
   { href: "/routine",    labelKey: "nav.routine",       icon: Sunrise,         keywords: "programma mattutino serale" },
   { href: "/broker",     labelKey: "page.broker.title", icon: Landmark,        keywords: "conto fx blue account" },
   { href: "/calendar",   labelKey: "page.calendar.title", icon: CalendarDays,  keywords: "agenda eventi planner" },
@@ -27,7 +26,7 @@ const PAGES = [
   { href: "/missions",   labelKey: "missions.title",    icon: Target,          keywords: "missioni xp" },
   { href: "/checklist",  labelKey: "checklist.title",   icon: ClipboardCheck,  keywords: "conferme criteri" },
   { href: "/library",    labelKey: "nav.library",       icon: Library,         keywords: "contenuti formativi" },
-  { href: "/wiki",       labelKey: "nav.wiki",          icon: Network,         keywords: "knowledge base documenti graph wiki" },
+  { href: "/wiki",       labelKey: "nav.wiki",          icon: Archive,         keywords: "archivio appunti note documenti wiki" },
   { href: "/settings",   labelKey: "settings.title",    icon: Settings,        keywords: "profilo aspetto audio pair" },
 ] as const;
 

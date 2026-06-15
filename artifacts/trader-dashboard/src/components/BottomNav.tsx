@@ -1,6 +1,6 @@
 import { Link, useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, BookOpen, MessageCircle, Brain, BrainCircuit, Settings, FlaskConical, Sunrise, Library, Network } from "lucide-react";
+import { LayoutDashboard, BookOpen, MessageCircle, Brain, Settings, FlaskConical, Sunrise, Library, Archive } from "lucide-react";
 import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -14,8 +14,7 @@ const NAV_ITEMS = [
 
 const SECONDARY_ITEMS = [
   { href: "/library",  icon: Library,     labelKey: "nav.library"  },
-  { href: "/wiki",     icon: Network,     labelKey: "nav.wiki"     },
-  { href: "/brain",    icon: BrainCircuit, labelKey: "nav.brain"    },
+  { href: "/wiki",     icon: Archive,     labelKey: "nav.wiki"     },
   { href: "/routine",  icon: Sunrise,     labelKey: "nav.routine"  },
   { href: "/settings", icon: Settings,     labelKey: "nav.settings" },
 ] as const;

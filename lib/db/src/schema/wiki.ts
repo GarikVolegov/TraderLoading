@@ -1,7 +1,4 @@
-import { integer, numeric, pgTable, serial, text, timestamp, index, type AnyPgColumn } from "drizzle-orm/pg-core";
-import { vector } from "./vector";
-
-export const WIKI_EDGE_CONFIDENCE_VALUES = ["EXTRACTED", "INFERRED", "AMBIGUOUS"] as const;
+import { integer, pgTable, serial, text, timestamp, index, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 // Hierarchical folders for organizing wiki sources (Obsidian-style "vault"
 // folders). `parentId` is a self-FK; deleting a folder re-homes its sources to
@@ -32,9 +29,9 @@ export const wikiSourcesTable = pgTable("wiki_sources", {
   fileSize: integer("file_size").notNull().default(0),
   mimeType: text("mime_type"),
   folderId: integer("folder_id").references((): AnyPgColumn => wikiFoldersTable.id, { onDelete: "set null" }),
+  // Plain-text extracted from the source; powers the archive's text search.
   extractedText: text("extracted_text").notNull().default(""),
   tags: text("tags").notNull().default("[]"),
-  graphifyJson: text("graphify_json"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [
@@ -43,69 +40,8 @@ export const wikiSourcesTable = pgTable("wiki_sources", {
   index("wiki_sources_user_folder_idx").on(table.userId, table.folderId),
 ]);
 
-export const wikiChunksTable = pgTable("wiki_chunks", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  sourceId: integer("source_id").notNull().references(() => wikiSourcesTable.id, { onDelete: "cascade" }),
-  chunkIndex: integer("chunk_index").notNull(),
-  text: text("text").notNull(),
-  tokenEstimate: integer("token_estimate").notNull().default(0),
-  // Semantic embedding (pgvector). Nullable: stays null when no embedding
-  // provider is configured, in which case retrieval falls back to keyword scan.
-  embedding: vector("embedding"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-}, (table) => [
-  index("wiki_chunks_source_idx").on(table.sourceId, table.chunkIndex),
-  index("wiki_chunks_user_idx").on(table.userId),
-]);
-
-export const wikiGraphNodesTable = pgTable("wiki_graph_nodes", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  sourceId: integer("source_id").references(() => wikiSourcesTable.id, { onDelete: "cascade" }),
-  type: text("type").notNull(),
-  label: text("label").notNull(),
-  summary: text("summary").notNull().default(""),
-  attrs: text("attrs"),
-  weight: numeric("weight", { precision: 6, scale: 3 }).notNull().default("1"),
-  communityId: integer("community_id"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [
-  index("wiki_graph_nodes_user_label_idx").on(table.userId, table.label),
-  index("wiki_graph_nodes_source_idx").on(table.sourceId),
-  index("wiki_graph_nodes_user_community_idx").on(table.userId, table.communityId),
-]);
-
-export const wikiGraphEdgesTable = pgTable("wiki_graph_edges", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  sourceId: integer("source_id").references(() => wikiSourcesTable.id, { onDelete: "cascade" }),
-  fromNodeId: integer("from_node_id").notNull().references(() => wikiGraphNodesTable.id, { onDelete: "cascade" }),
-  toNodeId: integer("to_node_id").notNull().references(() => wikiGraphNodesTable.id, { onDelete: "cascade" }),
-  relation: text("relation").notNull(),
-  // confidence values: EXTRACTED | INFERRED | AMBIGUOUS
-  confidence: text("confidence").notNull().default("EXTRACTED"),
-  confidenceScore: numeric("confidence_score", { precision: 4, scale: 3 }).notNull().default("1"),
-  weight: numeric("weight", { precision: 6, scale: 3 }).notNull().default("1"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-}, (table) => [
-  index("wiki_graph_edges_user_from_idx").on(table.userId, table.fromNodeId),
-  index("wiki_graph_edges_user_to_idx").on(table.userId, table.toNodeId),
-  index("wiki_graph_edges_source_idx").on(table.sourceId),
-]);
-
-export const wikiCommunitiesTable = pgTable("wiki_communities", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  label: text("label").notNull(),
-  summary: text("summary").notNull().default(""),
-  nodeCount: integer("node_count").notNull().default(0),
-  cohesion: numeric("cohesion", { precision: 5, scale: 3 }).notNull().default("0"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [index("wiki_communities_user_idx").on(table.userId)]);
-
+// Tracks async text extraction for uploaded files / imported URLs so the
+// archive can show per-source processing status.
 export const wikiIngestJobsTable = pgTable("wiki_ingest_jobs", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
@@ -122,21 +58,6 @@ export const wikiIngestJobsTable = pgTable("wiki_ingest_jobs", {
   index("wiki_ingest_jobs_source_idx").on(table.sourceId),
 ]);
 
-export const wikiSavedAnswersTable = pgTable("wiki_saved_answers", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  question: text("question").notNull(),
-  answer: text("answer").notNull(),
-  citedSources: text("cited_sources").notNull().default("[]"),
-  citedNodeIds: text("cited_node_ids").notNull().default("[]"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-}, (table) => [index("wiki_saved_answers_user_idx").on(table.userId, table.createdAt)]);
-
 export type WikiFolder = typeof wikiFoldersTable.$inferSelect;
 export type WikiSource = typeof wikiSourcesTable.$inferSelect;
-export type WikiChunk = typeof wikiChunksTable.$inferSelect;
-export type WikiGraphNode = typeof wikiGraphNodesTable.$inferSelect;
-export type WikiGraphEdge = typeof wikiGraphEdgesTable.$inferSelect;
-export type WikiCommunity = typeof wikiCommunitiesTable.$inferSelect;
 export type WikiIngestJob = typeof wikiIngestJobsTable.$inferSelect;
-export type WikiSavedAnswer = typeof wikiSavedAnswersTable.$inferSelect;

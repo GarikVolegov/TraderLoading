@@ -44,7 +44,6 @@ assert.doesNotMatch(serverEntry, /console\.(log|warn)\(/);
 
 for (const token of [
   "sessionScheduler = startSessionScheduler()",
-  "brainScanner = startBrainScanner()",
   "const accountBridgeSocket = attachAccountBridgeWebSocket(server)",
   "const brokerHubSocket = attachBrokerHubWebSocket(server)",
   "const newsHubSocket = attachNewsHubWebSocket(server, newsHubRuntime)",
@@ -55,7 +54,6 @@ for (const token of [
   "newsHubSocket.close()",
   "newsProviderSockets?.close()",
   "sessionScheduler.close()",
-  "brainScanner.close()",
   "brokerHubRuntime.close()",
   "cotScheduler.close()",
   "newsHubRuntime.stop()",
@@ -88,14 +86,6 @@ assert.match(pushSource, /export function startSessionScheduler\(\): SchedulerHa
 assert.match(pushSource, /let activeRun: Promise<void> \| null = null/);
 assert.match(pushSource, /await activeRun/);
 assert.match(pushSource, /clearInterval\(interval\)/);
-
-const brainScannerSource = readText("artifacts/api-server/src/services/brainScanner.ts");
-assert.match(brainScannerSource, /import logger from "\.\.\/lib\/logger\.js"/);
-assert.match(brainScannerSource, /export function startBrainScanner\(\): SchedulerHandle/);
-assert.match(brainScannerSource, /let activeRun: Promise<void> \| null = null/);
-assert.match(brainScannerSource, /await activeRun/);
-assert.match(brainScannerSource, /task\.stop\(\)/);
-assert.match(brainScannerSource, /task\.destroy\(\)/);
 
 const brokerRuntimeSource = readText("artifacts/api-server/src/services/brokerHub/runtime.ts");
 assert.match(brokerRuntimeSource, /close\(\): Promise<void>/);

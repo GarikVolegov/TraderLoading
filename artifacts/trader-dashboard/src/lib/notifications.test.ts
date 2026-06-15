@@ -20,14 +20,13 @@ class MemoryStorage implements NotificationStorage {
   }
 }
 
-assert.deepEqual(normalizeNotificationPrefs({ sessions: false, brain: false }), {
+assert.deepEqual(normalizeNotificationPrefs({ sessions: false, macroEvents: false }), {
   ...DEFAULT_NOTIFICATION_PREFS,
   sessions: false,
-  brain: false,
+  macroEvents: false,
 });
 
 assert.equal(DEFAULT_NOTIFICATION_PREFS.scheduledCalls, true);
-assert.equal(getNotificationCopy("it").prefs.brain.label, "Brain AI");
 assert.equal(getNotificationCopy("it").prefs.scheduledCalls.label, "Chiamate programmate");
 assert.equal(getNotificationCopy("it").titles.sessionOpen("Londra"), "Sessione Londra aperta");
 assert.equal(getNotificationCopy("en").prefs.dailyReminder.label, "Daily reminder");

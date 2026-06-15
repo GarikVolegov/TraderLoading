@@ -2,16 +2,12 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import {
   db,
-  wikiChunksTable,
-  wikiGraphEdgesTable,
-  wikiGraphNodesTable,
   wikiIngestJobsTable,
   wikiSourcesTable,
   type WikiSource,
 } from "@workspace/db";
 import { extractWikiText, type WikiSourceKind } from "./wikiProcessor.js";
 import { createWikiStorageFromEnv } from "./wikiStorage.js";
-import { ingestWikiSourceGraph } from "./wikiGraph.js";
 
 async function updateJob(sourceId: number, patch: Partial<typeof wikiIngestJobsTable.$inferInsert>) {
   await db.update(wikiIngestJobsTable)
@@ -22,12 +18,6 @@ async function updateJob(sourceId: number, patch: Partial<typeof wikiIngestJobsT
 async function loadSource(sourceId: number): Promise<WikiSource | null> {
   const [source] = await db.select().from(wikiSourcesTable).where(eq(wikiSourcesTable.id, sourceId)).limit(1);
   return source ?? null;
-}
-
-async function clearSourceGraphData(sourceId: number): Promise<void> {
-  await db.delete(wikiGraphEdgesTable).where(eq(wikiGraphEdgesTable.sourceId, sourceId));
-  await db.delete(wikiGraphNodesTable).where(eq(wikiGraphNodesTable.sourceId, sourceId));
-  await db.delete(wikiChunksTable).where(eq(wikiChunksTable.sourceId, sourceId));
 }
 
 export async function processWikiSourceJob(sourceId: number, buffer?: Buffer): Promise<void> {
@@ -59,7 +49,6 @@ export async function processWikiSourceJob(sourceId: number, buffer?: Buffer): P
     });
 
     if (extracted.status === "error") {
-      await clearSourceGraphData(sourceId);
       await updateJob(sourceId, { status: "error", stage: "extract", error: extracted.error ?? "Estrazione fallita", completedAt: new Date() });
       await db.update(wikiSourcesTable)
         .set({ status: "error", error: extracted.error ?? "Estrazione fallita", extractedText: extracted.text, updatedAt: new Date() })
@@ -67,25 +56,17 @@ export async function processWikiSourceJob(sourceId: number, buffer?: Buffer): P
       return;
     }
 
-    const [updated] = await db.update(wikiSourcesTable)
-      .set({
-        extractedText: extracted.text,
-        status: extracted.status === "pending_transcription" ? "pending_transcription" : "processing",
-        error: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(wikiSourcesTable.id, sourceId))
-      .returning();
-
     if (extracted.status === "pending_transcription") {
+      await db.update(wikiSourcesTable)
+        .set({ extractedText: extracted.text, status: "pending_transcription", error: null, updatedAt: new Date() })
+        .where(eq(wikiSourcesTable.id, sourceId));
       await updateJob(sourceId, { status: "pending_transcription", stage: "transcription", completedAt: new Date() });
       return;
     }
 
-    await updateJob(sourceId, { status: "processing", stage: "graph" });
-    await ingestWikiSourceGraph(updated);
+    // Pure archive: extracted text is stored for search, no graph/embedding stage.
     await db.update(wikiSourcesTable)
-      .set({ status: "ready", error: null, updatedAt: new Date() })
+      .set({ extractedText: extracted.text, status: "ready", error: null, updatedAt: new Date() })
       .where(eq(wikiSourcesTable.id, sourceId));
     await updateJob(sourceId, { status: "ready", stage: "complete", error: null, completedAt: new Date() });
   } catch (err) {

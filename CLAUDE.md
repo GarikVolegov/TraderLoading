@@ -5,9 +5,9 @@
 
 ## 1. What this is
 
-**TraderLoadings** ("+ Brain AI") is a full-stack **algorithmic-trading platform**: a trading dashboard
+**TraderLoadings** is a full-stack **algorithmic-trading platform**: a trading dashboard
 with real-time market data, multi-broker account sync, strategy backtesting/chart-replay, a trading
-journal, social/E2EE chat, news & macro intelligence, and AI ("Brain") analysis. pnpm monorepo,
+journal, social/E2EE chat, news & macro intelligence, and a personal trading-notes **archive**. pnpm monorepo,
 TypeScript end-to-end. For running it locally, see [README-BRAIN.md](README-BRAIN.md) (Italian).
 
 ## 2. Monorepo map (pnpm workspaces)
@@ -75,8 +75,9 @@ tools/metatrader-companion/   MT5 expert advisor
 - **Domain subsystems:**
   - **BrokerHub** (`services/brokerHub/`) — multi-broker sync: FxBlue, cTrader, MetaAPI, SnapTrade, MT5.
   - **NewsHub** (`services/newsHub/`) — aggregation, curation, LLM summarization/ranking, macro adapter.
-  - **Brain** (`services/brainScanner.ts`, `brainAnalyst.ts`) — autonomous + on-demand AI analysis.
-  - **Wiki** (`services/wiki*.ts`) — pgvector semantic search / knowledge graph over user docs.
+  - **Archive** (`routes/wiki.ts`, `services/wiki*.ts`) — a plain personal notes archive (text notes,
+    file/URL uploads + folders) with async text extraction and client-side text search. Pro-gated
+    (`feature="wiki"`); route/keys keep the internal `wiki` name. No AI/graph (removed; see git history).
   - **COT data** (`routes/tools.ts`) — CFTC Commitment-of-Traders, weekly cron.
   - **Candle warehouse** — see §7.
 

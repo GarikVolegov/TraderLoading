@@ -38,7 +38,6 @@ const ALLOWED_UPLOAD_DIRS = new Set([
   "community-files",
   "milestone-files",
   "avatars",
-  "brain",
   "wiki",
 ]);
 const ALLOWED_UPLOAD_EXTENSIONS = new Set([

@@ -10,7 +10,6 @@ import {
 // scriverebbero lo stesso bucket di dati.
 export const ANONYMOUS_FALLBACK_PREFIXES = [
   "/backtest",
-  "/brain",
   "/checkins",
   "/checklist",
   "/ideas",

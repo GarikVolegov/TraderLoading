@@ -8,7 +8,6 @@ export interface NotificationPrefs {
   dailyReminder: boolean;
   scheduledCalls: boolean;
   macroEvents: boolean;
-  brain: boolean;
 }
 
 export type NotificationPrefKey = keyof NotificationPrefs;
@@ -21,7 +20,6 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   dailyReminder: true,
   scheduledCalls: true,
   macroEvents: true,
-  brain: true,
 };
 
 export const NOTIFICATION_PREF_ORDER: NotificationPrefKey[] = [
@@ -30,7 +28,6 @@ export const NOTIFICATION_PREF_ORDER: NotificationPrefKey[] = [
   "scheduledCalls",
   "goals",
   "macroEvents",
-  "brain",
   "messages",
   "social",
 ];
@@ -61,7 +58,6 @@ const IT: NotificationCopy = {
     scheduledCalls: { label: "Chiamate programmate", description: "Chiamate push personalizzate nei giorni e orari scelti." },
     goals: { label: "Obiettivi e scadenze", description: "Promemoria sugli obiettivi impostati nel diario." },
     macroEvents: { label: "Eventi macro", description: "Alert prima delle notizie ad alto impatto." },
-    brain: { label: "Brain AI", description: "Setup e analisi rilevanti generati dal cervello." },
     messages: { label: "Messaggi", description: "Chat, risposte e comunicazioni importanti." },
     social: { label: "Social", description: "Follow, like e attivita della community." },
   },
@@ -89,7 +85,6 @@ const COPIES: Record<Language, NotificationCopy> = {
       scheduledCalls: { label: "Scheduled calls", description: "Custom push calls on selected days and times." },
       goals: { label: "Goals and deadlines", description: "Reminders for goals saved in the journal." },
       macroEvents: { label: "Macro events", description: "Alerts before high-impact market events." },
-      brain: { label: "Brain AI", description: "Relevant setups and analysis from the AI brain." },
       messages: { label: "Messages", description: "Chat, replies and important communications." },
       social: { label: "Social", description: "Follows, likes and community activity." },
     },
@@ -114,7 +109,6 @@ const COPIES: Record<Language, NotificationCopy> = {
       scheduledCalls: { label: "Llamadas programadas", description: "Llamadas push personalizadas en dias y horas elegidos." },
       goals: { label: "Objetivos y fechas", description: "Recordatorios de objetivos del diario." },
       macroEvents: { label: "Eventos macro", description: "Alertas antes de noticias de alto impacto." },
-      brain: { label: "Brain AI", description: "Setups y analisis relevantes del cerebro AI." },
       messages: { label: "Mensajes", description: "Chat, respuestas y comunicaciones importantes." },
       social: { label: "Social", description: "Follows, likes y actividad de la comunidad." },
     },
@@ -139,7 +133,6 @@ const COPIES: Record<Language, NotificationCopy> = {
       scheduledCalls: { label: "Appels programmes", description: "Appels push personnalises aux jours et heures choisis." },
       goals: { label: "Objectifs et echeances", description: "Rappels des objectifs du journal." },
       macroEvents: { label: "Evenements macro", description: "Alertes avant les nouvelles a fort impact." },
-      brain: { label: "Brain AI", description: "Setups et analyses pertinents du cerveau AI." },
       messages: { label: "Messages", description: "Chat, reponses et communications importantes." },
       social: { label: "Social", description: "Follows, likes et activite de la communaute." },
     },
@@ -164,7 +157,6 @@ const COPIES: Record<Language, NotificationCopy> = {
       scheduledCalls: { label: "Geplante Anrufe", description: "Individuelle Push-Anrufe an ausgewaehlten Tagen und Zeiten." },
       goals: { label: "Ziele und Fristen", description: "Erinnerungen an Ziele aus dem Journal." },
       macroEvents: { label: "Makroereignisse", description: "Alerts vor wichtigen Marktnachrichten." },
-      brain: { label: "Brain AI", description: "Relevante Setups und Analysen des AI-Brains." },
       messages: { label: "Nachrichten", description: "Chat, Antworten und wichtige Mitteilungen." },
       social: { label: "Social", description: "Follows, Likes und Community-Aktivitaet." },
     },
