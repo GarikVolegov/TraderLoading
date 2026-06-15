@@ -35,4 +35,17 @@ for (const entry of journal.entries ?? []) {
   );
 }
 
+// Reverse direction: every .sql file MUST be registered in the journal, or
+// `drizzle-kit migrate` silently skips it — a migration that never runs in prod
+// while CI stays green. (Migrations here are hand-authored: file + journal entry.)
+const journalTags = new Set((journal.entries ?? []).map((entry) => entry.tag));
+for (const file of migrationFiles) {
+  const tag = file.replace(/\.sql$/, "");
+  assert.equal(
+    journalTags.has(tag),
+    true,
+    `Migration ${file} is not registered in meta/_journal.json (it would never run)`,
+  );
+}
+
 console.log("database migration artifact checks passed");

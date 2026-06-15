@@ -10,6 +10,7 @@
     "codegen": "pnpm --filter @workspace/api-spec run codegen",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:ci": "eslint . --max-warnings 39",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm --filter ./scripts exec tsx local/run-tests.ts",

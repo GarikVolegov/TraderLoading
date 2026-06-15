@@ -46,11 +46,11 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      # Non-blocking during the lint ratchet: 277 warnings + 0 errors today.
-      # Flip to a hard gate (or `eslint . --max-warnings 0`) once burned down.
+      # Blocking gate. Errors always fail; warnings are ratcheted at the current
+      # count (39) via lint:ci so they can only go down, never up. Lower the
+      # number as warnings are burned down.
       - name: Lint
-        run: pnpm lint
-        continue-on-error: true
+        run: pnpm lint:ci
 
       - name: Test
         run: pnpm test
