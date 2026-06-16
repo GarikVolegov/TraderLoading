@@ -224,6 +224,17 @@ export async function importBrokerAccountData(input: BrokerAccountDataSyncInput)
       .where(eq(accountTradesTable.id, accountTradeId));
   }
 
+  // If the new trade(s) tripped a risk-guard breaker, push the trader. Isolated:
+  // a notification failure must never break the sync.
+  if (imported > 0 && input.profile.ownerUserId) {
+    try {
+      const { notifyRiskGuardBreaches } = await import("../riskGuardPush.js");
+      await notifyRiskGuardBreaches(input.profile.ownerUserId);
+    } catch (err) {
+      console.warn("[riskGuard] push notify failed", err);
+    }
+  }
+
   return {
     imported,
     journalCreated,

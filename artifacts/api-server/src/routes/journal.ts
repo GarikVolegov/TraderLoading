@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db } from "@workspace/db";
-import { accountTradesTable, journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable, userSettingsTable } from "@workspace/db";
+import { journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable } from "@workspace/db";
 import {
   CreateJournalEntryBody,
   UpdateJournalEntryBody,
@@ -22,10 +22,10 @@ import {
   validateJournalRecapPeriod,
   type JournalRecapKind,
 } from "../services/journalRecapPeriods.js";
-import { computeEdgeReport, type EdgeTrade } from "../services/tradeAnalytics.js";
+import { computeEdgeReport } from "../services/tradeAnalytics.js";
 import { computeDisciplineReport } from "../services/tradeDiscipline.js";
 import { composeEdgeReport } from "../services/edgeReport.js";
-import { sanitizeRiskGuardOverrides, type RiskGuardConfig } from "../services/riskGuard.js";
+import { loadClosedEdgeTrades, loadGuardOverrides } from "../services/edgeData.js";
 import { buildRecapMessages, filterTradesByPeriod, parseRecapDraft } from "../services/journalRecapDraft.js";
 import { getTextClient } from "../services/llmClient.js";
 import logger from "../lib/logger.js";
@@ -393,66 +393,10 @@ router.put("/journal/recaps", async (req, res) => {
   res.json(saved);
 });
 
-// Loads the user's closed broker trades, mapped to the shape the analytics
-// services consume. Drizzle returns numeric columns as strings, so we coerce.
-async function loadClosedEdgeTrades(userId: string | null): Promise<EdgeTrade[]> {
-  const userFilter = userId
-    ? eq(accountTradesTable.userId, userId)
-    : eq(accountTradesTable.userId, "guest");
-
-  const rows = await db
-    .select({
-      symbol: accountTradesTable.symbol,
-      direction: accountTradesTable.direction,
-      openTime: accountTradesTable.openTime,
-      closeTime: accountTradesTable.closeTime,
-      entryPrice: accountTradesTable.entryPrice,
-      exitPrice: accountTradesTable.exitPrice,
-      stopLoss: accountTradesTable.stopLoss,
-      profit: accountTradesTable.profit,
-    })
-    .from(accountTradesTable)
-    .where(and(userFilter, eq(accountTradesTable.status, "closed")));
-
-  const num = (value: string | null): number | null => (value === null ? null : Number(value));
-  return rows.map((row) => ({
-    symbol: row.symbol,
-    direction: row.direction,
-    openTime: row.openTime,
-    closeTime: row.closeTime,
-    entryPrice: num(row.entryPrice),
-    exitPrice: num(row.exitPrice),
-    stopLoss: num(row.stopLoss),
-    profit: num(row.profit),
-  }));
-}
-
 // Edge analytics: turns closed broker trades into a verdict (expectancy in R,
-// win rate and net P&L overall + by symbol/direction/session/day, plus the
-// post-loss "revenge" signal and behavioural discipline). Read-only.
-// Declared before "/journal/:id" so the literal path isn't captured as an id.
-// Risk-guard config from the user's settings: the cash limit reuses `maxDailyLoss`,
-// the R/count thresholds are stored under notificationPrefs.__riskGuard.
-async function loadGuardOverrides(userId: string | null): Promise<Partial<RiskGuardConfig>> {
-  const filter = userId ? eq(userSettingsTable.userId, userId) : isNull(userSettingsTable.userId);
-  const [row] = await db
-    .select({ maxDailyLoss: userSettingsTable.maxDailyLoss, notificationPrefs: userSettingsTable.notificationPrefs })
-    .from(userSettingsTable)
-    .where(filter)
-    .limit(1);
-
-  let thresholds: Partial<RiskGuardConfig> = {};
-  if (row?.notificationPrefs) {
-    try {
-      const prefs = JSON.parse(row.notificationPrefs) as Record<string, unknown>;
-      thresholds = sanitizeRiskGuardOverrides(prefs.__riskGuard);
-    } catch {
-      // malformed prefs → fall back to defaults
-    }
-  }
-  return { ...thresholds, maxDailyLossCash: row?.maxDailyLoss ?? null };
-}
-
+// win rate, net P&L by symbol/direction/session/day, post-loss revenge,
+// behavioural discipline, and the risk-guard breakers). Read-only. Declared
+// before "/journal/:id" so the literal path isn't captured as an id.
 router.get("/journal/edge", async (req, res) => {
   const userId = getUserId(req);
   const [trades, guardOverrides] = await Promise.all([
