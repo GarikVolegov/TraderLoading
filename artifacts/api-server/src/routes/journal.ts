@@ -25,6 +25,7 @@ import {
 import { computeEdgeReport, type EdgeTrade } from "../services/tradeAnalytics.js";
 import { computeDisciplineReport } from "../services/tradeDiscipline.js";
 import { composeEdgeReport } from "../services/edgeReport.js";
+import { sanitizeRiskGuardOverrides, type RiskGuardConfig } from "../services/riskGuard.js";
 import { buildRecapMessages, filterTradesByPeriod, parseRecapDraft } from "../services/journalRecapDraft.js";
 import { getTextClient } from "../services/llmClient.js";
 import logger from "../lib/logger.js";
@@ -430,24 +431,35 @@ async function loadClosedEdgeTrades(userId: string | null): Promise<EdgeTrade[]>
 // win rate and net P&L overall + by symbol/direction/session/day, plus the
 // post-loss "revenge" signal and behavioural discipline). Read-only.
 // Declared before "/journal/:id" so the literal path isn't captured as an id.
-// The cash daily-loss breaker reuses the user's existing `maxDailyLoss` setting.
-async function loadMaxDailyLoss(userId: string | null): Promise<number | null> {
+// Risk-guard config from the user's settings: the cash limit reuses `maxDailyLoss`,
+// the R/count thresholds are stored under notificationPrefs.__riskGuard.
+async function loadGuardOverrides(userId: string | null): Promise<Partial<RiskGuardConfig>> {
   const filter = userId ? eq(userSettingsTable.userId, userId) : isNull(userSettingsTable.userId);
   const [row] = await db
-    .select({ maxDailyLoss: userSettingsTable.maxDailyLoss })
+    .select({ maxDailyLoss: userSettingsTable.maxDailyLoss, notificationPrefs: userSettingsTable.notificationPrefs })
     .from(userSettingsTable)
     .where(filter)
     .limit(1);
-  return row?.maxDailyLoss ?? null;
+
+  let thresholds: Partial<RiskGuardConfig> = {};
+  if (row?.notificationPrefs) {
+    try {
+      const prefs = JSON.parse(row.notificationPrefs) as Record<string, unknown>;
+      thresholds = sanitizeRiskGuardOverrides(prefs.__riskGuard);
+    } catch {
+      // malformed prefs → fall back to defaults
+    }
+  }
+  return { ...thresholds, maxDailyLossCash: row?.maxDailyLoss ?? null };
 }
 
 router.get("/journal/edge", async (req, res) => {
   const userId = getUserId(req);
-  const [trades, maxDailyLossCash] = await Promise.all([
+  const [trades, guardOverrides] = await Promise.all([
     loadClosedEdgeTrades(userId),
-    loadMaxDailyLoss(userId),
+    loadGuardOverrides(userId),
   ]);
-  res.json(composeEdgeReport(trades, new Date(), maxDailyLossCash));
+  res.json(composeEdgeReport(trades, new Date(), guardOverrides));
 });
 
 // Generates an AI recap draft from the period's edge + discipline stats. Returns

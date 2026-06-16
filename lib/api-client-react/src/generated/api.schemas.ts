@@ -673,6 +673,15 @@ export interface TradingSessionConfig {
   enabled: boolean;
 }
 
+/**
+ * User-tunable circuit-breaker thresholds. null = use the default.
+ */
+export interface RiskGuardSettings {
+  maxConsecutiveLosses: number | null;
+  maxDailyTrades: number | null;
+  maxDailyLossR: number | null;
+}
+
 export type UserSettingsBackgroundType =
   (typeof UserSettingsBackgroundType)[keyof typeof UserSettingsBackgroundType];
 
@@ -735,6 +744,7 @@ export interface UserSettings {
   selectedPairs?: string[] | null;
   backgroundPresets?: UserSettingsBackgroundPresetsItem[] | null;
   alarmConfigs?: UserSettingsAlarmConfigs;
+  riskGuard?: RiskGuardSettings;
 }
 
 export type UpdateUserSettingsRequestBackgroundType =
@@ -799,6 +809,7 @@ export interface UpdateUserSettingsRequest {
   selectedPairs?: string[] | null;
   backgroundPresets?: UpdateUserSettingsRequestBackgroundPresetsItem[] | null;
   alarmConfigs?: UpdateUserSettingsRequestAlarmConfigs;
+  riskGuard?: RiskGuardSettings;
 }
 
 export interface UploadBackgroundResponse {

@@ -1270,6 +1270,14 @@ export const GetUserSettingsResponse = zod.object({
     )
     .nullish(),
   alarmConfigs: zod.record(zod.string(), zod.unknown()).nullish(),
+  riskGuard: zod
+    .object({
+      maxConsecutiveLosses: zod.number().nullable(),
+      maxDailyTrades: zod.number().nullable(),
+      maxDailyLossR: zod.number().nullable(),
+    })
+    .optional()
+    .describe("User-tunable circuit-breaker thresholds. null = use the default."),
 });
 
 /**
@@ -1339,6 +1347,14 @@ export const UpdateUserSettingsBody = zod.object({
     )
     .nullish(),
   alarmConfigs: zod.record(zod.string(), zod.unknown()).nullish(),
+  riskGuard: zod
+    .object({
+      maxConsecutiveLosses: zod.number().nullable(),
+      maxDailyTrades: zod.number().nullable(),
+      maxDailyLossR: zod.number().nullable(),
+    })
+    .optional()
+    .describe("User-tunable circuit-breaker thresholds. null = use the default."),
 });
 
 export const updateUserSettingsResponseBackgroundDarknessMin = 0;
@@ -1405,6 +1421,14 @@ export const UpdateUserSettingsResponse = zod.object({
     )
     .nullish(),
   alarmConfigs: zod.record(zod.string(), zod.unknown()).nullish(),
+  riskGuard: zod
+    .object({
+      maxConsecutiveLosses: zod.number().nullable(),
+      maxDailyTrades: zod.number().nullable(),
+      maxDailyLossR: zod.number().nullable(),
+    })
+    .optional()
+    .describe("User-tunable circuit-breaker thresholds. null = use the default."),
 });
 
 /**

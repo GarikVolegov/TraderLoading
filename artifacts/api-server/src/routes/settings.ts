@@ -6,6 +6,7 @@ import { db, userSettingsTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
 import { getUserId } from "./profile.js";
 import { getUploadsDir } from "../lib/uploads.js";
+import { riskGuardSettingsView, sanitizeRiskGuardOverrides } from "../services/riskGuard.js";
 
 const router: IRouter = Router();
 const SUPPORTED_LANGUAGES = new Set(["it", "en", "es", "fr", "de"]);
@@ -63,6 +64,9 @@ export function serializeSettings(settings: SettingsRecord): Record<string, unkn
   if (settings.alarmConfigs) {
     try { result.alarmConfigs = JSON.parse(settings.alarmConfigs); } catch { result.alarmConfigs = null; }
   }
+  result.riskGuard = riskGuardSettingsView(
+    sanitizeRiskGuardOverrides(parseNotificationPrefs(settings.notificationPrefs ?? null).__riskGuard),
+  );
   return result;
 }
 
@@ -86,6 +90,7 @@ export function buildSettingsUpdateData(
     selectedPairs,
     alarmConfigs,
     onboardingTutorialCompletedAt,
+    riskGuard,
   } = body;
 
   const updateData: Record<string, unknown> = {};
@@ -134,6 +139,13 @@ export function buildSettingsUpdateData(
       ...parseNotificationPrefs(settings.notificationPrefs ?? null),
       __language: normalizeLanguage(language),
     });
+  }
+  if (riskGuard !== undefined) {
+    const base = typeof updateData.notificationPrefs === "string"
+      ? JSON.parse(updateData.notificationPrefs)
+      : parseNotificationPrefs(settings.notificationPrefs ?? null);
+    base.__riskGuard = sanitizeRiskGuardOverrides(riskGuard);
+    updateData.notificationPrefs = JSON.stringify(base);
   }
   return { updateData };
 }

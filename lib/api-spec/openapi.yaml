@@ -2864,6 +2864,24 @@ components:
         - color
         - enabled
 
+    RiskGuardSettings:
+      type: object
+      description: User-tunable circuit-breaker thresholds. null = use the default.
+      properties:
+        maxConsecutiveLosses:
+          type: integer
+          nullable: true
+        maxDailyTrades:
+          type: integer
+          nullable: true
+        maxDailyLossR:
+          type: number
+          nullable: true
+      required:
+        - maxConsecutiveLosses
+        - maxDailyTrades
+        - maxDailyLossR
+
     UserSettings:
       type: object
       properties:
@@ -2944,6 +2962,8 @@ components:
           type: object
           additionalProperties: true
           nullable: true
+        riskGuard:
+          $ref: "#/components/schemas/RiskGuardSettings"
       required:
         - id
         - backgroundType
@@ -3031,6 +3051,8 @@ components:
           type: object
           additionalProperties: true
           nullable: true
+        riskGuard:
+          $ref: "#/components/schemas/RiskGuardSettings"
 
     UploadBackgroundResponse:
       type: object

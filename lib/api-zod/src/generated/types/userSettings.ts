@@ -5,6 +5,7 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
+import type { RiskGuardSettings } from "./riskGuardSettings";
 import type { TradingSessionConfig } from "./tradingSessionConfig";
 import type { UserSettingsAlarmConfigs } from "./userSettingsAlarmConfigs";
 import type { UserSettingsBackgroundPresetsItem } from "./userSettingsBackgroundPresetsItem";
@@ -36,4 +37,5 @@ export interface UserSettings {
   selectedPairs?: string[] | null;
   backgroundPresets?: UserSettingsBackgroundPresetsItem[] | null;
   alarmConfigs?: UserSettingsAlarmConfigs;
+  riskGuard?: RiskGuardSettings;
 }

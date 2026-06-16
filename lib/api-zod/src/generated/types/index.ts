@@ -110,6 +110,7 @@ export * from "./riskGuardAlert";
 export * from "./riskGuardAlertSeverity";
 export * from "./riskGuardAlertType";
 export * from "./riskGuardReport";
+export * from "./riskGuardSettings";
 export * from "./saveAccountKeyBackupBody";
 export * from "./saveAccountKeyBackupBodyPrivateKeyJwk";
 export * from "./saveAccountKeyBackupBodyPublicKeyJwk";

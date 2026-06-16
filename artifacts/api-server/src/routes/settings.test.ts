@@ -32,12 +32,28 @@ assert.deepEqual(serializeSettings(existingSettings), {
     version: 1,
     calls: [{ id: "risk-desk", callerName: "Banca - Ufficio Risk", time: "09:00", days: [1] }],
   },
+  riskGuard: { maxConsecutiveLosses: null, maxDailyTrades: null, maxDailyLossR: null },
 });
 
 const languageUpdate = buildSettingsUpdateData({ language: "fr" }, existingSettings);
 assert.deepEqual(languageUpdate, {
   updateData: {
     notificationPrefs: JSON.stringify({ alerts: true, __language: "fr" }),
+  },
+});
+
+// riskGuard thresholds merge into notificationPrefs (sanitized: 999 clamps to 100, "2.5" coerces).
+const riskGuardUpdate = buildSettingsUpdateData(
+  { riskGuard: { maxConsecutiveLosses: 4, maxDailyTrades: 999, maxDailyLossR: "2.5" } },
+  existingSettings,
+);
+assert.deepEqual(riskGuardUpdate, {
+  updateData: {
+    notificationPrefs: JSON.stringify({
+      alerts: true,
+      __language: "en",
+      __riskGuard: { maxConsecutiveLosses: 4, maxDailyTrades: 100, maxDailyLossR: 2.5 },
+    }),
   },
 });
 

@@ -36,6 +36,45 @@ export const DEFAULT_RISK_GUARD_CONFIG: RiskGuardConfig = {
 
 export type RiskGuardAlertType = "daily_loss" | "daily_loss_cash" | "loss_streak" | "overtrading" | "revenge";
 
+/** User-tunable subset of the guard config (the cash limit comes from `maxDailyLoss`). */
+export type RiskGuardOverrides = Partial<Pick<RiskGuardConfig, "maxConsecutiveLosses" | "maxDailyTrades" | "maxDailyLossR">>;
+
+const GUARD_BOUNDS = {
+  maxConsecutiveLosses: { min: 1, max: 20, integer: true },
+  maxDailyTrades: { min: 1, max: 100, integer: true },
+  maxDailyLossR: { min: 0.5, max: 50, integer: false },
+} as const;
+
+/** Validates/clamps user-supplied thresholds; omits blank/invalid ones (→ default). */
+export function sanitizeRiskGuardOverrides(raw: unknown): RiskGuardOverrides {
+  if (!raw || typeof raw !== "object") return {};
+  const input = raw as Record<string, unknown>;
+  const out: RiskGuardOverrides = {};
+  for (const key of ["maxConsecutiveLosses", "maxDailyTrades", "maxDailyLossR"] as const) {
+    const value = input[key];
+    if (value === null || value === undefined || value === "") continue;
+    const num = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(num)) continue;
+    const bounds = GUARD_BOUNDS[key];
+    const bounded = Math.min(bounds.max, Math.max(bounds.min, bounds.integer ? Math.round(num) : num));
+    out[key] = bounded;
+  }
+  return out;
+}
+
+/** Read-back shape for the settings API: each threshold is the override or null. */
+export function riskGuardSettingsView(overrides: RiskGuardOverrides): {
+  maxConsecutiveLosses: number | null;
+  maxDailyTrades: number | null;
+  maxDailyLossR: number | null;
+} {
+  return {
+    maxConsecutiveLosses: overrides.maxConsecutiveLosses ?? null,
+    maxDailyTrades: overrides.maxDailyTrades ?? null,
+    maxDailyLossR: overrides.maxDailyLossR ?? null,
+  };
+}
+
 export interface RiskGuardAlert {
   type: RiskGuardAlertType;
   severity: "warning" | "danger";

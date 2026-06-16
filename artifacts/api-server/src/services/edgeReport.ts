@@ -3,16 +3,16 @@
 // asserted against the OpenAPI EdgeReport contract without booting the server.
 import { computeEdgeReport, type EdgeTrade } from "./tradeAnalytics.js";
 import { computeDisciplineReport, type DisciplineReport } from "./tradeDiscipline.js";
-import { DEFAULT_RISK_GUARD_CONFIG, evaluateRiskGuard, type RiskGuardReport } from "./riskGuard.js";
+import { DEFAULT_RISK_GUARD_CONFIG, evaluateRiskGuard, type RiskGuardConfig, type RiskGuardReport } from "./riskGuard.js";
 
 export function composeEdgeReport(
   trades: EdgeTrade[],
   now: Date = new Date(),
-  maxDailyLossCash: number | null = null,
+  guardOverrides: Partial<RiskGuardConfig> = {},
 ): ReturnType<typeof computeEdgeReport> & { discipline: DisciplineReport; guard: RiskGuardReport } {
   return {
     ...computeEdgeReport(trades, now),
     discipline: computeDisciplineReport(trades),
-    guard: evaluateRiskGuard(trades, now, { ...DEFAULT_RISK_GUARD_CONFIG, maxDailyLossCash }),
+    guard: evaluateRiskGuard(trades, now, { ...DEFAULT_RISK_GUARD_CONFIG, ...guardOverrides }),
   };
 }

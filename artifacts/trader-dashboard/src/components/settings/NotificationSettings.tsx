@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Bell, ShieldAlert } from "lucide-react";
+import { Bell, ShieldAlert, Siren } from "lucide-react";
 import { useGetUserSettings, useUpdateUserSettings, getGetUserSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,9 @@ export function NotificationSettings() {
   const [reminderTime, setReminderTime] = useState("");
   const [preMacro, setPreMacro] = useState("15");
   const [maxLoss, setMaxLoss] = useState("");
+  const [rgStreak, setRgStreak] = useState("");
+  const [rgTrades, setRgTrades] = useState("");
+  const [rgLossR, setRgLossR] = useState("");
   const ui = {
     it: {
       saved: "Impostazioni notifiche salvate.",
@@ -53,6 +56,11 @@ export function NotificationSettings() {
       maxLoss: "Max loss giornaliero",
       maxLossDesc: "Ricevi un avviso alla sessione se hai impostato un limite.",
       maxLossPlaceholder: "es. 200",
+      rgTitle: "Soglie Risk guard",
+      rgDesc: "Personalizza quando scatta il circuit-breaker. Vuoto = default.",
+      rgStreak: "Perdite di fila",
+      rgTrades: "Trade al giorno",
+      rgLossR: "Perdita giorno (R)",
       save: "Salva",
     },
     en: {
@@ -79,6 +87,11 @@ export function NotificationSettings() {
       maxLoss: "Daily max loss",
       maxLossDesc: "Receive a session warning when you set a limit.",
       maxLossPlaceholder: "e.g. 200",
+      rgTitle: "Risk guard thresholds",
+      rgDesc: "Tune when the circuit-breaker fires. Empty = default.",
+      rgStreak: "Losses in a row",
+      rgTrades: "Trades per day",
+      rgLossR: "Daily loss (R)",
       save: "Save",
     },
     es: {
@@ -105,6 +118,11 @@ export function NotificationSettings() {
       maxLoss: "Perdida maxima diaria",
       maxLossDesc: "Recibe un aviso de sesion cuando configures un limite.",
       maxLossPlaceholder: "ej. 200",
+      rgTitle: "Umbrales del Risk guard",
+      rgDesc: "Ajusta cuándo se activa el circuit breaker. Vacío = por defecto.",
+      rgStreak: "Pérdidas seguidas",
+      rgTrades: "Operaciones por día",
+      rgLossR: "Pérdida diaria (R)",
       save: "Guardar",
     },
     fr: {
@@ -132,6 +150,11 @@ export function NotificationSettings() {
       maxLossDesc:
         "Recevez un avertissement de session si une limite est definie.",
       maxLossPlaceholder: "ex. 200",
+      rgTitle: "Seuils du Risk guard",
+      rgDesc: "Règle quand le circuit breaker se déclenche. Vide = défaut.",
+      rgStreak: "Pertes d'affilée",
+      rgTrades: "Trades par jour",
+      rgLossR: "Perte du jour (R)",
       save: "Enregistrer",
     },
     de: {
@@ -158,6 +181,11 @@ export function NotificationSettings() {
       maxLoss: "Tages-Max-Loss",
       maxLossDesc: "Erhalte eine Session-Warnung, wenn ein Limit gesetzt ist.",
       maxLossPlaceholder: "z.B. 200",
+      rgTitle: "Risk-Guard-Schwellen",
+      rgDesc: "Lege fest, wann der Circuit Breaker auslöst. Leer = Standard.",
+      rgStreak: "Verluste in Folge",
+      rgTrades: "Trades pro Tag",
+      rgLossR: "Tagesverlust (R)",
       save: "Speichern",
     },
   }[language];
@@ -167,6 +195,9 @@ export function NotificationSettings() {
     setReminderTime(settings.dailyReminderTime ?? "");
     setPreMacro(String(settings.preMacroMinutes ?? 15));
     setMaxLoss(settings.maxDailyLoss ? String(settings.maxDailyLoss) : "");
+    setRgStreak(settings.riskGuard?.maxConsecutiveLosses != null ? String(settings.riskGuard.maxConsecutiveLosses) : "");
+    setRgTrades(settings.riskGuard?.maxDailyTrades != null ? String(settings.riskGuard.maxDailyTrades) : "");
+    setRgLossR(settings.riskGuard?.maxDailyLossR != null ? String(settings.riskGuard.maxDailyLossR) : "");
   }, [settings]);
 
   const save = async () => {
@@ -176,6 +207,11 @@ export function NotificationSettings() {
           dailyReminderTime: reminderTime || undefined,
           preMacroMinutes: Number(preMacro),
           maxDailyLoss: maxLoss ? Number(maxLoss) : undefined,
+          riskGuard: {
+            maxConsecutiveLosses: rgStreak ? Number(rgStreak) : null,
+            maxDailyTrades: rgTrades ? Number(rgTrades) : null,
+            maxDailyLossR: rgLossR ? Number(rgLossR) : null,
+          },
         },
       });
       qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
@@ -360,6 +396,30 @@ export function NotificationSettings() {
               onChange={(e) => setMaxLoss(e.target.value)}
               className="w-40"
             />
+          </div>
+
+          <div className="space-y-3 pt-1 border-t border-border">
+            <div>
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <Siren className="w-4 h-4 text-destructive" />
+                {ui.rgTitle}
+              </p>
+              <p className="text-xs text-muted-foreground">{ui.rgDesc}</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 max-w-md">
+              <label className="space-y-1">
+                <span className="block text-xs text-muted-foreground">{ui.rgStreak}</span>
+                <Input type="number" min="1" placeholder="3" value={rgStreak} onChange={(e) => setRgStreak(e.target.value)} />
+              </label>
+              <label className="space-y-1">
+                <span className="block text-xs text-muted-foreground">{ui.rgTrades}</span>
+                <Input type="number" min="1" placeholder="6" value={rgTrades} onChange={(e) => setRgTrades(e.target.value)} />
+              </label>
+              <label className="space-y-1">
+                <span className="block text-xs text-muted-foreground">{ui.rgLossR}</span>
+                <Input type="number" min="0.5" step="0.5" placeholder="3" value={rgLossR} onChange={(e) => setRgLossR(e.target.value)} />
+              </label>
+            </div>
           </div>
 
           <Button size="sm" onClick={save} disabled={updateMutation.isPending}>

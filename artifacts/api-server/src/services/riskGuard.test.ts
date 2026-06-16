@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import { evaluateRiskGuard, DEFAULT_RISK_GUARD_CONFIG } from "./riskGuard.js";
+import {
+  evaluateRiskGuard,
+  DEFAULT_RISK_GUARD_CONFIG,
+  sanitizeRiskGuardOverrides,
+  riskGuardSettingsView,
+} from "./riskGuard.js";
 import { type EdgeTrade } from "./tradeAnalytics.js";
 
 const NOW = new Date("2026-06-16T18:00:00Z"); // Rome day 2026-06-16
@@ -117,6 +122,35 @@ function alertOf(report: ReturnType<typeof evaluateRiskGuard>, type: string) {
   // Disabled by default (no limit set).
   const off = evaluateRiskGuard([trade({ profit: -1000, closeTime: "2026-06-16T10:00:00Z" })], NOW);
   assert.equal(alertOf(off, "daily_loss_cash"), undefined);
+}
+
+// ── User threshold overrides: validate, clamp, omit blanks ───────────────────
+{
+  assert.deepEqual(
+    sanitizeRiskGuardOverrides({ maxConsecutiveLosses: 4, maxDailyTrades: 8, maxDailyLossR: 2.5 }),
+    { maxConsecutiveLosses: 4, maxDailyTrades: 8, maxDailyLossR: 2.5 },
+  );
+  // out-of-range clamps; integer fields round; numeric strings coerce
+  assert.deepEqual(
+    sanitizeRiskGuardOverrides({ maxConsecutiveLosses: 999, maxDailyTrades: 0, maxDailyLossR: "3.7" }),
+    { maxConsecutiveLosses: 20, maxDailyTrades: 1, maxDailyLossR: 3.7 },
+  );
+  // blanks / invalid omitted → default kept
+  assert.deepEqual(sanitizeRiskGuardOverrides({ maxConsecutiveLosses: null, maxDailyTrades: "", maxDailyLossR: "x" }), {});
+  assert.deepEqual(sanitizeRiskGuardOverrides(null), {});
+  assert.deepEqual(sanitizeRiskGuardOverrides("nope"), {});
+
+  // read-back view fills the unset thresholds with null
+  assert.deepEqual(
+    riskGuardSettingsView({ maxConsecutiveLosses: 4 }),
+    { maxConsecutiveLosses: 4, maxDailyTrades: null, maxDailyLossR: null },
+  );
+
+  // an override actually shifts the breaker: 2 losses fire under a limit of 2, not the default 3
+  const losers = [10, 11].map((h) => trade({ closeTime: `2026-06-16T${h}:00:00Z`, exitPrice: 1.075, profit: -30 }));
+  const cfg = { ...DEFAULT_RISK_GUARD_CONFIG, ...sanitizeRiskGuardOverrides({ maxConsecutiveLosses: 2 }) };
+  assert.ok(alertOf(evaluateRiskGuard(losers, NOW, cfg), "loss_streak"), "override lowers the streak limit");
+  assert.equal(alertOf(evaluateRiskGuard(losers, NOW), "loss_streak"), undefined, "default limit not hit");
 }
 
 // ── Empty input ──────────────────────────────────────────────────────────────
