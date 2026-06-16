@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, addWeeks, isWithinInterval } from "date-fns";
-import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw } from "lucide-react";
+import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, LineChart, Sparkles } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
@@ -31,15 +31,17 @@ import { getJournalRecapPeriod, isJournalRecapEditable } from "@/lib/journalReca
 import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTradeContent";
 import { PnlHeatmap } from "@/components/PnlHeatmap";
 import { TradeChartSnapshot } from "@/components/TradeChartSnapshot";
+import { JournalEdge } from "@/components/JournalEdge";
 import {
   emptyJournalRecapFields,
   fetchJournalRecap,
+  generateJournalRecap,
   journalRecapQueryKey,
   saveJournalRecap,
   type JournalRecapFields,
 } from "@/lib/journalRecapsApi";
 
-type Tab = "trades" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
+type Tab = "trades" | "edge" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
 
 function SyncedTradeDetails({ content }: { content: string }) {
   const parsed = useMemo(() => parseTradeContent(content), [content]);
@@ -813,6 +815,23 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
     },
   });
 
+  const generateMutation = useMutation({
+    mutationFn: () => generateJournalRecap(recapPeriod),
+    onSuccess: (fields) => {
+      setRecapDraft(fields);
+      toast({ description: t("journal.recap.generated") });
+    },
+    onError: (error: unknown) => {
+      const status = error instanceof Error ? error.message : "";
+      const description = status === "422"
+        ? t("journal.recap.generate_no_trades")
+        : status === "503"
+          ? t("journal.recap.generate_unconfigured")
+          : t("journal.error");
+      toast({ description, variant: "destructive" });
+    },
+  });
+
   useEffect(() => {
     const recap = recapQuery.data;
     setRecapDraft(recap ? {
@@ -1044,8 +1063,16 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
           </div>
 
           {recapEditable && (
-            <div className="mt-5 flex justify-end">
-              <Button onClick={() => recapMutation.mutate()} disabled={recapMutation.isPending}>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => generateMutation.mutate()}
+                disabled={generateMutation.isPending || recapMutation.isPending}
+              >
+                {generateMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                {t("journal.recap.generate")}
+              </Button>
+              <Button onClick={() => recapMutation.mutate()} disabled={recapMutation.isPending || generateMutation.isPending}>
                 {recapMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
                 {t("journal.recap.save")}
               </Button>
@@ -1075,6 +1102,7 @@ export default function Journal() {
 
   const tabs: { id: Tab; labelKey: string; icon: typeof BookOpen }[] = [
     { id: "trades", labelKey: "journal.tab.trades", icon: BookOpen },
+    { id: "edge", labelKey: "journal.tab.edge", icon: LineChart },
     { id: "recap-settimanale", labelKey: "journal.tab.weekly", icon: BarChart3 },
     { id: "recap-mensile", labelKey: "journal.tab.four_week", icon: Calendar },
     { id: "idee", labelKey: "journal.tab.ideas", icon: Lightbulb },
@@ -1114,6 +1142,7 @@ export default function Journal() {
           transition={{ duration: 0.2 }}
         >
           {tab === "trades" && <TradesTab />}
+          {tab === "edge" && <JournalEdge />}
           {tab === "recap-settimanale" && <RecapTab mode="weekly" />}
           {tab === "recap-mensile" && <RecapTab mode="four_week" />}
           {tab === "idee" && <IdeasTab type="idea" />}

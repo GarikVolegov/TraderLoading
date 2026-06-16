@@ -358,6 +358,136 @@ export interface UpdateJournalEntryRequest {
   tags?: string | null;
 }
 
+export interface EdgeSlice {
+  label: string;
+  trades: number;
+  winRate: number | null;
+  expectancyR: number | null;
+  netProfit: number;
+}
+
+export type EdgeSliceRefDimension =
+  (typeof EdgeSliceRefDimension)[keyof typeof EdgeSliceRefDimension];
+
+export const EdgeSliceRefDimension = {
+  symbol: "symbol",
+  direction: "direction",
+  session: "session",
+  dayOfWeek: "dayOfWeek",
+} as const;
+
+export interface EdgeSliceRef {
+  dimension: EdgeSliceRefDimension;
+  label: string;
+  trades: number;
+  expectancyR: number;
+}
+
+export interface EdgePostLoss {
+  trades: number;
+  expectancyR: number | null;
+  baselineExpectancyR: number | null;
+}
+
+export interface EdgeOverall {
+  closedTrades: number;
+  tradesWithR: number;
+  winRate: number | null;
+  expectancyR: number | null;
+  avgWinR: number | null;
+  avgLossR: number | null;
+  profitFactor: number | null;
+  netProfit: number;
+  avgWin: number | null;
+  avgLoss: number | null;
+}
+
+export interface DisciplineStop {
+  losses: number;
+  lossesBeyond1R: number;
+  pct: number;
+}
+
+export interface DisciplineHoldTime {
+  avgWinnerMinutes: number;
+  avgLoserMinutes: number;
+}
+
+export interface DisciplineOvertrading {
+  medianTradesPerDay: number;
+  busiestDayTrades: number;
+  busyThreshold: number;
+  busyExpectancyR: number | null;
+  calmExpectancyR: number | null;
+}
+
+export interface DisciplineDrawdown {
+  longestLossStreak: number;
+  maxDrawdown: number;
+}
+
+export interface DisciplineReport {
+  stopDiscipline: DisciplineStop | null;
+  holdTime: DisciplineHoldTime | null;
+  overtrading: DisciplineOvertrading | null;
+  drawdown: DisciplineDrawdown | null;
+}
+
+export type RiskGuardAlertType = (typeof RiskGuardAlertType)[keyof typeof RiskGuardAlertType];
+
+export const RiskGuardAlertType = {
+  daily_loss: "daily_loss",
+  daily_loss_cash: "daily_loss_cash",
+  loss_streak: "loss_streak",
+  overtrading: "overtrading",
+  revenge: "revenge",
+} as const;
+
+export type RiskGuardAlertSeverity =
+  (typeof RiskGuardAlertSeverity)[keyof typeof RiskGuardAlertSeverity];
+
+export const RiskGuardAlertSeverity = {
+  warning: "warning",
+  danger: "danger",
+} as const;
+
+export interface RiskGuardAlert {
+  type: RiskGuardAlertType;
+  severity: RiskGuardAlertSeverity;
+  value: number;
+  threshold: number;
+}
+
+export interface RiskGuardReport {
+  evaluatedAt: string;
+  tradingDay: string;
+  todayTrades: number;
+  todayNetR: number | null;
+  alerts: RiskGuardAlert[];
+}
+
+export type EdgeReportBreakdowns = {
+  bySymbol: EdgeSlice[];
+  byDirection: EdgeSlice[];
+  bySession: EdgeSlice[];
+  byDayOfWeek: EdgeSlice[];
+};
+
+export type EdgeReportHighlights = {
+  bestSlice: EdgeSliceRef | null;
+  worstSlice: EdgeSliceRef | null;
+  postLoss: EdgePostLoss | null;
+};
+
+export interface EdgeReport {
+  generatedAt: string;
+  overall: EdgeOverall;
+  breakdowns: EdgeReportBreakdowns;
+  highlights: EdgeReportHighlights;
+  discipline: DisciplineReport;
+  guard: RiskGuardReport;
+}
+
 export interface DeleteResponse {
   success: boolean;
 }

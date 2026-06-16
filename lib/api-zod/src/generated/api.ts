@@ -682,6 +682,140 @@ export const CreateJournalEntryBody = zod.object({
 });
 
 /**
+ * Expectancy in R, win rate and net P&L for the user's closed trades, overall and broken down by symbol, direction, session and day of week, plus best/worst slice highlights and a post-loss behavioural signal.
+ * @summary Edge analytics over closed broker trades
+ */
+export const GetJournalEdgeResponse = zod.object({
+  generatedAt: zod.string(),
+  overall: zod.object({
+    closedTrades: zod.number(),
+    tradesWithR: zod.number(),
+    winRate: zod.number().nullable(),
+    expectancyR: zod.number().nullable(),
+    avgWinR: zod.number().nullable(),
+    avgLossR: zod.number().nullable(),
+    profitFactor: zod.number().nullable(),
+    netProfit: zod.number(),
+    avgWin: zod.number().nullable(),
+    avgLoss: zod.number().nullable(),
+  }),
+  breakdowns: zod.object({
+    bySymbol: zod.array(
+      zod.object({
+        label: zod.string(),
+        trades: zod.number(),
+        winRate: zod.number().nullable(),
+        expectancyR: zod.number().nullable(),
+        netProfit: zod.number(),
+      }),
+    ),
+    byDirection: zod.array(
+      zod.object({
+        label: zod.string(),
+        trades: zod.number(),
+        winRate: zod.number().nullable(),
+        expectancyR: zod.number().nullable(),
+        netProfit: zod.number(),
+      }),
+    ),
+    bySession: zod.array(
+      zod.object({
+        label: zod.string(),
+        trades: zod.number(),
+        winRate: zod.number().nullable(),
+        expectancyR: zod.number().nullable(),
+        netProfit: zod.number(),
+      }),
+    ),
+    byDayOfWeek: zod.array(
+      zod.object({
+        label: zod.string(),
+        trades: zod.number(),
+        winRate: zod.number().nullable(),
+        expectancyR: zod.number().nullable(),
+        netProfit: zod.number(),
+      }),
+    ),
+  }),
+  highlights: zod.object({
+    bestSlice: zod.union([
+      zod.object({
+        dimension: zod.enum(["symbol", "direction", "session", "dayOfWeek"]),
+        label: zod.string(),
+        trades: zod.number(),
+        expectancyR: zod.number(),
+      }),
+      zod.null(),
+    ]),
+    worstSlice: zod.union([
+      zod.object({
+        dimension: zod.enum(["symbol", "direction", "session", "dayOfWeek"]),
+        label: zod.string(),
+        trades: zod.number(),
+        expectancyR: zod.number(),
+      }),
+      zod.null(),
+    ]),
+    postLoss: zod.union([
+      zod.object({
+        trades: zod.number(),
+        expectancyR: zod.number().nullable(),
+        baselineExpectancyR: zod.number().nullable(),
+      }),
+      zod.null(),
+    ]),
+  }),
+  discipline: zod.object({
+    stopDiscipline: zod.union([
+      zod.object({
+        losses: zod.number(),
+        lossesBeyond1R: zod.number(),
+        pct: zod.number(),
+      }),
+      zod.null(),
+    ]),
+    holdTime: zod.union([
+      zod.object({
+        avgWinnerMinutes: zod.number(),
+        avgLoserMinutes: zod.number(),
+      }),
+      zod.null(),
+    ]),
+    overtrading: zod.union([
+      zod.object({
+        medianTradesPerDay: zod.number(),
+        busiestDayTrades: zod.number(),
+        busyThreshold: zod.number(),
+        busyExpectancyR: zod.number().nullable(),
+        calmExpectancyR: zod.number().nullable(),
+      }),
+      zod.null(),
+    ]),
+    drawdown: zod.union([
+      zod.object({
+        longestLossStreak: zod.number(),
+        maxDrawdown: zod.number(),
+      }),
+      zod.null(),
+    ]),
+  }),
+  guard: zod.object({
+    evaluatedAt: zod.string(),
+    tradingDay: zod.string(),
+    todayTrades: zod.number(),
+    todayNetR: zod.number().nullable(),
+    alerts: zod.array(
+      zod.object({
+        type: zod.enum(["daily_loss", "daily_loss_cash", "loss_streak", "overtrading", "revenge"]),
+        severity: zod.enum(["warning", "danger"]),
+        value: zod.number(),
+        threshold: zod.number(),
+      }),
+    ),
+  }),
+});
+
+/**
  * @summary Get a single journal entry
  */
 export const GetJournalEntryParams = zod.object({

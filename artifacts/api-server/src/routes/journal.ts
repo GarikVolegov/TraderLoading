@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db } from "@workspace/db";
-import { journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable } from "@workspace/db";
+import { accountTradesTable, journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable, userSettingsTable } from "@workspace/db";
 import {
   CreateJournalEntryBody,
   UpdateJournalEntryBody,
@@ -22,6 +22,12 @@ import {
   validateJournalRecapPeriod,
   type JournalRecapKind,
 } from "../services/journalRecapPeriods.js";
+import { computeEdgeReport, type EdgeTrade } from "../services/tradeAnalytics.js";
+import { computeDisciplineReport } from "../services/tradeDiscipline.js";
+import { composeEdgeReport } from "../services/edgeReport.js";
+import { buildRecapMessages, filterTradesByPeriod, parseRecapDraft } from "../services/journalRecapDraft.js";
+import { getTextClient } from "../services/llmClient.js";
+import logger from "../lib/logger.js";
 import { getUploadsDir } from "../lib/uploads.js";
 
 const router: IRouter = Router();
@@ -384,6 +390,117 @@ router.put("/journal/recaps", async (req, res) => {
     : await db.insert(journalRecapsTable).values(values).returning();
 
   res.json(saved);
+});
+
+// Loads the user's closed broker trades, mapped to the shape the analytics
+// services consume. Drizzle returns numeric columns as strings, so we coerce.
+async function loadClosedEdgeTrades(userId: string | null): Promise<EdgeTrade[]> {
+  const userFilter = userId
+    ? eq(accountTradesTable.userId, userId)
+    : eq(accountTradesTable.userId, "guest");
+
+  const rows = await db
+    .select({
+      symbol: accountTradesTable.symbol,
+      direction: accountTradesTable.direction,
+      openTime: accountTradesTable.openTime,
+      closeTime: accountTradesTable.closeTime,
+      entryPrice: accountTradesTable.entryPrice,
+      exitPrice: accountTradesTable.exitPrice,
+      stopLoss: accountTradesTable.stopLoss,
+      profit: accountTradesTable.profit,
+    })
+    .from(accountTradesTable)
+    .where(and(userFilter, eq(accountTradesTable.status, "closed")));
+
+  const num = (value: string | null): number | null => (value === null ? null : Number(value));
+  return rows.map((row) => ({
+    symbol: row.symbol,
+    direction: row.direction,
+    openTime: row.openTime,
+    closeTime: row.closeTime,
+    entryPrice: num(row.entryPrice),
+    exitPrice: num(row.exitPrice),
+    stopLoss: num(row.stopLoss),
+    profit: num(row.profit),
+  }));
+}
+
+// Edge analytics: turns closed broker trades into a verdict (expectancy in R,
+// win rate and net P&L overall + by symbol/direction/session/day, plus the
+// post-loss "revenge" signal and behavioural discipline). Read-only.
+// Declared before "/journal/:id" so the literal path isn't captured as an id.
+// The cash daily-loss breaker reuses the user's existing `maxDailyLoss` setting.
+async function loadMaxDailyLoss(userId: string | null): Promise<number | null> {
+  const filter = userId ? eq(userSettingsTable.userId, userId) : isNull(userSettingsTable.userId);
+  const [row] = await db
+    .select({ maxDailyLoss: userSettingsTable.maxDailyLoss })
+    .from(userSettingsTable)
+    .where(filter)
+    .limit(1);
+  return row?.maxDailyLoss ?? null;
+}
+
+router.get("/journal/edge", async (req, res) => {
+  const userId = getUserId(req);
+  const [trades, maxDailyLossCash] = await Promise.all([
+    loadClosedEdgeTrades(userId),
+    loadMaxDailyLoss(userId),
+  ]);
+  res.json(composeEdgeReport(trades, new Date(), maxDailyLossCash));
+});
+
+// Generates an AI recap draft from the period's edge + discipline stats. Returns
+// the eight recap fields for the user to review/edit before saving via PUT.
+// Degrades gracefully: 503 when no LLM provider is configured.
+router.post("/journal/recaps/generate", async (req, res) => {
+  const userId = getUserId(req);
+  const body = JournalRecapQuery.parse(req.body);
+  const kind = body.kind as JournalRecapKind;
+
+  if (!validateJournalRecapPeriod(kind, body.periodStart, body.periodEnd)) {
+    res.status(400).json({ error: "Invalid recap period" });
+    return;
+  }
+
+  const trades = filterTradesByPeriod(await loadClosedEdgeTrades(userId), body.periodStart, body.periodEnd);
+  if (trades.length === 0) {
+    res.status(422).json({ error: "Nessun trade chiuso nel periodo selezionato." });
+    return;
+  }
+
+  const textClient = getTextClient();
+  if (!textClient) {
+    res.status(503).json({ error: "Generazione AI non configurata." });
+    return;
+  }
+
+  const { system, user } = buildRecapMessages(
+    computeEdgeReport(trades),
+    computeDisciplineReport(trades),
+    { kind: body.kind, periodStart: body.periodStart, periodEnd: body.periodEnd },
+  );
+
+  try {
+    const completion = await textClient.client.chat.completions.create({
+      model: textClient.model,
+      temperature: 0.4,
+      max_tokens: 900,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    });
+    const content = completion.choices[0]?.message?.content ?? "";
+    if (!content.trim()) {
+      res.status(502).json({ error: "Risposta AI vuota." });
+      return;
+    }
+    res.json(parseRecapDraft(content));
+  } catch (error) {
+    logger.error({ err: error, userId }, "Recap generation failed");
+    res.status(502).json({ error: "Generazione del recap non riuscita." });
+  }
 });
 
 router.get("/journal/:id", async (req, res) => {

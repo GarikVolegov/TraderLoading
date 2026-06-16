@@ -48,6 +48,7 @@ import type {
   DeleteBacktestSession200,
   DeleteBacktestTrade200,
   DeleteResponse,
+  EdgeReport,
   ErrorEnvelope,
   FriendListItem,
   FriendRequestAction,
@@ -3373,6 +3374,67 @@ export const useCreateJournalEntry = <TError = ErrorType<unknown>, TContext = un
 > => {
   return useMutation(getCreateJournalEntryMutationOptions(options));
 };
+
+/**
+ * Expectancy in R, win rate and net P&L for the user's closed trades, overall and broken down by symbol, direction, session and day of week, plus best/worst slice highlights and a post-loss behavioural signal.
+ * @summary Edge analytics over closed broker trades
+ */
+export const getGetJournalEdgeUrl = () => {
+  return `/api/journal/edge`;
+};
+
+export const getJournalEdge = async (options?: RequestInit): Promise<EdgeReport> => {
+  return customFetch<EdgeReport>(getGetJournalEdgeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetJournalEdgeQueryKey = () => {
+  return [`/api/journal/edge`] as const;
+};
+
+export const getGetJournalEdgeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getJournalEdge>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getJournalEdge>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetJournalEdgeQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getJournalEdge>>> = ({ signal }) =>
+    getJournalEdge({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getJournalEdge>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetJournalEdgeQueryResult = NonNullable<Awaited<ReturnType<typeof getJournalEdge>>>;
+export type GetJournalEdgeQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Edge analytics over closed broker trades
+ */
+
+export function useGetJournalEdge<
+  TData = Awaited<ReturnType<typeof getJournalEdge>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getJournalEdge>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetJournalEdgeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get a single journal entry

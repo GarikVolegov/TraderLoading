@@ -66,8 +66,11 @@ tools/metatrader-companion/   MT5 expert advisor
 
 ## 6. Architecture & subsystems
 
-- **Contract flow:** Zod schemas (`lib/api-zod`) → OpenAPI (`lib/api-spec`) → Orval-generated React Query
-  client (`lib/api-client-react`). Keep codegen in sync; never hand-edit generated client files.
+- **Contract flow:** the hand-authored **`lib/api-spec/openapi.yaml` is the source of truth**; Orval generates
+  *both* the Zod schemas (`lib/api-zod`) *and* the React Query client (`lib/api-client-react`) from it. To add an
+  endpoint: edit `openapi.yaml` (path + `components/schemas`), run `pnpm codegen`, then wire route + UI. Never
+  hand-edit generated files. (Nullable `$ref`s use `oneOf: [$ref, {type: "null"}]`; new query hooks require an
+  explicit `queryKey: getGet<Op>QueryKey()`.)
 - **Backend layout:** entry [artifacts/api-server/src/index.ts](artifacts/api-server/src/index.ts);
   `routes/` (~50 files) over `services/` (~40). Three WebSocket servers (account bridge, broker hub, news hub)
   plus cron jobs (COT fetch, session push, brain scanner). All routes scoped by `userId` (multi-user isolation).
@@ -79,6 +82,20 @@ tools/metatrader-companion/   MT5 expert advisor
     file/URL uploads + folders) with async text extraction and client-side text search. Pro-gated
     (`feature="wiki"`); route/keys keep the internal `wiki` name. No AI/graph (removed; see git history).
   - **COT data** (`routes/tools.ts`) — CFTC Commitment-of-Traders, weekly cron.
+  - **Trading coach** (Journal "Edge" tab + recap) — turns closed `accountTradesTable` trades into a verdict:
+    - *Edge* (`services/tradeAnalytics.ts`) — expectancy-in-R, win rate, net P&L by symbol/direction/session/day
+      + best/worst-slice + post-loss "revenge" signal. R = `(|exit−entry|/|entry−stop|)·sign(profit)` (same
+      convention as client `parseTradeContent.tradeRMultiple`).
+    - *Discipline* (`services/tradeDiscipline.ts`) — behavioural leaks: stop discipline (losses beyond −1R),
+      disposition effect (winner vs loser hold time), overtrading (busy- vs calm-day expectancy), drawdown/streak.
+    - *Risk guard / circuit-breaker* (`services/riskGuard.ts`) — breaches active right now: daily-R loss limit,
+      **cash daily-loss limit** (reuses the user's `maxDailyLoss` setting; fires without stops, with an 80%
+      warning), consecutive-loss streak, overtrading, post-loss revenge (Europe/Rome day). Banner atop the Edge tab.
+    - *AI recap* (`services/journalRecapDraft.ts`, `POST /journal/recaps/generate`) — feeds the edge+discipline
+      brief to `llmClient.getTextClient()` and drafts the 8 journal-recap fields (degrades to 503 if no LLM key).
+    - Served by `GET /journal/edge` (`services/edgeReport.ts` merges edge + discipline + guard in one read) + UI
+      `components/JournalEdge.tsx`. The recap endpoints (`/journal/recaps*`) are **off-contract** (direct
+      `apiJSON`, not in openapi.yaml). All pure/unit-tested; copy is i18n'd (see [[i18n-enforced-new-ui]]).
   - **Candle warehouse** — see §7.
 
 ## 7. Active work / current focus

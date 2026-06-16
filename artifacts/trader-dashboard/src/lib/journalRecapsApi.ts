@@ -64,3 +64,19 @@ export function saveJournalRecap(
     body: JSON.stringify(payload),
   }, options);
 }
+
+/** Asks the backend to draft the recap fields from the period's trade stats (AI). */
+export function generateJournalRecap(
+  period: JournalRecapPeriod,
+  options?: RelativeApiOptions,
+): Promise<JournalRecapFields> {
+  return apiJSON<JournalRecapFields>("journal/recaps/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      kind: period.kind,
+      periodStart: period.periodStart,
+      periodEnd: period.periodEnd,
+    }),
+  }, options);
+}

@@ -891,6 +891,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/JournalEntry"
 
+  /journal/edge:
+    get:
+      operationId: getJournalEdge
+      tags: [journal]
+      summary: Edge analytics over closed broker trades
+      description: >-
+        Expectancy in R, win rate and net P&L for the user's closed trades,
+        overall and broken down by symbol, direction, session and day of week,
+        plus best/worst slice highlights and a post-loss behavioural signal.
+      responses:
+        "200":
+          description: Edge analytics report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EdgeReport"
+
   /journal/{id}:
     get:
       operationId: getJournalEntry
@@ -2308,6 +2325,291 @@ components:
         - content
         - tradeDate
         - result
+
+    EdgeSlice:
+      type: object
+      properties:
+        label:
+          type: string
+        trades:
+          type: integer
+        winRate:
+          type: number
+          nullable: true
+        expectancyR:
+          type: number
+          nullable: true
+        netProfit:
+          type: number
+      required:
+        - label
+        - trades
+        - winRate
+        - expectancyR
+        - netProfit
+
+    EdgeSliceRef:
+      type: object
+      properties:
+        dimension:
+          type: string
+          enum: [symbol, direction, session, dayOfWeek]
+        label:
+          type: string
+        trades:
+          type: integer
+        expectancyR:
+          type: number
+      required:
+        - dimension
+        - label
+        - trades
+        - expectancyR
+
+    EdgePostLoss:
+      type: object
+      properties:
+        trades:
+          type: integer
+        expectancyR:
+          type: number
+          nullable: true
+        baselineExpectancyR:
+          type: number
+          nullable: true
+      required:
+        - trades
+        - expectancyR
+        - baselineExpectancyR
+
+    EdgeOverall:
+      type: object
+      properties:
+        closedTrades:
+          type: integer
+        tradesWithR:
+          type: integer
+        winRate:
+          type: number
+          nullable: true
+        expectancyR:
+          type: number
+          nullable: true
+        avgWinR:
+          type: number
+          nullable: true
+        avgLossR:
+          type: number
+          nullable: true
+        profitFactor:
+          type: number
+          nullable: true
+        netProfit:
+          type: number
+        avgWin:
+          type: number
+          nullable: true
+        avgLoss:
+          type: number
+          nullable: true
+      required:
+        - closedTrades
+        - tradesWithR
+        - winRate
+        - expectancyR
+        - avgWinR
+        - avgLossR
+        - profitFactor
+        - netProfit
+        - avgWin
+        - avgLoss
+
+    DisciplineStop:
+      type: object
+      properties:
+        losses:
+          type: integer
+        lossesBeyond1R:
+          type: integer
+        pct:
+          type: number
+      required:
+        - losses
+        - lossesBeyond1R
+        - pct
+
+    DisciplineHoldTime:
+      type: object
+      properties:
+        avgWinnerMinutes:
+          type: number
+        avgLoserMinutes:
+          type: number
+      required:
+        - avgWinnerMinutes
+        - avgLoserMinutes
+
+    DisciplineOvertrading:
+      type: object
+      properties:
+        medianTradesPerDay:
+          type: number
+        busiestDayTrades:
+          type: integer
+        busyThreshold:
+          type: number
+        busyExpectancyR:
+          type: number
+          nullable: true
+        calmExpectancyR:
+          type: number
+          nullable: true
+      required:
+        - medianTradesPerDay
+        - busiestDayTrades
+        - busyThreshold
+        - busyExpectancyR
+        - calmExpectancyR
+
+    DisciplineDrawdown:
+      type: object
+      properties:
+        longestLossStreak:
+          type: integer
+        maxDrawdown:
+          type: number
+      required:
+        - longestLossStreak
+        - maxDrawdown
+
+    DisciplineReport:
+      type: object
+      properties:
+        stopDiscipline:
+          oneOf:
+            - $ref: "#/components/schemas/DisciplineStop"
+            - type: "null"
+        holdTime:
+          oneOf:
+            - $ref: "#/components/schemas/DisciplineHoldTime"
+            - type: "null"
+        overtrading:
+          oneOf:
+            - $ref: "#/components/schemas/DisciplineOvertrading"
+            - type: "null"
+        drawdown:
+          oneOf:
+            - $ref: "#/components/schemas/DisciplineDrawdown"
+            - type: "null"
+      required:
+        - stopDiscipline
+        - holdTime
+        - overtrading
+        - drawdown
+
+    RiskGuardAlert:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [daily_loss, daily_loss_cash, loss_streak, overtrading, revenge]
+        severity:
+          type: string
+          enum: [warning, danger]
+        value:
+          type: number
+        threshold:
+          type: number
+      required:
+        - type
+        - severity
+        - value
+        - threshold
+
+    RiskGuardReport:
+      type: object
+      properties:
+        evaluatedAt:
+          type: string
+        tradingDay:
+          type: string
+        todayTrades:
+          type: integer
+        todayNetR:
+          type: number
+          nullable: true
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskGuardAlert"
+      required:
+        - evaluatedAt
+        - tradingDay
+        - todayTrades
+        - todayNetR
+        - alerts
+
+    EdgeReport:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+        overall:
+          $ref: "#/components/schemas/EdgeOverall"
+        breakdowns:
+          type: object
+          properties:
+            bySymbol:
+              type: array
+              items:
+                $ref: "#/components/schemas/EdgeSlice"
+            byDirection:
+              type: array
+              items:
+                $ref: "#/components/schemas/EdgeSlice"
+            bySession:
+              type: array
+              items:
+                $ref: "#/components/schemas/EdgeSlice"
+            byDayOfWeek:
+              type: array
+              items:
+                $ref: "#/components/schemas/EdgeSlice"
+          required:
+            - bySymbol
+            - byDirection
+            - bySession
+            - byDayOfWeek
+        highlights:
+          type: object
+          properties:
+            bestSlice:
+              oneOf:
+                - $ref: "#/components/schemas/EdgeSliceRef"
+                - type: "null"
+            worstSlice:
+              oneOf:
+                - $ref: "#/components/schemas/EdgeSliceRef"
+                - type: "null"
+            postLoss:
+              oneOf:
+                - $ref: "#/components/schemas/EdgePostLoss"
+                - type: "null"
+          required:
+            - bestSlice
+            - worstSlice
+            - postLoss
+        discipline:
+          $ref: "#/components/schemas/DisciplineReport"
+        guard:
+          $ref: "#/components/schemas/RiskGuardReport"
+      required:
+        - generatedAt
+        - overall
+        - breakdowns
+        - highlights
+        - discipline
+        - guard
 
     DeleteResponse:
       type: object
