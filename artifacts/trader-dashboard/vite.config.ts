@@ -80,13 +80,16 @@ export default defineConfig(async ({ command }) => {
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return undefined;
-          if (id.includes("@clerk")) return "vendor-auth";
+          // lightweight-charts is framework-agnostic (canvas) and large → safe to isolate.
           if (id.includes("lightweight-charts")) return "vendor-lightweight-charts";
-          if (id.includes("recharts") || id.includes("d3-")) return "vendor-recharts";
-          if (id.includes("framer-motion") || id.includes("@dnd-kit")) return "vendor-motion";
-          if (id.includes("@radix-ui") || id.includes("lucide-react")) return "vendor-ui";
-          if (id.includes("react") || id.includes("react-dom") || id.includes("wouter")) return "vendor-react";
-          return undefined;
+          // Everything else — React itself AND every library that touches React APIs
+          // (forwardRef/hooks) at module-init time (@radix-ui, lucide-react, recharts,
+          // framer-motion, @dnd-kit, @clerk, wouter), plus React's CommonJS-interop
+          // helper modules — MUST live in one chunk. Splitting them across vendor-ui /
+          // vendor-react / vendor-recharts produced CIRCULAR chunk graphs
+          // (vendor-ui ↔ vendor-react), so a UI chunk evaluated before React was ready
+          // → "Cannot read properties of undefined (reading 'forwardRef')" → black screen.
+          return "vendor";
         },
       },
     },
