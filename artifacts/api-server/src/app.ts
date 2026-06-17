@@ -7,12 +7,10 @@ import rateLimit from "express-rate-limit";
 import path from "path";
 import fs from "fs";
 import { clerkMiddleware } from "@clerk/express";
-import { publishableKeyFromHost } from "@clerk/shared/keys";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
-  getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
 import { loggingMiddleware } from "./middlewares/loggingMiddleware";
 import logger from "./lib/logger";
@@ -62,14 +60,14 @@ const shouldUseClerkMiddleware =
   process.env.NODE_ENV === "production" || Boolean(clerkSecretKey);
 
 if (shouldUseClerkMiddleware) {
-  app.use(
-    clerkMiddleware((req) => ({
-      publishableKey: publishableKeyFromHost(
-        getClerkProxyHost(req) ?? "",
-        process.env.CLERK_PUBLISHABLE_KEY,
-      ),
-    })),
-  );
+  // Custom-domain Clerk instance (clerk.traderloading.com): use the fixed publishable
+  // key from env directly. Do NOT derive it from the request host —
+  // publishableKeyFromHost() builds `clerk.<host>` (e.g. clerk.www.traderloading.com),
+  // i.e. the WRONG instance for a custom-domain deploy, so Clerk fails to verify the
+  // session and every authenticated route 401s. clerkMiddleware() reads
+  // CLERK_PUBLISHABLE_KEY + CLERK_SECRET_KEY from env. (Host-derived keys are only for
+  // non-custom-domain proxy deploys, which this project no longer uses.)
+  app.use(clerkMiddleware());
 } else {
   logger.warn("Clerk disabled for local development because CLERK_SECRET_KEY is not configured");
 }
