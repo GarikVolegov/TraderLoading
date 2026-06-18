@@ -370,11 +370,10 @@ export default function Dashboard() {
     ? order
     : order.filter((id) => !hidden[id]);
 
-  // Layout: in vista normale i widget si impacchettano a masonry (altezza naturale,
-  // niente spazi vuoti); in modifica diventano una griglia uniforme per un drag&drop pulito.
-  const containerClass = isEditing
-    ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start"
-    : "columns-1 sm:columns-2 xl:columns-3 [column-gap:1rem]";
+  // Layout: griglia responsiva uniforme in entrambe le viste. La masonry via CSS
+  // `columns` si rompe su Safari/WebKit (altezze mal calcolate, `break-inside` ignorato →
+  // card sovrapposte/fluttuanti), quindi usiamo una grid robusta cross-browser.
+  const containerClass = "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start";
 
   return (
     <PageLayout>
@@ -457,7 +456,7 @@ export default function Dashboard() {
                     y: { delay: i * 0.03, duration: 0.24, ease: [0.22,1,0.36,1] },
                     layout: { duration: 0.28, ease: [0.22,1,0.36,1] },
                   }}
-                  className={isEditing ? "h-[200px]" : "mb-4 break-inside-avoid"}
+                  className={isEditing ? "h-[200px]" : ""}
                 >
                   <SortableWidget
                     def={def}

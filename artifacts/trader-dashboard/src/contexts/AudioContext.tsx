@@ -28,6 +28,35 @@ interface AudioContextType {
 
 const AudioCtx = createContext<AudioContextType | null>(null);
 
+// Builds 1s of silent 8-bit mono WAV as an object URL. Used as the source of a looping
+// <audio> element: playing an HTMLMediaElement on a user gesture flips the iOS audio
+// session to "playback", so the Web Audio oscillators are no longer muted by the hardware
+// Silent switch (which mutes bare AudioContext output on iPhone).
+function buildSilentWavUrl(): string {
+  const sampleRate = 8000;
+  const dataSize = sampleRate; // 1s, 8-bit mono
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  const writeStr = (off: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+  };
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true); // 8-bit
+  writeStr(36, "data");
+  view.setUint32(40, dataSize, true);
+  for (let i = 0; i < dataSize; i++) view.setUint8(44 + i, 128); // 8-bit silence = 128
+  return URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+}
+
 export function AudioProvider({ children }: { children: ReactNode }) {
   const { setCurrentStep, completeLoading } = useLoading();
   const [mode, setModeState] = useState<AudioMode>("off");
@@ -38,6 +67,8 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const hasAutoStarted = useRef(false);
   const startIdRef = useRef(0);
 
+  const silentAudioRef = useRef<HTMLAudioElement | null>(null);
+
   const stopOscillators = useCallback(() => {
     if (oscillatorsRef.current) {
       oscillatorsRef.current.forEach(osc => { try { osc.stop(); } catch (e) { console.warn("osc.stop failed:", e); } });
@@ -45,56 +76,81 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Play a near-silent looping media element to flip the iOS audio session to "playback".
+  // Must be called inside a user gesture; safe to call repeatedly.
+  const unlockMediaSession = useCallback(() => {
+    try {
+      if (!silentAudioRef.current) {
+        const el = document.createElement("audio");
+        el.setAttribute("playsinline", "");
+        el.loop = true;
+        el.volume = 0.001;
+        el.src = buildSilentWavUrl();
+        silentAudioRef.current = el;
+      }
+      const playPromise = silentAudioRef.current.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => { /* gesture-gated; ignore */ });
+      }
+    } catch (e) {
+      console.warn("media-session unlock failed:", e);
+    }
+  }, []);
+
   const startFrequencies = useCallback((baseFreq: number, beatFreq: number, vol: number) => {
     try {
+      // Flip the iOS audio session inside the gesture so Web Audio bypasses the Silent switch.
+      unlockMediaSession();
+
       if (!audioCtxRef.current) {
         audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       }
       const ctx = audioCtxRef.current;
 
-      const thisStartId = ++startIdRef.current;
+      ++startIdRef.current;
 
-      const createNodes = () => {
-        if (startIdRef.current !== thisStartId) return;
-        stopOscillators();
+      // Create AND start the oscillators synchronously, within the gesture call stack.
+      // iOS/Safari only emits sound when nodes are started in the gesture; the previous
+      // approach deferred node creation into resume().then(...) and produced silence on iOS.
+      stopOscillators();
 
-        const gain = ctx.createGain();
-        gain.gain.value = (vol / 100) * 0.3;
-        gain.connect(ctx.destination);
-        gainRef.current = gain;
+      const gain = ctx.createGain();
+      gain.gain.value = (vol / 100) * 0.3;
+      gain.connect(ctx.destination);
+      gainRef.current = gain;
 
-        const panL = ctx.createStereoPanner();
-        panL.pan.value = -1;
-        panL.connect(gain);
+      const panL = ctx.createStereoPanner();
+      panL.pan.value = -1;
+      panL.connect(gain);
 
-        const panR = ctx.createStereoPanner();
-        panR.pan.value = 1;
-        panR.connect(gain);
+      const panR = ctx.createStereoPanner();
+      panR.pan.value = 1;
+      panR.connect(gain);
 
-        const osc1 = ctx.createOscillator();
-        osc1.type = "sine";
-        osc1.frequency.value = baseFreq;
-        osc1.connect(panL);
-        osc1.start();
+      const osc1 = ctx.createOscillator();
+      osc1.type = "sine";
+      osc1.frequency.value = baseFreq;
+      osc1.connect(panL);
+      osc1.start();
 
-        const osc2 = ctx.createOscillator();
-        osc2.type = "sine";
-        osc2.frequency.value = baseFreq + beatFreq;
-        osc2.connect(panR);
-        osc2.start();
+      const osc2 = ctx.createOscillator();
+      osc2.type = "sine";
+      osc2.frequency.value = baseFreq + beatFreq;
+      osc2.connect(panR);
+      osc2.start();
 
-        oscillatorsRef.current = [osc1, osc2];
-      };
+      oscillatorsRef.current = [osc1, osc2];
 
-      if (ctx.state === "running") {
-        createNodes();
-      } else {
-        ctx.resume().then(createNodes).catch(e => console.warn("AudioContext resume failed:", e));
+      // Nodes are already running; just make sure the context isn't suspended. Retry once
+      // shortly after in case iOS left it suspended immediately after the gesture.
+      if (ctx.state !== "running") {
+        ctx.resume().catch(e => console.warn("AudioContext resume failed:", e));
+        setTimeout(() => { ctx.resume().catch(() => {}); }, 250);
       }
     } catch (e) {
       console.warn("Audio start failed:", e);
     }
-  }, [stopOscillators]);
+  }, [stopOscillators, unlockMediaSession]);
 
   const volumeRef = useRef(volume);
   volumeRef.current = volume;
@@ -103,6 +159,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     if (newMode === "off") {
       startIdRef.current++;
       stopOscillators();
+      silentAudioRef.current?.pause();
     } else {
       const config = AUDIO_MODES[newMode as keyof typeof AUDIO_MODES];
       if (!config) return;
