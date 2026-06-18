@@ -48,55 +48,106 @@
 
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
+
+  --color-surface-0: hsl(var(--surface-0));
+  --color-surface-1: hsl(var(--surface-1));
+  --color-surface-2: hsl(var(--surface-2));
+  --color-surface-3: hsl(var(--surface-3));
+  --color-accent-jade: hsl(var(--accent-jade));
+  --color-accent-jade-soft: hsl(var(--accent-jade-soft));
+  --color-text-hi: hsl(var(--text-hi));
+  --color-text-lo: hsl(var(--text-lo));
+  --color-text-faint: hsl(var(--text-faint));
+  --color-border-subtle: hsl(var(--border-subtle));
+  --color-border-strong: hsl(var(--border-strong));
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
 }
 
 :root {
-  --background: 222 47% 3%;
-  --foreground: 210 40% 98%;
-  
-  --card: 226 43% 10%;
-  --card-foreground: 210 40% 98%;
-  
-  --popover: 226 43% 8%;
-  --popover-foreground: 210 40% 98%;
-  
-  --primary: 142 71% 45%;
-  --primary-foreground: 222 47% 6%;
-  
-  --secondary: 222 35% 14%;
-  --secondary-foreground: 210 40% 98%;
-  
-  --muted: 225 28% 14%;
-  --muted-foreground: 215 20% 65%;
-  
-  --accent: 217 91% 60%;
-  --accent-foreground: 210 40% 98%;
-  
-  --destructive: 0 84% 60%;
+  /* ── Neutral graphite ramp ─────────────────────────────────── */
+  --surface-0: 220 24% 5%;
+  --surface-1: 220 18% 9%;
+  --surface-2: 220 16% 12%;
+  --surface-3: 220 14% 16%;
+  --border-subtle: 220 12% 20%;
+  --border-strong: 220 12% 30%;
+  --text-hi: 210 20% 96%;
+  --text-lo: 215 14% 66%;
+  --text-faint: 215 12% 46%;
+
+  /* ── Accent: desaturated jade (chrome only) ────────────────── */
+  --accent-jade: 160 34% 48%;
+  --accent-jade-soft: 160 28% 60%;
+
+  /* ── Functional trading semantics (kept vivid) ─────────────── */
+  --success: 150 64% 46%;
+  --success-foreground: 220 24% 6%;
+  --destructive: 0 75% 60%;
   --destructive-foreground: 210 40% 98%;
+  --warning: 38 92% 55%;
+  --warning-foreground: 220 24% 6%;
 
-  --success: 142 71% 45%;
-  --success-foreground: 222 47% 6%;
-  
-  --warning: 38 92% 50%;
-  --warning-foreground: 222 47% 6%;
+  /* ── shadcn aliases → mapped onto the ramp / jade ──────────── */
+  --background: var(--surface-0);
+  --foreground: var(--text-hi);
+  --card: var(--surface-1);
+  --card-foreground: var(--text-hi);
+  --popover: var(--surface-2);
+  --popover-foreground: var(--text-hi);
+  --primary: var(--accent-jade);
+  --primary-foreground: 220 24% 6%;
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text-hi);
+  --muted: var(--surface-3);
+  --muted-foreground: var(--text-lo);
+  --accent: var(--accent-jade);
+  --accent-foreground: 220 24% 6%;
+  --border: var(--border-subtle);
+  --input: var(--border-strong);
+  --ring: var(--accent-jade);
 
-  --border: 215 25% 27%;
-  --input: 215 25% 24%;
-  --ring: 142 71% 45%;
+  /* ── Session colors (functional domain) ────────────────────── */
+  --session-asian: 262 60% 66%;
+  --session-london: 35 90% 58%;
+  --session-ny: 150 64% 46%;
+  --session-volume: 215 14% 66%;
+  --session-closed: 0 75% 60%;
 
-  --session-asian: 262 83% 65%;
-  --session-london: 35 100% 55%;
-  --session-ny: 150 100% 40%;
-  --session-volume: 215 20% 65%;
-  --session-closed: 0 84% 60%;
+  /* ── Liquid-glass material tokens ──────────────────────────── */
+  --glass-blur-bar: 16px;
+  --glass-blur-panel: 20px;
+  --glass-blur-raised: 28px;
+  --glass-blur-inset: 8px;
+  --glass-tint: 220 18% 10%;
+  --glass-border: 210 30% 80%;
+  --glass-highlight: 210 40% 92%;
+  --glass-shadow: 0 0% 0%;
+  --glass-glow: 160 34% 48%;
 
-  --tl-surface-panel: 226 43% 10%;
-  --tl-surface-raised: 224 32% 14%;
-  --tl-border-strong: 215 25% 32%;
-  --tl-shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.28);
+  /* ── Legacy TL surface aliases ─────────────────────────────── */
+  --tl-surface-panel: var(--surface-1);
+  --tl-surface-raised: var(--surface-2);
+  --tl-border-strong: var(--border-strong);
+  --tl-shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.34);
 
+  /* ── Motion tokens ─────────────────────────────────────────── */
+  --ease-glass: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 360ms;
+  --dur-slower: 600ms;
+
+  /* ── Radii ─────────────────────────────────────────────────── */
   --radius: 0.625rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-pill: 9999px;
 }
 
 @layer base {
