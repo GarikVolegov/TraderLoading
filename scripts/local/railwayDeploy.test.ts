@@ -40,7 +40,7 @@ assert.equal(railway.deploy?.restartPolicyType, "ALWAYS");
 
 const appSource = readText("artifacts/api-server/src/app.ts");
 assert.match(appSource, /import healthRouter from "\.\/routes\/health"/);
-const clerkMountIndex = appSource.indexOf("clerkMiddleware((");
+const clerkMountIndex = appSource.indexOf("app.use(clerkMiddleware(");
 assert.ok(clerkMountIndex >= 0, "Clerk middleware mount must exist in app.ts");
 assert.ok(
   appSource.indexOf('app.use("/api", healthRouter);') < clerkMountIndex,

@@ -76,7 +76,7 @@ export default tseslint.config(
   // ── Plain JS / ESM / CJS config & glue files (no TS type info) ────────────
   {
     files: ["**/*.{js,cjs}"],
-    // CommonJS glue (e.g. api/index.js) legitimately uses require().
+    // CommonJS glue / config files legitimately use require().
     rules: { "@typescript-eslint/no-require-imports": "off" },
     languageOptions: {
       sourceType: "commonjs",

@@ -24,6 +24,7 @@ import {
   parseTrustProxy,
   publicUploadGuard,
 } from "./lib/security";
+import { apexRedirectTarget } from "./lib/apexRedirect";
 import { createRedisRateLimitStore, type RateLimitRedis } from "./lib/rateLimitStore";
 import { getSharedRedisClient } from "./lib/redisClient";
 import healthRouter from "./routes/health";
@@ -42,6 +43,20 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 // ── Logging distribuito: deve stare PRIMA di cors/json per catturare tutto ──
 app.use(loggingMiddleware);
+
+// ── Apex → www: 301 canonico (sostituisce il redirect 308 che faceva Vercel ora che
+// Railway è l'unica origin). Solo in produzione; il resolver puro è testato in
+// lib/apexRedirect.test.ts. ──
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === "production") {
+    const target = apexRedirectTarget(req.hostname, req.originalUrl);
+    if (target) {
+      res.redirect(301, target);
+      return;
+    }
+  }
+  next();
+});
 
 app.use(helmet(createHelmetOptions()));
 app.use(cors(createCorsOptions()));

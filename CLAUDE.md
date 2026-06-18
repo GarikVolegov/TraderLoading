@@ -60,8 +60,13 @@ tools/metatrader-companion/   MT5 expert advisor
   Candle-warehouse nightly tail runs as a scheduled GitHub Action ([.github/workflows/candle-tail.yml](.github/workflows/candle-tail.yml)).
 - **API server → AWS / Oracle** (alternative, dormant) — ECS Fargate (`Dockerfile.aws`, [infra/](infra/)) or a
   self-hosted VM (`Dockerfile.oracle`, [deploy/oracle/](deploy/oracle/)). Kept as fallback; not the active target.
-- **Frontend → Vercel** — `artifacts/trader-dashboard` (React/Vite). ⚠️ Vercel deploys are **BLOCKED** if the
-  commit author email isn't recognized. (On Railway the single service serves the frontend too.)
+- **Frontend → Railway (single origin).** The Railway service serves the `artifacts/trader-dashboard`
+  React/Vite build **same-origin** with the API (`VITE_API_BASE` empty); there is no separate frontend host.
+  The bare apex `traderloading.com` 301-redirects to `www.traderloading.com` via in-app middleware
+  ([artifacts/api-server/src/app.ts](artifacts/api-server/src/app.ts) + `lib/apexRedirect.ts`).
+- **Vercel is decommissioned** — config + serverless shim removed (was `vercel.json` + `api/index.js`). Two
+  one-time ops complete the cutover (not code): repoint the apex DNS from Vercel to Railway, and disconnect the
+  Vercel git integration / delete the project.
 - **Not on Replit.** (Project has moved off Replit.)
 
 ## 6. Architecture & subsystems
