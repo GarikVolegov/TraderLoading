@@ -10,7 +10,8 @@ const cotSource = readFileSync(new URL("./CotWidget.tsx", import.meta.url), "utf
 
 assert.match(cssSource, /\.widget-header \{\s+@apply [^;]*border-border\/45/s);
 assert.match(cssSource, /\.widget-subtitle \{\s+@apply [^;]*text-muted-foreground\/80/s);
-assert.match(cssSource, /\.metric-card \{\s+@apply [^;]*border-border\/60[^;]*bg-secondary\/55/s);
+// .metric-card is now a liquid-glass alias (glass-inset tier) — check it's defined in the grouped selector list
+assert.match(cssSource, /\.metric-card\s*[\s,{]/, ".metric-card must be defined (glass-inset alias)");
 assert.match(cssSource, /\.metric-label \{\s+@apply [^;]*text-muted-foreground\/85/s);
 assert.match(cssSource, /\.metric-unit \{\s+@apply [^;]*text-muted-foreground\/75/s);
 assert.match(cssSource, /\.link-pill \{\s+@apply [^;]*text-muted-foreground\/80/s);
