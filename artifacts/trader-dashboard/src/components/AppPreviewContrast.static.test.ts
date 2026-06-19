@@ -25,7 +25,7 @@ assert.match(cssSource, /\.dashboard-widget-shell :is\(\.bg-secondary\\\/20, \.b
 assert.match(cssSource, /\.dashboard-widget-shell :is\(\.border-border\\\/50, \.border-border\\\/40, \.border-border\\\/35, \.border-border\\\/30, \.border-border\\\/25, \.border-border\\\/20\) \{\s+border-color: hsl\(var\(--border\) \/ 0\.58\);/s);
 assert.match(cssSource, /\.dashboard-widget-shell :is\(\.text-muted-foreground\\\/60, \.text-muted-foreground\\\/50, \.text-muted-foreground\\\/40\) \{\s+color: hsl\(var\(--muted-foreground\) \/ 0\.82\);/s);
 
-assert.match(cardSource, /border-border\/60 bg-card\/88/);
+assert.match(cardSource, /glass-panel/);
 
 assert.match(chartSource, /stroke-border\/65/);
 assert.match(chartSource, /stroke-border\/75/);

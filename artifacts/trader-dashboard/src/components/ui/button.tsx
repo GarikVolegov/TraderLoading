@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "glass";
   size?: "default" | "sm" | "lg" | "icon";
   isLoading?: boolean;
 }
@@ -20,6 +20,7 @@ export function buttonVariants({
     secondary: "bg-secondary/80 text-secondary-foreground hover:bg-secondary",
     ghost: "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
     link: "min-h-0 rounded-none px-0 text-primary underline-offset-4 hover:underline",
+    glass: "glass-bar text-foreground hover:text-primary hover:border-primary/40",
   };
   const sizes = {
     default: "px-4 py-2 text-sm",
