@@ -10,8 +10,13 @@ const cotSource = readFileSync(new URL("./CotWidget.tsx", import.meta.url), "utf
 
 assert.match(cssSource, /\.widget-header \{\s+@apply [^;]*border-border\/45/s);
 assert.match(cssSource, /\.widget-subtitle \{\s+@apply [^;]*text-muted-foreground\/80/s);
-// .metric-card is now a liquid-glass alias (glass-inset tier) — check it's defined in the grouped selector list
-assert.match(cssSource, /\.metric-card\s*[\s,{]/, ".metric-card must be defined (glass-inset alias)");
+// .metric-card must remain grouped with .glass-inset AND that tier must keep --glass-alpha: 0.5 (the legibility floor).
+// A regression that removes .metric-card from the glass-inset block, or pushes alpha toward 0, must FAIL this test.
+assert.match(
+  cssSource,
+  /\.glass-inset,\s*\n\s*\.metric-card\s*\{[^}]*--glass-alpha:\s*0\.5/s,
+  ".metric-card must be in the glass-inset tier grouped selector and that tier must set --glass-alpha: 0.5",
+);
 assert.match(cssSource, /\.metric-label \{\s+@apply [^;]*text-muted-foreground\/85/s);
 assert.match(cssSource, /\.metric-unit \{\s+@apply [^;]*text-muted-foreground\/75/s);
 assert.match(cssSource, /\.link-pill \{\s+@apply [^;]*text-muted-foreground\/80/s);
