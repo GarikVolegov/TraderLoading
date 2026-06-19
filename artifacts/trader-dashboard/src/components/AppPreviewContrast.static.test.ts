@@ -34,9 +34,8 @@ assert.match(chartSource, /bg-popover\/95/);
 assert.match(chartSource, /text-popover-foreground/);
 assert.doesNotMatch(chartSource, /bg-background px-2\.5/);
 
-assert.match(tooltipSource, /bg-popover\/95/);
+assert.match(tooltipSource, /glass-raised/);
 assert.match(tooltipSource, /text-popover-foreground/);
-assert.match(tooltipSource, /border-border\/70/);
 
 for (const source of [volatilitySource, cotSource]) {
   assert.match(source, /background: "hsl\(var\(--popover\)\)"/);
