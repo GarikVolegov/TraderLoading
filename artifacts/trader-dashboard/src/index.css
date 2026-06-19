@@ -258,7 +258,6 @@
   .glass-inset,
   .tl-panel,
   .glass-card,
-  .card-glow-primary,
   .tl-toolbar,
   .metric-card {
     position: relative;
@@ -293,6 +292,10 @@
     box-shadow:
       inset 0 1px 0 hsl(var(--glass-highlight) / 0.04),
       0 8px 24px hsl(var(--glass-shadow) / 0.28);
+  }
+  /* legacy .tl-toolbar keeps its original flex layout on top of the glass-bar surface */
+  .tl-toolbar {
+    @apply flex flex-wrap items-center gap-2 rounded-[0.625rem] px-3 py-2;
   }
   .glass-panel,
   .tl-panel,
@@ -349,7 +352,6 @@
     .glass-inset,
     .tl-panel,
     .glass-card,
-    .card-glow-primary,
     .tl-toolbar,
     .metric-card {
       background-color: hsl(var(--glass-tint) / 0.96);

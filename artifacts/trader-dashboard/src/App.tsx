@@ -59,7 +59,7 @@ const NotFound = lazy(() => import("./pages/not-found"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Admin = lazy(() => import("./pages/Admin"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
-import Styleguide from "@/components/ui/styleguide/Styleguide";
+const Styleguide = lazy(() => import("@/components/ui/styleguide/Styleguide"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
