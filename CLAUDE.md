@@ -108,6 +108,17 @@ from Dukascopy/Binance, behind the `CANDLE_WAREHOUSE` feature flag with live fal
 - Schema: [lib/db/src/schema/candles.ts](lib/db/src/schema/candles.ts) · migration `lib/db/drizzle/0006_candle_warehouse.sql`
 - Services: `artifacts/api-server/src/services/aggregate.ts`, `candleRegistry.ts`, `ingest/` (dukascopy, candleStore, seed, types)
 
+**Design-system foundation (liquid glass / neutral jade) — Phase 0 done, surface rollout pending.**
+A uniform design backbone in [artifacts/trader-dashboard/src/index.css](artifacts/trader-dashboard/src/index.css): neutral
+graphite token ramp + desaturated **jade** chrome accent (`--accent-jade`), vivid P&L semantics kept functional,
+four liquid-glass material tiers (`glass-bar/panel/raised/inset`), a tokenized motion vocabulary, and refactored
+core `components/ui/*` primitives (Card, Button incl. `glass` variant, Input/Textarea, Badge, overlays, Tabs,
+Skeleton). Legacy class names (`.tl-panel`, `.glass-card`, …) are **aliases** over the new material so existing
+components inherit it untouched. Live reference at route **`/styleguide`** ([components/ui/styleguide/](artifacts/trader-dashboard/src/components/ui/styleguide/),
+i18n-exempt). Spec: [docs/superpowers/specs/2026-06-19-design-system-foundation-design.md](docs/superpowers/specs/2026-06-19-design-system-foundation-design.md) ·
+Plan: [docs/superpowers/plans/2026-06-19-design-system-foundation.md](docs/superpowers/plans/2026-06-19-design-system-foundation.md).
+Next phases: migrate bespoke landing → app → admin surfaces onto the system.
+
 > This section changes the most session-to-session — update it as the work moves.
 
 ## 8. Conventions & gotchas

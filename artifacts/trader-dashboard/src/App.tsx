@@ -59,6 +59,7 @@ const NotFound = lazy(() => import("./pages/not-found"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Admin = lazy(() => import("./pages/Admin"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
+const Styleguide = lazy(() => import("@/components/ui/styleguide/Styleguide"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -454,6 +455,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/terms" component={TermsPage} />
+          <Route path="/styleguide" component={Styleguide} />
           <Route path="/*?" component={AppShell} />
         </Switch>
       </QueryClientProvider>

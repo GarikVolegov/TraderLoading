@@ -10,7 +10,13 @@ const cotSource = readFileSync(new URL("./CotWidget.tsx", import.meta.url), "utf
 
 assert.match(cssSource, /\.widget-header \{\s+@apply [^;]*border-border\/45/s);
 assert.match(cssSource, /\.widget-subtitle \{\s+@apply [^;]*text-muted-foreground\/80/s);
-assert.match(cssSource, /\.metric-card \{\s+@apply [^;]*border-border\/60[^;]*bg-secondary\/55/s);
+// .metric-card must remain grouped with .glass-inset AND that tier must keep --glass-alpha: 0.5 (the legibility floor).
+// A regression that removes .metric-card from the glass-inset block, or pushes alpha toward 0, must FAIL this test.
+assert.match(
+  cssSource,
+  /\.glass-inset,\s*\n\s*\.metric-card\s*\{[^}]*--glass-alpha:\s*0\.5/s,
+  ".metric-card must be in the glass-inset tier grouped selector and that tier must set --glass-alpha: 0.5",
+);
 assert.match(cssSource, /\.metric-label \{\s+@apply [^;]*text-muted-foreground\/85/s);
 assert.match(cssSource, /\.metric-unit \{\s+@apply [^;]*text-muted-foreground\/75/s);
 assert.match(cssSource, /\.link-pill \{\s+@apply [^;]*text-muted-foreground\/80/s);
@@ -19,7 +25,7 @@ assert.match(cssSource, /\.dashboard-widget-shell :is\(\.bg-secondary\\\/20, \.b
 assert.match(cssSource, /\.dashboard-widget-shell :is\(\.border-border\\\/50, \.border-border\\\/40, \.border-border\\\/35, \.border-border\\\/30, \.border-border\\\/25, \.border-border\\\/20\) \{\s+border-color: hsl\(var\(--border\) \/ 0\.58\);/s);
 assert.match(cssSource, /\.dashboard-widget-shell :is\(\.text-muted-foreground\\\/60, \.text-muted-foreground\\\/50, \.text-muted-foreground\\\/40\) \{\s+color: hsl\(var\(--muted-foreground\) \/ 0\.82\);/s);
 
-assert.match(cardSource, /border-border\/60 bg-card\/88/);
+assert.match(cardSource, /glass-panel/);
 
 assert.match(chartSource, /stroke-border\/65/);
 assert.match(chartSource, /stroke-border\/75/);
@@ -28,9 +34,8 @@ assert.match(chartSource, /bg-popover\/95/);
 assert.match(chartSource, /text-popover-foreground/);
 assert.doesNotMatch(chartSource, /bg-background px-2\.5/);
 
-assert.match(tooltipSource, /bg-popover\/95/);
+assert.match(tooltipSource, /glass-raised/);
 assert.match(tooltipSource, /text-popover-foreground/);
-assert.match(tooltipSource, /border-border\/70/);
 
 for (const source of [volatilitySource, cotSource]) {
   assert.match(source, /background: "hsl\(var\(--popover\)\)"/);
