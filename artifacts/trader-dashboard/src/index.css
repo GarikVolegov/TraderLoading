@@ -370,9 +370,9 @@
 
   /* ── Card lift effect ─────────────────────────────────────────── */
   .card-hover {
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-                box-shadow 0.2s ease,
-                border-color 0.2s ease;
+    transition: transform var(--dur-base) var(--ease-spring),
+                box-shadow var(--dur-base) var(--ease-out),
+                border-color var(--dur-base) var(--ease-out);
   }
   .card-hover:hover {
     transform: translateY(-2px);
@@ -604,7 +604,11 @@
 
   /* Fade in up — for staggered content that enters once */
   .animate-fade-in-up {
-    animation: fade-in-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: fade-in-up var(--dur-slow) var(--ease-glass) both;
+  }
+
+  .animate-scale-in {
+    animation: scale-in var(--dur-base) var(--ease-glass) both;
   }
 
   /* Stagger delay helpers */
