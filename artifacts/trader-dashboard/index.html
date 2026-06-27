@@ -64,13 +64,13 @@
       }
     }
     </script>
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="shortcut icon" href="/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="1024x1024" href="/app-icon.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/app-icon-192.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json?v=2" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg?v=2" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2" />
+    <link rel="shortcut icon" href="/favicon.ico?v=2" />
+    <link rel="icon" type="image/png" sizes="1024x1024" href="/app-icon.png?v=2" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/app-icon-192.png?v=2" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
     <meta name="theme-color" content="#0a0e27" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -81,7 +81,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Pre-React brand splash (replaced when the app mounts) -->
+      <style>@keyframes tl-splash{0%,100%{opacity:.6;transform:translateY(0)}50%{opacity:1;transform:translateY(-6px)}}</style>
+      <div id="app-splash" aria-hidden="true" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0a0e27;">
+        <svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="#51a488" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 14px rgba(81,164,136,.45));animation:tl-splash 1.6s ease-in-out infinite">
+          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+          <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+          <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+          <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+        </svg>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

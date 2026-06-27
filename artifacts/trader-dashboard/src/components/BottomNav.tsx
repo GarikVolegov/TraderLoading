@@ -1,6 +1,6 @@
 import { Link, useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, BookOpen, MessageCircle, Brain, Settings, FlaskConical, Sunrise, Library, Archive } from "lucide-react";
+import { LayoutDashboard, BookOpen, MessageCircle, Brain, Settings, FlaskConical, Sunrise, Library, Archive, Rocket } from "lucide-react";
 import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -232,12 +232,8 @@ export function BottomNav() {
             transition={{ delay: 0.18, duration: 0.4 }}
             className="flex items-center justify-center"
           >
-            <div className="w-11 h-11 rounded-lg border border-primary/25 flex items-center justify-center shrink-0 overflow-hidden bg-background shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
-              <img
-                src={`${import.meta.env.BASE_URL}app-icon-192.png`}
-                alt="TraderLoading"
-                className="h-full w-full object-cover"
-              />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
+              <Rocket className="h-6 w-6" aria-label="TraderLoading" />
             </div>
           </motion.div>
         </div>

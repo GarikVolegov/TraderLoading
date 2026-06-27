@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Rocket } from "lucide-react";
 import { useLoading } from "@/contexts/LoadingContext";
 
 const STEP_MESSAGES = {
@@ -35,9 +36,10 @@ export function LoadingScreen() {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
-      {/* Spinner */}
-      <div className="mb-12 sm:mb-16">
-        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+      {/* Brand rocket inside the spinner ring */}
+      <div className="relative mb-12 grid place-items-center sm:mb-16">
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary/20 border-t-primary sm:h-20 sm:w-20" />
+        <Rocket className="absolute h-6 w-6 text-primary sm:h-7 sm:w-7" />
       </div>
 
       {/* Loading Text */}

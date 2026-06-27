@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Activity, BadgeCheck, LockKeyhole, ShieldCheck } from "lucide-react";
+import { Activity, BadgeCheck, LockKeyhole, Rocket, ShieldCheck } from "lucide-react";
 
 type AuthPageShellProps = {
   mode: "sign-in" | "sign-up";
@@ -44,8 +44,6 @@ const statusCards = [
   },
 ] as const;
 
-const appLogoSrc = `${import.meta.env.BASE_URL}app-icon-192.png`;
-
 export function AuthPageShell({ mode, children }: AuthPageShellProps) {
   const pageCopy = copy[mode];
   const switchCopy =
@@ -70,12 +68,8 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
       >
         <section className="mx-auto flex w-full max-w-xl flex-col gap-6 text-center lg:mx-0 lg:text-left">
           <div className="flex items-center justify-center gap-3 lg:justify-start">
-            <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-lg border border-primary/35 bg-primary/10 p-1 shadow-[0_0_24px_hsl(var(--primary)/0.12)]">
-              <img
-                src={appLogoSrc}
-                alt="Logo ufficiale TraderLoading"
-                className="h-full w-full rounded-[6px] object-cover"
-              />
+            <div className="grid h-12 w-12 place-items-center rounded-lg border border-primary/35 bg-primary/10 text-primary shadow-[0_0_24px_hsl(var(--primary)/0.12)]">
+              <Rocket className="h-6 w-6" aria-label="Logo ufficiale TraderLoading" />
             </div>
             <div className="min-w-0">
               <p className="font-mono text-base font-bold tracking-wide text-foreground sm:text-lg">
