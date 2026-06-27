@@ -3,6 +3,7 @@ import { count, eq, asc } from "drizzle-orm";
 import { db, usersTable, accountTradesTable, testimonialsTable } from "@workspace/db";
 import { PAIR_CATALOG } from "@workspace/pair-catalog";
 import logger from "../lib/logger.js";
+import { summarizeRatings } from "../services/publicStats.js";
 
 const router: IRouter = Router();
 
@@ -12,14 +13,19 @@ const router: IRouter = Router();
 
 router.get("/public/stats", async (_req, res) => {
   try {
-    const [traderRows, tradeRows] = await Promise.all([
+    const [traderRows, tradeRows, ratingRows] = await Promise.all([
       db.select({ value: count() }).from(usersTable),
       db.select({ value: count() }).from(accountTradesTable),
+      db
+        .select({ rating: testimonialsTable.rating })
+        .from(testimonialsTable)
+        .where(eq(testimonialsTable.published, true)),
     ]);
     res.json({
       traders: Number(traderRows[0]?.value ?? 0),
       trades: Number(tradeRows[0]?.value ?? 0),
       pairs: PAIR_CATALOG.length,
+      rating: summarizeRatings(ratingRows.map((row) => Number(row.rating))),
     });
   } catch (error) {
     logger.warn({ err: error }, "public stats unavailable");
