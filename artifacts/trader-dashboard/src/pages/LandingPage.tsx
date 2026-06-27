@@ -24,7 +24,6 @@ import {
   Send,
   Star,
   Target,
-  TerminalSquare,
   Trophy,
   Twitter,
   Users,
@@ -1114,7 +1113,7 @@ export default function LandingPage() {
           <div className="col-span-2 md:col-span-1">
             <div className="mb-3.5 flex items-center gap-2.5">
               <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-primary/35 bg-primary/15 text-primary">
-                <TerminalSquare className="h-[17px] w-[17px]" />
+                <Rocket className="h-[17px] w-[17px]" />
               </span>
               <span className="font-mono text-[17px] font-bold text-foreground">TraderLoading</span>
             </div>
