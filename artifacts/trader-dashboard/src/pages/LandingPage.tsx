@@ -849,7 +849,7 @@ export default function LandingPage() {
             </h2>
             <p className="mt-3.5 text-[17px] leading-relaxed text-muted-foreground">{t("landing.features.lede")}</p>
           </Reveal>
-          <div className="grid auto-rows-[1fr] grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-[18px] sm:auto-rows-[1fr] sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map(({ icon: Icon, titleKey, descKey, tone, big }, i) => (
               <Reveal
                 key={titleKey}
@@ -1109,8 +1109,8 @@ export default function LandingPage() {
 
       {/* ── FOOTER ──────────────────────────────────────────────────── */}
       <footer className="relative z-10 border-t border-border/40 bg-background/60 backdrop-blur-md">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-4 pb-8 pt-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <div className="col-span-2 md:col-span-1">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-3 gap-x-4 gap-y-9 px-4 pb-8 pt-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-8">
+          <div className="col-span-3 md:col-span-1">
             <div className="mb-3.5 flex items-center gap-2.5">
               <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-primary/35 bg-primary/15 text-primary">
                 <Rocket className="h-[17px] w-[17px]" />
@@ -1132,11 +1132,11 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-border/30 px-4 py-5 sm:px-6">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 border-t border-border/30 px-4 py-5 text-center sm:flex-row sm:justify-between sm:gap-3 sm:px-6 sm:text-left">
           <p className="m-0 text-[13px] text-muted-foreground/70">
             {`© ${new Date().getFullYear()} TraderLoading. ${t("landing.footer.rights")}`}
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2.5 sm:justify-end sm:gap-3">
             <Link href="/privacy" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
               {t("landing.footer.privacy")}
             </Link>
