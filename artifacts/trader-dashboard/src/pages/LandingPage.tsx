@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import {
   ArrowRight,
@@ -9,6 +9,8 @@ import {
   Calculator,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   Crown,
   FlaskConical,
@@ -18,15 +20,20 @@ import {
   LineChart,
   Lock,
   Newspaper,
+  Pause,
+  Play,
   Plus,
   PlayCircle,
   Rocket,
+  RotateCcw,
   Send,
+  Sparkles,
   Star,
   Target,
   Trophy,
   Twitter,
   Users,
+  X,
   Youtube,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -37,6 +44,14 @@ import {
   type Language,
 } from "@/contexts/LanguageContext";
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
+import { TOUR_SCENE_COUNT, initialTourState, tourReducer } from "@/lib/landingTour";
+import { Seo } from "@/components/Seo";
+import {
+  absoluteUrl,
+  faqJsonLd,
+  landingAlternates,
+  landingPath,
+} from "@/lib/seo";
 
 async function fetchJSON<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -125,14 +140,6 @@ const NUMBER_LOCALES: Record<Language, string> = {
   de: "de-DE",
 };
 
-const OG_LOCALES: Record<Language, string> = {
-  it: "it_IT",
-  en: "en_US",
-  es: "es_ES",
-  fr: "fr_FR",
-  de: "de_DE",
-};
-
 const NAV_LINKS = [
   { href: "#features", labelKey: "landing.nav.features" },
   { href: "#how", labelKey: "landing.nav.how" },
@@ -217,10 +224,6 @@ const FOOTER_COLS = [
 const SOCIALS = [Twitter, Instagram, Youtube, Send];
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
-
-function setMetaContent(selector: string, content: string) {
-  document.querySelector<HTMLMetaElement>(selector)?.setAttribute("content", content);
-}
 
 function Reveal({
   children,
@@ -360,11 +363,299 @@ function MockSpark() {
   );
 }
 
-function ProductMock() {
+/* ── Product tour (in-place self-playing walkthrough) ──────────────── */
+
+const TOUR_SCENE_DURATION_MS = 3400;
+const tile = "rounded-xl border border-border/50 bg-secondary/50 px-3 py-2.5";
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return reduced;
+}
+
+function TourSceneEdge() {
+  const { t } = useLanguage();
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-3 gap-2.5">
+        {[
+          { k: "landing.features.edge.win_rate", v: "64%" },
+          { k: "landing.features.edge.expectancy", v: "+0.42R" },
+          { k: "landing.features.edge.profit_factor", v: "1.9" },
+        ].map((m) => (
+          <div key={m.k} className={`${tile} text-center`}>
+            <div className="text-[9px] uppercase tracking-[0.07em] text-muted-foreground/80">{t(m.k)}</div>
+            <div className="font-mono text-base font-bold" style={{ color: `hsl(${TONE.green})` }}>{m.v}</div>
+          </div>
+        ))}
+      </div>
+      <div className={tile}>
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-[10px] font-semibold text-muted-foreground">{"Equity"}</span>
+          <span className="font-mono text-[11px] font-bold" style={{ color: `hsl(${TONE.green})` }}>{"+8.6R"}</span>
+        </div>
+        <MockSpark />
+      </div>
+    </div>
+  );
+}
+
+function TourSceneMissions() {
+  const { t } = useLanguage();
+  return (
+    <div className={tile}>
+      <div className="mb-2 flex items-center gap-1.5">
+        <Target className="h-3.5 w-3.5 text-primary" />
+        <span className="text-[11px] font-semibold text-foreground">{t("landing.mock.missions")}</span>
+        <span className="ml-auto font-mono text-[10px] font-bold text-primary">{"+75 XP"}</span>
+      </div>
+      <div className="mb-3 h-2 overflow-hidden rounded-full bg-secondary">
+        <div className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-300" style={{ width: "72%" }} />
+      </div>
+      {[
+        { k: "landing.mock.journaling", done: false },
+        { k: "landing.mock.checkin", done: true },
+      ].map((m) => (
+        <div
+          key={m.k}
+          className={`mt-1.5 flex items-center gap-2 text-[12px] ${m.done ? "text-muted-foreground/60" : "text-foreground"}`}
+        >
+          {m.done ? <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> : <Circle className="h-3.5 w-3.5 text-muted-foreground/40" />}
+          {t(m.k)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TourSceneNews() {
+  const { t } = useLanguage();
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="flex gap-2.5 rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2.5">
+        <Newspaper className="h-4 w-4 shrink-0 text-primary" />
+        <p className="m-0 line-clamp-2 text-[12.5px] leading-snug text-foreground/90">{t("landing.tour.s3_sub")}</p>
+      </div>
+      {[
+        { title: "FOMC", color: TONE.green },
+        { title: "CPI", color: TONE.red },
+      ].map((n) => (
+        <div key={n.title} className="flex flex-col gap-1.5 rounded-xl border border-border/50 bg-card/50 p-3">
+          <div className="flex gap-1.5">
+            <span
+              className="rounded-md px-1.5 py-0.5 text-[10px] font-bold"
+              style={{ color: `hsl(${n.color})`, background: `hsl(${n.color} / 0.12)`, border: `1px solid hsl(${n.color} / 0.3)` }}
+            >
+              {n.title}
+            </span>
+          </div>
+          <div className="h-2 w-3/4 rounded bg-muted-foreground/15" />
+          <div className="h-2 w-1/2 rounded bg-muted-foreground/10" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TourSceneLive() {
   const { t } = useLanguage();
   const now = useLiveClock();
   const session = getActiveSession(now);
-  const tile = "rounded-xl border border-border/50 bg-secondary/50 px-3 py-2.5";
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="relative flex items-center justify-between overflow-hidden rounded-xl border border-border/50 bg-card/60 px-3 py-2.5">
+        <span className="absolute inset-x-0 top-0 h-0.5 bg-primary shadow-[0_0_14px_hsl(var(--primary))]" />
+        <span className="font-sans text-[22px] font-bold tabular-nums text-foreground">{format(now, "HH:mm:ss")}</span>
+        <span
+          className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold"
+          style={{ color: `hsl(${SESSION_COLOR[session]})`, background: `hsl(${SESSION_COLOR[session]} / 0.12)`, borderColor: `hsl(${SESSION_COLOR[session]} / 0.3)` }}
+        >
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: `hsl(${SESSION_COLOR[session]})` }} />
+          {t(`landing.session.${session}`)}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-2.5">
+        {["landing.session.london", "landing.session.newyork", "landing.session.tokyo"].map((k) => (
+          <div key={k} className={`${tile} text-center`}>
+            <div className="mx-auto mb-1 h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: `hsl(${TONE.green})` }} />
+            <div className="text-[10px] font-semibold text-muted-foreground">{t(k)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TourPlayer({ onExit }: { onExit: () => void }) {
+  const { t } = useLanguage();
+  const reduced = usePrefersReducedMotion();
+  const [state, dispatch] = useReducer(tourReducer, initialTourState);
+
+  const scenes = [
+    { node: <TourSceneEdge />, title: "landing.tour.s1_title", sub: "landing.tour.s1_sub" },
+    { node: <TourSceneMissions />, title: "landing.tour.s2_title", sub: "landing.tour.s2_sub" },
+    { node: <TourSceneNews />, title: "landing.tour.s3_title", sub: "landing.tour.s3_sub" },
+    { node: <TourSceneLive />, title: "landing.tour.s4_title", sub: "landing.tour.s4_sub" },
+  ];
+
+  // auto-advance while playing
+  useEffect(() => {
+    if (state.status !== "playing") return;
+    const id = window.setTimeout(() => dispatch({ type: "tick" }), TOUR_SCENE_DURATION_MS);
+    return () => window.clearTimeout(id);
+  }, [state.status, state.index]);
+
+  // Esc exits
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onExit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onExit]);
+
+  const ended = state.status === "ended";
+  const scene = scenes[state.index];
+  const ease: [number, number, number, number] = [0.22, 1, 0.36, 1];
+  const motionProps = reduced
+    ? { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
+    : {
+        initial: { opacity: 0, y: 10 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -10 },
+        transition: { duration: 0.4, ease },
+      };
+
+  return (
+    <div className="flex flex-col" role="group" aria-label={t("landing.tour.aria_region")}>
+      {/* segmented progress */}
+      <div className="flex gap-1 px-3.5 pt-3">
+        {Array.from({ length: TOUR_SCENE_COUNT }).map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => dispatch({ type: "goto", index: i })}
+            aria-label={`${t("landing.tour.ctrl_next")} ${i + 1}`}
+            className="h-1 flex-1 overflow-hidden rounded-full bg-secondary"
+          >
+            <span
+              className="block h-full rounded-full bg-primary transition-all"
+              style={{ width: i <= state.index || ended ? "100%" : "0%", opacity: i <= state.index || ended ? 1 : 0.25 }}
+            />
+          </button>
+        ))}
+      </div>
+
+      {/* stage */}
+      <div className="relative min-h-[228px] p-3.5">
+        <AnimatePresence mode="wait">
+          {ended ? (
+            <motion.div key="end" {...motionProps} className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center">
+              <Rocket className="h-9 w-9 text-primary" />
+              <h3 className="font-mono text-lg font-bold text-foreground">{t("landing.tour.end_title")}</h3>
+              <p className="max-w-[260px] text-[13px] text-muted-foreground">{t("landing.tour.end_sub")}</p>
+              <Link
+                href="/sign-up"
+                className="mt-1 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-[0_0_28px_hsl(var(--primary)/0.34)]"
+              >
+                {t("landing.tour.end_cta")}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </motion.div>
+          ) : (
+            <motion.div key={state.index} {...motionProps}>
+              {scene.node}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* caption + controls */}
+      <div className="border-t border-border/40 px-3.5 py-3">
+        {!ended && (
+          <div className="mb-2.5 min-h-[44px]">
+            <div className="text-[13px] font-bold text-foreground">{t(scene.title)}</div>
+            <div className="text-[11.5px] leading-snug text-muted-foreground">{t(scene.sub)}</div>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "prev" })}
+            aria-label={t("landing.tour.ctrl_prev")}
+            className="rounded-lg border border-border/50 p-1.5 text-foreground transition-colors hover:border-primary/40"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          {ended ? (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "replay" })}
+              aria-label={t("landing.tour.ctrl_replay")}
+              className="rounded-lg border border-border/50 p-1.5 text-foreground transition-colors hover:border-primary/40"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          ) : state.status === "playing" ? (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "pause" })}
+              aria-label={t("landing.tour.ctrl_pause")}
+              className="rounded-lg border border-border/50 p-1.5 text-foreground transition-colors hover:border-primary/40"
+            >
+              <Pause className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "resume" })}
+              aria-label={t("landing.tour.ctrl_play")}
+              className="rounded-lg border border-border/50 p-1.5 text-foreground transition-colors hover:border-primary/40"
+            >
+              <Play className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "next" })}
+            aria-label={t("landing.tour.ctrl_next")}
+            className="rounded-lg border border-border/50 p-1.5 text-foreground transition-colors hover:border-primary/40"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onExit}
+            aria-label={t("landing.tour.ctrl_close")}
+            className="ml-auto rounded-lg border border-border/50 p-1.5 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductPreview({
+  playing,
+  onPlay,
+  onExit,
+}: {
+  playing: boolean;
+  onPlay: () => void;
+  onExit: () => void;
+}) {
+  const { t } = useLanguage();
+  const now = useLiveClock();
+  const session = getActiveSession(now);
 
   const kpis: Array<{ labelKey: string; value: string; color: string }> = [
     { labelKey: "landing.features.edge.win_rate", value: "64%", color: `hsl(${TONE.green})` },
@@ -385,7 +676,11 @@ function ProductMock() {
             {"Live"}
           </span>
         </div>
-        <div className="flex flex-col gap-2.5 p-3.5">
+        {playing ? (
+          <TourPlayer onExit={onExit} />
+        ) : (
+          <div className="relative">
+            <div className="flex flex-col gap-2.5 p-3.5">
           {/* live clock + session */}
           <div className="relative flex items-center justify-between overflow-hidden rounded-xl border border-border/50 bg-card/60 px-3 py-2.5">
             <span className="absolute inset-x-0 top-0 h-0.5 bg-primary shadow-[0_0_14px_hsl(var(--primary))]" />
@@ -456,7 +751,20 @@ function ProductMock() {
               </div>
             ))}
           </div>
-        </div>
+            </div>
+            <button
+              type="button"
+              onClick={onPlay}
+              className="group absolute inset-0 flex items-center justify-center bg-background/0 transition-colors hover:bg-background/30"
+              aria-label={t("landing.tour.idle_play")}
+            >
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-background/80 px-4 py-2 text-[13px] font-semibold text-foreground opacity-0 shadow-[0_0_30px_hsl(var(--primary)/0.25)] backdrop-blur-md transition-opacity duration-300 group-hover:opacity-100">
+                <Play className="h-4 w-4 fill-primary text-primary" />
+                {t("landing.tour.idle_play")}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -657,6 +965,7 @@ export default function LandingPage() {
   const { language, setLanguage, t } = useLanguage();
   const [solid, setSolid] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
+  const [tourPlaying, setTourPlaying] = useState(false);
   const { data: stats } = usePublicStats();
   const { data: testimonialsData } = usePublicTestimonials();
   const testimonials = testimonialsData?.testimonials ?? [];
@@ -668,44 +977,25 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => {
-    const title = t("landing.meta.title");
-    const description = t("landing.meta.description");
-    document.title = title;
-    setMetaContent('meta[name="description"]', description);
-    setMetaContent('meta[property="og:title"]', title);
-    setMetaContent('meta[property="og:description"]', description);
-    setMetaContent('meta[property="og:locale"]', OG_LOCALES[language]);
-    setMetaContent('meta[name="twitter:title"]', title);
-    setMetaContent('meta[name="twitter:description"]', description);
-
-    const schema = {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      inLanguage: language,
-      mainEntity: FAQ_ITEMS.map(({ questionKey, answerKey }) => ({
-        "@type": "Question",
-        name: t(questionKey),
-        acceptedAnswer: { "@type": "Answer", text: t(answerKey) },
-      })),
-    };
-
-    let script = document.getElementById("landing-faq-jsonld") as HTMLScriptElement | null;
-    if (!script) {
-      script = document.createElement("script");
-      script.id = "landing-faq-jsonld";
-      script.type = "application/ld+json";
-      document.head.appendChild(script);
-    }
-    script.textContent = JSON.stringify(schema);
-
-    return () => {
-      document.getElementById("landing-faq-jsonld")?.remove();
-    };
-  }, [language, t]);
+  const faqSchema = faqJsonLd(
+    language,
+    FAQ_ITEMS.map(({ questionKey, answerKey }) => ({
+      question: t(questionKey),
+      answer: t(answerKey),
+    })),
+  );
 
   return (
     <div className="relative min-h-screen scroll-smooth bg-background text-foreground">
+      <Seo
+        title={t("landing.meta.title")}
+        description={t("landing.meta.description")}
+        keywords={t("landing.meta.keywords")}
+        lang={language}
+        canonical={absoluteUrl(landingPath(language))}
+        alternates={landingAlternates()}
+        jsonLd={[faqSchema]}
+      />
       {/* animated background orbs — fixed layer that clips itself */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="animate-float absolute -right-[6%] -top-[12%] h-[620px] w-[620px] rounded-full blur-[130px]" style={{ background: `hsl(${TONE.green} / 0.16)` }} />
@@ -750,8 +1040,12 @@ export default function LandingPage() {
               <select
                 id="landing-language"
                 value={language}
-                onChange={(event) => setLanguage(event.target.value as Language)}
-                className="h-9 rounded-full border border-white/20 bg-card/60 px-2 text-xs font-bold text-foreground outline-none transition-colors hover:border-primary/40 focus:border-primary sm:px-3"
+                onChange={(event) => {
+                  const next = event.target.value as Language;
+                  setLanguage(next);
+                  setLocation(landingPath(next));
+                }}
+                className="h-9 cursor-pointer appearance-none rounded-full border border-white/20 bg-card/60 px-3 text-center text-xs font-bold text-foreground outline-none transition-colors hover:border-primary/40 focus:border-primary"
                 aria-label={t("landing.language.label")}
               >
                 {Object.entries(LANGUAGES).map(([code, config]) => (
@@ -770,17 +1064,13 @@ export default function LandingPage() {
       </header>
 
       {/* ── HERO (pt clears the fixed nav) ──────────────────────────── */}
-      <main className="relative z-10 px-4 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-28">
+      <main className="relative z-10 px-4 pb-16 pt-32 sm:px-6 sm:pb-20 sm:pt-44">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 sm:gap-14 lg:grid-cols-[1.05fr_0.95fr]">
           <Reveal>
-            <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-[12.5px] font-semibold text-primary">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-              {t("landing.hero.badge")}
-            </span>
-            <h1 className="mb-5 font-mono text-[30px] font-extrabold leading-[1.08] tracking-tight text-foreground min-[400px]:text-[34px] sm:text-5xl lg:text-6xl">
+            <h1 className="mb-5 text-center font-mono text-[30px] font-extrabold leading-[1.08] tracking-tight text-foreground min-[400px]:text-[34px] sm:text-5xl lg:text-6xl">
               {t("landing.hero.title_a")}
               <br className="hidden sm:block" />{" "}
-              <span className="bg-gradient-to-r from-primary via-emerald-300 to-blue-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary via-emerald-400 to-teal-400 bg-clip-text text-transparent">
                 {t("landing.hero.title_b")}
               </span>
             </h1>
@@ -796,12 +1086,27 @@ export default function LandingPage() {
                 <ArrowRight className="h-[18px] w-[18px]" />
               </button>
               <button
-                onClick={() => setLocation("/sign-in")}
+                onClick={() => setTourPlaying(true)}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card/50 px-6 py-3.5 text-base font-medium text-foreground backdrop-blur-sm transition-colors hover:border-primary/40 sm:w-auto"
               >
                 <PlayCircle className="h-[18px] w-[18px]" />
-                {t("landing.hero.demo")}
+                {t("landing.tour.cta_button")}
               </button>
+            </div>
+            <div className="mb-8 flex justify-center">
+              <a
+                href="#features"
+                className="group inline-flex rounded-full bg-gradient-to-r from-primary/45 via-primary/15 to-blue-500/35 p-px shadow-[0_0_30px_rgba(34,197,94,0.16)] transition-shadow hover:shadow-[0_0_42px_rgba(34,197,94,0.28)]"
+              >
+                <span className="inline-flex items-center gap-2 rounded-full bg-background/80 px-4 py-2 text-[12.5px] font-semibold text-foreground backdrop-blur-md">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                  {t("landing.hero.badge")}
+                  <ArrowRight
+                    className="h-3.5 w-3.5 text-primary transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
+                </span>
+              </a>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 text-[13.5px] text-muted-foreground">
               {TRUST.map(({ icon: Icon, labelKey }) => (
@@ -813,7 +1118,11 @@ export default function LandingPage() {
             </div>
           </Reveal>
           <Reveal delay={0.12} y={36}>
-            <ProductMock />
+            <ProductPreview
+              playing={tourPlaying}
+              onPlay={() => setTourPlaying(true)}
+              onExit={() => setTourPlaying(false)}
+            />
           </Reveal>
         </div>
       </main>
