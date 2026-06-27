@@ -631,9 +631,10 @@ export default function LandingPage() {
   }, [language, t]);
 
   return (
-    <div className="relative min-h-screen scroll-smooth overflow-hidden bg-background text-foreground">
-      {/* animated background orbs */}
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+    <div className="relative min-h-screen scroll-smooth bg-background text-foreground">
+      {/* animated background orbs — fixed layer that clips itself, so it never
+          becomes an overflow ancestor of the sticky nav (which would break sticky) */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="animate-float absolute -right-[6%] -top-[12%] h-[620px] w-[620px] rounded-full blur-[130px]" style={{ background: `hsl(${TONE.green} / 0.16)` }} />
         <div className="animate-float absolute -left-[10%] top-[26%] h-[520px] w-[520px] rounded-full blur-[120px]" style={{ background: `hsl(${TONE.blue} / 0.14)` }} />
         <div className="animate-float absolute -bottom-[18%] left-[40%] h-[560px] w-[560px] rounded-full blur-[140px]" style={{ background: `hsl(${TONE.violet} / 0.1)` }} />
