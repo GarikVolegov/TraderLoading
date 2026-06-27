@@ -92,11 +92,34 @@ conventions**, not the standalone design kit.
   testimonials/CTA) so the rebuild can't silently regress to the old layout.
 - **Gate:** `pnpm verify` (typecheck + tests + build) must pass before commit.
 
+## 6b. Functional behavior — everything interactive must really work
+
+The copy/numbers/testimonials stay as **fake sample content**, but no element may be a
+dead decorative mockup. Each interactive piece is wired to actually behave:
+
+- **CTAs** ("Inizia gratis", "Passa a Pro", final CTA, Free/Pro buttons) → real
+  `setLocation("/sign-up")`; "Accedi" / "Guarda la demo" → `setLocation("/sign-in")`.
+- **Nav anchor links** (Funzioni/Come funziona/Prezzi/FAQ) → real in-page smooth-scroll
+  to `#features` / `#how` / `#pricing` / `#faq` (each target gets `id` + `scroll-mt`).
+- **Language `<select>`** → real `setLanguage` (kept from current page).
+- **Nav pill** → really solidifies on scroll (scroll listener toggling background/shadow).
+- **FAQ accordion** → really opens/closes (accessible, keyboard-operable).
+- **Stats bar** → count-up really animates when scrolled into view (IntersectionObserver).
+- **Scroll-reveal** entrances really fire via framer-motion `whileInView`.
+- **ProductMock clock** → a **live ticking clock** (real `Date`, Europe/Rome) and the
+  session badge reflects the **actual current market session** — reuse the app's existing
+  session/clock logic if one exists (search `services`/`lib`/`components` for session
+  helpers, e.g. a `SessionBadge`/`getActiveSession`); fall back to a self-contained
+  session calc only if none is reusable. Sparkline/missions/KPI tiles remain illustrative.
+- All motion still respects `prefers-reduced-motion` (reduced → no float/pulse, instant
+  reveal, no smooth-scroll).
+
 ## 7. Out of scope / non-goals
 
 - No new backend, routes, or contract changes — purely the public marketing page.
-- Stats/testimonials/showcase numbers are illustrative marketing content (as in the
-  design); not wired to live data.
+- Stats/testimonials/showcase **numbers and quotes are illustrative sample content** (as in
+  the design); not wired to live data. The *interactivity* around them, however, is real
+  (§6b) — only the displayed values are fake.
 - No new CSS design-tokens introduced; we consume the existing index.css foundation.
 - The standalone `design-ref/landing/` kit is kept as reference only (not imported/built).
 
