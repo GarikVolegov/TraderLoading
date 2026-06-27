@@ -40,7 +40,9 @@ assert.equal(railway.deploy?.restartPolicyType, "ALWAYS");
 
 const appSource = readText("artifacts/api-server/src/app.ts");
 assert.match(appSource, /import healthRouter from "\.\/routes\/health"/);
-const clerkMountIndex = appSource.indexOf("clerkMiddleware((");
+// Custom-domain Clerk instance reads keys from env, so the mount is the no-arg
+// `app.use(clerkMiddleware())` form (see app.ts comment), not a host-derived callback.
+const clerkMountIndex = appSource.indexOf("app.use(clerkMiddleware())");
 assert.ok(clerkMountIndex >= 0, "Clerk middleware mount must exist in app.ts");
 assert.ok(
   appSource.indexOf('app.use("/api", healthRouter);') < clerkMountIndex,
