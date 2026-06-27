@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./ds-base.js"></script>
+<style>
+  body { margin: 0; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+</style>
+</helmet>
+<div class="tl-rise" style="width:100%; max-width:440px; margin:0 auto; padding:clamp(22px,4vw,38px); border-radius:16px; border:1px solid var(--tl-border-subtle); background:hsl(var(--card) / 0.92); box-shadow:var(--tl-shadow-panel); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);">
+
+  <!-- ───────────────────── LOGIN ───────────────────── -->
+  <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+  <div>
+    <span style="display:block; font-size:0.625rem; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:hsl(var(--primary)); margin-bottom:10px;">Accedi</span>
+    <h2 style="font-family:var(--tl-font-mono); font-size:clamp(1.35rem,3vw,1.6rem); font-weight:700; letter-spacing:-0.02em; color:var(--tl-fg); margin:0 0 6px;">Bentornato</h2>
+    <p style="margin:0 0 22px; font-size:0.875rem; color:var(--tl-fg-muted);">Riprendi il tuo Command Center.</p>
+
+    <button type="button" onClick="{{ noop }}" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:2.75rem; font-family:var(--tl-font-sans); font-weight:600; font-size:0.875rem; color:var(--tl-fg); background:hsl(var(--card) / 0.5); border:1px solid var(--tl-border-subtle); border-radius:var(--tl-radius-md); cursor:pointer; transition:border-color .2s, background-color .2s;" style-hover="border-color:hsl(var(--primary) / 0.45); background:hsl(var(--card) / 0.75);">
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"></path><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"></path><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.22V7.04H2.18a11 11 0 0 0 0 9.9z"></path><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.04l3.66 2.84C6.71 7.29 9.14 5.38 12 5.38z"></path></svg>
+      Continua con Google
+    </button>
+
+    <div style="display:flex; align-items:center; gap:12px; margin:18px 0;">
+      <span style="flex:1; height:1px; background:var(--tl-border-subtle);"></span>
+      <span style="font-size:0.7rem; color:hsl(var(--muted-foreground) / 0.8);">oppure con email</span>
+      <span style="flex:1; height:1px; background:var(--tl-border-subtle);"></span>
+    </div>
+
+    <form onSubmit="{{ noop }}">
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <label style="display:block;">
+          <span style="display:block; margin-bottom:7px; font-size:0.75rem; color:var(--tl-fg-muted);">Email</span>
+          <span style="position:relative; display:block;">
+            <span style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); color:var(--tl-fg-muted); display:inline-flex; pointer-events:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg></span>
+            <input type="email" name="email" autocomplete="email" placeholder="tu@email.com" style="width:100%; padding:0.65rem 0.75rem 0.65rem 2.4rem; font-family:var(--tl-font-sans); font-size:0.875rem; color:var(--tl-fg); background:hsl(var(--secondary) / 0.4); border:1px solid var(--tl-border-subtle); border-radius:var(--tl-radius-md); outline:none; transition:border-color .2s, box-shadow .2s;" style-focus="border-color:hsl(var(--primary) / 0.55); box-shadow:0 0 0 1px hsl(var(--primary) / 0.3);" />
+          </span>
+        </label>
+        <label style="display:block;">
+          <span style="display:block; margin-bottom:7px; font-size:0.75rem; color:var(--tl-fg-muted);">Password</span>
+          <span style="position:relative; display:block;">
+            <span style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); color:var(--tl-fg-muted); display:inline-flex; pointer-events:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
+            <input type="{{ pwType }}" name="password" autocomplete="current-password" placeholder="••••••••" style="width:100%; padding:0.65rem 2.6rem 0.65rem 2.4rem; font-family:var(--tl-font-sans); font-size:0.875rem; color:var(--tl-fg); background:hsl(var(--secondary) / 0.4); border:1px solid var(--tl-border-subtle); border-radius:var(--tl-radius-md); outline:none; transition:border-color .2s, box-shadow .2s;" style-focus="border-color:hsl(var(--primary) / 0.55); box-shadow:0 0 0 1px hsl(var(--primary) / 0.3);" />
+            <button type="button" onClick="{{ togglePw }}" aria-label="Mostra/nascondi password" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border:none; background:transparent; color:var(--tl-fg-muted); cursor:pointer; border-radius:8px;" style-hover="color:var(--tl-fg);">
+              <sc-if value="{{ hidePw }}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"></path><circle cx="12" cy="12" r="3"></circle></svg></sc-if>
+              <sc-if value="{{ showPw }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" x2="22" y1="2" y2="22"></line><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path></svg></sc-if>
+            </button>
+          </span>
+        </label>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:14px;">
+        <button type="button" onClick="{{ toggleRemember }}" style="display:inline-flex; align-items:center; gap:8px; background:none; border:none; padding:0; cursor:pointer; color:var(--tl-fg-muted); font-family:var(--tl-font-sans); font-size:0.8rem;">
+          <span style="width:18px; height:18px; border-radius:6px; border:1px solid var(--tl-border-strong); display:inline-flex; align-items:center; justify-content:center; background:hsl(var(--secondary) / 0.5); color:hsl(var(--primary));">
+            <sc-if value="{{ remember }}" hint-placeholder-val="{{ true }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
+          </span>
+          Ricordami
+        </button>
+        <button type="button" onClick="{{ goReset }}" style="background:none; border:none; padding:0; font-family:var(--tl-font-sans); font-size:0.8rem; color:hsl(var(--primary)); font-weight:600; cursor:pointer;" style-hover="text-decoration:underline;">Password dimenticata?</button>
+      </div>
+
+      <button type="submit" onClick="{{ noop }}" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:2.75rem; margin-top:20px; font-family:var(--tl-font-sans); font-weight:600; font-size:0.9rem; color:hsl(var(--primary-foreground)); background:hsl(var(--primary)); border:1px solid transparent; border-radius:var(--tl-radius-md); cursor:pointer; box-shadow:0 0 0 1px hsl(var(--primary) / 0.16), 0 10px 22px hsl(var(--primary) / 0.14); transition:background-color .2s, transform .08s;" style-hover="background:hsl(var(--primary) / 0.92);" style-active="transform:scale(0.985);">
+        Accedi <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+      </button>
+    </form>
+
+    <p style="margin:18px 0 0; text-align:center; font-size:0.82rem; color:var(--tl-fg-muted);">Non hai un account? <button type="button" onClick="{{ goRegister }}" style="background:none; border:none; padding:0; font:inherit; color:hsl(var(--primary)); font-weight:600; cursor:pointer;" style-hover="text-decoration:underline;">Registrati</button></p>
+  </div>
+  </sc-if>
+
+  <!-- ───────────────────── REGISTRAZIONE ───────────────────── -->
+  <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <span style="display:block; font-size:0.625rem; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:hsl(var(--primary)); margin-bottom:10px;">Crea account</span>
+    <h2 style="font-family:var(--tl-font-mono); font-size:clamp(1.35rem,3vw,1.6rem); font-weight:700; letter-spacing:-0.02em; color:var(--tl-fg); margin:0 0 6px;">Crea il tuo account</h2>
+    <p style="margin:0 0 22px; font-size:0.875rem; color:var(--tl-fg-muted);">Inizia gratis. Nessuna carta richiesta.</p>
+
+    <button type="button" onClick="{{ noop }}" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:2.75rem; font-family:var(--tl-font-sans); font-weight:600; font-size:0.875rem; color:var(--tl-fg); background:hsl(var(--card) / 0.5); border:1px solid var(--tl-border-subtle); border-radius:var(--tl-radius-md); cursor:pointer; transition:border-color .2s, background-color .2s;" style-hover="border-color:hsl(var(--primary) / 0.45); background:hsl(var(--card) / 0.75);">
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"></path><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"></path><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.22V7.04H2.18a11 11 0 0 0 0 9.9z"></path><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.04l3.66 2.84C6.71 7.29 9.14 5.38 12 5.38z"></path></svg>
+      Registrati con Google
+    </button>
+
+    <div style="display:flex; align-items:center; gap:12px; margin:18px 0;">
+      <span style="flex:1; height:1px; background:var(--tl-border-subtle);"></span>
+      <span style="font-size:0.7rem; color:hsl(var(--muted-foreground) / 0.8);">oppure con email</span>
+      <span style="flex:1; height:1px; background:var(--tl-border-subtle);"></span>
+    </div>
+
+    <form onSubmit="{{ noop }}">
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <label style="display:block;">
+          <span style="display:block; margin-bottom:7px; font-size:0.75rem; color:var(--tl-fg-muted);">Nome</span>
+          <span style="position:relative; display:block;">
+            <span style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); color:var(--tl-fg-muted); display:inline-flex; pointer-events:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>
+            <input type="text" name="name" autocomplete="name" placeholder="Come ti chiami" style="width:100%; padding:0.65rem 0.75rem 0.65rem 2.4rem; font-family:var(--tl-font-sans); font-size:0.875rem; color:var(--tl-fg); background:hsl(var(--secondary) / 0.4); border:1px solid var(--tl-border-subtle); border-radius:var(--tl-radius-md); outline:none; transition:border-color .2s, box-shadow .2s;" style-focus="border-color:hsl(var(--primary) / 0.55); box-shadow:0 0 0 1px hsl(var(--primary) / 0.3);" />
+          </span>
+        </label>
+        <label style="display:block;">
+          <span style="display:block; margin-bottom:7px; font-size:0.75rem; color:var(--tl-fg-muted);">Email</span>
+          <span style="position:relative; display:block;">
+            <span style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); color:var(--tl-fg-muted); display:inline-flex; pointer-events:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg></span>
+            <input type="email" name="email" autocomplete="email" placeholder="tu@email.com" style="width:100%; padding:0.65rem 0.75rem 0.65rem 2.4rem; font-family:var(--tl-font-sans); font-size:0.875rem; color:var(--tl-fg); background:hsl(var(--secondary) / 0.4); border:1px solid var(--tl-border-subtle); border-radius:var(--tl-radius-md); outline:none; transition:border-color .2s, box-shadow .2s;" style-focus="border-color:hsl(var(--primary) / 0.55); box-shadow:0 0 0 1px hsl(var(--primary) / 0.3);" />
+          </span>
+        </label>
+        <label style="display:block;">
+          <span style="display:block; margin-bottom:7px; font-size:0.75rem; color:var(--tl-fg-muted);">Password</span>
+          <span style="position:relative; display:block;">
+            <span style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); color:var(--tl-fg-muted); display:inline-flex; pointer-events:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
+            <input type="{{ pwType }}" name="new-password" autocomplete="new-password" placeholder="Almeno 8 caratteri" style="width:100%; padding:0.65rem 2.6rem 0.65rem 2.4rem; font-family:var(--tl-font-sans); font-size:0.875rem; color:var(--tl-fg); background:hsl(var(--secondary) / 0.4); border:1px solid var(--tl-border-subtle); border-radius:var(--tl-radius-md); outline:none; transition:border-color .2s, box-shadow .2s;" style-focus="border-color:hsl(var(--primary) / 0.55); box-shadow:0 0 0 1px hsl(var(--primary) / 0.3);" />
+            <button type="button" onClick="{{ togglePw }}" aria-label="Mostra/nascondi password" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border:none; background:transparent; color:var(--tl-fg-muted); cursor:pointer; border-radius:8px;" style-hover="color:var(--tl-fg);">
+              <sc-if value="{{ hidePw }}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"></path><circle cx="12" cy="12" r="3"></circle></svg></sc-if>
+              <sc-if value="{{ showPw }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" x2="22" y1="2" y2="22"></line><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path></svg></sc-if>
+            </button>
+          </span>
+        </label>
+      </div>
+
+      <button type="submit" onClick="{{ noop }}" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:2.75rem; margin-top:20px; font-family:var(--tl-font-sans); font-weight:600; font-size:0.9rem; color:hsl(var(--primary-foreground)); background:hsl(var(--primary)); border:1px solid transparent; border-radius:var(--tl-radius-md); cursor:pointer; box-shadow:0 0 0 1px hsl(var(--primary) / 0.16), 0 10px 22px hsl(var(--primary) / 0.14); transition:background-color .2s, transform .08s;" style-hover="background:hsl(var(--primary) / 0.92);" style-active="transform:scale(0.985);">
+        Crea account <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+      </button>
+    </form>
+
+    <p style="margin:14px 0 0; text-align:center; font-size:0.72rem; line-height:1.5; color:hsl(var(--muted-foreground) / 0.8);">Registrandoti accetti i <a href="#" style="color:var(--tl-fg-muted); text-decoration:underline;">Termini</a> e la <a href="#" style="color:var(--tl-fg-muted); text-decoration:underline;">Privacy</a>.</p>
+    <p style="margin:14px 0 0; text-align:center; font-size:0.82rem; color:var(--tl-fg-muted);">Hai già un account? <button type="button" onClick="{{ goLogin }}" style="background:none; border:none; padding:0; font:inherit; color:hsl(var(--primary)); font-weight:600; cursor:pointer;" style-hover="text-decoration:underline;">Accedi</button></p>
+  </div>
+  </sc-if>
+
+  <!-- ───────────────────── RESET PASSWORD ───────────────────── -->
+  <sc-if value="{{ isReset }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <button type="button" onClick="{{ goLogin }}" style="display:inline-flex; align-items:center; gap:5px; background:none; border:none; padding:0; margin-bottom:18px; font-family:var(--tl-font-sans); font-size:0.8rem; color:var(--tl-fg-muted); cursor:pointer;" style-hover="color:var(--tl-fg);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg> Torna al login
+    </button>
+    <span style="display:block; font-size:0.625rem; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:hsl(var(--primary)); margin-bottom:10px;">Recupero accesso</span>
+    <h2 style="font-family:var(--tl-font-mono); font-size:clamp(1.35rem,3vw,1.6rem); font-weight:700; letter-spacing:-0.02em; color:var(--tl-fg); margin:0 0 6px;">Password dimenticata?</h2>
+    <p style="margin:0 0 22px; font-size:0.875rem; color:var(--tl-fg-muted);">Inserisci la tua email: ti invieremo un link per reimpostarla.</p>
+
+    <form onSubmit="{{ sendReset }}">
+      <label style="display:block;">
+        <span style="display:block; margin-bottom:7px; font-size:0.75rem; color:var(--tl-fg-muted);">Email</span>
+        <span style="position:relative; display:block;">
+          <span style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); color:var(--tl-fg-muted); display:inline-flex; pointer-events:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg></span>
+          <input type="email" name="email" autocomplete="email" placeholder="tu@email.com" style="width:100%; padding:0.65rem 0.75rem 0.65rem 2.4rem; font-family:var(--tl-font-sans); font-size:0.875rem; color:var(--tl-fg); background:hsl(var(--secondary) / 0.4); border:1px solid var(--tl-border-subtle); border-radius:var(--tl-radius-md); outline:none; transition:border-color .2s, box-shadow .2s;" style-focus="border-color:hsl(var(--primary) / 0.55); box-shadow:0 0 0 1px hsl(var(--primary) / 0.3);" />
+        </span>
+      </label>
+      <button type="submit" onClick="{{ sendReset }}" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:2.75rem; margin-top:20px; font-family:var(--tl-font-sans); font-weight:600; font-size:0.9rem; color:hsl(var(--primary-foreground)); background:hsl(var(--primary)); border:1px solid transparent; border-radius:var(--tl-radius-md); cursor:pointer; box-shadow:0 0 0 1px hsl(var(--primary) / 0.16), 0 10px 22px hsl(var(--primary) / 0.14); transition:background-color .2s, transform .08s;" style-hover="background:hsl(var(--primary) / 0.92);" style-active="transform:scale(0.985);">
+        Inviami il link
+      </button>
+    </form>
+  </div>
+  </sc-if>
+
+  <!-- ───────────────────── RESET — EMAIL INVIATA ───────────────────── -->
+  <sc-if value="{{ isSent }}" hint-placeholder-val="{{ false }}">
+  <div style="text-align:center;">
+    <span style="display:inline-flex; align-items:center; justify-content:center; width:56px; height:56px; border-radius:16px; background:hsl(var(--primary) / 0.12); border:1px solid hsl(var(--primary) / 0.3); color:hsl(var(--primary)); margin-bottom:18px; box-shadow:var(--tl-glow-primary);">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
+    </span>
+    <h2 style="font-family:var(--tl-font-mono); font-size:clamp(1.3rem,3vw,1.55rem); font-weight:700; letter-spacing:-0.02em; color:var(--tl-fg); margin:0 0 8px;">Controlla la tua email</h2>
+    <p style="margin:0 auto 24px; max-width:300px; font-size:0.875rem; line-height:1.55; color:var(--tl-fg-muted);">Ti abbiamo inviato un link per reimpostare la password. Controlla anche lo spam.</p>
+    <button type="button" onClick="{{ goLogin }}" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:2.75rem; font-family:var(--tl-font-sans); font-weight:600; font-size:0.9rem; color:var(--tl-fg); background:hsl(var(--secondary) / 0.8); border:1px solid var(--tl-border-subtle); border-radius:var(--tl-radius-md); cursor:pointer; transition:border-color .2s;" style-hover="border-color:hsl(var(--primary) / 0.4);">
+      Torna al login
+    </button>
+  </div>
+  </sc-if>
+
+  <p style="display:flex; align-items:center; justify-content:center; gap:6px; margin:20px 0 0; padding-top:16px; border-top:1px solid var(--tl-border-subtle); font-size:0.72rem; color:hsl(var(--muted-foreground) / 0.8);">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+    Connessione protetta · dati crittografati end-to-end
+  </p>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:460,&quot;height&quot;:640},&quot;initialScreen&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;login&quot;,&quot;tsType&quot;:&quot;'login' | 'register' | 'reset'&quot;}}">
+class Component extends DCLogic {
+  state = { screen: null, showPw: false, remember: true, sent: false };
+
+  setScreen(s) { this.setState({ screen: s, sent: false, showPw: false }); }
+
+  componentDidUpdate(prev) {
+    if (prev.initialScreen !== this.props.initialScreen) {
+      this.setState({ screen: null, sent: false, showPw: false });
+    }
+  }
+
+  renderVals() {
+    const screen = this.state.screen || this.props.initialScreen || "login";
+    return {
+      isLogin: screen === "login",
+      isRegister: screen === "register",
+      isReset: screen === "reset" && !this.state.sent,
+      isSent: screen === "reset" && this.state.sent,
+      showPw: this.state.showPw,
+      hidePw: !this.state.showPw,
+      pwType: this.state.showPw ? "text" : "password",
+      remember: this.state.remember,
+      goLogin: () => this.setScreen("login"),
+      goRegister: () => this.setScreen("register"),
+      goReset: () => this.setScreen("reset"),
+      togglePw: () => this.setState((s) => ({ showPw: !s.showPw })),
+      toggleRemember: () => this.setState((s) => ({ remember: !s.remember })),
+      sendReset: (e) => { if (e && e.preventDefault) e.preventDefault(); this.setState({ sent: true }); },
+      noop: (e) => { if (e && e.preventDefault) e.preventDefault(); },
+    };
+  }
+}
+</script>
+</body>
+</html>
