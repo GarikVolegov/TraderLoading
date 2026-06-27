@@ -5343,10 +5343,50 @@ for (const lang of SUPPORTED_LANGUAGES) {
   Object.assign(DICT[lang], LANDING_REBUILD_TRANSLATIONS[lang]);
 }
 
+// Real-data landing keys (stats now show real counts incl. languages; live macro
+// news adds the low-impact / neutral labels and an empty-state message).
+const LANDING_REALDATA_TRANSLATIONS: Record<Language, Record<string, string>> = {
+  it: {
+    "landing.stats.languages": "Lingue",
+    "landing.showcase.impact.low": "Basso",
+    "landing.showcase.sentiment.neutral": "Neutrale",
+    "landing.showcase.news.empty": "Nessuna notizia al momento.",
+  },
+  en: {
+    "landing.stats.languages": "Languages",
+    "landing.showcase.impact.low": "Low",
+    "landing.showcase.sentiment.neutral": "Neutral",
+    "landing.showcase.news.empty": "No news right now.",
+  },
+  es: {
+    "landing.stats.languages": "Idiomas",
+    "landing.showcase.impact.low": "Bajo",
+    "landing.showcase.sentiment.neutral": "Neutral",
+    "landing.showcase.news.empty": "Sin noticias por ahora.",
+  },
+  fr: {
+    "landing.stats.languages": "Langues",
+    "landing.showcase.impact.low": "Faible",
+    "landing.showcase.sentiment.neutral": "Neutre",
+    "landing.showcase.news.empty": "Pas d'actualités pour le moment.",
+  },
+  de: {
+    "landing.stats.languages": "Sprachen",
+    "landing.showcase.impact.low": "Niedrig",
+    "landing.showcase.sentiment.neutral": "Neutral",
+    "landing.showcase.news.empty": "Derzeit keine News.",
+  },
+};
+
+for (const lang of SUPPORTED_LANGUAGES) {
+  Object.assign(DICT[lang], LANDING_REALDATA_TRANSLATIONS[lang]);
+}
+
 export type TranslationKey =
   | keyof typeof BASE_DICT.it
   | keyof typeof ADMIN_TRANSLATIONS.it
   | keyof typeof ACCOUNT_BRIDGE_TRANSLATIONS.it
   | keyof typeof BACKGROUND_TRANSLATIONS.it
   | keyof typeof CORE_UI_TRANSLATIONS.it
-  | keyof typeof LANDING_REBUILD_TRANSLATIONS.it;
+  | keyof typeof LANDING_REBUILD_TRANSLATIONS.it
+  | keyof typeof LANDING_REALDATA_TRANSLATIONS.it;

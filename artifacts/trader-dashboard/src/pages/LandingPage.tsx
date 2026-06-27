@@ -30,11 +30,84 @@ import {
   Users,
   Youtube,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { PAIR_CATALOG } from "@workspace/pair-catalog";
 import {
   LANGUAGES,
   useLanguage,
   type Language,
 } from "@/contexts/LanguageContext";
+import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
+
+async function fetchJSON<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+// ── Real landing data (public, unauthenticated endpoints) ──────────────
+interface PublicStats {
+  traders: number;
+  trades: number;
+  pairs: number;
+}
+interface PublicTestimonial {
+  id: number;
+  name: string;
+  role: string | null;
+  text: string;
+  rating: number;
+}
+interface LandingNewsArticle {
+  title: string;
+  impact: string;
+  direction: string;
+  currency: string;
+  affectedPairs?: string[];
+  primaryAssets?: string[];
+}
+interface LandingNewsData {
+  articles: LandingNewsArticle[];
+  summary?: string;
+}
+
+function usePublicStats() {
+  return useQuery({
+    queryKey: ["landing", "public-stats"],
+    queryFn: () => fetchJSON<PublicStats>("/api/public/stats"),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
+function usePublicTestimonials() {
+  return useQuery({
+    queryKey: ["landing", "public-testimonials"],
+    queryFn: () => fetchJSON<{ testimonials: PublicTestimonial[] }>("/api/public/testimonials"),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
+function useLandingNews(language: Language) {
+  return useQuery({
+    queryKey: ["landing", "macro-news", language],
+    queryFn: () => fetchJSON<LandingNewsData>(`/api/tools/macro-news?lang=${language}`),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
+const NEWS_IMPACT: Record<string, { key: string; color: string }> = {
+  alto: { key: "landing.showcase.impact.high", color: "0 84% 60%" },
+  medio: { key: "landing.showcase.impact.medium", color: "38 92% 50%" },
+  basso: { key: "landing.showcase.impact.low", color: "142 71% 45%" },
+};
+const NEWS_DIRECTION: Record<string, { key: string; color: string }> = {
+  bullish: { key: "landing.showcase.sentiment.bullish", color: "142 71% 45%" },
+  bearish: { key: "landing.showcase.sentiment.bearish", color: "0 84% 60%" },
+  neutrale: { key: "landing.showcase.sentiment.neutral", color: "38 92% 50%" },
+};
 
 /* ── Decorative color tones (no project token exists for these accents) ── */
 const TONE = {
@@ -74,13 +147,6 @@ const TRUST = [
   { icon: Globe, labelKey: "landing.hero.trust.languages" },
 ] as const;
 
-const STATS = [
-  { value: 12000, suffix: "+", labelKey: "landing.stats.traders" },
-  { value: 2.4, decimals: 1, suffix: "M", labelKey: "landing.stats.journaled" },
-  { value: 48, labelKey: "landing.stats.pairs" },
-  { value: 17, suffix: "%", labelKey: "landing.stats.winrate" },
-] as const;
-
 const FEATURES = [
   { icon: BookOpen, titleKey: "landing.features.journal.title", descKey: "landing.features.journal.desc", tone: TONE.green, big: true },
   { icon: Newspaper, titleKey: "landing.features.news.title", descKey: "landing.features.news.desc", tone: TONE.blue, big: false },
@@ -94,12 +160,6 @@ const STEPS = [
   { n: "01", icon: Link2, titleKey: "landing.how.step1.title", descKey: "landing.how.step1.desc" },
   { n: "02", icon: LineChart, titleKey: "landing.how.step2.title", descKey: "landing.how.step2.desc" },
   { n: "03", icon: Trophy, titleKey: "landing.how.step3.title", descKey: "landing.how.step3.desc" },
-] as const;
-
-const TESTIMONIALS = [
-  { name: "Sara C.", roleKey: "landing.testimonials.t1.role", textKey: "landing.testimonials.t1.text" },
-  { name: "Marco R.", roleKey: "landing.testimonials.t2.role", textKey: "landing.testimonials.t2.text" },
-  { name: "Giulia B.", roleKey: "landing.testimonials.t3.role", textKey: "landing.testimonials.t3.text" },
 ] as const;
 
 const FREE_ITEMS = [
@@ -414,43 +474,55 @@ function GlassPanel({ children }: { children: ReactNode }) {
 }
 
 function NewsVisual() {
-  const { t } = useLanguage();
-  const news = [
-    { titleKey: "landing.showcase.news.item1", impKey: "landing.showcase.impact.high", impColor: TONE.red, senKey: "landing.showcase.sentiment.bearish", senColor: TONE.red, pairs: ["USD", "XAU"] },
-    { titleKey: "landing.showcase.news.item2", impKey: "landing.showcase.impact.medium", impColor: TONE.amber, senKey: "landing.showcase.sentiment.bullish", senColor: TONE.green, pairs: ["EUR"] },
-  ];
+  const { t, language } = useLanguage();
+  const { data } = useLandingNews(language);
+  const articles = (data?.articles ?? []).slice(0, 2);
+  const summary = data?.summary || t("landing.showcase.news.summary");
   return (
     <GlassPanel>
       <div className="mb-3 flex gap-2.5 rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2.5">
         <Newspaper className="h-4 w-4 shrink-0 text-primary" />
-        <p className="m-0 text-[13px] leading-snug text-foreground/90">{t("landing.showcase.news.summary")}</p>
+        <p className="m-0 line-clamp-3 text-[13px] leading-snug text-foreground/90">{summary}</p>
       </div>
-      {news.map((n) => (
-        <div key={n.titleKey} className="mb-2.5 flex flex-col gap-1.5 rounded-xl border border-border/50 bg-card/50 p-3 last:mb-0">
-          <div className="flex gap-1.5">
-            <span
-              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold"
-              style={{ color: `hsl(${n.impColor})`, background: `hsl(${n.impColor} / 0.12)`, border: `1px solid hsl(${n.impColor} / 0.3)` }}
-            >
-              {t(n.impKey)}
-            </span>
-            <span
-              className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
-              style={{ color: `hsl(${n.senColor})`, background: `hsl(${n.senColor} / 0.1)`, border: `1px solid hsl(${n.senColor} / 0.25)` }}
-            >
-              {t(n.senKey)}
-            </span>
-          </div>
-          <p className="m-0 text-[13.5px] font-semibold text-foreground">{t(n.titleKey)}</p>
-          <div className="flex gap-1.5">
-            {n.pairs.map((p) => (
-              <span key={p} className="rounded px-1.5 py-px font-mono text-[9px] font-bold text-primary" style={{ background: "hsl(var(--primary) / 0.1)", border: "1px solid hsl(var(--primary) / 0.25)" }}>
-                {p}
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
+      {articles.length === 0 ? (
+        <p className="m-0 px-1 py-2 text-[12px] text-muted-foreground">{t("landing.showcase.news.empty")}</p>
+      ) : (
+        articles.map((a, i) => {
+          const imp = NEWS_IMPACT[a.impact] ?? NEWS_IMPACT.medio;
+          const dir = NEWS_DIRECTION[a.direction] ?? NEWS_DIRECTION.neutrale;
+          const pairs = (
+            a.affectedPairs?.length ? a.affectedPairs : a.primaryAssets?.length ? a.primaryAssets : [a.currency]
+          )
+            .filter(Boolean)
+            .slice(0, 3);
+          return (
+            <div key={i} className="mb-2.5 flex flex-col gap-1.5 rounded-xl border border-border/50 bg-card/50 p-3 last:mb-0">
+              <div className="flex gap-1.5">
+                <span
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold"
+                  style={{ color: `hsl(${imp.color})`, background: `hsl(${imp.color} / 0.12)`, border: `1px solid hsl(${imp.color} / 0.3)` }}
+                >
+                  {t(imp.key)}
+                </span>
+                <span
+                  className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+                  style={{ color: `hsl(${dir.color})`, background: `hsl(${dir.color} / 0.1)`, border: `1px solid hsl(${dir.color} / 0.25)` }}
+                >
+                  {t(dir.key)}
+                </span>
+              </div>
+              <p className="m-0 line-clamp-2 text-[13.5px] font-semibold text-foreground">{a.title}</p>
+              <div className="flex gap-1.5">
+                {pairs.map((p) => (
+                  <span key={p} className="rounded px-1.5 py-px font-mono text-[9px] font-bold text-primary" style={{ background: "hsl(var(--primary) / 0.1)", border: "1px solid hsl(var(--primary) / 0.25)" }}>
+                    {p}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })
+      )}
     </GlassPanel>
   );
 }
@@ -586,6 +658,9 @@ export default function LandingPage() {
   const { language, setLanguage, t } = useLanguage();
   const [solid, setSolid] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
+  const { data: stats } = usePublicStats();
+  const { data: testimonialsData } = usePublicTestimonials();
+  const testimonials = testimonialsData?.testimonials ?? [];
 
   useEffect(() => {
     const onScroll = () => setSolid(window.scrollY > 24);
@@ -744,14 +819,19 @@ export default function LandingPage() {
         </div>
       </main>
 
-      {/* ── STATS ───────────────────────────────────────────────────── */}
+      {/* ── STATS (real, from /api/public/stats + pair catalog + langs) ── */}
       <section className="relative z-10 px-6 pb-9">
         <Reveal className="mx-auto w-full max-w-6xl">
           <div className="grid grid-cols-2 gap-4 rounded-[20px] border border-border/50 bg-card/40 px-6 py-7 backdrop-blur-md md:grid-cols-4">
-            {STATS.map((s) => (
+            {[
+              { value: stats?.traders ?? 0, labelKey: "landing.stats.traders" },
+              { value: stats?.trades ?? 0, labelKey: "landing.stats.journaled" },
+              { value: stats?.pairs ?? PAIR_CATALOG.length, labelKey: "landing.stats.pairs" },
+              { value: SUPPORTED_LANGUAGES.length, labelKey: "landing.stats.languages" },
+            ].map((s) => (
               <div key={s.labelKey} className="text-center">
                 <div className="font-mono text-[34px] font-extrabold tracking-tight text-foreground">
-                  <CountUp value={s.value} decimals={"decimals" in s ? s.decimals : 0} suffix={"suffix" in s ? s.suffix : ""} />
+                  <CountUp value={s.value} />
                 </div>
                 <div className="mt-1 text-[13px] text-muted-foreground">{t(s.labelKey)}</div>
               </div>
@@ -870,38 +950,40 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ────────────────────────────────────────────── */}
-      <section className="relative z-10 px-6 py-[70px]">
-        <div className="mx-auto w-full max-w-6xl">
-          <Reveal className="mx-auto mb-11 max-w-[620px] text-center">
-            <Eyebrow>{t("landing.testimonials.eyebrow")}</Eyebrow>
-            <h2 className="mt-3.5 font-mono text-[40px] font-extrabold leading-tight tracking-tight text-foreground">{t("landing.testimonials.title")}</h2>
-          </Reveal>
-          <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
-            {TESTIMONIALS.map((q, i) => (
-              <Reveal key={q.name} delay={i * 0.08}>
-                <div className="flex h-full flex-col gap-4 rounded-[20px] border border-border/50 bg-card/50 p-6 backdrop-blur-sm">
-                  <div className="flex gap-0.5">
-                    {[0, 1, 2, 3, 4].map((s) => (
-                      <Star key={s} className="h-[15px] w-[15px]" style={{ color: `hsl(${TONE.amber})`, fill: `hsl(${TONE.amber})` }} />
-                    ))}
-                  </div>
-                  <p className="m-0 flex-1 text-[15px] leading-relaxed text-foreground/90">{`“${t(q.textKey)}”`}</p>
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/30 bg-card font-mono text-sm font-bold text-primary">
-                      {q.name.split(" ").map((w) => w[0]).join("")}
-                    </span>
-                    <div>
-                      <p className="m-0 text-sm font-bold text-foreground">{q.name}</p>
-                      <p className="m-0 text-xs text-muted-foreground">{t(q.roleKey)}</p>
+      {/* ── TESTIMONIALS (real, from /api/public/testimonials; hidden if none) ── */}
+      {testimonials.length > 0 && (
+        <section className="relative z-10 px-6 py-[70px]">
+          <div className="mx-auto w-full max-w-6xl">
+            <Reveal className="mx-auto mb-11 max-w-[620px] text-center">
+              <Eyebrow>{t("landing.testimonials.eyebrow")}</Eyebrow>
+              <h2 className="mt-3.5 font-mono text-[40px] font-extrabold leading-tight tracking-tight text-foreground">{t("landing.testimonials.title")}</h2>
+            </Reveal>
+            <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
+              {testimonials.map((q, i) => (
+                <Reveal key={q.id} delay={i * 0.08}>
+                  <div className="flex h-full flex-col gap-4 rounded-[20px] border border-border/50 bg-card/50 p-6 backdrop-blur-sm">
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: Math.max(1, Math.min(5, q.rating)) }).map((_, s) => (
+                        <Star key={s} className="h-[15px] w-[15px]" style={{ color: `hsl(${TONE.amber})`, fill: `hsl(${TONE.amber})` }} />
+                      ))}
+                    </div>
+                    <p className="m-0 flex-1 text-[15px] leading-relaxed text-foreground/90">{`“${q.text}”`}</p>
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/30 bg-card font-mono text-sm font-bold text-primary">
+                        {q.name.split(" ").map((w) => w[0]).join("")}
+                      </span>
+                      <div>
+                        <p className="m-0 text-sm font-bold text-foreground">{q.name}</p>
+                        {q.role && <p className="m-0 text-xs text-muted-foreground">{q.role}</p>}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Reveal>
-            ))}
+                </Reveal>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── PRICING ─────────────────────────────────────────────────── */}
       <section id="pricing" className="relative z-10 scroll-mt-24 px-6 py-[70px]">

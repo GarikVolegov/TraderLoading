@@ -16,10 +16,17 @@ for (const hash of ['"#features"', '"#how"', '"#pricing"', '"#faq"']) {
   assert.ok(src.includes(hash), `landing nav must link to ${hash}`);
 }
 
-// Animated count-up stats bar.
-assert.match(src, /\bSTATS\b/);
+// Animated count-up stats bar (now fed by real public stats).
+assert.match(src, /usePublicStats/);
 assert.match(src, /function CountUp/);
 assert.match(src, /IntersectionObserver/);
+
+// Real, live data: stats + testimonials from public endpoints, live macro news.
+assert.match(src, /\/api\/public\/stats/);
+assert.match(src, /\/api\/public\/testimonials/);
+assert.match(src, /\/api\/tools\/macro-news/);
+assert.match(src, /usePublicTestimonials/);
+assert.match(src, /useLandingNews/);
 
 // Live, real product mock: ticking clock + actual market session (not a dead mock).
 assert.match(src, /function ProductMock/);
@@ -33,8 +40,8 @@ assert.match(src, /\bSTEPS\b/);
 const showcaseRows = [...src.matchAll(/<ShowcaseRow/g)].length;
 assert.ok(showcaseRows >= 3, `expected 3 showcase rows, found ${showcaseRows}`);
 
-// Testimonials, final CTA and footer sitemap.
-assert.match(src, /\bTESTIMONIALS\b/);
+// Testimonials (real, hidden when none), final CTA and footer sitemap.
+assert.match(src, /testimonials\.length > 0/);
 assert.match(src, /landing\.cta\.title/);
 assert.match(src, /\bFOOTER_COLS\b/);
 
