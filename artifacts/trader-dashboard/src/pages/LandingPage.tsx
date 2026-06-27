@@ -187,29 +187,29 @@ const FOOTER_COLS = [
   {
     titleKey: "landing.footer.col.product",
     items: [
-      "landing.footer.product.diary",
-      "landing.footer.product.news",
-      "landing.footer.product.backtest",
-      "landing.footer.product.risk",
-      "landing.footer.product.pricing",
+      { labelKey: "landing.footer.product.diary", href: "/trading-journal" },
+      { labelKey: "landing.footer.product.news", href: "/macro-news" },
+      { labelKey: "landing.footer.product.backtest", href: "/backtesting" },
+      { labelKey: "landing.footer.product.risk", href: "/risk-management" },
+      { labelKey: "landing.footer.product.pricing", href: "/pricing" },
     ],
   },
   {
     titleKey: "landing.footer.col.resources",
     items: [
-      "landing.footer.resources.guide",
-      "landing.footer.resources.blog",
-      "landing.footer.resources.community",
-      "landing.footer.resources.status",
+      { labelKey: "landing.footer.resources.guide", href: "/guide" },
+      { labelKey: "landing.footer.resources.blog", href: "/blog" },
+      { labelKey: "landing.footer.resources.community", href: "/community" },
+      { labelKey: "landing.footer.resources.status", href: "/status" },
     ],
   },
   {
     titleKey: "landing.footer.col.company",
     items: [
-      "landing.footer.company.about",
-      "landing.footer.company.contact",
-      "landing.footer.privacy",
-      "landing.footer.terms",
+      { labelKey: "landing.footer.company.about", href: "/about" },
+      { labelKey: "landing.footer.company.contact", href: "/contact" },
+      { labelKey: "landing.footer.privacy", href: "/privacy" },
+      { labelKey: "landing.footer.terms", href: "/terms" },
     ],
   },
 ] as const;
@@ -1123,10 +1123,10 @@ export default function LandingPage() {
             <div key={col.titleKey}>
               <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.1em] text-foreground">{t(col.titleKey)}</p>
               <div className="flex flex-col gap-2.5">
-                {col.items.map((itemKey) => (
-                  <a key={itemKey} href="#" className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground">
-                    {t(itemKey)}
-                  </a>
+                {col.items.map((item) => (
+                  <Link key={item.href} href={item.href} className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground">
+                    {t(item.labelKey)}
+                  </Link>
                 ))}
               </div>
             </div>
