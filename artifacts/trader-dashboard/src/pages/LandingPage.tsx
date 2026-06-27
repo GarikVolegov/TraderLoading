@@ -706,16 +706,16 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen scroll-smooth bg-background text-foreground">
-      {/* animated background orbs — fixed layer that clips itself, so it never
-          becomes an overflow ancestor of the sticky nav (which would break sticky) */}
+      {/* animated background orbs — fixed layer that clips itself */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="animate-float absolute -right-[6%] -top-[12%] h-[620px] w-[620px] rounded-full blur-[130px]" style={{ background: `hsl(${TONE.green} / 0.16)` }} />
         <div className="animate-float absolute -left-[10%] top-[26%] h-[520px] w-[520px] rounded-full blur-[120px]" style={{ background: `hsl(${TONE.blue} / 0.14)` }} />
         <div className="animate-float absolute -bottom-[18%] left-[40%] h-[560px] w-[560px] rounded-full blur-[140px]" style={{ background: `hsl(${TONE.violet} / 0.1)` }} />
       </div>
 
-      {/* ── NAV ─────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 px-3 pt-4 sm:px-5">
+      {/* ── NAV — position:fixed so it stays pinned even though body has
+          overflow-x:hidden (which would break position:sticky) ──────────── */}
+      <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5 sm:pt-4">
         <div className="mx-auto w-full max-w-6xl rounded-full bg-gradient-to-r from-primary/15 via-white/10 to-blue-500/10 p-px shadow-[0_0_36px_rgba(34,197,94,0.16),0_24px_70px_rgba(0,0,0,0.55)]">
           <div className={`relative flex min-h-16 items-center justify-between gap-3 overflow-hidden rounded-full border border-white/20 px-3 py-2 backdrop-blur-[30px] transition-colors sm:px-5 ${solid ? "bg-background/80" : "bg-background/55"}`}>
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.13)_34%,transparent_43%)] opacity-80" />
@@ -769,35 +769,35 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* ── HERO ────────────────────────────────────────────────────── */}
-      <main className="relative z-10 px-6 pb-20 pt-14">
-        <div className="mx-auto grid w-full max-w-6xl items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
+      {/* ── HERO (pt clears the fixed nav) ──────────────────────────── */}
+      <main className="relative z-10 px-4 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-28">
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-10 sm:gap-14 lg:grid-cols-[1.05fr_0.95fr]">
           <Reveal>
             <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-[12.5px] font-semibold text-primary">
               <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
               {t("landing.hero.badge")}
             </span>
-            <h1 className="mb-5 font-mono text-[44px] font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+            <h1 className="mb-5 font-mono text-[30px] font-extrabold leading-[1.08] tracking-tight text-foreground min-[400px]:text-[34px] sm:text-5xl lg:text-6xl">
               {t("landing.hero.title_a")}
-              <br />
+              <br className="hidden sm:block" />{" "}
               <span className="bg-gradient-to-r from-primary via-emerald-300 to-blue-500 bg-clip-text text-transparent">
                 {t("landing.hero.title_b")}
               </span>
             </h1>
-            <p className="mb-8 max-w-[540px] text-lg leading-relaxed text-muted-foreground sm:text-xl">
+            <p className="mb-8 max-w-[540px] text-[17px] leading-relaxed text-muted-foreground sm:text-xl">
               {t("landing.hero.subtitle")}
             </p>
-            <div className="mb-7 flex flex-wrap gap-3.5">
+            <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-3.5">
               <button
                 onClick={() => setLocation("/sign-up")}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3.5 text-base font-bold text-primary-foreground shadow-[0_0_34px_rgba(34,197,94,0.34)] transition-transform hover:-translate-y-0.5"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-7 py-3.5 text-base font-bold text-primary-foreground shadow-[0_0_34px_rgba(34,197,94,0.34)] transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
                 {t("landing.hero.start_free")}
                 <ArrowRight className="h-[18px] w-[18px]" />
               </button>
               <button
                 onClick={() => setLocation("/sign-in")}
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/50 px-6 py-3.5 text-base font-medium text-foreground backdrop-blur-sm transition-colors hover:border-primary/40"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card/50 px-6 py-3.5 text-base font-medium text-foreground backdrop-blur-sm transition-colors hover:border-primary/40 sm:w-auto"
               >
                 <PlayCircle className="h-[18px] w-[18px]" />
                 {t("landing.hero.demo")}
@@ -819,9 +819,9 @@ export default function LandingPage() {
       </main>
 
       {/* ── STATS (real, from /api/public/stats + pair catalog + langs) ── */}
-      <section className="relative z-10 px-6 pb-9">
+      <section className="relative z-10 px-4 pb-9 sm:px-6">
         <Reveal className="mx-auto w-full max-w-6xl">
-          <div className="grid grid-cols-2 gap-4 rounded-[20px] border border-border/50 bg-card/40 px-6 py-7 backdrop-blur-md md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 rounded-[20px] border border-border/50 bg-card/40 px-4 py-6 backdrop-blur-md sm:px-6 sm:py-7 md:grid-cols-4">
             {[
               { value: stats?.traders ?? 0, labelKey: "landing.stats.traders" },
               { value: stats?.trades ?? 0, labelKey: "landing.stats.journaled" },
@@ -829,7 +829,7 @@ export default function LandingPage() {
               { value: SUPPORTED_LANGUAGES.length, labelKey: "landing.stats.languages" },
             ].map((s) => (
               <div key={s.labelKey} className="text-center">
-                <div className="font-mono text-[34px] font-extrabold tracking-tight text-foreground">
+                <div className="font-mono text-[28px] font-extrabold sm:text-[34px] tracking-tight text-foreground">
                   <CountUp value={s.value} />
                 </div>
                 <div className="mt-1 text-[13px] text-muted-foreground">{t(s.labelKey)}</div>
@@ -840,11 +840,11 @@ export default function LandingPage() {
       </section>
 
       {/* ── FEATURES (bento) ────────────────────────────────────────── */}
-      <section id="features" className="relative z-10 scroll-mt-24 px-6 py-[70px]">
+      <section id="features" className="relative z-10 scroll-mt-24 px-4 py-14 sm:px-6 sm:py-[70px]">
         <div className="mx-auto w-full max-w-6xl">
           <Reveal className="mb-10 max-w-[620px]">
             <Eyebrow>{t("landing.features.eyebrow")}</Eyebrow>
-            <h2 className="mt-3.5 font-mono text-[40px] font-extrabold leading-tight tracking-tight text-foreground">
+            <h2 className="mt-3.5 font-mono text-[28px] sm:text-[40px] font-extrabold leading-tight tracking-tight text-foreground">
               {t("landing.features.title")}
             </h2>
             <p className="mt-3.5 text-[17px] leading-relaxed text-muted-foreground">{t("landing.features.lede")}</p>
@@ -856,7 +856,7 @@ export default function LandingPage() {
                 delay={(i % 3) * 0.06}
                 className={big ? "sm:col-span-2 sm:row-span-2" : ""}
               >
-                <div className="group flex h-full flex-col gap-3.5 rounded-[20px] border border-border/50 bg-card/50 p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
+                <div className="group flex h-full flex-col gap-3.5 rounded-[20px] border border-border/50 bg-card/50 p-5 sm:p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
                   <div
                     className="flex h-12 w-12 items-center justify-center rounded-[14px]"
                     style={{ background: `hsl(${tone} / 0.12)`, border: `1px solid hsl(${tone} / 0.25)`, color: `hsl(${tone})` } as CSSProperties}
@@ -892,21 +892,21 @@ export default function LandingPage() {
       </section>
 
       {/* ── HOW IT WORKS ────────────────────────────────────────────── */}
-      <section id="how" className="relative z-10 scroll-mt-24 px-6 py-[70px]">
+      <section id="how" className="relative z-10 scroll-mt-24 px-4 py-14 sm:px-6 sm:py-[70px]">
         <div className="mx-auto w-full max-w-6xl">
           <Reveal className="mx-auto mb-12 max-w-[620px] text-center">
             <Eyebrow>{t("landing.how.eyebrow")}</Eyebrow>
-            <h2 className="mt-3.5 font-mono text-[40px] font-extrabold leading-tight tracking-tight text-foreground">{t("landing.how.title")}</h2>
+            <h2 className="mt-3.5 font-mono text-[28px] sm:text-[40px] font-extrabold leading-tight tracking-tight text-foreground">{t("landing.how.title")}</h2>
           </Reveal>
           <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
             {STEPS.map(({ n, icon: Icon, titleKey, descKey }, i) => (
               <Reveal key={n} delay={i * 0.08}>
-                <div className="h-full rounded-[20px] border border-border/50 bg-card/[0.45] p-7 backdrop-blur-sm">
+                <div className="h-full rounded-[20px] border border-border/50 bg-card/[0.45] p-5 sm:p-7 backdrop-blur-sm">
                   <div className="mb-4 flex items-center justify-between">
                     <span className="flex h-[46px] w-[46px] items-center justify-center rounded-[13px] border border-primary/[0.22] bg-primary/10 text-primary">
                       <Icon className="h-[22px] w-[22px]" />
                     </span>
-                    <span className="font-mono text-[34px] font-extrabold text-primary/[0.18]">{n}</span>
+                    <span className="font-mono text-[28px] font-extrabold sm:text-[34px] text-primary/[0.18]">{n}</span>
                   </div>
                   <h3 className="mb-2.5 font-mono text-lg font-bold tracking-tight text-foreground">{t(titleKey)}</h3>
                   <p className="text-[15px] leading-relaxed text-muted-foreground">{t(descKey)}</p>
@@ -918,8 +918,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── SHOWCASE ────────────────────────────────────────────────── */}
-      <section className="relative z-10 px-6 py-14">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-[72px]">
+      <section className="relative z-10 px-4 py-12 sm:px-6 sm:py-14">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-14 sm:gap-[72px]">
           <ShowcaseRow
             flip
             eyebrowKey="landing.showcase.news.eyebrow"
@@ -951,16 +951,16 @@ export default function LandingPage() {
 
       {/* ── TESTIMONIALS (real, from /api/public/testimonials; hidden if none) ── */}
       {testimonials.length > 0 && (
-        <section className="relative z-10 px-6 py-[70px]">
+        <section className="relative z-10 px-4 py-14 sm:px-6 sm:py-[70px]">
           <div className="mx-auto w-full max-w-6xl">
             <Reveal className="mx-auto mb-11 max-w-[620px] text-center">
               <Eyebrow>{t("landing.testimonials.eyebrow")}</Eyebrow>
-              <h2 className="mt-3.5 font-mono text-[40px] font-extrabold leading-tight tracking-tight text-foreground">{t("landing.testimonials.title")}</h2>
+              <h2 className="mt-3.5 font-mono text-[28px] sm:text-[40px] font-extrabold leading-tight tracking-tight text-foreground">{t("landing.testimonials.title")}</h2>
             </Reveal>
             <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
               {testimonials.map((q, i) => (
                 <Reveal key={q.id} delay={i * 0.08}>
-                  <div className="flex h-full flex-col gap-4 rounded-[20px] border border-border/50 bg-card/50 p-6 backdrop-blur-sm">
+                  <div className="flex h-full flex-col gap-4 rounded-[20px] border border-border/50 bg-card/50 p-5 sm:p-6 backdrop-blur-sm">
                     <div className="flex gap-0.5">
                       {Array.from({ length: Math.max(1, Math.min(5, q.rating)) }).map((_, s) => (
                         <Star key={s} className="h-[15px] w-[15px]" style={{ color: `hsl(${TONE.amber})`, fill: `hsl(${TONE.amber})` }} />
@@ -985,15 +985,15 @@ export default function LandingPage() {
       )}
 
       {/* ── PRICING ─────────────────────────────────────────────────── */}
-      <section id="pricing" className="relative z-10 scroll-mt-24 px-6 py-[70px]">
+      <section id="pricing" className="relative z-10 scroll-mt-24 px-4 py-14 sm:px-6 sm:py-[70px]">
         <div className="mx-auto w-full max-w-[860px]">
           <Reveal className="mb-10 text-center">
             <Eyebrow>{t("landing.nav.pricing")}</Eyebrow>
-            <h2 className="mt-3.5 font-mono text-[40px] font-extrabold leading-tight tracking-tight text-foreground">{t("landing.pricing.heading")}</h2>
+            <h2 className="mt-3.5 font-mono text-[28px] sm:text-[40px] font-extrabold leading-tight tracking-tight text-foreground">{t("landing.pricing.heading")}</h2>
           </Reveal>
           <Reveal>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <div className="flex flex-col rounded-[22px] border border-border/50 bg-card/[0.45] p-[30px] backdrop-blur-sm">
+              <div className="flex flex-col rounded-[22px] border border-border/50 bg-card/[0.45] p-6 sm:p-[30px] backdrop-blur-sm">
                 <h3 className="mb-1 text-xl font-bold text-foreground">{t("landing.pricing.free")}</h3>
                 <p className="mb-5 font-mono text-[40px] font-extrabold text-foreground">
                   {"0€"}
@@ -1015,7 +1015,7 @@ export default function LandingPage() {
                 </button>
               </div>
 
-              <div className="relative flex flex-col rounded-[22px] border border-primary/45 bg-card/[0.65] p-[30px] shadow-[0_0_50px_rgba(34,197,94,0.14)] backdrop-blur-sm">
+              <div className="relative flex flex-col rounded-[22px] border border-primary/45 bg-card/[0.65] p-6 sm:p-[30px] shadow-[0_0_50px_rgba(34,197,94,0.14)] backdrop-blur-sm">
                 <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1.5 text-[11px] font-bold text-primary-foreground shadow-[0_0_18px_rgba(34,197,94,0.4)]">
                   {t("landing.pricing.popular")}
                 </span>
@@ -1050,11 +1050,11 @@ export default function LandingPage() {
       </section>
 
       {/* ── FAQ ─────────────────────────────────────────────────────── */}
-      <section id="faq" className="relative z-10 scroll-mt-24 px-6 py-[70px]">
+      <section id="faq" className="relative z-10 scroll-mt-24 px-4 py-14 sm:px-6 sm:py-[70px]">
         <div className="mx-auto w-full max-w-[760px]">
           <Reveal className="mb-10 text-center">
             <Eyebrow>{t("landing.nav.faq")}</Eyebrow>
-            <h2 className="mt-3.5 font-mono text-[40px] font-extrabold leading-tight tracking-tight text-foreground">{t("landing.faq.heading")}</h2>
+            <h2 className="mt-3.5 font-mono text-[28px] sm:text-[40px] font-extrabold leading-tight tracking-tight text-foreground">{t("landing.faq.heading")}</h2>
           </Reveal>
           <Reveal>
             <div className="flex flex-col gap-3.5">
@@ -1088,12 +1088,12 @@ export default function LandingPage() {
       </section>
 
       {/* ── FINAL CTA ───────────────────────────────────────────────── */}
-      <section className="relative z-10 px-6 pb-24 pt-10">
+      <section className="relative z-10 px-4 pb-20 pt-8 sm:px-6 sm:pb-24 sm:pt-10">
         <Reveal className="mx-auto w-full max-w-6xl">
-          <div className="relative overflow-hidden rounded-[28px] border border-primary/25 bg-gradient-to-br from-card/80 to-background/80 px-10 py-16 text-center">
+          <div className="relative overflow-hidden rounded-[28px] border border-primary/25 bg-gradient-to-br from-card/80 to-background/80 px-6 py-12 text-center sm:px-10 sm:py-16">
             <div className="pointer-events-none absolute -top-[40%] left-1/2 h-[400px] w-[600px] -translate-x-1/2 blur-[120px]" style={{ background: "hsl(var(--primary) / 0.12)" }} />
             <div className="relative">
-              <h2 className="mb-3.5 font-mono text-[42px] font-extrabold tracking-tight text-foreground">{t("landing.cta.title")}</h2>
+              <h2 className="mb-3.5 font-mono text-[28px] font-extrabold tracking-tight text-foreground sm:text-[42px]">{t("landing.cta.title")}</h2>
               <p className="mx-auto mb-7 max-w-[520px] text-lg leading-relaxed text-muted-foreground">{t("landing.cta.subtitle")}</p>
               <button
                 onClick={() => setLocation("/sign-up")}
@@ -1109,7 +1109,7 @@ export default function LandingPage() {
 
       {/* ── FOOTER ──────────────────────────────────────────────────── */}
       <footer className="relative z-10 border-t border-border/40 bg-background/60 backdrop-blur-md">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 pb-8 pt-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-4 pb-8 pt-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div className="col-span-2 md:col-span-1">
             <div className="mb-3.5 flex items-center gap-2.5">
               <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-primary/35 bg-primary/15 text-primary">
@@ -1132,7 +1132,7 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-border/30 px-6 py-5">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-border/30 px-4 py-5 sm:px-6">
           <p className="m-0 text-[13px] text-muted-foreground/70">
             {`© ${new Date().getFullYear()} TraderLoading. ${t("landing.footer.rights")}`}
           </p>
