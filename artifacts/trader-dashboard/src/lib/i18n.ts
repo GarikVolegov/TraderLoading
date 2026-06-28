@@ -4923,6 +4923,7 @@ const COMMUNITY_CUSTOMIZATION_TRANSLATIONS: Record<Language, Record<string, stri
     "community.settings.welcome": "Messaggio di benvenuto",
     "community.settings.rules": "Regole",
     "community.settings.save": "Salva modifiche",
+    "community.settings.manage": "Gestisci community",
   },
   en: {
     "community.settings.tab.general": "General",
@@ -4935,6 +4936,7 @@ const COMMUNITY_CUSTOMIZATION_TRANSLATIONS: Record<Language, Record<string, stri
     "community.settings.welcome": "Welcome message",
     "community.settings.rules": "Rules",
     "community.settings.save": "Save changes",
+    "community.settings.manage": "Manage community",
   },
   es: {
     "community.settings.tab.general": "General",
@@ -4947,6 +4949,7 @@ const COMMUNITY_CUSTOMIZATION_TRANSLATIONS: Record<Language, Record<string, stri
     "community.settings.welcome": "Mensaje de bienvenida",
     "community.settings.rules": "Reglas",
     "community.settings.save": "Guardar cambios",
+    "community.settings.manage": "Gestionar comunidad",
   },
   fr: {
     "community.settings.tab.general": "Général",
@@ -4959,6 +4962,7 @@ const COMMUNITY_CUSTOMIZATION_TRANSLATIONS: Record<Language, Record<string, stri
     "community.settings.welcome": "Message de bienvenue",
     "community.settings.rules": "Règles",
     "community.settings.save": "Enregistrer les modifications",
+    "community.settings.manage": "Gérer la communauté",
   },
   de: {
     "community.settings.tab.general": "Allgemein",
@@ -4971,6 +4975,7 @@ const COMMUNITY_CUSTOMIZATION_TRANSLATIONS: Record<Language, Record<string, stri
     "community.settings.welcome": "Willkommensnachricht",
     "community.settings.rules": "Regeln",
     "community.settings.save": "Änderungen speichern",
+    "community.settings.manage": "Community verwalten",
   },
 };
 

@@ -238,16 +238,6 @@ export function CommunityTab({
             >
               {communityDetail.name}
             </p>
-            {communityDetail.isMember && canOpenSettings && (
-              <button
-                onClick={() => setShowSettings(true)}
-                aria-label={t("community.settings.open")}
-                title={t("community.settings.open")}
-                className="ml-auto p-1 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0"
-              >
-                <Settings className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
           {communityDetail.description && (
             <p className="text-[10px] text-muted-foreground leading-relaxed truncate">
@@ -270,6 +260,15 @@ export function CommunityTab({
               {t("community.review.count", { count: communityDetail.ratingCount ?? 0 })}
             </span>
           </button>
+          {communityDetail.isMember && canOpenSettings && (
+            <button
+              onClick={() => setShowSettings(true)}
+              className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              {t("community.settings.manage")}
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
