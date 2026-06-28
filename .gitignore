@@ -62,3 +62,8 @@ artifacts.local/
 
 # Runtime uploads are persisted outside git/deployment images in production.
 artifacts/api-server/uploads/
+
+# Local tooling / harness, not product code.
+.ds-sync/
+ralph/
+dev-up.sh
