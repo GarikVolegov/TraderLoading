@@ -1,18 +1,17 @@
-import { useMemo, useState, type ElementType, type SyntheticEvent } from "react";
+import { useMemo, useState, type SyntheticEvent } from "react";
 import { format } from "date-fns";
 import {
   ArrowRight,
-  BarChart3,
   BookOpen,
   CalendarDays,
   Loader2,
   Plus,
-  TrendingDown,
-  TrendingUp,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { StatTile } from "@/components/ui/StatTile";
+import { WidgetHeader } from "@/components/ui/WidgetHeader";
 import { JournalEntryModal } from "@/components/JournalEntryModal";
 import { useDateLocale, uiText } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
@@ -37,30 +36,6 @@ const RESULT_TONE_CLASS: Record<JournalResultTone, string> = {
 
 function stopWidgetPropagation(event: SyntheticEvent) {
   event.stopPropagation();
-}
-
-function Metric({
-  label,
-  value,
-  icon: Icon,
-  tone,
-}: {
-  label: string;
-  value: string | number;
-  icon: ElementType;
-  tone: string;
-}) {
-  return (
-    <div className="rounded-md border border-border/35 bg-secondary/30 px-2.5 py-2">
-      <div className="flex items-center gap-1.5 text-[0.62rem] font-bold uppercase leading-none text-muted-foreground">
-        <Icon className={cn("h-3 w-3", tone)} />
-        <span>{label}</span>
-      </div>
-      <p className={cn("mt-1.5 font-mono text-lg font-black leading-none tabular-nums", tone)}>
-        {value}
-      </p>
-    </div>
-  );
 }
 
 export function JournalWidget() {
@@ -90,25 +65,24 @@ export function JournalWidget() {
     navigate("/journal");
   };
 
+  const todayCountAction = (
+    <div className="rounded-md border border-primary/25 bg-primary/10 px-2 py-1 text-center">
+      <p className="font-mono text-lg font-black leading-none text-primary">{summary.todayCount}</p>
+      <p className="mt-0.5 text-[0.55rem] font-bold uppercase leading-none text-primary/75">{uiText("auto.ui.03adb6db3f")}</p>
+    </div>
+  );
+
   return (
     <>
       <Card className="h-full overflow-hidden border-border/30 bg-card/60 backdrop-blur-sm">
-        <CardContent className="space-y-4 p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-primary" />
-                <h3 className="truncate text-base font-black leading-tight">{uiText("auto.ui.aeecb365d3")}</h3>
-              </div>
-              <p className="mt-1 text-xs leading-snug text-muted-foreground">
-                Riepilogo rapido e inserimento trade
-              </p>
-            </div>
-            <div className="rounded-md border border-primary/25 bg-primary/10 px-2 py-1 text-center">
-              <p className="font-mono text-lg font-black leading-none text-primary">{summary.todayCount}</p>
-              <p className="mt-0.5 text-[0.55rem] font-bold uppercase leading-none text-primary/75">{uiText("auto.ui.03adb6db3f")}</p>
-            </div>
-          </div>
+        <WidgetHeader
+          icon={<BookOpen className="h-4 w-4" />}
+          iconTone="accent"
+          title={uiText("auto.ui.aeecb365d3")}
+          subtitle="Riepilogo rapido e inserimento trade"
+          action={todayCountAction}
+        />
+        <CardContent className="space-y-4 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
 
           {isLoading ? (
             <div className="flex min-h-[9rem] items-center justify-center rounded-md border border-border/35 bg-secondary/25">
@@ -148,9 +122,9 @@ export function JournalWidget() {
                   Ultimi 7 giorni
                 </p>
                 <div className="grid grid-cols-3 gap-2">
-                  <Metric label="Win" value={summary.weekly.wins} icon={TrendingUp} tone="text-emerald-300" />
-                  <Metric label="Loss" value={summary.weekly.losses} icon={TrendingDown} tone="text-red-300" />
-                  <Metric label="Rate" value={`${summary.weekly.winRate}%`} icon={BarChart3} tone="text-primary" />
+                  <StatTile label="Win" value={summary.weekly.wins} tone="success" size="lg" />
+                  <StatTile label="Loss" value={summary.weekly.losses} tone="destructive" size="lg" />
+                  <StatTile label="Rate" value={`${summary.weekly.winRate}%`} tone="primary" size="lg" />
                 </div>
               </div>
 
