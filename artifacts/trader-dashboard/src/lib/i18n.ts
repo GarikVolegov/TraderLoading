@@ -4127,6 +4127,78 @@ for (const lang of SUPPORTED_LANGUAGES) {
   Object.assign(DICT[lang], DASHBOARD_WIDGET_AUTO_TRANSLATIONS[lang]);
 }
 
+const DASHBOARD_WIDGET_CLAUDE_DESIGN_TRANSLATIONS: Record<Language, Record<string, string>> = {
+  it: {
+    "vol.adr.exhausted": "Esaurito",
+    "vol.adr.elevated": "Elevato",
+    "vol.adr.room": "Spazio",
+    "vol.adr.subtitle": "% range giornaliero usato",
+    "cot.legend.short": "Short",
+    "cot.legend.long": "Long",
+    "routine.discipline.title": "Disciplina giornaliera",
+    "routine.discipline.subtitle": "Completa entrambe per lo streak",
+    "routine.session.start": "Avvia",
+    "routine.session.morning": "Routine Mattutina",
+    "routine.session.evening": "Routine Serale",
+  },
+  en: {
+    "vol.adr.exhausted": "Exhausted",
+    "vol.adr.elevated": "Elevated",
+    "vol.adr.room": "Room",
+    "vol.adr.subtitle": "% of daily range used",
+    "cot.legend.short": "Short",
+    "cot.legend.long": "Long",
+    "routine.discipline.title": "Daily discipline",
+    "routine.discipline.subtitle": "Complete both for the streak",
+    "routine.session.start": "Start",
+    "routine.session.morning": "Morning Routine",
+    "routine.session.evening": "Evening Routine",
+  },
+  es: {
+    "vol.adr.exhausted": "Agotado",
+    "vol.adr.elevated": "Elevado",
+    "vol.adr.room": "Margen",
+    "vol.adr.subtitle": "% del rango diario usado",
+    "cot.legend.short": "Short",
+    "cot.legend.long": "Long",
+    "routine.discipline.title": "Disciplina diaria",
+    "routine.discipline.subtitle": "Completa ambas para la racha",
+    "routine.session.start": "Iniciar",
+    "routine.session.morning": "Rutina Matutina",
+    "routine.session.evening": "Rutina Nocturna",
+  },
+  fr: {
+    "vol.adr.exhausted": "Epuise",
+    "vol.adr.elevated": "Eleve",
+    "vol.adr.room": "Marge",
+    "vol.adr.subtitle": "% de l'amplitude quotidienne utilisee",
+    "cot.legend.short": "Short",
+    "cot.legend.long": "Long",
+    "routine.discipline.title": "Discipline quotidienne",
+    "routine.discipline.subtitle": "Completez les deux pour la serie",
+    "routine.session.start": "Demarrer",
+    "routine.session.morning": "Routine Matinale",
+    "routine.session.evening": "Routine du Soir",
+  },
+  de: {
+    "vol.adr.exhausted": "Erschoepft",
+    "vol.adr.elevated": "Erhoeht",
+    "vol.adr.room": "Spielraum",
+    "vol.adr.subtitle": "% der genutzten Tagesspanne",
+    "cot.legend.short": "Short",
+    "cot.legend.long": "Long",
+    "routine.discipline.title": "Tagesdisziplin",
+    "routine.discipline.subtitle": "Beide abschliessen fuer die Serie",
+    "routine.session.start": "Starten",
+    "routine.session.morning": "Morgenroutine",
+    "routine.session.evening": "Abendroutine",
+  },
+};
+
+for (const lang of SUPPORTED_LANGUAGES) {
+  Object.assign(DICT[lang], DASHBOARD_WIDGET_CLAUDE_DESIGN_TRANSLATIONS[lang]);
+}
+
 const CORE_UI_TRANSLATIONS: Record<Language, Record<string, string>> = {
   it: {
     "profile.open_settings": "Apri impostazioni profilo",
