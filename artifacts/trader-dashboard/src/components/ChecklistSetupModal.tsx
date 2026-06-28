@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronDown, ChevronRight, Check, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -140,21 +141,21 @@ export function ChecklistSetupModal() {
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {show && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 z-60 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShow(false); }}
         >
           <motion.div
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
-            className="relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl sm:max-h-[88vh] sm:max-w-lg sm:rounded-2xl"
+            className="relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between px-5 py-4 border-b border-border">
@@ -344,6 +345,7 @@ export function ChecklistSetupModal() {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
