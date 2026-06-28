@@ -5,7 +5,6 @@ const cssSource = readFileSync(new URL("../index.css", import.meta.url), "utf8")
 const cardSource = readFileSync(new URL("./ui/card.tsx", import.meta.url), "utf8");
 const chartSource = readFileSync(new URL("./ui/chart.tsx", import.meta.url), "utf8");
 const tooltipSource = readFileSync(new URL("./ui/tooltip.tsx", import.meta.url), "utf8");
-const volatilitySource = readFileSync(new URL("./VolatilityWidget.tsx", import.meta.url), "utf8");
 const cotSource = readFileSync(new URL("./CotWidget.tsx", import.meta.url), "utf8");
 
 assert.match(cssSource, /\.widget-header \{\s+@apply [^;]*border-border\/45/s);
@@ -37,14 +36,14 @@ assert.doesNotMatch(chartSource, /bg-background px-2\.5/);
 assert.match(tooltipSource, /glass-raised/);
 assert.match(tooltipSource, /text-popover-foreground/);
 
-for (const source of [volatilitySource, cotSource]) {
+// VolatilityWidget no longer renders a recharts chart (it became an ADR ring grid),
+// so its tooltip-contrast assertions were dropped. CotWidget keeps its area chart and
+// must still use high-contrast popover tooltip styling.
+for (const source of [cotSource]) {
   assert.match(source, /background: "hsl\(var\(--popover\)\)"/);
   assert.match(source, /border: "1px solid hsl\(var\(--border\)\)"/);
   assert.match(source, /labelStyle=\{\{ color: "hsl\(var\(--popover-foreground\)\)"/);
   assert.match(source, /itemStyle=\{\{ color: "hsl\(var\(--popover-foreground\)\)"/);
 }
-
-assert.match(volatilitySource, /cursor=\{\{ fill: "hsl\(var\(--foreground\) \/ 0\.06\)"/);
-assert.match(volatilitySource, /ReferenceLine y=\{data\.y1\} stroke="hsl\(var\(--muted-foreground\)\)"/);
 
 console.log("app preview contrast static checks passed");
