@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { macroNewsFromNewsHub, pairsFromMacroCurrencies } from "./macroNewsAdapter.js";
+import { ensureMacroDeepDive, macroNewsFromNewsHub, pairsFromMacroCurrencies } from "./macroNewsAdapter.js";
 import type { NewsResponse } from "./types.js";
 
 assert.equal(pairsFromMacroCurrencies("USD,XAU"), "XAUUSD");
@@ -321,5 +321,76 @@ const curatedMacro = macroNewsFromNewsHub(curatedSelectionSnapshot, { pairs: "XA
 assert.equal(curatedMacro.articles.length, 3);
 assert.equal(curatedMacro.articles.some((article) => /Gold price update/i.test(article.title)), false);
 assert.equal(curatedMacro.articles[0]?.title, "US CPI surprise sends Treasury yields higher");
+
+// When the source article has no deepDive and its summary merely echoes the title, the
+// adapter now builds an enriched deepDive (so the dialog no longer shows the same line 3×).
+const banalSnapshot: NewsResponse = {
+  ...news,
+  articles: [
+    {
+      ...news.articles[0]!,
+      title: "US CPI surprise sends Treasury yields higher",
+      summary: "US CPI surprise sends Treasury yields higher",
+      originalTitle: "US CPI surprise sends Treasury yields higher",
+      originalSummary: "US CPI surprise sends Treasury yields higher",
+      impactScore: 9,
+      matchConfidence: 0.9,
+      freshnessTier: "fresh",
+      impactReason: "CPI is a direct driver for USD yields and gold volatility.",
+      primaryAssets: ["USD", "XAU"],
+      affectedPairs: ["XAU/USD"],
+      deepDive: undefined,
+    },
+  ],
+};
+const banalMacro = macroNewsFromNewsHub(banalSnapshot, { pairs: "XAUUSD" });
+assert.equal(banalMacro.articles.length, 1);
+const builtDeepDive = banalMacro.articles[0]?.deepDive;
+assert.ok(builtDeepDive, "deepDive should be built when the source article lacks one");
+assert.ok((builtDeepDive?.whatHappened.length ?? 0) > 0);
+assert.ok((builtDeepDive?.whyItMatters.length ?? 0) > 0);
+assert.ok((builtDeepDive?.possibleImpact.length ?? 0) > 0);
+assert.notEqual(builtDeepDive?.whatHappened, banalMacro.articles[0]?.title);
+
+// ensureMacroDeepDive fills any missing deepDive (covers the Groq/RSS/Perplexity fallback
+// paths, whose articles only have the MacroNewsArticle shape) and preserves existing ones.
+const ensured = ensureMacroDeepDive(
+  {
+    articles: [
+      {
+        title: "US payrolls beat estimates",
+        summary: "US payrolls beat estimates",
+        impact: "alto",
+        currency: "USD",
+        direction: "bullish",
+        source: "Reuters",
+        timestamp: "2026-06-07T10:00:00.000Z",
+        primaryAssets: ["USD"],
+        affectedPairs: ["EUR/USD"],
+      },
+      {
+        title: "Gold steadies",
+        summary: "Spot gold holds gains.",
+        impact: "medio",
+        currency: "XAU",
+        direction: "neutrale",
+        source: "Bloomberg",
+        deepDive: {
+          whatHappened: "kept-what",
+          whyItMatters: "kept-why",
+          possibleImpact: "kept-impact",
+        },
+      },
+    ],
+    sentiment: "risk-on",
+    summary: "test",
+    fetchedAt: "2026-06-07T11:00:00.000Z",
+  },
+  "it",
+);
+assert.ok(ensured.articles[0]?.deepDive, "missing deepDive should be filled by ensureMacroDeepDive");
+assert.ok((ensured.articles[0]?.deepDive?.whatHappened.length ?? 0) > 0);
+assert.equal(ensured.articles[1]?.deepDive?.whatHappened, "kept-what");
+assert.equal(ensured.articles[1]?.deepDive?.whyItMatters, "kept-why");
 
 console.log("macro news adapter checks passed");

@@ -3,7 +3,8 @@ import cron from "node-cron";
 import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
 import { getNewsData } from "./news.js";
 import { cleanNewsText } from "../services/newsHub/contentQuality.js";
-import { macroNewsFromNewsHub, pairsFromMacroCurrencies } from "../services/newsHub/macroNewsAdapter.js";
+import { ensureMacroDeepDive, macroNewsFromNewsHub, pairsFromMacroCurrencies } from "../services/newsHub/macroNewsAdapter.js";
+import type { NewsDeepDive } from "../services/newsHub/types.js";
 import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
 import { getVolatilityUnit, YAHOO_VOLATILITY_PAIRS } from "../services/volatility.js";
@@ -907,6 +908,7 @@ interface MacroNewsResult {
     imageKeywords?: string[];
     affectedPairs?: string[];
     primaryAssets?: string[];
+    deepDive?: NewsDeepDive;
   }>;
   sentiment: string;
   sentimentIntensity?: string;
@@ -1486,7 +1488,7 @@ async function fetchMacroNews(
         NEWS_HUB_MACRO_TIMEOUT_MS,
         "NewsHub",
       );
-      return macroNewsFromNewsHub(news, { pairs }) as MacroNewsResult;
+      return macroNewsFromNewsHub(news, { pairs, lang }) as MacroNewsResult;
     } catch (err) {
       console.warn("[tools/macro-news] NewsHub timed out, falling back to RSS:", err instanceof Error ? err.message : String(err));
       return fetchMacroRSSFallback(currenciesRaw, lang);
@@ -1543,7 +1545,7 @@ router.get("/tools/macro-news", async (req, res) => {
   }
 
   try {
-    const result = await fetchMacroNews(label, currenciesInput, lang, { forceRefresh });
+    const result = ensureMacroDeepDive(await fetchMacroNews(label, currenciesInput, lang, { forceRefresh }), lang) as MacroNewsResult;
     macroNewsCache.set(key, { data: result, expiresAt: Date.now() + MACRO_NEWS_TTL });
     res.json(result);
   } catch (err) {
@@ -1575,7 +1577,7 @@ router.post("/tools/macro-news", async (req, res) => {
   }
 
   try {
-    const result = await fetchMacroNews(label, currencyInput, lang);
+    const result = ensureMacroDeepDive(await fetchMacroNews(label, currencyInput, lang), lang) as MacroNewsResult;
     macroNewsCache.set(key, { data: result, expiresAt: Date.now() + MACRO_NEWS_TTL });
     res.json(result);
   } catch (err) {

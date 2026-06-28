@@ -2,6 +2,7 @@ import type { NewsArticle, NewsDeepDive, NewsResponse } from "./types.js";
 import { computeRiskRegime } from "./riskRegime.js";
 import { selectCuratedNews } from "./curation.js";
 import { isTradingDecisionRelevantNews } from "./tradingRelevance.js";
+import { buildNewsDeepDive } from "./deepDive.js";
 
 export interface MacroNewsArticle {
   title: string;
@@ -275,7 +276,64 @@ function buildMacroTickerSummary(
   return `${regimeSummaryLabel(regime)} su ${pair}: driver principale ${driver}. ${macroActionHint(articles, pair)}`;
 }
 
-export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: string } = {}): MacroNewsResultLike {
+function impactScoreFromBucket(impact: string): number {
+  if (impact === "alto") return 8;
+  if (impact === "medio") return 5;
+  return 2;
+}
+
+function impactDirectionFromMacro(direction: string): NonNullable<NewsArticle["impactDirection"]> {
+  if (direction === "bullish") return "bullish";
+  if (direction === "bearish") return "bearish";
+  return "neutral";
+}
+
+/**
+ * Reconstruct the subset of a NewsArticle that {@link buildNewsDeepDive} reads, from a
+ * MacroNewsArticle. Used for the fallback macro paths (Groq/RSS/Perplexity) that never
+ * produced a full NewsArticle. The impact bucket is mapped back to a representative score
+ * so the deep-dive magnitude wording stays meaningful.
+ */
+export function macroArticleToNewsLike(article: MacroNewsArticle): NewsArticle {
+  return {
+    title: article.title,
+    summary: article.summary,
+    originalTitle: article.originalTitle,
+    originalSummary: article.originalSummary,
+    source: article.source,
+    sources: article.sources,
+    citationUrls: article.citationUrls,
+    verified: article.verified,
+    publishedAt: article.timestamp ?? null,
+    url: article.url ?? null,
+    resolvedUrl: article.resolvedUrl ?? null,
+    sourceUrl: article.sourceUrl ?? null,
+    sentiment: null,
+    imageUrl: article.imageUrl ?? null,
+    affectedPairs: article.affectedPairs,
+    impactScore: impactScoreFromBucket(article.impact),
+    primaryAssets: article.primaryAssets,
+    impactDirection: impactDirectionFromMacro(article.direction),
+  };
+}
+
+/**
+ * Guarantee every macro article carries a deepDive. Idempotent: articles that already have
+ * one (e.g. built from the richer NewsArticle in the primary path) are left untouched.
+ */
+export function ensureMacroDeepDive(result: MacroNewsResultLike, lang = "it"): MacroNewsResultLike {
+  return {
+    ...result,
+    articles: result.articles.map((article, index) => ({
+      ...article,
+      deepDive:
+        article.deepDive ??
+        buildNewsDeepDive(macroArticleToNewsLike(article), { lang, variantSeed: index }),
+    })),
+  };
+}
+
+export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: string; lang?: string } = {}): MacroNewsResultLike {
   const kept = selectCuratedNews(
     news.articles.filter(
       (article) => !isExplicitlyOutsideRequestedPairs(article, options.pairs) && isTradingDecisionRelevantNews(article),
@@ -306,7 +364,7 @@ export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: stri
     imageKeywords: article.primaryAssets,
     affectedPairs: article.affectedPairs,
     primaryAssets: article.primaryAssets,
-    deepDive: article.deepDive,
+    deepDive: article.deepDive ?? buildNewsDeepDive(article, { lang: options.lang, variantSeed: index }),
   }));
 
   return {
