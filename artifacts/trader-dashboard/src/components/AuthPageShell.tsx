@@ -1,63 +1,62 @@
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Activity, BadgeCheck, LockKeyhole, Rocket, ShieldCheck } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Eye, MessagesSquare, Rocket, ShieldCheck, Star } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type AuthPageShellProps = {
   mode: "sign-in" | "sign-up";
   children: ReactNode;
 };
 
-const copy = {
-  "sign-in": {
-    eyebrow: "Sessione protetta",
-    title: "Rientra nel tuo centro operativo.",
-    body: "Journal, news macro, gestione del rischio e routine restano sincronizzati nel tuo workspace TraderLoading.",
-    formLabel: "Accesso account",
-  },
-  "sign-up": {
-    eyebrow: "Nuovo workspace",
-    title: "Crea il tuo centro operativo.",
-    body: "Configura un account sicuro per salvare progressi, dati di trading, missioni e preferenze su ogni dispositivo.",
-    formLabel: "Creazione account",
-  },
-} as const;
+interface PublicStatsResponse {
+  traders: number;
+  trades: number;
+  pairs: number;
+  rating: { average: number; count: number } | null;
+}
 
-const statusCards = [
-  {
-    label: "Protezione",
-    value: "2FA ready",
-    icon: ShieldCheck,
-    className: "text-primary",
-  },
-  {
-    label: "Mercati",
-    value: "Live flow",
-    icon: Activity,
-    className: "text-warning",
-  },
-  {
-    label: "Dati",
-    value: "Cloud sync",
-    icon: BadgeCheck,
-    className: "text-accent",
-  },
-] as const;
+async function fetchPublicStats(): Promise<PublicStatsResponse> {
+  const res = await fetch("/api/public/stats");
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PublicStatsResponse>;
+}
 
 export function AuthPageShell({ mode, children }: AuthPageShellProps) {
-  const pageCopy = copy[mode];
-  const switchCopy =
-    mode === "sign-in"
-      ? { label: "Non hai ancora un account?", href: "/sign-up", action: "Registrati" }
-      : { label: "Hai gia un account?", href: "/sign-in", action: "Accedi" };
+  const { t } = useLanguage();
+  const isSignIn = mode === "sign-in";
+
+  const { data: stats } = useQuery({
+    queryKey: ["auth", "public-stats"],
+    queryFn: fetchPublicStats,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const rating = stats?.rating ?? null;
+
+  const eyebrow = isSignIn ? t("auth.shell.signin.eyebrow") : t("auth.shell.signup.eyebrow");
+  const title = isSignIn ? t("auth.shell.signin.title") : t("auth.shell.signup.title");
+  const body = isSignIn ? t("auth.shell.signin.body") : t("auth.shell.signup.body");
+
+  const trust = [
+    { icon: MessagesSquare, title: t("auth.shell.trust.e2ee.title"), desc: t("auth.shell.trust.e2ee.desc") },
+    { icon: Eye, title: t("auth.shell.trust.readonly.title"), desc: t("auth.shell.trust.readonly.desc") },
+    { icon: ShieldCheck, title: t("auth.shell.trust.gdpr.title"), desc: t("auth.shell.trust.gdpr.desc") },
+  ];
+
+  const toggleBase =
+    "rounded-lg py-2 text-center text-sm font-semibold transition-colors";
+  const toggleActive =
+    "bg-primary text-primary-foreground shadow-[0_0_18px_hsl(var(--primary)/0.25)]";
+  const toggleIdle = "text-muted-foreground hover:text-foreground";
 
   return (
     <main className="relative flex min-h-[100dvh] items-center overflow-hidden bg-background px-4 py-6 text-foreground sm:px-6 lg:px-10">
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_30%_18%,hsl(var(--primary)/0.10),transparent_70%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(224_55%_5%)_72%,hsl(var(--background))_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--border)/0.09)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--border)/0.06)_1px,transparent_1px)] bg-[size:46px_46px]" />
-        <div className="absolute left-1/2 top-1/2 h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/10 opacity-50" />
-        <div className="absolute left-1/2 top-1/2 h-[430px] w-[430px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-border/20 opacity-60" />
+        <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--border)/0.08)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--border)/0.06)_1px,transparent_1px)] bg-[size:46px_46px]" />
       </div>
 
       <motion.div
@@ -66,85 +65,86 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
         transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] as const }}
         className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.04fr_0.96fr] lg:gap-10"
       >
-        <section className="mx-auto flex w-full max-w-xl flex-col gap-6 text-center lg:mx-0 lg:text-left">
-          <div className="flex items-center justify-center gap-3 lg:justify-start">
-            <div className="grid h-12 w-12 place-items-center rounded-lg border border-primary/35 bg-primary/10 text-primary shadow-[0_0_24px_hsl(var(--primary)/0.12)]">
-              <Rocket className="h-6 w-6" aria-label="Logo ufficiale TraderLoading" />
+        {/* Brand panel (hidden on mobile, per the design's @media max-width:880px) */}
+        <section className="mx-auto hidden w-full max-w-xl flex-col gap-7 lg:flex">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-xl border border-primary/35 bg-primary/10 text-primary shadow-[0_0_24px_hsl(var(--primary)/0.12)]">
+              <Rocket className="h-5 w-5" aria-label="Logo TraderLoading" />
             </div>
             <div className="min-w-0">
-              <p className="font-mono text-base font-bold tracking-wide text-foreground sm:text-lg">
-                TraderLoading
-              </p>
-              <p className="text-xs font-medium text-muted-foreground">
-                Secure trader workspace
+              <p className="font-mono text-base font-bold tracking-tight text-foreground">TraderLoading</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/75">
+                {t("auth.shell.brand.tagline")}
               </p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/10 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-              <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
-              {pageCopy.eyebrow}
-            </div>
-            <div className="space-y-3">
-              <h1 className="font-mono text-3xl font-extrabold leading-tight text-foreground sm:text-4xl lg:text-5xl">
-                {pageCopy.title}
-              </h1>
-              <p className="mx-auto max-w-lg text-sm leading-6 text-muted-foreground sm:text-base lg:mx-0">
-                {pageCopy.body}
-              </p>
-            </div>
+          <div>
+            <span className="mb-3 inline-block text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
+              {eyebrow}
+            </span>
+            <h1 className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text font-mono text-4xl font-extrabold leading-[1.1] tracking-tight text-transparent lg:text-5xl">
+              {title}
+            </h1>
+            <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground">{body}</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {statusCards.map(({ label, value, icon: Icon, className }) => (
-              <div
-                key={label}
-                className="rounded-lg border border-border/55 bg-card/70 p-3 text-left shadow-[0_10px_30px_rgba(0,0,0,0.18)] backdrop-blur-md"
-              >
-                <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg border border-border/45 bg-secondary/55">
-                  <Icon className={`h-4 w-4 ${className}`} aria-hidden="true" />
+          <div className="flex flex-col gap-3.5">
+            {trust.map(({ icon: Icon, title: rowTitle, desc }) => (
+              <div key={rowTitle} className="flex items-start gap-3">
+                <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                  <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{rowTitle}</p>
+                  <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{desc}</p>
                 </div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-                  {label}
-                </p>
-                <p className="mt-1 font-mono text-sm font-bold text-foreground">{value}</p>
               </div>
             ))}
           </div>
+
+          {rating && rating.count > 0 && (
+            <div className="flex items-center gap-2.5 border-t border-border/60 pt-4 text-[13px] text-muted-foreground">
+              <span className="inline-flex gap-0.5 text-warning">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Star key={i} className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                ))}
+              </span>
+              <span>
+                <strong className="font-mono font-bold text-foreground">{rating.average.toFixed(1)}/5</strong> ·{" "}
+                {rating.count} {t("auth.shell.social.reviews")}
+              </span>
+            </div>
+          )}
         </section>
 
-        <section className="mx-auto w-full max-w-[460px] lg:mx-0 lg:justify-self-end">
-          <div className="rounded-lg border border-border/60 bg-[#07111f]/95 p-3 shadow-[0_28px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-4">
-            <div className="mb-3 flex items-center justify-between rounded-lg border border-border/45 bg-secondary/40 px-3 py-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                {pageCopy.formLabel}
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary))]" />
-                Online
-              </span>
+        {/* Form card */}
+        <section className="mx-auto w-full max-w-[460px] lg:justify-self-end">
+          <div className="rounded-2xl border border-border/60 bg-card/90 p-4 shadow-[0_28px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-5">
+            <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-border/50 bg-secondary/40 p-1">
+              <Link href="/sign-in" className={`${toggleBase} ${isSignIn ? toggleActive : toggleIdle}`}>
+                {t("auth.toggle.signin")}
+              </Link>
+              <Link href="/sign-up" className={`${toggleBase} ${!isSignIn ? toggleActive : toggleIdle}`}>
+                {t("auth.toggle.signup")}
+              </Link>
             </div>
+
             {children}
-            <div className="mt-3 rounded-lg border border-border/40 bg-secondary/30 px-3 py-3 text-center text-sm text-muted-foreground">
-              {switchCopy.label}{" "}
-              <Link
-                href={switchCopy.href}
-                className="font-bold text-primary transition-colors hover:text-primary/80"
-              >
-                {switchCopy.action}
-              </Link>
-            </div>
-            <p className="mt-3 text-center text-xs leading-5 text-muted-foreground/80">
-              Continuando accetti i{" "}
+
+            <p className="mt-4 text-center text-xs leading-5 text-muted-foreground/80">
+              {t("auth.shell.legal.intro")}{" "}
               <Link href="/terms" className="font-semibold text-primary hover:text-primary/80">
-                Termini
+                {t("auth.shell.legal.terms")}
               </Link>{" "}
-              e confermi di aver letto la{" "}
+              ·{" "}
               <Link href="/privacy" className="font-semibold text-primary hover:text-primary/80">
-                Privacy Policy
+                {t("auth.shell.legal.privacy")}
               </Link>
-              .
+            </p>
+            <p className="mt-3 flex items-center justify-center gap-1.5 border-t border-border/50 pt-3 text-center text-xs text-muted-foreground/80">
+              <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden="true" />
+              {t("auth.shell.footer.secure")}
             </p>
           </div>
         </section>
