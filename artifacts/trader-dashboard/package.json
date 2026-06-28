@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0 --strictPort",
-    "build": "vite build --config vite.config.ts",
+    "build": "vite build --config vite.config.ts && pnpm run build:sitemap && pnpm run prerender",
+    "build:sitemap": "tsx scripts/build-sitemap.ts",
+    "prerender": "tsx scripts/prerender.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -91,6 +93,11 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "tailwindcss": "catalog:",
+    "tsx": "^4.19.2",
     "vite": "catalog:"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^24.10.0",
+    "sirv": "^3.0.0"
   }
 }

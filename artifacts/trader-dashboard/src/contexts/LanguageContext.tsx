@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { it, enUS, es, fr, de } from "date-fns/locale";
 import type { Locale } from "date-fns";
 import { detectLanguageFromLocales, DICT, type Language } from "@/lib/i18n";
+import { getLanguageFromPath } from "@/lib/seo";
 
 export type { Language };
 
@@ -23,15 +24,29 @@ const DATE_FNS_LOCALES: Record<Language, Locale> = {
 
 const STORAGE_KEY = "tl_language";
 
+// `import.meta.env` only exists under Vite; guard so module eval doesn't throw
+// in the plain-node static test runner.
+const ROUTER_BASE = (import.meta.env?.BASE_URL ?? "/").replace(/\/$/, "");
+
 interface LanguageContextValue {
   language: Language;
-  setLanguage: (lang: Language) => void;
+  /**
+   * Update the active language. Persists to localStorage by default; pass
+   * `persist: false` when the language is driven by the URL prefix (e.g. a
+   * /{lang} marketing route) so it doesn't overwrite the user's saved choice.
+   */
+  setLanguage: (lang: Language, persist?: boolean) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 function getInitialLanguage(): Language {
+  // A /{lang} URL prefix wins, so deep-linked and prerendered marketing pages
+  // render in the right language with no flash.
+  const fromPath = getLanguageFromPath(window.location.pathname, ROUTER_BASE);
+  if (fromPath) return fromPath;
+
   const stored = localStorage.getItem(STORAGE_KEY) as Language | null;
   if (stored && stored in LANGUAGES) return stored;
 
@@ -50,8 +65,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = language;
   }, [language]);
 
-  const setLanguage = (lang: Language) => {
-    localStorage.setItem(STORAGE_KEY, lang);
+  const setLanguage = (lang: Language, persist = true) => {
+    if (persist) localStorage.setItem(STORAGE_KEY, lang);
     setLangState(lang);
   };
 
