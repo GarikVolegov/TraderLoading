@@ -521,7 +521,7 @@ export function TradingViewWatchlistWidget() {
             <Button type="button" size="sm" onClick={() => setEditorOpen(true)}>{uiText("auto.ui.33357d724e")}</Button>
           </div>
         ) : (
-          <div className="max-h-[372px] space-y-1.5 overflow-y-auto overflow-x-hidden pr-1">
+          <div className="space-y-1.5 overflow-x-hidden">
             {symbols.map((symbol) => (
               <div key={symbol} className="relative overflow-hidden rounded-md border border-border/35 bg-background/25">
                 <TradingViewMiniSymbolEmbed symbol={symbol} reloadKey={reloadKey} onError={handleEmbedError} />
