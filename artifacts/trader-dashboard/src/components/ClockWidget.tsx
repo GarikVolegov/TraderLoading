@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { Quote } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useBackground, type TradingSessionConfig } from "@/contexts/BackgroundContext";
@@ -11,6 +12,7 @@ import {
   isTradingSession,
   type MarketSessionConfig,
 } from "@/lib/marketSessions";
+import { getGetRandomQuoteQueryKey, useGetRandomQuote } from "@workspace/api-client-react";
 
 function parseTime(t: string): number {
   const [h, m] = t.split(":").map(Number);
@@ -49,6 +51,14 @@ function formatCountdown(totalMinutes: number): string {
 export function ClockWidget() {
   const [time, setTime] = useState(new Date());
   const { tradingSessions } = useBackground();
+
+  const { data: quote } = useGetRandomQuote({
+    query: {
+      queryKey: getGetRandomQuoteQueryKey(),
+      staleTime: 0,
+      refetchInterval: 8000,
+    },
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -104,33 +114,48 @@ export function ClockWidget() {
   const badgeDotClass = activeSession
     ? cn(activeColors?.bg, "animate-pulse shadow-[0_0_8px_currentColor]")
     : activeClosedSession
-    ? cn(activeColors?.bg ?? "bg-red-500", "animate-pulse shadow-[0_0_8px_currentColor]")
+    ? cn(activeColors?.bg ?? "bg-destructive", "animate-pulse shadow-[0_0_8px_currentColor]")
     : isWeekend
-    ? "bg-red-500"
-    : "bg-green-500";
+    ? "bg-destructive"
+    : "bg-success";
 
   const badgeTextClass = activeSession
     ? "text-foreground"
     : activeClosedSession || isWeekend
-    ? "text-red-400"
-    : "text-green-400";
+    ? "text-destructive"
+    : "text-success";
 
   const badgeBorderClass = activeSession
     ? ""
     : activeClosedSession || isWeekend
-    ? "border-red-500/30 bg-red-500/10"
-    : "border-green-500/30 bg-green-500/10";
+    ? "border-destructive/30 bg-destructive/10"
+    : "border-success/30 bg-success/10";
 
   return (
     <Card className="relative h-16 overflow-hidden rounded-[0.625rem] border border-[#11192c] bg-[#070e1f] shadow-[var(--tl-shadow-panel)] backdrop-blur-md">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-primary shadow-[0_0_16px_hsl(var(--primary)/0.8)]" />
 
       <CardContent className="relative z-10 h-full p-0">
-        <div className="absolute inset-x-3 top-1/2 grid -translate-y-1/2 grid-cols-[minmax(9rem,1fr)_1px_minmax(3.4rem,4.2rem)_minmax(6.6rem,0.72fr)] items-center">
+        <div className="absolute inset-x-3 top-1/2 grid -translate-y-1/2 grid-cols-[minmax(9rem,1fr)_1px_minmax(3.4rem,4.2rem)_minmax(6.6rem,0.72fr)] items-center lg:grid-cols-[minmax(9rem,auto)_1fr_1px_minmax(3.4rem,4.2rem)_minmax(6.6rem,0.72fr)]">
           <div className="min-w-0 pl-2 pr-5 tabular-nums">
             <div className="truncate text-left font-sans text-[1.84rem] font-bold leading-none tracking-normal text-foreground drop-shadow-[0_0_10px_rgba(255,255,255,0.12)] sm:text-[2rem]">
               {format(time, "HH:mm:ss")}
             </div>
+          </div>
+
+          {/* Daily quote — desktop only */}
+          <div className="hidden min-w-0 lg:flex lg:items-center lg:gap-2 lg:px-4">
+            <Quote className="h-3.5 w-3.5 shrink-0 text-primary/55" aria-hidden />
+            {quote && (
+              <>
+                <p className="min-w-0 flex-1 truncate text-[0.72rem] italic leading-none text-foreground/80">
+                  {quote.text}
+                </p>
+                <span className="shrink-0 font-mono text-[0.65rem] leading-none text-muted-foreground">
+                  — {quote.author}
+                </span>
+              </>
+            )}
           </div>
 
           <div className="h-[1.875rem] bg-[#132035]" />
