@@ -79,7 +79,7 @@ export function JournalWidget() {
           icon={<BookOpen className="h-4 w-4" />}
           iconTone="accent"
           title={uiText("auto.ui.aeecb365d3")}
-          subtitle="Riepilogo rapido e inserimento trade"
+          subtitle={uiText("journal.widget_subtitle")}
           action={todayCountAction}
         />
         <CardContent className="space-y-4 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
