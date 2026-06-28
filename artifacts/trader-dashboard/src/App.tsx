@@ -35,6 +35,13 @@ import { AppTutorialWrapper } from "./components/AppTutorialWrapper";
 import { TopNav } from "./components/TopNav";
 import { BottomNav } from "./components/BottomNav";
 import { useLanguage } from "./contexts/LanguageContext";
+import type { Language } from "./lib/i18n";
+import {
+  SEO_PAGE_KEYS,
+  seoPageFromSlug,
+  seoPagePath,
+  type SeoPageKey,
+} from "./lib/seo";
 import { getGetUserSettingsQueryKey, useUpdateUserSettings } from "@workspace/api-client-react";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -60,6 +67,11 @@ const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Admin = lazy(() => import("./pages/Admin"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const Styleguide = lazy(() => import("@/components/ui/styleguide/Styleguide"));
+const SeoArticlePage = lazy(() => import("./pages/seo/SeoArticlePage"));
+
+// Public marketing languages served under a /{lang} URL prefix (English lives
+// at the root and is the x-default).
+const LOCALIZED_LANGS: Language[] = ["it", "es", "fr", "de"];
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -432,6 +444,63 @@ function ClerkConfigErrorScreen() {
   );
 }
 
+/* ── Public marketing routes (language-prefixed, prerendered) ───────────────
+   These render the public landing + dedicated SEO pages regardless of auth, so
+   crawlers (always anonymous) see fully-rendered, per-language content. The URL
+   prefix drives the language. */
+
+function MarketingPage({ lang, page }: { lang: Language; page: SeoPageKey }) {
+  const { setLanguage } = useLanguage();
+  useEffect(() => {
+    setLanguage(lang, false);
+  }, [lang, setLanguage]);
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <SeoArticlePage page={page} />
+    </Suspense>
+  );
+}
+
+function MarketingLanding({ lang }: { lang: Language }) {
+  const { setLanguage } = useLanguage();
+  useEffect(() => {
+    setLanguage(lang, false);
+  }, [lang, setLanguage]);
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <LandingPage />
+    </Suspense>
+  );
+}
+
+function LocalizedMarketingRoute({ lang, slug }: { lang: Language; slug?: string }) {
+  if (!slug) return <MarketingLanding lang={lang} />;
+  const page = seoPageFromSlug(lang, slug);
+  if (page) return <MarketingPage lang={lang} page={page} />;
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <NotFound />
+    </Suspense>
+  );
+}
+
+// English keyword/marketing pages at the root, plus a /{lang}/:slug? route per
+// localized language (matches both the localized landing and its keyword pages).
+const marketingRoutes = [
+  ...SEO_PAGE_KEYS.map((page) => (
+    <Route key={`en-${page}`} path={seoPagePath(page, "en")}>
+      <MarketingPage lang="en" page={page} />
+    </Route>
+  )),
+  ...LOCALIZED_LANGS.map((lang) => (
+    <Route key={`loc-${lang}`} path={`/${lang}/:slug?`}>
+      {(params: { slug?: string }) => (
+        <LocalizedMarketingRoute lang={lang} slug={params.slug} />
+      )}
+    </Route>
+  )),
+];
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
@@ -456,6 +525,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/terms" component={TermsPage} />
           <Route path="/styleguide" component={Styleguide} />
+          {marketingRoutes}
           <Route path="/*?" component={AppShell} />
         </Switch>
       </QueryClientProvider>

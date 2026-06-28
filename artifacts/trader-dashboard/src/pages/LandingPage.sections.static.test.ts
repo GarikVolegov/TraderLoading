@@ -28,8 +28,8 @@ assert.match(src, /\/api\/tools\/macro-news/);
 assert.match(src, /usePublicTestimonials/);
 assert.match(src, /useLandingNews/);
 
-// Live, real product mock: ticking clock + actual market session (not a dead mock).
-assert.match(src, /function ProductMock/);
+// Live, real product preview: ticking clock + actual market session (not a dead mock).
+assert.match(src, /function ProductPreview/);
 assert.match(src, /function getActiveSession/);
 assert.match(src, /format\(now, "HH:mm:ss"\)/);
 assert.match(src, /setInterval/);

@@ -205,9 +205,9 @@ const FOOTER_COLS = [
     titleKey: "landing.footer.col.resources",
     items: [
       { labelKey: "landing.footer.resources.guide", href: "/guide" },
-      { labelKey: "landing.footer.resources.blog", href: "/blog" },
-      { labelKey: "landing.footer.resources.community", href: "/community" },
-      { labelKey: "landing.footer.resources.status", href: "/status" },
+      { labelKey: "landing.footer.resources.blog", href: "/guide" },
+      { labelKey: "landing.footer.resources.community", href: "/sign-up" },
+      { labelKey: "landing.footer.resources.status", href: "/guide" },
     ],
   },
   {
