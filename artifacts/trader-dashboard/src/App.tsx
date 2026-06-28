@@ -533,6 +533,18 @@ function ClerkProviderWithRoutes() {
   );
 }
 
+// Reset scroll to the top of the page on every route change. Without this the
+// SPA keeps the previous scroll offset, so navigating from e.g. the landing
+// footer lands you at the bottom of the destination page. In-page #hash anchors
+// use native <a> links and don't change wouter's path, so they're unaffected.
+function ScrollToTop() {
+  const [location] = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location]);
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -542,6 +554,7 @@ function App() {
             <LoadingProvider>
               <AudioProvider>
                 <WouterRouter base={basePath}>
+                  <ScrollToTop />
                   <ClerkProviderWithRoutes />
                 </WouterRouter>
                 <CookieConsentPopup />
