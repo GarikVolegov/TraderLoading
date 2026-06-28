@@ -8,7 +8,7 @@ use, no attribution required. Listed here for provenance.
 - `nyc-skyline.webp` — https://unsplash.com/photos/photo-1496442226666-8d4d0e62e6e9 — Connor Williams — Unsplash License
 - `dubai-skyline.webp` — https://unsplash.com/photos/photo-1512453979798-5ea266f8880c — ZQ Lee — Unsplash License
 - `molten-gold.webp` — https://unsplash.com/photos/photo-1605792657660-596af9009e82 — Shubham Dhage — Unsplash License
-- `jade-wave.webp` — https://unsplash.com/photos/photo-1557672172-298e090bd0f1 — Sharon Pittaway — Unsplash License
+- `jade-wave.webp` — https://images.unsplash.com/photo-1767472718833-3101a9a21b37 — Unsplash — Unsplash License
 - `mountain-dawn.webp` — https://unsplash.com/photos/photo-1454496522488-7a8e488e8606 — Kalen Emsley — Unsplash License
 - `luxury-watch.webp` — https://unsplash.com/photos/photo-1600003014637-ff82a275e191 — Jakub Dziubak — Unsplash License (substituted: original photo-1523275335684 produced a minimal 54 KB image below the size floor)
 
