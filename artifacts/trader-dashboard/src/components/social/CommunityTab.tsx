@@ -129,8 +129,12 @@ export function CommunityTab({
                     onClick={() => selectCommunity(c.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all hover:bg-secondary/40 ${selectedCommunityId === c.id ? "bg-primary/10 text-primary border-r-2 border-primary" : "text-foreground"}`}
                   >
-                    <span className="text-xl leading-none shrink-0">
-                      {c.iconEmoji}
+                    <span className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center text-xl leading-none shrink-0">
+                      {c.avatarUrl ? (
+                        <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        c.iconEmoji
+                      )}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold truncate">{c.name}</p>
@@ -153,8 +157,12 @@ export function CommunityTab({
                     onClick={() => selectCommunity(c.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all hover:bg-secondary/40 text-muted-foreground hover:text-foreground ${selectedCommunityId === c.id ? "bg-secondary/40 text-foreground" : ""}`}
                   >
-                    <span className="text-xl leading-none shrink-0 opacity-70">
-                      {c.iconEmoji}
+                    <span className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center text-xl leading-none shrink-0 opacity-70">
+                      {c.avatarUrl ? (
+                        <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        c.iconEmoji
+                      )}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold truncate">{c.name}</p>
@@ -188,6 +196,12 @@ export function CommunityTab({
     selectedCommunityId && communityDetail ? (
       <div className="flex flex-col h-full border-r border-border bg-card/30 w-full lg:w-52 shrink-0">
         <div className="px-3 py-3 border-b border-border shrink-0">
+          {communityDetail.bannerUrl && (
+            <div
+              className="h-14 -mx-3 -mt-3 mb-2 bg-cover bg-center"
+              style={{ backgroundImage: `url(${communityDetail.bannerUrl})` }}
+            />
+          )}
           <div className="flex items-center gap-1.5 mb-1">
             <button
               onClick={() => setMobilePanel("communities")}
@@ -195,8 +209,19 @@ export function CommunityTab({
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <span className="text-xl">{communityDetail.iconEmoji}</span>
-            <p className="font-bold text-sm truncate">{communityDetail.name}</p>
+            <span className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center text-xl shrink-0">
+              {communityDetail.avatarUrl ? (
+                <img src={communityDetail.avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                communityDetail.iconEmoji
+              )}
+            </span>
+            <p
+              className="font-bold text-sm truncate"
+              style={communityDetail.accentColor ? { color: communityDetail.accentColor } : undefined}
+            >
+              {communityDetail.name}
+            </p>
             {communityDetail.isMember && canOpenSettings && (
               <button
                 onClick={() => setShowSettings(true)}
@@ -324,9 +349,14 @@ export function CommunityTab({
             <>
               <UserPlus className="w-12 h-12 mx-auto opacity-20 mb-3" />
               <p className="text-sm font-medium">{communityDetail?.name}</p>
-              <p className="text-xs mt-1 mb-4">
+              <p className="text-xs mt-1 mb-2">
                 {communityDetail?.memberCount} membri
               </p>
+              {communityDetail?.welcomeMessage && (
+                <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-4 whitespace-pre-line">
+                  {communityDetail.welcomeMessage}
+                </p>
+              )}
               <button
                 onClick={() =>
                   communityDetail && joinCommunity(communityDetail.id)

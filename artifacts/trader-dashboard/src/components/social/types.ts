@@ -113,6 +113,11 @@ export interface CommunityType {
   creatorId: string;
   isPublic: boolean;
   createdAt: string;
+  bannerUrl?: string | null;
+  avatarUrl?: string | null;
+  accentColor?: string | null;
+  rules?: string | null;
+  welcomeMessage?: string | null;
 }
 
 export interface ChannelType {

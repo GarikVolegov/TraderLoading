@@ -4911,10 +4911,78 @@ for (const lang of SUPPORTED_LANGUAGES) {
   Object.assign(DICT[lang], COMMUNITY_MGMT_TRANSLATIONS[lang]);
 }
 
+const COMMUNITY_CUSTOMIZATION_TRANSLATIONS: Record<Language, Record<string, string>> = {
+  it: {
+    "community.settings.tab.general": "Generale",
+    "community.settings.banner": "Banner",
+    "community.settings.avatar": "Avatar",
+    "community.settings.icon": "Icona",
+    "community.settings.name": "Nome",
+    "community.settings.accent": "Accento",
+    "community.settings.description": "Descrizione",
+    "community.settings.welcome": "Messaggio di benvenuto",
+    "community.settings.rules": "Regole",
+    "community.settings.save": "Salva modifiche",
+  },
+  en: {
+    "community.settings.tab.general": "General",
+    "community.settings.banner": "Banner",
+    "community.settings.avatar": "Avatar",
+    "community.settings.icon": "Icon",
+    "community.settings.name": "Name",
+    "community.settings.accent": "Accent",
+    "community.settings.description": "Description",
+    "community.settings.welcome": "Welcome message",
+    "community.settings.rules": "Rules",
+    "community.settings.save": "Save changes",
+  },
+  es: {
+    "community.settings.tab.general": "General",
+    "community.settings.banner": "Banner",
+    "community.settings.avatar": "Avatar",
+    "community.settings.icon": "Icono",
+    "community.settings.name": "Nombre",
+    "community.settings.accent": "Acento",
+    "community.settings.description": "Descripción",
+    "community.settings.welcome": "Mensaje de bienvenida",
+    "community.settings.rules": "Reglas",
+    "community.settings.save": "Guardar cambios",
+  },
+  fr: {
+    "community.settings.tab.general": "Général",
+    "community.settings.banner": "Bannière",
+    "community.settings.avatar": "Avatar",
+    "community.settings.icon": "Icône",
+    "community.settings.name": "Nom",
+    "community.settings.accent": "Accent",
+    "community.settings.description": "Description",
+    "community.settings.welcome": "Message de bienvenue",
+    "community.settings.rules": "Règles",
+    "community.settings.save": "Enregistrer les modifications",
+  },
+  de: {
+    "community.settings.tab.general": "Allgemein",
+    "community.settings.banner": "Banner",
+    "community.settings.avatar": "Avatar",
+    "community.settings.icon": "Symbol",
+    "community.settings.name": "Name",
+    "community.settings.accent": "Akzent",
+    "community.settings.description": "Beschreibung",
+    "community.settings.welcome": "Willkommensnachricht",
+    "community.settings.rules": "Regeln",
+    "community.settings.save": "Änderungen speichern",
+  },
+};
+
+for (const lang of SUPPORTED_LANGUAGES) {
+  Object.assign(DICT[lang], COMMUNITY_CUSTOMIZATION_TRANSLATIONS[lang]);
+}
+
 export type TranslationKey =
   | keyof typeof BASE_DICT.it
   | keyof typeof ADMIN_TRANSLATIONS.it
   | keyof typeof ACCOUNT_BRIDGE_TRANSLATIONS.it
   | keyof typeof BACKGROUND_TRANSLATIONS.it
   | keyof typeof CORE_UI_TRANSLATIONS.it
-  | keyof typeof COMMUNITY_MGMT_TRANSLATIONS.it;
+  | keyof typeof COMMUNITY_MGMT_TRANSLATIONS.it
+  | keyof typeof COMMUNITY_CUSTOMIZATION_TRANSLATIONS.it;

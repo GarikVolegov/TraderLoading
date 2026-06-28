@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, X, Users, Shield, Ban } from "lucide-react";
+import { Loader2, X, Users, Shield, Ban, Sliders } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { useCommunityBans } from "./hooks";
 import { RoleEditor } from "./RoleEditor";
 import { MemberManager } from "./MemberManager";
+import { CommunityGeneralSettings } from "./CommunityGeneralSettings";
 import type { CommunityDetail } from "./types";
 
-type Tab = "members" | "roles" | "bans";
+type Tab = "general" | "members" | "roles" | "bans";
 
 export function CommunitySettingsModal({
   detail,
@@ -24,12 +25,13 @@ export function CommunitySettingsModal({
   const perms = detail.myPermissions ?? [];
   const can = (p: string) => detail.isOwner || perms.includes(p);
 
+  const canManageCommunity = can("community.manage");
   const canManageRoles = can("roles.manage");
   const canKick = can("members.kick");
   const canBan = can("members.ban");
   const canMute = can("members.mute");
 
-  const [tab, setTab] = useState<Tab>("members");
+  const [tab, setTab] = useState<Tab>(canManageCommunity ? "general" : "members");
   const { data: bans = [], isLoading: loadingBans } = useCommunityBans(detail.id, tab === "bans" && canBan);
   const [unbanning, setUnbanning] = useState<string | null>(null);
 
@@ -46,6 +48,7 @@ export function CommunitySettingsModal({
   };
 
   const tabs: { id: Tab; label: string; icon: typeof Users; show: boolean }[] = [
+    { id: "general", label: t("community.settings.tab.general"), icon: Sliders, show: canManageCommunity },
     { id: "members", label: t("community.settings.tab.members"), icon: Users, show: true },
     { id: "roles", label: t("community.settings.tab.roles"), icon: Shield, show: canManageRoles },
     { id: "bans", label: t("community.settings.tab.bans"), icon: Ban, show: canBan },
@@ -86,6 +89,7 @@ export function CommunitySettingsModal({
         </div>
 
         <div className="p-4 overflow-y-auto">
+          {tab === "general" && canManageCommunity && <CommunityGeneralSettings detail={detail} />}
           {tab === "members" && (
             <MemberManager
               communityId={detail.id}

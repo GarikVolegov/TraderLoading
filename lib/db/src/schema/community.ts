@@ -8,7 +8,14 @@ export const communitiesTable = pgTable("communities", {
   creatorId: text("creator_id").notNull(),
   isPublic: boolean("is_public").notNull().default(true),
   memberCount: integer("member_count").notNull().default(1),
+  // Customization (phase 2): image assets, accent color and editable texts.
+  bannerUrl: text("banner_url"),
+  avatarUrl: text("avatar_url"),
+  accentColor: text("accent_color"),
+  rules: text("rules"),
+  welcomeMessage: text("welcome_message"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [
   index("communities_creator_idx").on(t.creatorId),
   index("communities_public_idx").on(t.isPublic),

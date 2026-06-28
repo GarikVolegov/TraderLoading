@@ -36,6 +36,7 @@ const ALLOWED_UPLOAD_DIRS = new Set([
   "voice",
   "chat-files",
   "community-files",
+  "community-assets",
   "milestone-files",
   "avatars",
   "wiki",
