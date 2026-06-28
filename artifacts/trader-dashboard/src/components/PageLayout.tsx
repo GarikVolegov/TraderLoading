@@ -21,16 +21,16 @@ const pageVariants = {
 };
 
 export function PageLayout({ children, fullWidth }: PageLayoutProps) {
-  const { backgroundUrl, darkness } = useBackground();
+  const { activeBackgroundUrl, darkness } = useBackground();
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:pb-6 lg:pl-20">
       {/* ── Fixed background layer ─────────────────────────────────────── */}
       <div className="fixed inset-0 z-0 pointer-events-none select-none">
-        {backgroundUrl ? (
+        {activeBackgroundUrl ? (
           <>
             <img
-              src={backgroundUrl}
+              src={activeBackgroundUrl}
               alt=""
               className="w-full h-full object-cover"
               style={{ opacity: (100 - darkness) / 100 }}

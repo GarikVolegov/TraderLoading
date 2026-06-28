@@ -76,6 +76,8 @@ export function buildSettingsUpdateData(
 ): { updateData: Record<string, unknown>; error?: string } {
   const {
     backgroundUrl,
+    backgroundUrlDesktop,
+    backgroundUrlMobile,
     backgroundType,
     fontChoice,
     backgroundDarkness,
@@ -95,6 +97,8 @@ export function buildSettingsUpdateData(
 
   const updateData: Record<string, unknown> = {};
   if (backgroundUrl !== undefined) updateData.backgroundUrl = backgroundUrl ?? null;
+  if (backgroundUrlDesktop !== undefined) updateData.backgroundUrlDesktop = backgroundUrlDesktop ?? null;
+  if (backgroundUrlMobile !== undefined) updateData.backgroundUrlMobile = backgroundUrlMobile ?? null;
   if (backgroundType !== undefined) updateData.backgroundType = backgroundType || "default";
   if (fontChoice !== undefined) updateData.fontChoice = fontChoice;
   if (backgroundDarkness !== undefined) updateData.backgroundDarkness = Math.min(90, Math.max(0, Number(backgroundDarkness)));

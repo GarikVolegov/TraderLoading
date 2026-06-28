@@ -78,6 +78,13 @@
       "when": 1782230400000,
       "tag": "0010_remove_brain_simplify_wiki",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1782662400000,
+      "tag": "0012_device_backgrounds",
+      "breakpoints": true
     }
   ]
 }

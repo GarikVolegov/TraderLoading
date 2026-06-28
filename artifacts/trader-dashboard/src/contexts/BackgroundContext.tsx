@@ -13,7 +13,21 @@ import {
 } from "@workspace/api-client-react";
 import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
 import { normalizeLocalSessionTime } from "@/lib/marketSessions";
-import { reportClientError } from "@/lib/clientErrorReporter";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  type BackgroundPreset,
+  type BackgroundDevice,
+  pickActiveBackgroundUrl,
+  resolveDeviceCatalog,
+  loadCustomBackgrounds,
+  saveCustomBackgrounds,
+  migrateLegacyCustomBackgrounds,
+  canAddCustom,
+  DEFAULT_BACKGROUNDS_DESKTOP,
+} from "@/lib/backgroundCatalog";
+
+export type { BackgroundPreset };
+export type { TradingSessionConfig };
 
 const CALENDAR_CURRENCY_LIST = [
   "USD",
@@ -26,9 +40,6 @@ const CALENDAR_CURRENCY_LIST = [
   "NZD",
   "CNY",
 ];
-const BACKGROUND_PRESETS_STORAGE_KEY = "tl_background_presets";
-
-export type { TradingSessionConfig };
 
 const FONT_MAP: Record<string, string> = {
   inter: "'Inter', sans-serif",
@@ -79,67 +90,12 @@ export const DEFAULT_TRADING_SESSIONS: TradingSessionConfig[] = [
 
 export const DEFAULT_LOT_DIVISOR = 11;
 
-export interface BackgroundPreset {
-  id: string;
-  name: string;
-  url: string;
-  isDefault: boolean;
-}
-
-export const DEFAULT_BACKGROUND_PRESETS: BackgroundPreset[] = [
-  {
-    id: "burj-khalifa",
-    name: "Burj Khalifa",
-    url: "/images/IMG_1796_1773606839183.jpeg",
-    isDefault: true,
-  },
-  {
-    id: "gold-liquid",
-    name: "Gold Liquid",
-    url: "/images/IMG_1794_1773606839183.jpeg",
-    isDefault: true,
-  },
-  {
-    id: "wall-street",
-    name: "Wall Street",
-    url: "/images/IMG_1795_1773606839183.jpeg",
-    isDefault: true,
-  },
-  {
-    id: "nyc-rain",
-    name: "NYC Rain",
-    url: "/images/IMG_1804_1773606839183.jpeg",
-    isDefault: true,
-  },
-  {
-    id: "forest",
-    name: "Forest",
-    url: "/images/IMG_1805_1773606839183.jpeg",
-    isDefault: true,
-  },
-];
-
-function loadBackgroundPresets(): BackgroundPreset[] {
-  try {
-    const raw = localStorage.getItem(BACKGROUND_PRESETS_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (Array.isArray(parsed)) return parsed as BackgroundPreset[];
-  } catch (error) {
-    reportClientError(error, {
-      context: "background presets load",
-      notify: false,
-    });
-  }
-  return DEFAULT_BACKGROUND_PRESETS;
-}
-
-export function saveBackgroundPresets(presets: BackgroundPreset[]) {
-  localStorage.setItem(BACKGROUND_PRESETS_STORAGE_KEY, JSON.stringify(presets));
-}
-
 interface BackgroundContextValue {
-  backgroundUrl: string | null;
-  setBackgroundUrl: (url: string | null) => void;
+  activeBackgroundUrl: string | null;
+  device: BackgroundDevice;
+  backgroundUrlDesktop: string | null;
+  backgroundUrlMobile: string | null;
+  setActiveBackgroundForDevice: (url: string | null) => void;
   darkness: number;
   setDarkness: (d: number) => void;
   fontChoice: string;
@@ -153,7 +109,9 @@ interface BackgroundContextValue {
   calendarImpacts: string[];
   setCalendarImpacts: (i: string[]) => void;
   backgroundPresets: BackgroundPreset[];
-  setBackgroundPresets: (p: BackgroundPreset[]) => void;
+  customBackgrounds: BackgroundPreset[];
+  setCustomBackgrounds: (list: BackgroundPreset[]) => void;
+  canAddCustomBackground: boolean;
   selectedPairs: string[];
   setSelectedPairs: (p: string[]) => void;
   selectedCurrencies: string[];
@@ -161,8 +119,11 @@ interface BackgroundContextValue {
 }
 
 const BackgroundCtx = createContext<BackgroundContextValue>({
-  backgroundUrl: null,
-  setBackgroundUrl: () => {},
+  activeBackgroundUrl: null,
+  device: "desktop",
+  backgroundUrlDesktop: null,
+  backgroundUrlMobile: null,
+  setActiveBackgroundForDevice: () => {},
   darkness: 60,
   setDarkness: () => {},
   fontChoice: "inter",
@@ -175,8 +136,10 @@ const BackgroundCtx = createContext<BackgroundContextValue>({
   setCalendarCurrencies: () => {},
   calendarImpacts: ["High"],
   setCalendarImpacts: () => {},
-  backgroundPresets: DEFAULT_BACKGROUND_PRESETS,
-  setBackgroundPresets: () => {},
+  backgroundPresets: DEFAULT_BACKGROUNDS_DESKTOP,
+  customBackgrounds: [],
+  setCustomBackgrounds: () => {},
+  canAddCustomBackground: true,
   selectedPairs: [],
   setSelectedPairs: () => {},
   selectedCurrencies: [],
@@ -184,7 +147,35 @@ const BackgroundCtx = createContext<BackgroundContextValue>({
 });
 
 export function BackgroundProvider({ children }: { children: ReactNode }) {
-  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const device: BackgroundDevice = isMobile ? "mobile" : "desktop";
+  const [backgroundUrlDesktop, setBackgroundUrlDesktop] = useState<string | null>(null);
+  const [backgroundUrlMobile, setBackgroundUrlMobile] = useState<string | null>(null);
+  const [customBackgrounds, setCustomBackgroundsState] = useState<BackgroundPreset[]>([]);
+
+  useEffect(() => {
+    migrateLegacyCustomBackgrounds();
+    setCustomBackgroundsState([
+      ...loadCustomBackgrounds("desktop"),
+      ...loadCustomBackgrounds("mobile"),
+    ]);
+  }, []);
+
+  const setCustomBackgrounds = useCallback((list: BackgroundPreset[]) => {
+    saveCustomBackgrounds("desktop", list.filter((p) => p.device === "desktop"));
+    saveCustomBackgrounds("mobile", list.filter((p) => p.device === "mobile"));
+    setCustomBackgroundsState(list);
+  }, []);
+
+  const activeBackgroundUrl = pickActiveBackgroundUrl({ isMobile, desktopUrl: backgroundUrlDesktop, mobileUrl: backgroundUrlMobile });
+  const backgroundPresets = resolveDeviceCatalog(device, customBackgrounds);
+  const canAddCustomBackground = canAddCustom(device, customBackgrounds);
+
+  const setActiveBackgroundForDevice = useCallback((url: string | null) => {
+    if (isMobile) setBackgroundUrlMobile(url);
+    else setBackgroundUrlDesktop(url);
+  }, [isMobile]);
+
   const [darkness, setDarkness] = useState(60);
   const [fontChoice, setFontChoice] = useState("inter");
   const [tradingSessions, setTradingSessions] = useState<
@@ -195,13 +186,6 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
     "USD",
   ]);
   const [calendarImpacts, setCalendarImpacts] = useState<string[]>(["High"]);
-  const [backgroundPresets, setBackgroundPresetsState] = useState<
-    BackgroundPreset[]
-  >(loadBackgroundPresets);
-  const setBackgroundPresets = useCallback((presets: BackgroundPreset[]) => {
-    saveBackgroundPresets(presets);
-    setBackgroundPresetsState(presets);
-  }, []);
   const [selectedPairs, setSelectedPairsRaw] = useState<string[]>([]);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const { data: settings } = useGetUserSettings();
@@ -228,11 +212,8 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    if (settings?.backgroundType === "custom" && settings.backgroundUrl) {
-      setBackgroundUrl(settings.backgroundUrl);
-    } else {
-      setBackgroundUrl(null);
-    }
+    setBackgroundUrlDesktop(settings?.backgroundUrlDesktop ?? null);
+    setBackgroundUrlMobile(settings?.backgroundUrlMobile ?? null);
     if (settings?.backgroundDarkness !== undefined) {
       setDarkness(settings.backgroundDarkness as number);
     }
@@ -252,12 +233,6 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
     }
     if (settings?.calendarImpacts && Array.isArray(settings.calendarImpacts)) {
       setCalendarImpacts(settings.calendarImpacts);
-    }
-    if (
-      settings?.backgroundPresets &&
-      Array.isArray(settings.backgroundPresets)
-    ) {
-      setBackgroundPresets(settings.backgroundPresets);
     }
     if (settings?.selectedPairs && Array.isArray(settings.selectedPairs)) {
       const pairs = settings.selectedPairs as string[];
@@ -283,8 +258,11 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
   return (
     <BackgroundCtx.Provider
       value={{
-        backgroundUrl,
-        setBackgroundUrl,
+        activeBackgroundUrl,
+        device,
+        backgroundUrlDesktop,
+        backgroundUrlMobile,
+        setActiveBackgroundForDevice,
         darkness,
         setDarkness,
         fontChoice,
@@ -298,7 +276,9 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
         calendarImpacts,
         setCalendarImpacts,
         backgroundPresets,
-        setBackgroundPresets,
+        customBackgrounds,
+        setCustomBackgrounds,
+        canAddCustomBackground,
         selectedPairs,
         setSelectedPairs,
         selectedCurrencies,

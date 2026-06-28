@@ -29,6 +29,8 @@ export const userSettingsTable = pgTable("user_settings", {
   backgroundType: text("background_type").notNull().default("default"),
   fontChoice: text("font_choice").notNull().default("inter"),
   backgroundDarkness: integer("background_darkness").notNull().default(60),
+  backgroundUrlDesktop: text("background_url_desktop"),
+  backgroundUrlMobile: text("background_url_mobile"),
   userId: text("user_id"),
   tradingSessions: text("trading_sessions"),
   lotDivisor: integer("lot_divisor").notNull().default(11),
