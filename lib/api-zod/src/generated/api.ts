@@ -1223,6 +1223,8 @@ export const GetUserSettingsResponse = zod.object({
     .number()
     .min(getUserSettingsResponseBackgroundDarknessMin)
     .max(getUserSettingsResponseBackgroundDarknessMax),
+  backgroundUrlDesktop: zod.string().nullish(),
+  backgroundUrlMobile: zod.string().nullish(),
   language: zod.enum(["it", "en", "es", "fr", "de"]),
   tradingSessions: zod
     .array(
@@ -1300,6 +1302,8 @@ export const UpdateUserSettingsBody = zod.object({
     .min(updateUserSettingsBodyBackgroundDarknessMin)
     .max(updateUserSettingsBodyBackgroundDarknessMax)
     .optional(),
+  backgroundUrlDesktop: zod.string().nullish(),
+  backgroundUrlMobile: zod.string().nullish(),
   language: zod.enum(["it", "en", "es", "fr", "de"]).optional(),
   tradingSessions: zod
     .array(
@@ -1374,6 +1378,8 @@ export const UpdateUserSettingsResponse = zod.object({
     .number()
     .min(updateUserSettingsResponseBackgroundDarknessMin)
     .max(updateUserSettingsResponseBackgroundDarknessMax),
+  backgroundUrlDesktop: zod.string().nullish(),
+  backgroundUrlMobile: zod.string().nullish(),
   language: zod.enum(["it", "en", "es", "fr", "de"]),
   tradingSessions: zod
     .array(

@@ -22,6 +22,8 @@ export interface UpdateUserSettingsRequest {
    * @maximum 90
    */
   backgroundDarkness?: number;
+  backgroundUrlDesktop?: string | null;
+  backgroundUrlMobile?: string | null;
   language?: UpdateUserSettingsRequestLanguage;
   tradingSessions?: TradingSessionConfig[] | null;
   /** @minimum 1 */

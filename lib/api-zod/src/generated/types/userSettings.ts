@@ -23,6 +23,8 @@ export interface UserSettings {
    * @maximum 90
    */
   backgroundDarkness: number;
+  backgroundUrlDesktop?: string | null;
+  backgroundUrlMobile?: string | null;
   language: UserSettingsLanguage;
   tradingSessions?: TradingSessionConfig[] | null;
   /** @minimum 1 */
