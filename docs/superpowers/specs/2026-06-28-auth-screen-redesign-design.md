@@ -62,7 +62,9 @@ must be **computed in real-time** from real data — never fabricated.
 
 Rebuild the brand panel + card chrome to mirror [Auth.dc.html](../../../design-ref/auth/Auth.dc.html):
 
-- **Brand panel (left):** logo lockup ("TraderLoading / Command Center"), per-mode eyebrow,
+- **Brand panel (left):** logo lockup ("TraderLoading / Command Center") — use the `<Rocket>`
+  lucide icon (matches the in-flight rocket rebrand `b0b82c1` and the design-ref rocket SVG),
+  not the old `app-icon-192.png` `<img>`; per-mode eyebrow,
   gradient headline, per-mode body, **three trust rows** (icon + title + subtitle), and the
   **real-time social-proof row**. Ambient **aurora** background built from the app's design
   tokens (no new asset).
