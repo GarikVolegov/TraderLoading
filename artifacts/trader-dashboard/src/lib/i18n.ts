@@ -6197,6 +6197,61 @@ for (const lang of SUPPORTED_LANGUAGES) {
   Object.assign(DICT[lang], SEO_PAGES2_TRANSLATIONS[lang]);
 }
 
+// The keyword inside each SEO page <h1> to highlight (colored). Must be a
+// case-insensitive substring of the corresponding `seo.<page>.h1`. (contact has
+// no obvious keyword, so it's intentionally omitted → rendered plain.)
+const SEO_H1KW_TRANSLATIONS: Record<Language, Record<string, string>> = {
+  it: {
+    "seo.trading-journal.h1.kw": "diario di trading",
+    "seo.backtest.h1.kw": "backtest",
+    "seo.macro-news.h1.kw": "Notizie macro",
+    "seo.risk-tools.h1.kw": "gestione del rischio",
+    "seo.pricing.h1.kw": "Prezzi",
+    "seo.guide.h1.kw": "guida",
+    "seo.about.h1.kw": "TraderLoading",
+  },
+  en: {
+    "seo.trading-journal.h1.kw": "trading journal",
+    "seo.backtest.h1.kw": "Backtest",
+    "seo.macro-news.h1.kw": "macro news",
+    "seo.risk-tools.h1.kw": "Risk management",
+    "seo.pricing.h1.kw": "pricing",
+    "seo.guide.h1.kw": "guide",
+    "seo.about.h1.kw": "TraderLoading",
+  },
+  es: {
+    "seo.trading-journal.h1.kw": "diario de trading",
+    "seo.backtest.h1.kw": "backtesting",
+    "seo.macro-news.h1.kw": "Noticias macro",
+    "seo.risk-tools.h1.kw": "gestión de riesgo",
+    "seo.pricing.h1.kw": "Precios",
+    "seo.guide.h1.kw": "guía",
+    "seo.about.h1.kw": "TraderLoading",
+  },
+  fr: {
+    "seo.trading-journal.h1.kw": "journal de trading",
+    "seo.backtest.h1.kw": "Backtestez",
+    "seo.macro-news.h1.kw": "Actus macro",
+    "seo.risk-tools.h1.kw": "gestion du risque",
+    "seo.pricing.h1.kw": "tarifs",
+    "seo.guide.h1.kw": "guide",
+    "seo.about.h1.kw": "TraderLoading",
+  },
+  de: {
+    "seo.trading-journal.h1.kw": "Trading-Tagebuch",
+    "seo.backtest.h1.kw": "Backteste",
+    "seo.macro-news.h1.kw": "Makro-News",
+    "seo.risk-tools.h1.kw": "Risikomanagement",
+    "seo.pricing.h1.kw": "Preise",
+    "seo.guide.h1.kw": "Anleitung",
+    "seo.about.h1.kw": "TraderLoading",
+  },
+};
+
+for (const lang of SUPPORTED_LANGUAGES) {
+  Object.assign(DICT[lang], SEO_H1KW_TRANSLATIONS[lang]);
+}
+
 export type TranslationKey =
   | keyof typeof BASE_DICT.it
   | keyof typeof ADMIN_TRANSLATIONS.it
@@ -6206,4 +6261,5 @@ export type TranslationKey =
   | keyof typeof LANDING_REBUILD_TRANSLATIONS.it
   | keyof typeof LANDING_REALDATA_TRANSLATIONS.it
   | keyof typeof SEO_TRANSLATIONS.it
-  | keyof typeof SEO_PAGES2_TRANSLATIONS.it;
+  | keyof typeof SEO_PAGES2_TRANSLATIONS.it
+  | keyof typeof SEO_H1KW_TRANSLATIONS.it;

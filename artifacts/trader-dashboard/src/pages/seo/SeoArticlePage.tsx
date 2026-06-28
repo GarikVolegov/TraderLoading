@@ -25,6 +25,20 @@ const TOPIC_PAGES = new Set<SeoPageKey>([
   "risk-tools",
 ]);
 
+/** Render `text` with the first case-insensitive occurrence of `kw` colored. */
+function withKeyword(text: string, kw: string | null) {
+  if (!kw) return text;
+  const i = text.toLowerCase().indexOf(kw.toLowerCase());
+  if (i === -1) return text;
+  return (
+    <>
+      {text.slice(0, i)}
+      <span className="text-primary">{text.slice(i, i + kw.length)}</span>
+      {text.slice(i + kw.length)}
+    </>
+  );
+}
+
 /**
  * One generic, fully i18n'd marketing/keyword page driven by `seo.<page>.*`
  * translation keys. Optional sections and the FAQ render only when their keys
@@ -41,6 +55,7 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
   const canonical = absoluteUrl(seoPagePath(page, language));
   const eyebrow = t(`${base}.eyebrow`);
   const h1 = t(`${base}.h1`);
+  const h1Kw = has(`${base}.h1.kw`) ? t(`${base}.h1.kw`) : null;
 
   const sections = SECTION_IDS.filter((id) => has(`${base}.${id}.title`)).map((id) => ({
     id,
@@ -102,14 +117,14 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-14 sm:px-6 sm:py-20">
+      <main className="mx-auto max-w-3xl px-4 py-14 text-center sm:px-6 sm:py-20">
         {/* Hero */}
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{eyebrow}</p>
         <h1 className="mt-3 font-mono text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
-          {h1}
+          {withKeyword(h1, h1Kw)}
         </h1>
-        <p className="mt-5 text-lg leading-relaxed text-muted-foreground">{t(`${base}.intro`)}</p>
-        <div className="mt-7 flex flex-wrap gap-3">
+        <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">{t(`${base}.intro`)}</p>
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
           <Link
             href="/sign-up"
             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 font-bold text-primary-foreground transition-opacity hover:opacity-90"
@@ -130,8 +145,8 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
           <div className="mt-14 flex flex-col gap-10">
             {sections.map((section) => (
               <section key={section.id}>
-                <h2 className="text-xl font-bold sm:text-2xl">{section.title}</h2>
-                <p className="mt-3 leading-relaxed text-muted-foreground">{section.body}</p>
+                <h2 className="text-xl font-bold sm:text-2xl">{withKeyword(section.title, h1Kw)}</h2>
+                <p className="mx-auto mt-3 max-w-2xl leading-relaxed text-muted-foreground">{section.body}</p>
               </section>
             ))}
           </div>
@@ -141,7 +156,7 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
         {faqItems.length > 0 && (
           <section className="mt-14">
             <h2 className="text-xl font-bold sm:text-2xl">{t("seo.faq.heading")}</h2>
-            <dl className="mt-5 flex flex-col gap-5">
+            <dl className="mx-auto mt-5 flex max-w-2xl flex-col gap-5">
               {faqItems.map((item) => (
                 <div key={item.question} className="rounded-xl border border-border/50 bg-card/40 p-5">
                   <dt className="font-semibold">{item.question}</dt>
@@ -157,12 +172,12 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
           <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-muted-foreground">
             {t("seo.related.heading")}
           </h2>
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          <ul className="mx-auto mt-4 grid max-w-2xl gap-3 sm:grid-cols-2">
             {related.map((key) => (
               <li key={key}>
                 <Link
                   href={seoPagePath(key, language)}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-card/40 px-4 py-3 font-semibold transition-colors hover:border-primary/40"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-border/50 bg-card/40 px-4 py-3 font-semibold transition-colors hover:border-primary/40"
                 >
                   {t(`seo.${key}.eyebrow`)}
                   <ArrowRight className="h-4 w-4 text-primary" aria-hidden="true" />
