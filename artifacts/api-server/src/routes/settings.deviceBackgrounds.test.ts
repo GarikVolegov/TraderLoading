@@ -1,5 +1,8 @@
+process.env.DATABASE_URL ??= "postgres://user:pass@127.0.0.1:5432/test";
+
 import assert from "node:assert/strict";
-import { buildSettingsUpdateData } from "./settings.js";
+
+const { buildSettingsUpdateData } = await import("./settings.js");
 
 const base = {} as Parameters<typeof buildSettingsUpdateData>[1];
 
