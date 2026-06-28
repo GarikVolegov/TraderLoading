@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { LayoutDashboard, BookOpen, MessageCircle, Brain, Settings, FlaskConical, Sunrise, Library, Archive, Rocket } from "lucide-react";
@@ -37,6 +38,25 @@ function NavItem({
   compact?: boolean;
 }) {
   const [isActive] = useRoute(href);
+
+  // The mobile tab label is hidden by default and only flashes briefly when the
+  // user taps the item, then fades away on its own. Declared unconditionally (hooks
+  // must run in the same order every render) even though only the mobile variant uses it.
+  const [flashLabel, setFlashLabel] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSelect = () => {
+    setFlashLabel(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setFlashLabel(false), 1600);
+  };
+
+  useEffect(
+    () => () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    },
+    [],
+  );
 
   if (vertical) {
     if (compact) {
@@ -130,6 +150,7 @@ function NavItem({
   return (
     <Link
       href={href}
+      onClick={handleSelect}
       className={`relative flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-full py-2 transition-colors duration-200 ${
         isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
@@ -169,15 +190,20 @@ function NavItem({
         )}
       </div>
 
-      <motion.span
-        animate={{ opacity: isActive ? 1 : 0.5 }}
-        transition={{ duration: 0.15 }}
-        className={`relative z-10 text-[10px] sm:text-[11px] font-medium transition-colors duration-200 ${
-          isActive ? "text-primary" : "text-muted-foreground"
-        }`}
-      >
-        {label}
-      </motion.span>
+      <AnimatePresence initial={false}>
+        {flashLabel && (
+          <motion.span
+            key="label"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="relative z-10 overflow-hidden text-[10px] font-medium leading-none text-primary sm:text-[11px]"
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </Link>
   );
 }
