@@ -3,12 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { WidgetHeader } from "@/components/ui/WidgetHeader";
-import { FileText, Loader2, AlertCircle, ArrowUp, ArrowDown, RefreshCw, X } from "lucide-react";
+import { FileText, Loader2, AlertCircle, RefreshCw, X } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, ReferenceLine, Tooltip, CartesianGrid, XAxis } from "recharts";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
 import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
 import { uiText } from "@/contexts/LanguageContext";
+import { cotBarWidth } from "./CotWidget.helpers";
 
 interface CotReport {
   market: string;
@@ -103,37 +104,42 @@ export function CotWidget() {
               )}
             </div>
 
-            <div className="grid grid-cols-4 gap-1.5">
-              {filteredReports.map((r) => {
-                const trend =
-                  r.history.length >= 2
-                    ? r.nonCommNet - (r.history[r.history.length - 2]?.nonCommNet ?? r.nonCommNet)
-                    : 0;
-                const isSelected = selected?.currency === r.currency;
-                return (
-                  <button
-                    key={r.currency}
-                    onClick={() => setSelected(isSelected ? null : r)}
-                    className={`p-2 rounded-xl border text-center transition-all ${
-                      isSelected
-                        ? "border-primary bg-primary/10"
-                        : "border-border/60 bg-secondary/55 hover:border-primary/40"
-                    }`}
-                  >
-                    <p className="text-xs font-bold font-mono">{r.currency}</p>
-                    <p className={`text-[10px] font-semibold mt-0.5 ${r.nonCommNet >= 0 ? "text-primary" : "text-destructive"}`}>
-                      {r.nonCommNet >= 0 ? "+" : ""}
-                      {(r.nonCommNet / 1000).toFixed(0)}k
-                    </p>
-                    {trend !== 0 && (
-                      <p className={`text-[9px] flex items-center justify-center gap-0.5 mt-0.5 ${trend > 0 ? "text-primary/70" : "text-destructive/70"}`}>
-                        {trend > 0 ? <ArrowUp className="w-2 h-2" /> : <ArrowDown className="w-2 h-2" />}
-                        {Math.abs(trend / 1000).toFixed(0)}k
-                      </p>
-                    )}
-                  </button>
-                );
-              })}
+            <div className="flex justify-between px-9.5 text-[9px] font-bold uppercase tracking-[0.08em]">
+              <span className="text-destructive">{"◂ "}{uiText("cot.legend.short")}</span>
+              <span className="text-success">{uiText("cot.legend.long")}{" ▸"}</span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {(() => {
+                const maxAbs = Math.max(1, ...filteredReports.map((r) => Math.abs(r.nonCommNet)));
+                return filteredReports.map((r) => {
+                  const long = r.nonCommNet >= 0;
+                  const isSelected = selected?.currency === r.currency;
+                  const width = cotBarWidth(r.nonCommNet, maxAbs) / 2;
+                  return (
+                    <button
+                      key={r.currency}
+                      onClick={() => setSelected(isSelected ? null : r)}
+                      className={`flex items-center gap-2 rounded-md px-1 py-1 transition-colors ${
+                        isSelected ? "bg-primary/10" : "hover:bg-secondary/40"
+                      }`}
+                    >
+                      <span className="w-8 text-left font-mono text-xs font-bold text-foreground">{r.currency}</span>
+                      <span className="relative h-4.5 flex-1 overflow-hidden rounded-[5px] bg-secondary/50">
+                        <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
+                        <span
+                          className={`absolute top-0.5 bottom-0.5 rounded ${long ? "left-1/2 bg-success" : "right-1/2 bg-destructive"}`}
+                          style={{ width: `${width}%` }}
+                        />
+                      </span>
+                      <span className={`w-10 text-right font-mono text-xs font-bold ${long ? "text-success" : "text-destructive"}`}>
+                        {long ? "+" : ""}
+                        {(r.nonCommNet / 1000).toFixed(0)}k
+                      </span>
+                    </button>
+                  );
+                });
+              })()}
             </div>
 
             <AnimatePresence>
