@@ -52,11 +52,31 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
   const toggleIdle = "text-muted-foreground hover:text-foreground";
 
   return (
-    <main className="relative flex min-h-[100dvh] items-center overflow-hidden bg-background px-4 py-6 text-foreground sm:px-6 lg:px-10">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_30%_18%,hsl(var(--primary)/0.10),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(224_55%_5%)_72%,hsl(var(--background))_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--border)/0.08)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--border)/0.06)_1px,transparent_1px)] bg-[size:46px_46px]" />
+    <main
+      className="relative flex min-h-[100dvh] items-center overflow-hidden px-4 py-6 text-foreground sm:px-6 lg:px-10"
+      style={{ backgroundColor: "hsl(224 71% 4%)" }}
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(70% 55% at 22% 12%, hsl(var(--primary) / 0.16), transparent 60%)," +
+            "radial-gradient(55% 50% at 88% 92%, hsl(217 91% 60% / 0.12), transparent 65%)," +
+            "linear-gradient(180deg, hsl(224 71% 5%) 0%, hsl(224 64% 3%) 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(hsl(var(--border) / 0.07) 1px, transparent 1px)," +
+              "linear-gradient(90deg, hsl(var(--border) / 0.06) 1px, transparent 1px)",
+            backgroundSize: "46px 46px",
+            maskImage: "radial-gradient(100% 100% at 50% 0%, black, transparent 75%)",
+            WebkitMaskImage: "radial-gradient(100% 100% at 50% 0%, black, transparent 75%)",
+          }}
+        />
       </div>
 
       <motion.div
