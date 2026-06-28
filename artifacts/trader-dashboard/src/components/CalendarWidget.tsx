@@ -11,9 +11,9 @@ import { uiText } from "@/contexts/LanguageContext";
 const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "CNY"] as const;
 
 const IMPACT_CONFIG = {
-  High: { color: "bg-red-500", border: "border-red-500/30", text: "text-red-400", label: "Alto" },
-  Medium: { color: "bg-orange-500", border: "border-orange-500/30", text: "text-orange-400", label: "Medio" },
-  Low: { color: "bg-yellow-500", border: "border-yellow-500/30", text: "text-yellow-400", label: "Basso" },
+  High: { color: "bg-destructive", border: "border-destructive/30", text: "text-destructive", label: "Alto" },
+  Medium: { color: "bg-warning", border: "border-warning/30", text: "text-warning", label: "Medio" },
+  Low: { color: "bg-warning", border: "border-warning/30", text: "text-warning", label: "Basso" },
   Holiday: { color: "bg-white", border: "border-white/40", text: "text-white", label: "Festivo" },
 } as const;
 
