@@ -14,6 +14,9 @@ export const communitiesTable = pgTable("communities", {
   accentColor: text("accent_color"),
   rules: text("rules"),
   welcomeMessage: text("welcome_message"),
+  // Denormalized review aggregates (phase 3): avg = ratingSum / ratingCount.
+  ratingSum: integer("rating_sum").notNull().default(0),
+  ratingCount: integer("rating_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [
@@ -137,11 +140,42 @@ export const voicePresenceTable = pgTable("voice_presence", {
   index("voice_presence_channel_idx").on(t.channelId),
 ]);
 
+// Member reviews of a community (one per user) with optional owner reply and
+// soft-hide moderation. Aggregates live denormalized on communitiesTable.
+export const communityReviewsTable = pgTable("community_reviews", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  userId: text("user_id").notNull(),
+  rating: integer("rating").notNull(),
+  text: text("text").notNull().default(""),
+  ownerResponse: text("owner_response"),
+  ownerResponseAt: timestamp("owner_response_at"),
+  hidden: boolean("hidden").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("community_reviews_pair_idx").on(t.communityId, t.userId),
+  index("community_reviews_community_idx").on(t.communityId),
+]);
+
+export const communityReviewReportsTable = pgTable("community_review_reports", {
+  id: serial("id").primaryKey(),
+  reviewId: integer("review_id").notNull(),
+  reporterUserId: text("reporter_user_id").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("community_review_reports_pair_idx").on(t.reviewId, t.reporterUserId),
+  index("community_review_reports_review_idx").on(t.reviewId),
+]);
+
 export type Community = typeof communitiesTable.$inferSelect;
 export type CommunityMember = typeof communityMembersTable.$inferSelect;
 export type CommunityRole = typeof communityRolesTable.$inferSelect;
 export type CommunityBan = typeof communityBansTable.$inferSelect;
 export type CommunityMute = typeof communityMutesTable.$inferSelect;
+export type CommunityReview = typeof communityReviewsTable.$inferSelect;
+export type CommunityReviewReport = typeof communityReviewReportsTable.$inferSelect;
 export type CommunityChannel = typeof communityChannelsTable.$inferSelect;
 export type CommunityMessage = typeof communityMessagesTable.$inferSelect;
 export type CommunityFile = typeof communityFilesTable.$inferSelect;

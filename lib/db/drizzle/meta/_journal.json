@@ -99,6 +99,13 @@
       "when": 1782921600000,
       "tag": "0015_community_customization",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1783008000000,
+      "tag": "0016_community_reviews",
+      "breakpoints": true
     }
   ]
 }

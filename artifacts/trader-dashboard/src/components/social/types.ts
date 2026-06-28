@@ -118,6 +118,31 @@ export interface CommunityType {
   accentColor?: string | null;
   rules?: string | null;
   welcomeMessage?: string | null;
+  ratingAvg?: number;
+  ratingCount?: number;
+}
+
+export interface CommunityReview {
+  id: number;
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  rating: number;
+  text: string;
+  ownerResponse: string | null;
+  ownerResponseAt: string | null;
+  hidden: boolean;
+  createdAt: string;
+}
+
+export interface CommunityReviewsResponse {
+  reviews: CommunityReview[];
+  myReview: CommunityReview | null;
+  ratingAvg: number;
+  ratingCount: number;
+  isMember: boolean;
+  canRespond: boolean;
+  canModerate: boolean;
 }
 
 export interface ChannelType {

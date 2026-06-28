@@ -4978,6 +4978,113 @@ for (const lang of SUPPORTED_LANGUAGES) {
   Object.assign(DICT[lang], COMMUNITY_CUSTOMIZATION_TRANSLATIONS[lang]);
 }
 
+const COMMUNITY_REVIEWS_TRANSLATIONS: Record<Language, Record<string, string>> = {
+  it: {
+    "community.review.title": "Recensioni",
+    "community.review.count": "{count} recensioni",
+    "community.review.yourReview": "La tua recensione",
+    "community.review.placeholder": "Condividi la tua esperienza",
+    "community.review.submit": "Pubblica",
+    "community.review.update": "Aggiorna",
+    "community.review.delete": "Elimina",
+    "community.review.memberOnly": "Solo i membri possono recensire",
+    "community.review.empty": "Ancora nessuna recensione",
+    "community.review.hidden": "Nascosta",
+    "community.review.ownerReply": "Risposta del proprietario",
+    "community.review.report": "Segnala",
+    "community.review.reported": "Segnalata",
+    "community.review.respond": "Rispondi",
+    "community.review.responsePlaceholder": "Rispondi pubblicamente",
+    "community.review.send": "Invia",
+    "community.review.hide": "Nascondi",
+    "community.review.unhide": "Mostra",
+  },
+  en: {
+    "community.review.title": "Reviews",
+    "community.review.count": "{count} reviews",
+    "community.review.yourReview": "Your review",
+    "community.review.placeholder": "Share your experience",
+    "community.review.submit": "Post",
+    "community.review.update": "Update",
+    "community.review.delete": "Delete",
+    "community.review.memberOnly": "Only members can review",
+    "community.review.empty": "No reviews yet",
+    "community.review.hidden": "Hidden",
+    "community.review.ownerReply": "Owner reply",
+    "community.review.report": "Report",
+    "community.review.reported": "Reported",
+    "community.review.respond": "Reply",
+    "community.review.responsePlaceholder": "Reply publicly",
+    "community.review.send": "Send",
+    "community.review.hide": "Hide",
+    "community.review.unhide": "Show",
+  },
+  es: {
+    "community.review.title": "Reseñas",
+    "community.review.count": "{count} reseñas",
+    "community.review.yourReview": "Tu reseña",
+    "community.review.placeholder": "Comparte tu experiencia",
+    "community.review.submit": "Publicar",
+    "community.review.update": "Actualizar",
+    "community.review.delete": "Eliminar",
+    "community.review.memberOnly": "Solo los miembros pueden reseñar",
+    "community.review.empty": "Aún no hay reseñas",
+    "community.review.hidden": "Oculta",
+    "community.review.ownerReply": "Respuesta del propietario",
+    "community.review.report": "Reportar",
+    "community.review.reported": "Reportada",
+    "community.review.respond": "Responder",
+    "community.review.responsePlaceholder": "Responder públicamente",
+    "community.review.send": "Enviar",
+    "community.review.hide": "Ocultar",
+    "community.review.unhide": "Mostrar",
+  },
+  fr: {
+    "community.review.title": "Avis",
+    "community.review.count": "{count} avis",
+    "community.review.yourReview": "Votre avis",
+    "community.review.placeholder": "Partagez votre expérience",
+    "community.review.submit": "Publier",
+    "community.review.update": "Mettre à jour",
+    "community.review.delete": "Supprimer",
+    "community.review.memberOnly": "Seuls les membres peuvent laisser un avis",
+    "community.review.empty": "Aucun avis pour le moment",
+    "community.review.hidden": "Masqué",
+    "community.review.ownerReply": "Réponse du propriétaire",
+    "community.review.report": "Signaler",
+    "community.review.reported": "Signalé",
+    "community.review.respond": "Répondre",
+    "community.review.responsePlaceholder": "Répondre publiquement",
+    "community.review.send": "Envoyer",
+    "community.review.hide": "Masquer",
+    "community.review.unhide": "Afficher",
+  },
+  de: {
+    "community.review.title": "Bewertungen",
+    "community.review.count": "{count} Bewertungen",
+    "community.review.yourReview": "Deine Bewertung",
+    "community.review.placeholder": "Teile deine Erfahrung",
+    "community.review.submit": "Veröffentlichen",
+    "community.review.update": "Aktualisieren",
+    "community.review.delete": "Löschen",
+    "community.review.memberOnly": "Nur Mitglieder können bewerten",
+    "community.review.empty": "Noch keine Bewertungen",
+    "community.review.hidden": "Ausgeblendet",
+    "community.review.ownerReply": "Antwort des Inhabers",
+    "community.review.report": "Melden",
+    "community.review.reported": "Gemeldet",
+    "community.review.respond": "Antworten",
+    "community.review.responsePlaceholder": "Öffentlich antworten",
+    "community.review.send": "Senden",
+    "community.review.hide": "Ausblenden",
+    "community.review.unhide": "Anzeigen",
+  },
+};
+
+for (const lang of SUPPORTED_LANGUAGES) {
+  Object.assign(DICT[lang], COMMUNITY_REVIEWS_TRANSLATIONS[lang]);
+}
+
 export type TranslationKey =
   | keyof typeof BASE_DICT.it
   | keyof typeof ADMIN_TRANSLATIONS.it
@@ -4985,4 +5092,5 @@ export type TranslationKey =
   | keyof typeof BACKGROUND_TRANSLATIONS.it
   | keyof typeof CORE_UI_TRANSLATIONS.it
   | keyof typeof COMMUNITY_MGMT_TRANSLATIONS.it
-  | keyof typeof COMMUNITY_CUSTOMIZATION_TRANSLATIONS.it;
+  | keyof typeof COMMUNITY_CUSTOMIZATION_TRANSLATIONS.it
+  | keyof typeof COMMUNITY_REVIEWS_TRANSLATIONS.it;

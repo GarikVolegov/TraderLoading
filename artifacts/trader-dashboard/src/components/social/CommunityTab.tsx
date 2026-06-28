@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings } from "lucide-react";
+import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings, Star } from "lucide-react";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { useCommunities, useCommunityDetail } from "./hooks";
 import { CreateCommunityModal } from "./CreateCommunityModal";
 import { CreateChannelModal } from "./CreateChannelModal";
 import { CommunitySettingsModal } from "./CommunitySettingsModal";
+import { CommunityReviews } from "./CommunityReviews";
+import { StarRating } from "./StarRating";
 import { TextChannelView } from "./TextChannelView";
 import { VoiceChannelView } from "./VoiceChannelView";
 
@@ -34,6 +36,7 @@ export function CommunityTab({
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showReviews, setShowReviews] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<
     "communities" | "channels" | "content"
   >("communities");
@@ -76,11 +79,18 @@ export function CommunityTab({
   const selectCommunity = (id: number) => {
     setSelectedCommunityId(id);
     setSelectedChannelId(null);
+    setShowReviews(false);
     setMobilePanel("channels");
   };
 
   const selectChannel = (id: number) => {
     setSelectedChannelId(id);
+    setShowReviews(false);
+    setMobilePanel("content");
+  };
+
+  const openReviews = () => {
+    setShowReviews(true);
     setMobilePanel("content");
   };
 
@@ -167,6 +177,12 @@ export function CommunityTab({
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold truncate">{c.name}</p>
                       <p className="text-[10px]">{c.memberCount} membri</p>
+                      {(c.ratingCount ?? 0) > 0 && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <StarRating value={c.ratingAvg ?? 0} readOnly size={9} />
+                          <span className="text-[9px]">{(c.ratingAvg ?? 0).toFixed(1)}</span>
+                        </div>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -244,6 +260,16 @@ export function CommunityTab({
               {communityDetail.memberCount} membri
             </span>
           </div>
+          <button
+            onClick={openReviews}
+            title={t("community.review.title")}
+            className="flex items-center gap-1.5 mt-1.5 hover:opacity-80 transition-opacity"
+          >
+            <StarRating value={communityDetail.ratingAvg ?? 0} readOnly size={11} />
+            <span className="text-[10px] text-muted-foreground">
+              {t("community.review.count", { count: communityDetail.ratingCount ?? 0 })}
+            </span>
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
@@ -320,7 +346,9 @@ export function CommunityTab({
     );
 
   const contentArea =
-    selectedChannel && communityDetail?.isMember ? (
+    showReviews && communityDetail ? (
+      <CommunityReviews detail={communityDetail} />
+    ) : selectedChannel && communityDetail?.isMember ? (
       selectedChannel.type === "text" ? (
         <TextChannelView
           channel={selectedChannel}
@@ -352,6 +380,17 @@ export function CommunityTab({
               <p className="text-xs mt-1 mb-2">
                 {communityDetail?.memberCount} membri
               </p>
+              {(communityDetail?.ratingCount ?? 0) > 0 && (
+                <button
+                  onClick={openReviews}
+                  className="flex items-center justify-center gap-1.5 mb-3 mx-auto hover:opacity-80 transition-opacity"
+                >
+                  <StarRating value={communityDetail?.ratingAvg ?? 0} readOnly size={14} />
+                  <span className="text-xs text-muted-foreground">
+                    {t("community.review.count", { count: communityDetail?.ratingCount ?? 0 })}
+                  </span>
+                </button>
+              )}
               {communityDetail?.welcomeMessage && (
                 <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-4 whitespace-pre-line">
                   {communityDetail.welcomeMessage}

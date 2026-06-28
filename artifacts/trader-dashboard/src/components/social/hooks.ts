@@ -23,6 +23,7 @@ import type {
   CommunityRole,
   CommunityMemberRow,
   CommunityBanRow,
+  CommunityReviewsResponse,
 } from "./types";
 
 export function usePostComments(postId: number | null) {
@@ -180,6 +181,15 @@ export function useCommunityBans(communityId: number | null, enabled = true) {
   return useQuery<CommunityBanRow[]>({
     queryKey: ["communityBans", communityId],
     queryFn: () => apiJSON(`community/${communityId}/bans`),
+    enabled: communityId !== null && enabled,
+    staleTime: 10_000,
+  });
+}
+
+export function useCommunityReviews(communityId: number | null, enabled = true) {
+  return useQuery<CommunityReviewsResponse>({
+    queryKey: ["communityReviews", communityId],
+    queryFn: () => apiJSON(`community/${communityId}/reviews`),
     enabled: communityId !== null && enabled,
     staleTime: 10_000,
   });

@@ -75,7 +75,11 @@ router.get("/community", async (req, res) => {
 
     const myIds = new Set(myMemberships.map(m => m.communityId));
 
-    res.json(communities.map(c => ({ ...c, isMember: myIds.has(c.id) })));
+    res.json(communities.map(c => ({
+      ...c,
+      isMember: myIds.has(c.id),
+      ratingAvg: c.ratingCount > 0 ? c.ratingSum / c.ratingCount : 0,
+    })));
   } catch (err) {
     console.error("GET /community error:", err);
     res.status(500).json({ error: "Errore interno" });
@@ -198,6 +202,7 @@ router.get("/community/:id", async (req, res) => {
       myRole: membership?.role ?? null,
       myRoleId: membership?.roleId ?? null,
       myPermissions,
+      ratingAvg: community.ratingCount > 0 ? community.ratingSum / community.ratingCount : 0,
     });
   } catch (err) {
     console.error("GET /community/:id error:", err);
