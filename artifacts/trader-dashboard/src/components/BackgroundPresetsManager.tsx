@@ -2,7 +2,8 @@ import { useState, useRef } from "react";
 import { Image, X, Plus } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useBackground, DEFAULT_BACKGROUND_PRESETS, type BackgroundPreset } from "@/contexts/BackgroundContext";
+import { useBackground } from "@/contexts/BackgroundContext";
+import type { BackgroundPreset } from "@/lib/backgroundCatalog";
 import { useUpdateUserSettings, getGetUserSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +11,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { uploadBackgroundImage } from "@/lib/backgroundSettingsApi";
 
 export function BackgroundPresetsManager() {
-  const { backgroundUrl, backgroundPresets, setBackgroundUrl, setBackgroundPresets } = useBackground();
+  const { activeBackgroundUrl, device, backgroundPresets, customBackgrounds, canAddCustomBackground, setActiveBackgroundForDevice, setCustomBackgrounds } = useBackground();
   const { mutate: updateSettings } = useUpdateUserSettings();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -19,29 +20,29 @@ export function BackgroundPresetsManager() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleSelectPreset = (preset: BackgroundPreset) => {
-    setBackgroundUrl(preset.url);
-    updateSettings({ data: { backgroundType: "custom", backgroundUrl: preset.url } });
+    setActiveBackgroundForDevice(preset.url);
+    updateSettings({ data: device === "mobile" ? { backgroundUrlMobile: preset.url } : { backgroundUrlDesktop: preset.url } });
   };
 
   const handleUploadCustom = async (file: File) => {
-    if (backgroundPresets.length >= 6) {
+    if (!canAddCustomBackground) {
       toast({ description: t("background.presets.limit"), variant: "destructive" });
       return;
     }
     setUploading(true);
     try {
       const data = await uploadBackgroundImage(file);
-      
       const newPreset: BackgroundPreset = {
         id: `custom-${Date.now()}`,
         name: file.name.replace(/\.[^/.]+$/, ""),
         url: data.url,
         isDefault: false,
+        device,
       };
-      const updated = [...backgroundPresets, newPreset];
-      setBackgroundPresets(updated);
-      setBackgroundUrl(data.url);
-      updateSettings({ data: { backgroundPresets: updated, backgroundType: "custom", backgroundUrl: data.url } });
+      const updated = [...customBackgrounds, newPreset];
+      setCustomBackgrounds(updated);
+      setActiveBackgroundForDevice(data.url);
+      updateSettings({ data: device === "mobile" ? { backgroundUrlMobile: data.url } : { backgroundUrlDesktop: data.url } });
       qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
       toast({ description: t("background.presets.added") });
     } catch {
@@ -52,12 +53,14 @@ export function BackgroundPresetsManager() {
   };
 
   const handleRemovePreset = (id: string) => {
-    const updated = backgroundPresets.filter(p => p.id !== id);
-    setBackgroundPresets(updated);
-    if (backgroundUrl === backgroundPresets.find(p => p.id === id)?.url) {
-      setBackgroundUrl(DEFAULT_BACKGROUND_PRESETS[0].url);
+    const removed = customBackgrounds.find((p) => p.id === id);
+    const updated = customBackgrounds.filter((p) => p.id !== id);
+    setCustomBackgrounds(updated);
+    if (removed && activeBackgroundUrl === removed.url) {
+      const fallback = backgroundPresets.find((p) => p.isDefault)?.url ?? null;
+      setActiveBackgroundForDevice(fallback);
+      updateSettings({ data: device === "mobile" ? { backgroundUrlMobile: fallback } : { backgroundUrlDesktop: fallback } });
     }
-    updateSettings({ data: { backgroundPresets: updated } });
     qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
     toast({ description: t("background.presets.removed") });
   };
@@ -76,8 +79,8 @@ export function BackgroundPresetsManager() {
             <div
               key={preset.id}
               onClick={() => handleSelectPreset(preset)}
-              className={`relative rounded-lg overflow-hidden cursor-pointer aspect-video border-2 transition-all group ${
-                backgroundUrl === preset.url
+              className={`relative rounded-lg overflow-hidden cursor-pointer ${device === "mobile" ? "aspect-9/16" : "aspect-video"} border-2 transition-all group ${
+                activeBackgroundUrl === preset.url
                   ? "border-primary/60 ring-2 ring-primary/20"
                   : "border-border hover:border-primary/40"
               }`}
@@ -98,16 +101,16 @@ export function BackgroundPresetsManager() {
                   </Button>
                 )}
               </div>
-              {backgroundUrl === preset.url && (
+              {activeBackgroundUrl === preset.url && (
                 <div className="absolute top-1 right-1 bg-primary/80 text-white text-xs px-2 py-1 rounded">{t("background.presets.active")}</div>
               )}
             </div>
           ))}
-          
-          {backgroundPresets.length < 6 && (
+
+          {canAddCustomBackground && (
             <div
               onClick={() => fileRef.current?.click()}
-              className="rounded-lg border-2 border-dashed border-border hover:border-primary/50 aspect-video flex flex-col items-center justify-center cursor-pointer hover:bg-primary/5 transition-colors"
+              className={`rounded-lg border-2 border-dashed border-border hover:border-primary/50 ${device === "mobile" ? "aspect-9/16" : "aspect-video"} flex flex-col items-center justify-center cursor-pointer hover:bg-primary/5 transition-colors`}
             >
               <Plus className="w-6 h-6 text-muted-foreground mb-1" />
               <span className="text-xs text-muted-foreground text-center">{t("background.presets.add")}</span>
@@ -131,6 +134,7 @@ export function BackgroundPresetsManager() {
         <p className="text-xs text-muted-foreground">
           {t("background.presets.hint")}
         </p>
+        <p className="text-xs text-muted-foreground">{t("background.presets.device_hint")}</p>
       </CardContent>
     </Card>
   );

@@ -3574,6 +3574,7 @@ const BACKGROUND_TRANSLATIONS: Record<Language, Record<string, string>> = {
     "background.presets.active": "Attivo",
     "background.presets.add": "Aggiungi sfondo",
     "background.presets.hint": "Massimo 6 sfondi. Clicca per selezionare, hover per rimuovere (non puoi rimuovere i predefiniti).",
+    "background.presets.device_hint": "Desktop e mobile hanno sfondi separati: modifica ciascuno dal suo dispositivo.",
   },
   en: {
     "background.presets.title": "Custom Backgrounds",
@@ -3584,6 +3585,7 @@ const BACKGROUND_TRANSLATIONS: Record<Language, Record<string, string>> = {
     "background.presets.active": "Active",
     "background.presets.add": "Add background",
     "background.presets.hint": "Maximum 6 backgrounds. Click to select, hover to remove (default backgrounds cannot be removed).",
+    "background.presets.device_hint": "Desktop and mobile have separate backgrounds — edit each from its own device.",
   },
   es: {
     "background.presets.title": "Fondos personalizados",
@@ -3594,6 +3596,7 @@ const BACKGROUND_TRANSLATIONS: Record<Language, Record<string, string>> = {
     "background.presets.active": "Activo",
     "background.presets.add": "Añadir fondo",
     "background.presets.hint": "Máximo 6 fondos. Haz clic para seleccionar, pasa el cursor para eliminar (no puedes eliminar los predeterminados).",
+    "background.presets.device_hint": "El escritorio y el movil tienen fondos separados: edita cada uno desde su dispositivo.",
   },
   fr: {
     "background.presets.title": "Arrière-plans personnalisés",
@@ -3604,6 +3607,7 @@ const BACKGROUND_TRANSLATIONS: Record<Language, Record<string, string>> = {
     "background.presets.active": "Actif",
     "background.presets.add": "Ajouter un arrière-plan",
     "background.presets.hint": "Maximum 6 arrière-plans. Cliquez pour sélectionner, survolez pour supprimer (les arrière-plans par défaut ne peuvent pas être supprimés).",
+    "background.presets.device_hint": "Le bureau et le mobile ont des arriere-plans distincts : modifie chacun depuis son appareil.",
   },
   de: {
     "background.presets.title": "Eigene Hintergründe",
@@ -3614,6 +3618,7 @@ const BACKGROUND_TRANSLATIONS: Record<Language, Record<string, string>> = {
     "background.presets.active": "Aktiv",
     "background.presets.add": "Hintergrund hinzufügen",
     "background.presets.hint": "Maximal 6 Hintergründe. Zum Auswählen klicken, zum Entfernen hovern (Standard-Hintergründe können nicht entfernt werden).",
+    "background.presets.device_hint": "Desktop und Mobil haben getrennte Hintergruende - bearbeite jeden auf seinem Geraet.",
   },
 };
 
