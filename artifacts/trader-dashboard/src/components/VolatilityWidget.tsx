@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { StatTile } from "@/components/ui/StatTile";
 import {
   TrendingUp, Loader2, AlertCircle,
   ChevronDown, ArrowUp, ArrowDown, RefreshCw,
@@ -155,21 +156,9 @@ export function VolatilityWidget() {
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
             {/* Metric cards */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="metric-card border-emerald-400/40 bg-emerald-500/12">
-                <span className="metric-label text-emerald-200">{uiText("auto.ui.6ca10960a1")}</span>
-                <span className="metric-value text-emerald-300">{data.todayPips}</span>
-                <span className="metric-unit">{data.pipUnit}</span>
-              </div>
-              <div className="metric-card">
-                <span className="metric-label">{uiText("auto.ui.e598e168c1")}</span>
-                <span className="metric-value">{data.y1}</span>
-                <span className="metric-unit">{data.pipUnit}</span>
-              </div>
-              <div className="metric-card">
-                <span className="metric-label">{uiText("auto.ui.c83dbbd3e6")}</span>
-                <span className="metric-value">{data.peakDay?.slice(0, 3)}</span>
-                <span className="metric-unit">{uiText("auto.ui.2287204815")}</span>
-              </div>
+              <StatTile label={uiText("auto.ui.6ca10960a1")} value={data.todayPips} unit={data.pipUnit} tone="success" size="md" />
+              <StatTile label={uiText("auto.ui.e598e168c1")} value={data.y1} unit={data.pipUnit} size="md" />
+              <StatTile label={uiText("auto.ui.c83dbbd3e6")} value={data.peakDay?.slice(0, 3)} unit={uiText("auto.ui.2287204815")} size="md" />
             </div>
 
             {/* Period table */}
@@ -222,8 +211,8 @@ export function VolatilityWidget() {
                         <Cell
                           key={i}
                           fill={
-                            entry.pips > data.y1 * 1.25 ? "#f87171" :
-                            entry.pips < data.y1 * 0.75 ? "#7dd3fc" : "#34d399"
+                            entry.pips > data.y1 * 1.25 ? "hsl(var(--destructive))" :
+                            entry.pips < data.y1 * 0.75 ? "#7dd3fc" : "hsl(var(--success))"
                           }
                           fillOpacity={0.95}
                         />
