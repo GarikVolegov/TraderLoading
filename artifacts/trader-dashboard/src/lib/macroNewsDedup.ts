@@ -15,7 +15,11 @@ export function normalizeWords(text: string): string[] {
     .filter(Boolean);
 }
 
-const REDUNDANT_COVERAGE_THRESHOLD = 0.9;
+// Two slots count as "the same news" when ~70%+ of the shorter one's words overlap. This
+// catches headlines vs summaries that differ by only a few words (e.g. "mette al centro"
+// vs "mette a fuoco") while leaving genuinely different analysis text (which shares far
+// fewer words with the headline) visible.
+const REDUNDANT_COVERAGE_THRESHOLD = 0.7;
 
 /**
  * True when `candidate` says essentially the same thing as something already shown — i.e.

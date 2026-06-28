@@ -15,6 +15,13 @@ const summary =
 // A summary that only restates the title (one word differs: "al" vs "sul") is redundant.
 assert.equal(isRedundantText(summary, [title]), true);
 
+// Real case: title vs summary differ by 2 words out of 17 ("mette al centro" vs
+// "mette a fuoco") — still the same news, must be hidden.
+const nfpTitle = "Il rapporto NFP mette al centro la politica della Fed e le prospettive del prezzo dell'oro";
+const nfpSummary = "Il rapporto NFP mette a fuoco la politica della Fed e le prospettive del prezzo dell'oro";
+assert.equal(isRedundantText(nfpSummary, [nfpTitle]), true);
+assert.equal(isRedundantText(nfpSummary, [nfpTitle, nfpSummary]), true);
+
 // An identical string is redundant.
 assert.equal(isRedundantText(title, [title]), true);
 
