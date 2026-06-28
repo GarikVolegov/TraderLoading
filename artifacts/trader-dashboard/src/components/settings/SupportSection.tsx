@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { TrendingUp, Target, ChevronDown, Library, ExternalLink, Mail, MessageSquare, BookOpen, Zap } from "lucide-react";
+import { TrendingUp, Target, ChevronDown, Library, ExternalLink, LifeBuoy, Mail, MessageSquare, BookOpen, Zap } from "lucide-react";
+import { Link } from "wouter";
 import { uiText } from "@/contexts/LanguageContext";
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
@@ -150,6 +151,20 @@ export function SupportSection() {
           Contatti & Feedback
         </h3>
         <div className="space-y-3">
+          <Link
+            href="/support"
+            className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"
+          >
+            <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+              <LifeBuoy className="w-4 h-4" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">{uiText("support.title")}</p>
+              <p className="text-xs text-muted-foreground">{uiText("support.subtitle")}</p>
+            </div>
+            <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </Link>
+
           <a
             href="mailto:assistenza@traderloading.com"
             className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"

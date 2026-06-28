@@ -5,6 +5,7 @@ import {
   LifeBuoy,
   LogOut,
   LockKeyhole,
+  MessageSquare,
   Settings,
   Shield,
   Users,
@@ -44,6 +45,12 @@ const navItems = [
     href: "/admin/support",
     labelKey: "admin.nav.support",
     icon: LifeBuoy,
+    permission: "support.write",
+  },
+  {
+    href: "/admin/support/tickets",
+    labelKey: "admin.tickets.title",
+    icon: MessageSquare,
     permission: "support.write",
   },
   {
