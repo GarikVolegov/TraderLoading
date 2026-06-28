@@ -147,17 +147,17 @@ export function ChecklistSetupModal() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShow(false); }}
         >
           <motion.div
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
-            className="relative w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-card border border-border shadow-2xl overflow-hidden"
+            className="relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl sm:max-h-[88vh] sm:max-w-lg sm:rounded-2xl"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="flex shrink-0 items-center justify-between px-5 py-4 border-b border-border">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-primary/15">
                   <ShieldCheck className="w-5 h-5 text-primary" />
@@ -179,7 +179,7 @@ export function ChecklistSetupModal() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
-                  className="p-5 space-y-4"
+                  className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5"
                 >
                   <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-2">
                     <p className="text-sm font-semibold text-primary">{uiText("checklist_setup.what_title")}</p>
@@ -216,7 +216,7 @@ export function ChecklistSetupModal() {
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
-                  className="flex flex-col max-h-[75vh]"
+                  className="flex min-h-0 flex-1 flex-col"
                 >
                   <div className="overflow-y-auto flex-1 divide-y divide-border/40">
                     {CONFIRMATION_CATEGORIES.map((cat) => {
@@ -304,7 +304,7 @@ export function ChecklistSetupModal() {
                     </div>
                   </div>
 
-                  <div className="px-5 py-4 border-t border-border space-y-3">
+                  <div className="shrink-0 px-5 py-4 border-t border-border space-y-3">
                     {allToSave.length > 0 && (
                       <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
                         {allToSave.slice(0, 6).map((t, i) => (
