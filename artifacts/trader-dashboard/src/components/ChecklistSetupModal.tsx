@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronDown, ChevronRight, Check, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -140,24 +141,24 @@ export function ChecklistSetupModal() {
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {show && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 z-60 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShow(false); }}
         >
           <motion.div
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
-            className="relative w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-card border border-border shadow-2xl overflow-hidden"
+            className="relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="flex shrink-0 items-center justify-between px-5 py-4 border-b border-border">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-primary/15">
                   <ShieldCheck className="w-5 h-5 text-primary" />
@@ -179,29 +180,31 @@ export function ChecklistSetupModal() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
-                  className="p-5 space-y-4"
+                  className="flex min-h-0 flex-1 flex-col"
                 >
-                  <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-2">
-                    <p className="text-sm font-semibold text-primary">{uiText("checklist_setup.what_title")}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {uiText("checklist_setup.what_body_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.validation_gate")}</span> {uiText("checklist_setup.what_body_after")}
-                    </p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {uiText("checklist_setup.review_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.trade_not_ready")}</span>.
-                    </p>
+                  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
+                    <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 space-y-1.5">
+                      <p className="text-sm font-semibold text-primary">{uiText("checklist_setup.what_title")}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {uiText("checklist_setup.what_body_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.validation_gate")}</span> {uiText("checklist_setup.what_body_after")}
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {uiText("checklist_setup.review_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.trade_not_ready")}</span>.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {CONFIRMATION_CATEGORIES.map((cat) => (
+                        <div key={cat.id} className="rounded-xl border border-border bg-secondary/30 p-2.5">
+                          <p className="text-base mb-0.5">{cat.emoji}</p>
+                          <p className="text-xs font-semibold text-foreground leading-tight">{cat.label}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{cat.description}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {CONFIRMATION_CATEGORIES.map((cat) => (
-                      <div key={cat.id} className="rounded-xl border border-border bg-secondary/30 p-3">
-                        <p className="text-base mb-0.5">{cat.emoji}</p>
-                        <p className="text-xs font-semibold text-foreground leading-tight">{cat.label}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{cat.description}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex shrink-0 gap-2 border-t border-border p-4">
                     <Button onClick={() => setStep("pick")} className="flex-1">
                       Scegli i miei criteri →
                     </Button>
@@ -216,7 +219,7 @@ export function ChecklistSetupModal() {
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
-                  className="flex flex-col max-h-[75vh]"
+                  className="flex min-h-0 flex-1 flex-col"
                 >
                   <div className="overflow-y-auto flex-1 divide-y divide-border/40">
                     {CONFIRMATION_CATEGORIES.map((cat) => {
@@ -304,7 +307,7 @@ export function ChecklistSetupModal() {
                     </div>
                   </div>
 
-                  <div className="px-5 py-4 border-t border-border space-y-3">
+                  <div className="shrink-0 px-5 py-4 border-t border-border space-y-3">
                     {allToSave.length > 0 && (
                       <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
                         {allToSave.slice(0, 6).map((t, i) => (
@@ -344,6 +347,7 @@ export function ChecklistSetupModal() {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
