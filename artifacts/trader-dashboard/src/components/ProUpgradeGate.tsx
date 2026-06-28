@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Lock, Sparkles } from "lucide-react";
+import { FlaskConical, Link2, Lock, Trophy, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProCheckoutDialog } from "@/components/ProCheckoutDialog";
@@ -28,10 +28,10 @@ const FEATURE_COPY_KEYS: Record<ProFeature, { title: string; subtitle: string }>
   },
 };
 
-const FEATURE_ITEMS = [
-  "billing.feature.backtesting",
-  "billing.feature.leaderboards",
-  "billing.feature.account_sync",
+const FEATURE_ITEMS: { key: string; Icon: LucideIcon }[] = [
+  { key: "billing.feature.backtesting", Icon: FlaskConical },
+  { key: "billing.feature.leaderboards", Icon: Trophy },
+  { key: "billing.feature.account_sync", Icon: Link2 },
 ];
 
 function PaywallCard({ feature, onUpgrade }: { feature: ProFeature; onUpgrade: () => void }) {
@@ -50,10 +50,10 @@ function PaywallCard({ feature, onUpgrade }: { feature: ProFeature; onUpgrade: (
             <p className="mt-2 text-sm text-muted-foreground">{t(copy.subtitle)}</p>
           </div>
           <div className="grid gap-2 text-xs sm:grid-cols-3">
-            {FEATURE_ITEMS.map((item) => (
-              <div key={item} className="rounded-lg border border-border/60 bg-background/50 px-2 py-2">
-                <Sparkles className="mx-auto mb-1 h-4 w-4 text-primary" />
-                <span className="font-medium">{t(item)}</span>
+            {FEATURE_ITEMS.map(({ key, Icon }) => (
+              <div key={key} className="rounded-lg border border-border/60 bg-background/50 px-2 py-2">
+                <Icon className="mx-auto mb-1 h-4 w-4 text-primary" />
+                <span className="font-medium">{t(key)}</span>
               </div>
             ))}
           </div>
@@ -90,12 +90,12 @@ export function ProUpgradeGate({ feature, children }: { feature: ProFeature; chi
   }
 
   return (
-    <div className="relative min-h-[420px]">
+    <div className="relative h-full min-h-[420px]">
       <div inert aria-hidden className="pointer-events-none select-none blur-[3px] opacity-50">
         {children}
       </div>
-      <div className="absolute inset-0 z-10 rounded-lg bg-background/40 p-4 backdrop-blur-[1px]">
-        <div className="sticky top-24 flex justify-center">
+      <div className="absolute inset-0 z-10 overflow-y-auto rounded-lg bg-background/40 p-4 backdrop-blur-[1px]">
+        <div className="flex min-h-full items-center justify-center py-2">
           <PaywallCard feature={feature} onUpgrade={() => setCheckoutOpen(true)} />
         </div>
       </div>

@@ -18,5 +18,13 @@ assert.match(source, /blur-\[3px\]/);
 // Il flusso Stripe Embedded Checkout vive in ProCheckoutDialog (vedi il suo static test).
 assert.match(source, /ProCheckoutDialog/);
 assert.match(source, /href="\/pro"/);
+// Ogni vantaggio Pro ha la sua icona (non un'icona generica ripetuta).
+assert.match(source, /FlaskConical/);
+assert.match(source, /Trophy/);
+assert.match(source, /Link2/);
+assert.doesNotMatch(source, /\bSparkles\b/);
+// L'overlay del paywall scrolla: la CTA non viene mai tagliata in contenitori ad altezza fissa.
+assert.match(source, /overflow-y-auto/);
+assert.doesNotMatch(source, /sticky top-24/);
 
 console.log("pro upgrade gate static checks passed");
