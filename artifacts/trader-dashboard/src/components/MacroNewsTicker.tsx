@@ -388,10 +388,10 @@ function MacroNewsDetailDialog({
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
-            {detailUrl && (
+          {(detailUrl ?? article.sourceUrl) && (
+            <div className="flex flex-wrap gap-2">
               <a
-                href={detailUrl}
+                href={(detailUrl ?? article.sourceUrl) as string}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
@@ -399,19 +399,8 @@ function MacroNewsDetailDialog({
                 <ExternalLink className="w-4 h-4" />
                 Apri articolo
               </a>
-            )}
-            {article.sourceUrl && article.sourceUrl !== detailUrl && (
-              <a
-                href={article.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Apri articolo
-              </a>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
