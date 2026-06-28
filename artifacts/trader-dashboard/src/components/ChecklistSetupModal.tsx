@@ -180,29 +180,31 @@ export function ChecklistSetupModal() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
-                  className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5"
+                  className="flex min-h-0 flex-1 flex-col"
                 >
-                  <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-2">
-                    <p className="text-sm font-semibold text-primary">{uiText("checklist_setup.what_title")}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {uiText("checklist_setup.what_body_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.validation_gate")}</span> {uiText("checklist_setup.what_body_after")}
-                    </p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {uiText("checklist_setup.review_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.trade_not_ready")}</span>.
-                    </p>
+                  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
+                    <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 space-y-1.5">
+                      <p className="text-sm font-semibold text-primary">{uiText("checklist_setup.what_title")}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {uiText("checklist_setup.what_body_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.validation_gate")}</span> {uiText("checklist_setup.what_body_after")}
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {uiText("checklist_setup.review_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.trade_not_ready")}</span>.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {CONFIRMATION_CATEGORIES.map((cat) => (
+                        <div key={cat.id} className="rounded-xl border border-border bg-secondary/30 p-2.5">
+                          <p className="text-base mb-0.5">{cat.emoji}</p>
+                          <p className="text-xs font-semibold text-foreground leading-tight">{cat.label}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{cat.description}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {CONFIRMATION_CATEGORIES.map((cat) => (
-                      <div key={cat.id} className="rounded-xl border border-border bg-secondary/30 p-3">
-                        <p className="text-base mb-0.5">{cat.emoji}</p>
-                        <p className="text-xs font-semibold text-foreground leading-tight">{cat.label}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{cat.description}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex shrink-0 gap-2 border-t border-border p-4">
                     <Button onClick={() => setStep("pick")} className="flex-1">
                       Scegli i miei criteri →
                     </Button>
