@@ -163,6 +163,18 @@ export function seoPageFromSlug(
   return null;
 }
 
+/**
+ * Localize a footer/nav href for the active language: an English keyword-page
+ * path (e.g. "/trading-journal") becomes that language's URL ("/it/diario-trading"),
+ * while non-keyword paths (/, /sign-up, /privacy, …) are returned unchanged.
+ * Keeps the language system consistent when navigating from a localized landing.
+ */
+export function localizedHref(href: string, lang: Language): string {
+  const slug = href.replace(/^\//, "").replace(/\/$/, "");
+  const page = seoPageFromSlug("en", slug);
+  return page ? seoPagePath(page, lang) : href;
+}
+
 /** Absolute https URL for a site-relative path. */
 export function absoluteUrl(path: string): string {
   if (path === "/") return `${SITE_ORIGIN}/`;

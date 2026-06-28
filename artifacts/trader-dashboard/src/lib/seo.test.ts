@@ -10,6 +10,7 @@ import {
   getLanguageFromPath,
   landingAlternates,
   landingPath,
+  localizedHref,
   seoPageAlternates,
   seoPageFromSlug,
   seoPagePath,
@@ -65,6 +66,16 @@ for (const lang of SUPPORTED_LANGUAGES) {
   const slugs = SEO_PAGE_KEYS.map((page) => SEO_SLUGS[page][lang]);
   assert.equal(new Set(slugs).size, slugs.length, `slugs for ${lang} must be unique`);
 }
+
+// localizedHref — footer/nav links follow the active language; non-keyword paths unchanged.
+assert.equal(localizedHref("/trading-journal", "it"), "/it/diario-trading");
+assert.equal(localizedHref("/trading-journal", "en"), "/trading-journal");
+assert.equal(localizedHref("/backtesting", "it"), "/it/backtest");
+assert.equal(localizedHref("/guide", "de"), "/de/anleitung");
+assert.equal(localizedHref("/risk-management", "fr"), "/fr/gestion-risque");
+assert.equal(localizedHref("/pricing", "es"), "/es/precios");
+assert.equal(localizedHref("/privacy", "it"), "/privacy", "legal paths stay as-is");
+assert.equal(localizedHref("/sign-up", "fr"), "/sign-up", "auth paths stay as-is");
 
 // absoluteUrl
 assert.equal(absoluteUrl("/"), `${SITE_ORIGIN}/`);
