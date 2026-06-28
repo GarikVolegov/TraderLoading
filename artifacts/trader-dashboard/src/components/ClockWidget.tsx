@@ -132,7 +132,7 @@ export function ClockWidget() {
     : "border-success/30 bg-success/10";
 
   return (
-    <Card className="relative h-16 overflow-hidden rounded-[0.625rem] border border-[#11192c] bg-[#070e1f] shadow-[var(--tl-shadow-panel)] backdrop-blur-md">
+    <Card className="relative h-16 overflow-hidden rounded-[0.625rem]">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-primary shadow-[0_0_16px_hsl(var(--primary)/0.8)]" />
 
       <CardContent className="relative z-10 h-full p-0">

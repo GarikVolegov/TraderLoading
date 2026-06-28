@@ -22,12 +22,18 @@ export interface NormalizedTradingViewWatchlistSettings extends TradingViewWatch
   invalidSymbols: string[];
 }
 
-export interface TradingViewSingleTickerConfig {
-  colorTheme: "dark";
-  isTransparent: boolean;
-  locale: string;
+export interface TradingViewMiniSymbolConfig {
   symbol: string;
   width: string;
+  height: string;
+  locale: string;
+  dateRange: string;
+  colorTheme: "dark";
+  isTransparent: boolean;
+  autosize: boolean;
+  largeChartUrl: string;
+  chartOnly: boolean;
+  noTimeScale: boolean;
 }
 
 export interface TradingViewSymbolSuggestion {
@@ -39,8 +45,8 @@ export interface TradingViewSymbolSuggestion {
 export const TRADING_VIEW_WATCHLIST_STORAGE_KEY = "tl_tradingview_watchlist_symbols_v1";
 export const DEFAULT_TRADING_VIEW_WATCHLIST_SYMBOLS = ["FX:EURUSD", "OANDA:XAUUSD", "FX:GBPUSD"];
 
-const TRADING_VIEW_SINGLE_TICKER_SCRIPT =
-  "https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js";
+const TRADING_VIEW_MINI_SYMBOL_SCRIPT =
+  "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
 const TRADING_VIEW_CHART_URL = "https://www.tradingview.com/chart/";
 
 const SYMBOL_PATTERN = /^[A-Z0-9_./-]+:[A-Z0-9_./-]+$/;
@@ -208,13 +214,19 @@ export function normalizeTradingViewWatchlistSettings(raw: unknown): NormalizedT
   };
 }
 
-export function buildTradingViewSingleTickerConfig(symbol: string): TradingViewSingleTickerConfig {
+export function buildTradingViewMiniSymbolConfig(symbol: string): TradingViewMiniSymbolConfig {
   return {
-    colorTheme: "dark",
-    isTransparent: true,
-    locale: "it",
     symbol,
     width: "100%",
+    height: "100%",
+    locale: "it",
+    dateRange: "1D",
+    colorTheme: "dark",
+    isTransparent: true,
+    autosize: true,
+    largeChartUrl: "",
+    chartOnly: false,
+    noTimeScale: true,
   };
 }
 
@@ -247,7 +259,7 @@ export const tradingViewWatchlistStorage = {
   },
 };
 
-function TradingViewSingleTickerEmbed({
+function TradingViewMiniSymbolEmbed({
   symbol,
   reloadKey,
   onError,
@@ -265,15 +277,15 @@ function TradingViewSingleTickerEmbed({
 
     container.innerHTML = "";
     const widgetTarget = document.createElement("div");
-    widgetTarget.className = "tradingview-widget-container__widget h-[96px]";
+    widgetTarget.className = "tradingview-widget-container__widget h-[116px]";
     container.appendChild(widgetTarget);
 
     const script = document.createElement("script");
-    script.src = TRADING_VIEW_SINGLE_TICKER_SCRIPT;
+    script.src = TRADING_VIEW_MINI_SYMBOL_SCRIPT;
     script.async = true;
     script.type = "text/javascript";
     script.onerror = onError;
-    script.text = JSON.stringify(buildTradingViewSingleTickerConfig(symbol));
+    script.text = JSON.stringify(buildTradingViewMiniSymbolConfig(symbol));
     container.appendChild(script);
 
     return () => {
@@ -281,7 +293,7 @@ function TradingViewSingleTickerEmbed({
     };
   }, [configKey, onError, symbol]);
 
-  return <div ref={containerRef} className="tradingview-widget-container h-[96px] w-full overflow-hidden" />;
+  return <div ref={containerRef} className="tradingview-widget-container h-[116px] w-full overflow-hidden" />;
 }
 
 function SymbolEditorDialog({
@@ -476,21 +488,27 @@ export function TradingViewWatchlistWidget() {
   };
 
   return (
-    <Card className="relative overflow-hidden border-border/30 bg-card/60">
+    <Card className="relative overflow-hidden">
       <WidgetHeader
         icon={<Activity className="h-3.5 w-3.5" />}
         iconTone="accent"
         title={uiText("auto.ui.b97144823c")}
-        subtitle={uiText("auto.ui.1867f40365")}
+        subtitle={uiText("tradingview.watchlist.subtitle")}
         action={
-          <button
-            type="button"
-            onClick={() => setEditorOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-background/35 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-            title={uiText("auto.ui.33357d724e")}
-          >
-            <Settings className="h-3.5 w-3.5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-primary">
+              <span className="h-[5px] w-[5px] animate-pulse rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+              {uiText("tradingview.watchlist.live")}
+            </span>
+            <button
+              type="button"
+              onClick={() => setEditorOpen(true)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-background/35 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              title={uiText("auto.ui.33357d724e")}
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
+          </div>
         }
         className="border-b border-border/40"
       />
@@ -503,10 +521,10 @@ export function TradingViewWatchlistWidget() {
             <Button type="button" size="sm" onClick={() => setEditorOpen(true)}>{uiText("auto.ui.33357d724e")}</Button>
           </div>
         ) : (
-          <div className="max-h-[220px] space-y-1.5 overflow-y-auto overflow-x-hidden pr-1">
+          <div className="max-h-[372px] space-y-1.5 overflow-y-auto overflow-x-hidden pr-1">
             {symbols.map((symbol) => (
               <div key={symbol} className="relative overflow-hidden rounded-md border border-border/35 bg-background/25">
-                <TradingViewSingleTickerEmbed symbol={symbol} reloadKey={reloadKey} onError={handleEmbedError} />
+                <TradingViewMiniSymbolEmbed symbol={symbol} reloadKey={reloadKey} onError={handleEmbedError} />
                 <a
                   href={buildTradingViewChartUrl(symbol)}
                   target="_blank"

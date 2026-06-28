@@ -4,7 +4,7 @@ import {
   DEFAULT_TRADING_VIEW_WATCHLIST_SYMBOLS,
   TRADING_VIEW_WATCHLIST_STORAGE_KEY,
   buildTradingViewChartUrl,
-  buildTradingViewSingleTickerConfig,
+  buildTradingViewMiniSymbolConfig,
   normalizeTradingViewSymbol,
   normalizeTradingViewWatchlistSettings,
   suggestTradingViewSymbols,
@@ -34,12 +34,14 @@ assert.deepEqual(normalizeTradingViewWatchlistSettings(null), {
   invalidSymbols: [],
 });
 
-const config = buildTradingViewSingleTickerConfig("FX:EURUSD");
+const config = buildTradingViewMiniSymbolConfig("FX:EURUSD");
 assert.equal(config.colorTheme, "dark");
 assert.equal(config.locale, "it");
 assert.equal(config.isTransparent, true);
 assert.equal(config.symbol, "FX:EURUSD");
 assert.equal(config.width, "100%");
+assert.equal(config.dateRange, "1D");
+assert.equal(config.autosize, true);
 
 assert.equal(
   buildTradingViewChartUrl("OANDA:XAUUSD"),
@@ -92,8 +94,9 @@ assert.deepEqual(tradingViewWatchlistStorage.load(storage), {
 });
 
 const source = readFileSync(new URL("./TradingViewWatchlistWidget.tsx", import.meta.url), "utf8");
-assert.match(source, /embed-widget-single-quote\.js/);
+assert.match(source, /embed-widget-mini-symbol-overview\.js/);
 assert.doesNotMatch(source, /embed-widget-market-quotes\.js/);
+assert.doesNotMatch(source, /embed-widget-single-quote\.js/);
 assert.match(source, /auto\.ui\.33357d724e/);
 assert.match(source, /tradingview\.watchlist\.suggestions/);
 assert.match(source, /max-h-\[min\(720px,calc\(100dvh-2rem\)\)\]/);
@@ -102,6 +105,7 @@ assert.match(source, /TradingViewWatchlistSettings/);
 assert.match(source, /onerror/);
 assert.match(source, /href=\{buildTradingViewChartUrl\(symbol\)\}/);
 assert.match(source, /target="_blank"/);
-assert.match(source, /h-\[96px\]/);
+assert.match(source, /h-\[116px\]/);
+assert.match(source, /tradingview\.watchlist\.live/);
 
 console.log("tradingview watchlist widget checks passed");
