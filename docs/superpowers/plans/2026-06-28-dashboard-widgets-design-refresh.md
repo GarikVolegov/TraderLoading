@@ -89,6 +89,8 @@ export function Sparkline({
   height = 28,
   className,
 }: SparklineProps) {
+  // Hooks must run unconditionally — call useId before any early return.
+  const gid = React.useId();
   if (!data || data.length < 2) {
     return <svg width={width} height={height} className={className} aria-hidden />;
   }
@@ -103,7 +105,6 @@ export function Sparkline({
     .map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
     .join(" ");
   const area = `${line} L${width},${height} L0,${height} Z`;
-  const gid = React.useId();
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
