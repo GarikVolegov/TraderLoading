@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
+import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from "wouter";
 import { motion } from "framer-motion";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
@@ -22,6 +22,7 @@ import { SessionStartNotifier } from "./components/SessionStartNotifier";
 import { SessionCheckinModal } from "./components/SessionCheckinModal";
 import { CommandPalette } from "./components/CommandPalette";
 import { SignUpConversionTracker } from "./components/SignUpConversionTracker";
+import { NicknameOnboarding } from "./pages/NicknameOnboarding";
 import { initAnalytics } from "./lib/analytics";
 
 // Avvio analytics (no-op senza VITE_GA_MEASUREMENT_ID o senza consenso cookie).
@@ -168,9 +169,22 @@ function SignUpPage() {
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
-        fallbackRedirectUrl={`${basePath}/`}
+        fallbackRedirectUrl={`${basePath}/welcome`}
       />
     </AuthPageShell>
+  );
+}
+
+function WelcomePage() {
+  return (
+    <>
+      <Show when="signed-in">
+        <NicknameOnboarding />
+      </Show>
+      <Show when="signed-out">
+        <Redirect to="/sign-in" />
+      </Show>
+    </>
   );
 }
 
@@ -456,6 +470,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/terms" component={TermsPage} />
           <Route path="/styleguide" component={Styleguide} />
+          <Route path="/welcome" component={WelcomePage} />
           <Route path="/*?" component={AppShell} />
         </Switch>
       </QueryClientProvider>
