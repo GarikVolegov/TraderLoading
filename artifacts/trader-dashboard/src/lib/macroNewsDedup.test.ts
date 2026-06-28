@@ -22,11 +22,11 @@ assert.equal(isRedundantText(title, [title]), true);
 assert.equal(isRedundantText("", [title]), true);
 assert.equal(isRedundantText("   ", [title]), true);
 
-// An enriched "what happened" (summary + source/recency) ADDS information → keep it,
-// even though most of its words already appeared.
+// An "enriched" what-happened that is just the title/summary plus a tacked-on source line
+// still restates the headline → redundant (hide it; the user must not read the title twice).
 const enriched = `${summary} Fonte: ANZ, pubblicata circa 3 ore fa.`;
-assert.equal(isRedundantText(enriched, [title]), false);
-assert.equal(isRedundantText(enriched, [title, summary]), false);
+assert.equal(isRedundantText(enriched, [title]), true);
+assert.equal(isRedundantText(enriched, [title, summary]), true);
 
 // Distinct analysis text shares almost nothing with the headline → keep it.
 const whyItMatters =
@@ -37,5 +37,11 @@ assert.equal(isRedundantText(whyItMatters, [title, summary]), false);
 const goldTitle = "Gold jumps as Treasury yields retreat";
 const goldSummary = "Spot gold rises while the dollar softens.";
 assert.equal(isRedundantText(goldSummary, [goldTitle]), false);
+
+// A what-happened built on a DISTINCT summary (not the title) keeps its own content and is
+// not contained in the title → still shown.
+const distinctWhatHappened =
+  "Spot gold rises while the dollar softens. Key figures: 1.5%. Fonte: Reuters.";
+assert.equal(isRedundantText(distinctWhatHappened, [goldTitle]), false);
 
 console.log("macro news dedup checks passed");

@@ -18,10 +18,12 @@ export function normalizeWords(text: string): string[] {
 const REDUNDANT_COVERAGE_THRESHOLD = 0.9;
 
 /**
- * True when `candidate` adds essentially nothing over the strings already shown — i.e.
- * at least ~90% of its words already appear in one of them. Coverage is measured against
- * the candidate (not the shorter string), so an *enriched* text that contains an earlier
- * line but adds new detail (figures, source, recency) is still kept.
+ * True when `candidate` says essentially the same thing as something already shown — i.e.
+ * one of them is ~contained in the other (≥90% word overlap relative to the *shorter* of
+ * the two). Measuring against the shorter string catches a restatement in either
+ * direction: a summary that just echoes the title, AND an "enriched" what-happened that is
+ * the title/summary plus a tacked-on source/recency line. Genuinely distinct analysis
+ * (why it matters / how it impacts) shares few words with the headline and is kept.
  */
 export function isRedundantText(candidate: string, shown: string[]): boolean {
   const candidateWords = new Set(normalizeWords(candidate));
@@ -34,7 +36,8 @@ export function isRedundantText(candidate: string, shown: string[]): boolean {
     for (const word of candidateWords) {
       if (prevWords.has(word)) overlap++;
     }
-    if (overlap / candidateWords.size >= REDUNDANT_COVERAGE_THRESHOLD) return true;
+    const denominator = Math.min(candidateWords.size, prevWords.size);
+    if (overlap / denominator >= REDUNDANT_COVERAGE_THRESHOLD) return true;
   }
   return false;
 }

@@ -388,24 +388,6 @@ function MacroNewsDetailDialog({
             </div>
           )}
 
-          {(article.originalTitle || article.originalSummary) && (
-            <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">
-                Originale
-              </p>
-              {article.originalTitle && (
-                <p className="text-sm font-semibold text-muted-foreground">
-                  {article.originalTitle}
-                </p>
-              )}
-              {article.originalSummary && (
-                <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed">
-                  {article.originalSummary}
-                </p>
-              )}
-            </div>
-          )}
-
           <div className="flex flex-wrap gap-2">
             {detailUrl && (
               <a
