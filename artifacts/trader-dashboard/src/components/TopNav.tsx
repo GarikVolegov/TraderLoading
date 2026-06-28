@@ -37,7 +37,9 @@ export function TopNav() {
             className="lg:hidden shrink-0"
           >
             <Link href="/">
-              <span className="text-sm font-bold font-mono tracking-wide whitespace-nowrap bg-gradient-to-r from-foreground to-foreground/50 bg-clip-text text-transparent cursor-pointer">
+              {/* Hard gradient stop at 46% = the "Trader|Loading" split in the mono wordmark:
+                  "Trader" stays foreground, "Loading" is the brand jade (--primary). */}
+              <span className="text-sm font-bold font-mono tracking-wide whitespace-nowrap bg-gradient-to-r from-foreground from-46% to-primary to-46% bg-clip-text text-transparent cursor-pointer">
                 TraderLoading
               </span>
             </Link>
