@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, boolean, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const communitiesTable = pgTable("communities", {
   id: serial("id").primaryKey(),
@@ -18,12 +18,58 @@ export const communityMembersTable = pgTable("community_members", {
   id: serial("id").primaryKey(),
   communityId: integer("community_id").notNull(),
   userId: text("user_id").notNull(),
+  // Legacy label kept for backward-compat; source of truth is roleId →
+  // communityRolesTable.permissions (plus owner via communities.creatorId).
   role: text("role").notNull().default("member"),
+  roleId: integer("role_id"),
   joinedAt: timestamp("joined_at").notNull().defaultNow(),
 }, (t) => [
   uniqueIndex("community_members_pair_idx").on(t.communityId, t.userId),
   index("community_members_community_idx").on(t.communityId),
   index("community_members_user_idx").on(t.userId),
+]);
+
+// Custom, per-community granular roles. The community creator (owner) is
+// implicit and always has every permission; everyone else derives their
+// capabilities from the `permissions` array of their assigned role.
+export const communityRolesTable = pgTable("community_roles", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  name: text("name").notNull(),
+  color: text("color"),
+  permissions: jsonb("permissions").$type<string[]>().notNull().default([]),
+  position: integer("position").notNull().default(0),
+  // Role auto-assigned to new joiners (exactly one per community).
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  index("community_roles_community_idx").on(t.communityId),
+]);
+
+export const communityBansTable = pgTable("community_bans", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  userId: text("user_id").notNull(),
+  bannedBy: text("banned_by").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("community_bans_pair_idx").on(t.communityId, t.userId),
+  index("community_bans_community_idx").on(t.communityId),
+]);
+
+export const communityMutesTable = pgTable("community_mutes", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  userId: text("user_id").notNull(),
+  mutedBy: text("muted_by").notNull(),
+  // NULL = indefinite mute; otherwise the mute expires at this instant.
+  until: timestamp("until"),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("community_mutes_pair_idx").on(t.communityId, t.userId),
+  index("community_mutes_community_idx").on(t.communityId),
 ]);
 
 export const communityChannelsTable = pgTable("community_channels", {
@@ -86,6 +132,9 @@ export const voicePresenceTable = pgTable("voice_presence", {
 
 export type Community = typeof communitiesTable.$inferSelect;
 export type CommunityMember = typeof communityMembersTable.$inferSelect;
+export type CommunityRole = typeof communityRolesTable.$inferSelect;
+export type CommunityBan = typeof communityBansTable.$inferSelect;
+export type CommunityMute = typeof communityMutesTable.$inferSelect;
 export type CommunityChannel = typeof communityChannelsTable.$inferSelect;
 export type CommunityMessage = typeof communityMessagesTable.$inferSelect;
 export type CommunityFile = typeof communityFilesTable.$inferSelect;

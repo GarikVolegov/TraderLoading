@@ -20,6 +20,9 @@ import type {
   CommunityDetail,
   CommunityMsg,
   VoiceParticipant,
+  CommunityRole,
+  CommunityMemberRow,
+  CommunityBanRow,
 } from "./types";
 
 export function usePostComments(postId: number | null) {
@@ -143,5 +146,41 @@ export function useVoicePresence(channelId: number | null, enabled: boolean) {
     enabled: channelId !== null && enabled,
     refetchInterval: 5_000,
     staleTime: 0,
+  });
+}
+
+export function useCommunityRoles(communityId: number | null, enabled = true) {
+  return useQuery<CommunityRole[]>({
+    queryKey: ["communityRoles", communityId],
+    queryFn: () => apiJSON(`community/${communityId}/roles`),
+    enabled: communityId !== null && enabled,
+    staleTime: 10_000,
+  });
+}
+
+export function useCommunityMembers(communityId: number | null, enabled = true) {
+  return useQuery<CommunityMemberRow[]>({
+    queryKey: ["communityMembers", communityId],
+    queryFn: () => apiJSON(`community/${communityId}/members`),
+    enabled: communityId !== null && enabled,
+    staleTime: 10_000,
+  });
+}
+
+export function usePermissionsCatalog(communityId: number | null, enabled = true) {
+  return useQuery<{ permissions: string[] }>({
+    queryKey: ["communityPermCatalog", communityId],
+    queryFn: () => apiJSON(`community/${communityId}/permissions-catalog`),
+    enabled: communityId !== null && enabled,
+    staleTime: 300_000,
+  });
+}
+
+export function useCommunityBans(communityId: number | null, enabled = true) {
+  return useQuery<CommunityBanRow[]>({
+    queryKey: ["communityBans", communityId],
+    queryFn: () => apiJSON(`community/${communityId}/bans`),
+    enabled: communityId !== null && enabled,
+    staleTime: 10_000,
   });
 }

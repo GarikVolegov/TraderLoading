@@ -2,10 +2,19 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, voicePresenceTable, profileTable } from "@workspace/db";
+import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, communityRolesTable, communityBansTable, communityMutesTable, voicePresenceTable, profileTable } from "@workspace/db";
 import { eq, and, desc, asc, sql, lt, type SQL } from "drizzle-orm";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
+import {
+  getMemberContext,
+  requirePermission,
+  hasPermission,
+  isMuteActive,
+  sanitizePermissions,
+  DEFAULT_MEMBER_PERMISSIONS,
+  ADMIN_ROLE_PERMISSIONS,
+} from "../services/communityPermissions.js";
 
 const COMMUNITY_FILES_DIR = resolveUploadPath("community-files");
 if (!fs.existsSync(COMMUNITY_FILES_DIR)) fs.mkdirSync(COMMUNITY_FILES_DIR, { recursive: true });
@@ -98,10 +107,32 @@ router.post("/community", async (req, res) => {
       })
       .returning();
 
+    // Seed the two starter roles. "Membro" is the default assigned to joiners;
+    // "Admin" carries every permission. The creator stays owner (implicit, full
+    // power via creatorId) and is additionally given the Admin role.
+    await db.insert(communityRolesTable).values({
+      communityId: community.id,
+      name: "Membro",
+      permissions: DEFAULT_MEMBER_PERMISSIONS,
+      position: 0,
+      isDefault: true,
+    });
+    const [adminRole] = await db
+      .insert(communityRolesTable)
+      .values({
+        communityId: community.id,
+        name: "Admin",
+        permissions: ADMIN_ROLE_PERMISSIONS,
+        position: 1,
+        isDefault: false,
+      })
+      .returning({ id: communityRolesTable.id });
+
     await db.insert(communityMembersTable).values({
       communityId: community.id,
       userId,
       role: "owner",
+      roleId: adminRole.id,
     });
 
     const defaultChannels = [
@@ -133,13 +164,41 @@ router.get("/community/:id", async (req, res) => {
       .where(eq(communityChannelsTable.communityId, id))
       .orderBy(asc(communityChannelsTable.position));
 
+    const roles = await db
+      .select({
+        id: communityRolesTable.id,
+        name: communityRolesTable.name,
+        color: communityRolesTable.color,
+        permissions: communityRolesTable.permissions,
+        position: communityRolesTable.position,
+        isDefault: communityRolesTable.isDefault,
+      })
+      .from(communityRolesTable)
+      .where(eq(communityRolesTable.communityId, id))
+      .orderBy(asc(communityRolesTable.position));
+
     const [membership] = await db
       .select()
       .from(communityMembersTable)
       .where(and(eq(communityMembersTable.communityId, id), eq(communityMembersTable.userId, userId)))
       .limit(1);
 
-    res.json({ ...community, channels, isMember: !!membership, myRole: membership?.role ?? null });
+    const isOwner = community.creatorId === userId;
+    const myRoleObj = membership?.roleId != null ? roles.find((r) => r.id === membership.roleId) : undefined;
+    const myPermissions = isOwner
+      ? [...ADMIN_ROLE_PERMISSIONS]
+      : sanitizePermissions(myRoleObj?.permissions);
+
+    res.json({
+      ...community,
+      channels,
+      roles,
+      isMember: !!membership || isOwner,
+      isOwner,
+      myRole: membership?.role ?? null,
+      myRoleId: membership?.roleId ?? null,
+      myPermissions,
+    });
   } catch (err) {
     console.error("GET /community/:id error:", err);
     res.status(500).json({ error: "Errore interno" });
@@ -159,7 +218,21 @@ router.post("/community/:id/join", async (req, res) => {
       .limit(1);
     if (existing) { res.json({ ok: true, alreadyMember: true }); return; }
 
-    await db.insert(communityMembersTable).values({ communityId: id, userId, role: "member" });
+    // Banned users cannot rejoin.
+    const [ban] = await db
+      .select({ id: communityBansTable.id })
+      .from(communityBansTable)
+      .where(and(eq(communityBansTable.communityId, id), eq(communityBansTable.userId, userId)))
+      .limit(1);
+    if (ban) { res.status(403).json({ error: "Sei stato bannato da questa community" }); return; }
+
+    const [defaultRole] = await db
+      .select({ id: communityRolesTable.id })
+      .from(communityRolesTable)
+      .where(and(eq(communityRolesTable.communityId, id), eq(communityRolesTable.isDefault, true)))
+      .limit(1);
+
+    await db.insert(communityMembersTable).values({ communityId: id, userId, role: "member", roleId: defaultRole?.id ?? null });
     await db
       .update(communitiesTable)
       .set({ memberCount: sql`${communitiesTable.memberCount} + 1` })
@@ -204,15 +277,7 @@ router.post("/community/:id/channels", async (req, res) => {
       return;
     }
 
-    const [membership] = await db
-      .select()
-      .from(communityMembersTable)
-      .where(and(eq(communityMembersTable.communityId, communityId), eq(communityMembersTable.userId, userId)))
-      .limit(1);
-    if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-      res.status(403).json({ error: "Solo owner/admin possono creare canali" });
-      return;
-    }
+    if (!(await requirePermission(req, res, communityId, "channels.manage"))) return;
 
     const existing = await db
       .select({ position: communityChannelsTable.position })
@@ -244,15 +309,7 @@ router.delete("/community/channels/:channelId", async (req, res) => {
     const [channel] = await db.select().from(communityChannelsTable).where(eq(communityChannelsTable.id, channelId)).limit(1);
     if (!channel) { res.status(404).json({ error: "Canale non trovato" }); return; }
 
-    const [membership] = await db
-      .select()
-      .from(communityMembersTable)
-      .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
-      .limit(1);
-    if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-      res.status(403).json({ error: "Non autorizzato" });
-      return;
-    }
+    if (!(await requirePermission(req, res, channel.communityId, "channels.manage"))) return;
 
     await db.delete(communityChannelsTable).where(eq(communityChannelsTable.id, channelId));
     res.json({ ok: true });
@@ -317,6 +374,17 @@ router.post("/community/channels/:channelId/messages", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
       .limit(1);
     if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
+
+    // Muted members cannot post.
+    const [mute] = await db
+      .select({ until: communityMutesTable.until })
+      .from(communityMutesTable)
+      .where(and(eq(communityMutesTable.communityId, channel.communityId), eq(communityMutesTable.userId, userId)))
+      .limit(1);
+    if (isMuteActive(mute ? { until: mute.until ?? null } : null, new Date())) {
+      res.status(403).json({ error: "Sei stato silenziato in questa community" });
+      return;
+    }
 
     const [profile] = await db
       .select({ name: profileTable.name, avatarUrl: profileTable.avatarUrl })
@@ -486,9 +554,9 @@ router.post("/community/channels/:channelId/files", (req: Request, res: Response
         .limit(1);
       if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
 
-      const [community] = await db.select({ creatorId: communitiesTable.creatorId }).from(communitiesTable).where(eq(communitiesTable.id, channel.communityId)).limit(1);
-      const isOwner = community?.creatorId === userId || membership.role === "owner" || membership.role === "admin";
-      const downloadable = isOwner
+      const ctx = await getMemberContext(channel.communityId, userId);
+      const canManageFiles = hasPermission(ctx, "files.manage");
+      const downloadable = canManageFiles
         ? (req.body.downloadable !== "false" && req.body.downloadable !== false)
         : true;
 
@@ -551,14 +619,7 @@ router.patch("/community/files/:fileId/downloadable", async (req, res) => {
     const [file] = await db.select().from(communityFilesTable).where(eq(communityFilesTable.id, fileId)).limit(1);
     if (!file) { res.status(404).json({ error: "File non trovato" }); return; }
 
-    const [membership] = await db
-      .select()
-      .from(communityMembersTable)
-      .where(and(eq(communityMembersTable.communityId, file.communityId), eq(communityMembersTable.userId, userId)))
-      .limit(1);
-    if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-      res.status(403).json({ error: "Solo owner/admin possono modificare questa impostazione" }); return;
-    }
+    if (!(await requirePermission(req, res, file.communityId, "files.manage"))) return;
 
     const { downloadable } = req.body;
     const [updated] = await db
@@ -581,13 +642,8 @@ router.delete("/community/files/:fileId", async (req, res) => {
     const [file] = await db.select().from(communityFilesTable).where(eq(communityFilesTable.id, fileId)).limit(1);
     if (!file) { res.status(404).json({ error: "File non trovato" }); return; }
 
-    const [membership] = await db
-      .select()
-      .from(communityMembersTable)
-      .where(and(eq(communityMembersTable.communityId, file.communityId), eq(communityMembersTable.userId, userId)))
-      .limit(1);
-    const isOwnerOrAdmin = membership?.role === "owner" || membership?.role === "admin";
-    if (file.userId !== userId && !isOwnerOrAdmin) {
+    const ctx = await getMemberContext(file.communityId, userId);
+    if (file.userId !== userId && !hasPermission(ctx, "files.manage")) {
       res.status(403).json({ error: "Non autorizzato" }); return;
     }
 
@@ -614,18 +670,13 @@ router.get("/uploads/community-files/:filename", async (req, res) => {
 
     if (!file) { res.status(404).json({ error: "File non trovato" }); return; }
 
-    const [membership] = await db
-      .select()
-      .from(communityMembersTable)
-      .where(and(eq(communityMembersTable.communityId, file.communityId), eq(communityMembersTable.userId, userId)))
-      .limit(1);
-    if (!membership) { res.status(403).json({ error: "Non sei membro della community" }); return; }
+    const ctx = await getMemberContext(file.communityId, userId);
+    if (!ctx.isMember && !ctx.isOwner) { res.status(403).json({ error: "Non sei membro della community" }); return; }
 
     const filePath = path.join(COMMUNITY_FILES_DIR, filename);
     if (!fs.existsSync(filePath)) { res.status(404).json({ error: "File non trovato sul server" }); return; }
 
-    const isOwnerOrAdmin = membership.role === "owner" || membership.role === "admin";
-    const canDownload = file.downloadable || isOwnerOrAdmin;
+    const canDownload = file.downloadable || hasPermission(ctx, "files.manage");
     if (canDownload) {
       res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(file.fileName)}"`);
     } else {
@@ -650,6 +701,9 @@ router.delete("/community/:id", async (req, res) => {
 
     await db.delete(communityMembersTable).where(eq(communityMembersTable.communityId, id));
     await db.delete(communityChannelsTable).where(eq(communityChannelsTable.communityId, id));
+    await db.delete(communityRolesTable).where(eq(communityRolesTable.communityId, id));
+    await db.delete(communityBansTable).where(eq(communityBansTable.communityId, id));
+    await db.delete(communityMutesTable).where(eq(communityMutesTable.communityId, id));
     await db.delete(communitiesTable).where(eq(communitiesTable.id, id));
     res.json({ ok: true });
   } catch (err) {

@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { uiText } from "@/contexts/LanguageContext";
+import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio } from "lucide-react";
+import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings } from "lucide-react";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { useCommunities, useCommunityDetail } from "./hooks";
 import { CreateCommunityModal } from "./CreateCommunityModal";
 import { CreateChannelModal } from "./CreateChannelModal";
+import { CommunitySettingsModal } from "./CommunitySettingsModal";
 import { TextChannelView } from "./TextChannelView";
 import { VoiceChannelView } from "./VoiceChannelView";
 
@@ -19,6 +20,7 @@ export function CommunityTab({
   currentUserName: string;
 }) {
   const qc = useQueryClient();
+  const { t } = useLanguage();
   const { data: communities = [], isLoading: loadingCommunities } =
     useCommunities();
   const [selectedCommunityId, setSelectedCommunityId] = useState<number | null>(
@@ -31,14 +33,23 @@ export function CommunityTab({
     useCommunityDetail(selectedCommunityId);
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<
     "communities" | "channels" | "content"
   >("communities");
 
   const selectedChannel =
     communityDetail?.channels.find((c) => c.id === selectedChannelId) ?? null;
-  const isOwnerOrAdmin =
-    communityDetail?.myRole === "owner" || communityDetail?.myRole === "admin";
+  const myPerms = communityDetail?.myPermissions ?? [];
+  const isOwner = communityDetail?.isOwner ?? false;
+  const can = (p: string) => isOwner || myPerms.includes(p);
+  const canManageChannels = can("channels.manage");
+  const canManageFiles = can("files.manage");
+  const canOpenSettings =
+    isOwner ||
+    ["roles.manage", "members.kick", "members.ban", "members.mute", "community.manage", "channels.manage"].some(
+      (p) => myPerms.includes(p),
+    );
 
   const joinCommunity = async (id: number) => {
     try {
@@ -186,6 +197,16 @@ export function CommunityTab({
             </button>
             <span className="text-xl">{communityDetail.iconEmoji}</span>
             <p className="font-bold text-sm truncate">{communityDetail.name}</p>
+            {communityDetail.isMember && canOpenSettings && (
+              <button
+                onClick={() => setShowSettings(true)}
+                aria-label={t("community.settings.open")}
+                title={t("community.settings.open")}
+                className="ml-auto p-1 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           {communityDetail.description && (
             <p className="text-[10px] text-muted-foreground leading-relaxed truncate">
@@ -205,14 +226,14 @@ export function CommunityTab({
             const channels = communityDetail.channels.filter(
               (c) => c.type === type,
             );
-            if (channels.length === 0 && !isOwnerOrAdmin) return null;
+            if (channels.length === 0 && !canManageChannels) return null;
             return (
               <div key={type} className="mb-2">
                 <div className="flex items-center justify-between px-3 py-1">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     {type === "text" ? "Testo" : "Voce"}
                   </p>
-                  {isOwnerOrAdmin && (
+                  {canManageChannels && (
                     <button
                       onClick={() => setShowCreateChannel(true)}
                       className="p-0.5 rounded hover:text-primary text-muted-foreground transition-colors"
@@ -279,7 +300,7 @@ export function CommunityTab({
         <TextChannelView
           channel={selectedChannel}
           currentUserId={currentUserId}
-          isOwnerOrAdmin={isOwnerOrAdmin}
+          isOwnerOrAdmin={canManageFiles}
         />
       ) : (
         <VoiceChannelView
@@ -403,6 +424,12 @@ export function CommunityTab({
         <CreateChannelModal
           communityId={selectedCommunityId}
           onClose={() => setShowCreateChannel(false)}
+        />
+      )}
+      {showSettings && communityDetail && (
+        <CommunitySettingsModal
+          detail={communityDetail}
+          onClose={() => setShowSettings(false)}
         />
       )}
     </>
