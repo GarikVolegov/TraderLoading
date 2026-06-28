@@ -69,7 +69,7 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
         <section className="mx-auto hidden w-full max-w-xl flex-col gap-7 lg:flex">
           <div className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-xl border border-primary/35 bg-primary/10 text-primary shadow-[0_0_24px_hsl(var(--primary)/0.12)]">
-              <Rocket className="h-5 w-5" aria-label="Logo TraderLoading" />
+              <Rocket className="h-5 w-5" aria-hidden="true" />
             </div>
             <div className="min-w-0">
               <p className="font-mono text-base font-bold tracking-tight text-foreground">TraderLoading</p>

@@ -96,7 +96,7 @@ export function NicknameOnboarding() {
       <div className="relative z-10 w-full max-w-[440px] rounded-2xl border border-border/60 bg-card/90 p-6 shadow-[0_28px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-8">
         <div className="mb-5 flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-xl border border-primary/35 bg-primary/10 text-primary shadow-[0_0_24px_hsl(var(--primary)/0.12)]">
-            <Rocket className="h-5 w-5" aria-label="Logo TraderLoading" />
+            <Rocket className="h-5 w-5" aria-hidden="true" />
           </div>
           <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
             {t("auth.nickname.eyebrow")}
