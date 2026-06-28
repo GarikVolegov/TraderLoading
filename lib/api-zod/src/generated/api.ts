@@ -566,6 +566,66 @@ export const GetRandomQuoteResponse = zod.object({
 });
 
 /**
+ * @summary List the current user's support tickets
+ */
+export const GetSupportTicketsResponseItem = zod.object({
+  id: zod.number(),
+  subject: zod.string(),
+  status: zod.enum(["open", "pending", "closed"]),
+  category: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const GetSupportTicketsResponse = zod.array(GetSupportTicketsResponseItem);
+
+/**
+ * @summary Open a new support ticket
+ */
+export const CreateSupportTicketBody = zod.object({
+  subject: zod.string(),
+  body: zod.string(),
+  category: zod.string().optional(),
+});
+
+/**
+ * @summary Get a support ticket with its messages
+ */
+export const GetSupportTicketThreadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetSupportTicketThreadResponse = zod.object({
+  ticket: zod.object({
+    id: zod.number(),
+    subject: zod.string(),
+    status: zod.enum(["open", "pending", "closed"]),
+    category: zod.string().nullish(),
+    createdAt: zod.string(),
+    updatedAt: zod.string(),
+  }),
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      ticketId: zod.number(),
+      authorType: zod.enum(["user", "support"]),
+      body: zod.string(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Add a message to a support ticket
+ */
+export const CreateSupportTicketMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateSupportTicketMessageBody = zod.object({
+  body: zod.string(),
+});
+
+/**
  * @summary Get today's session check-in (null if not yet done)
  */
 export const GetTodayCheckinResponse = zod

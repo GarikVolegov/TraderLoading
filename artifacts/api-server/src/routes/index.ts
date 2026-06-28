@@ -31,6 +31,7 @@ import wikiRouter from "./wiki.js";
 import adminRouter from "./admin.js";
 import billingRouter from "./billing.js";
 import publicRouter from "./public.js";
+import supportRouter from "./support.js";
 import {
   ANONYMOUS_FALLBACK_PREFIXES,
   createProductionAuthGate,
@@ -47,6 +48,7 @@ router.use(publicRouter);
 router.use(authRouter);
 router.use(adminRouter);
 router.use(billingRouter);
+router.use(supportRouter);
 router.use(accountRouter);
 router.use(profileRouter);
 router.use(missionsRouter);

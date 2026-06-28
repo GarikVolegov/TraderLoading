@@ -290,6 +290,54 @@ export interface CreateQuoteRequest {
   author?: string;
 }
 
+export type SupportTicketMessageAuthorType =
+  (typeof SupportTicketMessageAuthorType)[keyof typeof SupportTicketMessageAuthorType];
+
+export const SupportTicketMessageAuthorType = {
+  user: "user",
+  support: "support",
+} as const;
+
+export interface SupportTicketMessage {
+  id: number;
+  ticketId: number;
+  authorType: SupportTicketMessageAuthorType;
+  body: string;
+  createdAt: string;
+}
+
+export type SupportTicketStatus = (typeof SupportTicketStatus)[keyof typeof SupportTicketStatus];
+
+export const SupportTicketStatus = {
+  open: "open",
+  pending: "pending",
+  closed: "closed",
+} as const;
+
+export interface SupportTicket {
+  id: number;
+  subject: string;
+  status: SupportTicketStatus;
+  category?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportTicketThread {
+  ticket: SupportTicket;
+  messages: SupportTicketMessage[];
+}
+
+export interface CreateSupportTicketRequest {
+  subject: string;
+  body: string;
+  category?: string;
+}
+
+export interface CreateSupportTicketMessageRequest {
+  body: string;
+}
+
 export interface CompleteMissionResponse {
   mission: Mission;
   profile: UserProfile;

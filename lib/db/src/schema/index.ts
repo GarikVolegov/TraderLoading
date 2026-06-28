@@ -18,3 +18,4 @@ export * from "./wiki";
 export { brokerProfileStoreTable } from "./brokerProfileStore";
 export * from "./admin";
 export * from "./marketing";
+export * from "./support";

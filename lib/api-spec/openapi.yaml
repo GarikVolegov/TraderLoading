@@ -41,6 +41,8 @@ tags:
     description: Custom trading quotes
   - name: checkins
     description: Daily session check-ins
+  - name: support
+    description: Support tickets and assistance threads
 paths:
   /wiki/sources:
     get:
@@ -778,6 +780,82 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Quote"
+
+  /support/tickets:
+    get:
+      operationId: getSupportTickets
+      tags: [support]
+      summary: List the current user's support tickets
+      responses:
+        "200":
+          description: List of support tickets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportTicket"
+    post:
+      operationId: createSupportTicket
+      tags: [support]
+      summary: Open a new support ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupportTicketRequest"
+      responses:
+        "201":
+          description: Created ticket thread
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketThread"
+
+  /support/tickets/{id}:
+    get:
+      operationId: getSupportTicketThread
+      tags: [support]
+      summary: Get a support ticket with its messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ticket thread
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketThread"
+
+  /support/tickets/{id}/messages:
+    post:
+      operationId: createSupportTicketMessage
+      tags: [support]
+      summary: Add a message to a support ticket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupportTicketMessageRequest"
+      responses:
+        "201":
+          description: Created message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketMessage"
 
   /checkins/today:
     get:
@@ -2223,6 +2301,85 @@ components:
           type: string
       required:
         - text
+
+    SupportTicketMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        ticketId:
+          type: integer
+        authorType:
+          type: string
+          enum: [user, support]
+        body:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - ticketId
+        - authorType
+        - body
+        - createdAt
+
+    SupportTicket:
+      type: object
+      properties:
+        id:
+          type: integer
+        subject:
+          type: string
+        status:
+          type: string
+          enum: [open, pending, closed]
+        category:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - subject
+        - status
+        - createdAt
+        - updatedAt
+
+    SupportTicketThread:
+      type: object
+      properties:
+        ticket:
+          $ref: "#/components/schemas/SupportTicket"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportTicketMessage"
+      required:
+        - ticket
+        - messages
+
+    CreateSupportTicketRequest:
+      type: object
+      properties:
+        subject:
+          type: string
+        body:
+          type: string
+        category:
+          type: string
+      required:
+        - subject
+        - body
+
+    CreateSupportTicketMessageRequest:
+      type: object
+      properties:
+        body:
+          type: string
+      required:
+        - body
 
     CompleteMissionResponse:
       type: object

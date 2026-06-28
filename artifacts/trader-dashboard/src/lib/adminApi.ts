@@ -1,4 +1,8 @@
 import { apiJSON } from "./apiFetch";
+import type {
+  SupportTicket,
+  SupportTicketMessage,
+} from "@workspace/api-client-react";
 
 export type AdminRole =
   | "super_admin"
@@ -281,6 +285,42 @@ export function unpublishAdminContentItem(itemId: number, reason: string) {
 
 export function getAdminSupportOverview() {
   return apiJSON<AdminSupportOverview>("/admin/support/overview");
+}
+
+export function getAdminSupportTickets(params: { status?: string; limit?: number } = {}) {
+  const search = new URLSearchParams();
+  if (params.status) search.set("status", params.status);
+  if (params.limit) search.set("limit", String(params.limit));
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+  return apiJSON<{ tickets: SupportTicket[] }>(`/admin/support/tickets${suffix}`);
+}
+
+export function getAdminSupportTicketThread(id: number) {
+  return apiJSON<{ ticket: SupportTicket; messages: SupportTicketMessage[] }>(
+    `/admin/support/tickets/${id}`,
+  );
+}
+
+export function replyAdminSupportTicket(id: number, body: string) {
+  return apiJSON<{ message: SupportTicketMessage; ticket: SupportTicket }>(
+    `/admin/support/tickets/${id}/reply`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body }),
+    },
+  );
+}
+
+export function setAdminSupportTicketStatus(id: number, status: string) {
+  return apiJSON<{ ticket: SupportTicket }>(
+    `/admin/support/tickets/${id}/status`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    },
+  );
 }
 
 export function getAdminSystemOverview() {

@@ -47,6 +47,7 @@ import { getGetUserSettingsQueryKey, useUpdateUserSettings } from "@workspace/ap
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Journal = lazy(() => import("./pages/Journal"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Support = lazy(() => import("./pages/Support"));
 const Checklist = lazy(() => import("./pages/Checklist"));
 const News = lazy(() => import("./pages/News"));
 const Chat = lazy(() => import("./pages/Chat"));
@@ -285,6 +286,8 @@ function AppRouter() {
           <Route path="/pro" component={ProPage} />
           <Route path="/billing/return" component={BillingReturn} />
           <Route path="/settings" component={Settings} />
+          <Route path="/support" component={Support} />
+          <Route path="/support/:id" component={Support} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

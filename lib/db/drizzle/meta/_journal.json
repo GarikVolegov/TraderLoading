@@ -92,6 +92,13 @@
       "when": 1782662400000,
       "tag": "0012_device_backgrounds",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1782748800000,
+      "tag": "0013_support_tickets",
+      "breakpoints": true
     }
   ]
 }

@@ -21,12 +21,24 @@ import {
   pushSubscriptionsTable,
   quotesTable,
   sessionsTable,
+  supportTicketMessagesTable,
+  supportTicketsTable,
   usersTable,
 } from "@workspace/db";
-import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { requireAdmin } from "../lib/adminAuth.js";
 import { ADMIN_PERMISSIONS_BY_ROLE } from "../lib/adminPermissions.js";
 import { writeAdminAudit } from "../services/adminAudit.js";
+import { logger } from "../lib/logger.js";
+import {
+  isSupportStatus,
+  serializeMessage,
+  serializeTicket,
+} from "./supportSerialize.js";
+import {
+  sendTicketReplyEmail,
+  sendTicketStatusEmail,
+} from "../services/email/ticketEmails.js";
 
 const router: IRouter = Router();
 
@@ -657,6 +669,180 @@ router.get("/admin/support/overview", requireAdmin("support.write"), async (_req
     recentLoginAccess,
   });
 });
+
+// ─── Support tickets ──────────────────────────────────────────────────────────
+
+function parseSupportStatusFilter(value: unknown): "all" | string {
+  const raw = String(Array.isArray(value) ? value[0] : value ?? "all")
+    .trim()
+    .toLowerCase();
+  return isSupportStatus(raw) ? raw : "all";
+}
+
+router.get(
+  "/admin/support/tickets",
+  requireAdmin("support.write"),
+  async (req, res) => {
+    const statusFilter = parseSupportStatusFilter(req.query.status);
+    const limit = parseAdminLimit(req.query.limit, 50);
+    const rows = await db
+      .select()
+      .from(supportTicketsTable)
+      .where(
+        statusFilter === "all"
+          ? undefined
+          : eq(supportTicketsTable.status, statusFilter),
+      )
+      .orderBy(desc(supportTicketsTable.updatedAt))
+      .limit(limit);
+    res.json({ tickets: rows.map(serializeTicket) });
+  },
+);
+
+router.get(
+  "/admin/support/tickets/:id",
+  requireAdmin("support.write"),
+  async (req, res) => {
+    const id = Number(getRouteParam(req.params.id));
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ error: "Ticket non valido" });
+      return;
+    }
+    const [ticket] = await db
+      .select()
+      .from(supportTicketsTable)
+      .where(eq(supportTicketsTable.id, id))
+      .limit(1);
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket non trovato" });
+      return;
+    }
+    const messages = await db
+      .select()
+      .from(supportTicketMessagesTable)
+      .where(eq(supportTicketMessagesTable.ticketId, id))
+      .orderBy(asc(supportTicketMessagesTable.createdAt));
+    res.json({
+      ticket: serializeTicket(ticket),
+      messages: messages.map(serializeMessage),
+    });
+  },
+);
+
+router.post(
+  "/admin/support/tickets/:id/reply",
+  requireAdmin("support.write"),
+  async (req, res) => {
+    const id = Number(getRouteParam(req.params.id));
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ error: "Ticket non valido" });
+      return;
+    }
+    const body = String(req.body?.body ?? "").trim();
+    if (!body) {
+      res.status(400).json({ error: "Messaggio obbligatorio" });
+      return;
+    }
+    const [ticket] = await db
+      .select()
+      .from(supportTicketsTable)
+      .where(eq(supportTicketsTable.id, id))
+      .limit(1);
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket non trovato" });
+      return;
+    }
+
+    const [message] = await db
+      .insert(supportTicketMessagesTable)
+      .values({
+        ticketId: id,
+        authorType: "support",
+        authorId: req.admin!.userId,
+        body,
+      })
+      .returning();
+    const [updated] = await db
+      .update(supportTicketsTable)
+      .set({ status: "pending", updatedAt: new Date() })
+      .where(eq(supportTicketsTable.id, id))
+      .returning();
+
+    await writeAdminAudit({
+      req,
+      admin: req.admin!,
+      action: "support.reply",
+      targetType: "support_ticket",
+      targetId: String(id),
+      before: ticket,
+      after: updated,
+    });
+
+    void sendTicketReplyEmail(
+      { id, userId: ticket.userId, subject: ticket.subject },
+      body,
+    ).catch((err) => logger.error({ err }, "[admin] support reply email failed"));
+
+    res
+      .status(201)
+      .json({ message: serializeMessage(message), ticket: serializeTicket(updated) });
+  },
+);
+
+router.post(
+  "/admin/support/tickets/:id/status",
+  requireAdmin("support.write"),
+  async (req, res) => {
+    const id = Number(getRouteParam(req.params.id));
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ error: "Ticket non valido" });
+      return;
+    }
+    const status = String(req.body?.status ?? "").trim().toLowerCase();
+    if (!isSupportStatus(status)) {
+      res.status(400).json({ error: "Stato non valido" });
+      return;
+    }
+    const [ticket] = await db
+      .select()
+      .from(supportTicketsTable)
+      .where(eq(supportTicketsTable.id, id))
+      .limit(1);
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket non trovato" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(supportTicketsTable)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(supportTicketsTable.id, id))
+      .returning();
+
+    await writeAdminAudit({
+      req,
+      admin: req.admin!,
+      action: "support.status",
+      targetType: "support_ticket",
+      targetId: String(id),
+      before: ticket,
+      after: updated,
+    });
+
+    if (status === "closed" || status === "open") {
+      void sendTicketStatusEmail({
+        id,
+        userId: ticket.userId,
+        subject: ticket.subject,
+        status,
+      }).catch((err) =>
+        logger.error({ err }, "[admin] support status email failed"),
+      );
+    }
+
+    res.json({ ticket: serializeTicket(updated) });
+  },
+);
 
 router.get(
   "/admin/system/overview",
