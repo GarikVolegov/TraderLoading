@@ -51,6 +51,7 @@ import {
   faqJsonLd,
   landingAlternates,
   landingPath,
+  localizedHref,
 } from "@/lib/seo";
 
 async function fetchJSON<T>(url: string): Promise<T> {
@@ -934,7 +935,7 @@ function ShowcaseRow({
   const { t } = useLanguage();
   return (
     <div className={`flex flex-col items-center gap-12 lg:gap-[50px] ${flip ? "lg:flex-row-reverse" : "lg:flex-row"}`}>
-      <Reveal className="flex-1">
+      <Reveal className="flex-1 text-center">
         <Eyebrow>{t(eyebrowKey)}</Eyebrow>
         <h3 className="mt-3.5 font-mono text-[28px] font-extrabold leading-tight tracking-tight text-foreground sm:text-[32px]">
           {t(titleKey)}
@@ -942,7 +943,7 @@ function ShowcaseRow({
         <p className="mt-3.5 text-[17px] leading-relaxed text-muted-foreground">{t(descKey)}</p>
         <ul className="mt-5 flex flex-col gap-3">
           {points.map((p) => (
-            <li key={p} className="flex items-center gap-3 text-[15px] text-foreground">
+            <li key={p} className="flex items-center justify-center gap-3 text-[15px] text-foreground">
               <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-primary/[0.12] text-primary">
                 <Check className="h-3 w-3" />
               </span>
@@ -1065,8 +1066,8 @@ export default function LandingPage() {
 
       {/* ── HERO (pt clears the fixed nav) ──────────────────────────── */}
       <main className="relative z-10 px-4 pb-16 pt-32 sm:px-6 sm:pb-20 sm:pt-44">
-        <div className="mx-auto grid w-full max-w-6xl items-center gap-10 sm:gap-14 lg:grid-cols-[1.05fr_0.95fr]">
-          <Reveal>
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-10 text-center sm:gap-14">
+          <Reveal className="w-full">
             <h1 className="mb-5 text-center font-mono text-[30px] font-extrabold leading-[1.08] tracking-tight text-foreground min-[400px]:text-[34px] sm:text-5xl lg:text-6xl">
               {t("landing.hero.title_a")}
               <br className="hidden sm:block" />{" "}
@@ -1074,10 +1075,10 @@ export default function LandingPage() {
                 {t("landing.hero.title_b")}
               </span>
             </h1>
-            <p className="mb-8 max-w-[540px] text-[17px] leading-relaxed text-muted-foreground sm:text-xl">
+            <p className="mb-8 mx-auto max-w-[540px] text-[17px] leading-relaxed text-muted-foreground sm:text-xl">
               {t("landing.hero.subtitle")}
             </p>
-            <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-3.5">
+            <div className="mb-7 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3.5">
               <button
                 onClick={() => setLocation("/sign-up")}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-7 py-3.5 text-base font-bold text-primary-foreground shadow-[0_0_34px_rgba(34,197,94,0.34)] transition-transform hover:-translate-y-0.5 sm:w-auto"
@@ -1108,7 +1109,7 @@ export default function LandingPage() {
                 </span>
               </a>
             </div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 text-[13.5px] text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-[13.5px] text-muted-foreground">
               {TRUST.map(({ icon: Icon, labelKey }) => (
                 <span key={labelKey} className="inline-flex items-center gap-1.5">
                   <Icon className="h-[15px] w-[15px] text-primary" />
@@ -1117,7 +1118,7 @@ export default function LandingPage() {
               ))}
             </div>
           </Reveal>
-          <Reveal delay={0.12} y={36}>
+          <Reveal delay={0.12} y={36} className="w-full max-w-md">
             <ProductPreview
               playing={tourPlaying}
               onPlay={() => setTourPlaying(true)}
@@ -1151,7 +1152,7 @@ export default function LandingPage() {
       {/* ── FEATURES (bento) ────────────────────────────────────────── */}
       <section id="features" className="relative z-10 scroll-mt-24 px-4 py-14 sm:px-6 sm:py-[70px]">
         <div className="mx-auto w-full max-w-6xl">
-          <Reveal className="mb-10 max-w-[620px]">
+          <Reveal className="mb-10 mx-auto max-w-[620px] text-center">
             <Eyebrow>{t("landing.features.eyebrow")}</Eyebrow>
             <h2 className="mt-3.5 font-mono text-[28px] sm:text-[40px] font-extrabold leading-tight tracking-tight text-foreground">
               {t("landing.features.title")}
@@ -1165,9 +1166,9 @@ export default function LandingPage() {
                 delay={(i % 3) * 0.06}
                 className={big ? "sm:col-span-2 sm:row-span-2" : ""}
               >
-                <div className="group flex h-full flex-col gap-3.5 rounded-[20px] border border-border/50 bg-card/50 p-5 sm:p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
+                <div className="group flex h-full flex-col gap-3.5 rounded-[20px] border border-border/50 bg-card/50 p-5 sm:p-6 text-center backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
                   <div
-                    className="flex h-12 w-12 items-center justify-center rounded-[14px]"
+                    className="mx-auto flex h-12 w-12 items-center justify-center rounded-[14px]"
                     style={{ background: `hsl(${tone} / 0.12)`, border: `1px solid hsl(${tone} / 0.25)`, color: `hsl(${tone})` } as CSSProperties}
                   >
                     <Icon className="h-6 w-6" />
@@ -1210,8 +1211,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
             {STEPS.map(({ n, icon: Icon, titleKey, descKey }, i) => (
               <Reveal key={n} delay={i * 0.08}>
-                <div className="h-full rounded-[20px] border border-border/50 bg-card/[0.45] p-5 sm:p-7 backdrop-blur-sm">
-                  <div className="mb-4 flex items-center justify-between">
+                <div className="h-full rounded-[20px] border border-border/50 bg-card/[0.45] p-5 sm:p-7 text-center backdrop-blur-sm">
+                  <div className="mb-4 flex items-center justify-center gap-4">
                     <span className="flex h-[46px] w-[46px] items-center justify-center rounded-[13px] border border-primary/[0.22] bg-primary/10 text-primary">
                       <Icon className="h-[22px] w-[22px]" />
                     </span>
@@ -1269,14 +1270,14 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
               {testimonials.map((q, i) => (
                 <Reveal key={q.id} delay={i * 0.08}>
-                  <div className="flex h-full flex-col gap-4 rounded-[20px] border border-border/50 bg-card/50 p-5 sm:p-6 backdrop-blur-sm">
-                    <div className="flex gap-0.5">
+                  <div className="flex h-full flex-col gap-4 rounded-[20px] border border-border/50 bg-card/50 p-5 sm:p-6 text-center backdrop-blur-sm">
+                    <div className="flex justify-center gap-0.5">
                       {Array.from({ length: Math.max(1, Math.min(5, q.rating)) }).map((_, s) => (
                         <Star key={s} className="h-[15px] w-[15px]" style={{ color: `hsl(${TONE.amber})`, fill: `hsl(${TONE.amber})` }} />
                       ))}
                     </div>
                     <p className="m-0 flex-1 text-[15px] leading-relaxed text-foreground/90">{`“${q.text}”`}</p>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center gap-3">
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/30 bg-card font-mono text-sm font-bold text-primary">
                         {q.name.split(" ").map((w) => w[0]).join("")}
                       </span>
@@ -1302,7 +1303,7 @@ export default function LandingPage() {
           </Reveal>
           <Reveal>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <div className="flex flex-col rounded-[22px] border border-border/50 bg-card/[0.45] p-6 sm:p-[30px] backdrop-blur-sm">
+              <div className="flex flex-col rounded-[22px] border border-border/50 bg-card/[0.45] p-6 sm:p-[30px] text-center backdrop-blur-sm">
                 <h3 className="mb-1 text-xl font-bold text-foreground">{t("landing.pricing.free")}</h3>
                 <p className="mb-5 font-mono text-[40px] font-extrabold text-foreground">
                   {"0€"}
@@ -1310,7 +1311,7 @@ export default function LandingPage() {
                 </p>
                 <ul className="mb-7 flex flex-1 flex-col gap-3">
                   {FREE_ITEMS.map((itemKey) => (
-                    <li key={itemKey} className="flex items-center gap-3 text-[14.5px] text-muted-foreground">
+                    <li key={itemKey} className="flex items-center justify-center gap-3 text-[14.5px] text-muted-foreground">
                       <Check className="h-4 w-4 shrink-0 text-muted-foreground/70" />
                       {t(itemKey)}
                     </li>
@@ -1324,11 +1325,11 @@ export default function LandingPage() {
                 </button>
               </div>
 
-              <div className="relative flex flex-col rounded-[22px] border border-primary/45 bg-card/[0.65] p-6 sm:p-[30px] shadow-[0_0_50px_rgba(34,197,94,0.14)] backdrop-blur-sm">
+              <div className="relative flex flex-col rounded-[22px] border border-primary/45 bg-card/[0.65] p-6 sm:p-[30px] text-center shadow-[0_0_50px_rgba(34,197,94,0.14)] backdrop-blur-sm">
                 <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1.5 text-[11px] font-bold text-primary-foreground shadow-[0_0_18px_rgba(34,197,94,0.4)]">
                   {t("landing.pricing.popular")}
                 </span>
-                <h3 className="mb-1 flex items-center gap-2 text-xl font-bold text-foreground">
+                <h3 className="mb-1 flex items-center justify-center gap-2 text-xl font-bold text-foreground">
                   <Crown className="h-5 w-5 text-primary" />
                   {t("landing.pricing.pro")}
                 </h3>
@@ -1339,7 +1340,7 @@ export default function LandingPage() {
                 <p className="mb-3 text-[12.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t("landing.pricing.pro_intro")}</p>
                 <ul className="mb-7 flex flex-1 flex-col gap-3">
                   {PRO_ITEMS.map((itemKey) => (
-                    <li key={itemKey} className="flex items-center gap-3 text-[14.5px] font-medium text-foreground">
+                    <li key={itemKey} className="flex items-center justify-center gap-3 text-[14.5px] font-medium text-foreground">
                       <Check className="h-4 w-4 shrink-0 text-primary" />
                       {t(itemKey)}
                     </li>
@@ -1378,14 +1379,14 @@ export default function LandingPage() {
                       type="button"
                       onClick={() => setOpenFaq(isOpen ? -1 : i)}
                       aria-expanded={isOpen}
-                      className="flex w-full items-center justify-between gap-3 px-6 py-[18px] text-left"
+                      className="flex w-full items-center justify-center gap-3 px-6 py-[18px] text-center"
                     >
                       <span className="text-[16.5px] font-bold text-foreground">{t(questionKey)}</span>
                       <Plus className={`h-5 w-5 shrink-0 text-primary transition-transform ${isOpen ? "rotate-45" : ""}`} />
                     </button>
                     <div className={`grid px-6 transition-all ${isOpen ? "grid-rows-[1fr] pb-[18px]" : "grid-rows-[0fr]"}`}>
                       <div className="overflow-hidden">
-                        <p className="text-[14.5px] leading-relaxed text-muted-foreground">{t(answerKey)}</p>
+                        <p className="text-center text-[14.5px] leading-relaxed text-muted-foreground">{t(answerKey)}</p>
                       </div>
                     </div>
                   </div>
@@ -1418,22 +1419,22 @@ export default function LandingPage() {
 
       {/* ── FOOTER ──────────────────────────────────────────────────── */}
       <footer className="relative z-10 border-t border-border/40 bg-background/60 backdrop-blur-md">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-3 gap-x-4 gap-y-9 px-4 pb-8 pt-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-8">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-3 gap-x-4 gap-y-9 px-4 pb-8 pt-12 text-center sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-8">
           <div className="col-span-3 md:col-span-1">
-            <div className="mb-3.5 flex items-center gap-2.5">
+            <div className="mb-3.5 flex items-center justify-center gap-2.5">
               <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-primary/35 bg-primary/15 text-primary">
                 <Rocket className="h-[17px] w-[17px]" />
               </span>
               <span className="font-mono text-[17px] font-bold text-foreground">TraderLoading</span>
             </div>
-            <p className="m-0 max-w-[280px] text-[13.5px] leading-relaxed text-muted-foreground">{t("landing.footer.tagline")}</p>
+            <p className="m-0 mx-auto max-w-[280px] text-[13.5px] leading-relaxed text-muted-foreground">{t("landing.footer.tagline")}</p>
           </div>
           {FOOTER_COLS.map((col) => (
             <div key={col.titleKey}>
               <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.1em] text-foreground">{t(col.titleKey)}</p>
               <div className="flex flex-col gap-2.5">
                 {col.items.map((item) => (
-                  <Link key={item.href} href={item.href} className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground">
+                  <Link key={item.href} href={localizedHref(item.href, language)} className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground">
                     {t(item.labelKey)}
                   </Link>
                 ))}
@@ -1441,11 +1442,11 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 border-t border-border/30 px-4 py-5 text-center sm:flex-row sm:justify-between sm:gap-3 sm:px-6 sm:text-left">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 border-t border-border/30 px-4 py-5 text-center sm:flex-row sm:justify-center sm:gap-4 sm:px-6">
           <p className="m-0 text-[13px] text-muted-foreground/70">
             {`© ${new Date().getFullYear()} TraderLoading. ${t("landing.footer.rights")}`}
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2.5 sm:justify-end sm:gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2.5 sm:gap-3">
             <Link href="/privacy" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
               {t("landing.footer.privacy")}
             </Link>
