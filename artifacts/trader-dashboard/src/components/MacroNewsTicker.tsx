@@ -33,6 +33,7 @@ import {
 import { formatItalianNewsRelativeTime } from "@/lib/relativeTime";
 import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
 import { reportClientError } from "@/lib/clientErrorReporter";
+import { isRedundantText } from "@/lib/macroNewsDedup";
 
 const API = "/api";
 const MACRO_NEWS_QUERY_VERSION = "asset-impact-v2";
@@ -309,6 +310,24 @@ function MacroNewsDetailDialog({
     whyItMatters: `La notizia riguarda ${assetLabels.join(", ")} e può modificare aspettative, flussi o volatilità sull'asset monitorato.`,
     possibleImpact: `Impatto ${article.impact} su ${assetLabels.join(", ")}. Direzione stimata: ${article.direction}.`,
   };
+  // The title, summary and deep-dive "what happened" often collapse to the same
+  // sentence (the backend frequently emits summary === title). Skip any slot that just
+  // restates text already shown above it so the headline never appears two or three times.
+  const shown: string[] = [article.title];
+  const showSummary =
+    Boolean(article.summary) && !isRedundantText(article.summary, shown);
+  if (showSummary) shown.push(article.summary);
+  const deepDiveEntries = (
+    [
+      ["Cosa è successo", deepDive.whatHappened],
+      ["Perché influenza l'asset", deepDive.whyItMatters],
+      ["Come può impattare", deepDive.possibleImpact],
+    ] as const
+  ).filter(([, value]) => {
+    if (!value || isRedundantText(value, shown)) return false;
+    shown.push(value);
+    return true;
+  });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[720px] bg-card/95 backdrop-blur-xl border-border max-h-[88vh] overflow-y-auto">
@@ -348,49 +367,31 @@ function MacroNewsDetailDialog({
         />
 
         <div className="space-y-4">
-          <p className="text-sm leading-relaxed text-foreground/90">
-            {article.summary}
-          </p>
+          {showSummary && (
+            <p className="text-sm leading-relaxed text-foreground/90">
+              {article.summary}
+            </p>
+          )}
 
-          <div className="grid gap-3">
-            {[
-              ["Cosa è successo", deepDive.whatHappened],
-              ["Perché influenza l'asset", deepDive.whyItMatters],
-              ["Come può impattare", deepDive.possibleImpact],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-lg border border-primary/15 bg-primary/5 p-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">
-                  {label}
-                </p>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {(article.originalTitle || article.originalSummary) && (
-            <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">
-                Originale
-              </p>
-              {article.originalTitle && (
-                <p className="text-sm font-semibold text-muted-foreground">
-                  {article.originalTitle}
-                </p>
-              )}
-              {article.originalSummary && (
-                <p className="text-xs text-muted-foreground/80 mt-1 leading-relaxed">
-                  {article.originalSummary}
-                </p>
-              )}
+          {deepDiveEntries.length > 0 && (
+            <div className="grid gap-3">
+              {deepDiveEntries.map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-primary/15 bg-primary/5 p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">
+                    {label}
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {value}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
-            {detailUrl && (
+          {(detailUrl ?? article.sourceUrl) && (
+            <div className="flex flex-wrap gap-2">
               <a
-                href={detailUrl}
+                href={(detailUrl ?? article.sourceUrl) as string}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
@@ -398,19 +399,8 @@ function MacroNewsDetailDialog({
                 <ExternalLink className="w-4 h-4" />
                 Apri articolo
               </a>
-            )}
-            {article.sourceUrl && article.sourceUrl !== detailUrl && (
-              <a
-                href={article.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Apri articolo
-              </a>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

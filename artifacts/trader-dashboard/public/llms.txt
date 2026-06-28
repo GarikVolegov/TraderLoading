@@ -40,7 +40,21 @@
 ## Pages
 
 - [Home / overview](https://traderloading.com/): product landing page
+- [Trading journal](https://traderloading.com/trading-journal): automated MT4/MT5 trade journal with R-multiple, win-rate and equity curve
+- [Backtesting](https://traderloading.com/backtesting): candle-by-candle chart replay on real historical data
+- [Macro news & analysis](https://traderloading.com/macro-news): real-time macro news with impact score, sentiment and economic calendar
+- [Risk management](https://traderloading.com/risk-management): position size / lot calculator, session clock, Monte Carlo, daily-loss circuit-breaker
+- [Pricing](https://traderloading.com/pricing): free plan + Pro at €7/month
+- [Guide](https://traderloading.com/guide): overview of every feature
+- [About](https://traderloading.com/about): what TraderLoading is and its mission
+- [Contact](https://traderloading.com/contact): support contact
 - [Sign up](https://traderloading.com/sign-up): create a free account
 - [Sign in](https://traderloading.com/sign-in): existing users
 - [Privacy policy](https://traderloading.com/privacy)
 - [Terms of service](https://traderloading.com/terms)
+
+## Languages
+
+English is served at the root; other languages use a /{lang} URL prefix
+(/it Italian, /es Spanish, /fr French, /de German). Example localized pages:
+/it/diario-trading, /es/backtesting, /fr/actualites-macro, /de/risikomanagement.

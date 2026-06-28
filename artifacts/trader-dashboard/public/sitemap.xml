@@ -1,19 +1,504 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://traderloading.com/</loc>
+    <loc>https://traderloading.com/it</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/" />
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://traderloading.com/sign-up</loc>
-    <changefreq>monthly</changefreq>
+    <loc>https://traderloading.com/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/" />
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/es</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/" />
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/fr</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/" />
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/de</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/" />
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/it/diario-trading</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/diario-trading" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/trading-journal" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/diario-de-trading" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/journal-de-trading" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/trading-tagebuch" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/trading-journal" />
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://traderloading.com/sign-in</loc>
+    <loc>https://traderloading.com/trading-journal</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/diario-trading" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/trading-journal" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/diario-de-trading" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/journal-de-trading" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/trading-tagebuch" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/trading-journal" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/es/diario-de-trading</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/diario-trading" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/trading-journal" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/diario-de-trading" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/journal-de-trading" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/trading-tagebuch" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/trading-journal" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/fr/journal-de-trading</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/diario-trading" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/trading-journal" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/diario-de-trading" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/journal-de-trading" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/trading-tagebuch" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/trading-journal" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/de/trading-tagebuch</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/diario-trading" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/trading-journal" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/diario-de-trading" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/journal-de-trading" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/trading-tagebuch" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/trading-journal" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/it/backtest</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/backtest" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/backtesting" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/backtesting" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/backtest" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/backtesting" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/backtesting" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/backtesting</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/backtest" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/backtesting" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/backtesting" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/backtest" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/backtesting" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/backtesting" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/es/backtesting</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/backtest" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/backtesting" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/backtesting" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/backtest" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/backtesting" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/backtesting" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/fr/backtest</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/backtest" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/backtesting" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/backtesting" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/backtest" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/backtesting" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/backtesting" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/de/backtesting</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/backtest" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/backtesting" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/backtesting" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/backtest" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/backtesting" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/backtesting" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/it/notizie-macro</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/notizie-macro" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/macro-news" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/noticias-macro" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/actualites-macro" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/makro-news" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/macro-news" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/macro-news</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/notizie-macro" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/macro-news" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/noticias-macro" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/actualites-macro" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/makro-news" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/macro-news" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/es/noticias-macro</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/notizie-macro" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/macro-news" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/noticias-macro" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/actualites-macro" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/makro-news" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/macro-news" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/fr/actualites-macro</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/notizie-macro" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/macro-news" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/noticias-macro" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/actualites-macro" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/makro-news" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/macro-news" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/de/makro-news</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/notizie-macro" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/macro-news" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/noticias-macro" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/actualites-macro" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/makro-news" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/macro-news" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/it/gestione-rischio</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/gestione-rischio" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/risk-management" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/gestion-riesgo" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/gestion-risque" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/risikomanagement" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/risk-management" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/risk-management</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/gestione-rischio" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/risk-management" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/gestion-riesgo" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/gestion-risque" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/risikomanagement" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/risk-management" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/es/gestion-riesgo</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/gestione-rischio" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/risk-management" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/gestion-riesgo" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/gestion-risque" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/risikomanagement" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/risk-management" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/fr/gestion-risque</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/gestione-rischio" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/risk-management" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/gestion-riesgo" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/gestion-risque" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/risikomanagement" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/risk-management" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/de/risikomanagement</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/gestione-rischio" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/risk-management" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/gestion-riesgo" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/gestion-risque" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/risikomanagement" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/risk-management" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/it/prezzi</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/prezzi" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/pricing" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/precios" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/tarifs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/preise" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/pricing" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/pricing</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/prezzi" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/pricing" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/precios" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/tarifs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/preise" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/pricing" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/es/precios</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/prezzi" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/pricing" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/precios" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/tarifs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/preise" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/pricing" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/fr/tarifs</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/prezzi" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/pricing" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/precios" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/tarifs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/preise" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/pricing" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/de/preise</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/prezzi" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/pricing" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/precios" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/tarifs" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/preise" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/pricing" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/it/guida</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/guida" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/guide" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/guia" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/guide" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/anleitung" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/guide" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/guide</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/guida" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/guide" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/guia" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/guide" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/anleitung" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/guide" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/es/guia</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/guida" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/guide" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/guia" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/guide" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/anleitung" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/guide" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/fr/guide</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/guida" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/guide" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/guia" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/guide" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/anleitung" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/guide" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/de/anleitung</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/guida" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/guide" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/guia" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/guide" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/anleitung" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/guide" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/it/chi-siamo</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/chi-siamo" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/about" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/sobre-nosotros" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/a-propos" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/ueber-uns" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/about" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/about</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/chi-siamo" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/about" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/sobre-nosotros" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/a-propos" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/ueber-uns" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/about" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/es/sobre-nosotros</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/chi-siamo" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/about" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/sobre-nosotros" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/a-propos" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/ueber-uns" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/about" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/fr/a-propos</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/chi-siamo" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/about" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/sobre-nosotros" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/a-propos" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/ueber-uns" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/about" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/de/ueber-uns</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/chi-siamo" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/about" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/sobre-nosotros" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/a-propos" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/ueber-uns" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/about" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/it/contatti</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/contatti" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/contact" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/contacto" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/contact" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/kontakt" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/contact" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/contact</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/contatti" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/contact" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/contacto" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/contact" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/kontakt" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/contact" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/es/contacto</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/contatti" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/contact" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/contacto" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/contact" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/kontakt" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/contact" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/fr/contact</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/contatti" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/contact" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/contacto" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/contact" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/kontakt" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/contact" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/de/kontakt</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://traderloading.com/it/contatti" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://traderloading.com/contact" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://traderloading.com/es/contacto" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://traderloading.com/fr/contact" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://traderloading.com/de/kontakt" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://traderloading.com/contact" />
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://traderloading.com/sign-up</loc>
     <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://traderloading.com/privacy</loc>

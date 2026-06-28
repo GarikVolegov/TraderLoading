@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, Plus, RefreshCw, Settings, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
+import { WidgetHeader } from "./ui/WidgetHeader";
 import {
   Dialog,
   DialogContent,
@@ -476,25 +477,23 @@ export function TradingViewWatchlistWidget() {
 
   return (
     <Card className="relative overflow-hidden border-border/30 bg-card/60">
-      <div className="flex items-center justify-between border-b border-border/40 px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
-            <Activity className="h-3.5 w-3.5 text-primary" />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate font-mono text-[13px] font-bold">{uiText("auto.ui.b97144823c")}</p>
-            <p className="truncate text-[9px] leading-tight text-muted-foreground">{uiText("auto.ui.1867f40365")}</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setEditorOpen(true)}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-background/35 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-          title={uiText("auto.ui.33357d724e")}
-        >
-          <Settings className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      <WidgetHeader
+        icon={<Activity className="h-3.5 w-3.5" />}
+        iconTone="accent"
+        title={uiText("auto.ui.b97144823c")}
+        subtitle={uiText("auto.ui.1867f40365")}
+        action={
+          <button
+            type="button"
+            onClick={() => setEditorOpen(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-background/35 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            title={uiText("auto.ui.33357d724e")}
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </button>
+        }
+        className="border-b border-border/40"
+      />
 
       <CardContent className="space-y-2 p-2">
         {symbols.length === 0 ? (

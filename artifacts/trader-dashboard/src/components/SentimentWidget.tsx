@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { Gauge } from "@/components/ui/Gauge";
+import { WidgetHeader } from "@/components/ui/WidgetHeader";
 import { Activity, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { apiFetch } from "@/lib/apiFetch";
@@ -14,64 +16,6 @@ interface SentimentSymbol {
   shortPercentage: number;
   longPositions: number;
   shortPositions: number;
-}
-
-function FearGreedArc({ score }: { score: number }) {
-  const zones = [
-    { label: "Panico",    min: 0,  max: 30,  color: "#ef4444" },
-    { label: "Paura",     min: 30, max: 45,  color: "#f97316" },
-    { label: "Neutrale",  min: 45, max: 55,  color: "#eab308" },
-    { label: "Ottimismo", min: 55, max: 70,  color: "#84cc16" },
-    { label: "Euforia",   min: 70, max: 100, color: "#22c55e" },
-  ];
-  const zone = zones.find(z => score >= z.min && score < z.max) ?? zones[2];
-  const clamp = Math.min(Math.max(score, 2), 98);
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-[9px] text-muted-foreground/50">{uiText("auto.ui.cdac0f1fa1")}</span>
-        <span className="text-xs font-bold font-mono tabular-nums" style={{ color: zone.color }}>
-          {zone.label} · {score.toFixed(0)}%
-        </span>
-        <span className="text-[9px] text-muted-foreground/50">{uiText("auto.ui.c992293454")}</span>
-      </div>
-
-      <div className="relative h-6 rounded-lg overflow-hidden">
-        {/* Gradient background */}
-        <div
-          className="absolute inset-0 opacity-20 rounded-lg"
-          style={{ background: "linear-gradient(to right, #ef4444, #f97316, #eab308, #84cc16, #22c55e)" }}
-        />
-        {/* Wave SVG */}
-        <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="sg2" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%"   stopColor="#ef4444" />
-              <stop offset="30%"  stopColor="#f97316" />
-              <stop offset="50%"  stopColor="#eab308" />
-              <stop offset="70%"  stopColor="#84cc16" />
-              <stop offset="100%" stopColor="#22c55e" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M0,18 C60,6 120,18 200,10 S300,4 400,13 S520,22 640,11 S780,3 1024,14 L1024,24 L0,24 Z"
-            fill="url(#sg2)" opacity={0.3}
-          />
-        </svg>
-        {/* Marker */}
-        <div
-          className="absolute top-0 bottom-0 flex items-center"
-          style={{ left: `calc(${clamp}% - 5px)` }}
-        >
-          <div
-            className="w-2.5 h-2.5 rounded-full border-2 border-background"
-            style={{ backgroundColor: zone.color, boxShadow: `0 0 6px ${zone.color}` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export function SentimentWidget() {
@@ -104,34 +48,38 @@ export function SentimentWidget() {
     ? sortedSymbols.reduce((s, sym) => s + sym.longPercentage, 0) / sortedSymbols.length
     : 50;
 
+  const avgBias = avgLong >= 55 ? "Long" : avgLong <= 45 ? "Short" : "Neutro";
+  const avgBiasClass =
+    avgBias === "Long"
+      ? "text-success"
+      : avgBias === "Short"
+        ? "text-destructive"
+        : "text-warning";
+
   return (
     <Card className="relative overflow-hidden flex flex-col bg-card/60 backdrop-blur-sm border-border/30">
-      {/* Header */}
-      <div className="widget-header">
-        <div className="flex items-center gap-2.5">
-          <div className="widget-icon bg-primary/10 border border-primary/20">
-            <Activity className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <p className="widget-title">{uiText("auto.ui.52bfe34c30")}</p>
+      <WidgetHeader
+        icon={<Activity className="h-4 w-4" />}
+        iconTone="warning"
+        title={uiText("auto.ui.52bfe34c30")}
+        action={
+          <div className="flex items-center gap-1.5">
             {data?.live && (
-              <span className="inline-flex items-center gap-1 text-[9px] text-green-400">
-                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+              <span className="inline-flex items-center gap-1 text-[9px] text-success">
+                <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" />
                 LIVE
               </span>
             )}
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground/50 hover:text-foreground transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground/50 hover:text-foreground transition-colors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       <CardContent className="p-4 space-y-3 flex-1">
         {isLoading && (
@@ -147,7 +95,12 @@ export function SentimentWidget() {
 
         {data?.symbols && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-            <FearGreedArc score={avgLong} />
+            <div className="flex flex-col items-center gap-1">
+              <Gauge value={avgLong} width={150} />
+              <span className={`text-xs font-semibold font-mono ${avgBiasClass}`}>
+                {avgBias}
+              </span>
+            </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
               {sentimentFilter.items.map((pair) => (
@@ -164,8 +117,7 @@ export function SentimentWidget() {
 
             <div className="space-y-2">
               {sortedSymbols.map((sym) => {
-                const bias      = sym.longPercentage >= 55 ? "Long" : sym.shortPercentage >= 55 ? "Short" : "Neutro";
-                const biasColor = bias === "Long" ? "text-primary" : bias === "Short" ? "text-destructive" : "text-muted-foreground";
+                const bias = sym.longPercentage >= 55 ? "Long" : sym.shortPercentage >= 55 ? "Short" : "Neutro";
 
                 return (
                   <div key={sym.name} className="space-y-1">
@@ -197,7 +149,7 @@ export function SentimentWidget() {
             </div>
 
             {!data.hasCredentials && (
-              <p className="text-[9px] text-amber-400/70 text-center">
+              <p className="text-[9px] text-warning/70 text-center">
                 Dati dimostrativi · configura MYFXBOOK_EMAIL/PASSWORD
               </p>
             )}

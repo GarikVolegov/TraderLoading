@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
+  ClipboardCheck,
   ShieldCheck,
   ArrowRight,
   RotateCcw,
@@ -7,7 +8,9 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { WidgetHeader } from "@/components/ui/WidgetHeader";
+import { Progress } from "@/components/ui/progress";
 import { useGetChecklist } from "@workspace/api-client-react";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { uiText } from "@/contexts/LanguageContext";
@@ -86,85 +89,75 @@ export function ChecklistDashboardWidget() {
   const isWarn = total > 0 && pct >= 50 && pct < 100;
 
   const statusColor = isGo
-    ? "text-emerald-400"
+    ? "text-success"
     : isWarn
-      ? "text-yellow-400"
+      ? "text-warning"
       : "text-muted-foreground";
 
-  const barColor = isGo
-    ? "bg-emerald-500"
-    : isWarn
-      ? "bg-yellow-500"
-      : "bg-primary";
+  const subtitleText =
+    total > 0
+      ? uiText("checklist.completed_count", { done: confirmed, total })
+      : undefined;
+
+  const headerAction = total > 0 ? (
+    <div className="flex items-center gap-2">
+      {confirmed > 0 && (
+        <button
+          onClick={reset}
+          className="p-1 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-secondary/60 transition-all"
+          title={uiText("auto.ui.4634a0ed9f")}
+        >
+          <RotateCcw className="w-3 h-3" />
+        </button>
+      )}
+      <AnimatePresence mode="wait">
+        {isGo ? (
+          <motion.span
+            key="go"
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.7, opacity: 0 }}
+            className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-success/40 bg-success/15 text-success tracking-wide"
+          >
+            GO ✓
+          </motion.span>
+        ) : (
+          <motion.span
+            key="count"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="text-[10px] font-mono text-muted-foreground"
+          >
+            {confirmed}/{total}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </div>
+  ) : undefined;
 
   return (
-    <Card className="h-full relative overflow-hidden bg-card/60 backdrop-blur-sm border-border/30">
-      <CardHeader className="pb-2 px-3 sm:px-5 pt-3 sm:pt-5 border-b border-border/30">
-        <div className="flex items-center gap-2">
-          <ShieldCheck
-            className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${isGo ? "text-emerald-400" : "text-primary"}`}
-          />
-          <CardTitle className="text-sm sm:text-base flex-1">
-            Conferme d'Entrata
-          </CardTitle>
+    <Card className="h-full relative overflow-hidden">
+      <WidgetHeader
+        icon={<ClipboardCheck className="w-4 h-4" />}
+        iconTone="accent"
+        title={uiText("checklist.title")}
+        subtitle={subtitleText}
+        action={headerAction}
+      />
 
-          {total > 0 && (
-            <div className="flex items-center gap-2">
-              {confirmed > 0 && (
-                <button
-                  onClick={reset}
-                  className="p-1 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-secondary/60 transition-all"
-                  title={uiText("auto.ui.4634a0ed9f")}
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              )}
-              <AnimatePresence mode="wait">
-                {isGo ? (
-                  <motion.span
-                    key="go"
-                    initial={{ scale: 0.7, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.7, opacity: 0 }}
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 text-emerald-400 tracking-wide"
-                  >
-                    GO ✓
-                  </motion.span>
-                ) : (
-                  <motion.span
-                    key="count"
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="text-[10px] font-mono text-muted-foreground"
-                  >
-                    {confirmed}/{total}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
+      {total > 0 && (
+        <div className="px-4 sm:px-5 pb-3 space-y-1 border-b border-border/30">
+          <Progress value={(confirmed / total) * 100} className="h-1" />
+          <p className={`text-[10px] font-medium ${statusColor}`}>
+            {isGo
+              ? "Tutti i criteri confermati — trade validato"
+              : confirmed === 0
+                ? "Spunta i criteri prima di entrare"
+                : `${confirmed} di ${total} criteri confermati`}
+          </p>
         </div>
-
-        {total > 0 && (
-          <div className="mt-2.5 space-y-1">
-            <div className="h-1 rounded-full bg-secondary/60 overflow-hidden">
-              <motion.div
-                className={`h-full rounded-full ${barColor}`}
-                animate={{ width: `${pct}%` }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-              />
-            </div>
-            <p className={`text-[10px] font-medium ${statusColor}`}>
-              {isGo
-                ? "Tutti i criteri confermati — trade validato"
-                : confirmed === 0
-                  ? "Spunta i criteri prima di entrare"
-                  : `${confirmed} di ${total} criteri confermati`}
-            </p>
-          </div>
-        )}
-      </CardHeader>
+      )}
 
       <CardContent className="p-2 sm:p-3">
         {isLoading ? (
@@ -199,7 +192,7 @@ export function ChecklistDashboardWidget() {
                   onClick={() => toggle(item.id)}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-all active:scale-[0.98] ${
                     isChecked
-                      ? "bg-emerald-500/8 hover:bg-emerald-500/12"
+                      ? "bg-success/8 hover:bg-success/12"
                       : "hover:bg-secondary/50"
                   }`}
                 >
@@ -208,7 +201,7 @@ export function ChecklistDashboardWidget() {
                     transition={{ duration: 0.25 }}
                     className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${
                       isChecked
-                        ? "bg-emerald-500 border-emerald-500"
+                        ? "bg-success border-success"
                         : "border-muted-foreground/25 bg-transparent"
                     }`}
                   >
@@ -239,7 +232,7 @@ export function ChecklistDashboardWidget() {
                   <span
                     className={`text-xs flex-1 leading-snug transition-all ${
                       isChecked
-                        ? "text-emerald-400/90 line-through decoration-emerald-500/40"
+                        ? "text-success/90 line-through decoration-success/40"
                         : "text-foreground/80"
                     }`}
                   >
@@ -255,8 +248,8 @@ export function ChecklistDashboardWidget() {
                 animate={{ opacity: 1 }}
                 className="flex items-center gap-1.5 px-2.5 pt-2 pb-1"
               >
-                <AlertTriangle className="w-3 h-3 text-yellow-500/70 shrink-0" />
-                <p className="text-[10px] text-yellow-500/70">
+                <AlertTriangle className="w-3 h-3 text-warning/70 shrink-0" />
+                <p className="text-[10px] text-warning/70">
                   {total - confirmed}{" "}
                   {total - confirmed === 1
                     ? "criterio mancante"

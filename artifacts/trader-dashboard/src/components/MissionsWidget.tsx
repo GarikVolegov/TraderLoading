@@ -4,6 +4,8 @@ import { CheckCircle2, Circle, Target, Zap, ChevronRight, CalendarPlus, ArrowRig
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
+import { WidgetHeader } from "@/components/ui/WidgetHeader";
+import { ProgressRing } from "@/components/ui/ProgressRing";
 import { useToast } from "@/hooks/use-toast";
 import {
   useGetMissions, useCompleteMission,
@@ -52,7 +54,7 @@ export function MissionsWidget() {
           toast({
             title: t("missions.level_up"),
             description: t("missions.level_up_desc", { level: data.profile.level }),
-            className: "bg-primary text-primary-foreground border-none shadow-[0_0_30px_rgba(34,197,94,0.5)] font-bold",
+            className: "bg-primary text-primary-foreground border-none shadow-[0_0_30px_hsl(var(--primary)/0.5)] font-bold",
             duration: 6000,
           });
         }
@@ -66,42 +68,46 @@ export function MissionsWidget() {
   const totalPossible = missions?.reduce((s, m) => s + m.xpReward, 0) ?? 0;
   const progress  = totalPossible > 0 ? (totalXp / totalPossible) * 100 : 0;
 
+  const subtitleText = missions
+    ? t("missions.subtitle_progress", { done: completed.length, total: missions.length })
+    : undefined;
+
+  const xpAction = (
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-primary/10 border border-primary/20">
+      <Zap className="w-3.5 h-3.5 text-primary" />
+      <span className="text-xs font-bold text-primary font-mono">+{totalXp} XP</span>
+    </div>
+  );
+
   return (
     <Card className="overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border/25">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
-            <Target className="w-4 h-4 text-accent" />
-          </div>
-          <div>
-            <p className="text-sm font-bold font-mono tracking-tight">{t("missions.title")}</p>
-            <p className="text-[10px] text-muted-foreground/50">
-              {completed.length}/{(missions?.length ?? 0)} completate
-            </p>
-          </div>
-        </div>
+      <WidgetHeader
+        icon={<Target className="w-4 h-4" />}
+        iconTone="accent"
+        title={t("missions.title")}
+        subtitle={subtitleText}
+        action={xpAction}
+      />
 
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-primary/10 border border-primary/20">
-          <Zap className="w-3.5 h-3.5 text-primary" />
-          <span className="text-xs font-bold text-primary font-mono">+{totalXp} XP</span>
-        </div>
-      </div>
-
-      {/* XP progress bar */}
+      {/* XP progress summary row */}
       {missions && missions.length > 0 && (
-        <div className="px-4 pt-2.5 pb-1">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">{uiText("auto.ui.49d5f3c4ad")}</span>
-            <span className="text-[9px] text-muted-foreground/60 font-mono">{totalXp}/{totalPossible}</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-secondary/60 overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-            />
+        <div className="px-4 pb-3 flex items-center gap-3">
+          <ProgressRing value={progress} size={44} stroke={5} tone="primary">
+            <span className="text-[9px] font-bold font-mono text-primary">{Math.round(progress)}%</span>
+          </ProgressRing>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">{uiText("auto.ui.49d5f3c4ad")}</span>
+              <span className="text-[9px] text-muted-foreground/60 font-mono">{totalXp}/{totalPossible}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-secondary/60 overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+              />
+            </div>
           </div>
         </div>
       )}

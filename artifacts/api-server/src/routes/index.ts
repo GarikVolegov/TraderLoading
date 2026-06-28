@@ -30,6 +30,7 @@ import libraryRouter from "./library.js";
 import wikiRouter from "./wiki.js";
 import adminRouter from "./admin.js";
 import billingRouter from "./billing.js";
+import publicRouter from "./public.js";
 import {
   ANONYMOUS_FALLBACK_PREFIXES,
   createProductionAuthGate,
@@ -42,6 +43,7 @@ const router: IRouter = Router();
 router.use(ANONYMOUS_FALLBACK_PREFIXES, createProductionAuthGate());
 
 router.use(healthRouter);
+router.use(publicRouter);
 router.use(authRouter);
 router.use(adminRouter);
 router.use(billingRouter);

@@ -14,7 +14,7 @@ assert.match(app, /logoBox: "!hidden"/);
 assert.match(app, /footer: "!hidden"/);
 assert.match(shell, /type AuthPageShellProps/);
 assert.match(shell, /mode: "sign-in" \| "sign-up"/);
-assert.match(shell, /app-icon-192\.png/);
+assert.match(shell, /<Rocket\b/);
 assert.match(shell, /TraderLoading/);
 assert.doesNotMatch(shell, /TraderLOADING|TRADERLOADING/);
 assert.doesNotMatch(shell, /TRADER[\s\S]{0,120}LOADING/);

@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { WidgetHeader } from "@/components/ui/WidgetHeader";
 import { FileText, Loader2, AlertCircle, ArrowUp, ArrowDown, RefreshCw, X } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, ReferenceLine, Tooltip, CartesianGrid, XAxis } from "recharts";
 import { useBackground } from "@/contexts/BackgroundContext";
@@ -54,14 +55,15 @@ export function CotWidget() {
 
   return (
     <Card className="relative overflow-hidden bg-card/88 backdrop-blur-sm border-border/60 flex flex-col">
-      <CardHeader className="pb-3 px-4 pt-4 border-b border-border/45">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <FileText className="w-4 h-4 text-primary" />
-          COT Report
-          {data?.fallback && (
-            <span className="text-[9px] text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-full">{uiText("auto.ui.aaded9e59f")}</span>
-          )}
-          <div className="ml-auto flex items-center gap-1.5">
+      <WidgetHeader
+        icon={<FileText className="h-4 w-4" />}
+        iconTone="primary"
+        title={uiText("cot.report_title")}
+        action={
+          <>
+            {data?.fallback && (
+              <span className="text-[9px] text-warning bg-warning/10 border border-warning/20 px-1.5 py-0.5 rounded-full">{uiText("auto.ui.aaded9e59f")}</span>
+            )}
             <button
               onClick={() => refetch()}
               disabled={isFetching}
@@ -69,9 +71,9 @@ export function CotWidget() {
             >
               <RefreshCw className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} />
             </button>
-          </div>
-        </CardTitle>
-      </CardHeader>
+          </>
+        }
+      />
 
       <CardContent className="p-4 space-y-3 flex-1">
         {isLoading && (
@@ -179,8 +181,8 @@ export function CotWidget() {
                           <AreaChart data={selected.history} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
                             <defs>
                               <linearGradient id={`cotWidGrad-${selected.currency}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={selected.nonCommNet >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0.3} />
-                                <stop offset="95%" stopColor={selected.nonCommNet >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0} />
+                                <stop offset="5%" stopColor={selected.nonCommNet >= 0 ? "hsl(var(--success))" : "hsl(var(--destructive))"} stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={selected.nonCommNet >= 0 ? "hsl(var(--success))" : "hsl(var(--destructive))"} stopOpacity={0} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.45} vertical={false} />
@@ -195,7 +197,7 @@ export function CotWidget() {
                             <Area
                               type="monotone"
                               dataKey="nonCommNet"
-                              stroke={selected.nonCommNet >= 0 ? "#22c55e" : "#ef4444"}
+                              stroke={selected.nonCommNet >= 0 ? "hsl(var(--success))" : "hsl(var(--destructive))"}
                               strokeWidth={1.5}
                               fill={`url(#cotWidGrad-${selected.currency})`}
                               dot={false}

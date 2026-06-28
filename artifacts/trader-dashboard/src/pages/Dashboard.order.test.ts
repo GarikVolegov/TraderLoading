@@ -5,8 +5,10 @@ const source = readFileSync(new URL("./Dashboard.tsx", import.meta.url), "utf8")
 
 assert.match(source, /tl_dashboard_order_command_center_v1/);
 assert.doesNotMatch(source, /tl_dashboard_order_command_center_v2/);
-assert.match(source, /columns-1 sm:columns-2 xl:columns-3/);
-assert.match(source, /mb-4 break-inside-avoid/);
+// Layout is a uniform responsive grid (CSS masonry `columns` broke on Safari/WebKit:
+// see Dashboard.tsx containerClass comment + commit "fix(ui): Safari card grid").
+assert.match(source, /grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3/);
+assert.doesNotMatch(source, /columns-1 sm:columns-2 xl:columns-3/);
 assert.match(source, /import \{ LotCalculatorWidget \} from "@\/components\/LotCalculatorWidget";/);
 assert.match(
   source,

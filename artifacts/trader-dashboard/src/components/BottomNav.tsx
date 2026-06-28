@@ -1,6 +1,7 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, BookOpen, MessageCircle, Brain, Settings, FlaskConical, Sunrise, Library, Archive } from "lucide-react";
+import { LayoutDashboard, BookOpen, MessageCircle, Brain, Settings, FlaskConical, Sunrise, Library, Archive, Rocket } from "lucide-react";
 import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -37,6 +38,25 @@ function NavItem({
   compact?: boolean;
 }) {
   const [isActive] = useRoute(href);
+
+  // The mobile tab label is hidden by default and only flashes briefly when the
+  // user taps the item, then fades away on its own. Declared unconditionally (hooks
+  // must run in the same order every render) even though only the mobile variant uses it.
+  const [flashLabel, setFlashLabel] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSelect = () => {
+    setFlashLabel(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setFlashLabel(false), 1600);
+  };
+
+  useEffect(
+    () => () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    },
+    [],
+  );
 
   if (vertical) {
     if (compact) {
@@ -130,6 +150,7 @@ function NavItem({
   return (
     <Link
       href={href}
+      onClick={handleSelect}
       className={`relative flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-full py-2 transition-colors duration-200 ${
         isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
@@ -169,15 +190,20 @@ function NavItem({
         )}
       </div>
 
-      <motion.span
-        animate={{ opacity: isActive ? 1 : 0.5 }}
-        transition={{ duration: 0.15 }}
-        className={`relative z-10 text-[10px] sm:text-[11px] font-medium transition-colors duration-200 ${
-          isActive ? "text-primary" : "text-muted-foreground"
-        }`}
-      >
-        {label}
-      </motion.span>
+      <AnimatePresence initial={false}>
+        {flashLabel && (
+          <motion.span
+            key="label"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="relative z-10 overflow-hidden text-[10px] font-medium leading-none text-primary sm:text-[11px]"
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </Link>
   );
 }
@@ -232,12 +258,8 @@ export function BottomNav() {
             transition={{ delay: 0.18, duration: 0.4 }}
             className="flex items-center justify-center"
           >
-            <div className="w-11 h-11 rounded-lg border border-primary/25 flex items-center justify-center shrink-0 overflow-hidden bg-background shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
-              <img
-                src={`${import.meta.env.BASE_URL}app-icon-192.png`}
-                alt="TraderLoading"
-                className="h-full w-full object-cover"
-              />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary shadow-[0_0_24px_hsl(var(--primary)/0.1)]">
+              <Rocket className="h-6 w-6" aria-label="TraderLoading" />
             </div>
           </motion.div>
         </div>

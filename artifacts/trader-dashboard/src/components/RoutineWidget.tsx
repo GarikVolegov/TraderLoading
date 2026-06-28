@@ -9,6 +9,8 @@ import {
   Users,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { WidgetHeader } from "@/components/ui/WidgetHeader";
+import { ProgressRing } from "@/components/ui/ProgressRing";
 import { cn } from "@/lib/utils";
 import { useGetFriends } from "@workspace/api-client-react";
 import { saveRoutineCompletion, SessionModal, type Answers } from "@/pages/Routine";
@@ -37,66 +39,17 @@ function loadDone(program: "morning" | "evening"): boolean {
   }
 }
 
-function ProgressRing({ done, total }: { done: number; total: number }) {
-  const r = 27;
-  const circ = 2 * Math.PI * r;
-  const pct = done / total;
-  const offset = circ * (1 - pct);
-  const color = done === total ? "#58f58b" : done > 0 ? "#ffb36a" : "hsl(var(--border))";
-
-  return (
-    <div className="relative h-[4.25rem] w-[4.25rem] shrink-0">
-      <svg className="h-[4.25rem] w-[4.25rem] -rotate-90" viewBox="0 0 68 68">
-        <circle cx="34" cy="34" r={r} fill="none" stroke="hsl(var(--border)/0.45)" strokeWidth="4" />
-        <motion.circle
-          cx="34"
-          cy="34"
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={circ}
-          initial={{ strokeDashoffset: circ }}
-          animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-          style={{ filter: done > 0 ? `drop-shadow(0 0 4px ${color})` : "none" }}
-        />
-      </svg>
-
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={done}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.5, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="font-mono text-base font-bold leading-none tabular-nums"
-            style={{ color }}
-          >
-            {done}/{total}
-          </motion.span>
-        </AnimatePresence>
-        <span className="mt-0.5 text-[0.42rem] font-bold uppercase leading-none tracking-normal text-primary">
-          Sessions
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function SessionRow({
   label,
   icon: Icon,
-  color,
+  colorVar,
   done,
   time,
   onStart,
 }: {
   label: string;
   icon: React.ElementType;
-  color: string;
+  colorVar: string;
   done: boolean;
   time?: string;
   onStart: () => void;
@@ -116,20 +69,20 @@ function SessionRow({
         )}
       >
         {done && (
-          <div className="absolute inset-y-0 left-0 w-[3px] bg-primary shadow-[0_0_14px_hsl(var(--primary)/0.85)]" />
+          <div className="absolute inset-y-0 left-0 w-0.75 bg-primary shadow-[0_0_14px_hsl(var(--primary)/0.85)]" />
         )}
 
         <div
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border"
-          style={{ background: `${color}24`, borderColor: `${color}35` }}
+          style={{ background: `hsl(var(--${colorVar}) / 0.14)`, borderColor: `hsl(var(--${colorVar}) / 0.21)` }}
         >
-          <Icon className="h-[1.05rem] w-[1.05rem]" style={{ color }} />
+          <Icon className="h-[1.05rem] w-[1.05rem]" style={{ color: `hsl(var(--${colorVar}))` }} />
         </div>
 
         <div className="min-w-0 flex-1">
           <p
             className="truncate text-sm font-bold leading-tight"
-            style={{ color: done ? "hsl(var(--foreground))" : color }}
+            style={{ color: done ? "hsl(var(--foreground))" : `hsl(var(--${colorVar}))` }}
           >
             {label}
           </p>
@@ -224,6 +177,23 @@ export function RoutineWidget() {
     refresh();
   };
 
+  const ringTone = bothDone ? "success" : "warning";
+  const ringValue = (done / 2) * 100;
+
+  const headerAction = (
+    <button
+      type="button"
+      onClick={() => nextProgram && startProgram(nextProgram)}
+      onPointerDown={(event) => event.stopPropagation()}
+      disabled={!nextProgram}
+      className="inline-flex shrink-0 items-center gap-1.5 text-xs font-black text-primary transition-colors hover:text-primary/80 disabled:cursor-default disabled:text-muted-foreground/55"
+    >
+      {!bothDone && <Play className="h-3 w-3 fill-current" />}
+      {bothDone ? "Completate" : "Inizia"}
+      {!bothDone && <ChevronRight className="h-4 w-4" />}
+    </button>
+  );
+
   return (
     <div className="space-y-3">
       <Card className="relative overflow-hidden">
@@ -241,33 +211,41 @@ export function RoutineWidget() {
           )}
         </AnimatePresence>
 
+        <WidgetHeader
+          icon={<Sunrise className="h-4 w-4" />}
+          iconTone="warning"
+          title={uiText("auto.ui.482273d7cc")}
+          subtitle={statusCopy}
+          action={headerAction}
+        />
+
         <CardContent className="space-y-3 p-0">
-          <div className="flex items-center gap-4 px-5 pb-3 pt-5">
-            <ProgressRing done={done} total={2} />
-
-            <div className="min-w-0 flex-1">
-              <p className="text-lg font-bold leading-tight tracking-normal text-foreground">{uiText("auto.ui.482273d7cc")}</p>
-              <p className="mt-2 truncate text-sm leading-tight text-muted-foreground">{statusCopy}</p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => nextProgram && startProgram(nextProgram)}
-              onPointerDown={(event) => event.stopPropagation()}
-              disabled={!nextProgram}
-              className="inline-flex shrink-0 items-center gap-1.5 text-xs font-black text-primary transition-colors hover:text-primary/80 disabled:cursor-default disabled:text-muted-foreground/55"
-            >
-              {!bothDone && <Play className="h-3 w-3 fill-current" />}
-              {bothDone ? "Completate" : "Inizia"}
-              {!bothDone && <ChevronRight className="h-4 w-4" />}
-            </button>
+          <div className="flex items-center gap-4 px-5 pb-3">
+            <ProgressRing value={ringValue} size={68} stroke={4} tone={ringTone}>
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={done}
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="font-mono text-base font-bold leading-none tabular-nums"
+                  style={{ color: bothDone ? "hsl(var(--success))" : done > 0 ? "hsl(var(--warning))" : "hsl(var(--border))" }}
+                >
+                  {done}/2
+                </motion.span>
+              </AnimatePresence>
+              <span className="mt-0.5 text-[0.42rem] font-bold uppercase leading-none tracking-normal text-primary">
+                Sessions
+              </span>
+            </ProgressRing>
           </div>
 
-          <div className="space-y-2 px-3">
+          <div className="space-y-2 px-3 pb-3">
             <SessionRow
               label="Programma mattutino"
               icon={Sunrise}
-              color="#ff9f3d"
+              colorVar="warning"
               done={morningDone}
               time="08:00 AM"
               onStart={() => startProgram("morning")}
@@ -275,7 +253,7 @@ export function RoutineWidget() {
             <SessionRow
               label="Programma serale"
               icon={Moon}
-              color="#63f49a"
+              colorVar="success"
               done={eveningDone}
               onStart={() => startProgram("evening")}
             />

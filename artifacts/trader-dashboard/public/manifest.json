@@ -1,28 +1,37 @@
 {
   "name": "TraderLoading",
   "short_name": "TraderLoading",
-  "description": "Trading dashboard with AI-powered macro news, volatility analysis, and advanced trading tools",
+  "description": "All-in-one trading workspace: automated trading journal, real-time macro news, chart-replay backtesting and risk management tools for traders. Free to start.",
+  "lang": "en",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "theme_color": "#0a0e27",
   "background_color": "#0a0e27",
+  "screenshots": [
+    {
+      "src": "/opengraph.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide"
+    }
+  ],
   "icons": [
     {
-      "src": "/app-icon-192.png",
+      "src": "/app-icon-192.png?v=2",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/app-icon-512.png",
+      "src": "/app-icon-512.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/app-icon.png",
+      "src": "/app-icon.png?v=2",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any maskable"

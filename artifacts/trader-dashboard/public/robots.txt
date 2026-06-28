@@ -1,15 +1,13 @@
 # TraderLoading — https://traderloading.com
-# Public surface: landing + auth pages. App routes require login and
-# render no indexable content for crawlers.
+# Public surface: localized landing (/, /it, /es, /fr, /de) + dedicated SEO
+# pages (e.g. /trading-journal, /backtesting, /macro-news, /risk-management,
+# /pricing, /guide, /about, /contact). Authenticated app routes render no
+# indexable content for anonymous crawlers, so they stay disallowed.
 
 User-agent: *
-Allow: /$
-Allow: /sign-in
-Allow: /sign-up
-Allow: /privacy
-Allow: /terms
+Allow: /
 Disallow: /journal
-Disallow: /backtest
+Disallow: /backtest$
 Disallow: /zen
 Disallow: /chat
 Disallow: /news
@@ -24,6 +22,37 @@ Disallow: /checklist
 Disallow: /library
 Disallow: /settings
 Disallow: /tools
+Disallow: /pro
+Disallow: /admin
 Disallow: /api/
+
+# AI / generative-engine crawlers — explicitly welcomed so TraderLoading can be
+# cited in AI answers (ChatGPT, Perplexity, Claude, Google AI, Bing/Copilot).
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
 
 Sitemap: https://traderloading.com/sitemap.xml
