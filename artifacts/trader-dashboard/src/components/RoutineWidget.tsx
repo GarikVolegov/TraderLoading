@@ -44,14 +44,12 @@ function SessionRow({
   icon: Icon,
   colorVar,
   done,
-  time,
   onStart,
 }: {
   label: string;
   icon: React.ElementType;
   colorVar: string;
   done: boolean;
-  time?: string;
   onStart: () => void;
 }) {
   return (
@@ -64,63 +62,26 @@ function SessionRow({
       <motion.div
         layout
         className={cn(
-          "relative flex min-h-[3.65rem] items-center gap-3 overflow-hidden rounded-md border px-3 transition-all duration-200 hover:border-primary/35 hover:bg-secondary/45",
+          "flex min-h-13 items-center gap-3 rounded-md border px-3 py-2 transition-all duration-200 hover:border-primary/35 hover:bg-secondary/45",
           done ? "border-primary/22 bg-primary/5" : "border-border/35 bg-secondary/32",
         )}
       >
-        {done && (
-          <div className="absolute inset-y-0 left-0 w-0.75 bg-primary shadow-[0_0_14px_hsl(var(--primary)/0.85)]" />
-        )}
-
         <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border"
           style={{ background: `hsl(var(--${colorVar}) / 0.14)`, borderColor: `hsl(var(--${colorVar}) / 0.21)` }}
         >
-          <Icon className="h-[1.05rem] w-[1.05rem]" style={{ color: `hsl(var(--${colorVar}))` }} />
+          <Icon className="h-4 w-4" style={{ color: `hsl(var(--${colorVar}))` }} />
         </div>
 
-        <div className="min-w-0 flex-1">
-          <p
-            className="truncate text-sm font-bold leading-tight"
-            style={{ color: done ? "hsl(var(--foreground))" : `hsl(var(--${colorVar}))` }}
-          >
-            {label}
-          </p>
-          <div className="mt-1 flex items-center gap-3">
-            <span
-              className={cn(
-                "text-[0.42rem] font-black uppercase leading-none",
-                done ? "text-primary" : "text-muted-foreground/65",
-              )}
-            >
-              {done ? "Completed" : "Upcoming"}
-            </span>
-            {!done && time && (
-              <span className="font-mono text-[0.42rem] font-bold uppercase leading-none text-muted-foreground/55">
-                {time}
-              </span>
-            )}
-          </div>
-        </div>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{label}</span>
 
-        <AnimatePresence mode="wait">
-          {done ? (
-            <motion.div
-              key="done"
-              initial={{ scale: 0, rotate: -20 }}
-              animate={{ scale: 1, rotate: 0 }}
-              exit={{ scale: 0 }}
-              transition={{ type: "spring", stiffness: 500, damping: 25 }}
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/25 text-primary"
-            >
-              <Check className="h-3 w-3" strokeWidth={4} />
-            </motion.div>
-          ) : (
-            <motion.div key="pending" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/55" />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {done ? (
+          <Check className="h-[1.15rem] w-[1.15rem] shrink-0 text-primary" strokeWidth={3} />
+        ) : (
+          <span className="shrink-0 rounded-md border border-primary/20 bg-primary/10 px-2.5 py-1 text-[0.68rem] font-bold text-primary">
+            {uiText("routine.session.start")}
+          </span>
+        )}
       </motion.div>
     </button>
   );
@@ -221,37 +182,30 @@ export function RoutineWidget() {
 
         <CardContent className="space-y-3 p-0">
           <div className="flex items-center gap-4 px-5 pb-3">
-            <ProgressRing value={ringValue} size={68} stroke={4} tone={ringTone}>
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={done}
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="font-mono text-base font-bold leading-none tabular-nums"
-                  style={{ color: bothDone ? "hsl(var(--success))" : done > 0 ? "hsl(var(--warning))" : "hsl(var(--border))" }}
-                >
-                  {done}/2
-                </motion.span>
-              </AnimatePresence>
-              <span className="mt-0.5 text-[0.42rem] font-bold uppercase leading-none tracking-normal text-primary">
-                Sessions
+            <ProgressRing value={ringValue} size={58} stroke={6} tone={ringTone}>
+              <span
+                className="font-mono text-sm font-bold leading-none tabular-nums"
+                style={{ color: bothDone ? "hsl(var(--success))" : done > 0 ? "hsl(var(--warning))" : "hsl(var(--foreground))" }}
+              >
+                {done}/2
               </span>
             </ProgressRing>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">{uiText("routine.discipline.title")}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{uiText("routine.discipline.subtitle")}</p>
+            </div>
           </div>
 
           <div className="space-y-2 px-3 pb-3">
             <SessionRow
-              label="Programma mattutino"
+              label={uiText("routine.session.morning")}
               icon={Sunrise}
               colorVar="warning"
               done={morningDone}
-              time="08:00 AM"
               onStart={() => startProgram("morning")}
             />
             <SessionRow
-              label="Programma serale"
+              label={uiText("routine.session.evening")}
               icon={Moon}
               colorVar="success"
               done={eveningDone}
