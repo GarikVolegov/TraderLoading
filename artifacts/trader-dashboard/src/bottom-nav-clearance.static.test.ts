@@ -41,4 +41,22 @@ assert.match(
   "convenience utility .bottom-nav-safe must exist (anchor fixed elements above the bar)",
 );
 
+// ── Task 2: PageLayout is the single owner of clearance ─────────────────
+const pageLayout = fs.readFileSync("src/components/PageLayout.tsx", "utf8");
+assert.match(
+  pageLayout,
+  /pb-\[var\(--bottom-nav-clearance\)\]/,
+  "PageLayout must pad the bottom with the clearance token",
+);
+assert.match(
+  pageLayout,
+  /pl-\[var\(--app-inset-left\)\]/,
+  "PageLayout must offset left with the sidebar token",
+);
+assert.doesNotMatch(
+  pageLayout,
+  /5\.75rem|6rem|lg:pl-20|lg:pb-6/,
+  "PageLayout must not keep the old magic-number clearance",
+);
+
 console.log("bottom-nav clearance static checks passed");

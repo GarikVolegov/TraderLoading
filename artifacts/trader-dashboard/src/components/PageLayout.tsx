@@ -24,7 +24,7 @@ export function PageLayout({ children, fullWidth }: PageLayoutProps) {
   const { activeBackgroundUrl, darkness } = useBackground();
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-background pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:pb-6 lg:pl-20">
+    <div className="relative min-h-screen overflow-x-hidden bg-background pb-[var(--bottom-nav-clearance)] pl-[var(--app-inset-left)]">
       {/* ── Fixed background layer ─────────────────────────────────────── */}
       <div className="fixed inset-0 z-0 pointer-events-none select-none">
         {activeBackgroundUrl ? (
