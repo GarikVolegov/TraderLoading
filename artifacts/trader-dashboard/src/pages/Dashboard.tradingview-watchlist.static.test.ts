@@ -10,7 +10,7 @@ assert.match(
 );
 assert.match(
   source,
-  /const DEFAULT_ORDER = \[\s*"clock",\s*"quote",\s*"tradingview-watchlist",\s*"account",/s,
+  /const DEFAULT_ORDER = \[\s*"quote",\s*"tradingview-watchlist",\s*"account",/s,
 );
 
 console.log("dashboard tradingview watchlist registry checks passed");

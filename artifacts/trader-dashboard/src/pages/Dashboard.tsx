@@ -21,7 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   GripVertical, Check, RotateCcw,
-  Clock, BookOpen, Sunrise, Target, ClipboardCheck,
+  BookOpen, Sunrise, Target, ClipboardCheck,
   CalendarDays, BarChart2, TrendingUp, BookMarked,
   Eye, EyeOff, Wallet, ArrowUpRight, Activity,
 } from "lucide-react";
@@ -42,6 +42,7 @@ import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
 import { TradingViewWatchlistWidget } from "@/components/TradingViewWatchlistWidget";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { columnsForWidth, distributeColumns } from "./Dashboard.layout";
 
 // ─── Widget registry ───────────────────────────────────────────────────────────
 
@@ -56,7 +57,6 @@ interface WidgetDef {
 }
 
 const WIDGET_DEFS: WidgetDef[] = [
-  { id: "clock",      label: "Orologio & Sessioni",  icon: Clock,          route: "/clock",                  component: ClockWidget },
   { id: "account",    label: "Broker Hub",           icon: Wallet,         route: "/broker",                 component: BrokerHubWidget },
   { id: "tradingview-watchlist", label: "Watchlist Realtime", icon: Activity, component: TradingViewWatchlistWidget },
   { id: "quote",      label: "Citazione del Giorno", icon: BookOpen,                                         component: QuoteWidget },
@@ -72,7 +72,6 @@ const WIDGET_DEFS: WidgetDef[] = [
 ];
 
 const DEFAULT_ORDER = [
-  "clock",
   "quote",
   "tradingview-watchlist",
   "account",
@@ -119,6 +118,21 @@ function saveVisibility(v: Record<string, boolean>) {
 function shouldStartLayoutEditing() {
   if (typeof window === "undefined") return false;
   return new URLSearchParams(window.location.search).get("layout") === "edit";
+}
+
+// Responsive masonry column count. CSS `columns` is avoided (Safari mis-measures
+// heights); we distribute widgets across flex columns via JS instead.
+function useColumns(): number {
+  const read = () =>
+    typeof window === "undefined" ? 3 : columnsForWidth(window.innerWidth || 1280);
+  const [cols, setCols] = useState(read);
+  useEffect(() => {
+    const onResize = () => setCols(read());
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return cols;
 }
 
 // ─── Sortable widget wrapper ───────────────────────────────────────────────────
@@ -288,6 +302,7 @@ export default function Dashboard() {
   const [isEditing, setIsEditing]   = useState(shouldStartLayoutEditing);
   const [activeId, setActiveId]     = useState<string | null>(null);
   const prevOrderRef = useRef<string[]>(order);
+  const cols = useColumns();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -375,6 +390,37 @@ export default function Dashboard() {
   // card sovrapposte/fluttuanti), quindi usiamo una grid robusta cross-browser.
   const containerClass = "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start";
 
+  // Single cell renderer, shared by the edit-mode grid and the normal-mode masonry.
+  const renderCell = (id: string, i: number) => {
+    const def = defMap[id];
+    if (!def) return null;
+    const isHid = !!hidden[id];
+    return (
+      <motion.div
+        key={id}
+        layout={isEditing}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{
+          opacity: { delay: i * 0.03, duration: 0.24 },
+          y: { delay: i * 0.03, duration: 0.24, ease: [0.22, 1, 0.36, 1] },
+          layout: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+        }}
+        className={isEditing ? "h-[200px]" : ""}
+      >
+        <SortableWidget
+          def={def}
+          isEditing={isEditing}
+          isDragActive={activeId !== null}
+          isHidden={isHid}
+          onToggleHide={handleToggleHide}
+          onOpen={handleOpenWidget}
+        />
+      </motion.div>
+    );
+  };
+
   return (
     <PageLayout>
       <PageHeader
@@ -409,6 +455,11 @@ export default function Dashboard() {
         ) : undefined}
       />
 
+      {/* Clock — pinned full-width banner (kit-faithful), outside the reorderable set */}
+      <div className="mb-4">
+        <ClockWidget />
+      </div>
+
       {/* Edit-mode banner */}
       <AnimatePresence>
         {isEditing && (
@@ -439,37 +490,19 @@ export default function Dashboard() {
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={displayOrder} strategy={rectSortingStrategy}>
-          <div className={containerClass}>
-            {displayOrder.map((id, i) => {
-              const def = defMap[id];
-              if (!def) return null;
-              const isHid = !!hidden[id];
-              return (
-                <motion.div
-                  key={id}
-                  layout={isEditing}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{
-                    opacity: { delay: i * 0.03, duration: 0.24 },
-                    y: { delay: i * 0.03, duration: 0.24, ease: [0.22,1,0.36,1] },
-                    layout: { duration: 0.28, ease: [0.22,1,0.36,1] },
-                  }}
-                  className={isEditing ? "h-[200px]" : ""}
-                >
-                  <SortableWidget
-                    def={def}
-                    isEditing={isEditing}
-                    isDragActive={activeId !== null}
-                    isHidden={isHid}
-                    onToggleHide={handleToggleHide}
-                    onOpen={handleOpenWidget}
-                  />
-                </motion.div>
-              );
-            })}
-          </div>
+          {isEditing ? (
+            <div className={containerClass}>
+              {displayOrder.map((id, i) => renderCell(id, i))}
+            </div>
+          ) : (
+            <div className="flex items-start gap-4">
+              {distributeColumns(displayOrder, cols).map((colIds, ci) => (
+                <div key={ci} className="flex-1 min-w-0 space-y-4">
+                  {colIds.map((id) => renderCell(id, displayOrder.indexOf(id)))}
+                </div>
+              ))}
+            </div>
+          )}
         </SortableContext>
 
         {/* Drag ghost */}
