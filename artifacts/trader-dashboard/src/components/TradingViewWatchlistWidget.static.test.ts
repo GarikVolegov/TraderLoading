@@ -31,9 +31,9 @@ assert.match(source, /isMobile \? "_self" : "_blank"/);
 assert.match(source, /\/settings\?section=pairs/);
 assert.match(source, /tradingview\.watchlist\.manage/);
 
-// New empty-state copy
-assert.match(source, /tradingview\.watchlist\.empty_title/);
-assert.match(source, /tradingview\.watchlist\.choose_pairs/);
+// Never empty: render favorites, else fall back to defaults (dashboard convention)
+assert.match(source, /resolveWatchlistPairs/);
+assert.match(source, /pairs\.map\(/);
 
 // LIVE badge retained
 assert.match(source, /tradingview\.watchlist\.live/);

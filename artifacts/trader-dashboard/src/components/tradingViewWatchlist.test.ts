@@ -1,10 +1,23 @@
 import assert from "node:assert/strict";
 import {
+  DEFAULT_WATCHLIST_PAIRS,
   TRADING_VIEW_MINI_SYMBOL_SCRIPT,
   buildTradingViewDeepLink,
   buildTradingViewMiniSymbolConfig,
   mapCatalogPairToTradingViewSymbol,
+  resolveWatchlistPairs,
 } from "./tradingViewWatchlist";
+
+// resolveWatchlistPairs: favorites when present, else fall back to defaults
+// (same convention as the rest of the dashboard via deriveEffectiveFilterItems).
+assert.deepEqual(resolveWatchlistPairs(["EURUSD", "USDJPY"]), ["EURUSD", "USDJPY"]);
+assert.deepEqual(resolveWatchlistPairs([]), DEFAULT_WATCHLIST_PAIRS);
+// Unsupported-only selection also falls back to defaults
+assert.deepEqual(resolveWatchlistPairs(["NOTAPAIR"]), DEFAULT_WATCHLIST_PAIRS);
+// Mixed: keep the supported ones, drop the unsupported
+assert.deepEqual(resolveWatchlistPairs(["XAUUSD", "NOTAPAIR"]), ["XAUUSD"]);
+// Defaults are real catalog symbols
+assert.ok(DEFAULT_WATCHLIST_PAIRS.length > 0);
 
 // Forex → FX: prefix (majors, minors, exotics)
 assert.equal(mapCatalogPairToTradingViewSymbol("EURUSD"), "FX:EURUSD");

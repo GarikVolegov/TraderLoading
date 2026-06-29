@@ -12,6 +12,7 @@ import {
   buildTradingViewDeepLink,
   buildTradingViewMiniSymbolConfig,
   mapCatalogPairToTradingViewSymbol,
+  resolveWatchlistPairs,
 } from "./tradingViewWatchlist";
 
 const PAIR_PREFERENCES_PATH = "/settings?section=pairs";
@@ -54,10 +55,14 @@ function TradingViewMiniSymbolEmbed({
 }
 
 export function TradingViewWatchlistWidget() {
-  const { selectedPairs, settingsLoaded } = useBackground();
+  const { selectedPairs } = useBackground();
   const isMobile = useIsMobile();
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Favorites when set, otherwise a default set — same fallback as the rest of the
+  // dashboard (deriveEffectiveFilterItems), so the watchlist is never empty.
+  const pairs = useMemo(() => resolveWatchlistPairs(selectedPairs), [selectedPairs]);
 
   const handleEmbedError = useCallback(() => setLoadError(true), []);
 
@@ -93,45 +98,28 @@ export function TradingViewWatchlistWidget() {
       />
 
       <CardContent className="space-y-2 p-2">
-        {!settingsLoaded ? (
-          <div className="min-h-[116px] animate-pulse rounded-lg border border-border/35 bg-background/25" />
-        ) : selectedPairs.length === 0 ? (
-          <div className="flex min-h-[116px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border/50 bg-secondary/15 p-3 text-center">
-            <p className="text-sm font-bold">{uiText("tradingview.watchlist.empty_title")}</p>
-            <p className="max-w-[240px] text-xs text-muted-foreground">
-              {uiText("tradingview.watchlist.empty_desc")}
-            </p>
-            <Link
-              href={PAIR_PREFERENCES_PATH}
-              className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              {uiText("tradingview.watchlist.choose_pairs")}
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-1.5 overflow-x-hidden">
-            {selectedPairs.map((pair) => {
-              const tvSymbol = mapCatalogPairToTradingViewSymbol(pair);
-              const label = getPairLabel(pair);
-              return (
-                <div
-                  key={pair}
-                  className="relative overflow-hidden rounded-md border border-border/35 bg-background/25"
-                >
-                  <TradingViewMiniSymbolEmbed symbol={tvSymbol} reloadKey={reloadKey} onError={handleEmbedError} />
-                  <a
-                    href={buildTradingViewDeepLink(tvSymbol)}
-                    target={isMobile ? "_self" : "_blank"}
-                    rel="noopener noreferrer"
-                    className="absolute inset-0 z-10 block touch-manipulation rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-                    aria-label={uiText("tradingview.watchlist.open_aria", { symbol: label })}
-                    title={uiText("tradingview.watchlist.open_aria", { symbol: label })}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <div className="space-y-1.5 overflow-x-hidden">
+          {pairs.map((pair) => {
+            const tvSymbol = mapCatalogPairToTradingViewSymbol(pair);
+            const label = getPairLabel(pair);
+            return (
+              <div
+                key={pair}
+                className="relative overflow-hidden rounded-md border border-border/35 bg-background/25"
+              >
+                <TradingViewMiniSymbolEmbed symbol={tvSymbol} reloadKey={reloadKey} onError={handleEmbedError} />
+                <a
+                  href={buildTradingViewDeepLink(tvSymbol)}
+                  target={isMobile ? "_self" : "_blank"}
+                  rel="noopener noreferrer"
+                  className="absolute inset-0 z-10 block touch-manipulation rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+                  aria-label={uiText("tradingview.watchlist.open_aria", { symbol: label })}
+                  title={uiText("tradingview.watchlist.open_aria", { symbol: label })}
+                />
+              </div>
+            );
+          })}
+        </div>
 
         {loadError && (
           <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
