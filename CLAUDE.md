@@ -82,7 +82,7 @@ tools/metatrader-companion/   MT5 expert advisor
     file/URL uploads + folders) with async text extraction and client-side text search. Pro-gated
     (`feature="wiki"`); route/keys keep the internal `wiki` name. No AI/graph (removed; see git history).
   - **COT data** (`routes/tools.ts`) — CFTC Commitment-of-Traders, weekly cron.
-  - **Trading coach** (Journal "Edge" tab + recap) — turns closed `accountTradesTable` trades into a verdict:
+  - **Trading coach** (Journal "Panoramica"/overview tab + recap) — turns closed `accountTradesTable` trades into a verdict:
     - *Edge* (`services/tradeAnalytics.ts`) — expectancy-in-R, win rate, net P&L by symbol/direction/session/day
       + best/worst-slice + post-loss "revenge" signal. R = `(|exit−entry|/|entry−stop|)·sign(profit)` (same
       convention as client `parseTradeContent.tradeRMultiple`).
@@ -90,11 +90,12 @@ tools/metatrader-companion/   MT5 expert advisor
       disposition effect (winner vs loser hold time), overtrading (busy- vs calm-day expectancy), drawdown/streak.
     - *Risk guard / circuit-breaker* (`services/riskGuard.ts`) — breaches active right now: daily-R loss limit,
       **cash daily-loss limit** (reuses the user's `maxDailyLoss` setting; fires without stops, with an 80%
-      warning), consecutive-loss streak, overtrading, post-loss revenge (Europe/Rome day). Banner atop the Edge tab.
+      warning), consecutive-loss streak, overtrading, post-loss revenge (Europe/Rome day). Surfaced in the overview.
     - *AI recap* (`services/journalRecapDraft.ts`, `POST /journal/recaps/generate`) — feeds the edge+discipline
       brief to `llmClient.getTextClient()` and drafts the 8 journal-recap fields (degrades to 503 if no LLM key).
     - Served by `GET /journal/edge` (`services/edgeReport.ts` merges edge + discipline + guard in one read) + UI
-      `components/JournalEdge.tsx`. The recap endpoints (`/journal/recaps*`) are **off-contract** (direct
+      `components/journal/JournalOverview.tsx` (the Panoramica tab; the standalone Edge tab/`JournalEdge.tsx` was
+      removed once the overview subsumed it). The recap endpoints (`/journal/recaps*`) are **off-contract** (direct
       `apiJSON`, not in openapi.yaml). All pure/unit-tested; copy is i18n'd (see [[i18n-enforced-new-ui]]).
   - **Candle warehouse** — see §7.
 
