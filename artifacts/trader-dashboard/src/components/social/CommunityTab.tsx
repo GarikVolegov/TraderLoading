@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { uiText } from "@/contexts/LanguageContext";
+import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio } from "lucide-react";
+import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings, Star } from "lucide-react";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { useCommunities, useCommunityDetail } from "./hooks";
 import { CreateCommunityModal } from "./CreateCommunityModal";
 import { CreateChannelModal } from "./CreateChannelModal";
+import { CommunitySettingsModal } from "./CommunitySettingsModal";
+import { CommunityReviews } from "./CommunityReviews";
+import { StarRating } from "./StarRating";
 import { TextChannelView } from "./TextChannelView";
 import { VoiceChannelView } from "./VoiceChannelView";
 
@@ -19,6 +22,7 @@ export function CommunityTab({
   currentUserName: string;
 }) {
   const qc = useQueryClient();
+  const { t } = useLanguage();
   const { data: communities = [], isLoading: loadingCommunities } =
     useCommunities();
   const [selectedCommunityId, setSelectedCommunityId] = useState<number | null>(
@@ -31,14 +35,24 @@ export function CommunityTab({
     useCommunityDetail(selectedCommunityId);
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showReviews, setShowReviews] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<
     "communities" | "channels" | "content"
   >("communities");
 
   const selectedChannel =
     communityDetail?.channels.find((c) => c.id === selectedChannelId) ?? null;
-  const isOwnerOrAdmin =
-    communityDetail?.myRole === "owner" || communityDetail?.myRole === "admin";
+  const myPerms = communityDetail?.myPermissions ?? [];
+  const isOwner = communityDetail?.isOwner ?? false;
+  const can = (p: string) => isOwner || myPerms.includes(p);
+  const canManageChannels = can("channels.manage");
+  const canManageFiles = can("files.manage");
+  const canOpenSettings =
+    isOwner ||
+    ["roles.manage", "members.kick", "members.ban", "members.mute", "community.manage", "channels.manage"].some(
+      (p) => myPerms.includes(p),
+    );
 
   const joinCommunity = async (id: number) => {
     try {
@@ -65,11 +79,18 @@ export function CommunityTab({
   const selectCommunity = (id: number) => {
     setSelectedCommunityId(id);
     setSelectedChannelId(null);
+    setShowReviews(false);
     setMobilePanel("channels");
   };
 
   const selectChannel = (id: number) => {
     setSelectedChannelId(id);
+    setShowReviews(false);
+    setMobilePanel("content");
+  };
+
+  const openReviews = () => {
+    setShowReviews(true);
     setMobilePanel("content");
   };
 
@@ -118,8 +139,12 @@ export function CommunityTab({
                     onClick={() => selectCommunity(c.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all hover:bg-secondary/40 ${selectedCommunityId === c.id ? "bg-primary/10 text-primary border-r-2 border-primary" : "text-foreground"}`}
                   >
-                    <span className="text-xl leading-none shrink-0">
-                      {c.iconEmoji}
+                    <span className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center text-xl leading-none shrink-0">
+                      {c.avatarUrl ? (
+                        <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        c.iconEmoji
+                      )}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold truncate">{c.name}</p>
@@ -142,12 +167,22 @@ export function CommunityTab({
                     onClick={() => selectCommunity(c.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all hover:bg-secondary/40 text-muted-foreground hover:text-foreground ${selectedCommunityId === c.id ? "bg-secondary/40 text-foreground" : ""}`}
                   >
-                    <span className="text-xl leading-none shrink-0 opacity-70">
-                      {c.iconEmoji}
+                    <span className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center text-xl leading-none shrink-0 opacity-70">
+                      {c.avatarUrl ? (
+                        <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        c.iconEmoji
+                      )}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold truncate">{c.name}</p>
                       <p className="text-[10px]">{c.memberCount} membri</p>
+                      {(c.ratingCount ?? 0) > 0 && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <StarRating value={c.ratingAvg ?? 0} readOnly size={9} />
+                          <span className="text-[9px]">{(c.ratingAvg ?? 0).toFixed(1)}</span>
+                        </div>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -177,6 +212,12 @@ export function CommunityTab({
     selectedCommunityId && communityDetail ? (
       <div className="flex flex-col h-full border-r border-border bg-card/30 w-full lg:w-52 shrink-0">
         <div className="px-3 py-3 border-b border-border shrink-0">
+          {communityDetail.bannerUrl && (
+            <div
+              className="h-14 -mx-3 -mt-3 mb-2 bg-cover bg-center"
+              style={{ backgroundImage: `url(${communityDetail.bannerUrl})` }}
+            />
+          )}
           <div className="flex items-center gap-1.5 mb-1">
             <button
               onClick={() => setMobilePanel("communities")}
@@ -184,8 +225,19 @@ export function CommunityTab({
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <span className="text-xl">{communityDetail.iconEmoji}</span>
-            <p className="font-bold text-sm truncate">{communityDetail.name}</p>
+            <span className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center text-xl shrink-0">
+              {communityDetail.avatarUrl ? (
+                <img src={communityDetail.avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                communityDetail.iconEmoji
+              )}
+            </span>
+            <p
+              className="font-bold text-sm truncate"
+              style={communityDetail.accentColor ? { color: communityDetail.accentColor } : undefined}
+            >
+              {communityDetail.name}
+            </p>
           </div>
           {communityDetail.description && (
             <p className="text-[10px] text-muted-foreground leading-relaxed truncate">
@@ -198,6 +250,25 @@ export function CommunityTab({
               {communityDetail.memberCount} membri
             </span>
           </div>
+          <button
+            onClick={openReviews}
+            title={t("community.review.title")}
+            className="flex items-center gap-1.5 mt-1.5 hover:opacity-80 transition-opacity"
+          >
+            <StarRating value={communityDetail.ratingAvg ?? 0} readOnly size={11} />
+            <span className="text-[10px] text-muted-foreground">
+              {t("community.review.count", { count: communityDetail.ratingCount ?? 0 })}
+            </span>
+          </button>
+          {communityDetail.isMember && canOpenSettings && (
+            <button
+              onClick={() => setShowSettings(true)}
+              className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              {t("community.settings.manage")}
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
@@ -205,14 +276,14 @@ export function CommunityTab({
             const channels = communityDetail.channels.filter(
               (c) => c.type === type,
             );
-            if (channels.length === 0 && !isOwnerOrAdmin) return null;
+            if (channels.length === 0 && !canManageChannels) return null;
             return (
               <div key={type} className="mb-2">
                 <div className="flex items-center justify-between px-3 py-1">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     {type === "text" ? "Testo" : "Voce"}
                   </p>
-                  {isOwnerOrAdmin && (
+                  {canManageChannels && (
                     <button
                       onClick={() => setShowCreateChannel(true)}
                       className="p-0.5 rounded hover:text-primary text-muted-foreground transition-colors"
@@ -274,12 +345,14 @@ export function CommunityTab({
     );
 
   const contentArea =
-    selectedChannel && communityDetail?.isMember ? (
+    showReviews && communityDetail ? (
+      <CommunityReviews detail={communityDetail} />
+    ) : selectedChannel && communityDetail?.isMember ? (
       selectedChannel.type === "text" ? (
         <TextChannelView
           channel={selectedChannel}
           currentUserId={currentUserId}
-          isOwnerOrAdmin={isOwnerOrAdmin}
+          isOwnerOrAdmin={canManageFiles}
         />
       ) : (
         <VoiceChannelView
@@ -303,9 +376,25 @@ export function CommunityTab({
             <>
               <UserPlus className="w-12 h-12 mx-auto opacity-20 mb-3" />
               <p className="text-sm font-medium">{communityDetail?.name}</p>
-              <p className="text-xs mt-1 mb-4">
+              <p className="text-xs mt-1 mb-2">
                 {communityDetail?.memberCount} membri
               </p>
+              {(communityDetail?.ratingCount ?? 0) > 0 && (
+                <button
+                  onClick={openReviews}
+                  className="flex items-center justify-center gap-1.5 mb-3 mx-auto hover:opacity-80 transition-opacity"
+                >
+                  <StarRating value={communityDetail?.ratingAvg ?? 0} readOnly size={14} />
+                  <span className="text-xs text-muted-foreground">
+                    {t("community.review.count", { count: communityDetail?.ratingCount ?? 0 })}
+                  </span>
+                </button>
+              )}
+              {communityDetail?.welcomeMessage && (
+                <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-4 whitespace-pre-line">
+                  {communityDetail.welcomeMessage}
+                </p>
+              )}
               <button
                 onClick={() =>
                   communityDetail && joinCommunity(communityDetail.id)
@@ -403,6 +492,12 @@ export function CommunityTab({
         <CreateChannelModal
           communityId={selectedCommunityId}
           onClose={() => setShowCreateChannel(false)}
+        />
+      )}
+      {showSettings && communityDetail && (
+        <CommunitySettingsModal
+          detail={communityDetail}
+          onClose={() => setShowSettings(false)}
         />
       )}
     </>

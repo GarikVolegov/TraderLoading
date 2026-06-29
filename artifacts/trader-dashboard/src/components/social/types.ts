@@ -113,6 +113,36 @@ export interface CommunityType {
   creatorId: string;
   isPublic: boolean;
   createdAt: string;
+  bannerUrl?: string | null;
+  avatarUrl?: string | null;
+  accentColor?: string | null;
+  rules?: string | null;
+  welcomeMessage?: string | null;
+  ratingAvg?: number;
+  ratingCount?: number;
+}
+
+export interface CommunityReview {
+  id: number;
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  rating: number;
+  text: string;
+  ownerResponse: string | null;
+  ownerResponseAt: string | null;
+  hidden: boolean;
+  createdAt: string;
+}
+
+export interface CommunityReviewsResponse {
+  reviews: CommunityReview[];
+  myReview: CommunityReview | null;
+  ratingAvg: number;
+  ratingCount: number;
+  isMember: boolean;
+  canRespond: boolean;
+  canModerate: boolean;
 }
 
 export interface ChannelType {
@@ -123,9 +153,43 @@ export interface ChannelType {
   position: number;
 }
 
+export interface CommunityRole {
+  id: number;
+  communityId: number;
+  name: string;
+  color: string | null;
+  permissions: string[];
+  position: number;
+  isDefault: boolean;
+}
+
+export interface CommunityMemberRow {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  roleId: number | null;
+  roleName: string | null;
+  roleColor: string | null;
+  joinedAt: string;
+  isOwner: boolean;
+}
+
+export interface CommunityBanRow {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  reason: string | null;
+  bannedBy: string;
+  createdAt: string;
+}
+
 export interface CommunityDetail extends CommunityType {
   channels: ChannelType[];
   myRole: string | null;
+  isOwner: boolean;
+  myRoleId: number | null;
+  myPermissions: string[];
+  roles: CommunityRole[];
 }
 
 export interface CommunityMsg {
