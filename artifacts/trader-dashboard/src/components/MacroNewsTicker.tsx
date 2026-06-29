@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { uiText } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
@@ -12,7 +12,6 @@ import {
   Minus,
   Loader2,
   Activity,
-  Check,
   ExternalLink,
   Clock,
 } from "lucide-react";
@@ -31,8 +30,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { formatItalianNewsRelativeTime } from "@/lib/relativeTime";
-import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
-import { reportClientError } from "@/lib/clientErrorReporter";
+import { resolveMacroCurrencies, MACRO_CURRENCIES } from "@/lib/favoritePairFilters";
 import { isRedundantText } from "@/lib/macroNewsDedup";
 
 const API = "/api";
@@ -77,19 +75,6 @@ interface MacroNewsData {
   citationUrls?: string[];
 }
 
-const ALL_CURRENCIES = [
-  "EUR",
-  "USD",
-  "GBP",
-  "JPY",
-  "CHF",
-  "CAD",
-  "AUD",
-  "NZD",
-  "XAU",
-];
-
-const STORAGE_KEY = "macro-news-currencies";
 const MARQUEE_PIXELS_PER_SECOND = 72;
 const MIN_MARQUEE_DURATION_SECONDS = 18;
 const DEFAULT_MARQUEE_DURATION_SECONDS = 30;
@@ -130,28 +115,6 @@ const DIRECTION_ICONS: Record<string, React.ReactNode> = {
   bearish: <TrendingDown className="w-3.5 h-3.5 text-destructive" />,
   neutrale: <Minus className="w-3.5 h-3.5 text-muted-foreground" />,
 };
-
-function loadCurrencies(): string[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter((c: string) => ALL_CURRENCIES.includes(c));
-      }
-    }
-  } catch (error) {
-    reportClientError(error, {
-      context: "macro news currency preferences load",
-      notify: false,
-    });
-  }
-  return [...ALL_CURRENCIES];
-}
-
-function saveCurrencies(currencies: string[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(currencies));
-}
 
 function preferredMacroArticleUrl(
   article: Pick<MacroArticle, "url" | "resolvedUrl">,
@@ -420,7 +383,7 @@ async function fetchMacroNews(
   force = false,
 ): Promise<MacroNewsData> {
   const params = new URLSearchParams();
-  if (currencies.length > 0 && currencies.length < ALL_CURRENCIES.length) {
+  if (currencies.length > 0 && currencies.length < MACRO_CURRENCIES.length) {
     params.set("currencies", currencies.join(","));
   }
   if (force) params.set("force", "1");
@@ -436,8 +399,6 @@ export function MacroNewsTicker() {
   const [selectedArticle, setSelectedArticle] = useState<MacroArticle | null>(
     null,
   );
-  const [selectedCurrencies, setSelectedCurrencies] =
-    useState<string[]>(loadCurrencies);
   const forceNextRef = useRef(false);
   const marqueeTrackRef = useRef<HTMLDivElement | null>(null);
   const [marqueeDurationSeconds, setMarqueeDurationSeconds] = useState(
@@ -445,32 +406,10 @@ export function MacroNewsTicker() {
   );
   const { selectedCurrencies: contextCurrencies } = useBackground();
 
-  const pairDerivedCurrencies = useMemo(() => {
-    const valid = contextCurrencies.filter((c) => ALL_CURRENCIES.includes(c));
-    return valid.length > 0 ? valid : null;
-  }, [contextCurrencies]);
-
-  useEffect(() => {
-    if (pairDerivedCurrencies) {
-      setSelectedCurrencies(pairDerivedCurrencies);
-      saveCurrencies(pairDerivedCurrencies);
-    }
-  }, [pairDerivedCurrencies]);
-
-  useEffect(() => {
-    saveCurrencies(selectedCurrencies);
-  }, [selectedCurrencies]);
-
   const macroFilter = useMemo(
-    () =>
-      deriveEffectiveFilterItems({
-        requestedItems: pairDerivedCurrencies ?? selectedCurrencies,
-        supportedItems: ALL_CURRENCIES,
-        defaultItems: selectedCurrencies,
-      }),
-    [pairDerivedCurrencies, selectedCurrencies],
+    () => resolveMacroCurrencies(contextCurrencies),
+    [contextCurrencies],
   );
-  const isPairDerivedMode = pairDerivedCurrencies !== null;
   const effectiveCurrencies = macroFilter.items;
 
   const currenciesKey = useMemo(
@@ -551,20 +490,6 @@ export function MacroNewsTicker() {
       }) as CSSProperties & Record<"--marquee-duration", string>,
     [marqueeDurationSeconds],
   );
-
-  const toggleCurrency = useCallback((cur: string) => {
-    setSelectedCurrencies((prev) => {
-      if (prev.includes(cur)) {
-        const next = prev.filter((c) => c !== cur);
-        return next.length === 0 ? [cur] : next;
-      }
-      return [...prev, cur];
-    });
-  }, []);
-
-  const selectAll = useCallback(() => {
-    setSelectedCurrencies([...ALL_CURRENCIES]);
-  }, []);
 
   const fetchedTimeAgo = useMemo(() => {
     if (!data?.fetchedAt) return null;
@@ -659,69 +584,17 @@ export function MacroNewsTicker() {
           </SheetHeader>
 
           <div className="pt-4 space-y-4">
-            {isPairDerivedMode ? (
-              macroFilter.unsupportedItems.length > 0 && (
-                <p className="text-[11px] text-muted-foreground">
-                  Alcune coppie preferite non sono coperte dalle notizie macro:{" "}
-                  {macroFilter.unsupportedItems.join(", ")}.
-                </p>
-              )
-            ) : (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground mb-2">
-                  Filtra per valuta
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    onClick={selectAll}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
-                      selectedCurrencies.length === ALL_CURRENCIES.length
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border bg-secondary/40 text-muted-foreground hover:border-primary/30"
-                    }`}
-                  >
-                    Tutte
-                  </button>
-                  {ALL_CURRENCIES.map((cur) => {
-                    const active = selectedCurrencies.includes(cur);
-                    return (
-                      <label
-                        key={cur}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-semibold border transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                          active
-                            ? "border-primary bg-primary/15 text-primary"
-                            : "border-border bg-secondary/40 text-muted-foreground hover:border-primary/30"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={active}
-                          onChange={() => toggleCurrency(cur)}
-                          className="sr-only"
-                        />
-                        <span
-                          className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
-                            active
-                              ? "bg-primary border-primary"
-                              : "border-muted-foreground/40"
-                          }`}
-                        >
-                          {active && (
-                            <Check className="w-2.5 h-2.5 text-primary-foreground" />
-                          )}
-                        </span>
-                        {CURRENCY_FLAGS[cur]} {cur}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
+            {macroFilter.unsupportedItems.length > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Alcune coppie preferite non sono coperte dalle notizie macro:{" "}
+                {macroFilter.unsupportedItems.join(", ")}.
+              </p>
             )}
 
             {data?.sentiment && (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
+                  className={`inline-flex w-fit items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
                     SENTIMENT_STYLES[data.sentiment] ??
                     SENTIMENT_STYLES["neutrale"]
                   }`}
@@ -733,7 +606,7 @@ export function MacroNewsTicker() {
                   )}
                 </div>
                 {data.summary && (
-                  <p className="text-xs text-muted-foreground italic flex-1 line-clamp-2">
+                  <p className="text-xs text-muted-foreground italic sm:flex-1">
                     &ldquo;{data.summary}&rdquo;
                   </p>
                 )}
