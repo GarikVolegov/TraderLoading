@@ -32,6 +32,7 @@ import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTra
 import { PnlHeatmap } from "@/components/PnlHeatmap";
 import { TradeChartSnapshot } from "@/components/TradeChartSnapshot";
 import { JournalEdge } from "@/components/JournalEdge";
+import { JournalOverview } from "@/components/journal/JournalOverview";
 import {
   emptyJournalRecapFields,
   fetchJournalRecap,
@@ -41,7 +42,7 @@ import {
   type JournalRecapFields,
 } from "@/lib/journalRecapsApi";
 
-type Tab = "trades" | "edge" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
+type Tab = "panoramica" | "trades" | "edge" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
 
 function SyncedTradeDetails({ content }: { content: string }) {
   const parsed = useMemo(() => parseTradeContent(content), [content]);
@@ -1098,9 +1099,10 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
 
 export default function Journal() {
   const { t } = useLanguage();
-  const [tab, setTab] = useState<Tab>("trades");
+  const [tab, setTab] = useState<Tab>("panoramica");
 
   const tabs: { id: Tab; labelKey: string; icon: typeof BookOpen }[] = [
+    { id: "panoramica", labelKey: "journal.tab.overview", icon: TrendingUp },
     { id: "trades", labelKey: "journal.tab.trades", icon: BookOpen },
     { id: "edge", labelKey: "journal.tab.edge", icon: LineChart },
     { id: "recap-settimanale", labelKey: "journal.tab.weekly", icon: BarChart3 },
@@ -1141,6 +1143,7 @@ export default function Journal() {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
         >
+          {tab === "panoramica" && <JournalOverview onNavigate={setTab} />}
           {tab === "trades" && <TradesTab />}
           {tab === "edge" && <JournalEdge />}
           {tab === "recap-settimanale" && <RecapTab mode="weekly" />}
