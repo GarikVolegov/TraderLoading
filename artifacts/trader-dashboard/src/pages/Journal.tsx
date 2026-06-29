@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, addWeeks, isWithinInterval } from "date-fns";
-import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, LineChart, Sparkles } from "lucide-react";
+import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
@@ -31,7 +31,6 @@ import { getJournalRecapPeriod, isJournalRecapEditable } from "@/lib/journalReca
 import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTradeContent";
 import { PnlHeatmap } from "@/components/PnlHeatmap";
 import { TradeChartSnapshot } from "@/components/TradeChartSnapshot";
-import { JournalEdge } from "@/components/JournalEdge";
 import { JournalOverview } from "@/components/journal/JournalOverview";
 import {
   emptyJournalRecapFields,
@@ -42,7 +41,7 @@ import {
   type JournalRecapFields,
 } from "@/lib/journalRecapsApi";
 
-type Tab = "panoramica" | "trades" | "edge" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
+type Tab = "panoramica" | "trades" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
 
 function SyncedTradeDetails({ content }: { content: string }) {
   const parsed = useMemo(() => parseTradeContent(content), [content]);
@@ -1104,7 +1103,6 @@ export default function Journal() {
   const tabs: { id: Tab; labelKey: string; icon: typeof BookOpen }[] = [
     { id: "panoramica", labelKey: "journal.tab.overview", icon: TrendingUp },
     { id: "trades", labelKey: "journal.tab.trades", icon: BookOpen },
-    { id: "edge", labelKey: "journal.tab.edge", icon: LineChart },
     { id: "recap-settimanale", labelKey: "journal.tab.weekly", icon: BarChart3 },
     { id: "recap-mensile", labelKey: "journal.tab.four_week", icon: Calendar },
     { id: "idee", labelKey: "journal.tab.ideas", icon: Lightbulb },
@@ -1145,7 +1143,6 @@ export default function Journal() {
         >
           {tab === "panoramica" && <JournalOverview onNavigate={setTab} />}
           {tab === "trades" && <TradesTab />}
-          {tab === "edge" && <JournalEdge />}
           {tab === "recap-settimanale" && <RecapTab mode="weekly" />}
           {tab === "recap-mensile" && <RecapTab mode="four_week" />}
           {tab === "idee" && <IdeasTab type="idea" />}

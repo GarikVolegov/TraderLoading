@@ -30,7 +30,7 @@ function clampPct(v: number): number {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-export function JournalOverview({ onNavigate }: { onNavigate: (tab: "edge" | "recap-mensile") => void }) {
+export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensile") => void }) {
   const { t } = useLanguage();
   const dateLocale = useDateLocale();
 
@@ -161,10 +161,6 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "edge" | "re
                 <p className="text-xs text-muted-foreground">{t("journal.overview.edge_subtitle")}</p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onNavigate("edge")}>
-              {t("journal.overview.edge_detail")}
-              <ArrowRight className="ml-1 h-3 w-3" />
-            </Button>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {edgeBars.map((m) => (
