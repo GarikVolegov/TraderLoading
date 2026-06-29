@@ -56,7 +56,7 @@ assert.match(source, /className="flex flex-col h-full min-h-0 overflow-hidden re
 assert.match(source, /className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3"/);
 assert.match(source, /className="h-full min-h-0"/);
 assert.match(source, /className="flex-1 min-h-0 overflow-hidden"/);
-assert.match(source, /style=\{\{ height: "calc\(100dvh - 180px\)" \}\}/);
+assert.match(source, /style=\{\{ height: "calc\(100dvh - 8\.5rem - var\(--bottom-nav-clearance\)\)" \}\}/);
 assert.match(source, /function ClassificaTab\(\{ currentUserId \}/);
 assert.match(source, /const \[viewingProfile, setViewingProfile\] = useState<string \| null>\(null\);/);
 assert.match(source, /onClick=\{\(\) => canViewProfile && entry\.userId && setViewingProfile\(entry\.userId\)\}/);

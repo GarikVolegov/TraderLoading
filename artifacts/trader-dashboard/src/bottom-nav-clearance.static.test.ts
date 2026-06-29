@@ -101,4 +101,51 @@ assert.doesNotMatch(
   "Milestones must not double the bottom clearance with pb-24",
 );
 
+// ── Task 6: forbid NEW magic-number bottom anchoring across the app ──────
+// Full-screen overlays legitimately pin to bottom-0; the cookie popup and
+// the nav itself are the sanctioned floating bars. Everything else must use
+// the token rather than re-introducing fixed bottom-[n] / calc(100dvh-Npx).
+const ALLOWLIST = new Set([
+  "src/components/BottomNav.tsx",          // the nav itself
+  "src/components/CookieConsentPopup.tsx", // sanctioned floating popup (token-based)
+  "src/components/PairSelectionModal.tsx", // full-screen bottom sheet (overlay)
+  "src/components/ui/sheet.tsx",           // overlay primitive
+  "src/components/ui/drawer.tsx",          // overlay primitive
+  "src/components/ui/toast.tsx",           // toast viewport
+  "src/components/social/StoryViewer.tsx", // full-screen story overlay
+]);
+
+function walk(dir: string, out: string[]): void {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) {
+      if (entry.name !== "node_modules") walk(full, out);
+    } else if (entry.name.endsWith(".tsx")) {
+      out.push(full);
+    }
+  }
+}
+
+const tsxFiles: string[] = [];
+walk("src/components", tsxFiles);
+walk("src/pages", tsxFiles);
+
+const fixedBottomMagic = /fixed[^"'`]*\bbottom-(?:0|3|5|\[(?!var\()[^\]]*\])/;
+const dvhMagic = /calc\(100dvh\s*-\s*\d+px\)/;
+
+for (const file of tsxFiles) {
+  if (ALLOWLIST.has(file)) continue;
+  const src = fs.readFileSync(file, "utf8");
+  assert.doesNotMatch(
+    src,
+    fixedBottomMagic,
+    `${file}: fixed element anchored to the bottom with a magic number — use bottom-[var(--bottom-nav-clearance)] / .bottom-nav-safe (or add to the overlay allowlist)`,
+  );
+  assert.doesNotMatch(
+    src,
+    dvhMagic,
+    `${file}: raw "calc(100dvh - Npx)" — subtract var(--bottom-nav-clearance) instead`,
+  );
+}
+
 console.log("bottom-nav clearance static checks passed");
