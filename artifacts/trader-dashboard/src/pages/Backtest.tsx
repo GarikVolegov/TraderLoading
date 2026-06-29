@@ -529,7 +529,7 @@ export default function Backtest() {
   if (activeSession) {
     return (
       <PageLayout>
-        <ProUpgradeGate feature="backtest">
+        <ProUpgradeGate feature="backtest" fillViewport>
           <SessionDetail session={activeSession} onBack={() => setActiveSession(null)} />
         </ProUpgradeGate>
       </PageLayout>
@@ -538,7 +538,7 @@ export default function Backtest() {
 
   return (
     <PageLayout>
-      <ProUpgradeGate feature="backtest">
+      <ProUpgradeGate feature="backtest" fillViewport>
       <PageHeader
         title={uiText("auto.ui.c6e3b65510")}
         subtitle={uiText("auto.ui.a5c0238dec")}

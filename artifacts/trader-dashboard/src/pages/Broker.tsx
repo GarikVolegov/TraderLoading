@@ -28,7 +28,7 @@ export default function Broker() {
         subtitle={t("page.broker.subtitle")}
       />
 
-      <ProUpgradeGate feature="broker">
+      <ProUpgradeGate feature="broker" fillViewport>
         <BrokerHubWorkspace initialTab={getInitialBrokerTab()} />
       </ProUpgradeGate>
     </PageLayout>

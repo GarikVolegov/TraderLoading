@@ -26,5 +26,11 @@ assert.doesNotMatch(source, /\bSparkles\b/);
 // L'overlay del paywall scrolla: la CTA non viene mai tagliata in contenitori ad altezza fissa.
 assert.match(source, /overflow-y-auto/);
 assert.doesNotMatch(source, /sticky top-24/);
+// fillViewport: nelle pagine a tutta altezza (PageLayout) il parent ha altezza
+// auto, quindi h-full collassa e il gate resterebbe a ~420px lasciando un buco
+// fino alla barra. Con fillViewport il gate riempie l'area di contenuto del
+// PageLayout via il token di clearance condiviso (niente buco, niente overlap).
+assert.match(source, /fillViewport/);
+assert.match(source, /calc\(100dvh - 3\.85rem - var\(--bottom-nav-clearance\)\)/);
 
 console.log("pro upgrade gate static checks passed");

@@ -77,7 +77,25 @@ function PaywallCard({ feature, onUpgrade }: { feature: ProFeature; onUpgrade: (
   );
 }
 
-export function ProUpgradeGate({ feature, children }: { feature: ProFeature; children: React.ReactNode }) {
+export function ProUpgradeGate({
+  feature,
+  children,
+  fillViewport = false,
+}: {
+  feature: ProFeature;
+  children: React.ReactNode;
+  /**
+   * Set on full-page gates rendered directly inside <PageLayout> (Backtest,
+   * Broker, Wiki). There the gate's parent has auto height, so `h-full`
+   * collapses and the gate would shrink to ~420px, clipping the paywall card
+   * and leaving a large gap above the bottom nav. With this flag the gate gets
+   * a definite height equal to the PageLayout content area (viewport minus the
+   * top inset and the shared bottom-nav clearance), so it fills the page
+   * without overlapping the bar. Leave OFF inside height-constrained parents
+   * (e.g. the Chat leaderboard tab), where `h-full` already fills correctly.
+   */
+  fillViewport?: boolean;
+}) {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const billing = useBillingStatus();
 
@@ -90,7 +108,14 @@ export function ProUpgradeGate({ feature, children }: { feature: ProFeature; chi
   }
 
   return (
-    <div className="relative h-full min-h-[420px]">
+    <div
+      className={`relative ${fillViewport ? "" : "h-full min-h-[420px]"}`}
+      style={
+        fillViewport
+          ? { minHeight: "max(420px, calc(100dvh - 3.85rem - var(--bottom-nav-clearance)))" }
+          : undefined
+      }
+    >
       <div inert aria-hidden className="pointer-events-none select-none blur-[3px] opacity-50">
         {children}
       </div>

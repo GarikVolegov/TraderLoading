@@ -301,7 +301,7 @@ export default function Wiki() {
 
   return (
     <PageLayout>
-      <ProUpgradeGate feature="wiki">
+      <ProUpgradeGate feature="wiki" fillViewport>
         <PageHeader title={uiText("wiki.title")} subtitle={uiText("wiki.subtitle")} />
 
         <div className="mt-2 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
