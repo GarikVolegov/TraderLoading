@@ -72,4 +72,22 @@ assert.doesNotMatch(
   "Chat must not keep the old fixed 180px viewport math",
 );
 
+// ── Task 4: CookieConsent sits above the bar, offset for the sidebar ─────
+const cookie = fs.readFileSync("src/components/CookieConsentPopup.tsx", "utf8");
+assert.match(
+  cookie,
+  /bottom-\[var\(--bottom-nav-clearance\)\]/,
+  "CookieConsent must float above the mobile nav bar via the token",
+);
+assert.match(
+  cookie,
+  /lg:left-\[calc\(var\(--app-inset-left\)\+0\.75rem\)\]/,
+  "CookieConsent must offset its left edge past the desktop sidebar",
+);
+assert.doesNotMatch(
+  cookie,
+  /\bbottom-3\b/,
+  "CookieConsent must not keep the old bottom-3 that overlapped the nav",
+);
+
 console.log("bottom-nav clearance static checks passed");
