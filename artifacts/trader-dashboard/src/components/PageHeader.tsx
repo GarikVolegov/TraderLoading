@@ -12,12 +12,13 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, action, badge, icon }: PageHeaderProps) {
   return (
     <motion.div
-      className="flex flex-col gap-3 pb-1 sm:flex-row sm:items-end sm:justify-between"
+      className="flex flex-col gap-3 pb-1 max-sm:pb-0 sm:flex-row sm:items-end sm:justify-between"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="min-w-0 flex items-start sm:items-center gap-3">
+      {/* Title cluster (accent bar + icon + title + badge + subtitle) — hidden on mobile, shown sm+ */}
+      <div className="hidden min-w-0 items-start gap-3 sm:flex sm:items-center">
         {/* Accent bar */}
         <motion.div
           className="mt-0.5 h-8 w-0.5 shrink-0 rounded-full bg-primary sm:h-9"
