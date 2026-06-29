@@ -623,19 +623,19 @@ export function MacroNewsTicker() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent
           side="bottom"
-          className="max-h-[85vh] overflow-y-auto rounded-t-2xl"
+          className="h-dvh max-h-dvh overflow-y-auto"
         >
-          <SheetHeader className="pb-3 border-b border-border">
-            <div className="flex items-center justify-between">
-              <div>
+          <SheetHeader className="pb-3 border-b border-border text-left">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
                 <SheetTitle className="text-base flex items-center gap-2">
                   <Brain className="w-4 h-4 text-primary" />
                   Notizie macro
                 </SheetTitle>
-                <SheetDescription className="text-xs mt-0.5">
+                <SheetDescription className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                   Briefing aggiornato
                   {fetchedTimeAgo && (
-                    <span className="ml-2 text-muted-foreground/60 inline-flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1 text-muted-foreground/60">
                       <Clock className="w-2.5 h-2.5" />
                       Aggiornato {fetchedTimeAgo}
                     </span>
@@ -648,7 +648,7 @@ export function MacroNewsTicker() {
                   refetch();
                 }}
                 disabled={isFetching}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-all disabled:opacity-50"
+                className="flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-all disabled:opacity-50"
               >
                 <RefreshCw
                   className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`}
@@ -659,30 +659,18 @@ export function MacroNewsTicker() {
           </SheetHeader>
 
           <div className="pt-4 space-y-4">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2">
-                Valute dai tuoi pair
-              </p>
-              {isPairDerivedMode ? (
-                <div className="rounded-xl border border-border bg-secondary/20 p-3 space-y-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {effectiveCurrencies.map((cur) => (
-                      <span
-                        key={cur}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-mono font-semibold border border-primary/30 bg-primary/10 text-primary"
-                      >
-                        {CURRENCY_FLAGS[cur] ?? ""} {cur}
-                      </span>
-                    ))}
-                  </div>
-                  {macroFilter.unsupportedItems.length > 0 && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Non supportate qui:{" "}
-                      {macroFilter.unsupportedItems.join(", ")}.
-                    </p>
-                  )}
-                </div>
-              ) : (
+            {isPairDerivedMode ? (
+              macroFilter.unsupportedItems.length > 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  Alcune coppie preferite non sono coperte dalle notizie macro:{" "}
+                  {macroFilter.unsupportedItems.join(", ")}.
+                </p>
+              )
+            ) : (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">
+                  Filtra per valuta
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   <button
                     onClick={selectAll}
@@ -727,8 +715,8 @@ export function MacroNewsTicker() {
                     );
                   })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {data?.sentiment && (
               <div className="flex items-center gap-3">
