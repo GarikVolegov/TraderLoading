@@ -273,7 +273,7 @@ export default function Routine() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-center text-sm italic text-muted-foreground/30 pb-4"
+          className="text-center text-sm italic text-muted-foreground/30"
         >
           &ldquo;Il trading di successo è il 20% tecnica e l&apos;80% psicologia.&rdquo;
         </motion.p>

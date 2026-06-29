@@ -921,7 +921,7 @@ export default function Milestones() {
 
   return (
     <PageLayout>
-      <div className="max-w-2xl mx-auto px-4 pb-24 pt-4 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 pt-4 space-y-6">
         <PageHeader
           title={uiText("auto.ui.689daf8e42")}
           subtitle={uiText("auto.ui.f1e28afebb")}

@@ -253,7 +253,7 @@ export default function ProPage() {
         </section>
 
         {/* ── Trust ── */}
-        <motion.section {...sectionMotion} className="relative px-4 pb-10">
+        <motion.section {...sectionMotion} className="relative px-4">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <ShieldCheck className="h-4 w-4 text-primary" />

@@ -90,4 +90,15 @@ assert.doesNotMatch(
   "CookieConsent must not keep the old bottom-3 that overlapped the nav",
 );
 
+// ── Task 5: no page re-pads the bottom on top of PageLayout's clearance ──
+// Lock the severe offender; the broader rule ("PageLayout owns bottom
+// clearance") is a documented convention, not a grep (pb-10/pb-4 values
+// are too common elsewhere to assert globally without false positives).
+const milestones = fs.readFileSync("src/pages/Milestones.tsx", "utf8");
+assert.doesNotMatch(
+  milestones,
+  /pb-24/,
+  "Milestones must not double the bottom clearance with pb-24",
+);
+
 console.log("bottom-nav clearance static checks passed");
