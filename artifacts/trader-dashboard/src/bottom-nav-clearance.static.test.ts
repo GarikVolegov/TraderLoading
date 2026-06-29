@@ -59,4 +59,17 @@ assert.doesNotMatch(
   "PageLayout must not keep the old magic-number clearance",
 );
 
+// ── Task 3: Chat height is token-based, not a raw dvh magic number ───────
+const chat = fs.readFileSync("src/pages/Chat.tsx", "utf8");
+assert.match(
+  chat,
+  /calc\(100dvh\s*-\s*8\.5rem\s*-\s*var\(--bottom-nav-clearance\)\)/,
+  "Chat scroll region height must subtract the clearance token",
+);
+assert.doesNotMatch(
+  chat,
+  /100dvh\s*-\s*180px/,
+  "Chat must not keep the old fixed 180px viewport math",
+);
+
 console.log("bottom-nav clearance static checks passed");

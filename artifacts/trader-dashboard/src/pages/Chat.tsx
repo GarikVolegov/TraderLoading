@@ -90,7 +90,7 @@ export default function Chat() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="bg-card/30 backdrop-blur-md border border-border rounded-2xl overflow-hidden flex flex-col min-h-0"
-        style={{ height: "calc(100dvh - 180px)" }}
+        style={{ height: "calc(100dvh - 8.5rem - var(--bottom-nav-clearance))" }}
       >
         <div className="flex border-b border-border shrink-0 overflow-x-auto">
           {tabs.map((tab) => (
