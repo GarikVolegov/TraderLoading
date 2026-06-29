@@ -7,8 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { refreshEconomicCalendar } from "@/lib/calendarApi";
 import { uiText } from "@/contexts/LanguageContext";
-
-const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "CNY"] as const;
+import { resolveCalendarCurrencies } from "@/lib/favoritePairFilters";
 
 const IMPACT_CONFIG = {
   High: { color: "bg-destructive", border: "border-destructive/30", text: "text-destructive", label: "Alto" },
@@ -21,8 +20,11 @@ type Impact = keyof typeof IMPACT_CONFIG;
 
 export function CalendarWidget() {
   const queryClient = useQueryClient();
-  const { calendarCurrencies, setCalendarCurrencies, calendarImpacts, setCalendarImpacts } = useBackground();
-  const selectedCurrencies = useMemo(() => new Set(calendarCurrencies), [calendarCurrencies]);
+  const { selectedCurrencies: favoriteCurrencies, calendarImpacts, setCalendarImpacts } = useBackground();
+  const selectedCurrencies = useMemo(
+    () => new Set(resolveCalendarCurrencies(favoriteCurrencies).items),
+    [favoriteCurrencies],
+  );
   const selectedImpacts = useMemo(() => new Set(calendarImpacts), [calendarImpacts]);
   const { mutate: saveSettings } = useUpdateUserSettings();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -36,18 +38,6 @@ export function CalendarWidget() {
   }, []);
 
   const { data: events, isLoading } = useGetEconomicCalendar();
-
-  const toggleCurrency = useCallback((currency: string) => {
-    const current = new Set(calendarCurrencies);
-    if (current.has(currency)) {
-      if (current.size > 1) current.delete(currency);
-    } else {
-      current.add(currency);
-    }
-    const arr = Array.from(current);
-    setCalendarCurrencies(arr);
-    saveSettings({ data: { calendarCurrencies: arr } });
-  }, [calendarCurrencies, setCalendarCurrencies, saveSettings]);
 
   const toggleImpact = useCallback((impact: string) => {
     const current = new Set(calendarImpacts);
@@ -140,25 +130,6 @@ export function CalendarWidget() {
       <CardContent className="p-3 sm:p-4 space-y-3">
         {filtersOpen && (
           <div className="space-y-3 pb-3 border-b border-border/30 animate-in slide-in-from-top-2 duration-200">
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{uiText("auto.ui.04fe77cf1d")}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {CURRENCIES.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => toggleCurrency(c)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
-                      selectedCurrencies.has(c)
-                        ? "bg-primary/20 text-primary border border-primary/40"
-                        : "bg-secondary/40 text-muted-foreground border border-border/50 hover:border-primary/30"
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{uiText("auto.ui.f150e87d33")}</p>
               <div className="flex flex-wrap gap-1.5">
