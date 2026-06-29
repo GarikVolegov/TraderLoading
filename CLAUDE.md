@@ -119,6 +119,13 @@ i18n-exempt). Spec: [docs/superpowers/specs/2026-06-19-design-system-foundation-
 Plan: [docs/superpowers/plans/2026-06-19-design-system-foundation.md](docs/superpowers/plans/2026-06-19-design-system-foundation.md).
 Next phases: migrate bespoke landing → app → admin surfaces onto the system.
 
+**Auth screen on the design system (done, branch `feat/auth-screen-redesign`).** Sign-in/sign-up
+rebuilt onto the Claude Design auth kit ([design-ref/auth/](design-ref/auth/)): `AuthPageShell`
+split brand panel with truthful trust rows + real-time testimonial rating (`/public/stats` gains
+`rating:{average,count}`), a segmented Accedi/Registrati toggle, themed Clerk form, and a skippable
+post-sign-up nickname step at `/welcome` (reuses `/profile` + `/profile/check-name`). Spec/plan:
+`docs/superpowers/{specs,plans}/2026-06-28-auth-screen-redesign*`.
+
 > This section changes the most session-to-session — update it as the work moves.
 
 ## 8. Conventions & gotchas
