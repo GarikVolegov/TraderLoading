@@ -1066,19 +1066,19 @@ export default function LandingPage() {
 
       {/* ── HERO (pt clears the fixed nav) ──────────────────────────── */}
       <main className="relative z-10 px-4 pb-16 pt-32 sm:px-6 sm:pb-20 sm:pt-44">
-        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-10 text-center sm:gap-14">
-          <Reveal className="w-full">
-            <h1 className="mb-5 text-center font-mono text-[30px] font-extrabold leading-[1.08] tracking-tight text-foreground min-[400px]:text-[34px] sm:text-5xl lg:text-6xl">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-14">
+          <Reveal className="w-full text-center lg:text-left">
+            <h1 className="mb-5 text-center font-mono text-[30px] font-extrabold leading-[1.08] tracking-tight text-foreground min-[400px]:text-[34px] sm:text-5xl lg:text-left lg:text-6xl">
               {t("landing.hero.title_a")}
               <br className="hidden sm:block" />{" "}
               <span className="bg-gradient-to-r from-primary via-emerald-400 to-teal-400 bg-clip-text text-transparent">
                 {t("landing.hero.title_b")}
               </span>
             </h1>
-            <p className="mb-8 mx-auto max-w-[540px] text-[17px] leading-relaxed text-muted-foreground sm:text-xl">
+            <p className="mb-8 mx-auto max-w-[540px] text-[17px] leading-relaxed text-muted-foreground sm:text-xl lg:mx-0">
               {t("landing.hero.subtitle")}
             </p>
-            <div className="mb-7 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3.5">
+            <div className="mb-7 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3.5 lg:justify-start">
               <button
                 onClick={() => setLocation("/sign-up")}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-7 py-3.5 text-base font-bold text-primary-foreground shadow-[0_0_34px_rgba(34,197,94,0.34)] transition-transform hover:-translate-y-0.5 sm:w-auto"
@@ -1094,7 +1094,7 @@ export default function LandingPage() {
                 {t("landing.tour.cta_button")}
               </button>
             </div>
-            <div className="mb-8 flex justify-center">
+            <div className="mb-8 flex justify-center lg:justify-start">
               <a
                 href="#features"
                 className="group inline-flex rounded-full bg-gradient-to-r from-primary/45 via-primary/15 to-blue-500/35 p-px shadow-[0_0_30px_rgba(34,197,94,0.16)] transition-shadow hover:shadow-[0_0_42px_rgba(34,197,94,0.28)]"
@@ -1109,7 +1109,7 @@ export default function LandingPage() {
                 </span>
               </a>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-[13.5px] text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-[13.5px] text-muted-foreground lg:justify-start">
               {TRUST.map(({ icon: Icon, labelKey }) => (
                 <span key={labelKey} className="inline-flex items-center gap-1.5">
                   <Icon className="h-[15px] w-[15px] text-primary" />
@@ -1118,7 +1118,7 @@ export default function LandingPage() {
               ))}
             </div>
           </Reveal>
-          <Reveal delay={0.12} y={36} className="w-full max-w-md">
+          <Reveal delay={0.12} y={36} className="mx-auto w-full max-w-md lg:mx-0 lg:max-w-none lg:justify-self-end">
             <ProductPreview
               playing={tourPlaying}
               onPlay={() => setTourPlaying(true)}
