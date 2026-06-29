@@ -265,7 +265,7 @@ function macroActionHint(articles: NewsArticle[], pair: string): string {
   return "Usalo come contesto: attendi conferma su prezzo e volatilita' prima di aumentare size.";
 }
 
-function buildMacroTickerSummary(
+export function buildMacroTickerSummary(
   articles: NewsArticle[],
   regime: ReturnType<typeof computeRiskRegime>,
   options: { pairs?: string } = {},

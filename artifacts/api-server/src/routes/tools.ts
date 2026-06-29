@@ -3,7 +3,7 @@ import cron from "node-cron";
 import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
 import { getNewsData } from "./news.js";
 import { cleanNewsText } from "../services/newsHub/contentQuality.js";
-import { ensureMacroDeepDive, macroNewsFromNewsHub, pairsFromMacroCurrencies } from "../services/newsHub/macroNewsAdapter.js";
+import { buildMacroTickerSummary, ensureMacroDeepDive, macroArticleToNewsLike, macroNewsFromNewsHub, pairsFromMacroCurrencies } from "../services/newsHub/macroNewsAdapter.js";
 import type { NewsDeepDive } from "../services/newsHub/types.js";
 import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
@@ -1468,7 +1468,7 @@ async function fetchMacroRSSFallback(currenciesInput: string, lang = "it"): Prom
     articles: translatedArticles,
     sentiment: regime.regime,
     sentimentIntensity: regime.intensity ?? undefined,
-    summary: `Notizie in tempo reale da ${RSS_MACRO_FEEDS.map((f) => f.source).join(", ")}`,
+    summary: buildMacroTickerSummary(translatedArticles.map(macroArticleToNewsLike), regime),
     fetchedAt: new Date().toISOString(),
   };
 }
