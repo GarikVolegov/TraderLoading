@@ -148,6 +148,25 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-pill: 9999px;
+
+  /* ── Bottom-nav clearance (single source of truth) ─────────────
+     Mobile/tablet: floating pill bar occupies a 76px band (64px pill
+     + 12px gap). Clearance = band + safe-area + 16px breathing room
+     = 92px, identical to the previous 5.75rem. On lg the nav becomes
+     the 80px left sidebar, so the bottom clearance collapses and the
+     content shifts left instead. */
+  --bottom-nav-band: 4.75rem;          /* 76px */
+  --bottom-nav-clearance: calc(var(--bottom-nav-band) + env(safe-area-inset-bottom, 0px) + 1rem);
+  --app-inset-left: 0px;
+}
+
+/* lg+: the bottom nav renders as the left sidebar — no floating bar to
+   clear, so content drops its bottom clearance and gains a left offset. */
+@media (min-width: 1024px) {
+  :root {
+    --bottom-nav-clearance: 1.5rem;    /* was lg:pb-6 */
+    --app-inset-left: 5rem;            /* was lg:pl-20 (80px) */
+  }
 }
 
 @layer base {
@@ -566,6 +585,14 @@
   .scrollbar-none {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Bottom-nav clearance helpers (read the shared token) */
+  .pb-bottom-nav {
+    padding-bottom: var(--bottom-nav-clearance);
+  }
+  .bottom-nav-safe {
+    bottom: var(--bottom-nav-clearance);
   }
 
   /* Ticker */
