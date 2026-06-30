@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 
 process.env.DATABASE_URL ??= "postgres://user:pass@127.0.0.1:5432/test";
 
-const { createBillingRouter, shouldPreserveManualSubscriptionOverride } = await import("./billing.js");
+const { createBillingRouter, shouldPreserveManualSubscriptionOverride, processStripeEventOnce } = await import("./billing.js");
 
 assert.equal(
   shouldPreserveManualSubscriptionOverride({
@@ -27,6 +27,62 @@ assert.equal(
   }),
   false,
 );
+
+// Stripe webhook idempotency control flow: each event id is processed at most
+// once. A retried (duplicate) delivery is acked without re-running side effects;
+// a processing failure releases the claim so Stripe's next retry can re-process.
+{
+  const handled: string[] = [];
+  const released: string[] = [];
+  const first = await processStripeEventOnce(
+    { id: "evt_1", type: "customer.subscription.updated" },
+    {
+      claim: async () => true,
+      release: async (id: string) => {
+        released.push(id);
+      },
+      handle: async () => {
+        handled.push("evt_1");
+      },
+    },
+  );
+  assert.deepEqual(first, { processed: true, duplicate: false });
+  assert.deepEqual(handled, ["evt_1"]);
+  assert.deepEqual(released, []);
+
+  const dupHandled: string[] = [];
+  const dup = await processStripeEventOnce(
+    { id: "evt_1", type: "customer.subscription.updated" },
+    {
+      claim: async () => false,
+      release: async () => {},
+      handle: async () => {
+        dupHandled.push("x");
+      },
+    },
+  );
+  assert.deepEqual(dup, { processed: false, duplicate: true });
+  assert.deepEqual(dupHandled, []);
+
+  const releasedOnFail: string[] = [];
+  await assert.rejects(
+    () =>
+      processStripeEventOnce(
+        { id: "evt_2", type: "invoice.payment_succeeded" },
+        {
+          claim: async () => true,
+          release: async (id: string) => {
+            releasedOnFail.push(id);
+          },
+          handle: async () => {
+            throw new Error("boom");
+          },
+        },
+      ),
+    /boom/,
+  );
+  assert.deepEqual(releasedOnFail, ["evt_2"]);
+}
 
 async function startBillingServer(options = {}) {
   const app = express();
