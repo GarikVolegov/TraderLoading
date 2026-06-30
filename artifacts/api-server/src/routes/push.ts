@@ -12,6 +12,7 @@ import {
   parseScheduledCallConfigs,
 } from "../services/notifications/scheduledCalls.js";
 import logger from "../lib/logger.js";
+import { tryAcquireLock } from "../lib/distributedLock.js";
 
 const router: IRouter = Router();
 
@@ -220,6 +221,16 @@ export function startSessionScheduler(): SchedulerHandle {
   async function runSchedulerTick(): Promise<void> {
     try {
       const now = new Date();
+
+      // Leader-election: across a horizontally-scaled fleet only one instance may
+      // run a given minute's tick, otherwise every instance scans all subscribers
+      // and users receive one duplicate push per instance. The per-minute lock key
+      // (TTL < the 60s interval) lets exactly one instance win each tick; without
+      // Redis the lock no-ops to true and the single instance handles it.
+      const minuteBucket = Math.floor(now.getTime() / 60_000);
+      const isLeader = await tryAcquireLock(`cron:session-push:${minuteBucket}`, 55_000);
+      if (!isLeader) return;
+
       const nowH = now.getHours();
       const nowM = now.getMinutes();
       const today = todayLocal(now);
