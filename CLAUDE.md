@@ -78,9 +78,13 @@ tools/metatrader-companion/   MT5 expert advisor
 - **Domain subsystems:**
   - **BrokerHub** (`services/brokerHub/`) — multi-broker sync: FxBlue, cTrader, MetaAPI, SnapTrade, MT5.
   - **NewsHub** (`services/newsHub/`) — aggregation, curation, LLM summarization/ranking, macro adapter.
-  - **Archive** (`routes/wiki.ts`, `services/wiki*.ts`) — a plain personal notes archive (text notes,
+  - **Archive** (`routes/wiki.ts`, `services/wiki*.ts`) — personal notes archive (text notes,
     file/URL uploads + folders) with async text extraction and client-side text search. Pro-gated
-    (`feature="wiki"`); route/keys keep the internal `wiki` name. No AI/graph (removed; see git history).
+    (`feature="wiki"`); route `/wiki` + keys keep the internal `wiki` name. No AI/graph (removed; see git history).
+    UI is the **Claude Design "Archivio"** layout (`pages/Wiki.tsx` + `components/archive/*`, pure logic in
+    `lib/archive.ts`): collections rail (= folders, restyled) + tag-cloud filter, grid/list/board views, density
+    toggle, type-filter chips, search, detail modal with inline tag editing, and an Add dialog (file/note/URL) +
+    page-wide drop target. Tag edits use `PATCH /wiki/sources/:id { tags }` (`services/wikiSourceUpdate.ts`).
   - **COT data** (`routes/tools.ts`) — CFTC Commitment-of-Traders, weekly cron.
   - **Trading coach** (Journal "Panoramica"/overview tab + recap) — turns closed `accountTradesTable` trades into a verdict:
     - *Edge* (`services/tradeAnalytics.ts`) — expectancy-in-R, win rate, net P&L by symbol/direction/session/day
