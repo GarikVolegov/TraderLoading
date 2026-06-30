@@ -17,6 +17,7 @@ import {
 } from "../services/wikiProcessor.js";
 import { createWikiStorageFromEnv } from "../services/wikiStorage.js";
 import { enqueueWikiSourceProcessing, processWikiSourceJob } from "../services/wikiIngest.js";
+import { buildSourceUpdate, parseTags } from "../services/wikiSourceUpdate.js";
 import { requireProFeature } from "../lib/billing.js";
 
 const router: IRouter = Router();
@@ -32,14 +33,6 @@ async function requireWikiUser(req: Request, res: Response): Promise<string | nu
   if (!(await requireProFeature(req, res, "wiki"))) return null;
   const userId = getUserId(req);
   return userId;
-}
-
-function parseTags(input: unknown): string {
-  if (Array.isArray(input)) return JSON.stringify(input.map(String).filter(Boolean));
-  if (typeof input === "string" && input.trim()) {
-    return JSON.stringify(input.split(",").map((tag) => tag.trim()).filter(Boolean));
-  }
-  return "[]";
 }
 
 router.get("/wiki/sources", async (req, res) => {
@@ -187,21 +180,24 @@ router.patch("/wiki/sources/:id", async (req, res) => {
     res.status(404).json({ error: "Sorgente non trovata" });
     return;
   }
-  const { folderId } = req.body as { folderId?: number | null };
+  const { folderId, tags } = req.body as { folderId?: number | null; tags?: unknown };
+  let folderValid = true;
   if (folderId != null) {
     const [folder] = await db
       .select({ id: wikiFoldersTable.id })
       .from(wikiFoldersTable)
       .where(and(eq(wikiFoldersTable.id, Number(folderId)), eq(wikiFoldersTable.userId, userId)))
       .limit(1);
-    if (!folder) {
-      res.status(400).json({ error: "Cartella non trovata" });
-      return;
-    }
+    folderValid = Boolean(folder);
+  }
+  const outcome = buildSourceUpdate({ folderId, tags }, folderValid);
+  if (!outcome.ok) {
+    res.status(outcome.status).json({ error: outcome.error });
+    return;
   }
   const [updated] = await db
     .update(wikiSourcesTable)
-    .set({ folderId: folderId == null ? null : Number(folderId), updatedAt: new Date() })
+    .set(outcome.patch)
     .where(and(eq(wikiSourcesTable.id, id), eq(wikiSourcesTable.userId, userId)))
     .returning();
   res.json(updated);
