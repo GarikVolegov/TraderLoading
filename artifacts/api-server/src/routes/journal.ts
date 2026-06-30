@@ -30,6 +30,7 @@ import { buildRecapMessages, filterTradesByPeriod, parseRecapDraft } from "../se
 import { getTextClient } from "../services/llmClient.js";
 import logger from "../lib/logger.js";
 import { getUploadsDir } from "../lib/uploads.js";
+import { consumeQuota } from "../lib/userQuota.js";
 
 const router: IRouter = Router();
 const JOURNAL_XP_REWARD = 75;
@@ -465,6 +466,18 @@ router.post("/journal/recaps/generate", async (req, res) => {
   const textClient = getTextClient();
   if (!textClient) {
     res.status(503).json({ error: "Generazione AI non configurata." });
+    return;
+  }
+
+  // Per-user daily cap on the (paid, billable) LLM call so a single user cannot
+  // run up unbounded provider cost by looping the endpoint. Consumed only once we
+  // are about to actually call the model. RECAP_DAILY_LIMIT overrides the default.
+  const recapLimit = Number(process.env.RECAP_DAILY_LIMIT) || 10;
+  const quota = await consumeQuota(`quota:recap:${userId ?? "guest"}`, recapLimit, 86_400);
+  if (!quota.allowed) {
+    res.status(429).json({
+      error: `Limite giornaliero di recap AI raggiunto (${quota.limit}). Riprova domani.`,
+    });
     return;
   }
 
