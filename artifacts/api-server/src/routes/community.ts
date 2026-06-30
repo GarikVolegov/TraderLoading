@@ -15,6 +15,7 @@ import {
   DEFAULT_MEMBER_PERMISSIONS,
   ADMIN_ROLE_PERMISSIONS,
 } from "../services/communityPermissions.js";
+import { emitSocialEvent } from "../services/socialHub/socialEvents.js";
 
 const COMMUNITY_FILES_DIR = resolveUploadPath("community-files");
 if (!fs.existsSync(COMMUNITY_FILES_DIR)) fs.mkdirSync(COMMUNITY_FILES_DIR, { recursive: true });
@@ -408,6 +409,14 @@ router.post("/community/channels/:channelId/messages", async (req, res) => {
         imageUrl: imageUrl ?? null,
       })
       .returning();
+
+    // Push to subscribed channel members so their UI refreshes without polling.
+    // Best-effort: a bus failure must never fail the write that already happened.
+    try {
+      emitSocialEvent({ type: "community:message", channelId });
+    } catch (emitErr) {
+      console.warn("[community] social emit failed:", emitErr);
+    }
 
     res.status(201).json(message);
   } catch (err) {
