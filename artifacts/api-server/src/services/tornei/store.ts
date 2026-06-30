@@ -59,6 +59,27 @@ export async function enrollUser(args: {
     });
 }
 
+// Conto reale sincronizzato dell'utente: il brokerAccountId più recente con
+// trade sincronizzati. Null se l'utente non ha trade sincronizzati.
+export async function resolveSyncedAccount(userId: string): Promise<{ accountId: string } | null> {
+  const [row] = await db
+    .select({ brokerAccountId: accountTradesTable.brokerAccountId })
+    .from(accountTradesTable)
+    .where(eq(accountTradesTable.userId, userId))
+    .orderBy(sql`${accountTradesTable.updatedAt} desc`)
+    .limit(1);
+  if (!row) return null;
+  return { accountId: row.brokerAccountId ?? "synced" };
+}
+
+export async function countEnrollments(seasonId: number): Promise<number> {
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(tournamentEnrollmentsTable)
+    .where(eq(tournamentEnrollmentsTable.seasonId, seasonId));
+  return n ?? 0;
+}
+
 export async function isEnrolled(seasonId: number, userId: string): Promise<boolean> {
   const [row] = await db
     .select({ id: tournamentEnrollmentsTable.id })
