@@ -157,6 +157,12 @@ post-sign-up nickname step at `/welcome` (reuses `/profile` + `/profile/check-na
 - **Don't `prettier --write` api-server files** — HEAD isn't prettier-clean, so it reformats the whole file.
 - **Toolchain not on PATH by default** — node/pnpm may need explicit PATH export in this environment.
 - **Clerk:** custom-domain instance, no `VITE_CLERK_PROXY_URL` (proxy caused prod black-screen).
+- **Market data on Railway:** Yahoo Finance is **IP-blocked** from Railway's datacenter. For the latest
+  **D1/W1** window the candle chain (`services/candles.ts` `getFallbackChain`) leads with Railway-friendly
+  sources — Binance (crypto), TwelveData (needs `TWELVEDATA_API_KEY`), then Dukascopy (no key but slow,
+  per-day files) — and only falls back to Yahoo. `/tools/volatility` sources via `getCandles("D1")` and is
+  **stale-while-revalidate** (reads cache, warms in background) so the slow source never blocks the request.
+  For instant FX/metals in prod set a (free) `TWELVEDATA_API_KEY`, or seed + enable `CANDLE_WAREHOUSE`.
 
 ## 9. Where to look first
 

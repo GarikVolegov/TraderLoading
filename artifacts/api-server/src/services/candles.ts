@@ -2,7 +2,7 @@
 // Fetch logica condivisa fra la route HTTP (/api/backtest/candles) e il "cervello"
 // vision (analisi on-demand + scanner autonomo). Estratta da routes/candles.ts.
 import { getJsonCache, setJsonCache } from "../lib/cache.js";
-import { mergeTail } from "./aggregate.js";
+import { aggregateInterval, mergeTail } from "./aggregate.js";
 import { INTERVAL_SECONDS, symbolId } from "./candleRegistry.js";
 
 const YAHOO_SYMBOLS: Record<string, string> = {
@@ -12,13 +12,36 @@ const YAHOO_SYMBOLS: Record<string, string> = {
   GBPJPY: "GBPJPY=X", AUDJPY: "AUDJPY=X", XAUUSD: "GC=F",
   US30: "YM=F", NAS100: "NQ=F", SPX500: "ES=F",
   BTCUSD: "BTC-USD", ETHUSD: "ETH-USD",
+  // Extra volatility-widget instruments (Yahoo here is the local-dev fallback;
+  // prod serves these from Dukascopy, which works from Railway's IP).
+  XAGUSD: "SI=F", USDMXN: "MXN=X", USDZAR: "ZAR=X",
 };
+
+// Symbols served by the Railway-friendly live D1/W1 sources. Yahoo blocks
+// Railway's datacenter IP, so for the latest window we prefer Dukascopy
+// (FX/metals/indices) and Binance (crypto), which do not. Keep these in sync
+// with DAILY_INSTRUMENT in ingest/dukascopy.ts and PAIR in ingest/binance.ts.
+const DUKASCOPY_DAILY_SYMBOLS = new Set<string>([
+  "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "NZDUSD", "USDCAD", "EURGBP",
+  "EURJPY", "GBPJPY", "AUDJPY", "XAUUSD", "US30", "NAS100", "SPX500",
+  "XAGUSD", "USDMXN", "USDZAR",
+]);
+const BINANCE_DAILY_SYMBOLS = new Set<string>(["BTCUSD", "ETHUSD"]);
+
+// How far back the live daily sources fetch for a latest-window request.
+// Dukascopy pulls per-day files, so keep D1 tight (~400d ≈ 260 bars, clears the
+// 120-bar minimum with headroom for closures); W1 needs ~3y to yield ≥120 weeks.
+function dailyLookbackSeconds(interval: string): number {
+  const days = interval === "W1" ? 3 * 365 : 400;
+  return days * 24 * 60 * 60;
+}
 
 const TWELVE_SYMBOLS: Record<string, string> = {
   EURUSD: "EUR/USD", GBPUSD: "GBP/USD", USDJPY: "USD/JPY",
   USDCHF: "USD/CHF", AUDUSD: "AUD/USD", NZDUSD: "NZD/USD",
   USDCAD: "USD/CAD", EURGBP: "EUR/GBP", EURJPY: "EUR/JPY",
   GBPJPY: "GBP/JPY", AUDJPY: "AUD/JPY", XAUUSD: "XAU/USD",
+  XAGUSD: "XAG/USD", USDMXN: "USD/MXN", USDZAR: "USD/ZAR",
 };
 
 const COINGECKO_IDS: Record<string, string> = {
@@ -282,10 +305,56 @@ async function fetchCoinGecko(symbol: string, interval: string, _options: Candle
 
 type FetchFn = (symbol: string, interval: string, options?: CandlesRequestOptions) => Promise<Candle[]>;
 
-function getFallbackChain(symbol: string, interval: string): Array<{ name: string; fn: FetchFn }> {
+function isDailyInterval(interval: string): boolean {
+  return interval === "D1" || interval === "W1";
+}
+
+/**
+ * Live D1/W1 fetch via Dukascopy's own datafeed (works from Railway, where
+ * Yahoo is IP-blocked). Fetches D1 and aggregates to W1 in-process. Lazy import
+ * keeps dukascopy-node out of the hot path and out of unit tests that only
+ * exercise the chain ordering.
+ */
+async function fetchDukascopyLive(symbol: string, interval: string): Promise<Candle[]> {
+  if (!isDailyInterval(interval)) throw new Error(`dukascopy live: unsupported interval ${interval}`);
+  const { fetchDukascopyDaily } = await import("./ingest/dukascopy.js");
+  const now = Math.floor(Date.now() / 1000);
+  const daily = await fetchDukascopyDaily(symbol, now - dailyLookbackSeconds(interval), now);
+  return interval === "W1" ? aggregateInterval(daily, "W1") : daily;
+}
+
+/** Live D1/W1 fetch via Binance's public mirror (crypto), reachable from Railway. */
+async function fetchBinanceLive(symbol: string, interval: string): Promise<Candle[]> {
+  if (!isDailyInterval(interval)) throw new Error(`binance live: unsupported interval ${interval}`);
+  const { fetchBinanceDaily } = await import("./ingest/binance.js");
+  const now = Math.floor(Date.now() / 1000);
+  const daily = await fetchBinanceDaily(symbol, now - dailyLookbackSeconds(interval), now);
+  return interval === "W1" ? aggregateInterval(daily, "W1") : daily;
+}
+
+export function getFallbackChain(
+  symbol: string,
+  interval: string,
+  hasStartDate = false,
+): Array<{ name: string; fn: FetchFn }> {
   const chain: Array<{ name: string; fn: FetchFn }> = [];
   const isIntraday = isIntradayReplayInterval(interval);
   const canUseTwelveData = isTwelveDataEnabled() && TWELVE_SYMBOLS[symbol];
+
+  // For the latest D1/W1 window, Yahoo is unusable on Railway (IP-blocked), so
+  // lead with Railway-friendly sources, fastest first: Binance (crypto, instant),
+  // TwelveData (single fast call, needs a key), then Dukascopy (no key but slow —
+  // per-day files). Yahoo/CoinGecko stay as last resorts (local dev / crypto).
+  // Deep history from a startDate keeps the legacy chain (the warehouse owns it).
+  if (isDailyInterval(interval) && !hasStartDate) {
+    if (BINANCE_DAILY_SYMBOLS.has(symbol)) chain.push({ name: "Binance", fn: fetchBinanceLive });
+    if (canUseTwelveData) chain.push({ name: "TwelveData", fn: fetchTwelveData });
+    if (DUKASCOPY_DAILY_SYMBOLS.has(symbol)) chain.push({ name: "Dukascopy", fn: fetchDukascopyLive });
+    chain.push({ name: "Yahoo", fn: fetchYahoo });
+    if (COINGECKO_IDS[symbol]) chain.push({ name: "CoinGecko", fn: fetchCoinGecko });
+    return chain;
+  }
+
   if (isIntraday && canUseTwelveData) {
     chain.push({ name: "TwelveData", fn: fetchTwelveData });
     chain.push({ name: "Yahoo", fn: fetchYahoo });
@@ -429,7 +498,7 @@ async function fetchLiveCandles(
 
   const errors: string[] = [];
   let bestCandlesCount = 0;
-  const chain = getFallbackChain(symbol, interval);
+  const chain = getFallbackChain(symbol, interval, Boolean(startDate));
 
   for (const { name, fn } of chain) {
     try {

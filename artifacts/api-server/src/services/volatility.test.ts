@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import { calculateVolatilityMetrics, getVolatilityUnit } from "./volatility.js";
+import {
+  calculateVolatilityMetrics,
+  candlesToVolatilityInput,
+  getVolatilityUnit,
+  trimToRecentDays,
+} from "./volatility.js";
 
 const timestamps = [
   1_780_000_000,
@@ -57,5 +62,50 @@ const eurMetrics = calculateVolatilityMetrics("EURUSD", {
 assert.equal(eurMetrics.todayPips, 13);
 assert.equal(eurMetrics.w1, 13.6);
 assert.equal(eurMetrics.pipUnit, "pip");
+
+// ── trimToRecentDays keeps only bars within `days` of the latest bar ─────────
+{
+  const T = 1_800_000_000;
+  const day = 86_400;
+  const series = [
+    { time: T - 400 * day, high: 2, low: 1, close: 1.5 },
+    { time: T - 100 * day, high: 2, low: 1, close: 1.5 },
+    { time: T, high: 2, low: 1, close: 1.5 },
+  ];
+  const trimmed = trimToRecentDays(series, 366);
+  assert.equal(trimmed.length, 2, "drops the bar older than 366 days");
+  assert.equal(trimmed[0].time, T - 100 * day);
+  assert.deepEqual(trimToRecentDays([], 366), [], "empty input is a no-op");
+}
+
+// ── candlesToVolatilityInput maps OHLC arrays, no meta ───────────────────────
+{
+  const input = candlesToVolatilityInput([
+    { time: 1, high: 1.2, low: 1.0, close: 1.1 },
+    { time: 2, high: 1.3, low: 1.1, close: 1.2 },
+  ]);
+  assert.deepEqual(input.timestamps, [1, 2]);
+  assert.deepEqual(input.high, [1.2, 1.3]);
+  assert.deepEqual(input.low, [1.0, 1.1]);
+  assert.deepEqual(input.close, [1.1, 1.2]);
+  assert.equal(input.meta, undefined);
+}
+
+// ── end-to-end: candle series → input → metrics (no Yahoo meta) ──────────────
+{
+  const day = 86_400;
+  // 30 daily bars, each with a 10-pip (0.0010) range for EURUSD.
+  const dailySeries = Array.from({ length: 30 }, (_, i) => {
+    const base = 1.1 + i * 0.0005;
+    return { time: 1_780_000_000 + i * day, high: base + 0.001, low: base, close: base + 0.0005 };
+  });
+  const metrics = calculateVolatilityMetrics("EURUSD", candlesToVolatilityInput(dailySeries));
+  assert.equal(metrics.y1, 10, "1Y average range is 10 pips");
+  assert.equal(metrics.w1, 10, "5d average range is 10 pips");
+  assert.equal(metrics.todayPips, 10, "todayPips falls back to the last bar's range");
+  assert.equal(metrics.pipUnit, "pip");
+  assert.equal(metrics.label, "Nella norma");
+  assert.equal(metrics.dataPoints.length, 30);
+}
 
 console.log("volatility metric checks passed");

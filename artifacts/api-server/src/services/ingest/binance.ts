@@ -13,6 +13,12 @@ const PAIR: Record<string, string> = {
 const BASE_URL = "https://data-api.binance.vision/api/v3/klines";
 const PAGE_LIMIT = 1000;
 
+// Step (ms) used to advance the paging cursor past the last returned bar.
+const INTERVAL_STEP_MS: Record<string, number> = {
+  "1m": 60_000,
+  "1d": 86_400_000,
+};
+
 /**
  * Parse Binance kline rows into normalized candles. A kline row is
  * `[openTime(ms), open, high, low, close, volume, closeTime, ...]` with prices
@@ -41,6 +47,54 @@ export function parseBinanceKlines(rows: unknown[]): Candle[] {
   return out.sort((a, b) => a.time - b.time);
 }
 
+async function fetchBinanceRange(
+  pair: string,
+  binanceInterval: string,
+  fromTs: number,
+  toTs: number,
+): Promise<Candle[]> {
+  const stepMs = INTERVAL_STEP_MS[binanceInterval];
+  if (!stepMs) throw new Error(`binance: unsupported interval ${binanceInterval}`);
+
+  const endMs = toTs * 1000;
+  let cursor = fromTs * 1000;
+  const all: Candle[] = [];
+
+  // Klines are capped at 1000 rows/call; page forward by the last bar's time.
+  while (cursor < endMs) {
+    const url = `${BASE_URL}?symbol=${pair}&interval=${binanceInterval}&startTime=${cursor}&endTime=${endMs}&limit=${PAGE_LIMIT}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!response.ok) throw new Error(`binance HTTP ${response.status}`);
+
+    const rows = (await response.json()) as unknown[];
+    if (!Array.isArray(rows) || rows.length === 0) break;
+
+    all.push(...parseBinanceKlines(rows));
+    const lastOpenMs = Number((rows[rows.length - 1] as unknown[])[0]);
+    if (!Number.isFinite(lastOpenMs)) break;
+    cursor = lastOpenMs + stepMs; // next bar
+    if (rows.length < PAGE_LIMIT) break; // final page
+  }
+
+  return all;
+}
+
+/** Whether the live daily fetcher can serve this symbol. */
+export function binanceSupportsDaily(symbol: string): boolean {
+  return symbol in PAIR;
+}
+
+/**
+ * Fetch daily (D1) candles for the live serving layer. Uses Binance's public
+ * data mirror, which (unlike Yahoo) is reachable from Railway's datacenter IP.
+ * Ascending, UTC unix-second open-times.
+ */
+export async function fetchBinanceDaily(symbol: string, fromTs: number, toTs: number): Promise<Candle[]> {
+  const pair = PAIR[symbol];
+  if (!pair) throw new Error(`binance: unsupported symbol ${symbol}`);
+  return fetchBinanceRange(pair, "1d", fromTs, toTs);
+}
+
 export const binanceSource: CandleSource = {
   id: SOURCE_ID.binance,
   name: "binance",
@@ -48,27 +102,6 @@ export const binanceSource: CandleSource = {
   async fetchRange(symbol, fromTs, toTs) {
     const pair = PAIR[symbol];
     if (!pair) throw new Error(`binance: unsupported symbol ${symbol}`);
-
-    const endMs = toTs * 1000;
-    let cursor = fromTs * 1000;
-    const all: Candle[] = [];
-
-    // Klines are capped at 1000 rows/call; page forward by the last bar's time.
-    while (cursor < endMs) {
-      const url = `${BASE_URL}?symbol=${pair}&interval=1m&startTime=${cursor}&endTime=${endMs}&limit=${PAGE_LIMIT}`;
-      const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
-      if (!response.ok) throw new Error(`binance HTTP ${response.status}`);
-
-      const rows = (await response.json()) as unknown[];
-      if (!Array.isArray(rows) || rows.length === 0) break;
-
-      all.push(...parseBinanceKlines(rows));
-      const lastOpenMs = Number((rows[rows.length - 1] as unknown[])[0]);
-      if (!Number.isFinite(lastOpenMs)) break;
-      cursor = lastOpenMs + 60_000; // next minute
-      if (rows.length < PAGE_LIMIT) break; // final page
-    }
-
-    return all;
+    return fetchBinanceRange(pair, "1m", fromTs, toTs);
   },
 };

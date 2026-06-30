@@ -29,6 +29,34 @@ export type VolatilityInput = {
   meta?: YahooMeta;
 };
 
+/** Minimal daily-candle shape consumed by the adapters below (structurally
+ * satisfied by the candle service's `Candle`). */
+export type DailyCandle = { time: number; high: number; low: number; close: number };
+
+const DAY_SECONDS = 86_400;
+
+/**
+ * Keep only candles within the last `days` of the most recent bar. Used to hold
+ * the 1-year `y1` semantics when the underlying source returns more history.
+ * Reference is the last bar's time (deterministic), not wall-clock.
+ */
+export function trimToRecentDays(candles: DailyCandle[], days: number): DailyCandle[] {
+  if (candles.length === 0) return candles;
+  const cutoff = candles[candles.length - 1].time - days * DAY_SECONDS;
+  return candles.filter((candle) => candle.time >= cutoff);
+}
+
+/** Adapt a daily OHLC candle series into the shape `calculateVolatilityMetrics`
+ * expects. No `meta` — `todayPips`/`currentPrice` fall back to the last bar. */
+export function candlesToVolatilityInput(candles: DailyCandle[]): VolatilityInput {
+  return {
+    timestamps: candles.map((candle) => candle.time),
+    high: candles.map((candle) => candle.high),
+    low: candles.map((candle) => candle.low),
+    close: candles.map((candle) => candle.close),
+  };
+}
+
 export type VolatilityMetricResponse = {
   pair: string;
   currentPrice: number;

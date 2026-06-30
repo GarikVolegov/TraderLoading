@@ -7,7 +7,15 @@ import { buildMacroTickerSummary, ensureMacroDeepDive, macroArticleToNewsLike, m
 import type { NewsDeepDive } from "../services/newsHub/types.js";
 import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
-import { getVolatilityUnit, YAHOO_VOLATILITY_PAIRS } from "../services/volatility.js";
+import {
+  calculateVolatilityMetrics,
+  candlesToVolatilityInput,
+  trimToRecentDays,
+  YAHOO_VOLATILITY_PAIRS,
+  type VolatilityMetricResponse,
+} from "../services/volatility.js";
+import { getCandles } from "../services/candles.js";
+import { getJsonCache, setJsonCache } from "../lib/cache.js";
 
 const router = Router();
 
@@ -185,140 +193,97 @@ router.get("/tools/sentiment", async (req, res) => {
   }
 });
 
-// ─── 3. VOLATILITY (Mataf-methodology via Yahoo Finance OHLCV) ────────────────
+// ─── 3. VOLATILITY (Mataf-methodology daily ranges) ──────────────────────────
+// Sources D1 candles via the shared candle service (Binance/TwelveData/Dukascopy
+// ahead of Yahoo) so it keeps working on Railway, where Yahoo blocks the
+// datacenter IP. Stale-while-revalidate: a request only ever reads cache and
+// triggers a deduped, concurrency-capped background refresh, so the slow no-key
+// source (Dukascopy pulls per-day files) never blocks the HTTP request.
 
-function avgPips(arr: number[]) {
-  return arr.length ? parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)) : 0;
+const VOLATILITY_FRESH_TTL_SECONDS = 30 * 60;
+const VOLATILITY_STALE_TTL_SECONDS = 7 * 24 * 60 * 60;
+const VOLATILITY_LOOKBACK_DAYS = 366;
+const VOLATILITY_WARM_MAX = 3;
+
+const volatilityLastGood = new Map<string, VolatilityMetricResponse>();
+const volatilityInFlight = new Map<string, Promise<void>>();
+let volatilityWarmActive = 0;
+const volatilityWarmWaiters: Array<() => void> = [];
+
+const volatilityFreshKey = (pair: string) => `volatility:v2:${pair}`;
+const volatilityStaleKey = (pair: string) => `volatility:stale:v1:${pair}`;
+
+function acquireVolatilityWarmSlot(): Promise<void> {
+  if (volatilityWarmActive < VOLATILITY_WARM_MAX) {
+    volatilityWarmActive++;
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    volatilityWarmWaiters.push(() => {
+      volatilityWarmActive++;
+      resolve();
+    });
+  });
+}
+
+function releaseVolatilityWarmSlot(): void {
+  volatilityWarmActive--;
+  volatilityWarmWaiters.shift()?.();
+}
+
+async function refreshVolatility(pair: string): Promise<void> {
+  // Pair keys are canonical symbols (EURUSD, USDJPY, XAUUSD, XAGUSD, …).
+  const { candles } = await getCandles(pair, "D1");
+  const recent = trimToRecentDays(candles, VOLATILITY_LOOKBACK_DAYS);
+  const series = recent.length >= 5 ? recent : candles;
+  const metrics = calculateVolatilityMetrics(pair, candlesToVolatilityInput(series));
+  volatilityLastGood.set(pair, metrics);
+  await setJsonCache(volatilityFreshKey(pair), metrics, VOLATILITY_FRESH_TTL_SECONDS);
+  await setJsonCache(volatilityStaleKey(pair), metrics, VOLATILITY_STALE_TTL_SECONDS);
+}
+
+/** Refresh a pair's volatility in the background — deduped per pair and globally
+ * concurrency-capped so a cold cache can't fan out into N slow Dukascopy pulls. */
+function ensureVolatilityWarm(pair: string): Promise<void> {
+  const existing = volatilityInFlight.get(pair);
+  if (existing) return existing;
+  const job = (async () => {
+    await acquireVolatilityWarmSlot();
+    try {
+      await refreshVolatility(pair);
+    } catch (err) {
+      console.warn(`[tools/volatility] warm ${pair}: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      releaseVolatilityWarmSlot();
+      volatilityInFlight.delete(pair);
+    }
+  })();
+  volatilityInFlight.set(pair, job);
+  return job;
 }
 
 router.get("/tools/volatility", async (req, res) => {
-  const pair = (req.query["pair"] as string ?? "EURUSD").toUpperCase();
-  const ticker = YAHOO_VOLATILITY_PAIRS[pair];
-
-  if (!ticker) {
+  const pair = ((req.query["pair"] as string) ?? "EURUSD").toUpperCase();
+  if (!YAHOO_VOLATILITY_PAIRS[pair]) {
     res.status(400).json({ error: `Pair ${pair} non supportato` });
     return;
   }
 
-  try {
-    // Fetch 1 year of OHLCV daily data
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1y`;
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; TraderLoading/1.0)",
-        "Accept": "application/json",
-      },
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!response.ok) throw new Error(`Yahoo Finance HTTP ${response.status}`);
-
-    const data = await response.json() as {
-      chart?: {
-        result?: Array<{
-          indicators?: { quote?: Array<{ close?: (number|null)[]; high?: (number|null)[]; low?: (number|null)[] }> };
-          meta?: { regularMarketPrice?: number; regularMarketDayHigh?: number; regularMarketDayLow?: number };
-          timestamp?: number[];
-        }>;
-      };
-    };
-
-    const result = data.chart?.result?.[0];
-    const quote = result?.indicators?.quote?.[0];
-    const timestamps = result?.timestamp ?? [];
-
-    if (!quote || !timestamps.length) throw new Error("Dati insufficienti da Yahoo Finance");
-
-    const { multiplier: pip, pipUnit } = getVolatilityUnit(pair);
-
-    // Build per-day pip ranges (H-L) — exactly Mataf's method
-    const ranges: { ts: number; pips: number; close: number }[] = [];
-    for (let i = 0; i < timestamps.length; i++) {
-      const h = quote.high?.[i];
-      const l = quote.low?.[i];
-      const c = quote.close?.[i];
-      if (h != null && l != null && c != null && h > 0 && l > 0) {
-        ranges.push({ ts: timestamps[i], pips: parseFloat(((h - l) * pip).toFixed(1)), close: c });
-      }
-    }
-
-    if (ranges.length < 5) throw new Error("Storico insufficiente");
-
-    const currentPrice = result?.meta?.regularMarketPrice ?? ranges[ranges.length - 1].close;
-    const todayHigh = result?.meta?.regularMarketDayHigh;
-    const todayLow  = result?.meta?.regularMarketDayLow;
-    const todayPips = todayHigh && todayLow ? parseFloat(((todayHigh - todayLow) * pip).toFixed(1)) : ranges[ranges.length - 1].pips;
-
-    const pipValues = ranges.map((r) => r.pips);
-    const w1  = avgPips(pipValues.slice(-5));
-    const m1  = avgPips(pipValues.slice(-22));
-    const m3  = avgPips(pipValues.slice(-66));
-    const m6  = avgPips(pipValues.slice(-132));
-    const y1  = avgPips(pipValues);
-
-    // Volatility label vs 1Y average
-    const ratio = w1 / (y1 || 1);
-    const label = ratio > 1.3 ? "Alta volatilità" : ratio < 0.7 ? "Bassa volatilità" : "Nella norma";
-
-    // Price return % for each period (close-to-close)
-    const closePrices = ranges.map((r) => r.close);
-    const latestClose = closePrices[closePrices.length - 1];
-    const pricePct = (n: number): number | null => {
-      if (closePrices.length <= n) return null;
-      const past = closePrices[closePrices.length - 1 - n];
-      return past > 0 ? parseFloat(((latestClose / past - 1) * 100).toFixed(2)) : null;
-    };
-    const w1Pct = pricePct(5);
-    const m1Pct = pricePct(22);
-    const m3Pct = pricePct(66);
-    const m6Pct = pricePct(132);
-    const y1Pct = pricePct(closePrices.length - 1);
-
-    const dayNames = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
-
-    // Last 30 trading days for chart — include weekday name
-    const last30 = ranges.slice(-30).map((r, i) => {
-      const d = new Date(r.ts * 1000);
-      return {
-        day: i + 1,
-        date: d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }),
-        weekday: dayNames[d.getDay()],
-        pips: r.pips,
-      };
-    });
-
-    // Peak weekday (which day of the week is most volatile on average)
-    const byDay: Record<number, number[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
-    ranges.forEach((r) => {
-      const d = new Date(r.ts * 1000).getDay();
-      if (byDay[d]) byDay[d].push(r.pips);
-    });
-    const peakDay = Object.entries(byDay)
-      .map(([d, vals]) => ({ day: dayNames[+d], avg: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0 }))
-      .sort((a, b) => b.avg - a.avg)[0]?.day ?? "Mer";
-
-    res.json({
-      pair,
-      currentPrice,
-      todayPips,
-      w1, m1, m3, m6, y1,
-      w1Pct, m1Pct, m3Pct, m6Pct, y1Pct,
-      label,
-      peakDay,
-      pipUnit,
-      last30,
-      // legacy fields for backwards compat
-      daily5: w1,
-      daily21: m1,
-      daily63: m3,
-      dailyAll: y1,
-      dataPoints: last30.map((r) => ({ day: r.day, value: r.pips })),
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[tools/volatility]", msg);
-    res.status(500).json({ error: msg });
+  const fresh = await getJsonCache<VolatilityMetricResponse>(volatilityFreshKey(pair));
+  if (fresh) {
+    res.json(fresh);
+    return;
   }
+
+  // Cache miss: kick off a background refresh and serve the best we have now.
+  void ensureVolatilityWarm(pair);
+  const stale =
+    volatilityLastGood.get(pair) ?? (await getJsonCache<VolatilityMetricResponse>(volatilityStaleKey(pair)));
+  if (stale) {
+    res.json(stale);
+    return;
+  }
+  res.status(503).json({ error: "Dati di volatilita in aggiornamento" });
 });
 
 // ─── 4. COT REPORT (CFTC, aggiornamento ogni venerdì) ────────────────────────

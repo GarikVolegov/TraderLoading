@@ -113,7 +113,12 @@ export function VolatilityWidget() {
                 className="flex flex-col items-center gap-1.5 rounded-xl border border-border/40 bg-secondary/35 px-2 py-3"
               >
                 {q?.isError ? (
-                  <div className="flex h-18.5 w-18.5 items-center justify-center text-muted-foreground">
+                  <div
+                    className="flex h-18.5 w-18.5 items-center justify-center text-muted-foreground"
+                    role="img"
+                    aria-label={uiText("vol.adr.unavailable")}
+                    title={uiText("vol.adr.unavailable")}
+                  >
                     <AlertCircle className="w-5 h-5" />
                   </div>
                 ) : (
