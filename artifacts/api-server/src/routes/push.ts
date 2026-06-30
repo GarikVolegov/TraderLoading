@@ -139,7 +139,12 @@ export async function sendPushToUser(
   );
 }
 
+// Per-day "already sent" guard for session/scheduled-call pushes. Keys embed the
+// day, so once the local day rolls over every entry is stale; we clear the map at
+// that boundary (see runSchedulerTick) to keep it bounded to a single day instead
+// of accumulating one entry per user/event for the whole process lifetime.
 const _sentToday = new Map<string, string>();
+let _sentTodayDay = "";
 
 export interface SchedulerHandle {
   close(): Promise<void>;
@@ -234,6 +239,12 @@ export function startSessionScheduler(): SchedulerHandle {
       const nowH = now.getHours();
       const nowM = now.getMinutes();
       const today = todayLocal(now);
+
+      // Drop the previous day's dedup entries once the local day rolls over.
+      if (today !== _sentTodayDay) {
+        _sentToday.clear();
+        _sentTodayDay = today;
+      }
 
       const rows = await db
         .selectDistinct({ userId: pushSubscriptionsTable.userId })
