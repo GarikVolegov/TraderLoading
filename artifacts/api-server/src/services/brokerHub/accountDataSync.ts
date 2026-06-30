@@ -235,6 +235,17 @@ export async function importBrokerAccountData(input: BrokerAccountDataSyncInput)
     }
   }
 
+  // Aggiorna (debounced) la classifica del torneo se l'utente è iscritto.
+  // Best-effort: non deve mai rompere il sync.
+  if ((imported > 0 || updated > 0) && input.profile.ownerUserId) {
+    try {
+      const { scheduleStandingsRefresh } = await import("../tornei/refreshHook.js");
+      await scheduleStandingsRefresh(input.profile.ownerUserId);
+    } catch (err) {
+      console.warn("[tornei] standings refresh schedule failed", err);
+    }
+  }
+
   return {
     imported,
     journalCreated,
