@@ -1,3 +1,5 @@
+import { TORNEI_TRANSLATIONS } from "./i18n.tornei";
+
 export type Language = "it" | "en" | "es" | "fr" | "de";
 
 export const SUPPORTED_LANGUAGES = ["it", "en", "es", "fr", "de"] as const;
@@ -7507,6 +7509,10 @@ for (const lang of SUPPORTED_LANGUAGES) {
   Object.assign(DICT[lang], COMMUNITY_REVIEWS_TRANSLATIONS[lang]);
 }
 
+for (const lang of SUPPORTED_LANGUAGES) {
+  Object.assign(DICT[lang], TORNEI_TRANSLATIONS[lang]);
+}
+
 export type TranslationKey =
   | keyof typeof BASE_DICT.it
   | keyof typeof ADMIN_TRANSLATIONS.it
@@ -7521,4 +7527,5 @@ export type TranslationKey =
   | keyof typeof SUPPORT_TRANSLATIONS.it
   | keyof typeof COMMUNITY_MGMT_TRANSLATIONS.it
   | keyof typeof COMMUNITY_CUSTOMIZATION_TRANSLATIONS.it
-  | keyof typeof COMMUNITY_REVIEWS_TRANSLATIONS.it;
+  | keyof typeof COMMUNITY_REVIEWS_TRANSLATIONS.it
+  | keyof typeof TORNEI_TRANSLATIONS.it;
