@@ -1,0 +1,616 @@
+/* Stili della sezione Tornei — portati dal template Claude Design
+   (templates/tornei). Auto-contenuti: i token --tl-* e le classi helper sono
+   definiti qui, scoped a .trn-page, così non dipendono da altri fogli. */
+
+.trn-page {
+  --tl-fg: hsl(210 40% 96%);
+  --tl-fg-muted: hsl(215 20% 65%);
+  --tl-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  --tl-font-sans: inherit;
+  --tl-radius: 12px;
+  --tl-radius-md: 14px;
+  --tl-radius-lg: 16px;
+  --tl-radius-xl: 20px;
+  --tl-glow-primary: 0 8px 30px hsl(142 71% 45% / 0.25);
+  --tl-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --trn-gap: 18px;
+  --trn-pad: 18px;
+  --trn-rowpad: 13px;
+  min-height: 100%;
+  color: var(--tl-fg);
+}
+.trn-wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: clamp(20px, 3.2vw, 38px) clamp(16px, 3vw, 38px) 64px;
+}
+
+/* helper di sistema (versioni locali) */
+.tl-section-label {
+  font-family: var(--tl-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(215 20% 60%);
+}
+.trn-panel {
+  background: hsl(226 43% 10% / 0.55);
+  border: 1px solid hsl(215 25% 27% / 0.5);
+  border-radius: var(--tl-radius-lg);
+  backdrop-filter: blur(12px);
+}
+.tl-rise {
+  animation: trnpop 0.4s var(--tl-ease-out) both;
+}
+.tl-fade {
+  animation: trnfade 0.4s var(--tl-ease-out) both;
+}
+.tl-stagger > * {
+  animation: trnpop 0.4s var(--tl-ease-out) both;
+}
+.tl-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+/* division accents */
+.trn-d-bronzo {
+  --dc: hsl(28 72% 54%);
+}
+.trn-d-argento {
+  --dc: hsl(215 16% 76%);
+}
+.trn-d-oro {
+  --dc: hsl(45 96% 55%);
+}
+.trn-d-diamante {
+  --dc: hsl(190 90% 62%);
+}
+/* rank accents */
+.trn-rk1 {
+  --rk: hsl(45 96% 55%);
+}
+.trn-rk2 {
+  --rk: hsl(215 16% 78%);
+}
+.trn-rk3 {
+  --rk: hsl(28 80% 56%);
+}
+.trn-rk0 {
+  --rk: hsl(215 20% 60%);
+}
+/* status */
+.trn-st-live {
+  --sc: hsl(142 71% 50%);
+}
+.trn-st-upcoming {
+  --sc: hsl(217 91% 62%);
+}
+.trn-st-ended {
+  --sc: hsl(215 20% 62%);
+}
+/* prize accents */
+.trn-pz-champ {
+  --pc: hsl(45 96% 55%);
+}
+.trn-pz-podium {
+  --pc: hsl(215 16% 76%);
+}
+.trn-pz-top10 {
+  --pc: hsl(28 80% 56%);
+}
+.trn-pz-disc {
+  --pc: hsl(142 71% 50%);
+}
+.trn-pz-finish {
+  --pc: hsl(217 91% 62%);
+}
+
+.trn-seg {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: hsl(222 35% 14% / 0.6);
+  border: 1px solid hsl(215 25% 27% / 0.45);
+}
+.trn-segb {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--tl-font-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 7px;
+  background: transparent;
+  color: hsl(215 20% 62%);
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.trn-segb:hover {
+  color: var(--tl-fg);
+}
+.trn-segb[data-active="1"] {
+  background: hsl(142 71% 45% / 0.16);
+  color: hsl(142 71% 60%);
+  box-shadow: 0 0 0 1px hsl(142 71% 45% / 0.35);
+}
+
+.trn-chipico {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+/* leaderboard */
+.trn-lbhead,
+.trn-lbrow {
+  display: grid;
+  grid-template-columns: 54px 1fr 104px 116px 96px;
+  align-items: center;
+  gap: 10px;
+}
+.trn-lbrow {
+  padding: var(--trn-rowpad, 13px) 16px;
+  border: 1px solid hsl(215 25% 27% / 0.4);
+  border-radius: var(--tl-radius);
+  background: hsl(226 43% 10% / 0.55);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+.trn-lbrow:hover {
+  border-color: hsl(142 71% 45% / 0.45);
+  background: hsl(226 43% 12% / 0.72);
+  transform: translateY(-1px);
+}
+.trn-lbrow[data-me="1"] {
+  border-color: hsl(142 71% 45% / 0.55);
+  background: hsl(142 71% 45% / 0.08);
+  box-shadow: 0 0 0 1px hsl(142 71% 45% / 0.25);
+}
+.trn-lbrow[data-dq="1"] {
+  opacity: 0.62;
+  cursor: default;
+}
+.trn-lbrow[data-dq="1"]:hover {
+  transform: none;
+  border-color: hsl(0 84% 60% / 0.4);
+}
+
+.trn-rkpill {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: color-mix(in srgb, var(--rk, hsl(215 20% 60%)) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rk) 45%, transparent);
+  color: var(--rk);
+  font-family: var(--tl-font-mono);
+  font-weight: 700;
+  font-size: 14px;
+}
+.trn-av {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font-family: var(--tl-font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--tl-fg);
+  background: hsl(222 35% 16% / 0.85);
+  border: 1px solid hsl(215 25% 27% / 0.55);
+}
+
+.trn-divtag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-family: var(--tl-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dc, hsl(215 20% 65%));
+  background: color-mix(in srgb, var(--dc, hsl(215 20% 60%)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dc, hsl(215 20% 60%)) 32%, transparent);
+}
+
+.trn-move {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--tl-font-mono);
+  font-size: 10.5px;
+}
+.trn-up {
+  color: hsl(142 71% 55%);
+}
+.trn-down {
+  color: hsl(0 84% 64%);
+}
+.trn-flat {
+  color: hsl(215 20% 52%);
+}
+
+/* podium */
+.trn-podium {
+  display: grid;
+  grid-template-columns: 1fr 1.18fr 1fr;
+  gap: 14px;
+  align-items: end;
+}
+.trn-pod {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 14px;
+  border-radius: var(--tl-radius-xl);
+  border: 1px solid color-mix(in srgb, var(--rk) 35%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rk) 13%, transparent), hsl(226 43% 10% / 0.6));
+  cursor: pointer;
+  transition: transform 0.18s;
+  text-align: center;
+}
+.trn-pod:hover {
+  transform: translateY(-3px);
+}
+.trn-pod1 {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rk) 40%, transparent), 0 14px 44px hsl(45 96% 50% / 0.14);
+}
+
+/* prize / rule cards */
+.trn-prize {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: var(--trn-pad, 18px);
+  border: 1px solid hsl(215 25% 27% / 0.45);
+  border-radius: var(--tl-radius-lg);
+  background: hsl(226 43% 10% / 0.55);
+  transition: all 0.18s;
+  height: 100%;
+}
+.trn-prize:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--pc) 45%, transparent);
+}
+.trn-rule {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 13px;
+  border: 1px solid hsl(215 25% 27% / 0.4);
+  border-radius: var(--tl-radius);
+  background: hsl(226 43% 10% / 0.45);
+}
+
+.trn-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.trn-lnode {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 11px 0;
+  position: relative;
+}
+.trn-lico {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: hsl(215 20% 52%);
+  background: hsl(222 35% 13% / 0.5);
+  border: 1px solid hsl(215 25% 27% / 0.4);
+}
+.trn-lnode[data-reached="1"] .trn-lico {
+  color: var(--dc);
+  background: color-mix(in srgb, var(--dc) 14%, transparent);
+  border-color: color-mix(in srgb, var(--dc) 40%, transparent);
+}
+.trn-lname {
+  font-weight: 500;
+  color: hsl(215 20% 58%);
+}
+.trn-lnode[data-reached="1"] .trn-lname {
+  font-weight: 600;
+  color: var(--tl-fg);
+}
+.trn-lnode[data-current="1"] .trn-lname {
+  font-weight: 700;
+  color: var(--dc);
+}
+
+.trn-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 22px;
+  border-radius: var(--tl-radius-md);
+  border: 1px solid hsl(142 71% 45% / 0.5);
+  background: hsl(142 71% 45%);
+  color: hsl(222 47% 6%);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: var(--tl-font-sans);
+  box-shadow: var(--tl-glow-primary);
+  transition: all 0.15s;
+}
+.trn-cta:hover {
+  background: hsl(142 71% 50%);
+  transform: translateY(-1px);
+}
+.trn-cta:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+
+.trn-hallrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid hsl(215 25% 27% / 0.4);
+  border-radius: var(--tl-radius);
+  background: hsl(226 43% 10% / 0.45);
+  width: 100%;
+  text-align: left;
+}
+
+/* ── NFT certificate cards ── */
+.trn-nft-champion {
+  --nc: hsl(45 96% 56%);
+}
+.trn-nft-podio {
+  --nc: hsl(206 30% 80%);
+}
+.trn-nft-finisher {
+  --nc: hsl(217 91% 66%);
+}
+.trn-nft {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--nc) 50%, transparent);
+  background: linear-gradient(180deg, hsl(226 44% 11%), hsl(224 52% 6%));
+  box-shadow: 0 10px 30px hsl(222 47% 2% / 0.5);
+  transition: transform 0.2s var(--tl-ease-out), box-shadow 0.2s;
+  width: 100%;
+}
+.trn-nft:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 56px hsl(222 47% 1% / 0.6), 0 0 32px color-mix(in srgb, var(--nc) 24%, transparent);
+}
+.trn-nft-art {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 26px 16px 22px;
+  overflow: hidden;
+  min-height: 182px;
+  background: radial-gradient(120% 78% at 50% 4%, color-mix(in srgb, var(--nc) 20%, transparent), transparent 60%),
+    repeating-conic-gradient(from 0deg at 50% 42%, color-mix(in srgb, var(--nc) 7%, transparent) 0deg 4deg, transparent 4deg 8deg);
+  box-shadow: inset 0 0 38px hsl(222 47% 3% / 0.55);
+}
+.trn-nft-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background: repeating-radial-gradient(circle at 50% 42%, transparent 0 12px, color-mix(in srgb, var(--nc) 11%, transparent) 12px 13px);
+}
+.trn-nft-art::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  z-index: 0;
+  border-radius: 11px;
+  border: 1px solid color-mix(in srgb, var(--nc) 26%, transparent);
+  pointer-events: none;
+}
+.trn-nft-art > * {
+  position: relative;
+  z-index: 1;
+}
+.trn-nft-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 42%,
+    hsl(0 0% 100% / 0.1) 49%,
+    hsl(0 0% 100% / 0.18) 50%,
+    hsl(0 0% 100% / 0.1) 51%,
+    transparent 58%
+  );
+  background-size: 250% 100%;
+  background-position: 200% 0;
+}
+.trn-nft:hover .trn-nft-sheen {
+  animation: trnholo 1s var(--tl-ease-out);
+}
+.trn-seal {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nc);
+  background: radial-gradient(circle, color-mix(in srgb, var(--nc) 28%, transparent), color-mix(in srgb, var(--nc) 5%, transparent) 70%);
+  border: 1.5px solid color-mix(in srgb, var(--nc) 60%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--nc) 45%, transparent), inset 0 0 16px color-mix(in srgb, var(--nc) 22%, transparent);
+}
+.trn-seal::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--nc) 32%, transparent);
+}
+.trn-seal::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in srgb, var(--nc) 26%, transparent);
+}
+.trn-nft-title {
+  font-family: var(--tl-font-mono);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tl-fg);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--nc) 45%, transparent);
+}
+.trn-nft-season {
+  font-family: var(--tl-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--nc) 78%, white);
+}
+.trn-nft-eyebrow {
+  position: absolute;
+  top: 12px;
+  left: 13px;
+  font-family: var(--tl-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--nc) 55%, hsl(215 20% 72%));
+}
+.trn-nft-ed {
+  position: absolute;
+  top: 10px;
+  right: 11px;
+  font-family: var(--tl-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 99px;
+  color: var(--nc);
+  background: color-mix(in srgb, var(--nc) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nc) 35%, transparent);
+}
+.trn-nft-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--nc) 22%, transparent);
+  background: hsl(222 47% 5% / 0.55);
+}
+.trn-nft-rarity {
+  font-family: var(--tl-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--nc);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.trn-nft-erc {
+  font-family: var(--tl-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: hsl(215 20% 55%);
+}
+
+.trn-grid2 {
+  display: grid;
+  grid-template-columns: 1.62fr 0.9fr;
+  gap: 22px;
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .trn-grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .trn-lbhead,
+  .trn-lbrow {
+    grid-template-columns: 44px 1fr 96px;
+  }
+  .trn-hide-sm {
+    display: none !important;
+  }
+  .trn-podium {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: stretch;
+  }
+}
+@keyframes trnpop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes trnfade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes trnholo {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -90% 0;
+  }
+}
+.trn-cd {
+  font-variant-numeric: tabular-nums;
+}

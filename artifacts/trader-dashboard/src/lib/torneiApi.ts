@@ -90,6 +90,9 @@ export const torneiStandingsKey = (metric: TorneiMetric) =>
 export const torneiMeKey = () => ["/api/tornei/me"] as const;
 export const torneiHallKey = () => ["/api/tornei/hall"] as const;
 export const torneiCertificatesKey = () => ["/api/tornei/certificates"] as const;
+export const torneiWalletKey = () => ["/api/tornei/wallet"] as const;
+
+export const EVM_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
 // ── fetchers ─────────────────────────────────────────────────────────────────
 export function fetchTorneiCurrent(options?: RelativeApiOptions): Promise<TorneiCurrent> {
@@ -145,4 +148,26 @@ export function claimTorneiCertificate(
     { method: "POST", headers: { "Content-Type": "application/json" } },
     options,
   );
+}
+
+export function fetchTorneiWallet(options?: RelativeApiOptions): Promise<{ walletAddress: string | null }> {
+  return apiJSON<{ walletAddress: string | null }>("tornei/wallet", undefined, options);
+}
+
+export async function saveTorneiWallet(
+  walletAddress: string,
+  options?: RelativeApiOptions,
+): Promise<{ ok: boolean; walletAddress: string | null }> {
+  const res = await apiRequest(
+    "tornei/wallet",
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ walletAddress }),
+    },
+    options,
+  );
+  if (!res.ok) return { ok: false, walletAddress: null };
+  const body = (await res.json()) as { walletAddress: string | null };
+  return { ok: true, walletAddress: body.walletAddress };
 }

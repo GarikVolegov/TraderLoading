@@ -24,6 +24,7 @@ const PAGES = [
   { href: "/milestones", labelKey: "nav.milestones",    icon: Trophy,          keywords: "livelli xp certificati" },
   { href: "/clock",      labelKey: "nav.clock",         icon: Clock,           keywords: "sessioni mercato orari" },
   { href: "/missions",   labelKey: "missions.title",    icon: Target,          keywords: "missioni xp" },
+  { href: "/tornei",     labelKey: "tornei.nav",        icon: Trophy,          keywords: "tornei classifica gara competizione leaderboard nft" },
   { href: "/checklist",  labelKey: "checklist.title",   icon: ClipboardCheck,  keywords: "conferme criteri" },
   { href: "/library",    labelKey: "nav.library",       icon: Library,         keywords: "contenuti formativi" },
   { href: "/wiki",       labelKey: "nav.wiki",          icon: Archive,         keywords: "archivio appunti note documenti wiki" },

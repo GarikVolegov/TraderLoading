@@ -213,6 +213,39 @@ router.get("/tornei/certificates", async (req: Request, res: Response) => {
   res.json({ certificates: certificates.map(certDto) });
 });
 
+// ── GET/PUT /tornei/wallet (indirizzo per il conio NFT) ──────────────────────
+const EVM_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
+
+router.get("/tornei/wallet", async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Autenticazione richiesta." });
+    return;
+  }
+  const [profile] = await db
+    .select({ walletAddress: profileTable.walletAddress })
+    .from(profileTable)
+    .where(eq(profileTable.userId, userId))
+    .limit(1);
+  res.json({ walletAddress: profile?.walletAddress ?? null });
+});
+
+router.put("/tornei/wallet", async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Autenticazione richiesta." });
+    return;
+  }
+  const raw = typeof req.body?.walletAddress === "string" ? req.body.walletAddress.trim() : "";
+  const walletAddress = raw === "" ? null : raw;
+  if (walletAddress !== null && !EVM_ADDRESS_RE.test(walletAddress)) {
+    res.status(400).json({ error: "invalid_address" });
+    return;
+  }
+  await db.update(profileTable).set({ walletAddress }).where(eq(profileTable.userId, userId));
+  res.json({ walletAddress });
+});
+
 // ── POST /tornei/enroll ──────────────────────────────────────────────────────
 router.post("/tornei/enroll", async (req: Request, res: Response) => {
   const userId = getUserId(req);

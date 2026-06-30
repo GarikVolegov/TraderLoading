@@ -30,6 +30,7 @@ import { RewardsLibrarySection } from "@/components/settings/RewardsLibrarySecti
 import { SupportSection } from "@/components/settings/SupportSection";
 import { HelpSection } from "@/components/settings/HelpSection";
 import { TermsSection } from "@/components/settings/TermsSection";
+import { WalletSettings } from "@/components/tornei/WalletSettings";
 
 type TileId =
   | "profilo"
@@ -291,7 +292,12 @@ export default function Settings() {
 
   const tileContent: Record<TileId, React.ReactNode> = {
     profilo: <ProfileWidget />,
-    abbonamento: <BillingSubscriptionPanel />,
+    abbonamento: (
+      <div className="space-y-6">
+        <BillingSubscriptionPanel />
+        <WalletSettings />
+      </div>
+    ),
     pairs: <PairPreferencesSettings />,
     audio: <AudioPlayer />,
     aspetto: (

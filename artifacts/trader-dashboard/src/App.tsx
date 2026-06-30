@@ -59,6 +59,7 @@ const Milestones = lazy(() => import("./pages/Milestones"));
 const Library = lazy(() => import("./pages/Library"));
 const Routine = lazy(() => import("./pages/Routine"));
 const Missions = lazy(() => import("./pages/Missions"));
+const Tornei = lazy(() => import("./pages/Tornei"));
 const Clock = lazy(() => import("./pages/Clock"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Broker = lazy(() => import("./pages/Broker"));
@@ -294,6 +295,7 @@ function AppRouter() {
           <Route path="/library" component={Library} />
           <Route path="/routine" component={Routine} />
           <Route path="/missions" component={Missions} />
+          <Route path="/tornei" component={Tornei} />
           <Route path="/clock" component={Clock} />
           <Route path="/calendar" component={Calendar} />
           <Route path="/broker" component={Broker} />
