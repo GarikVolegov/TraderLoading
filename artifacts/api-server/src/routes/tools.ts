@@ -8,8 +8,67 @@ import type { NewsDeepDive } from "../services/newsHub/types.js";
 import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
 import { getVolatilityUnit, YAHOO_VOLATILITY_PAIRS } from "../services/volatility.js";
+import { getCandles, isSupportedSymbol } from "../services/candles.js";
 
 const router = Router();
+
+type VolatilityChart = {
+  timestamps: number[];
+  quote: { high: (number | null)[]; low: (number | null)[]; close: (number | null)[] };
+  meta?: { regularMarketPrice?: number; regularMarketDayHigh?: number; regularMarketDayLow?: number };
+};
+
+/**
+ * Load ~1y of daily OHLC for the volatility metrics. Yahoo is primary, but it
+ * blocks datacenter IPs (Railway) — which used to surface as a hard 500. On any
+ * Yahoo failure we fall back to the resilient candle service (Yahoo → TwelveData →
+ * CoinGecko) for the symbols it supports; the three volatility-only pairs
+ * (XAGUSD/USDMXN/USDZAR) have no fallback source and rethrow.
+ */
+async function loadVolatilityChart(pair: string, ticker: string): Promise<VolatilityChart> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1y`;
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; TraderLoading/1.0)",
+        "Accept": "application/json",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) throw new Error(`Yahoo Finance HTTP ${response.status}`);
+    const data = (await response.json()) as {
+      chart?: {
+        result?: Array<{
+          indicators?: { quote?: Array<{ close?: (number | null)[]; high?: (number | null)[]; low?: (number | null)[] }> };
+          meta?: { regularMarketPrice?: number; regularMarketDayHigh?: number; regularMarketDayLow?: number };
+          timestamp?: number[];
+        }>;
+      };
+    };
+    const result = data.chart?.result?.[0];
+    const quote = result?.indicators?.quote?.[0];
+    const timestamps = result?.timestamp ?? [];
+    if (!quote || !timestamps.length) throw new Error("Dati insufficienti da Yahoo Finance");
+    return {
+      timestamps,
+      quote: { high: quote.high ?? [], low: quote.low ?? [], close: quote.close ?? [] },
+      meta: result?.meta,
+    };
+  } catch (yahooErr) {
+    if (!isSupportedSymbol(pair)) throw yahooErr;
+    const { candles } = await getCandles(pair, "D1");
+    if (candles.length === 0) throw yahooErr;
+    return {
+      timestamps: candles.map((c) => c.time),
+      quote: {
+        high: candles.map((c) => c.high),
+        low: candles.map((c) => c.low),
+        close: candles.map((c) => c.close),
+      },
+      meta: undefined,
+    };
+  }
+}
 
 // ─── 1. MONTE CARLO ───────────────────────────────────────────────────────────
 // Scenario-based Monte Carlo: ogni simulazione ha la propria sequenza di regimi
@@ -201,33 +260,9 @@ router.get("/tools/volatility", async (req, res) => {
   }
 
   try {
-    // Fetch 1 year of OHLCV daily data
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1y`;
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; TraderLoading/1.0)",
-        "Accept": "application/json",
-      },
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!response.ok) throw new Error(`Yahoo Finance HTTP ${response.status}`);
-
-    const data = await response.json() as {
-      chart?: {
-        result?: Array<{
-          indicators?: { quote?: Array<{ close?: (number|null)[]; high?: (number|null)[]; low?: (number|null)[] }> };
-          meta?: { regularMarketPrice?: number; regularMarketDayHigh?: number; regularMarketDayLow?: number };
-          timestamp?: number[];
-        }>;
-      };
-    };
-
-    const result = data.chart?.result?.[0];
-    const quote = result?.indicators?.quote?.[0];
-    const timestamps = result?.timestamp ?? [];
-
-    if (!quote || !timestamps.length) throw new Error("Dati insufficienti da Yahoo Finance");
+    // 1 year of daily OHLC — Yahoo first, with a fallback to the resilient candle
+    // service for supported symbols so a Yahoo datacenter-IP block no longer 500s.
+    const { timestamps, quote, meta } = await loadVolatilityChart(pair, ticker);
 
     const { multiplier: pip, pipUnit } = getVolatilityUnit(pair);
 
@@ -244,9 +279,9 @@ router.get("/tools/volatility", async (req, res) => {
 
     if (ranges.length < 5) throw new Error("Storico insufficiente");
 
-    const currentPrice = result?.meta?.regularMarketPrice ?? ranges[ranges.length - 1].close;
-    const todayHigh = result?.meta?.regularMarketDayHigh;
-    const todayLow  = result?.meta?.regularMarketDayLow;
+    const currentPrice = meta?.regularMarketPrice ?? ranges[ranges.length - 1].close;
+    const todayHigh = meta?.regularMarketDayHigh;
+    const todayLow  = meta?.regularMarketDayLow;
     const todayPips = todayHigh && todayLow ? parseFloat(((todayHigh - todayLow) * pip).toFixed(1)) : ranges[ranges.length - 1].pips;
 
     const pipValues = ranges.map((r) => r.pips);
@@ -317,7 +352,9 @@ router.get("/tools/volatility", async (req, res) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[tools/volatility]", msg);
-    res.status(500).json({ error: msg });
+    // Upstream data unavailable (e.g. every source failed) is a 503, not a 500:
+    // it is retryable and not a bug in our handler. Don't leak the raw message.
+    res.status(503).json({ error: "Dati di volatilità temporaneamente non disponibili." });
   }
 });
 
