@@ -13,6 +13,7 @@ export const profileTable = pgTable("profile", {
   lastActiveDate: text("last_active_date"),
   userId: text("user_id"),
   yearsExperience: integer("years_experience"),
+  walletAddress: text("wallet_address"),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("profile_user_idx").on(table.userId),
