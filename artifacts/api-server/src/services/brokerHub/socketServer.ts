@@ -4,12 +4,13 @@ import { WebSocket } from "ws";
 import { brokerHubRuntime, type BrokerHubRuntime } from "./runtime.js";
 import type { BrokerEvent } from "./types.js";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
-import { authorizeWebSocketUpgrade, type WebSocketAuthContext, type WebSocketSecurityOptions } from "../webSocketAuth.js";
+import { authorizeWebSocketUpgrade, rejectWebSocketUpgrade, type WebSocketAuthContext, type WebSocketSecurityOptions } from "../webSocketAuth.js";
 import {
   canSend,
   createControlWebSocketServer,
   startHeartbeat,
 } from "../webSocketHeartbeat.js";
+import { isAtConnectionCapacity } from "../webSocketCapacity.js";
 
 interface ClientMessage {
   type?: string;
@@ -84,6 +85,10 @@ export function attachBrokerHubWebSocket(
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "", "http://localhost");
     if (url.pathname !== "/api/brokers/ws") return;
+    if (isAtConnectionCapacity(wss.clients.size)) {
+      rejectWebSocketUpgrade(socket, 503, "Server at capacity");
+      return;
+    }
     void (async () => {
       const auth = await authorizeWebSocketUpgrade(request, socket, socketSecurity);
       if (!auth) return;

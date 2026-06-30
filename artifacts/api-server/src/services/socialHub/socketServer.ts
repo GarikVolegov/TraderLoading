@@ -4,8 +4,9 @@ import { WebSocket } from "ws";
 import { and, eq } from "drizzle-orm";
 import { db, communityChannelsTable, communityMembersTable } from "@workspace/db";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
-import { authorizeWebSocketUpgrade, type WebSocketAuthContext, type WebSocketSecurityOptions } from "../webSocketAuth.js";
+import { authorizeWebSocketUpgrade, rejectWebSocketUpgrade, type WebSocketAuthContext, type WebSocketSecurityOptions } from "../webSocketAuth.js";
 import { canSend, createControlWebSocketServer, startHeartbeat } from "../webSocketHeartbeat.js";
+import { isAtConnectionCapacity } from "../webSocketCapacity.js";
 import { onSocialEvent, shouldDeliverToChannelSubscriber, type SocialEvent } from "./socialEvents.js";
 
 interface ClientMessage {
@@ -64,6 +65,10 @@ export function attachSocialHubWebSocket(server: Server, security: SocialHubSecu
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "", "http://localhost");
     if (url.pathname !== "/api/social/ws") return;
+    if (isAtConnectionCapacity(wss.clients.size)) {
+      rejectWebSocketUpgrade(socket, 503, "Server at capacity");
+      return;
+    }
     void (async () => {
       const auth = await authorizeWebSocketUpgrade(request, socket, security);
       if (!auth) return;
