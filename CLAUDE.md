@@ -124,6 +124,21 @@ i18n-exempt). Spec: [docs/superpowers/specs/2026-06-19-design-system-foundation-
 Plan: [docs/superpowers/plans/2026-06-19-design-system-foundation.md](docs/superpowers/plans/2026-06-19-design-system-foundation.md).
 Next phases: migrate bespoke landing → app → admin surfaces onto the system.
 
+**Tornei (trading tournaments) — new section, backend functional + tested, frontend ported.**
+Global quarterly "disciplined contest" (ciclo del 7) at route **`/tornei`**. Opt-in, requires a synced
+real account; **materialized** leaderboard (`tournament_standings`, refreshed by cron + on-sync) over
+cumulative R / Discipline from `accountTradesTable`; divisions, guardrail DQ, Arena + Percorso views,
+Albo d'oro. End-of-season prizes are auto-granted **idempotently**: XP + internal Pro entitlement
+(`adminUserSubscriptionsTable`, `source="tornei"`, **no Stripe charge**) + an **on-chain ERC-721
+certificate** behind a config-gated `MintProvider` (real mint on **Base** when `TORNEI_MINT_*` env set,
+else stays `claimable`). Endpoints are **off-contract** (`routes/tornei.ts`, direct `apiJSON`, like
+journal recaps — not in openapi.yaml). Migration `0017_tornei.sql`. Services in
+`artifacts/api-server/src/services/tornei/` (pure: `constants`, `seasonWindows`, `standings`, `prizes`,
+`eligibility`, `tradeMapping`, `proEntitlement`, `rolloverPlan` — all unit-tested; IO: `store`, `settle`,
+`mint/`) + `cron/torneiScheduler.ts`. UI in `components/tornei/` (scoped `tornei.css`). Spec/plan:
+`docs/superpowers/{specs,plans}/2026-06-30-tornei-trading*`. Pending: manual e2e; real on-chain mint
+needs the user's RPC/contract/funded wallet.
+
 **Auth screen on the design system (done, branch `feat/auth-screen-redesign`).** Sign-in/sign-up
 rebuilt onto the Claude Design auth kit ([design-ref/auth/](design-ref/auth/)): `AuthPageShell`
 split brand panel with truthful trust rows + real-time testimonial rating (`/public/stats` gains
