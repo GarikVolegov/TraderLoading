@@ -2,8 +2,8 @@ import { FileText, Globe2, Image as ImageIcon, StickyNote, Video, Volume2, type 
 import { uiText } from "@/contexts/LanguageContext";
 import { TYPE_LABEL_KEY, type ArchiveType } from "@/lib/archive";
 
-// Re-export the existing DnD payload key so item drag stays compatible with
-// the ArchiveRail / WikiFolderTree drop targets.
+// Shared DnD payload key so item drag stays compatible with the ArchiveRail
+// collection drop targets.
 export const ARCHIVE_DND_TYPE = "application/x-wiki-source";
 
 const ICONS: Record<ArchiveType, LucideIcon> = {
