@@ -1,5 +1,6 @@
 import type { Candle } from "../candles.js";
 import { SOURCE_ID } from "../candleRegistry.js";
+import { fetchWithRetry } from "../../lib/httpRetry.js";
 import type { CandleSource } from "./types.js";
 
 // Warehouse symbol → Binance spot pair. Binance quotes in USDT, used here as the
@@ -56,7 +57,8 @@ export const binanceSource: CandleSource = {
     // Klines are capped at 1000 rows/call; page forward by the last bar's time.
     while (cursor < endMs) {
       const url = `${BASE_URL}?symbol=${pair}&interval=1m&startTime=${cursor}&endTime=${endMs}&limit=${PAGE_LIMIT}`;
-      const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      // Retry transient 429/5xx so one blip doesn't abort a month-long ingestion run.
+      const response = await fetchWithRetry(url, { timeoutMs: 15000 });
       if (!response.ok) throw new Error(`binance HTTP ${response.status}`);
 
       const rows = (await response.json()) as unknown[];
