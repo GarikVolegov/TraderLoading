@@ -9,8 +9,17 @@ import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
 import { getVolatilityUnit, YAHOO_VOLATILITY_PAIRS } from "../services/volatility.js";
 import { getCandles, isSupportedSymbol } from "../services/candles.js";
+import { captureError } from "../lib/observability.js";
 
 const router = Router();
+
+// COT fetch runs from a cron and at boot, detached from any request. A failure
+// here was previously swallowed to console and never reached Sentry; report it so
+// a silently-stale COT feed is visible in production.
+function onCotFetchError(err: unknown): void {
+  console.error("[tools/cot] fetch failed", err);
+  captureError(err, { surface: "cron", job: "cot-fetch" });
+}
 
 type VolatilityChart = {
   timestamps: number[];
@@ -888,7 +897,7 @@ function runCotFetch(): Promise<void> {
 // Cron: ogni venerdì alle 21:00 UTC (30 min dopo pubblicazione CFTC)
 const cotTask = cron.schedule("0 21 * * 5", () => {
   console.info("[tools/cot] Cron triggered — fetching new COT data");
-  runCotFetch().catch(console.error);
+  runCotFetch().catch(onCotFetchError);
 }, { timezone: "UTC" });
 
 export const cotScheduler = {
@@ -900,7 +909,7 @@ export const cotScheduler = {
 };
 
 // Fetch iniziale al boot del server
-runCotFetch().catch(console.error);
+runCotFetch().catch(onCotFetchError);
 
 router.get("/tools/cot", async (req, res) => {
   const now = Date.now();
