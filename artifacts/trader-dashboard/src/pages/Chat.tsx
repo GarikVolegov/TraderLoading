@@ -89,7 +89,7 @@ export default function Chat() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-card/30 backdrop-blur-md border border-border rounded-2xl overflow-hidden flex flex-col min-h-0 h-[calc(100dvh-4.6rem-var(--bottom-nav-clearance))] sm:h-[calc(100dvh-8.5rem-var(--bottom-nav-clearance))]"
+        className="bg-card/30 backdrop-blur-md border border-border rounded-2xl overflow-hidden flex flex-col min-h-0 h-[calc(100dvh-var(--safe-top)-4.6rem-var(--bottom-nav-clearance))] sm:h-[calc(100dvh-var(--safe-top)-8.5rem-var(--bottom-nav-clearance))]"
       >
         <div className="flex border-b border-border shrink-0 overflow-x-auto">
           {tabs.map((tab) => (
