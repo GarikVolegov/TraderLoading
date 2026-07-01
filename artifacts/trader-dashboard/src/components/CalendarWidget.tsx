@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, type KeyboardEvent } from "react";
 import { Calendar, RefreshCw, TrendingUp, ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -185,7 +185,20 @@ export function CalendarWidget() {
                 return (
                   <div
                     key={`event-${i}`}
-                    onClick={() => hasDetails && toggleExpanded(eventKey)}
+                    {...(hasDetails
+                      ? {
+                          onClick: () => toggleExpanded(eventKey),
+                          onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              toggleExpanded(eventKey);
+                            }
+                          },
+                          role: "button",
+                          tabIndex: 0,
+                          "aria-expanded": isExpanded,
+                        }
+                      : {})}
                     className={`rounded-lg border transition-all ${
                       hasDetails ? "cursor-pointer" : ""
                     } ${
