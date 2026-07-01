@@ -85,6 +85,13 @@ tools/metatrader-companion/   MT5 expert advisor
     `lib/archive.ts`): collections rail (= folders, restyled) + tag-cloud filter, grid/list/board views, density
     toggle, type-filter chips, search, detail modal with inline tag editing, and an Add dialog (file/note/URL) +
     page-wide drop target. Tag edits use `PATCH /wiki/sources/:id { tags }` (`services/wikiSourceUpdate.ts`).
+  - **Reviews** (`routes/reviews.ts`, `services/reviews/`) — real user app-reviews prompted at a positive
+    milestone (level-up / streak / coach hint) via a pure `evaluateReviewPrompt` (min-activity + snooze/opt-out).
+    Off-contract (direct `apiJSON`, like tornei). Extends the editorial `testimonials` table with `userId` +
+    moderation `status` (pending→approved by admin flips `published`, so approved reviews flow into the existing
+    landing testimonials section + `/public/stats` rating). Admin moderation at `/admin/reviews`
+    (`moderation.resolve`). UI: global `ReviewPromptModal` (mounted by `App.tsx`) + `ReviewForm` (public-name
+    consent), Settings edit/withdraw card, landing rating badge. Migration `0018_reviews.sql` (+ `review_prompt_state`).
   - **COT data** (`routes/tools.ts`) — CFTC Commitment-of-Traders, weekly cron.
   - **Trading coach** (Journal "Panoramica"/overview tab + recap) — turns closed `accountTradesTable` trades into a verdict:
     - *Edge* (`services/tradeAnalytics.ts`) — expectancy-in-R, win rate, net P&L by symbol/direction/session/day
