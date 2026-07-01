@@ -177,18 +177,27 @@ const FALLBACK_SYMBOLS: MyfxbookSymbol[] = [
   { name: "GBPJPY", longPercentage: 43, shortPercentage: 57, longPositions: 43000, shortPositions: 57000, longVolume: 43, shortVolume: 57 },
   { name: "XAUUSD", longPercentage: 71, shortPercentage: 29, longPositions: 71000, shortPositions: 29000, longVolume: 71, shortVolume: 29 },
   { name: "XAGUSD", longPercentage: 66, shortPercentage: 34, longPositions: 66000, shortPositions: 34000, longVolume: 66, shortVolume: 34 },
-  { name: "USDJPY", longPercentage: 62, shortPercentage: 38, longPositions: 62000, shortPositions: 38000, longVolume: 62, shortVolume: 38 },
   { name: "BTCUSD", longPercentage: 68, shortPercentage: 32, longPositions: 68000, shortPositions: 32000, longVolume: 68, shortVolume: 32 },
 ];
+
+// Last successful live outlook, kept in memory so a transient Myfxbook failure
+// degrades to the most recent real data instead of dropping straight to the
+// static demo set (only relevant when MYFXBOOK_* credentials are configured).
+let lastGoodSentiment: MyfxbookSymbol[] | null = null;
 
 router.get("/tools/sentiment", async (req, res) => {
   const hasCredentials = !!(process.env.MYFXBOOK_EMAIL && process.env.MYFXBOOK_PASSWORD);
   try {
     const symbols = await fetchMyfxbookOutlook();
+    lastGoodSentiment = symbols;
     res.json({ symbols, live: true, cached: false, hasCredentials });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[tools/sentiment]", msg);
+    if (lastGoodSentiment) {
+      res.json({ symbols: lastGoodSentiment, live: false, cached: true, hasCredentials, error: msg });
+      return;
+    }
     res.json({ symbols: FALLBACK_SYMBOLS, live: false, fallback: true, hasCredentials, error: msg });
   }
 });
