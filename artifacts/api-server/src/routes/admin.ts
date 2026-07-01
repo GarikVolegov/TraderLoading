@@ -463,11 +463,14 @@ router.post(
 // ── Recensioni utenti (moderazione) ──────────────────────────────────────────
 // Le recensioni reali arrivano in stato "pending"; l'approvazione le pubblica
 // (published=true) così confluiscono nella landing e nel rating pubblico.
-const REVIEW_STATUS_FILTERS = new Set(["pending", "approved", "rejected", "withdrawn", "all"]);
+const REVIEW_STATUS_FILTERS = ["pending", "approved", "rejected", "withdrawn", "all"] as const;
+type ReviewStatusFilter = (typeof REVIEW_STATUS_FILTERS)[number];
 
 router.get("/admin/reviews", requireAdmin("moderation.resolve"), async (req, res) => {
   const status = String(req.query.status ?? "pending");
-  const filter = REVIEW_STATUS_FILTERS.has(status) ? status : "pending";
+  const filter: ReviewStatusFilter = (REVIEW_STATUS_FILTERS as readonly string[]).includes(status)
+    ? (status as ReviewStatusFilter)
+    : "pending";
   const limit = parseAdminLimit(req.query.limit, 50);
 
   const rows = await db
