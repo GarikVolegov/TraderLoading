@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useBackground, type TradingSessionConfig } from "@/contexts/BackgroundContext";
 import { getLocalClockHours, getLocalTimeZoneLabel, isMarketClosedSession, isTradingSession, normalizeLocalSessionTime, type MarketSessionConfig } from "@/lib/marketSessions";
+import { sessionBadgeClasses, toneForSessionColor, type SessionTone } from "@/lib/sessionBadge";
 import { uiText } from "@/contexts/LanguageContext";
 
 // ─── helpers (stessa logica di ClockWidget, qui estesa) ──────────────────────────
@@ -115,6 +116,11 @@ export default function Clock() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {rows.map(({ s, active, untilClose, untilOpen, progress }) => {
               const closed = isMarketClosedSession(s as MarketSessionConfig);
+              // Claude Design session pill: active → session colour (destructive when
+              // closed), inactive → spent muted pill.
+              const sessionColorTone = toneForSessionColor(s.color);
+              const statusTone: SessionTone = active ? sessionColorTone : "muted";
+              const statusBadge = sessionBadgeClasses(statusTone);
               return (
               <Card
                 key={s.name}
@@ -126,16 +132,16 @@ export default function Clock() {
                 <CardContent className="space-y-3 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", SESSION_DOT[s.color] ?? "bg-primary", active && "animate-pulse")} />
+                      <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", active ? sessionBadgeClasses(sessionColorTone).dot : (SESSION_DOT[s.color] ?? "bg-primary"), active && "animate-pulse")} />
                       <span className="truncate font-bold">{s.name}</span>
                     </div>
-                    {active && closed ? (
-                      <span className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-400">{uiText("clock.market_closed_badge")}</span>
-                    ) : active ? (
-                      <span className="shrink-0 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-bold text-green-400">{uiText("clock.active_badge")}</span>
-                    ) : (
-                      <span className="shrink-0 rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">{uiText("auto.ui.df95f7d698")}</span>
-                    )}
+                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", statusBadge.container)}>
+                      {active && closed
+                        ? uiText("clock.market_closed_badge")
+                        : active
+                        ? uiText("clock.active_badge")
+                        : uiText("auto.ui.df95f7d698")}
+                    </span>
                   </div>
 
                   <div className="rounded-lg bg-secondary/30 p-2 text-center">

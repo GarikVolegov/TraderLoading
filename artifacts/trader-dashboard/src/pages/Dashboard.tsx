@@ -42,7 +42,8 @@ import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
 import { TradingViewWatchlistWidget } from "@/components/TradingViewWatchlistWidget";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { columnsForWidth, distributeColumns } from "./Dashboard.layout";
+import { columnsForWidth, distributeColumns, visibleWidgetOrder } from "./Dashboard.layout";
+import { useIsDesktop } from "@/hooks/use-media-query";
 
 // ─── Widget registry ───────────────────────────────────────────────────────────
 
@@ -303,6 +304,7 @@ export default function Dashboard() {
   const [activeId, setActiveId]     = useState<string | null>(null);
   const prevOrderRef = useRef<string[]>(order);
   const cols = useColumns();
+  const isDesktop = useIsDesktop();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -381,9 +383,9 @@ export default function Dashboard() {
 
   // In edit mode: show all widgets (visible + hidden as ghost).
   // In normal mode: only show visible widgets.
-  const displayOrder = isEditing
-    ? order
-    : order.filter((id) => !hidden[id]);
+  // On desktop the daily quote lives in the ClockWidget banner, so its grid widget
+  // is dropped there (even in edit mode) — see visibleWidgetOrder.
+  const displayOrder = visibleWidgetOrder(order, hidden, { isEditing, isDesktop });
 
   // Layout: griglia responsiva uniforme in entrambe le viste. La masonry via CSS
   // `columns` si rompe su Safari/WebKit (altezze mal calcolate, `break-inside` ignorato →
