@@ -82,6 +82,10 @@ export default defineConfig(async ({ command }) => {
           if (!id.includes("node_modules")) return undefined;
           // lightweight-charts is framework-agnostic (canvas) and large → safe to isolate.
           if (id.includes("lightweight-charts")) return "vendor-lightweight-charts";
+          // @dnd-kit is used ONLY by the (lazy) Dashboard page and is a leaf that just
+          // consumes React (one-way edge → vendor, no cycle), so it can live in its own
+          // chunk that loads with Dashboard instead of bloating the eager vendor chunk.
+          if (id.includes("@dnd-kit")) return "vendor-dnd";
           // Everything else — React itself AND every library that touches React APIs
           // (forwardRef/hooks) at module-init time (@radix-ui, lucide-react, recharts,
           // framer-motion, @dnd-kit, @clerk, wouter), plus React's CommonJS-interop

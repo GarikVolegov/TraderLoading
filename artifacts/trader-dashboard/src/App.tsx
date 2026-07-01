@@ -81,6 +81,10 @@ const queryClient = new QueryClient({
     queries: {
       retry: false,
       refetchOnWindowFocus: false,
+      // Serve cached data instantly on navigation instead of refetching on every
+      // remount (default staleTime 0). Real-time market/chat queries override this
+      // with their own staleTime/refetchInterval, so freshness there is unaffected.
+      staleTime: 60_000,
     },
   },
 });
