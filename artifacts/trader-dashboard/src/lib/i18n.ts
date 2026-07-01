@@ -1,4 +1,5 @@
 import { TORNEI_TRANSLATIONS } from "./i18n.tornei";
+import { REVIEWS_TRANSLATIONS } from "./i18n.reviews";
 
 export type Language = "it" | "en" | "es" | "fr" | "de";
 
@@ -568,6 +569,7 @@ const BASE_DICT = {
     "checkin.error": "Errore nel check-in.",
     // PIN Lock
     "pin.enter": "Inserisci il tuo PIN per continuare",
+    "pin.delete": "Cancella",
     "pin.incorrect": "PIN non corretto",
     "pin.remembered": "Dispositivo ricordato per questa sessione",
     // Welcome Notification
@@ -1151,6 +1153,7 @@ const BASE_DICT = {
     "checkin.saved": "Check-in recorded. Happy trading!",
     "checkin.error": "Check-in error.",
     "pin.enter": "Enter your PIN to continue",
+    "pin.delete": "Delete",
     "pin.incorrect": "Incorrect PIN",
     "pin.remembered": "Device remembered for this session",
     "welcome.summary": "Today's summary",
@@ -1726,6 +1729,7 @@ const BASE_DICT = {
     "checkin.saved": "Check-in registrado. ¡Buen trading!",
     "checkin.error": "Error en el check-in.",
     "pin.enter": "Ingresa tu PIN para continuar",
+    "pin.delete": "Borrar",
     "pin.incorrect": "PIN incorrecto",
     "pin.remembered": "Dispositivo recordado para esta sesión",
     "welcome.summary": "Resumen de hoy",
@@ -2301,6 +2305,7 @@ const BASE_DICT = {
     "checkin.saved": "Check-in enregistré. Bon trading !",
     "checkin.error": "Erreur lors du check-in.",
     "pin.enter": "Entrez votre PIN pour continuer",
+    "pin.delete": "Effacer",
     "pin.incorrect": "PIN incorrect",
     "pin.remembered": "Appareil mémorisé pour cette session",
     "welcome.summary": "Résumé du jour",
@@ -2876,6 +2881,7 @@ const BASE_DICT = {
     "checkin.saved": "Check-in erfasst. Gutes Trading!",
     "checkin.error": "Fehler beim Check-in.",
     "pin.enter": "PIN eingeben um fortzufahren",
+    "pin.delete": "Loeschen",
     "pin.incorrect": "PIN falsch",
     "pin.remembered": "Gerät für diese Sitzung gespeichert",
     "welcome.summary": "Zusammenfassung des Tages",
@@ -7518,6 +7524,10 @@ for (const lang of SUPPORTED_LANGUAGES) {
   Object.assign(DICT[lang], TORNEI_TRANSLATIONS[lang]);
 }
 
+for (const lang of SUPPORTED_LANGUAGES) {
+  Object.assign(DICT[lang], REVIEWS_TRANSLATIONS[lang]);
+}
+
 export type TranslationKey =
   | keyof typeof BASE_DICT.it
   | keyof typeof ADMIN_TRANSLATIONS.it
@@ -7533,4 +7543,5 @@ export type TranslationKey =
   | keyof typeof COMMUNITY_MGMT_TRANSLATIONS.it
   | keyof typeof COMMUNITY_CUSTOMIZATION_TRANSLATIONS.it
   | keyof typeof COMMUNITY_REVIEWS_TRANSLATIONS.it
-  | keyof typeof TORNEI_TRANSLATIONS.it;
+  | keyof typeof TORNEI_TRANSLATIONS.it
+  | keyof typeof REVIEWS_TRANSLATIONS.it;

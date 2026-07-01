@@ -29,6 +29,7 @@ import { initAnalytics } from "./lib/analytics";
 initAnalytics();
 import { ScheduledCallRuntime } from "./components/ScheduledCallRuntime";
 import { LevelRewardModal } from "./components/LevelRewardModal";
+import { ReviewPromptModal } from "./components/ReviewPromptModal";
 import { PinLockScreen } from "./components/PinLockScreen";
 import { ChecklistSetupModal } from "./components/ChecklistSetupModal";
 import { PairOnboardingWrapper } from "./components/PairOnboardingWrapper";
@@ -343,6 +344,7 @@ function AuthenticatedShell() {
       <AppTutorialWrapper />
       <SessionCheckinModal />
       <LevelRewardModal />
+      <ReviewPromptModal />
       <CommandPalette />
       <SignUpConversionTracker />
 

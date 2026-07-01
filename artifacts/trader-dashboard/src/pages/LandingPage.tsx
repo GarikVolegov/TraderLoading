@@ -65,6 +65,7 @@ interface PublicStats {
   traders: number;
   trades: number;
   pairs: number;
+  rating: { average: number; count: number } | null;
 }
 interface PublicTestimonial {
   id: number;
@@ -1146,6 +1147,20 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          {stats?.rating && stats.rating.count > 0 && (
+            <div className="mt-4 flex items-center justify-center gap-2.5 text-[13px] text-muted-foreground">
+              <span className="inline-flex gap-0.5">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Star key={i} className="h-4 w-4" style={{ color: `hsl(${TONE.amber})`, fill: `hsl(${TONE.amber})` }} />
+                ))}
+              </span>
+              <span>
+                <strong className="font-mono font-bold text-foreground">{stats.rating.average.toFixed(1)}/5</strong>
+                {" · "}
+                {stats.rating.count} {t("landing.testimonials.reviews")}
+              </span>
+            </div>
+          )}
         </Reveal>
       </section>
 

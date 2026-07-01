@@ -31,6 +31,7 @@ import { SupportSection } from "@/components/settings/SupportSection";
 import { HelpSection } from "@/components/settings/HelpSection";
 import { TermsSection } from "@/components/settings/TermsSection";
 import { WalletSettings } from "@/components/tornei/WalletSettings";
+import { ReviewSettingsSection } from "@/components/settings/ReviewSettingsSection";
 
 type TileId =
   | "profilo"
@@ -291,7 +292,12 @@ export default function Settings() {
   const collapsibleSections = tiles.filter((tile) => tile.id !== "profilo");
 
   const tileContent: Record<TileId, React.ReactNode> = {
-    profilo: <ProfileWidget />,
+    profilo: (
+      <div className="space-y-6">
+        <ProfileWidget />
+        <ReviewSettingsSection />
+      </div>
+    ),
     abbonamento: (
       <div className="space-y-6">
         <BillingSubscriptionPanel />

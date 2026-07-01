@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Settings,
   Shield,
+  Star,
   Users,
 } from "lucide-react";
 import { type ReactNode } from "react";
@@ -34,6 +35,12 @@ const navItems = [
     labelKey: "admin.nav.content",
     icon: BookOpen,
     permission: "content.publish",
+  },
+  {
+    href: "/admin/reviews",
+    labelKey: "admin.nav.reviews",
+    icon: Star,
+    permission: "moderation.resolve",
   },
   {
     href: "/admin/subscriptions",

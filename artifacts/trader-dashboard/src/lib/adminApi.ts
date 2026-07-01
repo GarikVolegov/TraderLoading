@@ -283,6 +283,55 @@ export function unpublishAdminContentItem(itemId: number, reason: string) {
   return postAdminContentAction(itemId, "unpublish", reason);
 }
 
+export type AdminReviewStatus = "pending" | "approved" | "rejected" | "withdrawn";
+
+export interface AdminReviewRow {
+  id: number;
+  name: string;
+  role: string | null;
+  text: string;
+  rating: number;
+  status: AdminReviewStatus;
+  published: boolean;
+  userId: string | null;
+  locale: string | null;
+  createdAt: string;
+  updatedAt: string;
+  moderatedAt: string | null;
+  avatarUrl: string | null;
+}
+
+export function getAdminReviews(params: { status?: string; limit?: number } = {}) {
+  const search = new URLSearchParams();
+  if (params.status) search.set("status", params.status);
+  if (params.limit) search.set("limit", String(params.limit));
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+  return apiJSON<{ reviews: AdminReviewRow[]; status: string }>(`/admin/reviews${suffix}`);
+}
+
+function postAdminReviewAction(id: number, action: string, reason?: string) {
+  return apiJSON<{ success: true; review: AdminReviewRow }>(
+    `/admin/reviews/${encodeURIComponent(String(id))}/${action}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reason ? { reason } : {}),
+    },
+  );
+}
+
+export function approveAdminReview(id: number) {
+  return postAdminReviewAction(id, "approve");
+}
+
+export function rejectAdminReview(id: number, reason: string) {
+  return postAdminReviewAction(id, "reject", reason);
+}
+
+export function hideAdminReview(id: number) {
+  return postAdminReviewAction(id, "hide");
+}
+
 export function getAdminSupportOverview() {
   return apiJSON<AdminSupportOverview>("/admin/support/overview");
 }

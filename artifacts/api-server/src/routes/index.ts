@@ -37,6 +37,7 @@ import billingRouter from "./billing.js";
 import publicRouter from "./public.js";
 import supportRouter from "./support.js";
 import torneiRouter from "./tornei.js";
+import reviewsRouter from "./reviews.js";
 import {
   ANONYMOUS_FALLBACK_PREFIXES,
   createProductionAuthGate,
@@ -80,6 +81,7 @@ router.use(communityModerationRouter);
 router.use(communitySettingsRouter);
 router.use(communityReviewsRouter);
 router.use(torneiRouter);
+router.use(reviewsRouter);
 router.use(milestonesRouter);
 router.use(accountBridgeRouter);
 router.use(brokersRouter);

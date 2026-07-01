@@ -5,6 +5,7 @@ import { AdminUsersPage } from "@/components/admin/AdminUsersPage";
 import { AdminUserDetailPage } from "@/components/admin/AdminUserDetailPage";
 import { AdminTradingPage } from "@/components/admin/AdminTradingPage";
 import { AdminContentPage } from "@/components/admin/AdminContentPage";
+import { AdminReviewsPage } from "@/components/admin/AdminReviewsPage";
 import { AdminSubscriptionsPage } from "@/components/admin/AdminSubscriptionsPage";
 import { AdminSupportPage } from "@/components/admin/AdminSupportPage";
 import { AdminTicketsPage } from "@/components/admin/AdminTicketsPage";
@@ -19,6 +20,7 @@ export default function AdminPage() {
         <Route path="/admin/users" component={AdminUsersPage} />
         <Route path="/admin/trading" component={AdminTradingPage} />
         <Route path="/admin/content" component={AdminContentPage} />
+        <Route path="/admin/reviews" component={AdminReviewsPage} />
         <Route path="/admin/subscriptions" component={AdminSubscriptionsPage} />
         <Route path="/admin/support/tickets" component={AdminTicketsPage} />
         <Route path="/admin/support" component={AdminSupportPage} />

@@ -23,6 +23,7 @@ import {
   sessionsTable,
   supportTicketMessagesTable,
   supportTicketsTable,
+  testimonialsTable,
   usersTable,
 } from "@workspace/db";
 import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
@@ -458,6 +459,118 @@ router.post(
     await updateAdminContentPublished({ req, res, published: false });
   },
 );
+
+// ── Recensioni utenti (moderazione) ──────────────────────────────────────────
+// Le recensioni reali arrivano in stato "pending"; l'approvazione le pubblica
+// (published=true) così confluiscono nella landing e nel rating pubblico.
+const REVIEW_STATUS_FILTERS = new Set(["pending", "approved", "rejected", "withdrawn", "all"]);
+
+router.get("/admin/reviews", requireAdmin("moderation.resolve"), async (req, res) => {
+  const status = String(req.query.status ?? "pending");
+  const filter = REVIEW_STATUS_FILTERS.has(status) ? status : "pending";
+  const limit = parseAdminLimit(req.query.limit, 50);
+
+  const rows = await db
+    .select({
+      id: testimonialsTable.id,
+      name: testimonialsTable.name,
+      role: testimonialsTable.role,
+      text: testimonialsTable.text,
+      rating: testimonialsTable.rating,
+      status: testimonialsTable.status,
+      published: testimonialsTable.published,
+      userId: testimonialsTable.userId,
+      locale: testimonialsTable.locale,
+      createdAt: testimonialsTable.createdAt,
+      updatedAt: testimonialsTable.updatedAt,
+      moderatedAt: testimonialsTable.moderatedAt,
+      avatarUrl: profileTable.avatarUrl,
+    })
+    .from(testimonialsTable)
+    .leftJoin(profileTable, eq(profileTable.userId, testimonialsTable.userId))
+    .where(filter === "all" ? undefined : eq(testimonialsTable.status, filter))
+    .orderBy(desc(testimonialsTable.createdAt))
+    .limit(limit);
+
+  res.json({ reviews: rows, status: filter });
+});
+
+async function moderateReview({
+  req,
+  res,
+  action,
+}: {
+  req: Request;
+  res: Response;
+  action: "approve" | "reject" | "hide";
+}) {
+  const reviewId = Number(getRouteParam(req.params.id));
+  if (!Number.isInteger(reviewId)) {
+    res.status(400).json({ error: "ID recensione non valido" });
+    return;
+  }
+
+  // Il rifiuto richiede un motivo (audit); approvazione/hide no.
+  let reason: string | undefined;
+  if (action === "reject") {
+    try {
+      reason = requireActionReason(req.body?.reason);
+    } catch {
+      res.status(400).json({ error: "Motivo obbligatorio" });
+      return;
+    }
+  }
+
+  const [before] = await db
+    .select()
+    .from(testimonialsTable)
+    .where(eq(testimonialsTable.id, reviewId))
+    .limit(1);
+
+  if (!before) {
+    res.status(404).json({ error: "Recensione non trovata" });
+    return;
+  }
+
+  const now = new Date();
+  const patch =
+    action === "approve"
+      ? { status: "approved" as const, published: true }
+      : action === "reject"
+        ? { status: "rejected" as const, published: false }
+        : { published: false }; // hide: mantiene lo status "approved", esce dal pubblico
+
+  const [after] = await db
+    .update(testimonialsTable)
+    .set({ ...patch, moderatedAt: now, moderatedBy: req.admin!.userId, updatedAt: now })
+    .where(eq(testimonialsTable.id, reviewId))
+    .returning();
+
+  await writeAdminAudit({
+    req,
+    admin: req.admin!,
+    action: `reviews.${action}`,
+    targetType: "testimonial",
+    targetId: String(reviewId),
+    reason,
+    before,
+    after,
+  });
+
+  res.json({ success: true, review: after });
+}
+
+router.post("/admin/reviews/:id/approve", requireAdmin("moderation.resolve"), async (req, res) => {
+  await moderateReview({ req, res, action: "approve" });
+});
+
+router.post("/admin/reviews/:id/reject", requireAdmin("moderation.resolve"), async (req, res) => {
+  await moderateReview({ req, res, action: "reject" });
+});
+
+router.post("/admin/reviews/:id/hide", requireAdmin("moderation.resolve"), async (req, res) => {
+  await moderateReview({ req, res, action: "hide" });
+});
 
 router.get("/admin/subscriptions", requireAdmin("billing.subscriptions.write"), async (req, res) => {
   const q = normalizeAdminSearch(req.query.q);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Delete, ShieldCheck, AlertCircle } from "lucide-react";
 import { usePinLock } from "@/contexts/PinLockContext";
@@ -18,32 +18,51 @@ export function PinLockScreen() {
   const [error, setError] = useState(false);
   const [shake, setShake] = useState(false);
 
-  if (!isLocked) return null;
-
-  const handleKey = async (key: string) => {
-    if (key === "⌫") {
-      setPin((p) => p.slice(0, -1));
-      setError(false);
-      return;
-    }
-    if (key === "") return;
-    if (pin.length >= 4) return;
-
-    const newPin = pin + key;
-    setPin(newPin);
-
-    if (newPin.length === 4) {
-      const ok = await unlock(newPin);
-      if (!ok) {
-        setShake(true);
-        setError(true);
-        setTimeout(() => {
-          setPin("");
-          setShake(false);
-        }, 600);
+  const handleKey = useCallback(
+    async (key: string) => {
+      if (key === "⌫") {
+        setPin((p) => p.slice(0, -1));
+        setError(false);
+        return;
       }
-    }
-  };
+      if (key === "") return;
+      if (pin.length >= 4) return;
+
+      const newPin = pin + key;
+      setPin(newPin);
+
+      if (newPin.length === 4) {
+        const ok = await unlock(newPin);
+        if (!ok) {
+          setShake(true);
+          setError(true);
+          setTimeout(() => {
+            setPin("");
+            setShake(false);
+          }, 600);
+        }
+      }
+    },
+    [pin, unlock],
+  );
+
+  // Let the PIN be typed on a physical keyboard, not only tapped on the keypad.
+  useEffect(() => {
+    if (!isLocked) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        void handleKey(e.key);
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        void handleKey("⌫");
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isLocked, handleKey]);
+
+  if (!isLocked) return null;
 
   return (
     <div className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center px-6">
@@ -105,6 +124,8 @@ export function PinLockScreen() {
             <motion.button
               key={i}
               onClick={() => handleKey(key)}
+              aria-label={key === "⌫" ? t("pin.delete") : key || undefined}
+              aria-hidden={!key}
               whileTap={{ scale: key ? 0.9 : 1 }}
               disabled={!key}
               className={`h-16 rounded-2xl text-xl font-semibold transition-colors ${
