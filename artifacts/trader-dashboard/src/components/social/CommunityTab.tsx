@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings, Star } from "lucide-react";
+import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings } from "lucide-react";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { useCommunities, useCommunityDetail } from "./hooks";

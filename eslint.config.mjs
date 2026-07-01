@@ -22,6 +22,13 @@ export default tseslint.config(
       ".agents/**",
       "artifacts/*/public/**",
       "artifacts/api-server/uploads/**",
+      // Nested git worktrees are other branches' checkouts — never lint them.
+      ".worktrees/**",
+      ".claude/**",
+      // Vendored design-system reference kits + their sync tooling (not app source;
+      // intentional patterns like empty catch blocks and skip-destructuring).
+      "design-ref/**",
+      ".ds-sync/**",
     ],
   },
 
