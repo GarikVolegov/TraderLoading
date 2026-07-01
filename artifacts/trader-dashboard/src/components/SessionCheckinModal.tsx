@@ -117,6 +117,8 @@ export function SessionCheckinModal() {
       <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5 relative animate-in fade-in zoom-in-95 duration-200">
         <button
           onClick={handleSkip}
+          aria-label={t("common.close")}
+          title={t("common.close")}
           className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="w-5 h-5" />

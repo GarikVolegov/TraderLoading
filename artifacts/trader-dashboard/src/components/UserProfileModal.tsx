@@ -114,6 +114,8 @@ export function UserProfileModal({
             </div>
             <button
               onClick={onClose}
+              aria-label={uiText("common.close")}
+              title={uiText("common.close")}
               className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground"
             >
               <X className="w-5 h-5" />

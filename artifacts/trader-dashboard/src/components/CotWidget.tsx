@@ -159,6 +159,8 @@ export function CotWidget() {
                       </div>
                       <button
                         onClick={() => setSelected(null)}
+                        aria-label={uiText("common.close")}
+                        title={uiText("common.close")}
                         className="p-0.5 rounded hover:bg-secondary/80 text-muted-foreground"
                       >
                         <X className="w-3.5 h-3.5" />
