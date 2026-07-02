@@ -158,6 +158,8 @@
   --bottom-nav-band: 4.75rem;          /* 76px */
   --bottom-nav-clearance: calc(var(--bottom-nav-band) + env(safe-area-inset-bottom, 0px) + 1rem);
   --app-inset-left: 0px;
+  /* iOS notch / status-bar top inset (0px everywhere except installed notched PWAs) */
+  --safe-top: env(safe-area-inset-top, 0px);
 }
 
 /* lg+: the bottom nav renders as the left sidebar — no floating bar to

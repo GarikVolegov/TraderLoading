@@ -26,7 +26,7 @@ export function TopNav() {
       transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.0 }}
       className="fixed top-0 left-0 right-0 z-40 lg:left-20"
     >
-      <div className="bg-background/80 backdrop-blur-2xl border-b border-border/40 shadow-[0_1px_0_0_rgba(255,255,255,0.03)]">
+      <div className="bg-background/80 backdrop-blur-2xl border-b border-border/40 shadow-[0_1px_0_0_rgba(255,255,255,0.03)] pt-[var(--safe-top)]">
           <div className="mx-auto flex h-14 max-w-[1760px] items-center gap-2 px-3 sm:gap-3 sm:px-5 lg:px-5 xl:px-7">
 
           {/* Brand — mobile/tablet only */}
