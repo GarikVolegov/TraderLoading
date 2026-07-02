@@ -58,7 +58,7 @@ Gate: `pnpm verify` — **292/292 tests pass**, build + prerender green.
 | T6 | 3 PNGs 1 MB+ → WebP (12–42 kB), backgrounds recompressed; `public/images` 9.9→3.0 MB | `1edde31` |
 | T7 | Tailwind optimizer enabled (CSS 310→281 kB), embla-carousel + react-icons removed, carousel.tsx deleted | `e31fd6a` |
 | T8 | Merged `feat/scalability-hardening` (DB index, journal N+1 fix, social WS hub, bounded caches, Stripe idempotency; migrations 0019/0020) + chat polls relaxed 3s→15s / 5s→10s, DMs 3s→8s / 5s→15s | `3c9d34f` + `0674887` |
-| T9 | Final measure + docs (this section) | TBD |
+| T9 | Final measure + docs (this section) | `a68a95c` |
 
 ### Browser verification checklist (→ user)
 
