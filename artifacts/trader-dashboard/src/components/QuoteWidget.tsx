@@ -3,8 +3,8 @@ import { getGetRandomQuoteQueryKey, useGetRandomQuote } from "@workspace/api-cli
 import { Quote } from "lucide-react";
 
 export function QuoteWidget() {
-  // Rotate to a fresh random quote every 8s (paused automatically while the tab
-  // is hidden). The backend now returns a genuinely random quote per call.
+  // Refresh the random quote hourly (paused automatically while the tab
+  // is hidden). The backend returns a genuinely random quote per call.
   const { data: quote } = useGetRandomQuote({
     query: {
       queryKey: getGetRandomQuoteQueryKey(),

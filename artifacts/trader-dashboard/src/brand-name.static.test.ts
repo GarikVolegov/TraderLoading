@@ -15,7 +15,6 @@ const files = [
   "src/components/TopNav.tsx",
   "src/pages/LandingPage.tsx",
   ...listSettingsFeatureFiles(),
-  "src/lib/i18n/dict.it.ts",
   "src/lib/rewardsLibrary.ts",
 ];
 
@@ -24,6 +23,16 @@ for (const file of files) {
 
   assert.doesNotMatch(contents, forbiddenNames, `${file} must use ${officialName}`);
   assert.doesNotMatch(contents, splitAllCapsBrand, `${file} must not split ${officialName} as all caps`);
+}
+
+// Check all five dictionary files
+const dictFiles = ["dict.it.ts", "dict.en.ts", "dict.es.ts", "dict.fr.ts", "dict.de.ts"];
+for (const dictFile of dictFiles) {
+  const filePath = `src/lib/i18n/${dictFile}`;
+  const contents = fs.readFileSync(filePath, "utf8");
+
+  assert.doesNotMatch(contents, forbiddenNames, `${filePath} must use ${officialName}`);
+  assert.doesNotMatch(contents, splitAllCapsBrand, `${filePath} must not split ${officialName} as all caps`);
 }
 
 const index = fs.readFileSync("index.html", "utf8");

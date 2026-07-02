@@ -75,12 +75,17 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let alive = true;
-    loadDict(language).then((d) => {
-      if (alive) {
-        setDict(d);
-        _activeDict = d;
-      }
-    });
+    loadDict(language)
+      .then((d) => {
+        if (alive) {
+          setDict(d);
+          _activeDict = d;
+        }
+      })
+      .catch(() => {
+        // Chunk fetch can fail on flaky networks or across a redeploy; the UI
+        // already degrades to FALLBACK_DICT, so just avoid an unhandled rejection.
+      });
     return () => {
       alive = false;
     };
