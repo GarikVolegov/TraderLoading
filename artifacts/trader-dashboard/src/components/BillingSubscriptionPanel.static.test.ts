@@ -4,7 +4,7 @@ import { readSettingsFeatureSource } from "../pages/settingsFeatureSource";
 
 const panel = readFileSync(new URL("./BillingSubscriptionPanel.tsx", import.meta.url), "utf8");
 const settings = readSettingsFeatureSource();
-const i18nDict = readFileSync(new URL("../lib/i18n.ts", import.meta.url), "utf8");
+const i18nDict = readFileSync(new URL("../lib/i18n/dict.it.ts", import.meta.url), "utf8");
 
 // La copy vive nel catalogo i18n: il componente deve referenziare la chiave e
 // il catalogo deve contenere la copy italiana attesa.

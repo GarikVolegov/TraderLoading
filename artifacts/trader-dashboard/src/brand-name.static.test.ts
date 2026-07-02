@@ -15,7 +15,7 @@ const files = [
   "src/components/TopNav.tsx",
   "src/pages/LandingPage.tsx",
   ...listSettingsFeatureFiles(),
-  "src/lib/i18n.ts",
+  "src/lib/i18n/dict.it.ts",
   "src/lib/rewardsLibrary.ts",
 ];
 

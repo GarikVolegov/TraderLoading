@@ -5,7 +5,7 @@ const page = readFileSync(new URL("./Wiki.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
 const bottomNav = readFileSync(new URL("../components/BottomNav.tsx", import.meta.url), "utf8");
 const commandPalette = readFileSync(new URL("../components/CommandPalette.tsx", import.meta.url), "utf8");
-const i18n = readFileSync(new URL("../lib/i18n.ts", import.meta.url), "utf8");
+const i18n = readFileSync(new URL("../lib/i18n/dict.it.ts", import.meta.url), "utf8");
 const addDialog = readFileSync(new URL("../components/archive/ArchiveAddDialog.tsx", import.meta.url), "utf8");
 
 // Route + nav wiring unchanged.

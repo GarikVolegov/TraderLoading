@@ -16,7 +16,7 @@ assert.match(pageSource, /article\.deepDive/);
 // "Impatto per il trading" è passato all'i18n: chiave in pagina, copy nel catalogo.
 assert.match(pageSource, /t\("news\.impact_for_trading"\)/);
 assert.match(
-  readFileSync(new URL("../lib/i18n.ts", import.meta.url), "utf8"),
+  readFileSync(new URL("../lib/i18n/dict.it.ts", import.meta.url), "utf8"),
   /"news\.impact_for_trading":\s*"Impatto per il trading"/,
 );
 

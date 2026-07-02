@@ -38,7 +38,7 @@ assert.match(source, /min-w-\[260px\]/);
 // L'aria-label del vocale è passata all'i18n: chiave in pagina, copy nel catalogo.
 assert.match(source, /aria-label=\{uiText\("auto\.ui\.fe60a4fba4"\)\}/);
 assert.match(
-  fs.readFileSync("src/lib/i18n.ts", "utf8"),
+  fs.readFileSync("src/lib/i18n/dict.it.ts", "utf8"),
   /"auto\.ui\.fe60a4fba4":\s*"Messaggio vocale"/,
 );
 assert.match(source, /"video" \| "file"/);

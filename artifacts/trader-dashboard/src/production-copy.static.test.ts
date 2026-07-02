@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DICT, SUPPORTED_LANGUAGES } from "./lib/i18n";
+import { SUPPORTED_LANGUAGES } from "./lib/i18n";
+import { DICT } from "./lib/i18n/all";
 
 const files = [
-  "lib/i18n.ts",
+  "lib/i18n/dict.it.ts",
   "pages/News.tsx",
   "components/MacroNewsTicker.tsx",
   "components/VolatilityWidget.tsx",
@@ -42,7 +43,7 @@ for (const file of files) {
   }
 }
 
-const i18nSource = readFileSync(new URL("lib/i18n.ts", import.meta.url), "utf8");
+const i18nSource = readFileSync(new URL("lib/i18n/dict.it.ts", import.meta.url), "utf8");
 for (const key of ["news.source.ai", "news.source.rss", "news.source.updated"]) {
   assert.match(i18nSource, new RegExp(`"${key}"`), `Missing copy key ${key}`);
 }
@@ -212,6 +213,8 @@ const copyScanFiles = ["components", "pages", "contexts", "lib"]
   .filter((file) => !/[/\\]components[/\\]ui[/\\]/.test(file))
   .filter((file) => !/\.(test|static\.test)\./.test(file))
   .filter((file) => !/(^|[/\\])i18n\.ts$/.test(file))
+  .filter((file) => !/[/\\]i18n[/\\]dict\.[a-z]+\.ts$/.test(file))
+  .filter((file) => !/[/\\]i18n[/\\]all\.ts$/.test(file))
   .filter((file) => !/(^|[/\\])production-copy\.static\.test\.ts$/.test(file));
 
 const newHardcodedCopyFiles = copyScanFiles

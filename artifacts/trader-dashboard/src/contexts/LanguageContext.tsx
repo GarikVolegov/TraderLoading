@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { it, enUS, es, fr, de } from "date-fns/locale";
 import type { Locale } from "date-fns";
-import { detectLanguageFromLocales, DICT, type Language } from "@/lib/i18n";
+import { detectLanguageFromLocales, FALLBACK_DICT, loadDict, type Language } from "@/lib/i18n";
 import { getLanguageFromPath } from "@/lib/seo";
 
 export type { Language };
@@ -27,6 +27,11 @@ const STORAGE_KEY = "tl_language";
 // `import.meta.env` only exists under Vite; guard so module eval doesn't throw
 // in the plain-node static test runner.
 const ROUTER_BASE = (import.meta.env?.BASE_URL ?? "/").replace(/\/$/, "");
+
+// Module-level dict reference used by uiText() (synchronous, outside React).
+// Starts as Italian (FALLBACK_DICT) and is updated by LanguageProvider when a
+// non-Italian dict finishes loading.
+let _activeDict: Record<string, string> = FALLBACK_DICT;
 
 interface LanguageContextValue {
   language: Language;
@@ -60,9 +65,25 @@ function getInitialLanguage(): Language {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLangState] = useState<Language>(getInitialLanguage);
+  // Italian is bundled eagerly (fallback); other languages swap in as soon as
+  // their lazy chunk arrives (~30 kB gzip — one round-trip on cold load).
+  const [dict, setDict] = useState<Record<string, string>>(FALLBACK_DICT);
 
   useEffect(() => {
     document.documentElement.lang = language;
+  }, [language]);
+
+  useEffect(() => {
+    let alive = true;
+    loadDict(language).then((d) => {
+      if (alive) {
+        setDict(d);
+        _activeDict = d;
+      }
+    });
+    return () => {
+      alive = false;
+    };
   }, [language]);
 
   const setLanguage = (lang: Language, persist = true) => {
@@ -71,7 +92,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   const t = (key: string, vars?: Record<string, string | number>): string => {
-    let str = DICT[language]?.[key] ?? DICT["it"]?.[key] ?? key;
+    let str = dict[key] ?? FALLBACK_DICT[key] ?? key;
     if (vars) {
       Object.entries(vars).forEach(([k, v]) => {
         str = str.replaceAll(`{${k}}`, String(v));
@@ -99,8 +120,7 @@ export function useDateLocale(): Locale {
 }
 
 export function uiText(key: string, vars?: Record<string, string | number>): string {
-  const language = detectLanguageFromLocales([document.documentElement.lang, localStorage.getItem(STORAGE_KEY)]) ?? "it";
-  let str = DICT[language]?.[key] ?? DICT.it?.[key] ?? key;
+  let str = _activeDict[key] ?? FALLBACK_DICT[key] ?? key;
   if (vars) {
     Object.entries(vars).forEach(([k, v]) => {
       str = str.replaceAll(`{${k}}`, String(v));
