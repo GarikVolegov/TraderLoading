@@ -76,27 +76,11 @@ export default defineConfig(async ({ command }) => {
     minify: "esbuild",
     cssMinify: true,
     reportCompressedSize: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return undefined;
-          // lightweight-charts is framework-agnostic (canvas) and large → safe to isolate.
-          if (id.includes("lightweight-charts")) return "vendor-lightweight-charts";
-          // @dnd-kit is used ONLY by the (lazy) Dashboard page and is a leaf that just
-          // consumes React (one-way edge → vendor, no cycle), so it can live in its own
-          // chunk that loads with Dashboard instead of bloating the eager vendor chunk.
-          if (id.includes("@dnd-kit")) return "vendor-dnd";
-          // Everything else — React itself AND every library that touches React APIs
-          // (forwardRef/hooks) at module-init time (@radix-ui, lucide-react, recharts,
-          // framer-motion, @dnd-kit, @clerk, wouter), plus React's CommonJS-interop
-          // helper modules — MUST live in one chunk. Splitting them across vendor-ui /
-          // vendor-react / vendor-recharts produced CIRCULAR chunk graphs
-          // (vendor-ui ↔ vendor-react), so a UI chunk evaluated before React was ready
-          // → "Cannot read properties of undefined (reading 'forwardRef')" → black screen.
-          return "vendor";
-        },
-      },
-    },
+    // No manualChunks: Rollup's default per-dynamic-import chunking is
+    // topologically ordered (no circular chunk graphs), so page-only libraries
+    // (recharts, @xyflow, lightweight-charts, @dnd-kit) load with their lazy
+    // page instead of in an eager vendor mega-chunk. The old manual grouping
+    // that black-screened (forwardRef undefined) is exactly what this avoids.
   },
   server: {
     port,
