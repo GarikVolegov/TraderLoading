@@ -1,6 +1,6 @@
 # Performance Lightening ("veloce e scattante") Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Cut the eager JavaScript payload roughly in half (573 kB → ~290 kB gzip), remove render-blocking font loading, stop the idle polling storm, and shrink multi-megabyte images — so the app loads and feels fast, especially on mobile.
 
@@ -17,6 +17,57 @@
 | `index-*.css` | 310.05 kB | 38.87 kB | yes |
 | `vendor-lightweight-charts-*.js` | 163.84 kB | 53.53 kB | lazy |
 | **Eager JS total** | **1,991.63 kB** | **572.76 kB** | |
+
+## Final results (2026-07-03)
+
+Gate: `pnpm verify` — **292/292 tests pass**, build + prerender green.
+
+### Before / After — eager payload
+
+| Asset | Baseline | Final | Delta |
+|---|---|---|---|
+| Eager JS (`index-*.js`) | 1,991.63 kB / 572.76 kB gz | **923.27 kB / 283.28 kB gz** | **−53.7% min / −50.5% gz** |
+| CSS (`index-*.css`) | 310.05 kB / 38.87 kB gz | 281.1 kB / 36.76 kB gz | −9.3% min / −5.4% gz |
+| `public/` images | ~10 MB | **3.3 MB** | −67% |
+| Dashboard idle req/min | ~25 | ~4 | −84% |
+
+### Key lazy chunks (not in eager bundle)
+
+| Chunk | Size | Gzip |
+|---|---|---|
+| `CotWidget-*.js` (recharts) | 389.94 kB | 106.50 kB |
+| `Backtest-*.js` | 248.02 kB | 76.16 kB |
+| `Library-*.js` | 184.55 kB | 59.20 kB |
+| `Settings-*.js` | 129.26 kB | 33.64 kB |
+| `Chat-*.js` | 123.70 kB | 28.64 kB |
+| `Dashboard-*.js` | 114.26 kB | 35.62 kB |
+| `dict.fr-*.js` | 103.87 kB | 32.35 kB |
+| `dict.de-*.js` | 102.00 kB | 32.60 kB |
+| `dict.es-*.js` | 101.50 kB | 31.76 kB |
+| `dict.en-*.js` | 96.50 kB | 30.05 kB |
+
+### Per-task commit log
+
+| Task | What shipped | Commit |
+|---|---|---|
+| T1 | Drop `manualChunks` vendor mega-chunk → default Rollup per-route chunking | `6b81253` |
+| T2 | Google Fonts via `<head>` preconnect instead of CSS `@import` | `c11de42` |
+| T3 | CotWidget lazy → recharts out of Dashboard chunk (501→114 kB) | `cc29c8e` |
+| T4 | Poll retune: quote 8s→1h, unread 5s→30s, profile/journal 10s→60s, Journal 10s→30s | `c83e6dd` |
+| T5 | i18n dict split per language, lazily loaded; Italian eager fallback; dict.en/es/fr/de ~30 kB gz each | `9e630af` |
+| T6 | 3 PNGs 1 MB+ → WebP (12–42 kB), backgrounds recompressed; `public/images` 9.9→3.0 MB | `1edde31` |
+| T7 | Tailwind optimizer enabled (CSS 310→281 kB), embla-carousel + react-icons removed, carousel.tsx deleted | `e31fd6a` |
+| T8 | Merged `feat/scalability-hardening` (DB index, journal N+1 fix, social WS hub, bounded caches, Stripe idempotency; migrations 0019/0020) + chat polls relaxed 3s→15s / 5s→10s, DMs 3s→8s / 5s→15s | `3c9d34f` + `0674887` |
+| T9 | Final measure + docs (this section) | TBD |
+
+### Browser verification checklist (→ user)
+
+The following steps require a running browser session and are deliberately left for manual confirmation:
+
+- [ ] Sign in → visit `/`, `/journal`, `/backtest`, `/library`, `/chat` — no black screen, no `forwardRef` console errors
+- [ ] Switch language IT→EN→DE in Settings — copy changes within ~200 ms, no raw key strings visible
+- [ ] Dashboard with COT widget enabled — skeleton flashes briefly, then the chart renders
+- [ ] Two browser sessions open in community chat — message sent from one appears in the other via WebSocket within ~1 s (not after 15 s)
 
 Measured experiment (build with `manualChunks` removed, nothing else changed): eager JS drops to **1,325.84 kB / 379.98 kB gzip** (−34%); recharts moves into the Dashboard chunk (501 kB), @xyflow+d3-force into Library (184 kB), lightweight-charts into Backtest (248 kB).
 
@@ -53,7 +104,7 @@ Other verified findings:
 
 **Why it's safe:** the historical "black screen" (`forwardRef` of undefined) came from *manually grouping* React-consuming libs into separate named chunks, which created circular chunk graphs. Rollup's *default* chunking is topologically ordered and cannot produce that cycle. Verification below still proves it in a real browser: the `prerender` build step drives headless Chromium over the landing/SEO pages and fails on a blank render.
 
-- [ ] **Step 1: Remove the manualChunks override**
+- [x] **Step 1: Remove the manualChunks override**
 
 In `artifacts/trader-dashboard/vite.config.ts`, replace:
 
@@ -95,7 +146,7 @@ with:
   },
 ```
 
-- [ ] **Step 2: Full production build (includes prerender = headless-browser smoke test)**
+- [x] **Step 2: Full production build (includes prerender = headless-browser smoke test)**
 
 ```bash
 export PATH="$HOME/.local/node/bin:$HOME/Library/pnpm/.tools/pnpm/9.12.0:$PATH"
@@ -114,7 +165,7 @@ pnpm serve   # vite preview on :5173
 
 In the browser: sign in, visit `/` (Dashboard), `/journal`, `/backtest`, `/library`, `/chat`. Expected: no black screen, no console error `Cannot read properties of undefined (reading 'forwardRef')`.
 
-- [ ] **Step 4: Run the dashboard static tests**
+- [x] **Step 4: Run the dashboard static tests**
 
 ```bash
 cd /Users/gazz/Desktop/TraderLoadingsLOCALE && pnpm test 2>&1 | tail -10
@@ -122,7 +173,7 @@ cd /Users/gazz/Desktop/TraderLoadingsLOCALE && pnpm test 2>&1 | tail -10
 
 Expected: PASS (same pass/fail set as before the change; 2 pre-existing base-main failures — railwayDeploy/Dashboard.order — are known and not caused here).
 
-- [ ] **Step 5: Commit + push**
+- [x] **Step 5: Commit + push**
 
 ```bash
 git commit -m "perf(ui): drop the manual vendor mega-chunk, let Rollup split per route
@@ -139,7 +190,7 @@ git push
 - Modify: `artifacts/trader-dashboard/src/index.css` (line 2)
 - Modify: `artifacts/trader-dashboard/index.html` (`<head>`)
 
-- [ ] **Step 1: Delete the `@import` from index.css**
+- [x] **Step 1: Delete the `@import` from index.css**
 
 Remove line 2 of `src/index.css`:
 
@@ -149,7 +200,7 @@ Remove line 2 of `src/index.css`:
 
 (keep `@import "tailwindcss";` and everything else unchanged).
 
-- [ ] **Step 2: Add preconnect + stylesheet link to index.html**
+- [x] **Step 2: Add preconnect + stylesheet link to index.html**
 
 In `index.html`, immediately after the `<meta name="viewport" …>` tag, add:
 
@@ -162,7 +213,7 @@ In `index.html`, immediately after the `<meta name="viewport" …>` tag, add:
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@400;500;600;700&display=swap" />
 ```
 
-- [ ] **Step 3: Build and verify the link landed in dist**
+- [x] **Step 3: Build and verify the link landed in dist**
 
 ```bash
 pnpm build 2>&1 | tail -5
@@ -175,7 +226,7 @@ Expected: build OK; grep prints `1`.
 
 `pnpm serve`, open the landing page: Fira Sans/Fira Code render (inspect any heading's computed font-family). Expected: fonts unchanged visually.
 
-- [ ] **Step 5: Commit + push**
+- [x] **Step 5: Commit + push**
 
 ```bash
 git commit -m "perf(ui): load Google Fonts from <head> with preconnect, not CSS @import
@@ -197,7 +248,7 @@ After Task 1, recharts (~420 kB min) lands in `Dashboard-*.js` because `CotWidge
 - Consumes: `CotWidget` is exported as a **named export** from `@/components/CotWidget`.
 - Produces: `WIDGET_DEFS` keeps the same `component: ComponentType` shape — `React.lazy` returns a component type, so the registry and grid code need no other change.
 
-- [ ] **Step 1: Swap the static import for React.lazy + Suspense**
+- [x] **Step 1: Swap the static import for React.lazy + Suspense**
 
 In `pages/Dashboard.tsx` replace:
 
@@ -228,7 +279,7 @@ function CotWidget() {
 
 The `WIDGET_DEFS` entry (`{ id: "cot", … component: CotWidget }`) stays untouched because the local `CotWidget` wrapper has the same name and signature.
 
-- [ ] **Step 2: Typecheck + build, verify the chunk split**
+- [x] **Step 2: Typecheck + build, verify the chunk split**
 
 ```bash
 pnpm typecheck && pnpm build 2>&1 | grep -E "Dashboard-|CotWidget-" 
@@ -240,7 +291,7 @@ Expected: `Dashboard-*.js` shrinks from ~501 kB to well under 150 kB; a new lazy
 
 `pnpm serve`, sign in, open Dashboard with the COT widget enabled. Expected: skeleton flashes briefly, then the COT chart renders as before.
 
-- [ ] **Step 4: Commit + push**
+- [x] **Step 4: Commit + push**
 
 ```bash
 git commit -m "perf(ui): lazy-load CotWidget so recharts leaves the Dashboard chunk
@@ -263,7 +314,7 @@ A motivational quote does not change every 8 seconds. These are pure interval/st
 - Modify: `artifacts/trader-dashboard/src/components/JournalWidget.tsx`
 - Modify: `artifacts/trader-dashboard/src/pages/Journal.tsx` (two occurrences)
 
-- [ ] **Step 1: Retune the intervals**
+- [x] **Step 1: Retune the intervals**
 
 | File | Query | From | To |
 |---|---|---|---|
@@ -289,7 +340,7 @@ const { data: quote } = useGetRandomQuote({
 
 Note: the ClockWidget's clock itself ticks via local `setInterval`/state — only its quote query changes.
 
-- [ ] **Step 2: Verify no interval below 30s remains outside social/**
+- [x] **Step 2: Verify no interval below 30s remains outside social/**
 
 ```bash
 cd artifacts/trader-dashboard/src
@@ -298,7 +349,7 @@ grep -rn "refetchInterval" --include="*.tsx" --include="*.ts" . | grep -v test |
 
 Expected: no matches except `pages/Wiki.tsx` / `pages/BillingReturn.tsx` (conditional function intervals — polls only while an extraction/checkout is in flight, correct as-is) and `ClockWidget`'s local clock tick if it shows up.
 
-- [ ] **Step 3: Typecheck + tests**
+- [x] **Step 3: Typecheck + tests**
 
 ```bash
 cd /Users/gazz/Desktop/TraderLoadingsLOCALE && pnpm typecheck && pnpm test 2>&1 | tail -5
@@ -306,7 +357,7 @@ cd /Users/gazz/Desktop/TraderLoadingsLOCALE && pnpm typecheck && pnpm test 2>&1 
 
 Expected: PASS (known 2 pre-existing failures aside).
 
-- [ ] **Step 4: Commit + push**
+- [x] **Step 4: Commit + push**
 
 ```bash
 git commit -m "perf(ui): retune widget polling (quote 8s→1h, unread 5s→30s, profile/journal 10s→60s)
@@ -336,7 +387,7 @@ git push
 - Produces: `loadDict(lang: Language): Promise<Record<string, string>>`, `FALLBACK_DICT: Record<string, string>` (Italian), `DICT` re-export in `i18n/all.ts` with the exact old shape `Record<Language, Record<string, string>>` for tests.
 - Unchanged exports of `i18n.ts`: `Language`, `SUPPORTED_LANGUAGES`, `normalizeLocaleToLanguage`, `detectLanguageFromLocales`, `TranslationKey`.
 
-- [ ] **Step 1: Write the one-off generator**
+- [x] **Step 1: Write the one-off generator**
 
 Create `artifacts/trader-dashboard/scripts/generate-i18n-dicts.ts`:
 
@@ -362,7 +413,7 @@ for (const lang of SUPPORTED_LANGUAGES) {
 }
 ```
 
-- [ ] **Step 2: Run it and sanity-check the output**
+- [x] **Step 2: Run it and sanity-check the output**
 
 ```bash
 cd /Users/gazz/Desktop/TraderLoadingsLOCALE/artifacts/trader-dashboard
@@ -372,7 +423,7 @@ ls -la src/lib/i18n/ && head -5 src/lib/i18n/dict.en.ts
 
 Expected: five files, each reporting the **same key count** (parity already enforced by tests). If counts differ across languages, STOP — investigate before continuing.
 
-- [ ] **Step 3: Rewrite `src/lib/i18n.ts`**
+- [x] **Step 3: Rewrite `src/lib/i18n.ts`**
 
 Replace the whole file with (this keeps every export the app/tests use; all dictionary data now lives in `i18n/dict.*.ts`):
 
@@ -420,7 +471,7 @@ export async function loadDict(lang: Language): Promise<Record<string, string>> 
 
 **Before replacing**, copy the *exact* current bodies of `normalizeLocaleToLanguage`/`detectLanguageFromLocales` from the existing file (lines 8–23) — `i18n.locale.test.ts` pins their behavior; the versions above are from memory of that file and the real ones win.
 
-- [ ] **Step 4: Create the test/tool aggregate `src/lib/i18n/all.ts`**
+- [x] **Step 4: Create the test/tool aggregate `src/lib/i18n/all.ts`**
 
 ```ts
 // Aggregate of every language dictionary in the legacy `DICT` shape.
@@ -436,7 +487,7 @@ import de from "./dict.de";
 export const DICT: Record<Language, Record<string, string>> = { it, en, es, fr, de };
 ```
 
-- [ ] **Step 5: Rewire `LanguageContext.tsx` to async dictionaries**
+- [x] **Step 5: Rewire `LanguageContext.tsx` to async dictionaries**
 
 In `src/contexts/LanguageContext.tsx`, change the import and the provider:
 
@@ -484,7 +535,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   // …rest of the provider unchanged
 ```
 
-- [ ] **Step 6: Update the four test imports**
+- [x] **Step 6: Update the four test imports**
 
 In `src/production-copy.static.test.ts`, `src/components/AppTutorial.static.test.ts`, `src/lib/i18n.parity.static.test.ts`, `src/lib/i18n.locale.test.ts`: change
 
@@ -500,7 +551,7 @@ import { DICT } from "…/lib/i18n/all";    // same relative prefix as the old i
 
 (`i18n.locale.test.ts` mostly tests the locale helpers — only touch its `DICT` import if it has one.) If any test greps the *file* `i18n.ts` by path rather than importing (check with `grep -rn "i18n.ts" src/*.test.ts src/**/*.test.ts`), point it at `src/lib/i18n/` instead so it scans the generated dictionaries.
 
-- [ ] **Step 7: Delete the folded-in satellite dictionaries**
+- [x] **Step 7: Delete the folded-in satellite dictionaries**
 
 ```bash
 git rm artifacts/trader-dashboard/src/lib/i18n.tornei.ts artifacts/trader-dashboard/src/lib/i18n.reviews.ts
@@ -509,7 +560,7 @@ grep -rln "i18n.tornei\|i18n.reviews" artifacts/trader-dashboard/src --include="
 
 Expected: grep returns nothing (their only importer was the old i18n.ts).
 
-- [ ] **Step 8: Delete the generator, run the full gate**
+- [x] **Step 8: Delete the generator, run the full gate**
 
 ```bash
 rm artifacts/trader-dashboard/scripts/generate-i18n-dicts.ts
@@ -523,7 +574,7 @@ Expected: typecheck PASS; parity/mojibake/production-copy tests PASS (same data,
 
 `pnpm serve`, sign in, switch language IT→EN→DE in Settings. Expected: copy switches correctly after at most a brief (<200 ms) delay on first switch; no missing-key strings (raw `xxx.yyy` keys) anywhere.
 
-- [ ] **Step 10: Commit + push**
+- [x] **Step 10: Commit + push**
 
 ```bash
 git add artifacts/trader-dashboard/src/lib/i18n/ 
@@ -542,7 +593,7 @@ git push
 - Modify: `artifacts/trader-dashboard/public/images/*` (recompressed in place / converted)
 - Modify: whatever source files reference the three converted PNGs (found by grep in Step 3)
 
-- [ ] **Step 1: Add sharp to the dashboard devDependencies and write the script**
+- [x] **Step 1: Add sharp to the dashboard devDependencies and write the script**
 
 ```bash
 cd /Users/gazz/Desktop/TraderLoadingsLOCALE/artifacts/trader-dashboard
@@ -589,7 +640,7 @@ for (const dir of ["backgrounds/desktop", "backgrounds/mobile"]) {
 }
 ```
 
-- [ ] **Step 2: Run it**
+- [x] **Step 2: Run it**
 
 ```bash
 npx tsx scripts/compress-images.ts
@@ -599,7 +650,7 @@ find public -size +400k -exec du -h {} \;
 
 Expected: the three `.webp` outputs ≤ ~150 kB each; no image above ~400 kB left; `public/` well under 5 MB.
 
-- [ ] **Step 3: Repoint code references from .png to .webp and delete the old PNGs**
+- [x] **Step 3: Repoint code references from .png to .webp and delete the old PNGs**
 
 ```bash
 cd /Users/gazz/Desktop/TraderLoadingsLOCALE/artifacts/trader-dashboard
@@ -614,7 +665,7 @@ git rm public/images/journal-empty.png public/images/dashboard-bg.png public/ima
 
 ⚠️ Before deleting `avatar-default.png`, also grep the **api-server** (`grep -rn "avatar-default" ../api-server/src`) — if the backend serves that URL as a default avatar value stored in the DB, keep the PNG as well and only swap the frontend references (note the finding in the commit message).
 
-- [ ] **Step 4: Remove sharp + the script, verify, commit**
+- [x] **Step 4: Remove sharp + the script, verify, commit**
 
 ```bash
 pnpm remove sharp && rm scripts/compress-images.ts
@@ -644,7 +695,7 @@ git push
 
 All four removals were verified to have **zero importers** on 2026-07-02 — re-verify in Step 2 in case another agent added one since.
 
-- [ ] **Step 1: Enable the CSS optimizer**
+- [x] **Step 1: Enable the CSS optimizer**
 
 In `vite.config.ts` change:
 
@@ -658,7 +709,7 @@ to:
     tailwindcss(),
 ```
 
-- [ ] **Step 2: Re-verify the dead code is still dead, then remove it**
+- [x] **Step 2: Re-verify the dead code is still dead, then remove it**
 
 ```bash
 cd artifacts/trader-dashboard/src
@@ -673,7 +724,7 @@ git rm src/components/ui/chart.tsx src/components/ui/carousel.tsx
 pnpm remove react-icons embla-carousel-react
 ```
 
-- [ ] **Step 3: Full gate + visual spot-check**
+- [x] **Step 3: Full gate + visual spot-check**
 
 ```bash
 cd /Users/gazz/Desktop/TraderLoadingsLOCALE && pnpm verify 2>&1 | tail -15
@@ -683,7 +734,7 @@ Expected: green (modulo the 2 known pre-existing failures). Compare the built `i
 
 **Rollback note:** if `/styleguide` or any page renders visibly wrong with the optimizer on, revert the vite.config.ts line to `tailwindcss({ optimize: false })` with an explanatory comment, keep the dead-dep removals, and note the incompatibility in the commit message.
 
-- [ ] **Step 4: Commit + push**
+- [x] **Step 4: Commit + push**
 
 ```bash
 git commit -m "perf(ui): enable Tailwind CSS optimizer, drop unused react-icons/embla + dead ui wrappers
@@ -700,7 +751,7 @@ git push
 
 What it brings (all built and tested on that branch): `account_trades(user_id,status)` index + journal N+1 fix + pool raise (`7f69138`), social real-time WebSocket hub (`fe26e26`, `d5153fb` — client wired, polling retained as fallback), bounded push-dedup caches, LLM call timeout, Stripe webhook idempotency, WS connection cap, client Sentry.
 
-- [ ] **Step 1: Merge**
+- [x] **Step 1: Merge**
 
 ```bash
 cd /Users/gazz/Desktop/TraderLoadingsLOCALE
@@ -715,7 +766,7 @@ pnpm verify 2>&1 | tail -15
 git push
 ```
 
-- [ ] **Step 2: Relax the community-chat and voice-presence polls (WS now carries real-time)**
+- [x] **Step 2: Relax the community-chat and voice-presence polls (WS now carries real-time)**
 
 In `src/components/social/hooks.ts`: `refetchInterval: 3_000` → `refetchInterval: 15_000` (channel messages — WS delivers new ones instantly; the poll is only a reconnection safety net) and `refetchInterval: 5_000` → `refetchInterval: 10_000` (voice presence). In `src/components/social/MessaggiTab.tsx` (DMs — **not** covered by the WS hub): `refetchInterval: 3000` → `refetchInterval: 8000` and `refetchInterval: 5000` → `refetchInterval: 15000`.
 
@@ -723,7 +774,7 @@ In `src/components/social/hooks.ts`: `refetchInterval: 3_000` → `refetchInterv
 
 Run the app locally (`./dev-up.sh`), open two browser sessions in the community chat: a message sent from one appears in the other **via WebSocket within ~1 s** (not after 15 s). DMs in MessaggiTab update within 8 s. If WS delivery does not work, revert Step 2's `hooks.ts` change (keep the MessaggiTab retune) and investigate before re-applying.
 
-- [ ] **Step 4: Commit + push**
+- [x] **Step 4: Commit + push**
 
 ```bash
 git commit -m "perf(chat): relax polling now that the social WebSocket hub carries real-time
@@ -740,7 +791,7 @@ git push
 - Modify: `CLAUDE.md` (§7 Active work)
 - Modify: this plan (check off tasks, record final numbers)
 
-- [ ] **Step 1: Full gate + final build measurement**
+- [x] **Step 1: Full gate + final build measurement**
 
 ```bash
 cd /Users/gazz/Desktop/TraderLoadingsLOCALE && pnpm verify 2>&1 | tail -15
@@ -749,11 +800,11 @@ cd artifacts/trader-dashboard && pnpm build 2>&1 | tail -40
 
 Record in this plan file, next to the baseline table: eager JS total (expect ≈ **900 kB min / ~290 kB gzip**, −50% vs 1,992/573), Dashboard chunk, CSS size, `public/` size (expect < 5 MB), Dashboard idle request rate (expect ≈ 4/min vs 25/min).
 
-- [ ] **Step 2: Update CLAUDE.md §7 and the memory index**
+- [x] **Step 2: Update CLAUDE.md §7 and the memory index**
 
 Add one line to §7 noting the performance-lightening pass (link this plan) and whether Task 8's merge happened; trim anything §7 lists as pending that this work completed.
 
-- [ ] **Step 3: Commit + push**
+- [x] **Step 3: Commit + push**
 
 ```bash
 git commit -m "docs(plan): record performance-lightening results

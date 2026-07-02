@@ -153,13 +153,13 @@ split brand panel with truthful trust rows + real-time testimonial rating (`/pub
 post-sign-up nickname step at `/welcome` (reuses `/profile` + `/profile/check-name`). Spec/plan:
 `docs/superpowers/{specs,plans}/2026-06-28-auth-screen-redesign*`.
 
-**Performance lightening — audited, plan ready, execution pending.** Full perf review 2026-07-02:
-eager JS is 1.99 MB / 573 kB gzip (a `manualChunks` vendor mega-chunk + the 456 kB five-language i18n
-dict bundled eagerly), quote widgets poll every 8 s, several 1 MB+ PNGs. Nine-task plan (default Rollup
-chunking → font preconnect → lazy CotWidget → poll retune → per-language i18n split → image compression
-→ Tailwind optimizer + dead deps → scalability-hardening merge → final measure), expected eager payload
-−50%: [docs/superpowers/plans/2026-07-02-performance-lightening.md](docs/superpowers/plans/2026-07-02-performance-lightening.md).
-Tasks 5 and 8 carry multi-agent coordination gates.
+**Performance lightening — DONE (2026-07-02/03, all 9 tasks).** Eager JS cut from 1,991 kB / 573 kB gzip
+to **923 kB / 283 kB gzip (−53.7% / −50.5%)**: default Rollup chunking, font preconnect, lazy CotWidget,
+poll retune (quote 8s→1h, idle ~25→~4 req/min), per-language i18n split, image compression (public/ 10→3.3 MB),
+Tailwind optimizer + dead-dep pruning, plus `feat/scalability-hardening` merged (DB index, journal N+1 fix,
+social WS hub, bounded caches, Stripe idempotency; migrations 0019/0020). Gate: 292/292 tests.
+Plan + final numbers: [docs/superpowers/plans/2026-07-02-performance-lightening.md](docs/superpowers/plans/2026-07-02-performance-lightening.md).
+Manual browser verification checklist (smoke test, language switch, COT widget, WS chat) → pending with user.
 
 > This section changes the most session-to-session — update it as the work moves.
 
