@@ -45,7 +45,7 @@ export default defineConfig(async ({ command }) => {
   base: basePath,
   plugins: [
     react(),
-    tailwindcss({ optimize: false }),
+    tailwindcss(),
     ...(isServe ? [runtimeErrorOverlay()] : []),
     ...(isServe &&
     process.env.REPL_ID !== undefined
