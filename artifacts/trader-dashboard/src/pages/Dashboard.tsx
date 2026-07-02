@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -35,7 +35,7 @@ import { CalendarWidget } from "@/components/CalendarWidget";
 import { ChecklistDashboardWidget } from "@/components/ChecklistDashboardWidget";
 import { SentimentWidget } from "@/components/SentimentWidget";
 import { VolatilityWidget } from "@/components/VolatilityWidget";
-import { CotWidget } from "@/components/CotWidget";
+import { Skeleton } from "@/components/ui/skeleton";
 import { RoutineWidget } from "@/components/RoutineWidget";
 import { JournalWidget } from "@/components/JournalWidget";
 import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
@@ -44,6 +44,22 @@ import { TradingViewWatchlistWidget } from "@/components/TradingViewWatchlistWid
 import { useLanguage } from "@/contexts/LanguageContext";
 import { columnsForWidth, distributeColumns, visibleWidgetOrder } from "./Dashboard.layout";
 import { useIsDesktop } from "@/hooks/use-media-query";
+
+// ─── Lazy-loaded CotWidget ────────────────────────────────────────────────────
+
+// recharts (~420 kB min) is used only by CotWidget; lazy-loading keeps it out
+// of the Dashboard route chunk.
+const CotWidgetInner = lazy(() =>
+  import("@/components/CotWidget").then((m) => ({ default: m.CotWidget })),
+);
+
+function CotWidget() {
+  return (
+    <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+      <CotWidgetInner />
+    </Suspense>
+  );
+}
 
 // ─── Widget registry ───────────────────────────────────────────────────────────
 
