@@ -197,7 +197,7 @@ export function ProfileWidget() {
                   {profile.avatarUrl ? (
                     <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
                   ) : (
-                    <img src={`${import.meta.env.BASE_URL}images/avatar-default.png`} alt="Default avatar" className="w-full h-full object-cover opacity-80" />
+                    <img src={`${import.meta.env.BASE_URL}images/avatar-default.webp`} alt="Default avatar" className="w-full h-full object-cover opacity-80" />
                   )}
                 </div>
                 <div className="absolute -bottom-2 -right-2 bg-background border border-primary text-primary text-xs font-bold w-8 h-8 flex items-center justify-center rounded-full z-20 shadow-[0_0_10px_rgba(34,197,94,0.3)]">
@@ -302,7 +302,7 @@ export function ProfileWidget() {
               {currentAvatar ? (
                 <img src={currentAvatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <img src={`${import.meta.env.BASE_URL}images/avatar-default.png`} alt="Default" className="w-full h-full object-cover opacity-80" />
+                <img src={`${import.meta.env.BASE_URL}images/avatar-default.webp`} alt="Default" className="w-full h-full object-cover opacity-80" />
               )}
             </div>
 

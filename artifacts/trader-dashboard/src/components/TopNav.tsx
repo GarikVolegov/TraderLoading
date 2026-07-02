@@ -16,7 +16,7 @@ export function TopNav() {
   const avatarSrc =
     profile && profile.avatarUrl
       ? profile.avatarUrl
-      : `${import.meta.env.BASE_URL}images/avatar-default.png`;
+      : `${import.meta.env.BASE_URL}images/avatar-default.webp`;
   const profileName = profile?.name ?? "Trader";
 
   return (

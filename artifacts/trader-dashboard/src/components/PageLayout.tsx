@@ -42,7 +42,7 @@ export function PageLayout({ children, fullWidth }: PageLayoutProps) {
           </>
         ) : (
           <img
-            src={`${import.meta.env.BASE_URL}images/dashboard-bg.png`}
+            src={`${import.meta.env.BASE_URL}images/dashboard-bg.webp`}
             alt=""
             className="h-full w-full object-cover opacity-[0.1] mix-blend-screen"
           />
