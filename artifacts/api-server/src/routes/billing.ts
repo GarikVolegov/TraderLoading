@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, adminUserSubscriptionsTable } from "@workspace/db";
+import { db, adminUserSubscriptionsTable, stripeWebhookEventsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import {
@@ -428,6 +428,33 @@ async function upsertStripeSubscription(subscription: Stripe.Subscription): Prom
   await upsertStripeSubscriptionForUser(userId, subscription, { preserveManualOverride: true });
 }
 
+/**
+ * Run a Stripe webhook event's side effects at most once. Stripe retries delivery
+ * on any non-2xx response or timeout, so without a dedup guard a retried event
+ * would re-apply its effects. `claim` atomically records the event id and returns
+ * false if it was already recorded (a duplicate → skip). If handling throws we
+ * `release` the claim so the next retry can re-process; otherwise the claim
+ * persists and future duplicates short-circuit.
+ */
+export async function processStripeEventOnce(
+  event: { id: string; type: string },
+  deps: {
+    claim: (eventId: string, type: string) => Promise<boolean>;
+    release: (eventId: string) => Promise<void>;
+    handle: () => Promise<void>;
+  },
+): Promise<{ processed: boolean; duplicate: boolean }> {
+  const claimed = await deps.claim(event.id, event.type);
+  if (!claimed) return { processed: false, duplicate: true };
+  try {
+    await deps.handle();
+  } catch (err) {
+    await deps.release(event.id);
+    throw err;
+  }
+  return { processed: true, duplicate: false };
+}
+
 async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<void> {
   if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
     await upsertStripeSubscription(event.data.object as Stripe.Subscription);
@@ -476,8 +503,23 @@ export function createStripeWebhookRouter(): IRouter {
       }
       const payload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(String(req.body ?? ""));
       const event = stripe.webhooks.constructEvent(payload, signature, config.webhookSecret);
-      await handleStripeEvent(event, stripe);
-      res.json({ received: true });
+      const { duplicate } = await processStripeEventOnce(event, {
+        // Atomic claim: inserting the event id conflicts (returns no row) when the
+        // event was already processed, so a Stripe retry is acked without re-running.
+        claim: async (eventId, type) => {
+          const inserted = await db
+            .insert(stripeWebhookEventsTable)
+            .values({ eventId, type })
+            .onConflictDoNothing()
+            .returning({ eventId: stripeWebhookEventsTable.eventId });
+          return inserted.length > 0;
+        },
+        release: async (eventId) => {
+          await db.delete(stripeWebhookEventsTable).where(eq(stripeWebhookEventsTable.eventId, eventId));
+        },
+        handle: () => handleStripeEvent(event, stripe),
+      });
+      res.json({ received: true, duplicate });
     } catch (error) {
       logger.warn({ err: error }, "Stripe webhook rejected");
       res.status(400).json({ error: "stripe_webhook_invalid" });

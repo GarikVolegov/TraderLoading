@@ -134,6 +134,20 @@
       "when": 1783180800000,
       "tag": "0018_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1783267200000,
+      "tag": "0019_account_trades_user_status_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1783353600000,
+      "tag": "0020_stripe_webhook_events",
+      "breakpoints": true
     }
   ]
 }

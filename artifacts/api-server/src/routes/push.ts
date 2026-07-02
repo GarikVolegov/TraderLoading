@@ -12,6 +12,7 @@ import {
   parseScheduledCallConfigs,
 } from "../services/notifications/scheduledCalls.js";
 import logger from "../lib/logger.js";
+import { tryAcquireLock } from "../lib/distributedLock.js";
 
 const router: IRouter = Router();
 
@@ -138,7 +139,12 @@ export async function sendPushToUser(
   );
 }
 
+// Per-day "already sent" guard for session/scheduled-call pushes. Keys embed the
+// day, so once the local day rolls over every entry is stale; we clear the map at
+// that boundary (see runSchedulerTick) to keep it bounded to a single day instead
+// of accumulating one entry per user/event for the whole process lifetime.
 const _sentToday = new Map<string, string>();
+let _sentTodayDay = "";
 
 export interface SchedulerHandle {
   close(): Promise<void>;
@@ -220,9 +226,25 @@ export function startSessionScheduler(): SchedulerHandle {
   async function runSchedulerTick(): Promise<void> {
     try {
       const now = new Date();
+
+      // Leader-election: across a horizontally-scaled fleet only one instance may
+      // run a given minute's tick, otherwise every instance scans all subscribers
+      // and users receive one duplicate push per instance. The per-minute lock key
+      // (TTL < the 60s interval) lets exactly one instance win each tick; without
+      // Redis the lock no-ops to true and the single instance handles it.
+      const minuteBucket = Math.floor(now.getTime() / 60_000);
+      const isLeader = await tryAcquireLock(`cron:session-push:${minuteBucket}`, 55_000);
+      if (!isLeader) return;
+
       const nowH = now.getHours();
       const nowM = now.getMinutes();
       const today = todayLocal(now);
+
+      // Drop the previous day's dedup entries once the local day rolls over.
+      if (today !== _sentTodayDay) {
+        _sentToday.clear();
+        _sentTodayDay = today;
+      }
 
       const rows = await db
         .selectDistinct({ userId: pushSubscriptionsTable.userId })

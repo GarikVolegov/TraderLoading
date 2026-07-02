@@ -7,6 +7,7 @@ import { formatFileSize } from "@/lib/fileFormatting";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { fileIcon } from "./format";
 import { useCommunityFiles, useCommunityMessages } from "./hooks";
+import { useSocialSocket } from "./useSocialSocket";
 import type { ChannelType, CommunityMsg } from "./types";
 
 export function TextChannelView({
@@ -20,6 +21,11 @@ export function TextChannelView({
 }) {
   const qc = useQueryClient();
   const { data, isLoading } = useCommunityMessages(channel.id);
+  // Real-time push: refresh the messages immediately on a new message instead of
+  // waiting for the poll. Polling stays as the guaranteed fallback (see hook).
+  useSocialSocket(channel.id, () => {
+    void qc.invalidateQueries({ queryKey: ["communityMessages", channel.id] });
+  });
   const { data: files = [] } = useCommunityFiles(channel.id);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);

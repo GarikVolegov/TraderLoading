@@ -30,6 +30,7 @@ import { buildRecapMessages, filterTradesByPeriod, parseRecapDraft } from "../se
 import { getTextClient } from "../services/llmClient.js";
 import logger from "../lib/logger.js";
 import { getUploadsDir } from "../lib/uploads.js";
+import { consumeQuota } from "../lib/userQuota.js";
 
 const router: IRouter = Router();
 const JOURNAL_XP_REWARD = 75;
@@ -200,18 +201,21 @@ async function saveJournalTags(userId: string | null, tags: string | null | unde
     .onConflictDoNothing();
 }
 
-async function getEntryWithImages(id: number, userId: string | null) {
-  const [entry] = await db
-    .select()
-    .from(journalEntriesTable)
-    .where(and(eq(journalEntriesTable.id, id), entryUserFilter(userId)));
-  if (!entry) return null;
+type JournalEntrySerializable = Pick<
+  typeof journalEntriesTable.$inferSelect,
+  "id" | "title" | "content" | "tradeDate" | "result" | "tags" | "createdAt" | "updatedAt"
+>;
+type JournalImageSerializable = Pick<typeof journalImagesTable.$inferSelect, "id" | "filePath">;
 
-  const images = await db
-    .select()
-    .from(journalImagesTable)
-    .where(eq(journalImagesTable.entryId, id));
-
+/**
+ * Map a journal entry row plus its already-loaded images to the API response
+ * shape. Kept pure so the list endpoint can batch-load images in one query and
+ * the single-entry endpoints can pass a one-row image set — both share one shape.
+ */
+export function serializeJournalEntry(
+  entry: JournalEntrySerializable,
+  images: JournalImageSerializable[],
+) {
   return {
     id: entry.id,
     title: entry.title,
@@ -226,6 +230,21 @@ async function getEntryWithImages(id: number, userId: string | null) {
     createdAt: entry.createdAt!.toISOString(),
     updatedAt: entry.updatedAt!.toISOString(),
   };
+}
+
+async function getEntryWithImages(id: number, userId: string | null) {
+  const [entry] = await db
+    .select()
+    .from(journalEntriesTable)
+    .where(and(eq(journalEntriesTable.id, id), entryUserFilter(userId)));
+  if (!entry) return null;
+
+  const images = await db
+    .select()
+    .from(journalImagesTable)
+    .where(eq(journalImagesTable.entryId, id));
+
+  return serializeJournalEntry(entry, images);
 }
 
 async function ensureTodayMissionsExist(userId: string | null) {
@@ -271,8 +290,27 @@ router.get("/journal", async (req, res) => {
     .where(entryUserFilter(userId))
     .orderBy(desc(journalEntriesTable.createdAt));
 
-  const results = await Promise.all(entries.map((e) => getEntryWithImages(e.id, userId)));
-  res.json(results.filter(Boolean));
+  if (entries.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  // Load every entry's images in a single query and group them by entry id,
+  // instead of re-fetching each entry + its images one row at a time (the old
+  // 2N+1 pattern that scaled linearly with a user's journal size).
+  const images = await db
+    .select()
+    .from(journalImagesTable)
+    .where(inArray(journalImagesTable.entryId, entries.map((entry) => entry.id)));
+
+  const imagesByEntry = new Map<number, typeof images>();
+  for (const image of images) {
+    const bucket = imagesByEntry.get(image.entryId);
+    if (bucket) bucket.push(image);
+    else imagesByEntry.set(image.entryId, [image]);
+  }
+
+  res.json(entries.map((entry) => serializeJournalEntry(entry, imagesByEntry.get(entry.id) ?? [])));
 });
 
 router.post("/journal", async (req, res) => {
@@ -428,6 +466,18 @@ router.post("/journal/recaps/generate", async (req, res) => {
   const textClient = getTextClient();
   if (!textClient) {
     res.status(503).json({ error: "Generazione AI non configurata." });
+    return;
+  }
+
+  // Per-user daily cap on the (paid, billable) LLM call so a single user cannot
+  // run up unbounded provider cost by looping the endpoint. Consumed only once we
+  // are about to actually call the model. RECAP_DAILY_LIMIT overrides the default.
+  const recapLimit = Number(process.env.RECAP_DAILY_LIMIT) || 10;
+  const quota = await consumeQuota(`quota:recap:${userId ?? "guest"}`, recapLimit, 86_400);
+  if (!quota.allowed) {
+    res.status(429).json({
+      error: `Limite giornaliero di recap AI raggiunto (${quota.limit}). Riprova domani.`,
+    });
     return;
   }
 

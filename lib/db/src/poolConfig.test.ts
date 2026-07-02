@@ -8,7 +8,7 @@ const baseEnv = {
 
 assert.deepEqual(createPgPoolConfig(baseEnv), {
   connectionString: baseEnv.DATABASE_URL,
-  max: 10,
+  max: 20,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
 });
@@ -42,7 +42,7 @@ assert.deepEqual(
   }),
   {
     connectionString: baseEnv.DATABASE_URL,
-    max: 10,
+    max: 20,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 5_000,
     ssl: { rejectUnauthorized: false },

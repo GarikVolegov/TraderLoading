@@ -10,8 +10,9 @@ import { brokerHubRuntime } from "./services/brokerHub/runtime.js";
 import { newsHubRuntime } from "./services/newsHub/runtimeSingleton.js";
 import { attachNewsHubWebSocket } from "./services/newsHub/socketServer.js";
 import { attachNewsProviderSockets } from "./services/newsHub/providerSockets.js";
+import { attachSocialHubWebSocket } from "./services/socialHub/socketServer.js";
 import logger from "./lib/logger";
-import { closeSharedRedisClient } from "./lib/redisClient.js";
+import { assertRedisConfigured, closeSharedRedisClient } from "./lib/redisClient.js";
 import { captureError, flushObservability, initObservability } from "./lib/observability";
 
 initObservability();
@@ -30,10 +31,15 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+// Refuse to boot a production instance that would silently run with per-process
+// rate limits, double-firing cron and no cross-instance dedup (see redisClient).
+assertRedisConfigured();
+
 const server = createServer(app);
 const accountBridgeSocket = attachAccountBridgeWebSocket(server);
 const brokerHubSocket = attachBrokerHubWebSocket(server);
 const newsHubSocket = attachNewsHubWebSocket(server, newsHubRuntime);
+const socialHubSocket = attachSocialHubWebSocket(server);
 let newsProviderSockets: ReturnType<typeof attachNewsProviderSockets> | null = null;
 
 type CloseHandle = {
@@ -89,6 +95,7 @@ async function shutdown(reason: string, exitCode = 0): Promise<void> {
     accountBridgeSocket.close(),
     brokerHubSocket.close(),
     newsHubSocket.close(),
+    socialHubSocket.close(),
     newsProviderSockets?.close(),
     sessionScheduler.close(),
     torneiScheduler.close(),

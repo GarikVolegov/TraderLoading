@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { captureError } from "../lib/observability";
 
 interface Props {
   children: ReactNode;
@@ -27,6 +28,9 @@ export class RootErrorBoundary extends Component<Props, State> {
     // Keep a raw console error so the failure is diagnosable from any browser's
     // devtools even in production builds where overlays are stripped.
     console.error("App crashed:", error, info.componentStack);
+    // Report to Sentry (no-op unless VITE_SENTRY_DSN is configured) so production
+    // render crashes are visible to the team, not just whoever opens devtools.
+    captureError(error, { componentStack: info.componentStack });
   }
 
   render() {

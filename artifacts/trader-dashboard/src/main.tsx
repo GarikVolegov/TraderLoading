@@ -1,7 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { RootErrorBoundary } from "./components/RootErrorBoundary";
+import { initObservability } from "./lib/observability";
 import "./index.css";
+
+initObservability();
 
 createRoot(document.getElementById("root")!).render(
   <RootErrorBoundary>
