@@ -135,7 +135,9 @@ export function useCommunityMessages(channelId: number | null) {
     queryKey: ["communityMessages", channelId],
     queryFn: () => apiJSON(`community/channels/${channelId}/messages`),
     enabled: channelId !== null,
-    refetchInterval: 3_000,
+    // The social WebSocket hub now delivers new channel messages in real time
+    // (see useSocialSocket); this poll is only a reconnection safety net.
+    refetchInterval: 15_000,
     staleTime: 0,
   });
 }
@@ -145,7 +147,7 @@ export function useVoicePresence(channelId: number | null, enabled: boolean) {
     queryKey: ["voicePresence", channelId],
     queryFn: () => apiJSON(`community/voice/${channelId}/presence`),
     enabled: channelId !== null && enabled,
-    refetchInterval: 5_000,
+    refetchInterval: 10_000,
     staleTime: 0,
   });
 }

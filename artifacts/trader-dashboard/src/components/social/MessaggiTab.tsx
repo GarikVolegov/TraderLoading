@@ -85,7 +85,7 @@ export function MessaggiTab({
     return Array.from(contacts.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [acceptedFriends, mutualFollowers]);
   const { data: unreadData } = useGetUnreadCount({
-    query: { queryKey: getGetUnreadCountQueryKey(), refetchInterval: 5000 },
+    query: { queryKey: getGetUnreadCountQueryKey(), refetchInterval: 15000 },
   });
   const { data: friendPublicKeyData } = useGetPublicKey(
     selectedFriend?.userId ?? "",
@@ -103,7 +103,7 @@ export function MessaggiTab({
       query: {
         queryKey: getGetChatMessagesQueryKey(selectedFriend?.userId ?? "", {}),
         enabled: !!selectedFriend?.userId,
-        refetchInterval: 3000,
+        refetchInterval: 8000,
       },
     },
   );
