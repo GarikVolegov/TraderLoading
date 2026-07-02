@@ -8,8 +8,8 @@ export function QuoteWidget() {
   const { data: quote } = useGetRandomQuote({
     query: {
       queryKey: getGetRandomQuoteQueryKey(),
-      staleTime: 0,
-      refetchInterval: 8000,
+      refetchInterval: 60 * 60_000,
+      staleTime: 60 * 60_000,
     },
   });
 

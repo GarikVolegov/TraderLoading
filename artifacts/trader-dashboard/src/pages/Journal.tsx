@@ -134,7 +134,7 @@ function TradesTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
   const { data: entries, isLoading } = useGetJournalEntries({
-    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 10_000 },
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 30_000 },
   });
   const deleteMutation = useDeleteJournalEntry();
 
@@ -769,7 +769,7 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: entries, isLoading } = useGetJournalEntries({
-    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 10_000 },
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 30_000 },
   });
   const [offset, setOffset] = useState(0);
 

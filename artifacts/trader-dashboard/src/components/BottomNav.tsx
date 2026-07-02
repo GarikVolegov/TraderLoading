@@ -210,7 +210,7 @@ function NavItem({
 
 export function BottomNav() {
   const { t } = useLanguage();
-  const { data: unreadData } = useGetUnreadCount({ query: { queryKey: getGetUnreadCountQueryKey(), refetchInterval: 5000 } });
+  const { data: unreadData } = useGetUnreadCount({ query: { queryKey: getGetUnreadCountQueryKey(), refetchInterval: 30_000 } });
   const { data: profile } = useGetProfile();
   const unreadCount = unreadData?.count ?? 0;
   const avatarSrc =

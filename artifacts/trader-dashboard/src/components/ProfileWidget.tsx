@@ -51,7 +51,7 @@ function WinRateBadge({ winRate, totalTrades }: { winRate: number | null | undef
 export function ProfileWidget() {
   const queryClient = useQueryClient();
   const { data: profile, isLoading } = useGetProfile({
-    query: { queryKey: getGetProfileQueryKey(), refetchInterval: 10_000 },
+    query: { queryKey: getGetProfileQueryKey(), refetchInterval: 60_000 },
   });
 
   const updateProfileMutation = useUpdateProfile({
