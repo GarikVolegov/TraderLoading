@@ -1,9 +1,6 @@
 import { PAIR_CATALOG, getPairEntry } from "@workspace/pair-catalog";
 import { deriveEffectiveFilterItems } from "../lib/toolPairFilters";
 
-export const TRADING_VIEW_MINI_SYMBOL_SCRIPT =
-  "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
-
 /** Pairs shown when the user has no (supported) favorites — same idea as the rest of the dashboard. */
 export const DEFAULT_WATCHLIST_PAIRS = ["EURUSD", "GBPUSD", "XAUUSD"];
 
@@ -35,18 +32,18 @@ const TRADING_VIEW_CRYPTO_SYMBOLS: Record<string, string> = {
   ETHUSD: "COINBASE:ETHUSD",
 };
 
-export interface TradingViewMiniSymbolConfig {
-  symbol: string;
-  width: string;
-  height: string;
-  locale: string;
-  dateRange: string;
-  colorTheme: "dark";
-  isTransparent: boolean;
-  autosize: boolean;
-  largeChartUrl: string;
-  chartOnly: boolean;
-  noTimeScale: boolean;
+/** One row of the /tools/watchlist payload (mirrors the server shape). */
+export interface WatchlistItem {
+  pair: string;
+  price: number | null;
+  changePct: number | null;
+  spark: number[];
+  time: number | null;
+  supported: boolean;
+}
+
+export interface WatchlistResponse {
+  items: WatchlistItem[];
 }
 
 /** Map a pair-catalog symbol (e.g. "EURUSD", "XAUUSD", "US30", "BTCUSD") to a TradingView symbol. */
@@ -70,18 +67,13 @@ export function buildTradingViewDeepLink(symbol: string): string {
   return url.toString();
 }
 
-export function buildTradingViewMiniSymbolConfig(symbol: string): TradingViewMiniSymbolConfig {
-  return {
-    symbol,
-    width: "100%",
-    height: "100%",
-    locale: "it",
-    dateRange: "1D",
-    colorTheme: "dark",
-    isTransparent: true,
-    autosize: true,
-    largeChartUrl: "",
-    chartOnly: false,
-    noTimeScale: true,
-  };
+/** Decimals by instrument: JPY-quoted 3, metals 2, indices 1, crypto 2 (0 when ≥1000), FX 5. */
+export function formatWatchlistPrice(pair: string, price: number): string {
+  const sym = pair.trim().toUpperCase();
+  if (sym.endsWith("JPY")) return price.toFixed(3);
+  const entry = getPairEntry(sym);
+  if (entry?.category === "metal") return price.toFixed(2);
+  if (entry?.category === "index") return price.toFixed(1);
+  if (entry?.category === "crypto") return price.toFixed(price >= 1000 ? 0 : 2);
+  return price.toFixed(5);
 }

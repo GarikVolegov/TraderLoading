@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import {
   DEFAULT_WATCHLIST_PAIRS,
-  TRADING_VIEW_MINI_SYMBOL_SCRIPT,
   buildTradingViewDeepLink,
-  buildTradingViewMiniSymbolConfig,
+  formatWatchlistPrice,
   mapCatalogPairToTradingViewSymbol,
   resolveWatchlistPairs,
 } from "./tradingViewWatchlist";
@@ -52,16 +51,14 @@ assert.equal(
   "https://www.tradingview.com/chart/?symbol=OANDA%3AXAUUSD",
 );
 
-// Mini-symbol embed config unchanged behaviour
-const config = buildTradingViewMiniSymbolConfig("FX:EURUSD");
-assert.equal(config.symbol, "FX:EURUSD");
-assert.equal(config.colorTheme, "dark");
-assert.equal(config.locale, "it");
-assert.equal(config.isTransparent, true);
-assert.equal(config.width, "100%");
-assert.equal(config.dateRange, "1D");
-assert.equal(config.autosize, true);
-
-assert.match(TRADING_VIEW_MINI_SYMBOL_SCRIPT, /embed-widget-mini-symbol-overview\.js/);
+// Price formatting: decimals follow the pair-catalog category
+assert.equal(formatWatchlistPrice("EURUSD", 1.084234), "1.08423"); // FX → 5
+assert.equal(formatWatchlistPrice("USDJPY", 157.3312), "157.331"); // JPY-quoted → 3
+assert.equal(formatWatchlistPrice("EURJPY", 169.1), "169.100"); // JPY-quoted minor → 3
+assert.equal(formatWatchlistPrice("XAUUSD", 2329.4467), "2329.45"); // metal → 2
+assert.equal(formatWatchlistPrice("US30", 39112.31), "39112.3"); // index → 1
+assert.equal(formatWatchlistPrice("BTCUSD", 64123.55), "64124"); // crypto ≥1000 → 0
+assert.equal(formatWatchlistPrice("ETHUSD", 934.234), "934.23"); // crypto <1000 → 2
+assert.equal(formatWatchlistPrice("ZZZUSD", 1.23), "1.23000"); // unknown forex-shaped → 5
 
 console.log("tradingView watchlist helper checks passed");
