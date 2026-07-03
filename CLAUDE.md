@@ -161,6 +161,15 @@ social WS hub, bounded caches, Stripe idempotency; migrations 0019/0020). Gate: 
 Plan + final numbers: [docs/superpowers/plans/2026-07-02-performance-lightening.md](docs/superpowers/plans/2026-07-02-performance-lightening.md).
 Manual browser verification checklist (smoke test, language switch, COT widget, WS chat) → pending with user.
 
+**Watchlist widget → native Claude Design rows (2026-07-03, done).** The dashboard "Watchlist Realtime"
+card no longer embeds TradingView iframes: each row is the kit sparkline-row (pair label · daily **D1**
+`Sparkline` · price · daily change %), fed by the new **off-contract** `GET /api/tools/watchlist?pairs=…`
+(SWR cache volatility-style over the shared D1 candle chain; pure logic in
+`services/watchlistQuotes.ts`, route in `routes/tools.ts`; client polls 120 s, 15 s while warming). Rows
+still deep-link to TradingView; chrome (glass card, Live badge, gear) unchanged. Freshness = last D1 bar
+(TwelveData/Binance serve the developing candle; Dukascopy lags ~1 day — set `TWELVEDATA_API_KEY` in prod).
+Spec/plan: `docs/superpowers/{specs,plans}/2026-07-03-watchlist-claude-design-daily*`.
+
 > This section changes the most session-to-session — update it as the work moves.
 
 ## 8. Conventions & gotchas
