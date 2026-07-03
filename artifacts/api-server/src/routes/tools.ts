@@ -14,7 +14,12 @@ import {
   YAHOO_VOLATILITY_PAIRS,
   type VolatilityMetricResponse,
 } from "../services/volatility.js";
-import { getCandles } from "../services/candles.js";
+import { getCandles, isSupportedSymbol } from "../services/candles.js";
+import {
+  buildWatchlistItem,
+  parseWatchlistPairsParam,
+  type WatchlistItem,
+} from "../services/watchlistQuotes.js";
 import { getJsonCache, setJsonCache } from "../lib/cache.js";
 import { captureError } from "../lib/observability.js";
 
@@ -302,6 +307,91 @@ router.get("/tools/volatility", async (req, res) => {
     return;
   }
   res.status(503).json({ error: "Dati di volatilita in aggiornamento" });
+});
+
+// ─── 3b. WATCHLIST (dashboard sparkline rows over the D1 candle chain) ───────
+// Same stale-while-revalidate discipline as volatility: a request only ever
+// reads cache and triggers a deduped, concurrency-capped background refresh, so
+// the slow no-key source (Dukascopy) never blocks the HTTP request. Pure payload
+// shaping lives in services/watchlistQuotes.ts.
+
+const WATCHLIST_FRESH_TTL_SECONDS = 2 * 60;
+const WATCHLIST_STALE_TTL_SECONDS = 7 * 24 * 60 * 60;
+const WATCHLIST_WARM_MAX = 3;
+
+const watchlistLastGood = new Map<string, WatchlistItem>();
+const watchlistInFlight = new Map<string, Promise<void>>();
+let watchlistWarmActive = 0;
+const watchlistWarmWaiters: Array<() => void> = [];
+
+const watchlistFreshKey = (pair: string) => `watchlist:v1:${pair}`;
+const watchlistStaleKey = (pair: string) => `watchlist:stale:v1:${pair}`;
+
+function acquireWatchlistWarmSlot(): Promise<void> {
+  if (watchlistWarmActive < WATCHLIST_WARM_MAX) {
+    watchlistWarmActive++;
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    watchlistWarmWaiters.push(() => {
+      watchlistWarmActive++;
+      resolve();
+    });
+  });
+}
+
+function releaseWatchlistWarmSlot(): void {
+  watchlistWarmActive--;
+  watchlistWarmWaiters.shift()?.();
+}
+
+async function refreshWatchlistPair(pair: string): Promise<void> {
+  const { candles } = await getCandles(pair, "D1");
+  const item = buildWatchlistItem(pair, candles, true);
+  watchlistLastGood.set(pair, item);
+  await setJsonCache(watchlistFreshKey(pair), item, WATCHLIST_FRESH_TTL_SECONDS);
+  await setJsonCache(watchlistStaleKey(pair), item, WATCHLIST_STALE_TTL_SECONDS);
+}
+
+function ensureWatchlistWarm(pair: string): Promise<void> {
+  const existing = watchlistInFlight.get(pair);
+  if (existing) return existing;
+  const job = (async () => {
+    await acquireWatchlistWarmSlot();
+    try {
+      await refreshWatchlistPair(pair);
+    } catch (err) {
+      console.warn(`[tools/watchlist] warm ${pair}: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      releaseWatchlistWarmSlot();
+      watchlistInFlight.delete(pair);
+    }
+  })();
+  watchlistInFlight.set(pair, job);
+  return job;
+}
+
+async function resolveWatchlistItem(pair: string): Promise<WatchlistItem> {
+  if (!isSupportedSymbol(pair)) return buildWatchlistItem(pair, null, false);
+
+  const fresh = await getJsonCache<WatchlistItem>(watchlistFreshKey(pair));
+  if (fresh) return fresh;
+
+  // Cache miss: kick off a background refresh and serve the best we have now.
+  void ensureWatchlistWarm(pair);
+  const stale =
+    watchlistLastGood.get(pair) ?? (await getJsonCache<WatchlistItem>(watchlistStaleKey(pair)));
+  return stale ?? buildWatchlistItem(pair, null, true);
+}
+
+router.get("/tools/watchlist", async (req, res) => {
+  const pairs = parseWatchlistPairsParam(req.query["pairs"]);
+  if (pairs.length === 0) {
+    res.status(400).json({ error: "Parametro pairs mancante o non valido" });
+    return;
+  }
+  const items = await Promise.all(pairs.map((pair) => resolveWatchlistItem(pair)));
+  res.json({ items });
 });
 
 // ─── 4. COT REPORT (CFTC, aggiornamento ogni venerdì) ────────────────────────
