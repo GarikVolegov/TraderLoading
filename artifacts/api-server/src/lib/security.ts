@@ -31,6 +31,11 @@ type UploadGuardResponse = {
 type UploadGuardNext = () => void;
 
 const DEV_ORIGINS = [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/];
+// Private, per-user upload dirs (wiki archive, DM attachments, voice notes) are
+// intentionally NOT listed here: the public static handler performs no
+// ownership check, so they are served through authenticated routes that verify
+// the requester owns / participates in the resource instead. "wiki" is served
+// by routes/wiki.ts with a wikiSourcesTable.userId check.
 const ALLOWED_UPLOAD_DIRS = new Set([
   "post-images",
   "voice",
@@ -39,7 +44,6 @@ const ALLOWED_UPLOAD_DIRS = new Set([
   "community-assets",
   "milestone-files",
   "avatars",
-  "wiki",
 ]);
 const ALLOWED_UPLOAD_EXTENSIONS = new Set([
   ".csv",
