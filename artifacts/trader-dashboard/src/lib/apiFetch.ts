@@ -14,6 +14,14 @@ export function createApiUrl(path: string, basePath = getDefaultBasePath()): str
   return `${normalizedBase}/api/${normalizedPath}`;
 }
 
+/** Error carrying the HTTP status, so the query retry can tell 4xx (don't retry)
+ *  from transient 5xx/network (retry) — matches ApiError from the generated client. */
+function apiError(message: string, status: number): Error {
+  const err = new Error(message) as Error & { status?: number };
+  err.status = status;
+  return err;
+}
+
 export async function apiFetch<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     credentials: "include",
@@ -23,7 +31,7 @@ export async function apiFetch<T>(url: string, opts?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-    throw new Error(err.error ?? `HTTP ${res.status}`);
+    throw apiError(err.error ?? `HTTP ${res.status}`, res.status);
   }
 
   return res.json() as Promise<T>;
@@ -40,7 +48,7 @@ export async function apiJSON<T>(path: string, opts?: RequestInit, options?: Rel
     // callers show the real reason instead of a bare status code.
     const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
     const message = typeof body?.error === "string" && body.error ? body.error : `HTTP ${res.status}`;
-    throw new Error(message);
+    throw apiError(message, res.status);
   }
   return res.json() as Promise<T>;
 }
@@ -50,7 +58,7 @@ export async function apiUpload<T>(url: string, form: FormData): Promise<T> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-    throw new Error(err.error ?? `HTTP ${res.status}`);
+    throw apiError(err.error ?? `HTTP ${res.status}`, res.status);
   }
 
   return res.json() as Promise<T>;

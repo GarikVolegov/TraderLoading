@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from "wouter";
 import { motion } from "framer-motion";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { shouldRetryQuery } from "./lib/queryRetry";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
 import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -80,7 +81,9 @@ const LOCALIZED_LANGS: Language[] = ["it", "es", "fr", "de"];
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: false,
+      // Retry transient server/network blips (so a momentary failure doesn't leave a
+      // widget broken until reload) but never a 4xx — see shouldRetryQuery.
+      retry: shouldRetryQuery,
       // Refetch stale queries when the tab regains focus, so widgets recover after
       // the laptop wakes from sleep (or a cookie refresh) instead of staying broken
       // until a manual reload. Bounded by staleTime below, so it only refetches what
