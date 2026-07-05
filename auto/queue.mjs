@@ -78,3 +78,65 @@ export function materializeChores(queue, chores, dateISO) {
   }
   return added;
 }
+
+// ---- CLI --------------------------------------------------------------------
+import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+function loadJSON(p) {
+  return JSON.parse(readFileSync(p, "utf8"));
+}
+function saveJSON(p, v) {
+  writeFileSync(p, JSON.stringify(v, null, 2) + "\n");
+}
+
+export function runCli(argv, env = process.env) {
+  const autoDir = path.dirname(fileURLToPath(import.meta.url));
+  const queueFile = env.NIGHTSHIFT_QUEUE ?? path.join(autoDir, "queue.json");
+  const choresFile = env.NIGHTSHIFT_CHORES ?? path.join(autoDir, "chores.json");
+  const [cmd, ...rest] = argv;
+  const queue = loadJSON(queueFile);
+  switch (cmd) {
+    case "next": {
+      const t = nextTask(queue, rest[0]);
+      if (!t) return 1;
+      process.stdout.write(JSON.stringify(t) + "\n");
+      return 0;
+    }
+    case "start":
+      startTask(queue, rest[0]);
+      saveJSON(queueFile, queue);
+      return 0;
+    case "done":
+      completeTask(queue, rest[0], rest[1] || null, rest[2] ?? "");
+      saveJSON(queueFile, queue);
+      return 0;
+    case "fail":
+      failTask(queue, rest[0], rest[1] ?? "");
+      saveJSON(queueFile, queue);
+      return 0;
+    case "recover": {
+      const ids = recoverStale(queue);
+      saveJSON(queueFile, queue);
+      for (const id of ids) process.stdout.write(id + "\n");
+      return 0;
+    }
+    case "materialize": {
+      const dry = rest.includes("--dry");
+      const dateISO = rest.find((a) => !a.startsWith("--"));
+      if (!dateISO) throw new Error("materialize richiede una data YYYY-MM-DD");
+      const added = materializeChores(queue, loadJSON(choresFile), dateISO);
+      if (!dry) saveJSON(queueFile, queue);
+      for (const t of added) process.stdout.write(`${dry ? "[dry] " : ""}${t.id}\n`);
+      return 0;
+    }
+    default:
+      process.stderr.write("uso: queue.mjs next [chore|heavy] | start <id> | done <id> [prUrl] [note] | fail <id> [note] | recover | materialize <data> [--dry]\n");
+      return 2;
+  }
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.exit(runCli(process.argv.slice(2)));
+}
