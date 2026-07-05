@@ -8,6 +8,8 @@
 // trade reads the same R everywhere:
 //   R = (|exit - entry| / |entry - stop|) * sign(profit)
 
+import { tradingHour, tradingDayOfWeek } from "../lib/tradingTime.js";
+
 export interface EdgeTrade {
   symbol: string;
   /** Raw broker direction: "buy"/"sell" or "long"/"short". */
@@ -145,11 +147,10 @@ export function normalizeDirection(direction: string): "long" | "short" | null {
   return null;
 }
 
-/** UTC open hour → trading session bucket. */
+/** Open hour (Europe/Rome) → trading session bucket. */
 export function sessionForTrade(openTime: string): string | null {
-  const date = new Date(openTime);
-  if (Number.isNaN(date.getTime())) return null;
-  const hour = date.getUTCHours();
+  const hour = tradingHour(new Date(openTime));
+  if (hour === null) return null;
   if (hour < 7) return "Asia";
   if (hour < 12) return "Londra";
   if (hour < 17) return "Londra–NY";
@@ -157,9 +158,8 @@ export function sessionForTrade(openTime: string): string | null {
 }
 
 function dayOfWeekForTrade(openTime: string): string | null {
-  const date = new Date(openTime);
-  if (Number.isNaN(date.getTime())) return null;
-  return DAY_LABELS[date.getUTCDay()];
+  const dow = tradingDayOfWeek(new Date(openTime));
+  return dow === null ? null : DAY_LABELS[dow];
 }
 
 function buildSlice(label: string, trades: EdgeTrade[]): EdgeSlice {
