@@ -13,6 +13,7 @@ import { attachNewsProviderSockets } from "./services/newsHub/providerSockets.js
 import { attachSocialHubWebSocket } from "./services/socialHub/socketServer.js";
 import logger from "./lib/logger";
 import { assertRedisConfigured, closeSharedRedisClient } from "./lib/redisClient.js";
+import { uploadsPersistenceWarning } from "./lib/uploads.js";
 import { captureError, flushObservability, initObservability } from "./lib/observability";
 
 initObservability();
@@ -34,6 +35,10 @@ if (Number.isNaN(port) || port <= 0) {
 // Refuse to boot a production instance that would silently run with per-process
 // rate limits, double-firing cron and no cross-instance dedup (see redisClient).
 assertRedisConfigured();
+
+// Non-fatal: warn if uploads would land on ephemeral disk (lost on redeploy).
+const uploadsWarning = uploadsPersistenceWarning();
+if (uploadsWarning) logger.warn(uploadsWarning);
 
 const server = createServer(app);
 const accountBridgeSocket = attachAccountBridgeWebSocket(server);
