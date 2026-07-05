@@ -144,6 +144,7 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`DELETE FROM user_public_keys WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM user_e2ee_key_backups WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM global_chat_messages WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM chat_file_access WHERE owner_user_id = ${userId} OR peer_user_id = ${userId}`);
     await tx.execute(sql`
       DELETE FROM signals
       WHERE recipient_id = ${userId} OR from_id = ${userId}
