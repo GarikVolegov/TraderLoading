@@ -185,8 +185,8 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
   };
 
   const computedResult = useMemo(
-    () => calculateManualBacktestTradeResult(entryPrice, exitPrice, direction),
-    [entryPrice, exitPrice, direction],
+    () => calculateManualBacktestTradeResult(entryPrice, exitPrice, direction, session.pair),
+    [entryPrice, exitPrice, direction, session.pair],
   );
 
   const handleAddTrade = async () => {

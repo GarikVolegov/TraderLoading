@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchReplayCandles, type ReplayCandleRaw } from "@/lib/replayCandlesApi";
+import { getPipMultiplier } from "@/lib/pipMultiplier";
 import {
   applyFormingCandleForAnchor,
   DEFAULT_REPLAY_VISIBLE_CANDLES,
@@ -85,15 +86,6 @@ interface ChartReplayProps {
 const SPEEDS = [1, 2, 5, 10];
 const START_VISIBLE = DEFAULT_REPLAY_VISIBLE_CANDLES;
 const TIMEFRAMES = ["M5", "M15", "M30", "H1", "H4", "D1", "W1"];
-
-function getPipMultiplier(symbol: string): number {
-  const s = symbol.replace("/", "").toUpperCase();
-  if (s.includes("JPY")) return 100;
-  if (s === "XAUUSD") return 10;
-  if (["US30", "NAS100", "SPX500"].includes(s)) return 1;
-  if (s.includes("BTC") || s.includes("ETH")) return 1;
-  return 10000;
-}
 
 function formatPrice(price: number, symbol: string): string {
   const s = symbol.replace("/", "").toUpperCase();
