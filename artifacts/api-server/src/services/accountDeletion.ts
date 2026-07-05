@@ -1,6 +1,7 @@
-import { sql } from "drizzle-orm";
-import { db as defaultDb } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
+import { db as defaultDb, wikiSourcesTable } from "@workspace/db";
 import { brokerHubRuntime } from "./brokerHub/runtime.js";
+import { createWikiStorageFromEnv } from "./wikiStorage.js";
 
 export const ACCOUNT_DELETION_CATEGORIES = [
   "auth-provider",
@@ -29,6 +30,7 @@ interface DeleteAccountDataOptions {
   db?: DatabaseLike;
   deleteAuthProviderUser?: (userId: string) => Promise<"deleted" | "skipped">;
   cleanupBrokerProfiles?: (userId: string) => Promise<number>;
+  cleanupStorage?: (database: DatabaseLike, userId: string) => Promise<void>;
 }
 
 export interface AccountDeletionResult {
@@ -89,6 +91,28 @@ async function cleanupDefaultBrokerProfiles(userId: string): Promise<number> {
   }
 
   return ownedProfiles.length;
+}
+
+// Remove the archive's binary files (local disk or S3/R2). Their storage keys
+// must be read before the wiki_sources rows are deleted, so this runs before
+// deleteLocalAccountData. Best effort: a failed file delete must not block the
+// DB erasure of the account.
+async function cleanupWikiStorageFiles(
+  database: DatabaseLike,
+  userId: string,
+): Promise<void> {
+  const rows = await database
+    .select({ storageKey: wikiSourcesTable.storageKey })
+    .from(wikiSourcesTable)
+    .where(eq(wikiSourcesTable.userId, userId));
+  const keys = rows
+    .map((row) => row.storageKey)
+    .filter((key): key is string => Boolean(key));
+  if (keys.length === 0) return;
+  const storage = createWikiStorageFromEnv();
+  for (const key of keys) {
+    await storage.delete(key).catch(() => {});
+  }
 }
 
 async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
@@ -155,6 +179,39 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
       DELETE FROM community_channels
       WHERE community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
     `);
+    // Moderation + review tables have no real FK to communities, so they must be
+    // cleared explicitly here (before communities is deleted, while the owned-
+    // community subselect still resolves). Reports reference reviews, so first.
+    await tx.execute(sql`
+      DELETE FROM community_review_reports
+      WHERE reporter_user_id = ${userId}
+         OR review_id IN (
+           SELECT id FROM community_reviews
+           WHERE user_id = ${userId}
+              OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
+         )
+    `);
+    await tx.execute(sql`
+      DELETE FROM community_reviews
+      WHERE user_id = ${userId}
+         OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
+    `);
+    await tx.execute(sql`
+      DELETE FROM community_roles
+      WHERE community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
+    `);
+    await tx.execute(sql`
+      DELETE FROM community_bans
+      WHERE user_id = ${userId}
+         OR banned_by = ${userId}
+         OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
+    `);
+    await tx.execute(sql`
+      DELETE FROM community_mutes
+      WHERE user_id = ${userId}
+         OR muted_by = ${userId}
+         OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
+    `);
     await tx.execute(sql`DELETE FROM communities WHERE creator_id = ${userId}`);
 
     await tx.execute(sql`
@@ -181,6 +238,55 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`DELETE FROM push_subscriptions WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM user_settings WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM login_access WHERE user_id = ${userId}`);
+
+    // Personal archive (wiki): rows here; the binary files are removed
+    // separately in deleteAccountData (their storage keys are read first).
+    // ingest jobs -> sources -> folders for FK safety.
+    await tx.execute(sql`DELETE FROM wiki_ingest_jobs WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM wiki_sources WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM wiki_folders WHERE user_id = ${userId}`);
+
+    // Support tickets: messages (of the user's tickets or authored by the user)
+    // before the tickets themselves.
+    await tx.execute(sql`
+      DELETE FROM support_ticket_messages
+      WHERE ticket_id IN (SELECT id FROM support_tickets WHERE user_id = ${userId})
+         OR (author_type = 'user' AND author_id = ${userId})
+    `);
+    await tx.execute(sql`DELETE FROM support_tickets WHERE user_id = ${userId}`);
+
+    // Tournaments: full erasure. The Hall of Fame simply won't list an erased
+    // user. Any on-chain NFT persists on the blockchain by nature (disclosed),
+    // but its DB row (name/avatar/wallet) is removed.
+    await tx.execute(sql`DELETE FROM tournament_enrollments WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM tournament_prizes WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM tournament_standings WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM tournament_certificates WHERE user_id = ${userId}`);
+
+    // Public review / marketing: the user's own testimonial is removed; drop
+    // the erased user's id from moderation fields on other rows.
+    await tx.execute(sql`DELETE FROM testimonials WHERE user_id = ${userId}`);
+    await tx.execute(sql`UPDATE testimonials SET moderated_by = NULL WHERE moderated_by = ${userId}`);
+    await tx.execute(sql`DELETE FROM review_prompt_state WHERE user_id = ${userId}`);
+
+    // Admin: the user's own admin rows are removed; references to the erased
+    // user as actor on OTHER admins' rows are nulled.
+    await tx.execute(sql`DELETE FROM admin_user_subscriptions WHERE user_id = ${userId}`);
+    await tx.execute(sql`UPDATE admin_user_subscriptions SET updated_by = NULL WHERE updated_by = ${userId}`);
+    await tx.execute(sql`DELETE FROM admin_user_status WHERE user_id = ${userId}`);
+    await tx.execute(sql`UPDATE admin_user_status SET updated_by = NULL WHERE updated_by = ${userId}`);
+    await tx.execute(sql`DELETE FROM admin_users WHERE user_id = ${userId}`);
+    await tx.execute(sql`UPDATE admin_users SET created_by = NULL WHERE created_by = ${userId}`);
+    // Security audit trail is retained (legitimate interest / anti-fraud) but
+    // its network PII is scrubbed for the erased actor.
+    await tx.execute(sql`
+      UPDATE admin_audit_logs SET ip_address = NULL, user_agent = NULL
+      WHERE actor_user_id = ${userId}
+    `);
+
+    // Legacy express-session store (jsonb). No-op under Clerk, safe otherwise.
+    await tx.execute(sql`DELETE FROM sessions WHERE sess->'user'->>'id' = ${userId}`);
+
     await tx.execute(sql`DELETE FROM profile WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM users WHERE id = ${userId}`);
   });
@@ -197,8 +303,10 @@ export async function deleteAccountData(
     options.cleanupBrokerProfiles ?? cleanupDefaultBrokerProfiles;
   const deleteAuthProviderUser =
     options.deleteAuthProviderUser ?? deleteClerkUser;
+  const cleanupStorage = options.cleanupStorage ?? cleanupWikiStorageFiles;
 
   const brokerProfilesDeleted = await cleanupBrokerProfiles(userId);
+  await cleanupStorage(database, userId);
   await deleteLocalAccountData(database, userId);
   const authProvider = await deleteAuthProviderUser(userId);
 
