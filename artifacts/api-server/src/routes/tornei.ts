@@ -14,7 +14,7 @@ import {
   type TournamentStanding,
   type TournamentCertificate,
 } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getUserId } from "./profile.js";
 import {
   getActiveSeason,
@@ -313,10 +313,25 @@ router.post("/tornei/certificates/:id/claim", async (req: Request, res: Response
     return;
   }
 
-  await db
+  // Atomically claim the certificate for minting: only the request that flips
+  // claimable/failed -> pending proceeds. Without this compare-and-set two
+  // concurrent claims (double click, retry, multiple tabs) would both call
+  // provider.mint() and emit two on-chain NFTs at real gas cost.
+  const claimed = await db
     .update(tournamentCertificatesTable)
     .set({ mintStatus: "pending", walletAddress: profile.walletAddress })
-    .where(eq(tournamentCertificatesTable.id, id));
+    .where(
+      and(
+        eq(tournamentCertificatesTable.id, id),
+        inArray(tournamentCertificatesTable.mintStatus, ["claimable", "failed"]),
+      ),
+    )
+    .returning({ id: tournamentCertificatesTable.id });
+  if (claimed.length === 0) {
+    // Another request already claimed it (mint in progress or completed).
+    res.status(409).json({ error: "mint_in_progress" });
+    return;
+  }
 
   try {
     const tokenUri = `${appBaseUrl()}/api/tornei/certificates/${id}/metadata`;
