@@ -12,6 +12,7 @@ import { normalizeBrokerOrder } from "./orderValidation.js";
 import { createDefaultBrokerProfileStore, type BrokerProfileStore } from "./profileStore.js";
 import { createSnapTradeBrokerConnector } from "./snapTradeConnector.js";
 import { reportJobError } from "../../lib/observability.js";
+import { singleFlight } from "../../lib/singleFlight.js";
 import type {
   BrokerAccountProfile,
   BrokerConnector,
@@ -49,6 +50,10 @@ interface BrokerHubRuntimeOptions {
   connectorFactory?: (profile: BrokerAccountProfile, vault: BrokerVault) => BrokerConnector;
   accountDataImporter?: (input: { profile: BrokerAccountProfile; snapshot: BrokerSnapshot; deals: BrokerDeal[] }) => Promise<BrokerAccountDataSyncResult>;
   autoSyncIntervalMs?: number;
+  /** How long a fetched FX Blue snapshot is served from cache before a read
+   *  re-fetches. Reads within the window skip the upstream fetch + DB import
+   *  (the background autoSync keeps the cache warm). Defaults to 60s. */
+  snapshotTtlMs?: number;
 }
 
 function createConnector(profile: BrokerAccountProfile, vault: BrokerVault, localCompanionStore: CompanionStore): BrokerConnector {
@@ -96,10 +101,15 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
   const localCompanionStore = options.companionStore ?? companionStore;
   const accountDataImporter = options.accountDataImporter ?? importBrokerAccountData;
   const autoSyncIntervalMs = options.autoSyncIntervalMs ?? 10_000;
+  const snapshotTtlMs = options.snapshotTtlMs ?? 60_000;
   const listeners = new Set<Listener>();
   const connectors = new Map<string, { connector: BrokerConnector; unsubscribe: () => void }>();
   const syncTimers = new Map<string, ReturnType<typeof setInterval>>();
   const activeSyncs = new Map<string, Promise<void>>();
+  // SWR cache of the last FX Blue snapshot per profile: reads within the TTL serve
+  // this instead of re-fetching the feed and re-importing every deal.
+  const snapshotCache = new Map<string, { snapshot: BrokerSnapshot; at: number }>();
+  const snapshotRefreshes = new Map<string, Promise<BrokerSnapshot>>();
   const activeOperations = new Set<Promise<unknown>>();
   let closing = false;
   let closePromise: Promise<void> | null = null;
@@ -146,6 +156,23 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
     }
   }
 
+  // One upstream fetch + DB import, cached for the read-path. Used by getSnapshot
+  // on a cache miss (deduped via singleFlight) so concurrent polls fetch once.
+  async function refreshFxBlueSnapshot(profile: BrokerAccountProfile): Promise<BrokerSnapshot> {
+    const connector = connectorFor(profile);
+    const snapshot = await connector.connect();
+    const updated = await store.saveProfile({
+      ...profile,
+      connectionStatus: snapshot.status,
+      health: snapshot.status === "connected" ? "connected" : profile.health,
+      lastSnapshotAt: snapshot.lastUpdated,
+    });
+    await importProfileData(updated, snapshot, connector);
+    snapshotCache.set(profile.id, { snapshot, at: Date.now() });
+    startAutoSync(updated);
+    return snapshot;
+  }
+
   function stopAutoSync(id: string): void {
     const timer = syncTimers.get(id);
     if (!timer) return;
@@ -186,6 +213,8 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
           lastSnapshotAt: snapshot.lastUpdated,
         });
         await importProfileData(currentProfile, snapshot, connector);
+        // Keep the read-path cache warm so reads keep serving without re-fetching.
+        snapshotCache.set(currentProfile.id, { snapshot, at: Date.now() });
       });
     }, autoSyncIntervalMs);
     timer.unref?.();
@@ -278,17 +307,10 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
         if (!profile) throw new Error("Broker profile not found");
         const current = connectors.get(id);
         if (isFxBlueProfile(profile)) {
-          const connector = connectorFor(profile);
-          const snapshot = await connector.connect();
-          const updated = await store.saveProfile({
-            ...profile,
-            connectionStatus: snapshot.status,
-            health: snapshot.status === "connected" ? "connected" : profile.health,
-            lastSnapshotAt: snapshot.lastUpdated,
-          });
-          await importProfileData(updated, snapshot, connector);
-          startAutoSync(updated);
-          return snapshot;
+          const cached = snapshotCache.get(id);
+          if (cached && Date.now() - cached.at < snapshotTtlMs) return cached.snapshot;
+          // Dedupe concurrent polls: a single upstream fetch + import serves them all.
+          return singleFlight(snapshotRefreshes, id, () => refreshFxBlueSnapshot(profile));
         }
         return current ? current.connector.getSnapshot() : disconnectedSnapshot(profile);
       });
