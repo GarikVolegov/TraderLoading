@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
-import { createNewsHubRuntime } from "./runtime.js";
+import { createNewsHubRuntime, shouldRefreshSnapshot } from "./runtime.js";
 import type { NewsResponse } from "./types.js";
+
+// Finding 2.3: the periodic tick used to force a full rebuild (RSS + translate + LLM +
+// Neon write) every 60s, 24/7, even with zero users. The freshness gate skips the
+// rebuild while the last snapshot is still within the fresh window.
+assert.equal(shouldRefreshSnapshot(null, 1_000_000, 600_000), true); // never refreshed → rebuild
+assert.equal(shouldRefreshSnapshot(1_000_000, 1_300_000, 600_000), false); // 5min old → still fresh
+assert.equal(shouldRefreshSnapshot(1_000_000, 1_600_000, 600_000), true); // exactly 10min → stale
+assert.equal(shouldRefreshSnapshot(1_000_000, 2_000_000, 600_000), true); // older → stale
+assert.equal(shouldRefreshSnapshot(1_000_000, 1_000_000, 0), true); // freshMs 0 → always rebuild
 
 const firstSnapshot: NewsResponse = {
   articles: [
