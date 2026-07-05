@@ -14,14 +14,28 @@ assert.doesNotThrow(() =>
   assertRedisConfigured({ NODE_ENV: "production", REDIS_URL: "redis://localhost:6379" }),
 );
 
-// Production without REDIS_URL must fail fast rather than silently degrade to
-// per-process rate limits / cron double-runs / lost cross-instance dedup.
+// Production on a SINGLE instance without REDIS_URL must boot: the primary Railway
+// deploy is one service and the rate limiter falls back to in-memory by design
+// (see .env.railway.example). Regression guard: a fatal check here crash-looped the
+// documented single-instance deploy under restartPolicyType=ALWAYS.
+assert.doesNotThrow(() => assertRedisConfigured({ NODE_ENV: "production" }));
+assert.doesNotThrow(() => assertRedisConfigured({ NODE_ENV: "production", REDIS_URL: "" }));
+assert.doesNotThrow(() =>
+  assertRedisConfigured({ NODE_ENV: "production", REDIS_URL: "", EXPECTED_REPLICAS: "1" }),
+);
+// A non-numeric replica hint is treated as single-instance, not a crash.
+assert.doesNotThrow(() =>
+  assertRedisConfigured({ NODE_ENV: "production", EXPECTED_REPLICAS: "" }),
+);
+
+// Production genuinely scaled to >1 replica without REDIS_URL must fail fast: per-process
+// rate limits over-count, cron leader-election double-runs and cross-instance dedup is lost.
 assert.throws(
-  () => assertRedisConfigured({ NODE_ENV: "production" }),
+  () => assertRedisConfigured({ NODE_ENV: "production", EXPECTED_REPLICAS: "2" }),
   /REDIS_URL is required/,
 );
 assert.throws(
-  () => assertRedisConfigured({ NODE_ENV: "production", REDIS_URL: "" }),
+  () => assertRedisConfigured({ NODE_ENV: "production", REDIS_URL: "", EXPECTED_REPLICAS: "3" }),
   /REDIS_URL is required/,
 );
 
