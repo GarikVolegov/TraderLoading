@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
 import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
+import { singleFlight } from "../lib/singleFlight.js";
+import { reportJobError } from "../lib/observability.js";
 import { getTextClient, markKeyInvalid } from "../services/llmClient.js";
 import { enrichAndFilterNews } from "../services/newsHub/intelligence.js";
 import {
@@ -896,6 +898,25 @@ async function buildNewsData(input: { pairs?: string; lang?: string } = {}): Pro
 
 // ─── Public accessor (stale-while-revalidate over the snapshot cache) ─────────
 
+// Background rebuilds deduped per cache key: N simultaneous readers of a stale
+// snapshot trigger at most ONE rebuild, and none of them wait for it.
+const newsRevalidations = new Map<string, Promise<void>>();
+
+function revalidateNews(cacheKey: string, pairsStr: string, lang: string): Promise<void> {
+  return singleFlight(newsRevalidations, cacheKey, async () => {
+    try {
+      const fresh = await buildNewsData({ pairs: pairsStr, lang });
+      // Don't overwrite a good snapshot with an empty (transient-outage) build.
+      if (fresh.articles.length > 0) {
+        NEWS_CACHE.set(cacheKey, fresh);
+        await writeNewsSnapshot(cacheKey, fresh);
+      }
+    } catch (err) {
+      reportJobError(err, { job: "news-revalidate", cacheKey });
+    }
+  });
+}
+
 export async function getNewsData(input: { noCache?: boolean; pairs?: string; lang?: string } = {}): Promise<NewsResponse> {
   const noCache = input.noCache === true;
   const { cacheKey, pairsStr, lang } = newsCacheKey(input);
@@ -911,12 +932,18 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
   // gives every invocation the same stable corpus (so pagination cannot
   // duplicate or drop articles between pages).
   const snapshot = await readNewsSnapshot(cacheKey);
-  if (snapshot && !noCache && Date.now() - snapshot.updatedAt.getTime() <= NEWS_SNAPSHOT_FRESH_MS) {
+  if (snapshot && !noCache) {
     NEWS_CACHE.set(cacheKey, snapshot.payload);
+    // Real stale-while-revalidate: serve the snapshot NOW (fresh or stale) so no
+    // reader eats the ~35-40s rebuild; when stale, rebuild in the background
+    // (deduped per key). Only a cold cache or a forced refresh rebuilds inline.
+    if (Date.now() - snapshot.updatedAt.getTime() > NEWS_SNAPSHOT_FRESH_MS) {
+      void revalidateNews(cacheKey, pairsStr, lang);
+    }
     return snapshot.payload;
   }
 
-  // Stale, missing, or forced: rebuild (internally time-bounded) and persist.
+  // No snapshot (cold start) or forced (periodic timer): rebuild inline.
   try {
     const fresh = await buildNewsData({ pairs: pairsStr, lang });
     // A transient provider outage yields an empty build: better the previous
