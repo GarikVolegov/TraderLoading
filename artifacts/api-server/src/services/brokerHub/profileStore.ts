@@ -12,7 +12,11 @@ import type {
 import { createDatabaseBrokerProfileStore } from "./databaseProfileStore.js";
 
 export interface BrokerProfileList {
+  /** Legacy single pointer (kept for back-compat); `activeByUser` is authoritative. */
   activeProfileId: string | null;
+  /** Per-user active profile: userId -> profileId they own. Prevents one user's
+   *  activation from clobbering another's in this shared, multi-tenant store. */
+  activeByUser: Record<string, string>;
   profiles: BrokerAccountProfile[];
 }
 
@@ -32,7 +36,7 @@ export interface BrokerProfileStoreBackend {
   ): Promise<T>;
 }
 
-const DEFAULT_STORE: BrokerProfileList = { activeProfileId: null, profiles: [] };
+const DEFAULT_STORE: BrokerProfileList = { activeProfileId: null, activeByUser: {}, profiles: [] };
 const backendLocks = new WeakMap<BrokerProfileStoreBackend, Promise<void>>();
 
 function defaultPath(): string {
@@ -169,14 +173,31 @@ function readCapabilities(value: unknown, kind: BrokerProviderKind, existing?: B
 }
 
 function cleanStore(raw: unknown): BrokerProfileList {
-  if (typeof raw !== "object" || raw === null) return DEFAULT_STORE;
+  if (typeof raw !== "object" || raw === null) return { activeProfileId: null, activeByUser: {}, profiles: [] };
   const data = raw as Partial<BrokerProfileList>;
   const profiles = Array.isArray(data.profiles) ? data.profiles.filter(isProfile).map((profile) => sanitize(profile)) : [];
+  const byId = new Map(profiles.map((profile) => [profile.id, profile]));
+
   const activeProfileId =
-    typeof data.activeProfileId === "string" && profiles.some((profile) => profile.id === data.activeProfileId)
-      ? data.activeProfileId
-      : null;
-  return { activeProfileId, profiles };
+    typeof data.activeProfileId === "string" && byId.has(data.activeProfileId) ? data.activeProfileId : null;
+
+  // Keep only per-user entries that point to a profile that still exists AND is
+  // actually owned by that user (drops stale/tampered mappings).
+  const activeByUser: Record<string, string> = {};
+  if (data.activeByUser && typeof data.activeByUser === "object") {
+    for (const [userId, profileId] of Object.entries(data.activeByUser)) {
+      if (typeof profileId !== "string") continue;
+      const profile = byId.get(profileId);
+      if (profile && profile.ownerUserId === userId) activeByUser[userId] = profileId;
+    }
+  }
+  // Migrate a legacy single active pointer into the per-user map.
+  if (activeProfileId) {
+    const owner = byId.get(activeProfileId)?.ownerUserId;
+    if (owner && !(owner in activeByUser)) activeByUser[owner] = activeProfileId;
+  }
+
+  return { activeProfileId, activeByUser, profiles };
 }
 
 function sanitize(raw: unknown, existing?: BrokerAccountProfile): BrokerAccountProfile {
@@ -293,7 +314,11 @@ export function createBrokerProfileStoreFromBackend(backend: BrokerProfileStoreB
   return {
     async listProfiles(): Promise<BrokerProfileList> {
       const data = cleanStore(await backend.read());
-      return { activeProfileId: data.activeProfileId, profiles: data.profiles.map((profile) => ({ ...profile })) };
+      return {
+        activeProfileId: data.activeProfileId,
+        activeByUser: { ...data.activeByUser },
+        profiles: data.profiles.map((profile) => ({ ...profile })),
+      };
     },
 
     async getProfile(id: string): Promise<BrokerAccountProfile | null> {
@@ -312,7 +337,7 @@ export function createBrokerProfileStoreFromBackend(backend: BrokerProfileStoreB
           ? data.profiles.map((item) => (item.id === profile.id ? profile : item))
           : [...data.profiles, profile];
         return {
-          data: { activeProfileId: data.activeProfileId, profiles },
+          data: { activeProfileId: data.activeProfileId, activeByUser: data.activeByUser, profiles },
           result: { ...profile },
         };
       });
@@ -322,8 +347,12 @@ export function createBrokerProfileStoreFromBackend(backend: BrokerProfileStoreB
       return updateBackend(backend, (data) => {
         const profile = data.profiles.find((item) => item.id === id);
         if (!profile) throw new Error("Broker profile not found");
+        const activeByUser = { ...data.activeByUser };
+        // Track the active profile per owner so activating one user's account
+        // doesn't change another user's active pointer.
+        if (profile.ownerUserId) activeByUser[profile.ownerUserId] = id;
         return {
-          data: { activeProfileId: id, profiles: data.profiles },
+          data: { activeProfileId: id, activeByUser, profiles: data.profiles },
           result: { ...profile },
         };
       });
@@ -331,9 +360,14 @@ export function createBrokerProfileStoreFromBackend(backend: BrokerProfileStoreB
 
     async deleteProfile(id: string): Promise<void> {
       await updateBackend(backend, (data) => {
+        const activeByUser = { ...data.activeByUser };
+        for (const [userId, profileId] of Object.entries(activeByUser)) {
+          if (profileId === id) delete activeByUser[userId];
+        }
         return {
           data: {
             activeProfileId: data.activeProfileId === id ? null : data.activeProfileId,
+            activeByUser,
             profiles: data.profiles.filter((profile) => profile.id !== id),
           },
           result: undefined,
