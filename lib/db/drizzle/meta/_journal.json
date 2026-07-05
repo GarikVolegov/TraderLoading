@@ -148,6 +148,13 @@
       "when": 1783353600000,
       "tag": "0020_stripe_webhook_events",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1783440000000,
+      "tag": "0021_chat_file_access",
+      "breakpoints": true
     }
   ]
 }
