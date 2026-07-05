@@ -3,12 +3,13 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db, followsTable, postsTable, postLikesTable, postCommentsTable, profileTable, userPublicKeysTable, chatFileAccessTable } from "@workspace/db";
-import { eq, and, or, desc, asc, sql, inArray, gt, isNull } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, inArray, gt, isNull, lt } from "drizzle-orm";
 import { areMutualFollowers } from "./chat.js";
 import { getUserNotificationLanguage, sendPushToUser } from "./push.js";
 import { getServerNotificationCopy } from "../services/notifications/notificationCopy.js";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
+import { parseFeedPagination, nextFeedCursor } from "../services/feedPagination.js";
 
 const POST_IMAGES_DIR = resolveUploadPath("post-images");
 const CHAT_FILES_DIR = resolveUploadPath("chat-files");
@@ -380,14 +381,18 @@ router.get("/social/feed", async (req, res) => {
     const followingIds = [...followingRows.map(r => r.followingId), userId];
 
     const now = new Date();
+    // Keyset pagination over post id (desc): the newest page has no cursor, "load
+    // older" passes the last id it saw as `cursor` so the feed scrolls past 50.
+    const { limit, cursor } = parseFeedPagination(req.query);
     const posts = await db.select().from(postsTable)
       .where(and(
         inArray(postsTable.userId, followingIds),
         eq(postsTable.isStory, false),
-        or(isNull(postsTable.expiresAt), gt(postsTable.expiresAt, now))
+        or(isNull(postsTable.expiresAt), gt(postsTable.expiresAt, now)),
+        ...(cursor !== null ? [lt(postsTable.id, cursor)] : []),
       ))
-      .orderBy(desc(postsTable.createdAt))
-      .limit(50);
+      .orderBy(desc(postsTable.id))
+      .limit(limit);
 
     const likedRows = posts.length > 0
       ? await db.select({ postId: postLikesTable.postId }).from(postLikesTable)
@@ -395,8 +400,8 @@ router.get("/social/feed", async (req, res) => {
       : [];
     const likedSet = new Set(likedRows.map(r => r.postId));
 
-    const followingSet = new Set(followingIds);
-    res.json(posts.map(p => ({ ...p, likedByMe: likedSet.has(p.id), isOwnPost: p.userId === userId })));
+    const items = posts.map(p => ({ ...p, likedByMe: likedSet.has(p.id), isOwnPost: p.userId === userId }));
+    res.json({ items, nextCursor: nextFeedCursor(items, limit) });
   } catch (err) {
     console.error("feed error:", err);
     res.status(500).json({ error: "Errore interno" });

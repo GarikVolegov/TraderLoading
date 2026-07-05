@@ -19,7 +19,8 @@ export function SocialTab({
   currentUserId: string;
   onStartChat: (u: SocialUser) => void;
 }) {
-  const { data: feed = [], isLoading: feedLoading } = useFeed();
+  const { data: feedData, isLoading: feedLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed();
+  const feed = feedData?.pages.flatMap((page) => page.items) ?? [];
   const { data: storyGroups = [] } = useStories();
   const [viewingStories, setViewingStories] = useState<{
     groups: StoryGroup[];
@@ -344,14 +345,26 @@ export function SocialTab({
                   </button>
                 </div>
               ) : (
-                feed.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    currentUserId={currentUserId}
-                    onViewProfile={setViewingProfile}
-                  />
-                ))
+                <>
+                  {feed.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      currentUserId={currentUserId}
+                      onViewProfile={setViewingProfile}
+                    />
+                  ))}
+                  {hasNextPage && (
+                    <button
+                      type="button"
+                      onClick={() => fetchNextPage()}
+                      disabled={isFetchingNextPage}
+                      className="mx-auto mt-2 block rounded-lg border border-border/40 bg-background/35 px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+                    >
+                      {uiText("chat.feed.load_more")}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </>

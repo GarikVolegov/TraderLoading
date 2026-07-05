@@ -750,6 +750,7 @@ const dict: Record<string, string> = {
   "chat.encrypted_badge": "Cifrado",
   "chat.end_call": "Terminar llamada",
   "chat.feed.empty_title": "No hay posts en el feed",
+  "chat.feed.load_more": "Cargar más",
   "chat.files.empty_title": "No hay archivos cargados",
   "chat.follow": "Seguir",
   "chat.leaderboard.title": "Clasificación Trader",

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import {
   useSearchUsers,
   getSearchUsersQueryKey,
@@ -45,10 +45,19 @@ export function useCommunityFiles(channelId: number | null) {
   });
 }
 
+export type FeedPost = Post & { likedByMe: boolean; isOwnPost: boolean };
+interface FeedPage {
+  items: FeedPost[];
+  nextCursor: number | null;
+}
+
 export function useFeed() {
-  return useQuery<(Post & { likedByMe: boolean; isOwnPost: boolean })[]>({
+  return useInfiniteQuery<FeedPage>({
     queryKey: ["social/feed"],
-    queryFn: () => apiJSON("social/feed"),
+    queryFn: ({ pageParam }) =>
+      apiJSON<FeedPage>(`social/feed?limit=20${pageParam ? `&cursor=${pageParam}` : ""}`),
+    initialPageParam: null as number | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     refetchInterval: 8000,
   });
 }
