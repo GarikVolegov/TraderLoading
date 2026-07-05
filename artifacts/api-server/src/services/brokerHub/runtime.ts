@@ -11,6 +11,7 @@ import { createLocalCompanionBrokerConnector } from "./localCompanionConnector.j
 import { normalizeBrokerOrder } from "./orderValidation.js";
 import { createDefaultBrokerProfileStore, type BrokerProfileStore } from "./profileStore.js";
 import { createSnapTradeBrokerConnector } from "./snapTradeConnector.js";
+import { reportJobError } from "../../lib/observability.js";
 import type {
   BrokerAccountProfile,
   BrokerConnector,
@@ -156,7 +157,7 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
     if (activeSyncs.has(id)) return;
     const current = run()
       .catch((error) => {
-        console.error("[brokerHub] FX Blue auto sync failed", error);
+        reportJobError(error, { job: "broker-autosync", profileId: id });
       })
       .finally(() => {
         if (activeSyncs.get(id) === current) {

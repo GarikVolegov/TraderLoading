@@ -95,6 +95,22 @@ export function captureError(
   Sentry.captureException(err);
 }
 
+/**
+ * Report a background/cron job failure to BOTH the log and Sentry. Critical cron
+ * jobs (tornei settle touches XP/Pro/mint, push scheduler, broker auto-sync) used
+ * to only `console.error`, so their failures never surfaced in Sentry. Always tags
+ * the event `surface: "background"` with the job name so it's filterable. The
+ * `capture` seam defaults to captureError and exists for tests.
+ */
+export function reportJobError(
+  err: unknown,
+  context: { job: string } & Record<string, unknown>,
+  capture: (err: unknown, ctx: Record<string, unknown>) => void = captureError,
+): void {
+  logger.error({ err, ...context }, `Background job failed: ${context.job}`);
+  capture(err, { surface: "background", ...context });
+}
+
 export async function flushObservability(timeoutMs = 2_000): Promise<boolean> {
   return Sentry.flush(timeoutMs);
 }

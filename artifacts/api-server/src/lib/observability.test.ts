@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import type { Event } from "@sentry/node";
 
-import { scrubSentryEvent } from "./observability.js";
+import { scrubSentryEvent, reportJobError } from "./observability.js";
 
 // Finding 2.6: the logger redacts Authorization/cookie/token/password/secret, but
 // Sentry shipped them to a third party in the clear. beforeSend must scrub the same
@@ -52,5 +52,18 @@ const cleanEvent: Event = { message: "boom", request: { headers: { Accept: "text
 const cleanResult = scrubSentryEvent(cleanEvent);
 assert.equal(cleanResult.message, "boom");
 assert.equal(cleanResult.request?.headers?.Accept, "text/html");
+
+// Finding 2.6: critical cron jobs (tornei settle touches XP/Pro/mint) only
+// console.error'd, so failures were invisible in Sentry. reportJobError must log
+// AND forward to Sentry tagged surface=background with the job name + context.
+const captured: Array<{ err: unknown; ctx: Record<string, unknown> }> = [];
+reportJobError(new Error("settle blew up"), { job: "tornei-settle", seasonId: "s1" }, (err, ctx) =>
+  captured.push({ err, ctx }),
+);
+assert.equal(captured.length, 1);
+assert.equal((captured[0].err as Error).message, "settle blew up");
+assert.equal(captured[0].ctx.surface, "background");
+assert.equal(captured[0].ctx.job, "tornei-settle");
+assert.equal(captured[0].ctx.seasonId, "s1");
 
 console.log("observability scrub checks passed");

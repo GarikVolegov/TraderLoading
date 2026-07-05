@@ -12,6 +12,7 @@ import {
   parseScheduledCallConfigs,
 } from "../services/notifications/scheduledCalls.js";
 import logger from "../lib/logger.js";
+import { reportJobError } from "../lib/observability.js";
 import { tryAcquireLock } from "../lib/distributedLock.js";
 
 const router: IRouter = Router();
@@ -275,7 +276,7 @@ export function startSessionScheduler(): SchedulerHandle {
         }),
       );
     } catch (err) {
-      logger.error({ err }, "Push session scheduler error");
+      reportJobError(err, { job: "push-scheduler" });
     }
   }
 
