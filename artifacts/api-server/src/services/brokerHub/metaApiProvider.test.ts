@@ -63,6 +63,16 @@ assert.equal(body.server, "FPMarkets-Live");
 assert.equal(body.platform, "mt5");
 assert.equal(JSON.stringify(verification).includes("broker-password"), false);
 
+// Finding 2.1: every MetaApi request carries an AbortSignal so a hung broker API
+// can't stall the sync/verify cycle indefinitely (no default fetch timeout).
+assert.ok(requests.length > 0);
+for (const request of requests) {
+  assert.ok(
+    request.init?.signal instanceof AbortSignal,
+    `MetaApi request to ${request.url} must carry an AbortSignal timeout`,
+  );
+}
+
 assert.equal(mapMetaApiError({ details: "E_AUTH" }), "Credenziali conto non valide. Controlla numero conto, password e server.");
 assert.equal(mapMetaApiError({ details: { code: "E_SRV_NOT_FOUND" } }), "Server broker non trovato. Controlla il nome server indicato dal broker.");
 assert.equal(mapMetaApiError({ details: "ERR_OTP_REQUIRED" }), "Questo conto richiede una verifica OTP non supportata dal collegamento automatico.");
