@@ -17,6 +17,7 @@ import {
   formatWatchlistPrice,
   mapCatalogPairToTradingViewSymbol,
   resolveWatchlistPairs,
+  watchlistFreshness,
   type WatchlistItem,
   type WatchlistResponse,
 } from "./tradingViewWatchlist";
@@ -124,6 +125,11 @@ export function TradingViewWatchlistWidget() {
     [data],
   );
 
+  // Only claim "Live" when the newest D1 bar is actually recent; otherwise the feed
+  // is delayed (e.g. Dukascopy lags ~1 day) and a pulsing badge would be dishonest.
+  const freshness = useMemo(() => watchlistFreshness(data?.items ?? [], Date.now()), [data]);
+  const lastUpdated = freshness.latestBarMs !== null ? new Date(freshness.latestBarMs).toLocaleString() : undefined;
+
   return (
     <Card className="relative overflow-hidden">
       <WidgetHeader
@@ -133,10 +139,23 @@ export function TradingViewWatchlistWidget() {
         subtitle={uiText("tradingview.watchlist.subtitle")}
         action={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-primary">
-              <span className="h-[5px] w-[5px] animate-pulse rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
-              {uiText("tradingview.watchlist.live")}
-            </span>
+            {freshness.isLive ? (
+              <span
+                title={lastUpdated}
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-primary"
+              >
+                <span className="h-[5px] w-[5px] animate-pulse rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+                {uiText("tradingview.watchlist.live")}
+              </span>
+            ) : (
+              <span
+                title={lastUpdated}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/40 bg-muted/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground"
+              >
+                <span className="h-[5px] w-[5px] rounded-full bg-muted-foreground/60" />
+                {uiText("tradingview.watchlist.delayed")}
+              </span>
+            )}
             <Link
               href={PAIR_PREFERENCES_PATH}
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-background/35 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"

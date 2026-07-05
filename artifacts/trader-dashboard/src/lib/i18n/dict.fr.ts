@@ -1756,6 +1756,7 @@ const dict: Record<string, string> = {
   "tradingview.watchlist.invalid_symbol": "Symbole invalide. Utilisez un format comme EURUSD ou OANDA:XAUUSD.",
   "tradingview.watchlist.invalid_symbols_label": "Symboles invalides : {symbols}",
   "tradingview.watchlist.live": "Live",
+  "tradingview.watchlist.delayed": "Différé",
   "tradingview.watchlist.manage": "Gerer les paires favorites",
   "tradingview.watchlist.open_aria": "Ouvrir {symbol} sur TradingView",
   "tradingview.watchlist.subtitle": "Prix en direct",

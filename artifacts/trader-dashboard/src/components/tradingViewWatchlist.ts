@@ -46,6 +46,34 @@ export interface WatchlistResponse {
   items: WatchlistItem[];
 }
 
+/** A D1 developing candle should be at most ~a day old; past this the feed is
+ *  lagging (e.g. Dukascopy ~1 day) or the market is closed, so it's not "live". */
+export const WATCHLIST_LIVE_MAX_AGE_MS = 26 * 60 * 60 * 1000;
+
+export interface WatchlistFreshness {
+  /** Newest bar time across items, in ms (null when no item has a time). */
+  latestBarMs: number | null;
+  /** Whether the newest bar is recent enough to honestly call the feed "live". */
+  isLive: boolean;
+}
+
+/** Derive feed freshness from the newest bar time so the UI can stop claiming a
+ *  pulsing "Live" over hours-old D1 data (finding 2.4). `time` is unix seconds. */
+export function watchlistFreshness(
+  items: readonly WatchlistItem[],
+  nowMs: number,
+  maxAgeMs: number = WATCHLIST_LIVE_MAX_AGE_MS,
+): WatchlistFreshness {
+  let latestBarMs: number | null = null;
+  for (const item of items) {
+    if (typeof item.time === "number") {
+      const ms = item.time * 1000;
+      if (latestBarMs === null || ms > latestBarMs) latestBarMs = ms;
+    }
+  }
+  return { latestBarMs, isLive: latestBarMs !== null && nowMs - latestBarMs <= maxAgeMs };
+}
+
 /** Map a pair-catalog symbol (e.g. "EURUSD", "XAUUSD", "US30", "BTCUSD") to a TradingView symbol. */
 export function mapCatalogPairToTradingViewSymbol(symbol: string): string {
   const sym = symbol.trim().toUpperCase();

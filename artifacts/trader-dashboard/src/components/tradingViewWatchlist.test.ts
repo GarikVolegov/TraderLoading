@@ -5,7 +5,29 @@ import {
   formatWatchlistPrice,
   mapCatalogPairToTradingViewSymbol,
   resolveWatchlistPairs,
+  watchlistFreshness,
+  type WatchlistItem,
 } from "./tradingViewWatchlist";
+
+// Finding 2.4: the widget always showed a pulsing "Live" badge even when the D1 data
+// was hours/days stale. Freshness is derived from the newest bar time (unix seconds).
+const item = (time: number | null): WatchlistItem => ({ pair: "EURUSD", price: 1, changePct: 0, spark: [], time, supported: true });
+const NOW = 1_800_000_000_000; // fixed ms
+
+// No usable bar time → not live.
+assert.deepEqual(watchlistFreshness([], NOW), { latestBarMs: null, isLive: false });
+assert.deepEqual(watchlistFreshness([item(null)], NOW), { latestBarMs: null, isLive: false });
+
+// A bar within the max age is live; one well past it is not (but still surfaces its time).
+const oneHourAgo = NOW / 1000 - 3600;
+assert.equal(watchlistFreshness([item(oneHourAgo)], NOW).isLive, true);
+const thirtyHoursAgo = NOW / 1000 - 30 * 3600;
+const stale = watchlistFreshness([item(thirtyHoursAgo)], NOW);
+assert.equal(stale.isLive, false);
+assert.equal(stale.latestBarMs, thirtyHoursAgo * 1000);
+
+// Freshness uses the NEWEST bar across items.
+assert.equal(watchlistFreshness([item(thirtyHoursAgo), item(oneHourAgo)], NOW).isLive, true);
 
 // resolveWatchlistPairs: favorites when present, else fall back to defaults
 // (same convention as the rest of the dashboard via deriveEffectiveFilterItems).
