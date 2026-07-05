@@ -15,7 +15,7 @@ function requireAuth(req: Request, res: Response): string | null {
   return userId;
 }
 
-async function areMutualFollowers(userId: string, friendId: string): Promise<boolean> {
+export async function areMutualFollowers(userId: string, friendId: string): Promise<boolean> {
   const [aFollowsB, bFollowsA] = await Promise.all([
     db.select({ id: followsTable.id }).from(followsTable)
       .where(and(eq(followsTable.followerId, userId), eq(followsTable.followingId, friendId))).limit(1),

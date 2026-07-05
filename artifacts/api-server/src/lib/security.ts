@@ -39,7 +39,6 @@ const DEV_ORIGINS = [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/];
 const ALLOWED_UPLOAD_DIRS = new Set([
   "post-images",
   "voice",
-  "chat-files",
   "community-files",
   "community-assets",
   "milestone-files",

@@ -2,8 +2,9 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { db, followsTable, postsTable, postLikesTable, postCommentsTable, profileTable, userPublicKeysTable } from "@workspace/db";
+import { db, followsTable, postsTable, postLikesTable, postCommentsTable, profileTable, userPublicKeysTable, chatFileAccessTable } from "@workspace/db";
 import { eq, and, or, desc, asc, sql, inArray, gt, isNull } from "drizzle-orm";
+import { areMutualFollowers } from "./chat.js";
 import { getUserNotificationLanguage, sendPushToUser } from "./push.js";
 import { getServerNotificationCopy } from "../services/notifications/notificationCopy.js";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
@@ -238,16 +239,58 @@ router.post("/social/upload-image", (req: Request, res: Response) => {
 router.post("/social/upload-file", (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
-  chatFileUpload.single("file")(req, res, (err) => {
+  chatFileUpload.single("file")(req, res, async (err) => {
     if (err) { res.status(400).json({ error: err.message ?? "Upload fallito" }); return; }
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
-    res.json({
-      fileUrl: `/api/uploads/chat-files/${req.file.filename}`,
-      fileName: req.file.originalname,
-      mimeType: req.file.mimetype || "application/octet-stream",
-      size: req.file.size,
-    });
+    try {
+      // Record who may later download this DM attachment. Only mutual followers
+      // can DM, so the same gate applies here; the two participants are the only
+      // ones the authenticated serving route will let read the file.
+      const toUserId = typeof req.body?.toUserId === "string" ? req.body.toUserId : "";
+      if (!toUserId || !(await areMutualFollowers(userId, toUserId))) {
+        res.status(400).json({ error: "Destinatario non valido" }); return;
+      }
+      await db
+        .insert(chatFileAccessTable)
+        .values({ fileKey: req.file.filename, ownerUserId: userId, peerUserId: toUserId })
+        .onConflictDoNothing({ target: chatFileAccessTable.fileKey });
+      res.json({
+        fileUrl: `/api/uploads/chat-files/${req.file.filename}`,
+        fileName: req.file.originalname,
+        mimeType: req.file.mimetype || "application/octet-stream",
+        size: req.file.size,
+      });
+    } catch {
+      res.status(500).json({ error: "Errore interno" });
+    }
   });
+});
+
+// Serve a DM file attachment only to the two conversation participants. These
+// files are no longer exposed by the public /api/uploads static handler (see
+// lib/security.ts): access is gated on chat_file_access. Not-found and
+// not-a-participant both return 404 (no existence signal).
+router.get("/uploads/chat-files/:filename", async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  try {
+    const filename = String(req.params.filename);
+    const [row] = await db
+      .select()
+      .from(chatFileAccessTable)
+      .where(eq(chatFileAccessTable.fileKey, filename))
+      .limit(1);
+    if (!row || (row.ownerUserId !== userId && row.peerUserId !== userId)) {
+      res.status(404).json({ error: "File non trovato" }); return;
+    }
+    const filePath = path.join(CHAT_FILES_DIR, filename);
+    if (!fs.existsSync(filePath)) { res.status(404).json({ error: "File non trovato" }); return; }
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.sendFile(filePath);
+  } catch {
+    res.status(500).json({ error: "Errore interno" });
+  }
 });
 
 router.post("/social/posts", async (req, res) => {
