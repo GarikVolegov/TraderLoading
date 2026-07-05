@@ -7,6 +7,7 @@ import { buildMacroTickerSummary, ensureMacroDeepDive, macroArticleToNewsLike, m
 import type { NewsDeepDive } from "../services/newsHub/types.js";
 import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
+import { parseMonteCarloParams } from "../services/monteCarloParams.js";
 import {
   calculateVolatilityMetrics,
   candlesToVolatilityInput,
@@ -38,26 +39,10 @@ function onCotFetchError(err: unknown): void {
 // di mercato (bull / neutral / bear) che cambiano stocasticamente. Questo rende
 // ogni curva genuinamente unica, con drawdown, recuperi e fasi di trend diversi.
 router.post("/tools/montecarlo", (req, res) => {
-  const {
-    winrate: rawWinrate = 55,
-    avgR = 1.5,
-    lossR = 1,
-    numTrades = 100,
-    riskPercent = 1,
-    initialBalance = 10000,
-    simCount = 50,
-  } = req.body as {
-    winrate?: number;
-    avgR?: number;
-    lossR?: number;
-    numTrades?: number;
-    riskPercent?: number;
-    initialBalance?: number;
-    simCount?: number;
-  };
-
-  // Normalize winrate: accept 0-100 or 0-1
-  const winrate = rawWinrate > 1 ? rawWinrate / 100 : rawWinrate;
+  // Validate + clamp every input (numTrades/simCount bound the work) so a crafted
+  // body can't spin the CPU or allocate unbounded curves. winrate is normalized to 0..1.
+  const { winrate, avgR, lossR, numTrades, riskPercent, initialBalance, simCount } =
+    parseMonteCarloParams(req.body);
 
   // Regime definitions: multipliers applied to base parameters
   type Regime = "bull" | "neutral" | "bear";
@@ -93,7 +78,7 @@ router.post("/tools/montecarlo", (req, res) => {
 
   const simulations: number[][] = [];
   const finalValues: number[] = [];
-  const N = Math.min(simCount, 200);
+  const N = simCount; // already clamped to [1, 200] by parseMonteCarloParams
 
   for (let s = 0; s < N; s++) {
     const curve: number[] = [initialBalance];
