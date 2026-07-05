@@ -95,12 +95,19 @@ index (owner_user_id), index (peer_user_id)
 (gate già usato dai DM); in mancanza/di non-amico → 400. Registrano la riga
 `chat_file_access(file_key, owner=uploader, peer=toUserId)`.
 
-**Serving** — rimuovere `chat-files` e `voice` da `ALLOWED_UPLOAD_DIRS`
-(`lib/security.ts`); `post-images` resta pubblico (feed social). Aggiungere route
-autenticate `GET /uploads/chat-files/:filename` e `GET /uploads/voice/:filename`
-(nel social router, come già fatto per wiki/community-files): risolvono la riga per
-`file_key` e consentono solo `requester ∈ {owner_user_id, peer_user_id}`; altrimenti
-404 (nessun segnale di esistenza). Stream dal disco (`CHAT_FILES_DIR`/`VOICE_DIR`).
+**Serving** — rimuovere `chat-files` da `ALLOWED_UPLOAD_DIRS` (`lib/security.ts`).
+Aggiungere la route autenticata `GET /uploads/chat-files/:filename` (nel social
+router, come già fatto per wiki/community-files): risolve la riga per `file_key` e
+consente solo `requester ∈ {owner_user_id, peer_user_id}`; altrimenti 404 (nessun
+segnale di esistenza). Stream dal disco (`CHAT_FILES_DIR`).
+
+**IMPORTANTE (scoperto in implementazione):** gli endpoint `upload-image` e
+`upload-voice` sono **condivisi** con le storie/feed pubblici (StoryViewer,
+CreatePostModal), non solo con i DM. Gattarli romperebbe contenuti pubblici. Solo
+`upload-file` (→ `chat-files`) è esclusivo dei DM, quindi solo quello viene gattato
+qui — chiude la fuga più netta (allegati/documenti). Immagini e vocali dei DM
+restano nei dir condivisi con le storie: metterli in sicurezza richiede endpoint DM
+dedicati (`upload-chat-image`/`upload-chat-voice` + dir gattati) — **follow-up**.
 
 **Frontend** — `MessaggiTab` passa `toUserId` (l'amico della conversazione attiva)
 alle chiamate di upload. Gli URL dei media restano invariati (stesso path, ora
