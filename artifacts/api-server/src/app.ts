@@ -15,6 +15,7 @@ import {
 import { loggingMiddleware } from "./middlewares/loggingMiddleware";
 import logger from "./lib/logger";
 import { captureError } from "./lib/observability";
+import { classifyApiError } from "./lib/apiError";
 import { getUploadsDir } from "./lib/uploads";
 import {
   createCorsOptions,
@@ -159,12 +160,19 @@ app.use(
     res: express.Response,
     _next: express.NextFunction,
   ) => {
-    captureError(err, { surface: "express" });
-    logger.error({ err }, "Unhandled API error");
-    // Vercel tronca i log pino-JSON: lo stack raw su console resta leggibile.
-    console.error("[api] unhandled error:", err instanceof Error ? err.stack ?? err.message : err);
+    const classified = classifyApiError(err);
+    // Client errors (malformed input → ZodError) are 400s, not server faults:
+    // don't page Sentry or shout on the error log for them.
+    if (classified.capture) {
+      captureError(err, { surface: "express" });
+      logger.error({ err }, "Unhandled API error");
+      // Vercel tronca i log pino-JSON: lo stack raw su console resta leggibile.
+      console.error("[api] unhandled error:", err instanceof Error ? err.stack ?? err.message : err);
+    } else {
+      logger.warn({ err }, "Rejected request with client error");
+    }
     if (res.headersSent) return;
-    res.status(500).json({ error: "Internal server error" });
+    res.status(classified.status).json(classified.body);
   },
 );
 
