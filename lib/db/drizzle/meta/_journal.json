@@ -162,6 +162,13 @@
       "when": 1783526400000,
       "tag": "0022_widget_user_indices",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1783612800000,
+      "tag": "0023_community_moderation_log",
+      "breakpoints": true
     }
   ]
 }

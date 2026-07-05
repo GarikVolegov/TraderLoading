@@ -169,6 +169,20 @@ export const communityReviewReportsTable = pgTable("community_review_reports", {
   index("community_review_reports_review_idx").on(t.reviewId),
 ]);
 
+// Append-only moderation audit trail: who did what to whom, so ban/kick/mute/
+// role-change/message-delete actions are accountable. Never updated or deleted
+// except when the whole community is removed.
+export const communityModerationLogTable = pgTable("community_moderation_log", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  actorUserId: text("actor_user_id").notNull(),
+  action: text("action").notNull(),
+  targetUserId: text("target_user_id"),
+  targetId: integer("target_id"),
+  metadata: text("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [index("community_moderation_log_community_idx").on(t.communityId, t.createdAt)]);
+
 export type Community = typeof communitiesTable.$inferSelect;
 export type CommunityMember = typeof communityMembersTable.$inferSelect;
 export type CommunityRole = typeof communityRolesTable.$inferSelect;

@@ -11,6 +11,7 @@ import {
   canGrantPermissions,
   COMMUNITY_PERMISSIONS,
 } from "../services/communityPermissions.js";
+import { recordModerationAction } from "../services/communityModerationLog.js";
 
 const router: IRouter = Router();
 
@@ -87,6 +88,7 @@ router.post("/community/:id/roles", async (req, res) => {
         isDefault: false,
       })
       .returning();
+    await recordModerationAction({ communityId, actorUserId: ctx.userId, action: "role.create", targetId: role.id, metadata: { name: role.name, permissions: desiredPermissions } });
     res.status(201).json(role);
   } catch (err) {
     console.error("POST /community/:id/roles error:", err);
@@ -130,6 +132,7 @@ router.patch("/community/roles/:roleId", async (req, res) => {
       .set(update)
       .where(eq(communityRolesTable.id, roleId))
       .returning();
+    await recordModerationAction({ communityId: role.communityId, actorUserId: ctx.userId, action: "role.update", targetId: roleId, metadata: update });
     res.json(updated);
   } catch (err) {
     console.error("PATCH /community/roles/:roleId error:", err);
@@ -162,6 +165,7 @@ router.delete("/community/roles/:roleId", async (req, res) => {
       .set({ roleId: defaultRole?.id ?? null })
       .where(eq(communityMembersTable.roleId, roleId));
     await db.delete(communityRolesTable).where(eq(communityRolesTable.id, roleId));
+    await recordModerationAction({ communityId: role.communityId, actorUserId: ctx.userId, action: "role.delete", targetId: roleId, metadata: { name: role.name } });
     res.json({ ok: true });
   } catch (err) {
     console.error("DELETE /community/roles/:roleId error:", err);
@@ -256,6 +260,7 @@ router.patch("/community/:id/members/:userId/role", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, communityId), eq(communityMembersTable.userId, targetUserId)))
       .returning();
     if (!updated) { res.status(404).json({ error: "Membro non trovato" }); return; }
+    await recordModerationAction({ communityId, actorUserId: ctx.userId, action: "member.role_change", targetUserId, targetId: roleId, metadata: { roleId } });
     res.json({ ok: true, userId: targetUserId, roleId });
   } catch (err) {
     console.error("PATCH /community/:id/members/:userId/role error:", err);
@@ -286,6 +291,7 @@ router.delete("/community/:id/members/:userId", async (req, res) => {
       .update(communitiesTable)
       .set({ memberCount: sql`GREATEST(${communitiesTable.memberCount} - 1, 0)` })
       .where(eq(communitiesTable.id, communityId));
+    await recordModerationAction({ communityId, actorUserId: ctx.userId, action: "member.kick", targetUserId });
     res.json({ ok: true });
   } catch (err) {
     console.error("DELETE /community/:id/members/:userId error:", err);

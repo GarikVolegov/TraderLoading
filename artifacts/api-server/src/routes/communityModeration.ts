@@ -16,6 +16,7 @@ import {
   memberRank,
   outranks,
 } from "../services/communityPermissions.js";
+import { recordModerationAction } from "../services/communityModerationLog.js";
 
 const router: IRouter = Router();
 
@@ -55,6 +56,7 @@ router.post("/community/:id/members/:userId/ban", async (req, res) => {
         .set({ memberCount: sql`GREATEST(${communitiesTable.memberCount} - 1, 0)` })
         .where(eq(communitiesTable.id, communityId));
     }
+    await recordModerationAction({ communityId, actorUserId: ctx.userId, action: "member.ban", targetUserId, metadata: { reason } });
     res.json({ ok: true });
   } catch (err) {
     console.error("POST /community/:id/members/:userId/ban error:", err);
@@ -65,11 +67,13 @@ router.post("/community/:id/members/:userId/ban", async (req, res) => {
 // ─── Unban ───────────────────────────────────────────────────────────────────
 router.delete("/community/:id/bans/:userId", async (req, res) => {
   const communityId = parseInt(req.params.id);
-  if (!(await requirePermission(req, res, communityId, "members.ban"))) return;
+  const ctx = await requirePermission(req, res, communityId, "members.ban");
+  if (!ctx) return;
   try {
     await db
       .delete(communityBansTable)
       .where(and(eq(communityBansTable.communityId, communityId), eq(communityBansTable.userId, req.params.userId)));
+    await recordModerationAction({ communityId, actorUserId: ctx.userId, action: "member.unban", targetUserId: req.params.userId });
     res.json({ ok: true });
   } catch (err) {
     console.error("DELETE /community/:id/bans/:userId error:", err);
@@ -127,6 +131,7 @@ router.post("/community/:id/members/:userId/mute", async (req, res) => {
         target: [communityMutesTable.communityId, communityMutesTable.userId],
         set: { mutedBy: ctx.userId, until, reason, createdAt: sql`now()` },
       });
+    await recordModerationAction({ communityId, actorUserId: ctx.userId, action: "member.mute", targetUserId, metadata: { until, reason } });
     res.json({ ok: true, until });
   } catch (err) {
     console.error("POST /community/:id/members/:userId/mute error:", err);
@@ -137,11 +142,13 @@ router.post("/community/:id/members/:userId/mute", async (req, res) => {
 // ─── Unmute ──────────────────────────────────────────────────────────────────
 router.delete("/community/:id/members/:userId/mute", async (req, res) => {
   const communityId = parseInt(req.params.id);
-  if (!(await requirePermission(req, res, communityId, "members.mute"))) return;
+  const ctx = await requirePermission(req, res, communityId, "members.mute");
+  if (!ctx) return;
   try {
     await db
       .delete(communityMutesTable)
       .where(and(eq(communityMutesTable.communityId, communityId), eq(communityMutesTable.userId, req.params.userId)));
+    await recordModerationAction({ communityId, actorUserId: ctx.userId, action: "member.unmute", targetUserId: req.params.userId });
     res.json({ ok: true });
   } catch (err) {
     console.error("DELETE /community/:id/members/:userId/mute error:", err);
@@ -162,6 +169,9 @@ router.delete("/community/messages/:messageId", async (req, res) => {
       .limit(1);
     if (!message) { res.status(404).json({ error: "Messaggio non trovato" }); return; }
 
+    // Deleting your own message isn't moderation; deleting someone else's (via
+    // messages.moderate) is, and gets audited.
+    let moderationCommunityId: number | null = null;
     if (message.userId !== userId) {
       const [channel] = await db
         .select({ communityId: communityChannelsTable.communityId })
@@ -170,9 +180,20 @@ router.delete("/community/messages/:messageId", async (req, res) => {
         .limit(1);
       if (!channel) { res.status(404).json({ error: "Canale non trovato" }); return; }
       if (!(await requirePermission(req, res, channel.communityId, "messages.moderate"))) return;
+      moderationCommunityId = channel.communityId;
     }
 
     await db.delete(communityMessagesTable).where(eq(communityMessagesTable.id, messageId));
+    if (moderationCommunityId !== null) {
+      await recordModerationAction({
+        communityId: moderationCommunityId,
+        actorUserId: userId,
+        action: "message.delete",
+        targetUserId: message.userId,
+        targetId: messageId,
+        metadata: { channelId: message.channelId },
+      });
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error("DELETE /community/messages/:messageId error:", err);

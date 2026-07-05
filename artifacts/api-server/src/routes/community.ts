@@ -17,6 +17,7 @@ import {
 } from "../services/communityPermissions.js";
 import { emitSocialEvent } from "../services/socialHub/socialEvents.js";
 import { deleteCommunityDeep, deleteChannelDeep } from "../services/communityDeletion.js";
+import { recordModerationAction } from "../services/communityModerationLog.js";
 
 const COMMUNITY_FILES_DIR = resolveUploadPath("community-files");
 if (!fs.existsSync(COMMUNITY_FILES_DIR)) fs.mkdirSync(COMMUNITY_FILES_DIR, { recursive: true });
@@ -327,6 +328,7 @@ router.delete("/community/channels/:channelId", async (req, res) => {
 
     const orphanFiles = await deleteChannelDeep(channelId);
     unlinkCommunityFiles(orphanFiles);
+    await recordModerationAction({ communityId: channel.communityId, actorUserId: userId, action: "channel.delete", targetId: channelId, metadata: { name: channel.name } });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
@@ -673,6 +675,11 @@ router.delete("/community/files/:fileId", async (req, res) => {
     const filePath = path.join(COMMUNITY_FILES_DIR, path.basename(file.fileUrl));
     fs.unlink(filePath, () => {});
     await db.delete(communityFilesTable).where(eq(communityFilesTable.id, fileId));
+    // Deleting your own file isn't moderation; deleting another member's (via
+    // files.manage) is, and gets audited.
+    if (file.userId !== userId) {
+      await recordModerationAction({ communityId: file.communityId, actorUserId: userId, action: "file.delete", targetUserId: file.userId, targetId: fileId, metadata: { channelId: file.channelId } });
+    }
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });

@@ -213,6 +213,14 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
          OR muted_by = ${userId}
          OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
     `);
+    // Moderation audit rows carry the user's Clerk id as actor or target; erase
+    // those and any rows in communities they own (no FK, so not auto-cascaded).
+    await tx.execute(sql`
+      DELETE FROM community_moderation_log
+      WHERE actor_user_id = ${userId}
+         OR target_user_id = ${userId}
+         OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
+    `);
     await tx.execute(sql`DELETE FROM communities WHERE creator_id = ${userId}`);
 
     await tx.execute(sql`

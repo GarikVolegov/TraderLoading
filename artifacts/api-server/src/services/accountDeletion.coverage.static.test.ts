@@ -51,6 +51,7 @@ for (const table of [
   "admin_audit_logs", // actor_user_id (PII scrubbed)
   "sessions", // legacy jsonb session store
   "chat_file_access", // owner_user_id / peer_user_id
+  "community_moderation_log", // actor_user_id / target_user_id
 ]) {
   assert.match(
     deletionSrc,
