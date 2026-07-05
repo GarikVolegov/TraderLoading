@@ -1,6 +1,7 @@
 // ─── Candle data service ───────────────────────────────────────────────────────
 // Fetch logica condivisa fra la route HTTP (/api/backtest/candles) e il "cervello"
 // vision (analisi on-demand + scanner autonomo). Estratta da routes/candles.ts.
+import { PAIR_CATALOG } from "@workspace/pair-catalog";
 import { getJsonCache, setJsonCache } from "../lib/cache.js";
 import { aggregateInterval, mergeTail } from "./aggregate.js";
 import { INTERVAL_SECONDS, symbolId } from "./candleRegistry.js";
@@ -36,13 +37,20 @@ function dailyLookbackSeconds(interval: string): number {
   return days * 24 * 60 * 60;
 }
 
-const TWELVE_SYMBOLS: Record<string, string> = {
-  EURUSD: "EUR/USD", GBPUSD: "GBP/USD", USDJPY: "USD/JPY",
-  USDCHF: "USD/CHF", AUDUSD: "AUD/USD", NZDUSD: "NZD/USD",
-  USDCAD: "USD/CAD", EURGBP: "EUR/GBP", EURJPY: "EUR/JPY",
-  GBPJPY: "GBP/JPY", AUDJPY: "AUD/JPY", XAUUSD: "XAU/USD",
-  XAGUSD: "XAG/USD", USDMXN: "USD/MXN", USDZAR: "USD/ZAR",
-};
+// TwelveData serves every spot FX pair and metal as "BASE/QUOTE". Derive the map
+// from the catalog so new pairs get a live source automatically instead of showing
+// a mute "—" in the "Live" watchlist (only ~20 of ~44 pairs were mapped by hand).
+// Indices and crypto use other providers (Dukascopy/Binance), so they're excluded.
+const TWELVE_SYMBOLS: Record<string, string> = Object.fromEntries(
+  PAIR_CATALOG.filter((pair) => pair.category.startsWith("forex-") || pair.category === "metal").map(
+    (pair) => [pair.symbol, `${pair.currencies[0]}/${pair.currencies[1]}`],
+  ),
+);
+
+/** TwelveData symbol ("BASE/QUOTE") for a catalog pair, or undefined if unsupported. */
+export function twelveDataSymbol(symbol: string): string | undefined {
+  return TWELVE_SYMBOLS[symbol];
+}
 
 const COINGECKO_IDS: Record<string, string> = {
   BTCUSD: "bitcoin",
