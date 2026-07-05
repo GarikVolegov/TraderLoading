@@ -200,6 +200,9 @@ export async function getOrCreateAccountKeyPair(
   return generated;
 }
 
+// NOTE: at-rest encryption, NOT end-to-end. The private key is backed up to the
+// server (see PUT /chat/key-backup) for cross-device recovery, so the server can
+// technically derive this shared key. UI copy must not claim E2EE.
 async function deriveSharedKey(privateKeyJwk: JsonWebKey, publicKeyJwk: JsonWebKey): Promise<CryptoKey> {
   const privateKey = await crypto.subtle.importKey(
     "jwk",

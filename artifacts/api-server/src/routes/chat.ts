@@ -114,6 +114,10 @@ router.get("/chat/key-backup", async (req, res) => {
   }
 });
 
+// NOTE: this stores the user's private key so the chat can be recovered on a new
+// device. Messages are AES-GCM encrypted at rest, but the key is escrowed by the
+// server — this is at-rest encryption, NOT end-to-end encryption. UI copy must
+// not claim E2EE (see i18n/no-e2ee-claim.static.test.ts).
 router.put("/chat/key-backup", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;

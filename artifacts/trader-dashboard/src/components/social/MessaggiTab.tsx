@@ -810,7 +810,7 @@ export function MessaggiTab({
                 {selectedFriend.name}
               </p>
               <p className="text-xs text-primary flex items-center gap-1">
-                <Shield className="w-3 h-3" /> E2EE
+                <Shield className="w-3 h-3" /> {uiText("chat.encrypted_badge")}
               </p>
             </div>
             {callState === "idle" && (
