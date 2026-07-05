@@ -2,7 +2,7 @@
 // l'elenco dei premi. Un trader può qualificarsi a più tier: i premi si cumulano.
 // Gli squalificati non ricevono nulla. Il tier "disc" è limitato a `cap` trader.
 
-import { PRIZE_TIERS, DISC_QUALIFY, FINISH_DISC_MIN, type PrizeTier, type CertTier } from "./constants.js";
+import { PRIZE_TIERS, DISC_QUALIFY, FINISH_DISC_MIN, MIN_PRIZE_TRADES, type PrizeTier, type CertTier } from "./constants.js";
 import type { ComputedStanding } from "./standings.js";
 
 export type Award = {
@@ -25,7 +25,9 @@ function award(userId: string, tier: PrizeTier): Award {
 }
 
 export function qualifyPrizes(finalStandings: ComputedStanding[]): Award[] {
-  const ranked = finalStandings.filter((r) => !r.dq && r.rank > 0);
+  // Soglia di attività minima per QUALSIASI premio: senza di essa un iscritto a
+  // zero trade (Disciplina 100, rank > 0) incassava finish/disc/top10 gratis.
+  const ranked = finalStandings.filter((r) => !r.dq && r.rank > 0 && r.trades >= MIN_PRIZE_TRADES);
   const awards: Award[] = [];
 
   for (const r of ranked) {

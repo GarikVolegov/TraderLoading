@@ -44,7 +44,10 @@ export function mapAccountTradeToTorneiTrade(row: AccountTradeRow): TorneiTrade 
 // Indice Disciplina puro (0-100): 100 meno le violazioni di guardrail.
 // Penalizza i trade che sforano lo stop (peggio di -1R) o il rischio massimo.
 export function disciplineIndexFor(trades: TorneiTrade[]): number {
-  const valid = trades.filter((t) => t.journaled && t.rMultiple !== null);
+  // Non si filtra su `journaled` (link mutabile dall'utente). Il caso "0 trade"
+  // resta 100 per il display, ma non frutta premi: qualifyPrizes richiede
+  // un'attività minima (MIN_PRIZE_TRADES) per QUALSIASI tier.
+  const valid = trades.filter((t) => t.rMultiple !== null);
   if (valid.length === 0) return 100;
   let breaches = 0;
   for (const t of valid) {

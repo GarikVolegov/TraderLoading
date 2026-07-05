@@ -59,13 +59,15 @@ export async function enrollUser(args: {
     });
 }
 
-// Conto reale sincronizzato dell'utente: il brokerAccountId più recente con
-// trade sincronizzati. Null se l'utente non ha trade sincronizzati.
+// Conto REALE sincronizzato dell'utente: il brokerAccountId più recente con
+// trade sincronizzati NON demo. Null se l'utente ha solo trade demo (o nessuno).
+// Il torneo richiede un conto reale: i trade del demoConnector (source='demo')
+// hanno saldo/profitti arbitrari e renderebbero la classifica manipolabile.
 export async function resolveSyncedAccount(userId: string): Promise<{ accountId: string } | null> {
   const [row] = await db
     .select({ brokerAccountId: accountTradesTable.brokerAccountId })
     .from(accountTradesTable)
-    .where(eq(accountTradesTable.userId, userId))
+    .where(and(eq(accountTradesTable.userId, userId), sql`${accountTradesTable.source} <> 'demo'`))
     .orderBy(sql`${accountTradesTable.updatedAt} desc`)
     .limit(1);
   if (!row) return null;
@@ -139,7 +141,14 @@ export async function materializeStandings(seasonId: number, metric: "r" | "ts" 
         journalEntryId: accountTradesTable.journalEntryId,
       })
       .from(accountTradesTable)
-      .where(and(eq(accountTradesTable.userId, enr.userId), eq(accountTradesTable.status, "closed")));
+      .where(
+        and(
+          eq(accountTradesTable.userId, enr.userId),
+          eq(accountTradesTable.status, "closed"),
+          // Only real-account trades count; demo deals are excluded.
+          sql`${accountTradesTable.source} <> 'demo'`,
+        ),
+      );
 
     const windowed = rows.filter((r) => {
       if (!r.closeTime) return false;
