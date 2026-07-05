@@ -327,7 +327,19 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
         const profile = await store.getProfile(id);
         if (!profile) throw new Error("Broker profile not found");
         const connector = connectorFor(profile);
-        const snapshot = isFxBlueProfile(profile) ? await connector.connect() : await connector.getSnapshot();
+        if (isFxBlueProfile(profile)) {
+          // Reuse the snapshot SWR cache: within the TTL the connector already holds
+          // freshly-fetched deals, so skip the upstream fetch + re-import and just
+          // return them. A cache miss does one deduped refresh (fetch + import).
+          const cached = snapshotCache.get(id);
+          if (!cached || Date.now() - cached.at >= snapshotTtlMs) {
+            await singleFlight(snapshotRefreshes, id, () => refreshFxBlueSnapshot(profile));
+          } else {
+            startAutoSync(profile);
+          }
+          return connector.getDealsHistory();
+        }
+        const snapshot = await connector.getSnapshot();
         const history = await connector.getDealsHistory();
         await importProfileData(profile, snapshot, connector);
         startAutoSync(profile);

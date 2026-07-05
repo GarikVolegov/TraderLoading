@@ -89,6 +89,28 @@ try {
     await runtime.close();
   }
 
+  // ── getHistory reuses the same cache: no re-fetch within TTL ────────────────
+  {
+    const store = createBrokerProfileStore(join(tempDir, "history.json"));
+    const profile = await store.saveProfile({
+      label: "FX Blue", brokerName: "FX Blue", kind: "fxblue-account-sync",
+      providerKind: "fxblue-account-sync", providerUserId: "trader-h", accountId: "4", environment: "live",
+    });
+    const counters = { connects: 0 };
+    const runtime = createBrokerHubRuntime({
+      store,
+      autoSyncIntervalMs: 0,
+      snapshotTtlMs: 60_000,
+      accountDataImporter: async () => ({ imported: 0, journalCreated: 0, updated: 0, skipped: 0 }),
+      connectorFactory: () => fakeConnector(counters),
+    });
+    await runtime.getHistory(profile.id);
+    await runtime.getHistory(profile.id);
+    await runtime.getSnapshot(profile.id); // shares the same cache
+    assert.equal(counters.connects, 1, "getHistory + getSnapshot within TTL must share one fetch");
+    await runtime.close();
+  }
+
   // ── TTL 0: every read refetches (proves the cache, not a coincidence) ───────
   {
     const store = createBrokerProfileStore(join(tempDir, "nocache.json"));
