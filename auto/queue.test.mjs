@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { nextTask, startTask, completeTask, failTask, recoverStale } from "./queue.mjs";
+import { nextTask, startTask, completeTask, failTask, recoverStale, materializeChores } from "./queue.mjs";
 
 const mk = (over = {}) => ({
   id: "T-1", source: "audit", title: "t", description: "d",
@@ -64,4 +64,49 @@ test("recoverStale fallisce tutte le in_progress e ne restituisce gli id", () =>
   assert.equal(q[0].attempts, 1);
   assert.equal(q[1].status, "pending");
   assert.equal(q[1].attempts, 0);
+});
+
+const mkChore = (over = {}) => ({
+  id: "CHORE-x",
+  recurrence: "nightly",
+  template: { title: "c", description: "d", acceptanceCriteria: [], priority: 50, model: "sonnet" },
+  ...over,
+});
+
+test("nightly viene materializzato con id datato e campi di stato", () => {
+  const q = [];
+  const added = materializeChores(q, [mkChore()], "2026-07-06");
+  assert.equal(added.length, 1);
+  assert.equal(q[0].id, "CHORE-x-2026-07-06");
+  assert.equal(q[0].source, "chore");
+  assert.equal(q[0].status, "pending");
+  assert.equal(q[0].priority, 50);
+  assert.equal(q[0].model, "sonnet");
+  assert.equal(q[0].maxAttempts, 1);
+});
+
+test("weekly solo nel weekday giusto (2026-07-06 è lunedì)", () => {
+  const c = mkChore({ id: "CHORE-w", recurrence: "weekly", weekday: 1 });
+  assert.equal(materializeChores([], [c], "2026-07-06").length, 1);
+  assert.equal(materializeChores([], [c], "2026-07-07").length, 0);
+});
+
+test("non duplica se c'è già un task aperto dello stesso chore", () => {
+  const q = [];
+  materializeChores(q, [mkChore()], "2026-07-05");
+  assert.equal(materializeChores(q, [mkChore()], "2026-07-06").length, 0);
+});
+
+test("riappare il giorno dopo quando il precedente è concluso", () => {
+  const q = [];
+  materializeChores(q, [mkChore()], "2026-07-05");
+  completeTask(q, "CHORE-x-2026-07-05");
+  assert.equal(materializeChores(q, [mkChore()], "2026-07-06").length, 1);
+});
+
+test("idempotente nello stesso giorno anche se il precedente è done", () => {
+  const q = [];
+  materializeChores(q, [mkChore()], "2026-07-05");
+  completeTask(q, "CHORE-x-2026-07-05");
+  assert.equal(materializeChores(q, [mkChore()], "2026-07-05").length, 0);
 });

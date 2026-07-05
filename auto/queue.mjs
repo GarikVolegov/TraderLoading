@@ -48,3 +48,33 @@ export function recoverStale(queue, note = "run precedente interrotta") {
   for (const id of stale) failTask(queue, id, note);
   return stale;
 }
+
+export function materializeChores(queue, chores, dateISO) {
+  const weekday = new Date(`${dateISO}T00:00:00Z`).getUTCDay(); // 0=domenica
+  const added = [];
+  for (const chore of chores) {
+    const due =
+      chore.recurrence === "nightly" ||
+      (chore.recurrence === "weekly" && weekday === (chore.weekday ?? 1));
+    if (!due) continue;
+    const id = `${chore.id}-${dateISO}`;
+    const open = queue.some(
+      (t) => t.id.startsWith(`${chore.id}-`) && (t.status === "pending" || t.status === "in_progress"),
+    );
+    if (open || queue.some((t) => t.id === id)) continue;
+    const task = {
+      ...structuredClone(chore.template),
+      id,
+      source: "chore",
+      status: "pending",
+      attempts: 0,
+      maxAttempts: chore.template.maxAttempts ?? 1,
+      branch: null,
+      prUrl: null,
+      notes: "",
+    };
+    queue.push(task);
+    added.push(task);
+  }
+  return added;
+}
