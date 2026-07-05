@@ -170,6 +170,17 @@ still deep-link to TradingView; chrome (glass card, Live badge, gear) unchanged.
 (TwelveData/Binance serve the developing candle; Dukascopy lags ~1 day — set `TWELVEDATA_API_KEY` in prod).
 Spec/plan: `docs/superpowers/{specs,plans}/2026-07-03-watchlist-claude-design-daily*`.
 
+**Nightshift (agente autonomo notturno) — ATTIVO da 2026-07-06.** Harness locale in [auto/](auto/):
+ogni notte alle 01:00 (launchd + caffeinate, `NIGHTSHIFT_SCHEDULED=1`) `run.sh` lavora la coda
+`auto/queue.json` (seed: critici del piano audit; poi PRD e chore ricorrenti) in worktree isolati
+`.worktrees/auto-*`, gate meccanico (typecheck+test+anti-secret+migrazioni intoccate), push su
+branch `auto/*` e PR verso `feat/community-management`; prima passa in review le PR aperte
+(commento `<!-- nightshift-review -->`). Report in `auto/reports/`, stop con `touch auto/STOP`.
+Runbook: [auto/README.md](auto/README.md) · Spec:
+[docs/superpowers/specs/2026-07-05-nightshift-autonomous-agent-design.md](docs/superpowers/specs/2026-07-05-nightshift-autonomous-agent-design.md).
+Prima run notturna = collaudo canarino (`TEST-canary`, `MAX_TASKS=1` temporaneo → poi 2).
+Lo step audit 0.2 (E2EE) è fuori coda: decisione di prodotto pendente.
+
 > This section changes the most session-to-session — update it as the work moves.
 
 ## 8. Conventions & gotchas
