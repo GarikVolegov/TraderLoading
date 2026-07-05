@@ -27,6 +27,7 @@ import { computeDisciplineReport } from "../services/tradeDiscipline.js";
 import { composeEdgeReport } from "../services/edgeReport.js";
 import { loadClosedEdgeTrades, loadGuardOverrides } from "../services/edgeData.js";
 import { buildRecapMessages, filterTradesByPeriod, parseRecapDraft } from "../services/journalRecapDraft.js";
+import { getUserNotificationLanguage } from "./push.js";
 import { getTextClient } from "../services/llmClient.js";
 import logger from "../lib/logger.js";
 import { getUploadsDir } from "../lib/uploads.js";
@@ -481,10 +482,12 @@ router.post("/journal/recaps/generate", async (req, res) => {
     return;
   }
 
+  const recapLanguage = await getUserNotificationLanguage(userId);
   const { system, user } = buildRecapMessages(
     computeEdgeReport(trades),
     computeDisciplineReport(trades),
     { kind: body.kind, periodStart: body.periodStart, periodEnd: body.periodEnd },
+    recapLanguage,
   );
 
   try {
