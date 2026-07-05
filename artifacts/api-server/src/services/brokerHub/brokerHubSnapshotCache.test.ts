@@ -65,6 +65,30 @@ try {
     await runtime.close();
   }
 
+  // ── disconnectProfile invalidates the cache (no stale "connected" snapshot) ──
+  {
+    const store = createBrokerProfileStore(join(tempDir, "disconnect.json"));
+    const profile = await store.saveProfile({
+      label: "FX Blue", brokerName: "FX Blue", kind: "fxblue-account-sync",
+      providerKind: "fxblue-account-sync", providerUserId: "trader-z", accountId: "3", environment: "live",
+    });
+    const counters = { connects: 0 };
+    const runtime = createBrokerHubRuntime({
+      store,
+      autoSyncIntervalMs: 0,
+      snapshotTtlMs: 60_000,
+      accountDataImporter: async () => ({ imported: 0, journalCreated: 0, updated: 0, skipped: 0 }),
+      connectorFactory: () => fakeConnector(counters),
+    });
+    await runtime.getSnapshot(profile.id);
+    await runtime.getSnapshot(profile.id);
+    assert.equal(counters.connects, 1, "cache warm within TTL");
+    await runtime.disconnectProfile(profile.id);
+    await runtime.getSnapshot(profile.id);
+    assert.equal(counters.connects, 2, "disconnect must invalidate the cache, forcing a fresh fetch");
+    await runtime.close();
+  }
+
   // ── TTL 0: every read refetches (proves the cache, not a coincidence) ───────
   {
     const store = createBrokerProfileStore(join(tempDir, "nocache.json"));

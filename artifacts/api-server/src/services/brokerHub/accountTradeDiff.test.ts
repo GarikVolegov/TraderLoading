@@ -28,6 +28,15 @@ assert.equal(accountTradeChanged(base, { ...base, exitPrice: "1.09000" }), true)
 assert.equal(accountTradeChanged(base, { ...base, stopLoss: null }), true);
 assert.equal(accountTradeChanged({ ...base, stopLoss: null }, { ...base, stopLoss: null }), false);
 
+// returnPct drifts with the live account balance, so a returnPct-only difference must
+// NOT count as a change (else every historical trade is rewritten on each balance move).
+assert.equal(accountTradeChanged(base, { ...base, returnPct: "2.4950" }), false);
+assert.equal(accountTradeChanged(base, { ...base, returnPct: null }), false);
+
+// Empty/whitespace numeric strings must not silently equal "0".
+assert.equal(accountTradeChanged({ ...base, profit: "0" }, { ...base, profit: "" }), true);
+assert.equal(accountTradeChanged({ ...base, profit: "" }, { ...base, profit: "" }), false);
+
 // Text field changes (close time, status, symbol, reattached profile) are detected.
 assert.equal(accountTradeChanged(base, { ...base, closeTime: "2026-07-01T13:00:00.000Z" }), true);
 assert.equal(accountTradeChanged(base, { ...base, status: "open" }), true);

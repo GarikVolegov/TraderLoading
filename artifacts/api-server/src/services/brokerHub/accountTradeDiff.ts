@@ -28,9 +28,14 @@ export interface ComparableTrade {
   returnPct: string | null;
 }
 
+// returnPct is intentionally NOT compared: it is recomputed each import from the
+// LIVE account balance (profit/balance), so it drifts whenever any trade closes or
+// funds move. Comparing it would flag every historical trade as "changed" on every
+// balance move and rewrite them all — defeating the whole skip. Its stored value
+// (return vs the balance at first import) is fine to leave.
 const NUMERIC_FIELDS = [
   "volume", "entryPrice", "exitPrice", "stopLoss", "takeProfit",
-  "profit", "commission", "swap", "riskPriceDistance", "returnPct",
+  "profit", "commission", "swap", "riskPriceDistance",
 ] as const satisfies ReadonlyArray<keyof ComparableTrade>;
 
 const TEXT_FIELDS = [
@@ -40,6 +45,9 @@ const TEXT_FIELDS = [
 function numericEqual(a: string | null, b: string | null): boolean {
   if (a === null || a === undefined) return b === null || b === undefined;
   if (b === null || b === undefined) return false;
+  // Number("") and Number(" ") coerce to 0, which would make an empty string equal
+  // "0" — a latent staleness trap. Treat blanks as non-numeric and compare exactly.
+  if (a.trim() === "" || b.trim() === "") return a === b;
   const na = Number(a);
   const nb = Number(b);
   // Unparseable numeric string (shouldn't happen) → fall back to exact string

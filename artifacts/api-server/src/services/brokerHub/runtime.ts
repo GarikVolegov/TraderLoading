@@ -239,6 +239,8 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
           connectors.delete(id);
         }
         stopAutoSync(id);
+        snapshotCache.delete(id);
+        snapshotRefreshes.delete(id);
         await vault.deleteProfile(id);
         await store.deleteProfile(id);
       });
@@ -278,6 +280,10 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
           connectors.delete(id);
         }
         stopAutoSync(id);
+        // Drop the cached (connected) snapshot so reads reflect the offline state
+        // immediately instead of serving a stale "connected" snapshot for up to the TTL.
+        snapshotCache.delete(id);
+        snapshotRefreshes.delete(id);
         const updated = await store.saveProfile({ ...profile, connectionStatus: "offline" });
         return { profile: updated, snapshot: disconnectedSnapshot(updated) };
       });
