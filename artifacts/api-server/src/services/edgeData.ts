@@ -3,7 +3,7 @@
 // risk-guard push notifier so both read the same data the same way.
 import { db, accountTradesTable, userSettingsTable } from "@workspace/db";
 import { and, eq, isNull } from "drizzle-orm";
-import { type EdgeTrade } from "./tradeAnalytics.js";
+import { netProfit, type EdgeTrade } from "./tradeAnalytics.js";
 import { sanitizeRiskGuardOverrides, type RiskGuardConfig } from "./riskGuard.js";
 
 /** The user's closed broker trades, mapped for the analytics services. */
@@ -22,6 +22,8 @@ export async function loadClosedEdgeTrades(userId: string | null): Promise<EdgeT
       exitPrice: accountTradesTable.exitPrice,
       stopLoss: accountTradesTable.stopLoss,
       profit: accountTradesTable.profit,
+      commission: accountTradesTable.commission,
+      swap: accountTradesTable.swap,
     })
     .from(accountTradesTable)
     .where(and(userFilter, eq(accountTradesTable.status, "closed")));
@@ -35,7 +37,9 @@ export async function loadClosedEdgeTrades(userId: string | null): Promise<EdgeT
     entryPrice: num(row.entryPrice),
     exitPrice: num(row.exitPrice),
     stopLoss: num(row.stopLoss),
-    profit: num(row.profit),
+    // Net P&L (gross + commission + swap) so the coach and the cash guard match
+    // the diario, which already classifies on net.
+    profit: netProfit(num(row.profit), num(row.commission), num(row.swap)),
   }));
 }
 

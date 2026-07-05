@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   computeEdgeReport,
   minSliceTradesFor,
+  netProfit,
   normalizeDirection,
   rMultiple,
   sessionForTrade,
@@ -143,5 +144,16 @@ function trade(overrides: Partial<EdgeTrade>): EdgeTrade {
   assert.equal(report.highlights.postLoss, null);
   assert.deepEqual(report.breakdowns.bySymbol, []);
 }
+
+// netProfit: the coach must classify on NET P&L (gross + commission + swap) so a
+// trade that grosses +10 but pays -12 in commission is the loss (-2) the diario
+// already shows, and the cash guard sees the real loss.
+assert.equal(netProfit(10, -12, 0), -2);
+assert.equal(netProfit(100, -3, -5), 92);
+// Missing costs count as zero, not as discarding the trade.
+assert.equal(netProfit(10, null, null), 10);
+assert.equal(netProfit(10, -2, null), 8);
+// Unknown gross stays unknown.
+assert.equal(netProfit(null, -1, -1), null);
 
 console.log("tradeAnalytics.test.ts: all assertions passed");

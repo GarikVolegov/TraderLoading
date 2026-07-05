@@ -22,6 +22,21 @@ export interface EdgeTrade {
   profit: number | null;
 }
 
+/**
+ * Net P&L = gross profit + commission + swap (costs, usually negative). Returns
+ * null when gross is unknown; missing costs count as zero. The coach classifies
+ * wins/losses, R sign, net profit and the cash guard on this net figure so it
+ * matches the client diario (which already nets costs) instead of gross profit.
+ */
+export function netProfit(
+  gross: number | null,
+  commission: number | null,
+  swap: number | null,
+): number | null {
+  if (gross === null) return null;
+  return gross + (commission ?? 0) + (swap ?? 0);
+}
+
 export interface EdgeSlice {
   /** Grouping key, e.g. "EURUSD", "long", "Londra", "Lun". */
   label: string;
