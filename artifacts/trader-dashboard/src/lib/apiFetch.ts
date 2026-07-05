@@ -35,7 +35,13 @@ export function apiRequest(path: string, opts?: RequestInit, options?: RelativeA
 
 export async function apiJSON<T>(path: string, opts?: RequestInit, options?: RelativeApiOptions): Promise<T> {
   const res = await apiRequest(path, opts, options);
-  if (!res.ok) throw new Error(`${res.status}`);
+  if (!res.ok) {
+    // Surface the server's {error} message like apiFetch/apiUpload, so off-contract
+    // callers show the real reason instead of a bare status code.
+    const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+    const message = typeof body?.error === "string" && body.error ? body.error : `HTTP ${res.status}`;
+    throw new Error(message);
+  }
   return res.json() as Promise<T>;
 }
 
