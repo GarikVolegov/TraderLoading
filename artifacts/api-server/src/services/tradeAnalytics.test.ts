@@ -145,6 +145,14 @@ function trade(overrides: Partial<EdgeTrade>): EdgeTrade {
   assert.deepEqual(report.breakdowns.bySymbol, []);
 }
 
+// A stop of 0 means "no stop set" (MT4/MT5 report 0 when absent), not a real
+// price at 0. Without guarding it, riskDistance = |entry - 0| = |entry| produces
+// a fake ~0 R that pollutes expectancy. Treat it as no-R (null), like the client.
+assert.equal(rMultiple(trade({ stopLoss: 0 })), null);
+assert.equal(rMultiple(trade({ stopLoss: -1 })), null);
+// A real stop still yields a real R.
+assert.ok(typeof rMultiple(trade({ entryPrice: 1.1, stopLoss: 1.05, exitPrice: 1.2, profit: 100 })) === "number");
+
 // netProfit: the coach must classify on NET P&L (gross + commission + swap) so a
 // trade that grosses +10 but pays -12 in commission is the loss (-2) the diario
 // already shows, and the cash guard sees the real loss.

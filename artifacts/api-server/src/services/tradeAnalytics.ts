@@ -127,6 +127,10 @@ export function rMultiple(trade: EdgeTrade): number | null {
   ) {
     return null;
   }
+  // A stop of 0 (or negative) is "no stop set" — brokers report 0 when absent —
+  // not a real price. Without this, riskDistance = |entry - 0| = |entry| yields a
+  // fake tiny R. Matches the client, which discards a 0 price as no stop.
+  if (!(stopLoss > 0)) return null;
   const riskDistance = Math.abs(entryPrice - stopLoss);
   const moveDistance = Math.abs(exitPrice - entryPrice);
   if (!(riskDistance > 0) || !(moveDistance > 0)) return null;
