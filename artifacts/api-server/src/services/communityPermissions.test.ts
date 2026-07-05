@@ -2,9 +2,17 @@ import assert from "node:assert/strict";
 
 process.env.DATABASE_URL ??= "postgres://user:pass@127.0.0.1:5432/test";
 
-const { hasPermission, isMuteActive, sanitizePermissions, COMMUNITY_PERMISSIONS } = await import(
-  "./communityPermissions.js"
-);
+const {
+  hasPermission,
+  isMuteActive,
+  sanitizePermissions,
+  COMMUNITY_PERMISSIONS,
+  memberRank,
+  outranks,
+  canGrantPermissions,
+  OWNER_RANK,
+  NO_ROLE_RANK,
+} = await import("./communityPermissions.js");
 
 // ─── hasPermission ───────────────────────────────────────────────────────────
 // Owner always passes, regardless of role permissions.
@@ -55,5 +63,29 @@ for (const key of [
   assert.ok((COMMUNITY_PERMISSIONS as readonly string[]).includes(key), `catalog missing ${key}`);
 }
 assert.equal(COMMUNITY_PERMISSIONS.length, 10);
+
+// ─── memberRank / outranks (role hierarchy, blocks privilege escalation) ─────
+// Owner outranks everyone.
+assert.equal(memberRank({ isOwner: true, rolePosition: null }), OWNER_RANK);
+// A member's rank is their role position; no role = lowest possible.
+assert.equal(memberRank({ isOwner: false, rolePosition: 5 }), 5);
+assert.equal(memberRank({ isOwner: false, rolePosition: null }), NO_ROLE_RANK);
+// outranks requires a STRICTLY higher rank: equals can't act on equals, so a
+// roles.manage holder can't edit/assign a role at their own level (e.g. Admin)
+// or moderate a peer.
+assert.equal(outranks(5, 3), true);
+assert.equal(outranks(3, 3), false);
+assert.equal(outranks(3, 5), false);
+assert.equal(outranks(OWNER_RANK, 999), true);
+assert.equal(outranks(NO_ROLE_RANK, NO_ROLE_RANK), false);
+
+// ─── canGrantPermissions (no granting perms you don't hold) ──────────────────
+assert.equal(canGrantPermissions({ isOwner: true, permissions: [] }, ["members.ban"]), true);
+assert.equal(canGrantPermissions({ isOwner: false, permissions: ["roles.manage"] }, ["roles.manage"]), true);
+assert.equal(
+  canGrantPermissions({ isOwner: false, permissions: ["roles.manage"] }, ["roles.manage", "members.ban"]),
+  false,
+);
+assert.equal(canGrantPermissions({ isOwner: false, permissions: [] }, []), true);
 
 console.log("communityPermissions checks passed");

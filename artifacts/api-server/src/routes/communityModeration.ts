@@ -10,7 +10,12 @@ import {
   profileTable,
 } from "@workspace/db";
 import { eq, and, asc, sql } from "drizzle-orm";
-import { requirePermission } from "../services/communityPermissions.js";
+import {
+  requirePermission,
+  getMemberRank,
+  memberRank,
+  outranks,
+} from "../services/communityPermissions.js";
 
 const router: IRouter = Router();
 
@@ -21,13 +26,9 @@ router.post("/community/:id/members/:userId/ban", async (req, res) => {
   if (!ctx) return;
   try {
     const targetUserId = req.params.userId;
-    const [community] = await db
-      .select({ creatorId: communitiesTable.creatorId })
-      .from(communitiesTable)
-      .where(eq(communitiesTable.id, communityId))
-      .limit(1);
-    if (community?.creatorId === targetUserId) {
-      res.status(400).json({ error: "Non puoi bannare il proprietario" });
+    // Can't ban a member who ranks at or above you (owner included).
+    if (!outranks(memberRank(ctx), await getMemberRank(communityId, targetUserId))) {
+      res.status(403).json({ error: "Non puoi bannare un membro di livello pari o superiore al tuo" });
       return;
     }
 
@@ -108,13 +109,9 @@ router.post("/community/:id/members/:userId/mute", async (req, res) => {
   if (!ctx) return;
   try {
     const targetUserId = req.params.userId;
-    const [community] = await db
-      .select({ creatorId: communitiesTable.creatorId })
-      .from(communitiesTable)
-      .where(eq(communitiesTable.id, communityId))
-      .limit(1);
-    if (community?.creatorId === targetUserId) {
-      res.status(400).json({ error: "Non puoi silenziare il proprietario" });
+    // Can't mute a member who ranks at or above you (owner included).
+    if (!outranks(memberRank(ctx), await getMemberRank(communityId, targetUserId))) {
+      res.status(403).json({ error: "Non puoi silenziare un membro di livello pari o superiore al tuo" });
       return;
     }
 
