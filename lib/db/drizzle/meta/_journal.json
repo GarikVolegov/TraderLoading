@@ -155,6 +155,13 @@
       "when": 1783440000000,
       "tag": "0021_chat_file_access",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1783526400000,
+      "tag": "0022_widget_user_indices",
+      "breakpoints": true
     }
   ]
 }
