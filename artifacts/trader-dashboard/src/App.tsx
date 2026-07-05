@@ -81,7 +81,11 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,
-      refetchOnWindowFocus: false,
+      // Refetch stale queries when the tab regains focus, so widgets recover after
+      // the laptop wakes from sleep (or a cookie refresh) instead of staying broken
+      // until a manual reload. Bounded by staleTime below, so it only refetches what
+      // is actually stale — not a refetch storm on every focus.
+      refetchOnWindowFocus: true,
       // Serve cached data instantly on navigation instead of refetching on every
       // remount (default staleTime 0). Real-time market/chat queries override this
       // with their own staleTime/refetchInterval, so freshness there is unaffected.
