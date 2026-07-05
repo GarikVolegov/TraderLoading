@@ -229,6 +229,9 @@ export function MessaggiTab({
         await sendE2EE({ type: "image", url: imageUrl });
       } else {
         fd.append("file", file);
+        // Records who may later download this attachment (owner + this peer);
+        // the server gates GET /uploads/chat-files on these two participants.
+        fd.append("toUserId", selectedFriend?.userId ?? "");
         const res = await apiFetch("social/upload-file", {
           method: "POST",
           body: fd,
