@@ -16,9 +16,17 @@ import {
   ADMIN_ROLE_PERMISSIONS,
 } from "../services/communityPermissions.js";
 import { emitSocialEvent } from "../services/socialHub/socialEvents.js";
+import { deleteCommunityDeep, deleteChannelDeep } from "../services/communityDeletion.js";
 
 const COMMUNITY_FILES_DIR = resolveUploadPath("community-files");
 if (!fs.existsSync(COMMUNITY_FILES_DIR)) fs.mkdirSync(COMMUNITY_FILES_DIR, { recursive: true });
+
+/** Best-effort disk cleanup for deleted community files (DB rows already gone). */
+function unlinkCommunityFiles(fileUrls: string[]): void {
+  for (const fileUrl of fileUrls) {
+    fs.unlink(path.join(COMMUNITY_FILES_DIR, path.basename(fileUrl)), () => {});
+  }
+}
 
 const communityFileStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, COMMUNITY_FILES_DIR),
@@ -317,7 +325,8 @@ router.delete("/community/channels/:channelId", async (req, res) => {
 
     if (!(await requirePermission(req, res, channel.communityId, "channels.manage"))) return;
 
-    await db.delete(communityChannelsTable).where(eq(communityChannelsTable.id, channelId));
+    const orphanFiles = await deleteChannelDeep(channelId);
+    unlinkCommunityFiles(orphanFiles);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
@@ -713,12 +722,8 @@ router.delete("/community/:id", async (req, res) => {
     if (!community) { res.status(404).json({ error: "Non trovata" }); return; }
     if (community.creatorId !== userId) { res.status(403).json({ error: "Solo il creatore può eliminare la community" }); return; }
 
-    await db.delete(communityMembersTable).where(eq(communityMembersTable.communityId, id));
-    await db.delete(communityChannelsTable).where(eq(communityChannelsTable.communityId, id));
-    await db.delete(communityRolesTable).where(eq(communityRolesTable.communityId, id));
-    await db.delete(communityBansTable).where(eq(communityBansTable.communityId, id));
-    await db.delete(communityMutesTable).where(eq(communityMutesTable.communityId, id));
-    await db.delete(communitiesTable).where(eq(communitiesTable.id, id));
+    const orphanFiles = await deleteCommunityDeep(id);
+    unlinkCommunityFiles(orphanFiles);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
