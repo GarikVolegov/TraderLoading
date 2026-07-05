@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Substring patterns for browser APIs that trigger a permission prompt.
 // storage.persist( is deliberately qualified: bare persist( is zustand middleware.
@@ -69,5 +72,63 @@ assert.deepEqual(
   [{ file: "hooks/usePushNotifications.ts", line: 1, pattern: "getUserMedia(" }],
   "a different forbidden pattern in an allowlisted file must still be flagged",
 );
+
+// --- real tree scan ---
+
+const srcRoot = fileURLToPath(new URL(".", import.meta.url));
+
+function collectSourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const absolutePath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...collectSourceFiles(absolutePath));
+      continue;
+    }
+    if (/\.(ts|tsx)$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+      out.push(absolutePath);
+    }
+  }
+  return out;
+}
+
+const POLICY =
+  "Browser-permission prompts must be requested just-in-time behind an explicit user gesture, "
+  + "never at mount/app startup. To add a legitimate call site, add the file + API pattern to "
+  + "PERMISSION_ALLOWLIST in permission-hygiene.static.test.ts so the change is visible in review.";
+
+const treeViolations: Violation[] = [];
+for (const absolutePath of collectSourceFiles(srcRoot)) {
+  const relPath = absolutePath.replace(srcRoot, "").split("\\").join("/");
+  treeViolations.push(...findPermissionViolations(readFileSync(absolutePath, "utf8"), relPath));
+}
+
+// The service worker could subscribe to push on its own: it has no allowlist and must stay clean.
+const swPath = fileURLToPath(new URL("../public/sw.js", import.meta.url));
+treeViolations.push(...findPermissionViolations(readFileSync(swPath, "utf8"), "../public/sw.js"));
+
+assert.deepEqual(
+  treeViolations.map((v) => `${v.file}:${v.line} uses ${v.pattern}`),
+  [],
+  POLICY,
+);
+
+// --- allowlist staleness: entries must point at files that still use the pattern ---
+
+for (const [relPath, patterns] of Object.entries(PERMISSION_ALLOWLIST)) {
+  let source: string;
+  try {
+    source = readFileSync(join(srcRoot, relPath), "utf8");
+  } catch {
+    assert.fail(`PERMISSION_ALLOWLIST entry points at a missing file: ${relPath}`);
+  }
+  for (const pattern of patterns) {
+    assert.equal(
+      source.includes(pattern),
+      true,
+      `Stale PERMISSION_ALLOWLIST entry: ${relPath} no longer uses ${pattern}`,
+    );
+  }
+}
 
 console.log("permission hygiene static checks passed");
