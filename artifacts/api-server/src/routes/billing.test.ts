@@ -4,7 +4,29 @@ import { createServer } from "node:http";
 
 process.env.DATABASE_URL ??= "postgres://user:pass@127.0.0.1:5432/test";
 
-const { createBillingRouter, shouldPreserveManualSubscriptionOverride, processStripeEventOnce } = await import("./billing.js");
+const {
+  createBillingRouter,
+  shouldPreserveManualSubscriptionOverride,
+  processStripeEventOnce,
+  subscriptionCurrentPeriodEnd,
+  invoiceSubscriptionId,
+} = await import("./billing.js");
+
+// currentPeriodEnd moved from the Subscription top level to the SubscriptionItem
+// in the pinned API (2026-05-27.dahlia). Read it from the item, ignore the
+// legacy top-level field (which is now always undefined).
+assert.equal(subscriptionCurrentPeriodEnd({ items: { data: [{ current_period_end: 1234 }] } } as never), 1234);
+assert.equal(subscriptionCurrentPeriodEnd({ items: { data: [] } } as never), null);
+assert.equal(
+  subscriptionCurrentPeriodEnd({ current_period_end: 999, items: { data: [{ current_period_end: 555 }] } } as never),
+  555,
+);
+
+// The invoice's subscription id moved to invoice.parent.subscription_details.
+assert.equal(invoiceSubscriptionId({ parent: { subscription_details: { subscription: "sub_1" } } } as never), "sub_1");
+assert.equal(invoiceSubscriptionId({ parent: { subscription_details: { subscription: { id: "sub_2" } } } } as never), "sub_2");
+assert.equal(invoiceSubscriptionId({ parent: null } as never), null);
+assert.equal(invoiceSubscriptionId({} as never), null);
 
 assert.equal(
   shouldPreserveManualSubscriptionOverride({

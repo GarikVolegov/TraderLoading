@@ -128,6 +128,27 @@ async function defaultCreateCheckoutSession(user: NonNullable<Request["user"]>):
   return { clientSecret: session.client_secret };
 }
 
+/**
+ * The subscription's current period end (unix seconds). In the pinned API
+ * (2026-05-27.dahlia) this moved off the Subscription top level onto the
+ * SubscriptionItem, so reading `subscription.current_period_end` is always
+ * undefined; read it from the first item instead.
+ */
+export function subscriptionCurrentPeriodEnd(subscription: Stripe.Subscription): number | null {
+  const item = subscription.items?.data?.[0] as { current_period_end?: number } | undefined;
+  return item?.current_period_end ?? null;
+}
+
+/**
+ * The subscription id referenced by an invoice. In the pinned API it moved from
+ * the top-level `invoice.subscription` to `invoice.parent.subscription_details.subscription`.
+ */
+export function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const sub = invoice.parent?.subscription_details?.subscription ?? null;
+  if (typeof sub === "string") return sub;
+  return sub?.id ?? null;
+}
+
 async function upsertStripeSubscriptionForUser(
   userId: string,
   subscription: Stripe.Subscription,
@@ -154,7 +175,7 @@ async function upsertStripeSubscriptionForUser(
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscription.id,
       stripePriceId: item?.price?.id ?? null,
-      currentPeriodEnd: toDateFromSeconds((subscription as { current_period_end?: number }).current_period_end),
+      currentPeriodEnd: toDateFromSeconds(subscriptionCurrentPeriodEnd(subscription)),
       cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
       updatedAt: new Date(),
     })
@@ -168,7 +189,7 @@ async function upsertStripeSubscriptionForUser(
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscription.id,
         stripePriceId: item?.price?.id ?? null,
-        currentPeriodEnd: toDateFromSeconds((subscription as { current_period_end?: number }).current_period_end),
+        currentPeriodEnd: toDateFromSeconds(subscriptionCurrentPeriodEnd(subscription)),
         cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
         updatedAt: new Date(),
       },
@@ -470,15 +491,57 @@ async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<v
   }
 
   if (event.type === "invoice.payment_failed" || event.type === "invoice.payment_succeeded") {
-    const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
-    const subscriptionId =
-      typeof invoice.subscription === "string"
-        ? invoice.subscription
-        : invoice.subscription?.id;
+    const invoice = event.data.object as Stripe.Invoice;
+    const subscriptionId = invoiceSubscriptionId(invoice);
     if (!subscriptionId) return;
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     await upsertStripeSubscription(subscription);
+    return;
   }
+
+  // A chargeback or refund does NOT cancel the Stripe subscription, so without
+  // this the entitlement stays active after the user pulled their money back.
+  if (event.type === "charge.dispute.created" || event.type === "charge.refunded") {
+    const customerId = await chargeCustomerId(event, stripe);
+    if (customerId) await revokeStripeProForCustomer(customerId, event.type);
+  }
+}
+
+/** Resolve the Stripe customer id behind a charge/dispute event. */
+async function chargeCustomerId(event: Stripe.Event, stripe: Stripe): Promise<string | null> {
+  const readCustomer = (charge: Stripe.Charge): string | null =>
+    typeof charge.customer === "string" ? charge.customer : charge.customer?.id ?? null;
+
+  if (event.type === "charge.refunded") {
+    return readCustomer(event.data.object as Stripe.Charge);
+  }
+  // charge.dispute.created: the object is a Dispute, which carries the charge id
+  // but not the customer, so fetch the charge.
+  const dispute = event.data.object as Stripe.Dispute;
+  const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+  if (!chargeId) return null;
+  const charge = await stripe.charges.retrieve(chargeId);
+  return readCustomer(charge);
+}
+
+/** Revoke a Stripe-sourced Pro entitlement after a dispute/refund. Leaves manual
+ *  admin grants and internal (tornei) entitlements untouched. */
+async function revokeStripeProForCustomer(customerId: string, reason: string): Promise<void> {
+  const [row] = await db
+    .select({
+      userId: adminUserSubscriptionsTable.userId,
+      source: adminUserSubscriptionsTable.source,
+      manualOverride: adminUserSubscriptionsTable.manualOverride,
+    })
+    .from(adminUserSubscriptionsTable)
+    .where(eq(adminUserSubscriptionsTable.stripeCustomerId, customerId))
+    .limit(1);
+  if (!row || row.source !== "stripe" || row.manualOverride) return;
+  await db
+    .update(adminUserSubscriptionsTable)
+    .set({ plan: "free", status: "canceled", reason, updatedAt: new Date() })
+    .where(eq(adminUserSubscriptionsTable.userId, row.userId));
+  logger.info({ userId: row.userId, reason }, "Revoked Stripe Pro entitlement after dispute/refund");
 }
 
 export function createStripeWebhookRouter(): IRouter {
