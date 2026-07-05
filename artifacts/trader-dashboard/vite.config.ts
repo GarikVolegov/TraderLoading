@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 const rawPort = process.env.PORT ?? "5173";
 
@@ -24,6 +25,11 @@ function isValidClerkKey(key: string): boolean {
 
 export default defineConfig(async ({ command }) => {
   const isServe = command === "serve";
+  // Upload sourcemaps to Sentry only on a production build WITH a token configured —
+  // so prod stack traces symbolicate. Without the token the build behaves exactly as
+  // before (no maps emitted, nothing uploaded). Maps are deleted after upload so they
+  // are never served to clients.
+  const uploadSourcemaps = !isServe && Boolean(process.env.SENTRY_AUTH_TOKEN);
   if (!isServe) {
     process.env.NODE_ENV = "production";
     // Vite inlines VITE_* env at build time. An empty key here produces a bundle
@@ -60,6 +66,15 @@ export default defineConfig(async ({ command }) => {
           ),
         ]
       : []),
+    ...(uploadSourcemaps
+      ? sentryVitePlugin({
+          org: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT,
+          authToken: process.env.SENTRY_AUTH_TOKEN,
+          release: { name: process.env.VITE_APP_VERSION },
+          sourcemaps: { filesToDeleteAfterUpload: ["**/*.map"] },
+        })
+      : []),
   ],
   resolve: {
     alias: {
@@ -72,7 +87,9 @@ export default defineConfig(async ({ command }) => {
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    sourcemap: false,
+    // 'hidden' emits maps but adds no //# sourceMappingURL to the bundles, so the
+    // Sentry plugin can upload them without the browser ever fetching them.
+    sourcemap: uploadSourcemaps ? "hidden" : false,
     minify: "esbuild",
     cssMinify: true,
     reportCompressedSize: true,
