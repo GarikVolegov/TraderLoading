@@ -102,6 +102,64 @@ export function rHistogram(rValues: readonly number[], bucketSize = 0.5): RBucke
   return buckets;
 }
 
+export interface RiskOfRuinResult {
+  /** Fraction of simulated paths that hit the ruin threshold (0..1). */
+  riskOfRuin: number;
+  medianFinalEquity: number;
+  p5: number;
+  p95: number;
+}
+
+function percentile(sorted: readonly number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
+}
+
+/**
+ * Monte Carlo risk-of-ruin bootstrapped from the trader's OWN R-multiples (idea 5B):
+ * resample real outcomes with replacement instead of hand-set parameters. Each
+ * simulated trade multiplies equity by (1 + r·riskFraction); a path "ruins" if equity
+ * falls to/through ruinThreshold. `rng` is injectable for deterministic tests.
+ * Returns null with no trades.
+ */
+export function bootstrapRiskOfRuin(
+  rValues: readonly number[],
+  opts: {
+    trades: number;
+    riskFraction: number;
+    ruinThreshold: number;
+    sims: number;
+    rng?: () => number;
+  },
+): RiskOfRuinResult | null {
+  if (rValues.length === 0 || opts.trades <= 0 || opts.sims <= 0) return null;
+  const rng = opts.rng ?? Math.random;
+  const finals: number[] = [];
+  let ruined = 0;
+  for (let s = 0; s < opts.sims; s += 1) {
+    let equity = 1;
+    let isRuined = false;
+    for (let t = 0; t < opts.trades; t += 1) {
+      const r = rValues[Math.min(rValues.length - 1, Math.floor(rng() * rValues.length))];
+      equity *= 1 + r * opts.riskFraction;
+      if (equity <= opts.ruinThreshold) {
+        isRuined = true;
+        equity = Math.max(0, equity);
+        break;
+      }
+    }
+    if (isRuined) ruined += 1;
+    finals.push(equity);
+  }
+  finals.sort((a, b) => a - b);
+  return {
+    riskOfRuin: round(ruined / opts.sims),
+    medianFinalEquity: round(percentile(finals, 0.5), 6),
+    p5: round(percentile(finals, 0.05), 6),
+    p95: round(percentile(finals, 0.95), 6),
+  };
+}
+
 export interface RollingPoint {
   /** 1-based index of the last trade in this window. */
   atTrade: number;

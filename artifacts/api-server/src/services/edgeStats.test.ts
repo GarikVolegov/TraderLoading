@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { wilsonInterval, kellyFraction, rollingExpectancy, equityCurve, rHistogram } from "./edgeStats.js";
+import {
+  wilsonInterval,
+  kellyFraction,
+  rollingExpectancy,
+  equityCurve,
+  rHistogram,
+  bootstrapRiskOfRuin,
+} from "./edgeStats.js";
 
 // ── Wilson score interval on the win rate (idea 5B: "is my edge statistically real?") ──
 assert.equal(wilsonInterval(0, 0), null); // no trades → no interval
@@ -75,6 +82,22 @@ assert.deepEqual(rHistogram([], 1), []);
     [1, 2, 0],
     [2, 3, 1],
   ]);
+}
+
+// ── Monte Carlo bootstrap risk-of-ruin (idea 5B: risk-of-ruin from YOUR real R) ──
+assert.equal(bootstrapRiskOfRuin([], { trades: 10, riskFraction: 0.01, ruinThreshold: 0.5, sims: 10 }), null);
+{
+  // Deterministic RNG (always index 0). A −1R streak at full risk ruins immediately.
+  const ruined = bootstrapRiskOfRuin([-1], { trades: 5, riskFraction: 1, ruinThreshold: 0, sims: 8, rng: () => 0 })!;
+  assert.equal(ruined.riskOfRuin, 1, "a full-loss path at 100% risk always ruins");
+  assert.equal(ruined.medianFinalEquity, 0);
+}
+{
+  // A steady +0.5R at 10% risk never ruins; equity compounds 1.05^trades.
+  const safe = bootstrapRiskOfRuin([0.5], { trades: 2, riskFraction: 0.1, ruinThreshold: 0.5, sims: 8, rng: () => 0 })!;
+  assert.equal(safe.riskOfRuin, 0);
+  assert.ok(Math.abs(safe.medianFinalEquity - 1.1025) < 1e-6, `1.05^2, got ${safe.medianFinalEquity}`);
+  assert.equal(safe.p5, safe.p95, "identical paths ⇒ collapsed percentiles");
 }
 
 console.log("edge stats checks passed");
