@@ -68,6 +68,9 @@ export default defineConfig(async ({ command }) => {
       : []),
     ...(uploadSourcemaps
       ? sentryVitePlugin({
+          // Region-aware: EU orgs (o…ingest.de.sentry.io) need the de.sentry.io URL,
+          // otherwise the upload 401/404s against the US control silo.
+          url: process.env.SENTRY_URL,
           org: process.env.SENTRY_ORG,
           project: process.env.SENTRY_PROJECT,
           authToken: process.env.SENTRY_AUTH_TOKEN,
