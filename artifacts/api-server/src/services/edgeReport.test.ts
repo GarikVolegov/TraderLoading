@@ -24,7 +24,7 @@ const sample: EdgeTrade[] = [
 
   assert.deepEqual(
     Object.keys(report).sort(),
-    ["breakdowns", "discipline", "generatedAt", "guard", "highlights", "overall"],
+    ["breakdowns", "discipline", "generatedAt", "guard", "highlights", "overall", "stats"],
     "EdgeReport top-level keys",
   );
   assert.deepEqual(
@@ -59,7 +59,7 @@ const sample: EdgeTrade[] = [
   const report = composeEdgeReport([]);
   assert.equal(report.overall.closedTrades, 0);
   assert.equal(report.discipline.stopDiscipline, null);
-  assert.deepEqual(Object.keys(report).sort(), ["breakdowns", "discipline", "generatedAt", "guard", "highlights", "overall"]);
+  assert.deepEqual(Object.keys(report).sort(), ["breakdowns", "discipline", "generatedAt", "guard", "highlights", "overall", "stats"]);
 }
 
 console.log("edgeReport.test.ts: all assertions passed");

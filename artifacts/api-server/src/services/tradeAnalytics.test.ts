@@ -68,6 +68,12 @@ function trade(overrides: Partial<EdgeTrade>): EdgeTrade {
   assert.equal(o.netProfit, 50);
   assert.equal(o.avgWin, 100);
   assert.equal(o.avgLoss, -50);
+
+  // Quant edge stats wired in (Phase 5B): win-rate CI, Kelly, rolling expectancy.
+  assert.equal(report.stats.winRateCI?.point, 0.5);
+  // W=0.5, payoff R = 2/0.5 = 4 → f* = 0.5 − 0.5/4 = 0.375.
+  assert.ok(Math.abs((report.stats.kelly?.full ?? -1) - 0.375) < 0.001, "kelly from 50% WR, 4:1 payoff");
+  assert.deepEqual(report.stats.rollingExpectancy, [], "too few trades for a rolling window");
 }
 
 // ── R coverage: trades without a stop still count for win rate, not for R ─────

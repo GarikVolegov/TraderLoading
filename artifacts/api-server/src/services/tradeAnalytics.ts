@@ -9,6 +9,14 @@
 //   R = (|exit - entry| / |entry - stop|) * sign(profit)
 
 import { tradingHour, tradingDayOfWeek } from "../lib/tradingTime.js";
+import {
+  wilsonInterval,
+  kellyFraction,
+  rollingExpectancy,
+  type ConfidenceInterval,
+  type KellyResult,
+  type RollingPoint,
+} from "./edgeStats.js";
 
 export interface EdgeTrade {
   symbol: string;
@@ -79,6 +87,15 @@ export interface EdgeOverall {
   avgLoss: number | null;
 }
 
+export interface EdgeStats {
+  /** Wilson 95% CI on the win rate — is the edge statistically real? */
+  winRateCI: ConfidenceInterval | null;
+  /** Kelly-optimal risk fraction from this edge (full + half). */
+  kelly: KellyResult | null;
+  /** Rolling expectancy over the trailing window — edge decay. */
+  rollingExpectancy: RollingPoint[];
+}
+
 export interface EdgeReport {
   generatedAt: string;
   overall: EdgeOverall;
@@ -93,6 +110,7 @@ export interface EdgeReport {
     worstSlice: EdgeSliceRef | null;
     postLoss: EdgePostLoss | null;
   };
+  stats: EdgeStats;
 }
 
 const REVENGE_WINDOW_MIN = 120;
@@ -291,10 +309,20 @@ export function computeEdgeReport(trades: EdgeTrade[], now: Date = new Date()): 
   const breakdowns = { bySymbol, byDirection, bySession, byDayOfWeek };
   const { bestSlice, worstSlice } = pickHighlights(breakdowns, minSliceTradesFor(trades.length));
 
+  const scored = withProfit.length;
+  const winRateFraction = scored > 0 ? winnings.length / scored : null;
+  const rollingWindow = Math.max(5, Math.min(20, Math.round(rValues.length / 4)));
+  const stats: EdgeStats = {
+    winRateCI: wilsonInterval(winnings.length, scored),
+    kelly: kellyFraction(winRateFraction, overall.avgWinR, overall.avgLossR),
+    rollingExpectancy: rollingExpectancy(rValues, rollingWindow),
+  };
+
   return {
     generatedAt: now.toISOString(),
     overall,
     breakdowns,
     highlights: { bestSlice, worstSlice, postLoss: postLossSignal(trades) },
+    stats,
   };
 }
