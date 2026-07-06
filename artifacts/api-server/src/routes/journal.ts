@@ -3,7 +3,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db } from "@workspace/db";
-import { journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable } from "@workspace/db";
+import { journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable, accountTradesTable } from "@workspace/db";
+import { buildManualTradeRow, type ManualTradeInput } from "../services/manualTrade.js";
 import {
   CreateJournalEntryBody,
   UpdateJournalEntryBody,
@@ -314,6 +315,29 @@ router.get("/journal", async (req, res) => {
   res.json(entries.map((entry) => serializeJournalEntry(entry, imagesByEntry.get(entry.id) ?? [])));
 });
 
+/** Keep a manual entry's structured trade (off-contract fields on the body) in sync
+ *  with accountTrades so the coach/edge/equity see it (finding 3.5). Upserts on the
+ *  entry-keyed ticket, or removes the row when the fields are cleared/insufficient. */
+async function syncManualTrade(userId: string | null, entryId: number, tradeDate: string, rawBody: unknown): Promise<void> {
+  if (!userId) return;
+  const ticket = `manual-${entryId}`;
+  const row = buildManualTradeRow((rawBody ?? {}) as ManualTradeInput, { userId, journalEntryId: entryId, tradeDate });
+  if (!row) {
+    await db.delete(accountTradesTable).where(
+      and(eq(accountTradesTable.source, "manual"), eq(accountTradesTable.ticket, ticket), eq(accountTradesTable.userId, userId)),
+    );
+    return;
+  }
+  const values = { ...row, journalEntryId: entryId, updatedAt: new Date() };
+  await db
+    .insert(accountTradesTable)
+    .values(values)
+    .onConflictDoUpdate({
+      target: [accountTradesTable.source, accountTradesTable.ticket, accountTradesTable.userId],
+      set: values,
+    });
+}
+
 router.post("/journal", async (req, res) => {
   const userId = getUserId(req);
   const body = CreateJournalEntryBody.parse(req.body);
@@ -332,6 +356,7 @@ router.post("/journal", async (req, res) => {
 
   await saveJournalTags(userId, body.tags);
   await awardJournalXP(userId);
+  await syncManualTrade(userId, entry.id, body.tradeDate, req.body);
 
   const data = await getEntryWithImages(entry.id, userId);
   res.status(201).json(data);
@@ -540,6 +565,7 @@ router.put("/journal/:id", async (req, res) => {
 
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   await saveJournalTags(userId, body.tags);
+  await syncManualTrade(userId, id, body.tradeDate, req.body);
   const data = await getEntryWithImages(id, userId);
   res.json(data);
 });
@@ -563,6 +589,12 @@ router.delete("/journal/:id", async (req, res) => {
   }
 
   await db.delete(journalEntriesTable).where(eq(journalEntriesTable.id, id));
+  // Drop the linked manual trade too, so the coach doesn't keep a deleted entry's trade.
+  if (userId) {
+    await db.delete(accountTradesTable).where(
+      and(eq(accountTradesTable.source, "manual"), eq(accountTradesTable.ticket, `manual-${id}`), eq(accountTradesTable.userId, userId)),
+    );
+  }
   res.json({ success: true });
 });
 
