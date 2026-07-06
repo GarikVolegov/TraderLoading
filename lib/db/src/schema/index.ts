@@ -21,3 +21,4 @@ export * from "./marketing";
 export * from "./support";
 export * from "./tornei";
 export * from "./referral";
+export * from "./emailLifecycle";

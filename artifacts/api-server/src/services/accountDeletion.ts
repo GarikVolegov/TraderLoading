@@ -297,6 +297,9 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`DELETE FROM referral_codes WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM referrals WHERE referrer_user_id = ${userId} OR referred_user_id = ${userId}`);
 
+    // Lifecycle-email state (welcome/digest/win-back timestamps + opt-out).
+    await tx.execute(sql`DELETE FROM email_lifecycle_state WHERE user_id = ${userId}`);
+
     // Legacy express-session store (jsonb). No-op under Clerk, safe otherwise.
     await tx.execute(sql`DELETE FROM sessions WHERE sess->'user'->>'id' = ${userId}`);
 

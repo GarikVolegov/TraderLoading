@@ -3,6 +3,7 @@ import { closeDbPool } from "@workspace/db";
 import app from "./app";
 import { cotScheduler } from "./routes/tools.js";
 import { startTorneiScheduler } from "./cron/torneiScheduler.js";
+import { startLifecycleScheduler } from "./cron/lifecycleScheduler.js";
 import { startSessionScheduler } from "./routes/push.js";
 import { attachAccountBridgeWebSocket } from "./services/accountBridge/socketServer.js";
 import { attachBrokerHubWebSocket } from "./services/brokerHub/socketServer.js";
@@ -57,6 +58,7 @@ const noopCloseHandle: CloseHandle = {
 
 let sessionScheduler: CloseHandle = noopCloseHandle;
 let torneiScheduler: { close(): void | Promise<void> } = { close() {} };
+let lifecycleScheduler: { close(): void | Promise<void> } = { close() {} };
 let isShuttingDown = false;
 
 function closeHttpServer(): Promise<void> {
@@ -104,6 +106,7 @@ async function shutdown(reason: string, exitCode = 0): Promise<void> {
     newsProviderSockets?.close(),
     sessionScheduler.close(),
     torneiScheduler.close(),
+    lifecycleScheduler.close(),
     brokerHubRuntime.close(),
     cotScheduler.close(),
     newsHubRuntime.stop(),
@@ -158,6 +161,7 @@ server.listen(port, () => {
   logger.info({ port }, "Server listening");
   sessionScheduler = startSessionScheduler();
   torneiScheduler = startTorneiScheduler();
+  lifecycleScheduler = startLifecycleScheduler();
   newsProviderSockets = attachNewsProviderSockets(newsHubRuntime);
   void newsHubRuntime.refresh({ force: true }).catch((error) => {
     logger.warn({ err: error }, "Initial news refresh failed");
