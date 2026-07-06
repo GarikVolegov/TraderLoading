@@ -293,6 +293,10 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
       WHERE actor_user_id = ${userId}
     `);
 
+    // Referral loop: the user's own code and any referral rows they took part in.
+    await tx.execute(sql`DELETE FROM referral_codes WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM referrals WHERE referrer_user_id = ${userId} OR referred_user_id = ${userId}`);
+
     // Legacy express-session store (jsonb). No-op under Clerk, safe otherwise.
     await tx.execute(sql`DELETE FROM sessions WHERE sess->'user'->>'id' = ${userId}`);
 
