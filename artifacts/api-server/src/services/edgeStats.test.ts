@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { wilsonInterval, kellyFraction, rollingExpectancy } from "./edgeStats.js";
+import { wilsonInterval, kellyFraction, rollingExpectancy, equityCurve, rHistogram } from "./edgeStats.js";
 
 // ── Wilson score interval on the win rate (idea 5B: "is my edge statistically real?") ──
 assert.equal(wilsonInterval(0, 0), null); // no trades → no interval
@@ -45,6 +45,36 @@ assert.deepEqual(rollingExpectancy([1, 1], 3), []); // fewer than the window →
   assert.ok(Math.abs(series[0].mean - 1) < 1e-9);
   assert.ok(Math.abs(series[1].mean - (1 / 3)) < 1e-9);
   assert.ok(Math.abs(series[3].mean - -1) < 1e-9);
+}
+
+// ── Equity curve (idea 5D: canonical server-side equity/drawdown) ──
+assert.deepEqual(equityCurve([]), []);
+{
+  const curve = equityCurve([100, -50, 30]);
+  assert.deepEqual(curve.map((p) => p.atTrade), [1, 2, 3]);
+  assert.deepEqual(curve.map((p) => p.equity), [100, 50, 80]); // cumulative P&L
+}
+
+// ── R distribution histogram (idea 5D) — contiguous buckets over the range ──
+assert.deepEqual(rHistogram([], 1), []);
+{
+  const h = rHistogram([-1.2, -0.5, 0.3, 1.1, 2.4], 1);
+  assert.deepEqual(h.map((b) => [b.from, b.to, b.count]), [
+    [-2, -1, 1],
+    [-1, 0, 1],
+    [0, 1, 1],
+    [1, 2, 1],
+    [2, 3, 1],
+  ]);
+}
+{
+  // Empty in-range buckets are kept (contiguous bars) and counts stack.
+  const h = rHistogram([0.1, 0.2, 2.1], 1);
+  assert.deepEqual(h.map((b) => [b.from, b.to, b.count]), [
+    [0, 1, 2],
+    [1, 2, 0],
+    [2, 3, 1],
+  ]);
 }
 
 console.log("edge stats checks passed");

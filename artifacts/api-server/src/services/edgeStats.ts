@@ -59,6 +59,49 @@ export function kellyFraction(
   return { full, half: round(full / 2) };
 }
 
+export interface EquityPoint {
+  /** 1-based trade index. */
+  atTrade: number;
+  /** Cumulative net P&L after this trade (account currency). */
+  equity: number;
+}
+
+/** Canonical equity curve = running cumulative P&L over chronologically-ordered
+ *  trade profits (idea 5D — reusable server-side series for charts). */
+export function equityCurve(profits: readonly number[]): EquityPoint[] {
+  const out: EquityPoint[] = [];
+  let cumulative = 0;
+  for (let i = 0; i < profits.length; i += 1) {
+    cumulative += profits[i];
+    out.push({ atTrade: i + 1, equity: round(cumulative, 2) });
+  }
+  return out;
+}
+
+export interface RBucket {
+  from: number;
+  to: number;
+  count: number;
+}
+
+/** R-multiple distribution histogram with contiguous buckets across the observed
+ *  range (empty in-range buckets kept so the chart draws continuous bars). */
+export function rHistogram(rValues: readonly number[], bucketSize = 0.5): RBucket[] {
+  if (rValues.length === 0 || !(bucketSize > 0)) return [];
+  const indices = rValues.map((r) => Math.floor(r / bucketSize));
+  const kMin = Math.min(...indices);
+  const kMax = Math.max(...indices);
+  const buckets: RBucket[] = [];
+  for (let k = kMin; k <= kMax; k += 1) {
+    buckets.push({
+      from: round(k * bucketSize),
+      to: round((k + 1) * bucketSize),
+      count: indices.filter((x) => x === k).length,
+    });
+  }
+  return buckets;
+}
+
 export interface RollingPoint {
   /** 1-based index of the last trade in this window. */
   atTrade: number;

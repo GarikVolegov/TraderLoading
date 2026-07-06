@@ -13,9 +13,13 @@ import {
   wilsonInterval,
   kellyFraction,
   rollingExpectancy,
+  equityCurve,
+  rHistogram,
   type ConfidenceInterval,
   type KellyResult,
   type RollingPoint,
+  type EquityPoint,
+  type RBucket,
 } from "./edgeStats.js";
 
 export interface EdgeTrade {
@@ -94,6 +98,10 @@ export interface EdgeStats {
   kelly: KellyResult | null;
   /** Rolling expectancy over the trailing window — edge decay. */
   rollingExpectancy: RollingPoint[];
+  /** Cumulative net-P&L equity curve, chronological. */
+  equityCurve: EquityPoint[];
+  /** R-multiple distribution histogram. */
+  rHistogram: RBucket[];
 }
 
 export interface EdgeReport {
@@ -312,10 +320,16 @@ export function computeEdgeReport(trades: EdgeTrade[], now: Date = new Date()): 
   const scored = withProfit.length;
   const winRateFraction = scored > 0 ? winnings.length / scored : null;
   const rollingWindow = Math.max(5, Math.min(20, Math.round(rValues.length / 4)));
+  const orderedProfits = withProfit
+    .slice()
+    .sort((a, b) => new Date(a.closeTime ?? a.openTime).getTime() - new Date(b.closeTime ?? b.openTime).getTime())
+    .map((t) => t.profit as number);
   const stats: EdgeStats = {
     winRateCI: wilsonInterval(winnings.length, scored),
     kelly: kellyFraction(winRateFraction, overall.avgWinR, overall.avgLossR),
     rollingExpectancy: rollingExpectancy(rValues, rollingWindow),
+    equityCurve: equityCurve(orderedProfits),
+    rHistogram: rHistogram(rValues),
   };
 
   return {
