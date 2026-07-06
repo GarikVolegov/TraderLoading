@@ -28,7 +28,9 @@ export interface ManualTradeCtx {
 
 export interface ManualTradeRow {
   ticket: string;
-  source: "manual";
+  /** Provenance: "manual" for journal entries and CSV imports — both user-provided,
+   *  so both are excluded from tornei (see tornei/store.ts). */
+  source: string;
   symbol: string;
   direction: "buy" | "sell";
   volume: string;
@@ -67,6 +69,21 @@ function timeOr(value: unknown, fallback: string): string {
  * same row (via the source+ticket+user unique index) instead of duplicating.
  */
 export function buildManualTradeRow(input: ManualTradeInput, ctx: ManualTradeCtx): ManualTradeRow | null {
+  return buildTradeRow(input, {
+    userId: ctx.userId,
+    source: "manual",
+    ticket: `manual-${ctx.journalEntryId}`,
+    tradeDate: ctx.tradeDate,
+  });
+}
+
+/** Shared core: build a closed-trade row from loose trade fields under a given
+ *  provenance/ticket (journal entry or CSV import), or null when essentials are
+ *  missing. Reused by manual-journal and CSV-import paths. */
+export function buildTradeRow(
+  input: ManualTradeInput,
+  opts: { userId: string; source: string; ticket: string; tradeDate: string },
+): ManualTradeRow | null {
   const symbol = String(input.symbol ?? "").trim().toUpperCase();
   const entryPrice = toNumString(input.entryPrice);
   const exitPrice = toNumString(input.exitPrice);
@@ -74,13 +91,13 @@ export function buildManualTradeRow(input: ManualTradeInput, ctx: ManualTradeCtx
   if (!symbol || entryPrice === null || exitPrice === null || profit === null) return null;
 
   return {
-    ticket: `manual-${ctx.journalEntryId}`,
-    source: "manual",
+    ticket: opts.ticket,
+    source: opts.source,
     symbol,
     direction: normalizeDirection(input.direction),
     volume: toNumString(input.volume) ?? "0",
-    openTime: timeOr(input.openTime, ctx.tradeDate),
-    closeTime: timeOr(input.closeTime, ctx.tradeDate),
+    openTime: timeOr(input.openTime, opts.tradeDate),
+    closeTime: timeOr(input.closeTime, opts.tradeDate),
     entryPrice,
     exitPrice,
     stopLoss: toNumString(input.stopLoss),
@@ -89,6 +106,6 @@ export function buildManualTradeRow(input: ManualTradeInput, ctx: ManualTradeCtx
     commission: toNumString(input.commission),
     swap: toNumString(input.swap),
     status: "closed",
-    userId: ctx.userId,
+    userId: opts.userId,
   };
 }

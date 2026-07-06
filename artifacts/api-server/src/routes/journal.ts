@@ -4,7 +4,8 @@ import path from "path";
 import fs from "fs";
 import { db } from "@workspace/db";
 import { journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable, accountTradesTable } from "@workspace/db";
-import { buildManualTradeRow, type ManualTradeInput } from "../services/manualTrade.js";
+import { buildManualTradeRow, buildTradeRow, type ManualTradeInput } from "../services/manualTrade.js";
+import { parseTradesCsv } from "../services/tradesCsv.js";
 import {
   CreateJournalEntryBody,
   UpdateJournalEntryBody,
@@ -360,6 +361,38 @@ router.post("/journal", async (req, res) => {
 
   const data = await getEntryWithImages(entry.id, userId);
   res.status(201).json(data);
+});
+
+// Import a broker statement CSV → closed trades that feed the coach (idea 5D).
+// Persisted as source="manual" (user-provided → excluded from tornei) with a
+// csv-<ticket> key so re-importing the same statement updates instead of duplicating.
+router.post("/journal/import-csv", async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  const csv = typeof req.body?.csv === "string" ? req.body.csv : "";
+  if (!csv.trim()) { res.status(400).json({ error: "CSV vuoto" }); return; }
+
+  const { trades, skipped } = parseTradesCsv(csv);
+  const today = new Date().toISOString().slice(0, 10);
+  let imported = 0;
+  let invalid = 0;
+  for (let i = 0; i < trades.length; i += 1) {
+    const t = trades[i];
+    const ticket = `csv-${t.ticket && t.ticket.trim() ? t.ticket.trim() : String(i + 1)}`;
+    const tradeDate = t.closeTime || t.openTime || today;
+    const row = buildTradeRow(t, { userId, source: "manual", ticket, tradeDate });
+    if (!row) { invalid += 1; continue; }
+    const values = { ...row, updatedAt: new Date() };
+    await db
+      .insert(accountTradesTable)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [accountTradesTable.source, accountTradesTable.ticket, accountTradesTable.userId],
+        set: values,
+      });
+    imported += 1;
+  }
+  res.json({ imported, skipped: skipped + invalid });
 });
 
 router.get("/journal/tags", async (req, res) => {
