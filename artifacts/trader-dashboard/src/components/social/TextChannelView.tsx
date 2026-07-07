@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { uiText } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { Send, Loader2, Trash2, Hash, Settings2, Download, Paperclip, ToggleLeft, ToggleRight, FolderOpen } from "lucide-react";
+import { Send, Loader2, Trash2, Hash, Settings2, Download, Paperclip, ToggleLeft, ToggleRight, FolderOpen, Flag, Check } from "lucide-react";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { formatFileSize } from "@/lib/fileFormatting";
 import { reportClientError } from "@/lib/clientErrorReporter";
@@ -31,6 +31,7 @@ export function TextChannelView({
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "files">("chat");
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [reportedIds, setReportedIds] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messages = data?.messages ?? [];
@@ -113,6 +114,33 @@ export function TextChannelView({
     }
   };
 
+  // Delete a message: your own, or (as owner/moderator) anyone's.
+  const deleteMessage = async (id: number) => {
+    if (!window.confirm(uiText("community.msg.delete_confirm"))) return;
+    try {
+      await apiFetch(`community/messages/${id}`, { method: "DELETE" });
+      qc.invalidateQueries({ queryKey: ["communityMessages", channel.id] });
+    } catch (error) {
+      reportClientError(error, { context: "community message delete", notify: false });
+    }
+  };
+
+  // Report someone else's message to the moderators (idempotent per member).
+  const reportMessage = async (id: number) => {
+    if (reportedIds.has(id)) return;
+    if (!window.confirm(uiText("community.msg.report_confirm"))) return;
+    try {
+      await apiJSON(`community/messages/${id}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "other" }),
+      });
+      setReportedIds((prev) => new Set(prev).add(id));
+    } catch (error) {
+      reportClientError(error, { context: "community message report", notify: false });
+    }
+  };
+
   const groupedMessages = messages.reduce<
     { date: string; msgs: CommunityMsg[] }[]
   >((acc, msg) => {
@@ -186,7 +214,7 @@ export function TextChannelView({
                       return (
                         <div
                           key={msg.id}
-                          className={`flex gap-2.5 ${isGrouped ? "ml-9" : ""}`}
+                          className={`group flex gap-2.5 ${isGrouped ? "ml-9" : ""}`}
                         >
                           {!isGrouped && (
                             <div className="w-8 h-8 rounded-full bg-secondary border border-border overflow-hidden shrink-0 mt-0.5">
@@ -233,6 +261,31 @@ export function TextChannelView({
                               <p className="text-sm leading-relaxed break-words text-foreground/90">
                                 {msg.content}
                               </p>
+                            )}
+                          </div>
+                          <div className="self-start flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
+                            {(isMe || isOwnerOrAdmin) && (
+                              <button
+                                onClick={() => deleteMessage(msg.id)}
+                                title={uiText("community.msg.delete")}
+                                className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {!isMe && (
+                              <button
+                                onClick={() => reportMessage(msg.id)}
+                                disabled={reportedIds.has(msg.id)}
+                                title={uiText(reportedIds.has(msg.id) ? "community.msg.reported" : "community.msg.report")}
+                                className="p-1 text-muted-foreground hover:text-warning transition-colors disabled:text-success disabled:opacity-100"
+                              >
+                                {reportedIds.has(msg.id) ? (
+                                  <Check className="w-3.5 h-3.5" />
+                                ) : (
+                                  <Flag className="w-3.5 h-3.5" />
+                                )}
+                              </button>
                             )}
                           </div>
                         </div>
