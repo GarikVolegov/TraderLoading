@@ -169,6 +169,25 @@ export const communityReviewReportsTable = pgTable("community_review_reports", {
   index("community_review_reports_review_idx").on(t.reviewId),
 ]);
 
+// Member-submitted reports on chat messages (audit 3.6). One report per
+// (message, reporter); status flips pending → resolved when a moderator acts.
+export const communityMessageReportsTable = pgTable("community_message_reports", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  messageId: integer("message_id").notNull(),
+  reporterUserId: text("reporter_user_id").notNull(),
+  reason: text("reason"),
+  details: text("details"),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: text("resolved_by"),
+}, (t) => [
+  uniqueIndex("community_message_reports_pair_idx").on(t.messageId, t.reporterUserId),
+  index("community_message_reports_community_idx").on(t.communityId),
+  index("community_message_reports_status_idx").on(t.status),
+]);
+
 // Append-only moderation audit trail: who did what to whom, so ban/kick/mute/
 // role-change/message-delete actions are accountable. Never updated or deleted
 // except when the whole community is removed.

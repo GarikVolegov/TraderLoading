@@ -183,6 +183,13 @@
       "when": 1783785600000,
       "tag": "0025_email_lifecycle_state",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1783872000000,
+      "tag": "0026_community_message_reports",
+      "breakpoints": true
     }
   ]
 }

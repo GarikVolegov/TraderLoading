@@ -7,16 +7,19 @@ import {
   communityMutesTable,
   communityMessagesTable,
   communityChannelsTable,
+  communityMessageReportsTable,
   profileTable,
 } from "@workspace/db";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { eq, and, asc, desc, sql } from "drizzle-orm";
 import {
   requirePermission,
+  getMemberContext,
   getMemberRank,
   memberRank,
   outranks,
 } from "../services/communityPermissions.js";
 import { recordModerationAction } from "../services/communityModerationLog.js";
+import { normalizeReportReason, sanitizeReportDetails } from "../services/messageReports.js";
 
 const router: IRouter = Router();
 
@@ -197,6 +200,125 @@ router.delete("/community/messages/:messageId", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error("DELETE /community/messages/:messageId error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
+// ─── Report a message (any member of the community) ──────────────────────────
+router.post("/community/messages/:messageId/report", async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  try {
+    const messageId = parseInt(req.params.messageId);
+    const [message] = await db
+      .select({ id: communityMessagesTable.id, channelId: communityMessagesTable.channelId, userId: communityMessagesTable.userId })
+      .from(communityMessagesTable)
+      .where(eq(communityMessagesTable.id, messageId))
+      .limit(1);
+    if (!message) { res.status(404).json({ error: "Messaggio non trovato" }); return; }
+    if (message.userId === userId) { res.status(400).json({ error: "Non puoi segnalare il tuo messaggio" }); return; }
+
+    const [channel] = await db
+      .select({ communityId: communityChannelsTable.communityId })
+      .from(communityChannelsTable)
+      .where(eq(communityChannelsTable.id, message.channelId))
+      .limit(1);
+    if (!channel) { res.status(404).json({ error: "Canale non trovato" }); return; }
+
+    // Only members can report, and not while banned.
+    const ctx = await getMemberContext(channel.communityId, userId);
+    if (!ctx.isMember || ctx.isBanned) { res.status(403).json({ error: "Non autorizzato" }); return; }
+
+    await db
+      .insert(communityMessageReportsTable)
+      .values({
+        communityId: channel.communityId,
+        messageId,
+        reporterUserId: userId,
+        reason: normalizeReportReason(req.body?.reason),
+        details: sanitizeReportDetails(req.body?.details),
+      })
+      .onConflictDoNothing({
+        target: [communityMessageReportsTable.messageId, communityMessageReportsTable.reporterUserId],
+      });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /community/messages/:messageId/report error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
+// ─── Moderator queue: pending message reports ────────────────────────────────
+router.get("/community/:id/message-reports", async (req, res) => {
+  const communityId = parseInt(req.params.id);
+  if (!(await requirePermission(req, res, communityId, "messages.moderate"))) return;
+  try {
+    const rows = await db
+      .select({
+        id: communityMessageReportsTable.id,
+        messageId: communityMessageReportsTable.messageId,
+        reporterUserId: communityMessageReportsTable.reporterUserId,
+        reason: communityMessageReportsTable.reason,
+        details: communityMessageReportsTable.details,
+        status: communityMessageReportsTable.status,
+        createdAt: communityMessageReportsTable.createdAt,
+        messageContent: communityMessagesTable.content,
+        messageAuthorId: communityMessagesTable.userId,
+        channelId: communityMessagesTable.channelId,
+      })
+      .from(communityMessageReportsTable)
+      .leftJoin(communityMessagesTable, eq(communityMessagesTable.id, communityMessageReportsTable.messageId))
+      .where(
+        and(
+          eq(communityMessageReportsTable.communityId, communityId),
+          eq(communityMessageReportsTable.status, "pending"),
+        ),
+      )
+      .orderBy(desc(communityMessageReportsTable.createdAt));
+    res.json({ reports: rows });
+  } catch (err) {
+    console.error("GET /community/:id/message-reports error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
+// ─── Resolve a report (moderator) ────────────────────────────────────────────
+router.post("/community/message-reports/:reportId/resolve", async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  try {
+    const reportId = parseInt(req.params.reportId);
+    const [report] = await db
+      .select({
+        id: communityMessageReportsTable.id,
+        communityId: communityMessageReportsTable.communityId,
+        messageId: communityMessageReportsTable.messageId,
+      })
+      .from(communityMessageReportsTable)
+      .where(eq(communityMessageReportsTable.id, reportId))
+      .limit(1);
+    if (!report) { res.status(404).json({ error: "Segnalazione non trovata" }); return; }
+    if (!(await requirePermission(req, res, report.communityId, "messages.moderate"))) return;
+
+    // Resolve every pending report on the same message in one go.
+    await db
+      .update(communityMessageReportsTable)
+      .set({ status: "resolved", resolvedAt: new Date(), resolvedBy: userId })
+      .where(
+        and(
+          eq(communityMessageReportsTable.messageId, report.messageId),
+          eq(communityMessageReportsTable.status, "pending"),
+        ),
+      );
+    await recordModerationAction({
+      communityId: report.communityId,
+      actorUserId: userId,
+      action: "report.resolve",
+      targetId: report.messageId,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /community/message-reports/:reportId/resolve error:", err);
     res.status(500).json({ error: "Errore interno" });
   }
 });

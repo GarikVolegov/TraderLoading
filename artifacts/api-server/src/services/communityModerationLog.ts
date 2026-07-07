@@ -19,6 +19,7 @@ export const MODERATION_ACTIONS = [
   "channel.delete",
   "review.hide",
   "review.unhide",
+  "report.resolve",
   "role.create",
   "role.update",
   "role.delete",

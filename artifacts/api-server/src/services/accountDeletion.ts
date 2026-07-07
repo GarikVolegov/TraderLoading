@@ -197,6 +197,16 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
       WHERE user_id = ${userId}
          OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
     `);
+    // Message reports the user filed, plus every report in the communities they own.
+    await tx.execute(sql`
+      DELETE FROM community_message_reports
+      WHERE reporter_user_id = ${userId}
+         OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
+    `);
+    // Scrub the user's moderator identity from reports they resolved for others.
+    await tx.execute(sql`
+      UPDATE community_message_reports SET resolved_by = NULL WHERE resolved_by = ${userId}
+    `);
     await tx.execute(sql`
       DELETE FROM community_roles
       WHERE community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})

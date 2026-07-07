@@ -47,6 +47,7 @@ assert.deepEqual(
 // so are invisible to the check above must still be handled explicitly.
 for (const table of [
   "community_review_reports", // reporter_user_id / review_id
+  "community_message_reports", // reporter_user_id / resolved_by
   "support_ticket_messages", // author_id / ticket_id
   "admin_audit_logs", // actor_user_id (PII scrubbed)
   "sessions", // legacy jsonb session store
