@@ -1,27 +1,49 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useRoute } from "wouter";
+import { Link, useRoute, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, BookOpen, MessageCircle, Brain, Settings, FlaskConical, Sunrise, Library, Archive, Rocket } from "lucide-react";
+import {
+  LayoutDashboard, BookOpen, Brain, FlaskConical, Archive, Users,
+  Globe, MessageCircle, Radio, Trophy, Award, ArrowLeft,
+  Library, Sunrise, Settings, Rocket,
+} from "lucide-react";
 import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const NAV_ITEMS = [
-  { href: "/",        icon: LayoutDashboard, labelKey: "nav.home",    isChat: false },
-  { href: "/journal", icon: BookOpen,         labelKey: "nav.journal", isChat: false },
-  { href: "/backtest", icon: FlaskConical,    labelKey: "nav.backtest", isChat: false },
-  { href: "/zen",     icon: Brain,            labelKey: "nav.zen",     isChat: false },
-  { href: "/chat",    icon: MessageCircle,    labelKey: "nav.chat",    isChat: true  },
+// Root hubs (level 0). Archivio is a direct hub; "Community" is a hub that,
+// once entered, swaps the mobile bar to the community set below.
+const ROOT_ITEMS = [
+  { href: "/",         icon: LayoutDashboard, labelKey: "nav.home",      isChat: false },
+  { href: "/journal",  icon: BookOpen,        labelKey: "nav.journal",   isChat: false },
+  { href: "/backtest", icon: FlaskConical,    labelKey: "nav.backtest",  isChat: false },
+  { href: "/zen",      icon: Brain,           labelKey: "nav.zen",       isChat: false },
+  { href: "/wiki",     icon: Archive,         labelKey: "nav.wiki",      isChat: false },
+  { href: "/chat",     icon: Users,           labelKey: "nav.community", isChat: true  },
 ] as const;
 
-const SECONDARY_ITEMS = [
-  { href: "/library",  icon: Library,     labelKey: "nav.library"  },
-  { href: "/wiki",     icon: Archive,     labelKey: "nav.wiki"     },
-  { href: "/routine",  icon: Sunrise,     labelKey: "nav.routine"  },
-  { href: "/settings", icon: Settings,     labelKey: "nav.settings" },
+// Community set (level 1). The four /chat tabs are deep-linked via ?t=;
+// `path`/`tab` drive active-state matching. Tornei is its own route.
+const COMMUNITY_ITEMS = [
+  { href: "/chat?t=social",     path: "/chat",   tab: "social",     icon: Globe,         labelKey: "chat.tab.social" },
+  { href: "/chat?t=messaggi",   path: "/chat",   tab: "messaggi",   icon: MessageCircle, labelKey: "chat.tab.messages" },
+  { href: "/chat?t=comunita",   path: "/chat",   tab: "comunita",   icon: Radio,         labelKey: "chat.tab.community" },
+  { href: "/chat?t=classifica", path: "/chat",   tab: "classifica", icon: Trophy,        labelKey: "chat.tab.leaderboard" },
+  { href: "/tornei", icon: Award, labelKey: "tornei.nav", path: "/tornei", tab: undefined },
 ] as const;
+
+// Desktop-only secondary group (Archivio lives in the root group now).
+const SECONDARY_ITEMS = [
+  { href: "/library",  icon: Library,  labelKey: "nav.library"  },
+  { href: "/routine",  icon: Sunrise,  labelKey: "nav.routine"  },
+  { href: "/settings", icon: Settings, labelKey: "nav.settings" },
+] as const;
+
+const COMMUNITY_ROUTES = ["/chat", "/tornei"];
+const TORNEI_ITEM = COMMUNITY_ITEMS[4]; // Tornei, reused on the desktop sidebar
 
 function NavItem({
   href,
+  path,
+  matchTab,
   icon: Icon,
   label,
   badge,
@@ -30,6 +52,10 @@ function NavItem({
   compact,
 }: {
   href: string;
+  /** Route path used for active matching (query stripped). Defaults to href. */
+  path?: string;
+  /** When set, active also requires the current ?t= to equal this value. */
+  matchTab?: string;
   icon: React.ElementType;
   label: string;
   badge?: number;
@@ -37,11 +63,13 @@ function NavItem({
   small?: boolean;
   compact?: boolean;
 }) {
-  const [isActive] = useRoute(href);
+  const [pathActive] = useRoute(path ?? href);
+  const search = useSearch();
+  const currentTab = new URLSearchParams(search).get("t") ?? "social";
+  const isActive = pathActive && (matchTab == null || currentTab === matchTab);
 
   // The mobile tab label is hidden by default and only flashes briefly when the
-  // user taps the item, then fades away on its own. Declared unconditionally (hooks
-  // must run in the same order every render) even though only the mobile variant uses it.
+  // user taps the item, then fades away on its own. Declared unconditionally.
   const [flashLabel, setFlashLabel] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -108,7 +136,6 @@ function NavItem({
             : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
         }`}
       >
-        {/* Active left bar */}
         <AnimatePresence>
           {isActive && (
             <motion.div
@@ -213,6 +240,9 @@ export function BottomNav() {
   const { data: unreadData } = useGetUnreadCount({ query: { queryKey: getGetUnreadCountQueryKey(), refetchInterval: 30_000 } });
   const { data: profile } = useGetProfile();
   const unreadCount = unreadData?.count ?? 0;
+  const [location] = useLocation();
+  const inCommunity = COMMUNITY_ROUTES.some((r) => location === r || location.startsWith(`${r}/`));
+
   const avatarSrc =
     profile && profile.avatarUrl
       ? profile.avatarUrl
@@ -229,17 +259,42 @@ export function BottomNav() {
         className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] left-0 right-0 z-50 px-3 sm:px-4 lg:hidden"
       >
         <div className="mx-auto max-w-lg overflow-hidden rounded-full border border-white/10 bg-card/70 shadow-[0_18px_60px_rgba(0,0,0,0.38),inset_0_1px_0_hsl(var(--foreground)/0.16),inset_0_-1px_0_hsl(var(--background)/0.38)] backdrop-blur-2xl supports-[backdrop-filter]:bg-card/55">
-          <div className="flex items-center px-1">
-            {NAV_ITEMS.map((item) => (
-              <NavItem
-                key={item.href}
-                href={item.href}
-                icon={item.icon}
-                label={t(item.labelKey)}
-                badge={item.isChat ? unreadCount : undefined}
-              />
-            ))}
-          </div>
+          {inCommunity ? (
+            <div className="flex items-center px-1">
+              {/* Back to Home — exits the Community hub */}
+              <Link
+                href="/"
+                aria-label={t("nav.home")}
+                title={t("nav.home")}
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-200 hover:text-foreground"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <div className="mx-0.5 h-6 w-px shrink-0 bg-border/50" />
+              {COMMUNITY_ITEMS.map((item) => (
+                <NavItem
+                  key={item.href}
+                  href={item.href}
+                  path={item.path}
+                  matchTab={item.tab}
+                  icon={item.icon}
+                  label={t(item.labelKey)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center px-1">
+              {ROOT_ITEMS.map((item) => (
+                <NavItem
+                  key={item.href}
+                  href={item.href}
+                  icon={item.icon}
+                  label={t(item.labelKey)}
+                  badge={item.isChat ? unreadCount : undefined}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </motion.nav>
 
@@ -264,9 +319,9 @@ export function BottomNav() {
           </motion.div>
         </div>
 
-        {/* Primary nav */}
+        {/* Primary nav (root hubs) + Tornei */}
         <div className="flex-1 flex flex-col px-2 py-3 gap-1 overflow-y-auto">
-          {NAV_ITEMS.map((item, i) => (
+          {ROOT_ITEMS.map((item, i) => (
             <motion.div
               key={item.href}
               initial={{ opacity: 0, x: -14 }}
@@ -284,6 +339,21 @@ export function BottomNav() {
             </motion.div>
           ))}
 
+          <motion.div
+            initial={{ opacity: 0, x: -14 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4, type: "spring", stiffness: 400, damping: 28 }}
+          >
+            <NavItem
+              href={TORNEI_ITEM.href}
+              path={TORNEI_ITEM.path}
+              icon={TORNEI_ITEM.icon}
+              label={t(TORNEI_ITEM.labelKey)}
+              vertical
+              compact
+            />
+          </motion.div>
+
           {/* Divider */}
           <div className="mx-auto my-2 h-px w-9 bg-border/35" />
 
@@ -292,7 +362,7 @@ export function BottomNav() {
               key={item.href}
               initial={{ opacity: 0, x: -14 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.35 + i * 0.05, type: "spring", stiffness: 400, damping: 28 }}
+              transition={{ delay: 0.45 + i * 0.05, type: "spring", stiffness: 400, damping: 28 }}
             >
               <NavItem
                 href={item.href}
