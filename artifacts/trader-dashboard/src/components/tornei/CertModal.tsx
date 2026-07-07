@@ -81,7 +81,7 @@ export function CertModal({ cert, claiming, hasWallet, onClaim, onClose }: CertM
         </div>
 
         {cert.mintStatus === "minted" && cert.txHash && (
-          <p style={{ margin: 0, textAlign: "center", fontFamily: "var(--tl-font-mono)", fontSize: 11, color: "hsl(142 71% 60%)", wordBreak: "break-all" }}>
+          <p style={{ margin: 0, textAlign: "center", fontFamily: "var(--tl-font-mono)", fontSize: 11, color: "hsl(var(--success))", wordBreak: "break-all" }}>
             <CheckCircle size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} />
             {cert.tokenId ? `#${cert.tokenId} · ` : ""}
             {cert.txHash.slice(0, 10)}…{cert.txHash.slice(-8)}

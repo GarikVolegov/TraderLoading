@@ -14,13 +14,13 @@ export function Rules() {
   return (
     <div style={{ marginTop: 28 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 13 }}>
-        <Shield size={16} color="hsl(142 71% 55%)" strokeWidth={1.9} />
+        <Shield size={16} color="hsl(var(--accent-jade-soft))" strokeWidth={1.9} />
         <h3 style={{ margin: 0, fontSize: 15, color: "var(--tl-fg)" }}>{t("tornei.rules.title")}</h3>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: "var(--trn-gap,16px)" }}>
         {RULES.map(({ id, icon: Icon }) => (
           <div key={id} className="trn-rule">
-            <span className="trn-chipico" style={{ color: "hsl(142 71% 55%)", background: "hsl(142 71% 45% / 0.1)", border: "1px solid hsl(142 71% 45% / 0.25)" }}>
+            <span className="trn-chipico" style={{ color: "hsl(var(--accent-jade-soft))", background: "hsl(var(--accent-jade) / 0.1)", border: "1px solid hsl(var(--accent-jade) / 0.25)" }}>
               <Icon size={15} strokeWidth={1.9} />
             </span>
             <div>

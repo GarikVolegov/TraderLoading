@@ -28,7 +28,7 @@ export function HallOfFame({ entries }: { entries: TorneiHallEntry[] }) {
                 </p>
               </div>
               <div style={{ textAlign: "right", flex: "none" }}>
-                <p style={{ margin: 0, fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 14, color: "hsl(142 71% 56%)" }}>{fmtR(e.rCum)}</p>
+                <p style={{ margin: 0, fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 14, color: "hsl(var(--success))" }}>{fmtR(e.rCum)}</p>
                 <p style={{ margin: "2px 0 0", fontFamily: "var(--tl-font-mono)", fontSize: 10, color: "hsl(215 20% 58%)" }}>{t("tornei.metric.ts")} {e.discIndex ?? "—"}%</p>
               </div>
             </div>

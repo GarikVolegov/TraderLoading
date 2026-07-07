@@ -82,7 +82,7 @@ export class RootErrorBoundary extends Component<Props, State> {
             padding: "0.75rem 1.5rem",
             fontWeight: 700,
             fontSize: "1rem",
-            background: "#22c55e",
+            background: "#51a488",
             color: "#031a0d",
           }}
         >

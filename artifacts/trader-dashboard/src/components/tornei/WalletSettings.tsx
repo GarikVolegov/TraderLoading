@@ -43,7 +43,7 @@ export function WalletSettings() {
   return (
     <div className="tl-panel rounded-2xl p-5 space-y-3">
       <div className="flex items-center gap-2">
-        <Wallet className="w-4 h-4 text-[hsl(142_71%_55%)]" />
+        <Wallet className="w-4 h-4 text-accent-jade-soft" />
         <h2 className="text-base font-bold">{t("tornei.wallet.title")}</h2>
       </div>
       <p className="text-sm text-muted-foreground">{t("tornei.wallet.desc")}</p>

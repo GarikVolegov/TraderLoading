@@ -23,7 +23,7 @@ export function PercorsoView({ me, hall, enrolling, onEnroll, onCertClick }: Per
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--trn-gap,18px)" }}>
         <section className="trn-panel tl-rise" style={{ padding: "clamp(18px,2.4vw,24px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}>
-            <Target size={16} color="hsl(142 71% 55%)" strokeWidth={1.9} />
+            <Target size={16} color="hsl(var(--accent-jade-soft))" strokeWidth={1.9} />
             <h3 style={{ margin: 0, fontSize: 15, color: "var(--tl-fg)" }}>{t("tornei.percorso.title")}</h3>
           </div>
 
