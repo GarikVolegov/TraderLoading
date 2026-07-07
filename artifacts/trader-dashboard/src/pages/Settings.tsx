@@ -32,6 +32,7 @@ import { HelpSection } from "@/components/settings/HelpSection";
 import { TermsSection } from "@/components/settings/TermsSection";
 import { WalletSettings } from "@/components/tornei/WalletSettings";
 import { ReviewSettingsSection } from "@/components/settings/ReviewSettingsSection";
+import { ReferralSettingsSection } from "@/components/settings/ReferralSettingsSection";
 
 type TileId =
   | "profilo"
@@ -295,6 +296,7 @@ export default function Settings() {
     profilo: (
       <div className="space-y-6">
         <ProfileWidget />
+        <ReferralSettingsSection />
         <ReviewSettingsSection />
       </div>
     ),
