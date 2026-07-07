@@ -873,6 +873,43 @@ export const GetJournalEdgeResponse = zod.object({
       }),
     ),
   }),
+  stats: zod.object({
+    winRateCI: zod.union([
+      zod.object({
+        point: zod.number(),
+        lower: zod.number(),
+        upper: zod.number(),
+      }),
+      zod.null(),
+    ]),
+    kelly: zod.union([
+      zod.object({
+        full: zod.number(),
+        half: zod.number(),
+      }),
+      zod.null(),
+    ]),
+    rollingExpectancy: zod.array(
+      zod.object({
+        atTrade: zod.number(),
+        mean: zod.number(),
+      }),
+    ),
+    equityCurve: zod.array(
+      zod.object({
+        atTrade: zod.number(),
+        equity: zod.number(),
+      }),
+    ),
+    maxDrawdown: zod.number(),
+    rHistogram: zod.array(
+      zod.object({
+        from: zod.number(),
+        to: zod.number(),
+        count: zod.number(),
+      }),
+    ),
+  }),
 });
 
 /**

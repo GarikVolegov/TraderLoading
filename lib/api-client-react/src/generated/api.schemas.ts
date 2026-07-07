@@ -527,6 +527,42 @@ export type EdgeReportHighlights = {
   postLoss: EdgePostLoss | null;
 };
 
+export interface ConfidenceInterval {
+  point: number;
+  lower: number;
+  upper: number;
+}
+
+export interface KellyResult {
+  full: number;
+  half: number;
+}
+
+export interface RollingPoint {
+  atTrade: number;
+  mean: number;
+}
+
+export interface EquityPoint {
+  atTrade: number;
+  equity: number;
+}
+
+export interface RBucket {
+  from: number;
+  to: number;
+  count: number;
+}
+
+export interface EdgeStats {
+  winRateCI: ConfidenceInterval | null;
+  kelly: KellyResult | null;
+  rollingExpectancy: RollingPoint[];
+  equityCurve: EquityPoint[];
+  maxDrawdown: number;
+  rHistogram: RBucket[];
+}
+
 export interface EdgeReport {
   generatedAt: string;
   overall: EdgeOverall;
@@ -534,6 +570,7 @@ export interface EdgeReport {
   highlights: EdgeReportHighlights;
   discipline: DisciplineReport;
   guard: RiskGuardReport;
+  stats: EdgeStats;
 }
 
 export interface DeleteResponse {

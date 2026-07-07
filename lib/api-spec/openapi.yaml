@@ -2760,6 +2760,8 @@ components:
           $ref: "#/components/schemas/DisciplineReport"
         guard:
           $ref: "#/components/schemas/RiskGuardReport"
+        stats:
+          $ref: "#/components/schemas/EdgeStats"
       required:
         - generatedAt
         - overall
@@ -2767,6 +2769,101 @@ components:
         - highlights
         - discipline
         - guard
+        - stats
+
+    ConfidenceInterval:
+      type: object
+      properties:
+        point:
+          type: number
+        lower:
+          type: number
+        upper:
+          type: number
+      required:
+        - point
+        - lower
+        - upper
+
+    KellyResult:
+      type: object
+      properties:
+        full:
+          type: number
+        half:
+          type: number
+      required:
+        - full
+        - half
+
+    RollingPoint:
+      type: object
+      properties:
+        atTrade:
+          type: integer
+        mean:
+          type: number
+      required:
+        - atTrade
+        - mean
+
+    EquityPoint:
+      type: object
+      properties:
+        atTrade:
+          type: integer
+        equity:
+          type: number
+      required:
+        - atTrade
+        - equity
+
+    RBucket:
+      type: object
+      properties:
+        from:
+          type: number
+        to:
+          type: number
+        count:
+          type: integer
+      required:
+        - from
+        - to
+        - count
+
+    EdgeStats:
+      type: object
+      properties:
+        winRateCI:
+          oneOf:
+            - $ref: "#/components/schemas/ConfidenceInterval"
+            - type: "null"
+        kelly:
+          oneOf:
+            - $ref: "#/components/schemas/KellyResult"
+            - type: "null"
+        rollingExpectancy:
+          type: array
+          items:
+            $ref: "#/components/schemas/RollingPoint"
+        equityCurve:
+          type: array
+          items:
+            $ref: "#/components/schemas/EquityPoint"
+        maxDrawdown:
+          type: number
+        rHistogram:
+          type: array
+          items:
+            $ref: "#/components/schemas/RBucket"
+      required:
+        - winRateCI
+        - kelly
+        - rollingExpectancy
+        - equityCurve
+        - maxDrawdown
+        - rHistogram
 
     DeleteResponse:
       type: object
