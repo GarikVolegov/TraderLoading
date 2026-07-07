@@ -76,6 +76,25 @@ function trade(overrides: Partial<EdgeTrade>): EdgeTrade {
   assert.deepEqual(report.stats.rollingExpectancy, [], "too few trades for a rolling window");
 }
 
+// ── maxDrawdown must count decline from the account's real 0 starting equity,
+// not just from its first trade's own P&L (adversarial review finding, 2026-07) ──
+{
+  // Chronological profits: -1000, then +50 three times → never recovers above
+  // -850. equityCurve (cumulative) = [-1000, -950, -900, -850]. True drawdown from
+  // the account's actual starting equity (0) is 1000, not 0.
+  const report = computeEdgeReport([
+    trade({ profit: -1000, exitPrice: 1.05, openTime: "2026-06-01T09:00:00Z", closeTime: "2026-06-01T09:00:00Z" }),
+    trade({ profit: 50, openTime: "2026-06-02T09:00:00Z", closeTime: "2026-06-02T09:00:00Z" }),
+    trade({ profit: 50, openTime: "2026-06-03T09:00:00Z", closeTime: "2026-06-03T09:00:00Z" }),
+    trade({ profit: 50, openTime: "2026-06-04T09:00:00Z", closeTime: "2026-06-04T09:00:00Z" }),
+  ]);
+  assert.equal(
+    report.stats.maxDrawdown,
+    1000,
+    "drawdown must be measured from the implicit 0 starting equity, not from the first trade's own P&L",
+  );
+}
+
 // ── R coverage: trades without a stop still count for win rate, not for R ─────
 {
   const report = computeEdgeReport([

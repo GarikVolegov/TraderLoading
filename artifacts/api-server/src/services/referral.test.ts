@@ -3,7 +3,9 @@ import {
   generateReferralCode,
   canAttributeReferral,
   shouldGrantReferralReward,
+  canGrantReferralReward,
   REFERRAL_REWARD_XP,
+  REFERRAL_REWARD_DAILY_CAP,
 } from "./referral.js";
 
 // Finding 4.2: per-user referral code — deterministic, stable, URL-safe.
@@ -25,5 +27,31 @@ assert.equal(shouldGrantReferralReward({ rewardedAt: null }), true);
 assert.equal(shouldGrantReferralReward({ rewardedAt: new Date() }), false, "already rewarded");
 
 assert.ok(REFERRAL_REWARD_XP > 0);
+
+// Adversarial-review finding: uncapped reward is farmable via disposable sign-ups
+// (self-referral guard + per-invitee dedup don't limit how many DISTINCT invitees
+// one referrer can accumulate). canGrantReferralReward adds a rolling daily cap.
+assert.equal(canGrantReferralReward({ rewardedAt: null }, 0), true, "first reward of the day, under cap");
+assert.equal(
+  canGrantReferralReward({ rewardedAt: null }, REFERRAL_REWARD_DAILY_CAP - 1),
+  true,
+  "still under cap",
+);
+assert.equal(
+  canGrantReferralReward({ rewardedAt: null }, REFERRAL_REWARD_DAILY_CAP),
+  false,
+  "cap reached ⇒ no more rewards today",
+);
+assert.equal(
+  canGrantReferralReward({ rewardedAt: null }, REFERRAL_REWARD_DAILY_CAP + 5),
+  false,
+  "over cap ⇒ still no",
+);
+assert.equal(
+  canGrantReferralReward({ rewardedAt: new Date() }, 0),
+  false,
+  "idempotency still applies regardless of cap",
+);
+assert.ok(REFERRAL_REWARD_DAILY_CAP > 0);
 
 console.log("referral checks passed");

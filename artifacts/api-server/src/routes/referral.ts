@@ -1,11 +1,11 @@
 import { Router, type IRouter } from "express";
 import { db, referralCodesTable, referralsTable, profileTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, gte } from "drizzle-orm";
 import { getUserId } from "./profile.js";
 import {
   generateReferralCode,
   canAttributeReferral,
-  shouldGrantReferralReward,
+  canGrantReferralReward,
   REFERRAL_REWARD_XP,
 } from "../services/referral.js";
 
@@ -70,7 +70,17 @@ router.post("/referral/attribute", async (req, res) => {
     return;
   }
 
-  if (shouldGrantReferralReward({ rewardedAt: inserted.rewardedAt })) {
+  // Daily cap bounds farming via disposable sign-ups: self-referral guard + the
+  // per-invitee unique index only stop the SAME invitee being credited twice, not
+  // how many distinct invitees one referrer can accumulate in a day.
+  const [{ n: rewardedRecently }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(referralsTable)
+    .where(and(
+      eq(referralsTable.referrerUserId, referrerUserId),
+      gte(referralsTable.rewardedAt, new Date(Date.now() - 24 * 60 * 60 * 1000)),
+    ));
+  if (canGrantReferralReward({ rewardedAt: inserted.rewardedAt }, rewardedRecently ?? 0)) {
     await db
       .update(profileTable)
       .set({ xp: sql`${profileTable.xp} + ${REFERRAL_REWARD_XP}` })

@@ -28,3 +28,20 @@ export function canAttributeReferral(referrerUserId: string, referredUserId: str
 export function shouldGrantReferralReward(referral: { rewardedAt: Date | null }): boolean {
   return referral.rewardedAt === null;
 }
+
+/**
+ * Max XP-rewarded referrals credited to one referrer per rolling 24h (adversarial
+ * review finding: self-referral + per-invitee dedup don't stop one referrer farming
+ * unlimited XP via disposable sign-ups — this bounds it without needing an
+ * invitee-activation hook).
+ */
+export const REFERRAL_REWARD_DAILY_CAP = 5;
+
+/** Reward gate: idempotent AND under the rolling daily cap for this referrer. */
+export function canGrantReferralReward(
+  referral: { rewardedAt: Date | null },
+  rewardedInLast24h: number,
+  cap: number = REFERRAL_REWARD_DAILY_CAP,
+): boolean {
+  return shouldGrantReferralReward(referral) && rewardedInLast24h < cap;
+}

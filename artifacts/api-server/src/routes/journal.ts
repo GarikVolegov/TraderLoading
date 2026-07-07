@@ -15,7 +15,7 @@ import {
   UploadJournalImageParams,
   DeleteJournalImageParams,
 } from "@workspace/api-zod";
-import { eq, desc, and, isNull, inArray } from "drizzle-orm";
+import { eq, desc, and, isNull, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getUserId, getOrCreateProfile } from "./profile.js";
 import {
@@ -374,6 +374,12 @@ router.post("/journal", async (req, res) => {
   res.status(201).json(data);
 });
 
+// Adversarial-review finding: unbounded rows + one sequential awaited DB round-trip
+// per row let a single large CSV drive tens of thousands of blocking queries against
+// the shared Postgres pool. Reject oversized imports outright and batch the rest.
+const MAX_IMPORT_ROWS = 2000;
+const IMPORT_UPSERT_CHUNK = 500;
+
 // Import a broker statement CSV → closed trades that feed the coach (idea 5D).
 // Persisted as source="manual" (user-provided → excluded from tornei) with a
 // csv-<ticket> key so re-importing the same statement updates instead of duplicating.
@@ -384,24 +390,47 @@ router.post("/journal/import-csv", async (req, res) => {
   if (!csv.trim()) { res.status(400).json({ error: "CSV vuoto" }); return; }
 
   const { trades, skipped } = parseTradesCsv(csv);
+  if (trades.length > MAX_IMPORT_ROWS) {
+    res.status(413).json({ error: `CSV troppo grande: massimo ${MAX_IMPORT_ROWS} righe per import` });
+    return;
+  }
   const today = new Date().toISOString().slice(0, 10);
-  let imported = 0;
   let invalid = 0;
+  const rows: (typeof accountTradesTable.$inferInsert)[] = [];
   for (let i = 0; i < trades.length; i += 1) {
     const t = trades[i];
     const ticket = `csv-${t.ticket && t.ticket.trim() ? t.ticket.trim() : String(i + 1)}`;
     const tradeDate = t.closeTime || t.openTime || today;
     const row = buildTradeRow(t, { userId, source: "manual", ticket, tradeDate });
     if (!row) { invalid += 1; continue; }
-    const values = { ...row, updatedAt: new Date() };
+    rows.push({ ...row, updatedAt: new Date() });
+  }
+
+  let imported = 0;
+  for (let i = 0; i < rows.length; i += IMPORT_UPSERT_CHUNK) {
+    const slice = rows.slice(i, i + IMPORT_UPSERT_CHUNK);
     await db
       .insert(accountTradesTable)
-      .values(values)
+      .values(slice)
       .onConflictDoUpdate({
         target: [accountTradesTable.source, accountTradesTable.ticket, accountTradesTable.userId],
-        set: values,
+        set: {
+          direction: sql`excluded.direction`,
+          volume: sql`excluded.volume`,
+          openTime: sql`excluded.open_time`,
+          closeTime: sql`excluded.close_time`,
+          entryPrice: sql`excluded.entry_price`,
+          exitPrice: sql`excluded.exit_price`,
+          stopLoss: sql`excluded.stop_loss`,
+          takeProfit: sql`excluded.take_profit`,
+          profit: sql`excluded.profit`,
+          commission: sql`excluded.commission`,
+          swap: sql`excluded.swap`,
+          status: sql`excluded.status`,
+          updatedAt: sql`excluded.updated_at`,
+        },
       });
-    imported += 1;
+    imported += slice.length;
   }
   res.json({ imported, skipped: skipped + invalid });
 });

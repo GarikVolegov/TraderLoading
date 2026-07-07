@@ -333,7 +333,10 @@ export function computeEdgeReport(trades: EdgeTrade[], now: Date = new Date()): 
     kelly: kellyFraction(winRateFraction, overall.avgWinR, overall.avgLossR),
     rollingExpectancy: rollingExpectancy(rValues, rollingWindow),
     equityCurve: equity,
-    maxDrawdown: maxDrawdown(equity.map((p) => p.equity)),
+    // equityCurve's first point is cumulative P&L AFTER trade 1 — it never
+    // includes the account's implicit starting equity of 0. Prepend it so a big
+    // first-trade loss that's never recovered above isn't invisible to drawdown.
+    maxDrawdown: maxDrawdown([0, ...equity.map((p) => p.equity)]),
     rHistogram: rHistogram(rValues),
   };
 
