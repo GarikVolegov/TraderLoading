@@ -24,9 +24,11 @@ import {
   validateJournalRecapPeriod,
   type JournalRecapKind,
 } from "../services/journalRecapPeriods.js";
-import { computeEdgeReport } from "../services/tradeAnalytics.js";
+import { computeEdgeReport, rMultiple } from "../services/tradeAnalytics.js";
 import { computeDisciplineReport } from "../services/tradeDiscipline.js";
 import { composeEdgeReport } from "../services/edgeReport.js";
+import { bootstrapRiskOfRuin } from "../services/edgeStats.js";
+import { parseRiskOfRuinParams } from "../services/riskOfRuinParams.js";
 import { loadClosedEdgeTrades, loadGuardOverrides } from "../services/edgeData.js";
 import { buildRecapMessages, filterTradesByPeriod, parseRecapDraft } from "../services/journalRecapDraft.js";
 import { getUserNotificationLanguage } from "./push.js";
@@ -501,6 +503,24 @@ router.get("/journal/edge", async (req, res) => {
     loadGuardOverrides(userId),
   ]);
   res.json(composeEdgeReport(trades, new Date(), guardOverrides));
+});
+
+// Monte Carlo risk-of-ruin bootstrapped from the user's OWN closed-trade R-multiples
+// (idea 5B). Off-contract (direct apiJSON, like the recap endpoints). Params are
+// clamped (parseRiskOfRuinParams) so the simulation can't be driven into a DoS.
+router.post("/journal/risk-of-ruin", async (req, res) => {
+  const userId = getUserId(req);
+  const params = parseRiskOfRuinParams(req.body);
+  const trades = await loadClosedEdgeTrades(userId);
+  const rValues = trades
+    .map((trade) => rMultiple(trade))
+    .filter((r): r is number => r !== null);
+  const result = bootstrapRiskOfRuin(rValues, params);
+  if (!result) {
+    res.status(422).json({ error: "Servono trade chiusi con R calcolabile (entry, stop ed exit)." });
+    return;
+  }
+  res.json({ ...result, tradesWithR: rValues.length, params });
 });
 
 // Generates an AI recap draft from the period's edge + discipline stats. Returns
