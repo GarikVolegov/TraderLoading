@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import {
   acceptCookieConsent,
   hasAcceptedCookieConsent,
 } from "@/lib/cookieConsent";
-import { initAnalytics } from "@/lib/analytics";
+import { initAnalytics, trackSignUpConversion } from "@/lib/analytics";
 
 const analyticsConfigured = Boolean(
   (import.meta as ImportMeta & { env?: { VITE_GA_MEASUREMENT_ID?: string } }).env
@@ -13,12 +14,16 @@ const analyticsConfigured = Boolean(
 
 export function CookieConsentPopup() {
   const [visible, setVisible] = useState(() => !hasAcceptedCookieConsent());
+  const { user } = useUser();
 
   if (!visible) return null;
 
   const handleAccept = () => {
     acceptCookieConsent();
     initAnalytics();
+    // Consent usually arrives AFTER the SignUpConversionTracker first ran (when
+    // analytics was still off), so fire the sign_up conversion now that it's on.
+    trackSignUpConversion(user?.createdAt);
     setVisible(false);
   };
 

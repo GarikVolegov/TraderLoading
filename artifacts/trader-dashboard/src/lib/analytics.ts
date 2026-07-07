@@ -3,14 +3,13 @@
 // funzioni sono no-op, quindi il modulo è sempre sicuro da importare.
 
 import { hasAcceptedCookieConsent } from "./cookieConsent";
+import { shouldTrackSignUp } from "./signupConversion";
 
 const MEASUREMENT_ID = (import.meta as ImportMeta & {
   env?: { VITE_GA_MEASUREMENT_ID?: string };
 }).env?.VITE_GA_MEASUREMENT_ID?.trim();
 
 const SIGNUP_TRACKED_KEY = "tl_ga_signup_tracked";
-// Finestra entro cui una prima sessione viene considerata una registrazione.
-const SIGNUP_FRESH_WINDOW_MS = 15 * 60 * 1000;
 
 declare global {
   interface Window {
@@ -53,18 +52,15 @@ export function trackEvent(name: string, params?: Record<string, string | number
  * utente appena creato (Clerk `createdAt`) arriva autenticato nell'app.
  */
 export function trackSignUpConversion(userCreatedAt: Date | string | null | undefined): void {
-  if (!initialized || !userCreatedAt || typeof window === "undefined") return;
+  if (!initialized || typeof window === "undefined") return;
   try {
-    if (window.localStorage.getItem(SIGNUP_TRACKED_KEY)) return;
-    const createdMs = new Date(userCreatedAt).getTime();
-    if (Number.isNaN(createdMs)) return;
-    if (Date.now() - createdMs > SIGNUP_FRESH_WINDOW_MS) {
-      // Utente esistente: marca e non tracciare.
-      window.localStorage.setItem(SIGNUP_TRACKED_KEY, "existing");
-      return;
-    }
-    trackEvent("sign_up", { method: "clerk" });
-    window.localStorage.setItem(SIGNUP_TRACKED_KEY, "tracked");
+    const decision = shouldTrackSignUp({
+      createdAt: userCreatedAt,
+      now: Date.now(),
+      alreadyTracked: Boolean(window.localStorage.getItem(SIGNUP_TRACKED_KEY)),
+    });
+    if (decision.track) trackEvent("sign_up", { method: "clerk" });
+    if (decision.mark) window.localStorage.setItem(SIGNUP_TRACKED_KEY, decision.mark);
   } catch {
     // localStorage bloccato: meglio nessun tracking che un doppio conteggio.
   }
