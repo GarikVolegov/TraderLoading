@@ -29,7 +29,13 @@ import { computeDisciplineReport } from "../services/tradeDiscipline.js";
 import { composeEdgeReport } from "../services/edgeReport.js";
 import { bootstrapRiskOfRuin } from "../services/edgeStats.js";
 import { parseRiskOfRuinParams } from "../services/riskOfRuinParams.js";
-import { loadClosedEdgeTrades, loadGuardOverrides } from "../services/edgeData.js";
+import {
+  alignSeriesByTime,
+  correlationMatrix,
+  concentrationSignals,
+} from "../services/correlationMatrix.js";
+import { getCandles } from "../services/candles.js";
+import { loadClosedEdgeTrades, loadGuardOverrides, loadOpenPositions } from "../services/edgeData.js";
 import { buildRecapMessages, filterTradesByPeriod, parseRecapDraft } from "../services/journalRecapDraft.js";
 import { getUserNotificationLanguage } from "./push.js";
 import { getTextClient } from "../services/llmClient.js";
@@ -521,6 +527,33 @@ router.post("/journal/risk-of-ruin", async (req, res) => {
     return;
   }
   res.json({ ...result, tradesWithR: rValues.length, params });
+});
+
+// Portfolio correlation & concentration risk over the user's OPEN positions (idea
+// 5B). Off-contract. Pulls each symbol's D1 closes (SWR/cached via getCandles),
+// aligns them by shared timestamp, then flags position pairs that compound into one
+// bigger bet. Degrades gracefully: <2 symbols or missing candles → empty result.
+router.get("/journal/correlation", async (req, res) => {
+  const userId = getUserId(req);
+  const positions = await loadOpenPositions(userId);
+  const symbols = positions.map((p) => p.symbol).slice(0, 12); // cap the candle fan-out
+  if (symbols.length < 2) {
+    res.json({ symbols: [], matrix: [], window: 0, concentration: [], positions });
+    return;
+  }
+  const series = await Promise.all(
+    symbols.map(async (symbol) => {
+      try {
+        const result = await getCandles(symbol, "D1");
+        return { symbol, bars: result.candles.map((c) => ({ time: c.time, close: c.close })) };
+      } catch {
+        return { symbol, bars: [] };
+      }
+    }),
+  );
+  const matrix = correlationMatrix(alignSeriesByTime(series));
+  const active = positions.filter((p) => symbols.includes(p.symbol));
+  res.json({ ...matrix, concentration: concentrationSignals(active, matrix), positions: active });
 });
 
 // Generates an AI recap draft from the period's edge + discipline stats. Returns

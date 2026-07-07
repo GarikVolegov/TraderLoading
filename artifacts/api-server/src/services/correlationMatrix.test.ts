@@ -4,6 +4,7 @@ import {
   pearson,
   correlationMatrix,
   concentrationSignals,
+  alignSeriesByTime,
   type SymbolSeries,
   type Position,
 } from "./correlationMatrix.js";
@@ -92,6 +93,43 @@ assert.equal(cm.matrix[1][2], cm.matrix[2][1], "matrix is symmetric");
 {
   const signals = concentrationSignals([{ symbol: "NOPE", direction: "long" }], cm);
   assert.deepEqual(signals, []);
+}
+
+// ── alignSeriesByTime ─────────────────────────────────────────────────────────
+// Different symbols' D1 bars don't share a calendar (FX vs crypto), so correlate
+// only the closes on timestamps present in EVERY series.
+{
+  const aligned = alignSeriesByTime([
+    { symbol: "EURUSD", bars: [{ time: 1, close: 100 }, { time: 2, close: 110 }, { time: 3, close: 99 }] },
+    { symbol: "BTCUSD", bars: [{ time: 2, close: 200 }, { time: 3, close: 190 }, { time: 4, close: 195 }] },
+  ]);
+  assert.deepEqual(aligned, [
+    { symbol: "EURUSD", closes: [110, 99] }, // only times 2 & 3 are shared
+    { symbol: "BTCUSD", closes: [200, 190] },
+  ]);
+}
+// Out-of-order bars are sorted by time before alignment.
+{
+  const aligned = alignSeriesByTime([
+    { symbol: "A", bars: [{ time: 3, close: 30 }, { time: 1, close: 10 }, { time: 2, close: 20 }] },
+    { symbol: "B", bars: [{ time: 2, close: 21 }, { time: 1, close: 11 }, { time: 3, close: 31 }] },
+  ]);
+  assert.deepEqual(aligned, [
+    { symbol: "A", closes: [10, 20, 30] },
+    { symbol: "B", closes: [11, 21, 31] },
+  ]);
+}
+// No shared timestamps → empty closes (correlationMatrix then yields window 0).
+{
+  const aligned = alignSeriesByTime([
+    { symbol: "A", bars: [{ time: 1, close: 10 }] },
+    { symbol: "B", bars: [{ time: 2, close: 20 }] },
+  ]);
+  assert.deepEqual(aligned, [
+    { symbol: "A", closes: [] },
+    { symbol: "B", closes: [] },
+  ]);
+  assert.equal(correlationMatrix(aligned).window, 0);
 }
 
 console.log("correlation matrix checks passed");

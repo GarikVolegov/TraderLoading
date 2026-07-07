@@ -80,6 +80,37 @@ export function correlationMatrix(series: SymbolSeries[]): CorrelationMatrix {
   return { symbols, matrix, window };
 }
 
+export interface TimedBar {
+  time: number;
+  close: number;
+}
+
+export interface TimedSeries {
+  symbol: string;
+  bars: TimedBar[];
+}
+
+/**
+ * Align closes across symbols by the timestamps present in EVERY series, so that
+ * daily returns are measured over the same calendar days (FX and crypto don't
+ * share a calendar). Returns closes ordered by ascending shared timestamp; empty
+ * when there is no common timestamp.
+ */
+export function alignSeriesByTime(series: TimedSeries[]): SymbolSeries[] {
+  if (series.length === 0) return [];
+  const maps = series.map((s) => new Map(s.bars.map((b) => [b.time, b.close])));
+  let shared: number[] | null = null;
+  for (const map of maps) {
+    const times = [...map.keys()];
+    shared = shared === null ? times : shared.filter((t) => map.has(t));
+  }
+  const orderedTimes = (shared ?? []).sort((a, b) => a - b);
+  return series.map((s, i) => ({
+    symbol: s.symbol,
+    closes: orderedTimes.map((t) => maps[i].get(t) as number),
+  }));
+}
+
 export interface Position {
   symbol: string;
   direction: "long" | "short";
