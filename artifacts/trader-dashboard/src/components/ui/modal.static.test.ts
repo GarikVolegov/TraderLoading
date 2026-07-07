@@ -27,4 +27,19 @@ assert.match(modal, /from "react-dom"/);
 assert.match(modal, /createPortal/);
 assert.match(modal, /document\.body/);
 
+// A11y (finding 3.4): the custom modal must expose dialog semantics, trap focus,
+// close on Escape, and restore focus to the opener on close.
+assert.match(modal, /role="dialog"/, "modal needs role=dialog");
+assert.match(modal, /aria-modal="true"/, "modal needs aria-modal");
+assert.match(modal, /aria-labelledby=/, "the title must label the dialog");
+assert.match(modal, /"Escape"/, "Escape must close the modal");
+assert.match(modal, /"Tab"/, "Tab must be trapped inside the modal");
+assert.match(modal, /activeElement/, "focus must be captured and restored");
+assert.match(modal, /aria-label=/, "the close button needs an accessible label");
+
+// Hardening confirmed by the adversarial a11y review:
+assert.match(modal, /inert/, "background must be made inert to assistive tech + tab order");
+assert.match(modal, /getClientRects/, "focus trap must ignore hidden (non-focusable) elements");
+assert.match(modal, /defaultPrevented/, "Escape must yield to a child overlay that handled it");
+
 console.log("modal layer static checks passed");
