@@ -32,6 +32,7 @@ import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTra
 import { PnlHeatmap } from "@/components/PnlHeatmap";
 import { TradeChartSnapshot } from "@/components/TradeChartSnapshot";
 import { JournalOverview } from "@/components/journal/JournalOverview";
+import { CsvImportButton } from "@/components/journal/CsvImportButton";
 import {
   emptyJournalRecapFields,
   fetchJournalRecap,
@@ -173,7 +174,8 @@ function TradesTab() {
 
   return (
     <>
-      <div className="flex justify-end mb-4 sm:mb-6">
+      <div className="flex justify-end gap-2 mb-4 sm:mb-6">
+        <CsvImportButton />
         <Button onClick={() => { setEditingEntry(null); setIsModalOpen(true); }}>
           <Plus className="w-4 h-4 mr-2" />
           {t("journal.new_trade")}
