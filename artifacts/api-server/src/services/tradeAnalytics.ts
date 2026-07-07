@@ -15,6 +15,7 @@ import {
   rollingExpectancy,
   equityCurve,
   rHistogram,
+  maxDrawdown,
   type ConfidenceInterval,
   type KellyResult,
   type RollingPoint,
@@ -100,6 +101,8 @@ export interface EdgeStats {
   rollingExpectancy: RollingPoint[];
   /** Cumulative net-P&L equity curve, chronological. */
   equityCurve: EquityPoint[];
+  /** Largest peak-to-trough decline of the equity curve (account currency). */
+  maxDrawdown: number;
   /** R-multiple distribution histogram. */
   rHistogram: RBucket[];
 }
@@ -324,11 +327,13 @@ export function computeEdgeReport(trades: EdgeTrade[], now: Date = new Date()): 
     .slice()
     .sort((a, b) => new Date(a.closeTime ?? a.openTime).getTime() - new Date(b.closeTime ?? b.openTime).getTime())
     .map((t) => t.profit as number);
+  const equity = equityCurve(orderedProfits);
   const stats: EdgeStats = {
     winRateCI: wilsonInterval(winnings.length, scored),
     kelly: kellyFraction(winRateFraction, overall.avgWinR, overall.avgLossR),
     rollingExpectancy: rollingExpectancy(rValues, rollingWindow),
-    equityCurve: equityCurve(orderedProfits),
+    equityCurve: equity,
+    maxDrawdown: maxDrawdown(equity.map((p) => p.equity)),
     rHistogram: rHistogram(rValues),
   };
 

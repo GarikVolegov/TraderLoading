@@ -6,6 +6,8 @@ import {
   equityCurve,
   rHistogram,
   bootstrapRiskOfRuin,
+  maxDrawdown,
+  drawdownSeries,
 } from "./edgeStats.js";
 
 // ── Wilson score interval on the win rate (idea 5B: "is my edge statistically real?") ──
@@ -98,6 +100,29 @@ assert.equal(bootstrapRiskOfRuin([], { trades: 10, riskFraction: 0.01, ruinThres
   assert.equal(safe.riskOfRuin, 0);
   assert.ok(Math.abs(safe.medianFinalEquity - 1.1025) < 1e-6, `1.05^2, got ${safe.medianFinalEquity}`);
   assert.equal(safe.p5, safe.p95, "identical paths ⇒ collapsed percentiles");
+}
+
+// ── Max drawdown & underwater series (idea 5D: canonical drawdown, sign-safe) ──
+assert.equal(maxDrawdown([]), 0, "no equity ⇒ no drawdown");
+assert.equal(maxDrawdown([1, 2, 3]), 0, "monotonic-up curve never draws down");
+// Peaks 0,5,5,8,8 → drawdowns 0,0,3,0,5 → worst is 5.
+assert.equal(maxDrawdown([0, 5, 2, 8, 3]), 5);
+// Absolute (currency) decline, so it works on a cumulative-P&L curve that goes negative.
+assert.equal(maxDrawdown([0, -2, -5, -1]), 5, "peak 0 → trough −5");
+
+assert.deepEqual(drawdownSeries([0, 5, 2, 8, 3]), [
+  { atTrade: 1, drawdown: 0 },
+  { atTrade: 2, drawdown: 0 },
+  { atTrade: 3, drawdown: 3 },
+  { atTrade: 4, drawdown: 0 },
+  { atTrade: 5, drawdown: 5 },
+]);
+assert.deepEqual(drawdownSeries([]), []);
+// maxDrawdown is the worst point of the series.
+{
+  const equity = [10, 4, 7, 1, 9];
+  const worst = Math.max(...drawdownSeries(equity).map((p) => p.drawdown));
+  assert.equal(maxDrawdown(equity), worst);
 }
 
 console.log("edge stats checks passed");

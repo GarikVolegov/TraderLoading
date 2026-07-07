@@ -160,6 +160,40 @@ export function bootstrapRiskOfRuin(
   };
 }
 
+export interface DrawdownPoint {
+  /** 1-based trade index. */
+  atTrade: number;
+  /** Peak-to-here decline (>= 0), in the equity's own units. */
+  drawdown: number;
+}
+
+/**
+ * Per-point underwater series: how far equity sits below its running peak (idea
+ * 5D). Absolute (currency) so it stays well-defined on a cumulative-P&L curve that
+ * crosses zero — no division by a possibly-zero peak.
+ */
+export function drawdownSeries(equity: readonly number[]): DrawdownPoint[] {
+  const out: DrawdownPoint[] = [];
+  let peak = -Infinity;
+  for (let i = 0; i < equity.length; i += 1) {
+    peak = Math.max(peak, equity[i]);
+    out.push({ atTrade: i + 1, drawdown: round(peak - equity[i], 2) });
+  }
+  return out;
+}
+
+/** Largest peak-to-trough decline over the curve (>= 0); 0 for an empty or
+ *  monotonically-rising curve. */
+export function maxDrawdown(equity: readonly number[]): number {
+  let peak = -Infinity;
+  let worst = 0;
+  for (const value of equity) {
+    peak = Math.max(peak, value);
+    worst = Math.max(worst, peak - value);
+  }
+  return round(worst, 2);
+}
+
 export interface RollingPoint {
   /** 1-based index of the last trade in this window. */
   atTrade: number;
