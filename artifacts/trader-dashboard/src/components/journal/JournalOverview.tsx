@@ -19,6 +19,7 @@ import { fetchJournalRecap, journalRecapQueryKey } from "@/lib/journalRecapsApi"
 import { parseTradeContent, tradeRMultiple } from "@/lib/parseTradeContent";
 import { cumulativeR, monteCarloBands } from "@/lib/equityProjection";
 import { EquityCurveChart } from "./EquityCurveChart";
+import { RiskOfRuinCard } from "./RiskOfRuinCard";
 
 const PROJECTION_STEPS = 20;
 
@@ -175,6 +176,9 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
           </CardContent>
         </Card>
       </div>
+
+      {/* Risk of ruin (bootstrapped from real R) */}
+      <RiskOfRuinCard />
 
       {/* 4-week recap */}
       <Card>
