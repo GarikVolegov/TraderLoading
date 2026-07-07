@@ -23,6 +23,7 @@ import {
 } from "@workspace/api-client-react";
 import { useLanguage, uiText } from "@/contexts/LanguageContext";
 import { fetchJournalTags, journalTagsQueryKey, saveJournalTag, type JournalTagSummary } from "@/lib/journalTagsApi";
+import { trackEvent } from "@/lib/analytics";
 
 interface JournalEntryModalProps {
   isOpen: boolean;
@@ -358,6 +359,7 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
       if (!entryId) {
         const newEntry = await createMutation.mutateAsync({ data: formData });
         entryId = newEntry.id;
+        trackEvent("journal_entry_created", { has_result: result ? 1 : 0 });
       } else {
         await updateMutation.mutateAsync({ id: entryId, data: formData });
       }
