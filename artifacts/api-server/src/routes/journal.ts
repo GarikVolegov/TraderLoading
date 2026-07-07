@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 import { db } from "@workspace/db";
 import { journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable, accountTradesTable } from "@workspace/db";
-import { buildManualTradeRow, buildTradeRow, type ManualTradeInput } from "../services/manualTrade.js";
+import { buildManualTradeRow, buildTradeRow, hasTradeIntent, type ManualTradeInput } from "../services/manualTrade.js";
 import { parseTradesCsv } from "../services/tradesCsv.js";
 import {
   CreateJournalEntryBody,
@@ -329,6 +329,9 @@ router.get("/journal", async (req, res) => {
  *  entry-keyed ticket, or removes the row when the fields are cleared/insufficient. */
 async function syncManualTrade(userId: string | null, entryId: number, tradeDate: string, rawBody: unknown): Promise<void> {
   if (!userId) return;
+  // A body without any trade fields (a plain-text edit) leaves the linked trade
+  // untouched — never let editing a note silently delete its coach trade.
+  if (!hasTradeIntent(rawBody)) return;
   const ticket = `manual-${entryId}`;
   const row = buildManualTradeRow((rawBody ?? {}) as ManualTradeInput, { userId, journalEntryId: entryId, tradeDate });
   if (!row) {

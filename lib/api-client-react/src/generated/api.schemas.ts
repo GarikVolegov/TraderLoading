@@ -380,12 +380,27 @@ export const CreateJournalEntryRequestResult = {
   none: "none",
 } as const;
 
+export type CreateJournalEntryRequestDirection =
+  | (typeof CreateJournalEntryRequestDirection)[keyof typeof CreateJournalEntryRequestDirection]
+  | null;
+
+export const CreateJournalEntryRequestDirection = {
+  buy: "buy",
+  sell: "sell",
+} as const;
+
 export interface CreateJournalEntryRequest {
   title: string;
   content: string;
   tradeDate: string;
   result: CreateJournalEntryRequestResult;
   tags?: string | null;
+  symbol?: string | null;
+  direction?: CreateJournalEntryRequestDirection;
+  entryPrice?: number | null;
+  exitPrice?: number | null;
+  stopLoss?: number | null;
+  profit?: number | null;
 }
 
 export type UpdateJournalEntryRequestResult =
@@ -398,12 +413,27 @@ export const UpdateJournalEntryRequestResult = {
   none: "none",
 } as const;
 
+export type UpdateJournalEntryRequestDirection =
+  | (typeof UpdateJournalEntryRequestDirection)[keyof typeof UpdateJournalEntryRequestDirection]
+  | null;
+
+export const UpdateJournalEntryRequestDirection = {
+  buy: "buy",
+  sell: "sell",
+} as const;
+
 export interface UpdateJournalEntryRequest {
   title: string;
   content: string;
   tradeDate: string;
   result: UpdateJournalEntryRequestResult;
   tags?: string | null;
+  symbol?: string | null;
+  direction?: UpdateJournalEntryRequestDirection;
+  entryPrice?: number | null;
+  exitPrice?: number | null;
+  stopLoss?: number | null;
+  profit?: number | null;
 }
 
 export interface EdgeSlice {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildManualTradeRow } from "./manualTrade.js";
+import { buildManualTradeRow, hasTradeIntent } from "./manualTrade.js";
 
 const ctx = { userId: "u1", journalEntryId: 42, tradeDate: "2026-07-01" };
 
@@ -38,5 +38,18 @@ assert.equal(buildManualTradeRow({ symbol: "EURUSD" }, ctx), null, "no prices/pr
 assert.equal(buildManualTradeRow({ symbol: "", entryPrice: 1, exitPrice: 1, profit: 1 }, ctx), null, "blank symbol");
 assert.equal(buildManualTradeRow({ symbol: "EURUSD", entryPrice: "abc", exitPrice: 1, profit: 1 }, ctx), null, "non-numeric entry");
 assert.equal(buildManualTradeRow({ symbol: "EURUSD", entryPrice: 1, exitPrice: 1 }, ctx), null, "no profit");
+
+// hasTradeIntent guards the entry PUT: a plain-text edit (no trade fields on the
+// body) must NOT touch the linked trade — otherwise editing a note would silently
+// delete its coach trade. Only a body that actually carries trade fields re-syncs.
+assert.equal(hasTradeIntent({}), false, "empty body → no intent");
+assert.equal(hasTradeIntent({ title: "x", content: "y" }), false, "plain note → no intent");
+assert.equal(hasTradeIntent(null), false);
+assert.equal(hasTradeIntent(undefined), false);
+assert.equal(hasTradeIntent({ symbol: "EURUSD" }), true, "a symbol is intent");
+assert.equal(hasTradeIntent({ entryPrice: 1.08 }), true);
+assert.equal(hasTradeIntent({ direction: "buy" }), true);
+assert.equal(hasTradeIntent({ symbol: "" }), false, "blank field is not intent");
+assert.equal(hasTradeIntent({ entryPrice: null }), false, "null field is not intent");
 
 console.log("manual trade checks passed");

@@ -739,6 +739,12 @@ export const CreateJournalEntryBody = zod.object({
   tradeDate: zod.string(),
   result: zod.enum(["win", "loss", "breakeven", "none"]),
   tags: zod.string().nullish(),
+  symbol: zod.string().nullish(),
+  direction: zod.enum(["buy", "sell"]).nullish(),
+  entryPrice: zod.number().nullish(),
+  exitPrice: zod.number().nullish(),
+  stopLoss: zod.number().nullish(),
+  profit: zod.number().nullish(),
 });
 
 /**
@@ -949,6 +955,12 @@ export const UpdateJournalEntryBody = zod.object({
   tradeDate: zod.string(),
   result: zod.enum(["win", "loss", "breakeven", "none"]),
   tags: zod.string().nullish(),
+  symbol: zod.string().nullish(),
+  direction: zod.enum(["buy", "sell"]).nullish(),
+  entryPrice: zod.number().nullish(),
+  exitPrice: zod.number().nullish(),
+  stopLoss: zod.number().nullish(),
+  profit: zod.number().nullish(),
 });
 
 export const UpdateJournalEntryResponse = zod.object({

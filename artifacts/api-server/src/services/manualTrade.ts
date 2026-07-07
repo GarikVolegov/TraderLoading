@@ -19,6 +19,26 @@ export interface ManualTradeInput {
   closeTime?: unknown;
 }
 
+const TRADE_FIELD_KEYS: readonly (keyof ManualTradeInput)[] = [
+  "symbol", "direction", "entryPrice", "exitPrice", "stopLoss", "takeProfit",
+  "volume", "profit", "commission", "swap", "openTime", "closeTime",
+];
+
+/**
+ * Does this request body actually carry trade fields? The entry PUT re-runs the
+ * sync from the raw body, so a plain-text edit (no trade fields) must be a no-op —
+ * otherwise editing a note would delete its linked coach trade. Blank/null values
+ * don't count as intent (JSON omits `undefined`, so an untouched form sends nothing).
+ */
+export function hasTradeIntent(rawBody: unknown): boolean {
+  if (!rawBody || typeof rawBody !== "object") return false;
+  const body = rawBody as Record<string, unknown>;
+  return TRADE_FIELD_KEYS.some((key) => {
+    const value = body[key];
+    return value !== undefined && value !== null && value !== "";
+  });
+}
+
 export interface ManualTradeCtx {
   userId: string;
   journalEntryId: number;

@@ -5,6 +5,7 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
+import type { UpdateJournalEntryRequestDirection } from "./updateJournalEntryRequestDirection";
 import type { UpdateJournalEntryRequestResult } from "./updateJournalEntryRequestResult";
 
 export interface UpdateJournalEntryRequest {
@@ -13,4 +14,10 @@ export interface UpdateJournalEntryRequest {
   tradeDate: string;
   result: UpdateJournalEntryRequestResult;
   tags?: string | null;
+  symbol?: string | null;
+  direction?: UpdateJournalEntryRequestDirection;
+  entryPrice?: number | null;
+  exitPrice?: number | null;
+  stopLoss?: number | null;
+  profit?: number | null;
 }

@@ -5,6 +5,7 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateJournalEntryRequestDirection } from "./createJournalEntryRequestDirection";
 import type { CreateJournalEntryRequestResult } from "./createJournalEntryRequestResult";
 
 export interface CreateJournalEntryRequest {
@@ -13,4 +14,10 @@ export interface CreateJournalEntryRequest {
   tradeDate: string;
   result: CreateJournalEntryRequestResult;
   tags?: string | null;
+  symbol?: string | null;
+  direction?: CreateJournalEntryRequestDirection;
+  entryPrice?: number | null;
+  exitPrice?: number | null;
+  stopLoss?: number | null;
+  profit?: number | null;
 }

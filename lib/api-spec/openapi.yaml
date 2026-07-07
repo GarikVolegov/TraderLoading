@@ -2456,6 +2456,25 @@ components:
         tags:
           type: string
           nullable: true
+        symbol:
+          type: string
+          nullable: true
+        direction:
+          type: string
+          enum: [buy, sell]
+          nullable: true
+        entryPrice:
+          type: number
+          nullable: true
+        exitPrice:
+          type: number
+          nullable: true
+        stopLoss:
+          type: number
+          nullable: true
+        profit:
+          type: number
+          nullable: true
       required:
         - title
         - content
@@ -2476,6 +2495,25 @@ components:
           enum: [win, loss, breakeven, none]
         tags:
           type: string
+          nullable: true
+        symbol:
+          type: string
+          nullable: true
+        direction:
+          type: string
+          enum: [buy, sell]
+          nullable: true
+        entryPrice:
+          type: number
+          nullable: true
+        exitPrice:
+          type: number
+          nullable: true
+        stopLoss:
+          type: number
+          nullable: true
+        profit:
+          type: number
           nullable: true
       required:
         - title

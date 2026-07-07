@@ -287,8 +287,25 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
   const [pendingDeletes, setPendingDeletes] = useState<number[]>([]);
   const [pendingFiles, setPendingFiles] = useState<(File & { preview: string })[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  // Optional structured trade → feeds the coach (finding 3.5). Kept as strings for
+  // controlled inputs; only sent when complete, so a plain-text edit never touches
+  // an existing trade (the backend guard ignores a body without trade fields).
+  const [symbol, setSymbol] = useState("");
+  const [direction, setDirection] = useState<"buy" | "sell">("buy");
+  const [entryPrice, setEntryPrice] = useState("");
+  const [exitPrice, setExitPrice] = useState("");
+  const [stopLoss, setStopLoss] = useState("");
+  const [profit, setProfit] = useState("");
 
   useEffect(() => {
+    // Trade fields aren't on the entry response; always start blank so an untouched
+    // edit sends nothing and the linked trade is preserved.
+    setSymbol("");
+    setDirection("buy");
+    setEntryPrice("");
+    setExitPrice("");
+    setStopLoss("");
+    setProfit("");
     if (entry) {
       setTitle(entry.title);
       setContent(entry.content);
@@ -354,7 +371,21 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
     try {
       let entryId = entry?.id;
       const tagsString = tagList.length > 0 ? tagList.join(", ") : null;
-      const formData = { title, content, tradeDate, result, tags: tagsString };
+      // Only attach the trade when the essentials are present; otherwise send no
+      // trade fields at all so the backend leaves any existing linked trade alone.
+      const tradeComplete =
+        symbol.trim() !== "" && entryPrice.trim() !== "" && exitPrice.trim() !== "" && profit.trim() !== "";
+      const tradeFields = tradeComplete
+        ? {
+            symbol: symbol.trim(),
+            direction,
+            entryPrice: Number(entryPrice),
+            exitPrice: Number(exitPrice),
+            stopLoss: stopLoss.trim() !== "" ? Number(stopLoss) : null,
+            profit: Number(profit),
+          }
+        : {};
+      const formData = { title, content, tradeDate, result, tags: tagsString, ...tradeFields };
 
       if (!entryId) {
         const newEntry = await createMutation.mutateAsync({ data: formData });
@@ -433,6 +464,58 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
                     {res === 'win' ? 'Win' : res === 'loss' ? 'Loss' : res === 'breakeven' ? 'BE' : t("journal_modal.result_none")}
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-white/10 bg-background/30 p-3">
+            <div>
+              <Label className="text-muted-foreground">{t("journal_modal.trade.section")}</Label>
+              <p className="text-[11px] text-muted-foreground/70">{t("journal_modal.trade.hint")}</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.symbol")}</Label>
+                <Input
+                  value={symbol}
+                  onChange={e => setSymbol(e.target.value)}
+                  className="bg-background/50 border-white/10 uppercase"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.direction")}</Label>
+                <div className="flex bg-background/50 p-1 rounded-lg border border-white/10">
+                  {(['buy', 'sell'] as const).map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDirection(d)}
+                      className={`flex-1 text-xs py-1 rounded-md font-medium transition-all ${
+                        direction === d
+                          ? d === 'buy' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
+                          : 'text-muted-foreground hover:bg-white/5'
+                      }`}
+                    >
+                      {d === 'buy' ? 'Buy' : 'Sell'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.profit")}</Label>
+                <Input type="number" inputMode="decimal" value={profit} onChange={e => setProfit(e.target.value)} className="bg-background/50 border-white/10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.entry")}</Label>
+                <Input type="number" inputMode="decimal" value={entryPrice} onChange={e => setEntryPrice(e.target.value)} className="bg-background/50 border-white/10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.exit")}</Label>
+                <Input type="number" inputMode="decimal" value={exitPrice} onChange={e => setExitPrice(e.target.value)} className="bg-background/50 border-white/10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.stop")}</Label>
+                <Input type="number" inputMode="decimal" value={stopLoss} onChange={e => setStopLoss(e.target.value)} className="bg-background/50 border-white/10" />
               </div>
             </div>
           </div>
