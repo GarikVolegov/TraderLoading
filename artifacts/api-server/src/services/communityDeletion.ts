@@ -29,6 +29,7 @@ export async function deleteCommunityDeep(
     await tx.execute(sql`DELETE FROM community_reviews WHERE community_id = ${communityId}`);
     await tx.execute(sql`DELETE FROM community_message_reports WHERE community_id = ${communityId}`);
     await tx.execute(sql`DELETE FROM community_join_requests WHERE community_id = ${communityId}`);
+    await tx.execute(sql`DELETE FROM community_channel_entitlements WHERE community_id = ${communityId}`);
     await tx.execute(sql`
       DELETE FROM community_messages
       WHERE channel_id IN (SELECT id FROM community_channels WHERE community_id = ${communityId})
@@ -61,6 +62,7 @@ export async function deleteChannelDeep(
     .where(eq(communityFilesTable.channelId, channelId));
 
   await database.transaction(async (tx) => {
+    await tx.execute(sql`DELETE FROM community_channel_entitlements WHERE channel_id = ${channelId}`);
     await tx.execute(sql`DELETE FROM community_messages WHERE channel_id = ${channelId}`);
     await tx.execute(sql`DELETE FROM voice_presence WHERE channel_id = ${channelId}`);
     await tx.execute(sql`DELETE FROM community_files WHERE channel_id = ${channelId}`);

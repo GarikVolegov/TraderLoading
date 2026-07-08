@@ -2,9 +2,10 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, communityRolesTable, communityBansTable, communityMutesTable, voicePresenceTable, profileTable, communityJoinRequestsTable } from "@workspace/db";
+import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, communityRolesTable, communityBansTable, communityMutesTable, voicePresenceTable, profileTable, communityJoinRequestsTable, communityChannelEntitlementsTable } from "@workspace/db";
 import { eq, and, desc, asc, sql, lt, type SQL } from "drizzle-orm";
 import { canSeeFullCommunity, decideJoin, canRequestJoin } from "../services/community/joinPolicy.js";
+import { isChannelFree, canAccessChannel } from "../services/community/channelAccess.js";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
 import {
@@ -65,6 +66,45 @@ function requireAuth(req: Request, res: Response): string | null {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return null; }
   return userId;
+}
+
+// Paid-channel choke point (sub-project C). Called AFTER the membership check in every
+// channel-content handler. Free channels pass instantly; for a paid channel the owner
+// and channels.manage holders preview it, everyone else needs an active entitlement.
+// Sends a 402 (with the price, so the UI can offer to unlock) and returns false on deny.
+async function assertChannelAccess(
+  userId: string,
+  channel: typeof communityChannelsTable.$inferSelect,
+  res: Response,
+): Promise<boolean> {
+  if (isChannelFree(channel)) return true;
+  const ctx = await getMemberContext(channel.communityId, userId);
+  const [entitlement] = await db
+    .select({ expiresAt: communityChannelEntitlementsTable.expiresAt })
+    .from(communityChannelEntitlementsTable)
+    .where(and(
+      eq(communityChannelEntitlementsTable.channelId, channel.id),
+      eq(communityChannelEntitlementsTable.userId, userId),
+    ))
+    .limit(1);
+  const allowed = canAccessChannel({
+    isFree: false,
+    isOwner: ctx.isOwner,
+    canManage: hasPermission(ctx, "channels.manage"),
+    entitlement: entitlement ?? null,
+    now: new Date(),
+  });
+  if (!allowed) {
+    res.status(402).json({
+      error: "Canale a pagamento",
+      code: "channel_locked",
+      priceCredits: channel.priceCredits ?? null,
+      accessModel: channel.accessModel ?? null,
+      subscriptionPeriodDays: channel.subscriptionPeriodDays ?? null,
+    });
+    return false;
+  }
+  return true;
 }
 
 // ─── List communities ──────────────────────────────────────────────────────────
@@ -238,9 +278,32 @@ router.get("/community/:id", async (req, res) => {
       ? [...ADMIN_ROLE_PERMISSIONS]
       : sanitizePermissions(myRoleObj?.permissions);
 
+    // Per-viewer paid-channel lock flags (sub-project C): the sidebar renders a lock
+    // on channels this member can't yet read. Owner/channels.manage see everything.
+    const canManageChannels = isOwner || myPermissions.includes("channels.manage");
+    const myEntitlements = await db
+      .select({ channelId: communityChannelEntitlementsTable.channelId, expiresAt: communityChannelEntitlementsTable.expiresAt })
+      .from(communityChannelEntitlementsTable)
+      .where(and(
+        eq(communityChannelEntitlementsTable.communityId, id),
+        eq(communityChannelEntitlementsTable.userId, userId),
+      ));
+    const entByChannel = new Map(myEntitlements.map((e) => [e.channelId, { expiresAt: e.expiresAt }]));
+    const now = new Date();
+    const channelsWithLock = channels.map((ch) => ({
+      ...ch,
+      locked: !canAccessChannel({
+        isFree: isChannelFree(ch),
+        isOwner,
+        canManage: canManageChannels,
+        entitlement: entByChannel.get(ch.id) ?? null,
+        now,
+      }),
+    }));
+
     res.json({
       ...community,
-      channels,
+      channels: channelsWithLock,
       roles,
       isMember: !!membership || isOwner,
       isOwner,
@@ -420,6 +483,7 @@ router.get("/community/channels/:channelId/messages", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
       .limit(1);
     if (!membership) { res.status(403).json({ error: "Non sei membro di questa community" }); return; }
+    if (!(await assertChannelAccess(userId, channel, res))) return;
 
     const conditions: SQL[] = [eq(communityMessagesTable.channelId, channelId)];
     if (cursor && !isNaN(cursor)) conditions.push(lt(communityMessagesTable.id, cursor));
@@ -457,6 +521,7 @@ router.post("/community/channels/:channelId/messages", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
       .limit(1);
     if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
+    if (!(await assertChannelAccess(userId, channel, res))) return;
 
     // Muted members cannot post.
     const [mute] = await db
@@ -518,6 +583,7 @@ router.post("/community/voice/:channelId/join", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
       .limit(1);
     if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
+    if (!(await assertChannelAccess(userId, channel, res))) return;
 
     const [profile] = await db
       .select({ name: profileTable.name, avatarUrl: profileTable.avatarUrl })
@@ -644,6 +710,7 @@ router.post("/community/channels/:channelId/files", (req: Request, res: Response
         .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
         .limit(1);
       if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
+      if (!(await assertChannelAccess(userId, channel, res))) return;
 
       const ctx = await getMemberContext(channel.communityId, userId);
       const canManageFiles = hasPermission(ctx, "files.manage");
@@ -688,6 +755,7 @@ router.get("/community/channels/:channelId/files", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
       .limit(1);
     if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
+    if (!(await assertChannelAccess(userId, channel, res))) return;
 
     const files = await db
       .select()

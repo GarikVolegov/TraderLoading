@@ -186,6 +186,13 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`
       UPDATE community_join_requests SET decided_by_user_id = NULL WHERE decided_by_user_id = ${userId}
     `);
+    // Paid-channel entitlements (sub-project C): the user's own purchases and every
+    // entitlement in their owned communities (before those channels are deleted).
+    await tx.execute(sql`
+      DELETE FROM community_channel_entitlements
+      WHERE user_id = ${userId}
+         OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
+    `);
     await tx.execute(sql`
       DELETE FROM community_channels
       WHERE community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
