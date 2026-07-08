@@ -216,10 +216,6 @@ async function checkScheduledCallsForUser(
   }
 }
 
-// Permanent (not day-scoped) — a macro calendar event is a one-time occurrence,
-// never repeats, so once alerted it must never be looked at again.
-const _macroAlerted = new Set<string>();
-
 function calendarEventKey(event: CalendarEvent): string {
   return `${event.date}:${event.country}:${event.title}`.toLowerCase().replace(/[^a-z0-9:-]+/g, "-");
 }
@@ -252,7 +248,9 @@ async function checkDailyReminderForUser(
     {
       title: copy.dailyReminderTitle,
       body: total > 0 ? copy.dailyMissionsBody(pending, total) : copy.dailyEmptyBody,
-      tag: "daily-reminder",
+      // Matches the client DailyAlarmNotifier's tag so the browser coalesces the
+      // two into one when the app is open (goal/macro tags already match).
+      tag: "daily-alarm",
       data: { url: "/" },
     },
     "dailyReminder",
@@ -305,9 +303,13 @@ async function checkMacroEventsForUser(
     if (timestamp < nowMs || timestamp - nowMs > 24 * 60 * 60 * 1000) continue;
     if (!isMacroAlertDue(timestamp, preMacroMinutes, nowMs)) continue;
 
-    const dedupeKey = `${userId}:${calendarEventKey(event)}`;
-    if (_macroAlerted.has(dedupeKey)) continue;
-    _macroAlerted.add(dedupeKey);
+    // Day-scoped dedup (like the other checks): _sentToday is cleared at the
+    // local-day rollover, so it stays bounded. isMacroAlertDue already restricts
+    // firing to a single 60s tick window per event, so per-day dedup suffices —
+    // a past event is skipped above (timestamp < nowMs) and never re-alerted.
+    const dedupeKey = `macro:${userId}:${calendarEventKey(event)}`;
+    if (_sentToday.get(dedupeKey) === "sent") continue;
+    _sentToday.set(dedupeKey, "sent");
 
     const label = `${event.country ? `${event.country}: ` : ""}${event.title}`;
     const language = await getUserNotificationLanguage(userId);
@@ -388,11 +390,21 @@ export function startSessionScheduler(): SchedulerHandle {
             // malformed sessions config — skip session checks, other reminders still run below
           }
 
-          if (sessions.length > 0) await checkSessionsForUser(userId, sessions, nowH, nowM, today);
-          await checkScheduledCallsForUser(userId, settings?.alarmConfigs, now);
-          await checkDailyReminderForUser(userId, settings?.dailyReminderTime, now, romeDay);
-          await checkGoalRemindersForUser(userId, now, romeDay);
-          await checkMacroEventsForUser(userId, settings?.preMacroMinutes ?? 15, now, macroEvents);
+          // Each check runs independently: a transient error in one (e.g. a pool
+          // timeout on its query) must not skip the user's other reminders, and
+          // must be observable instead of swallowed by the outer allSettled.
+          const runCheck = async (name: string, fn: () => Promise<void>): Promise<void> => {
+            try {
+              await fn();
+            } catch (err) {
+              reportJobError(err, { job: "push-scheduler", check: name, userId });
+            }
+          };
+          if (sessions.length > 0) await runCheck("sessions", () => checkSessionsForUser(userId, sessions, nowH, nowM, today));
+          await runCheck("scheduledCalls", () => checkScheduledCallsForUser(userId, settings?.alarmConfigs, now));
+          await runCheck("dailyReminder", () => checkDailyReminderForUser(userId, settings?.dailyReminderTime, now, romeDay));
+          await runCheck("goalReminders", () => checkGoalRemindersForUser(userId, now, romeDay));
+          await runCheck("macroEvents", () => checkMacroEventsForUser(userId, settings?.preMacroMinutes ?? 15, now, macroEvents));
         }),
       );
     } catch (err) {
