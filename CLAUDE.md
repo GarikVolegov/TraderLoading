@@ -181,6 +181,23 @@ Runbook: [auto/README.md](auto/README.md) · Spec:
 Prima run notturna = collaudo canarino (`TEST-canary`, `MAX_TASKS=1` temporaneo → poi 2).
 Lo step audit 0.2 (E2EE) è fuori coda: decisione di prodotto pendente.
 
+**Audit-implementation plan — essentially COMPLETE (2026-07-07/08, branch `feat/community-management`).** The 6-phase
+plan ([docs/superpowers/plans/2026-07-05-audit-completo-piano-implementazione.md](docs/superpowers/plans/2026-07-05-audit-completo-piano-implementazione.md))
+is done for every item actionable without prod/CI. New subsystems shipped (all off-contract unless noted, TDD on pure
+cores, migrations up to **0025**): **referral** (`routes/referral.ts`, tables `referral_codes`/`referrals`, idempotent
++XP with a daily anti-farm cap), **lifecycle emails** (`services/email/lifecycle*` — welcome/digest/win-back, daily cron,
+**DARK by default** behind `RESEND_API_KEY`+`EMAIL_LIFECYCLE_ENABLED=1`), **quant 5B/5D** (`services/edgeStats.ts` Wilson/
+Kelly/drawdown/histogram + `/journal/risk-of-ruin`, `/journal/correlation`; surfaced in Panoramica; **EdgeStats is
+on-contract** in openapi), **manual-trade form → coach** (3.5, trade fields on JournalEntry create/update + non-destructive
+`hasTradeIntent` sync guard), **CSV statement import** (`/journal/import-csv`, capped + batched), **community message
+moderation** (3.6, report/queue/resolve), **server-side reminder push** (3.3 — daily/goal/macro now fire from the
+leader-elected minute scheduler in `routes/push.ts`, not just an in-tab setTimeout). Also: **i18n debt cleared** (347
+`auto.ui.*` keys translated to en/es/fr/de), **Tornei + Clerk auth recoloured onto jade/graphite** (3.2), **modal a11y
+focus-trap** (3.4), **PR #5 merged** (PWA notch `--safe-top` + contextual bottom nav, Tornei now mobile-reachable). Work
+was adversarially self-reviewed (multi-agent workflows) — 6 real bugs found+fixed. **Pending = user/env only:** GA4
+measurement id, flip the email flag, Sentry PR #6 merge + token rotation, manual visual/device QA of the design+PWA
+changes, and 4.4 tests (need CI Postgres/jsdom). 5A/5C big features need a brainstorming pass before code.
+
 > This section changes the most session-to-session — update it as the work moves.
 
 ## 8. Conventions & gotchas
