@@ -13,6 +13,8 @@ import {
   type StripeBillingConfig,
 } from "../lib/billing.js";
 import logger from "../lib/logger.js";
+import { grantCredits } from "../services/credits/wallet.js";
+import { packCredits } from "../services/credits/packs.js";
 
 type SubscriptionLike = {
   plan: string;
@@ -484,6 +486,17 @@ async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<v
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+    // Credit purchase (sub-project B): one-time payment, not a subscription. Grant
+    // the pack's credits. processStripeEventOnce already dedupes by event id; the
+    // credit_transactions.stripe_event_id unique index is a second backstop.
+    if (session.metadata?.type === "credit_purchase") {
+      const userId = session.metadata.userId;
+      const credits = packCredits(session.metadata.packId);
+      if (userId && credits) {
+        await grantCredits(userId, credits, "purchase", { refId: session.metadata.packId, stripeEventId: event.id });
+      }
+      return;
+    }
     if (typeof session.subscription !== "string") return;
     const subscription = await stripe.subscriptions.retrieve(session.subscription);
     await upsertStripeSubscription(subscription);

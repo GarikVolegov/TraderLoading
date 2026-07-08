@@ -320,6 +320,11 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     // Lifecycle-email state (welcome/digest/win-back timestamps + opt-out).
     await tx.execute(sql`DELETE FROM email_lifecycle_state WHERE user_id = ${userId}`);
 
+    // Credit wallet + ledger. Credits have no cash value, so they are forfeited
+    // on deletion (stated in ToS) — no payout owed (sub-project B).
+    await tx.execute(sql`DELETE FROM credit_transactions WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM credit_wallets WHERE user_id = ${userId}`);
+
     // Legacy express-session store (jsonb). No-op under Clerk, safe otherwise.
     await tx.execute(sql`DELETE FROM sessions WHERE sess->'user'->>'id' = ${userId}`);
 
