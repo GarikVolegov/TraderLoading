@@ -561,6 +561,9 @@ function ClerkProviderWithRoutes() {
           {marketingRoutes}
           <Route path="/*?" component={AppShell} />
         </Switch>
+        {/* Inside ClerkProvider: CookieConsentPopup calls useUser() to fire the
+            sign_up conversion with the user's createdAt on consent. */}
+        <CookieConsentPopup />
       </QueryClientProvider>
     </ClerkProvider>
   );
@@ -590,7 +593,6 @@ function App() {
                   <ScrollToTop />
                   <ClerkProviderWithRoutes />
                 </WouterRouter>
-                <CookieConsentPopup />
                 <Toaster />
               </AudioProvider>
             </LoadingProvider>
