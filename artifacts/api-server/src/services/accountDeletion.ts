@@ -176,6 +176,16 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
       WHERE user_id = ${userId}
          OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
     `);
+    // Join requests: the user's own, requests to their owned communities, and
+    // scrub them as an approver of others' requests (audit 0.5b + GDPR).
+    await tx.execute(sql`
+      DELETE FROM community_join_requests
+      WHERE user_id = ${userId}
+         OR community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})
+    `);
+    await tx.execute(sql`
+      UPDATE community_join_requests SET decided_by_user_id = NULL WHERE decided_by_user_id = ${userId}
+    `);
     await tx.execute(sql`
       DELETE FROM community_channels
       WHERE community_id IN (SELECT id FROM communities WHERE creator_id = ${userId})

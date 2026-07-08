@@ -28,6 +28,7 @@ export async function deleteCommunityDeep(
     `);
     await tx.execute(sql`DELETE FROM community_reviews WHERE community_id = ${communityId}`);
     await tx.execute(sql`DELETE FROM community_message_reports WHERE community_id = ${communityId}`);
+    await tx.execute(sql`DELETE FROM community_join_requests WHERE community_id = ${communityId}`);
     await tx.execute(sql`
       DELETE FROM community_messages
       WHERE channel_id IN (SELECT id FROM community_channels WHERE community_id = ${communityId})
