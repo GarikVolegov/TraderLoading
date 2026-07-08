@@ -213,3 +213,22 @@ export type CommunityChannel = typeof communityChannelsTable.$inferSelect;
 export type CommunityMessage = typeof communityMessagesTable.$inferSelect;
 export type CommunityFile = typeof communityFilesTable.$inferSelect;
 export type VoicePresence = typeof voicePresenceTable.$inferSelect;
+
+// Join requests for private (isPublic=false) communities. One row per user per
+// community (unique pair); re-request updates it in place. Approved rows leave a
+// community_members row behind; the request row is the audit trail (audit 0.5b).
+export const communityJoinRequestsTable = pgTable("community_join_requests", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  userId: text("user_id").notNull(),
+  status: text("status").notNull().default("pending"), // pending | approved | rejected
+  message: text("message"),
+  decidedByUserId: text("decided_by_user_id"),
+  decidedAt: timestamp("decided_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("community_join_requests_pair_idx").on(t.communityId, t.userId),
+  index("community_join_requests_status_idx").on(t.communityId, t.status),
+]);
+
+export type CommunityJoinRequest = typeof communityJoinRequestsTable.$inferSelect;
