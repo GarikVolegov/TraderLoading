@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import webpush from "web-push";
-import { db, pushSubscriptionsTable, userSettingsTable } from "@workspace/db";
-import { eq, isNull } from "drizzle-orm";
+import { db, pushSubscriptionsTable, userSettingsTable, missionsTable, ideasTable } from "@workspace/db";
+import { eq, and, isNull } from "drizzle-orm";
 import { getUserId } from "./profile.js";
 import { shouldSendPushNotification } from "../services/notifications/pushDedupe.js";
 import { getNotificationLanguage, getServerNotificationCopy, pickSessionQuote } from "../services/notifications/notificationCopy.js";
@@ -11,6 +11,8 @@ import {
   isServerScheduledCallDue,
   parseScheduledCallConfigs,
 } from "../services/notifications/scheduledCalls.js";
+import { isTimeReminderDue, localDayKey, isMacroAlertDue } from "../services/notifications/reminders.js";
+import { getCalendarEvents, type CalendarEvent } from "./calendar.js";
 import logger from "../lib/logger.js";
 import { reportJobError } from "../lib/observability.js";
 import { tryAcquireLock } from "../lib/distributedLock.js";
@@ -214,6 +216,115 @@ async function checkScheduledCallsForUser(
   }
 }
 
+// Permanent (not day-scoped) — a macro calendar event is a one-time occurrence,
+// never repeats, so once alerted it must never be looked at again.
+const _macroAlerted = new Set<string>();
+
+function calendarEventKey(event: CalendarEvent): string {
+  return `${event.date}:${event.country}:${event.title}`.toLowerCase().replace(/[^a-z0-9:-]+/g, "-");
+}
+
+/** Finding 3.3: the daily-reminder push (mission count) only ever fired via an
+ *  in-tab setTimeout — never reaches a closed app. */
+async function checkDailyReminderForUser(
+  userId: string,
+  dailyReminderTime: string | null | undefined,
+  now: Date,
+  romeDay: string,
+): Promise<void> {
+  if (!isTimeReminderDue(dailyReminderTime, now)) return;
+  const dedupeKey = `daily-reminder:${userId}:${romeDay}`;
+  if (_sentToday.get(dedupeKey) === "sent") return;
+  _sentToday.set(dedupeKey, "sent");
+
+  const missionDate = now.toISOString().slice(0, 10); // matches routes/missions.ts's "today"
+  const rows = await db
+    .select({ completed: missionsTable.completed })
+    .from(missionsTable)
+    .where(and(eq(missionsTable.userId, userId), eq(missionsTable.missionDate, missionDate)));
+  const total = rows.length;
+  const pending = rows.filter((r) => !r.completed).length;
+
+  const language = await getUserNotificationLanguage(userId);
+  const copy = getServerNotificationCopy(language);
+  await sendPushToUser(
+    userId,
+    {
+      title: copy.dailyReminderTitle,
+      body: total > 0 ? copy.dailyMissionsBody(pending, total) : copy.dailyEmptyBody,
+      tag: "daily-reminder",
+      data: { url: "/" },
+    },
+    "dailyReminder",
+  );
+}
+
+/** Finding 3.3: goal reminders (journal "goal" ideas with a reminderTime) only
+ *  ever fired via an in-tab setTimeout — never reaches a closed app. */
+async function checkGoalRemindersForUser(userId: string, now: Date, romeDay: string): Promise<void> {
+  const goals = await db
+    .select({ id: ideasTable.id, content: ideasTable.content, reminderTime: ideasTable.reminderTime })
+    .from(ideasTable)
+    .where(and(eq(ideasTable.userId, userId), eq(ideasTable.type, "goal"), eq(ideasTable.completed, false)));
+
+  for (const goal of goals) {
+    if (!isTimeReminderDue(goal.reminderTime, now)) continue;
+    const dedupeKey = `goal-reminder:${userId}:${goal.id}:${romeDay}`;
+    if (_sentToday.get(dedupeKey) === "sent") continue;
+    _sentToday.set(dedupeKey, "sent");
+
+    const language = await getUserNotificationLanguage(userId);
+    const copy = getServerNotificationCopy(language);
+    await sendPushToUser(
+      userId,
+      {
+        title: copy.goalReminderTitle,
+        body: goal.content,
+        tag: `goal-reminder-${goal.id}`,
+        data: { url: "/" },
+      },
+      "goals",
+    );
+  }
+}
+
+/** Finding 3.3: high-impact macro-event alerts only ever fired via an in-tab
+ *  setTimeout — never reaches a closed app. `events` is fetched once per tick
+ *  (shared, not per-user); each user's own preMacroMinutes gates the alert. */
+async function checkMacroEventsForUser(
+  userId: string,
+  preMacroMinutes: number,
+  now: Date,
+  events: CalendarEvent[],
+): Promise<void> {
+  const nowMs = now.getTime();
+  for (const event of events) {
+    if (event.impact !== "High") continue;
+    const timestamp = Date.parse(event.date);
+    if (!Number.isFinite(timestamp)) continue;
+    if (timestamp < nowMs || timestamp - nowMs > 24 * 60 * 60 * 1000) continue;
+    if (!isMacroAlertDue(timestamp, preMacroMinutes, nowMs)) continue;
+
+    const dedupeKey = `${userId}:${calendarEventKey(event)}`;
+    if (_macroAlerted.has(dedupeKey)) continue;
+    _macroAlerted.add(dedupeKey);
+
+    const label = `${event.country ? `${event.country}: ` : ""}${event.title}`;
+    const language = await getUserNotificationLanguage(userId);
+    const copy = getServerNotificationCopy(language);
+    await sendPushToUser(
+      userId,
+      {
+        title: copy.macroAlertTitle,
+        body: copy.macroEventBody(label),
+        tag: `macro-${calendarEventKey(event)}`,
+        data: { url: "/" },
+      },
+      "macroEvents",
+    );
+  }
+}
+
 export function startSessionScheduler(): SchedulerHandle {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
     logger.info("Push session scheduler disabled because VAPID keys are missing");
@@ -240,12 +351,16 @@ export function startSessionScheduler(): SchedulerHandle {
       const nowH = now.getHours();
       const nowM = now.getMinutes();
       const today = todayLocal(now);
+      const romeDay = localDayKey(now);
 
       // Drop the previous day's dedup entries once the local day rolls over.
       if (today !== _sentTodayDay) {
         _sentToday.clear();
         _sentTodayDay = today;
       }
+
+      // Shared, not per-user — fetched once per tick (cached ~4h server-side).
+      const macroEvents = await getCalendarEvents();
 
       const rows = await db
         .selectDistinct({ userId: pushSubscriptionsTable.userId })
@@ -259,6 +374,8 @@ export function startSessionScheduler(): SchedulerHandle {
             .select({
               tradingSessions: userSettingsTable.tradingSessions,
               alarmConfigs: userSettingsTable.alarmConfigs,
+              dailyReminderTime: userSettingsTable.dailyReminderTime,
+              preMacroMinutes: userSettingsTable.preMacroMinutes,
             })
             .from(userSettingsTable)
             .where(where)
@@ -268,11 +385,14 @@ export function startSessionScheduler(): SchedulerHandle {
           try {
             if (settings?.tradingSessions) sessions = JSON.parse(settings.tradingSessions);
           } catch {
-            return;
+            // malformed sessions config — skip session checks, other reminders still run below
           }
 
           if (sessions.length > 0) await checkSessionsForUser(userId, sessions, nowH, nowM, today);
           await checkScheduledCallsForUser(userId, settings?.alarmConfigs, now);
+          await checkDailyReminderForUser(userId, settings?.dailyReminderTime, now, romeDay);
+          await checkGoalRemindersForUser(userId, now, romeDay);
+          await checkMacroEventsForUser(userId, settings?.preMacroMinutes ?? 15, now, macroEvents);
         }),
       );
     } catch (err) {

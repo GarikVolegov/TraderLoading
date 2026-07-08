@@ -7,6 +7,12 @@ interface ServerNotificationCopy {
   socialFollowBody: (actorName: string) => string;
   socialLikeBody: (actorName: string) => string;
   socialCommentBody: (actorName: string) => string;
+  dailyReminderTitle: string;
+  dailyEmptyBody: string;
+  dailyMissionsBody: (pending: number, total: number) => string;
+  macroAlertTitle: string;
+  macroEventBody: (label: string) => string;
+  goalReminderTitle: string;
 }
 
 const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
@@ -23,6 +29,12 @@ const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
     socialFollowBody: (actorName) => `${actorName} ha iniziato a seguirti`,
     socialLikeBody: (actorName) => `${actorName} ha messo like al tuo post`,
     socialCommentBody: (actorName) => `${actorName} ha commentato il tuo post`,
+    dailyReminderTitle: "Promemoria giornaliero",
+    dailyEmptyBody: "Inizia le tue missioni di oggi.",
+    dailyMissionsBody: (pending, total) => `Missioni oggi: ${pending} da completare su ${total}.`,
+    macroAlertTitle: "Evento macro - attenzione",
+    macroEventBody: (label) => `1 evento ad alto impatto: ${label}`,
+    goalReminderTitle: "Promemoria obiettivo",
   },
   en: {
     sessionTitle: (sessionName) => `${sessionName} session is open`,
@@ -37,6 +49,12 @@ const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
     socialFollowBody: (actorName) => `${actorName} started following you`,
     socialLikeBody: (actorName) => `${actorName} liked your post`,
     socialCommentBody: (actorName) => `${actorName} commented on your post`,
+    dailyReminderTitle: "Daily reminder",
+    dailyEmptyBody: "Start today's missions.",
+    dailyMissionsBody: (pending, total) => `Today's missions: ${pending} left out of ${total}.`,
+    macroAlertTitle: "Macro event alert",
+    macroEventBody: (label) => `1 high-impact event: ${label}`,
+    goalReminderTitle: "Goal reminder",
   },
   es: {
     sessionTitle: (sessionName) => `Sesion ${sessionName} abierta`,
@@ -51,6 +69,12 @@ const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
     socialFollowBody: (actorName) => `${actorName} ha empezado a seguirte`,
     socialLikeBody: (actorName) => `${actorName} dio like a tu post`,
     socialCommentBody: (actorName) => `${actorName} comento tu post`,
+    dailyReminderTitle: "Recordatorio diario",
+    dailyEmptyBody: "Empieza tus misiones de hoy.",
+    dailyMissionsBody: (pending, total) => `Misiones de hoy: ${pending} pendientes de ${total}.`,
+    macroAlertTitle: "Alerta de evento macro",
+    macroEventBody: (label) => `1 evento de alto impacto: ${label}`,
+    goalReminderTitle: "Recordatorio de objetivo",
   },
   fr: {
     sessionTitle: (sessionName) => `Session ${sessionName} ouverte`,
@@ -65,6 +89,12 @@ const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
     socialFollowBody: (actorName) => `${actorName} vous suit maintenant`,
     socialLikeBody: (actorName) => `${actorName} a aime votre post`,
     socialCommentBody: (actorName) => `${actorName} a commente votre post`,
+    dailyReminderTitle: "Rappel quotidien",
+    dailyEmptyBody: "Commencez vos missions du jour.",
+    dailyMissionsBody: (pending, total) => `Missions du jour: ${pending} restantes sur ${total}.`,
+    macroAlertTitle: "Alerte evenement macro",
+    macroEventBody: (label) => `1 evenement a fort impact: ${label}`,
+    goalReminderTitle: "Rappel d'objectif",
   },
   de: {
     sessionTitle: (sessionName) => `Session ${sessionName} ist offen`,
@@ -79,6 +109,12 @@ const COPY: Record<NotificationLanguage, ServerNotificationCopy> = {
     socialFollowBody: (actorName) => `${actorName} folgt dir jetzt`,
     socialLikeBody: (actorName) => `${actorName} hat deinen Beitrag geliked`,
     socialCommentBody: (actorName) => `${actorName} hat deinen Beitrag kommentiert`,
+    dailyReminderTitle: "Tageserinnerung",
+    dailyEmptyBody: "Starte deine heutigen Missionen.",
+    dailyMissionsBody: (pending, total) => `Heutige Missionen: ${pending} von ${total} offen.`,
+    macroAlertTitle: "Makroereignis-Alarm",
+    macroEventBody: (label) => `1 wichtiges Ereignis: ${label}`,
+    goalReminderTitle: "Zielerinnerung",
   },
 };
 
