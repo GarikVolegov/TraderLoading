@@ -120,6 +120,8 @@ export interface CommunityType {
   welcomeMessage?: string | null;
   ratingAvg?: number;
   ratingCount?: number;
+  // Private + non-member: discovery/detail returns a cover only (audit 0.5b).
+  locked?: boolean;
 }
 
 export interface CommunityReview {
@@ -190,6 +192,8 @@ export interface CommunityDetail extends CommunityType {
   myRoleId: number | null;
   myPermissions: string[];
   roles: CommunityRole[];
+  // Present only in the cover-only payload for a private non-member (audit 0.5b).
+  joinRequestStatus?: "none" | "pending" | "rejected" | "approved";
 }
 
 export interface CommunityMsg {

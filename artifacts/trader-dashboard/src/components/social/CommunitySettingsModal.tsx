@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, X, Users, Shield, Ban, Sliders } from "lucide-react";
+import { Loader2, X, Users, Shield, Ban, Sliders, Inbox } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
@@ -9,9 +9,10 @@ import { useCommunityBans } from "./hooks";
 import { RoleEditor } from "./RoleEditor";
 import { MemberManager } from "./MemberManager";
 import { CommunityGeneralSettings } from "./CommunityGeneralSettings";
+import { JoinRequestsPanel } from "./JoinRequestsPanel";
 import type { CommunityDetail } from "./types";
 
-type Tab = "general" | "members" | "roles" | "bans";
+type Tab = "general" | "members" | "roles" | "bans" | "requests";
 
 export function CommunitySettingsModal({
   detail,
@@ -50,6 +51,7 @@ export function CommunitySettingsModal({
   const tabs: { id: Tab; label: string; icon: typeof Users; show: boolean }[] = [
     { id: "general", label: t("community.settings.tab.general"), icon: Sliders, show: canManageCommunity },
     { id: "members", label: t("community.settings.tab.members"), icon: Users, show: true },
+    { id: "requests", label: t("community.requests.tab"), icon: Inbox, show: canKick },
     { id: "roles", label: t("community.settings.tab.roles"), icon: Shield, show: canManageRoles },
     { id: "bans", label: t("community.settings.tab.bans"), icon: Ban, show: canBan },
   ];
@@ -100,6 +102,7 @@ export function CommunitySettingsModal({
               canMute={canMute}
             />
           )}
+          {tab === "requests" && canKick && <JoinRequestsPanel communityId={detail.id} />}
           {tab === "roles" && canManageRoles && <RoleEditor communityId={detail.id} />}
           {tab === "bans" && canBan && (
             <div className="space-y-1.5">

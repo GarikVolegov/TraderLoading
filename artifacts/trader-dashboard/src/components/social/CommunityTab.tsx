@@ -95,7 +95,8 @@ export function CommunityTab({
   };
 
   useEffect(() => {
-    if (communityDetail?.channels.length && !selectedChannelId) {
+    // A locked private community returns a cover-only payload (no channels).
+    if (communityDetail?.channels?.length && !selectedChannelId) {
       const first =
         communityDetail.channels.find((c) => c.type === "text") ??
         communityDetail.channels[0];
@@ -324,12 +325,23 @@ export function CommunityTab({
                 Lascia community
               </button>
             ) : null
+          ) : communityDetail.joinRequestStatus === "pending" ? (
+            <button
+              disabled
+              className="w-full py-2 bg-secondary text-muted-foreground rounded-lg text-xs font-semibold cursor-default"
+            >
+              {t("community.join.requested")}
+            </button>
           ) : (
             <button
               onClick={() => joinCommunity(communityDetail.id)}
               className="w-full py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
             >
-              Unisciti
+              {communityDetail.locked
+                ? communityDetail.joinRequestStatus === "rejected"
+                  ? t("community.join.declined")
+                  : t("community.join.request")
+                : "Unisciti"}
             </button>
           )}
         </div>
@@ -395,14 +407,32 @@ export function CommunityTab({
                   {communityDetail.welcomeMessage}
                 </p>
               )}
-              <button
-                onClick={() =>
-                  communityDetail && joinCommunity(communityDetail.id)
-                }
-                className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
-              >
-                Unisciti alla community
-              </button>
+              {communityDetail?.locked && (
+                <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-3">
+                  {t("community.join.locked_hint")}
+                </p>
+              )}
+              {communityDetail?.joinRequestStatus === "pending" ? (
+                <button
+                  disabled
+                  className="px-5 py-2.5 bg-secondary text-muted-foreground rounded-xl text-sm font-semibold cursor-default"
+                >
+                  {t("community.join.requested")}
+                </button>
+              ) : (
+                <button
+                  onClick={() =>
+                    communityDetail && joinCommunity(communityDetail.id)
+                  }
+                  className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  {communityDetail?.locked
+                    ? communityDetail?.joinRequestStatus === "rejected"
+                      ? t("community.join.declined")
+                      : t("community.join.request")
+                    : "Unisciti alla community"}
+                </button>
+              )}
             </>
           ) : (
             <>
