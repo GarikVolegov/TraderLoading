@@ -631,13 +631,30 @@ router.post("/social/story-reply/:storyId", (req: Request, res: Response) => {
 // Stored in the DB so the sender and the polling recipient can be served by
 // different serverless instances and still exchange offers/answers/ICE.
 
+// WebRTC signaling allowlist + payload cap (audit 0.4): only these SDP/ICE
+// message types are relayed, and `data` is bounded so the channel can't be
+// abused as a covert bulk transport.
+const CALL_SIGNAL_TYPES = new Set(["offer", "answer", "ice", "hangup"]);
+const MAX_SIGNAL_DATA = 64 * 1024; // SDP/ICE payloads are a few KB at most
+
 router.post("/social/calls/signal", async (req: Request, res: Response) => {
   const from = req.user?.id;
   if (!from) { res.status(401).json({ error: "Non autorizzato" }); return; }
   const { to, type, data, callId } = req.body;
-  if (!to || !type) { res.status(400).json({ error: "Parametri mancanti" }); return; }
+  if (!to || typeof to !== "string" || !type) { res.status(400).json({ error: "Parametri mancanti" }); return; }
+  if (!CALL_SIGNAL_TYPES.has(type)) { res.status(400).json({ error: "Tipo segnale non valido" }); return; }
+  const payload = data ?? "";
+  if (typeof payload !== "string" || payload.length > MAX_SIGNAL_DATA) {
+    res.status(413).json({ error: "Payload segnale troppo grande" }); return;
+  }
+  // Only mutual followers may signal each other — the same gate DMs use — so
+  // calls can't spam arbitrary users or open a covert channel to a non-friend.
+  if (from === to || !(await areMutualFollowers(from, to))) {
+    res.status(403).json({ error: "Destinatario non consentito" }); return;
+  }
+  const safeCallId = typeof callId === "string" && callId.length <= 128 ? callId : `call-${Date.now()}`;
   try {
-    await pushSignal({ scope: "call", to, from, type, data: data ?? "", callId: callId ?? `call-${Date.now()}` });
+    await pushSignal({ scope: "call", to, from, type, data: payload, callId: safeCallId });
     res.json({ ok: true });
   } catch (err) {
     console.error("social/calls/signal error:", err);
