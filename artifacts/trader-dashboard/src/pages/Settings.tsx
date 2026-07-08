@@ -33,6 +33,7 @@ import { TermsSection } from "@/components/settings/TermsSection";
 import { WalletSettings } from "@/components/tornei/WalletSettings";
 import { ReviewSettingsSection } from "@/components/settings/ReviewSettingsSection";
 import { ReferralSettingsSection } from "@/components/settings/ReferralSettingsSection";
+import { CreditsSettingsSection } from "@/components/settings/CreditsSettingsSection";
 
 type TileId =
   | "profilo"
@@ -303,6 +304,7 @@ export default function Settings() {
     abbonamento: (
       <div className="space-y-6">
         <BillingSubscriptionPanel />
+        <CreditsSettingsSection />
         <WalletSettings />
       </div>
     ),
