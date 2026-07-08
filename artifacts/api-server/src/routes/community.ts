@@ -2,8 +2,9 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, communityRolesTable, communityBansTable, communityMutesTable, voicePresenceTable, profileTable } from "@workspace/db";
+import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, communityRolesTable, communityBansTable, communityMutesTable, voicePresenceTable, profileTable, communityJoinRequestsTable } from "@workspace/db";
 import { eq, and, desc, asc, sql, lt, type SQL } from "drizzle-orm";
+import { canSeeFullCommunity, decideJoin, canRequestJoin } from "../services/community/joinPolicy.js";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
 import {
@@ -74,7 +75,6 @@ router.get("/community", async (req, res) => {
     const communities = await db
       .select()
       .from(communitiesTable)
-      .where(eq(communitiesTable.isPublic, true))
       .orderBy(desc(communitiesTable.memberCount), desc(communitiesTable.createdAt))
       .limit(50);
 
@@ -88,6 +88,9 @@ router.get("/community", async (req, res) => {
     res.json(communities.map(c => ({
       ...c,
       isMember: myIds.has(c.id),
+      // Private + non-member: the client shows a cover with "Request to join" and
+      // hides content. (Channels/messages are never in this list payload anyway.)
+      locked: !c.isPublic && !myIds.has(c.id),
       ratingAvg: c.ratingCount > 0 ? c.ratingSum / c.ratingCount : 0,
     })));
   } catch (err) {
@@ -198,6 +201,38 @@ router.get("/community/:id", async (req, res) => {
       .limit(1);
 
     const isOwner = community.creatorId === userId;
+
+    // Private + non-member: return the public cover only (never channels/roles/
+    // messages) plus the viewer's own request status (audit 0.5b).
+    if (!canSeeFullCommunity({ isPublic: community.isPublic, isMember: !!membership, isOwner })) {
+      const [myReq] = await db
+        .select({ status: communityJoinRequestsTable.status })
+        .from(communityJoinRequestsTable)
+        .where(and(
+          eq(communityJoinRequestsTable.communityId, id),
+          eq(communityJoinRequestsTable.userId, userId),
+        ))
+        .limit(1);
+      res.json({
+        id: community.id,
+        name: community.name,
+        description: community.description,
+        iconEmoji: community.iconEmoji,
+        avatarUrl: community.avatarUrl,
+        bannerUrl: community.bannerUrl,
+        rules: community.rules,
+        accentColor: community.accentColor,
+        memberCount: community.memberCount,
+        isPublic: community.isPublic,
+        isMember: false,
+        isOwner: false,
+        locked: true,
+        joinRequestStatus: myReq?.status ?? "none",
+        ratingAvg: community.ratingCount > 0 ? community.ratingSum / community.ratingCount : 0,
+      });
+      return;
+    }
+
     const myRoleObj = membership?.roleId != null ? roles.find((r) => r.id === membership.roleId) : undefined;
     const myPermissions = isOwner
       ? [...ADMIN_ROLE_PERMISSIONS]
@@ -226,21 +261,52 @@ router.post("/community/:id/join", async (req, res) => {
   if (!userId) return;
   try {
     const id = parseInt(req.params.id);
+    const [community] = await db
+      .select({ isPublic: communitiesTable.isPublic })
+      .from(communitiesTable)
+      .where(eq(communitiesTable.id, id))
+      .limit(1);
+    if (!community) { res.status(404).json({ error: "Community non trovata" }); return; }
+
     const [existing] = await db
-      .select()
+      .select({ id: communityMembersTable.id })
       .from(communityMembersTable)
       .where(and(eq(communityMembersTable.communityId, id), eq(communityMembersTable.userId, userId)))
       .limit(1);
-    if (existing) { res.json({ ok: true, alreadyMember: true }); return; }
-
-    // Banned users cannot rejoin.
     const [ban] = await db
       .select({ id: communityBansTable.id })
       .from(communityBansTable)
       .where(and(eq(communityBansTable.communityId, id), eq(communityBansTable.userId, userId)))
       .limit(1);
-    if (ban) { res.status(403).json({ error: "Sei stato bannato da questa community" }); return; }
 
+    const outcome = decideJoin({ isPublic: community.isPublic, isMember: !!existing, isBanned: !!ban });
+    if (outcome === "blocked") { res.status(403).json({ error: "Sei stato bannato da questa community" }); return; }
+    if (outcome === "already-member") { res.json({ ok: true, alreadyMember: true }); return; }
+
+    // Private community: create/refresh an approval request instead of joining.
+    if (outcome === "request") {
+      const [existingReq] = await db
+        .select({ status: communityJoinRequestsTable.status })
+        .from(communityJoinRequestsTable)
+        .where(and(
+          eq(communityJoinRequestsTable.communityId, id),
+          eq(communityJoinRequestsTable.userId, userId),
+        ))
+        .limit(1);
+      if (!canRequestJoin(existingReq ?? null)) { res.json({ status: "pending" }); return; }
+      const message = typeof req.body?.message === "string" ? req.body.message.slice(0, 500) : null;
+      await db
+        .insert(communityJoinRequestsTable)
+        .values({ communityId: id, userId, status: "pending", message })
+        .onConflictDoUpdate({
+          target: [communityJoinRequestsTable.communityId, communityJoinRequestsTable.userId],
+          set: { status: "pending", message, decidedByUserId: null, decidedAt: null, createdAt: new Date() },
+        });
+      res.json({ status: "pending" });
+      return;
+    }
+
+    // Public community: immediate join.
     const [defaultRole] = await db
       .select({ id: communityRolesTable.id })
       .from(communityRolesTable)
