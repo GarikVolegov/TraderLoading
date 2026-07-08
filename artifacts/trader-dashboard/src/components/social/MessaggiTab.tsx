@@ -303,6 +303,9 @@ export function MessaggiTab({
     try {
       const fd = new FormData();
       fd.append("audio", recordedBlob, "voice.webm");
+      // Recipient of the voice note — recorded server-side so only the two of us
+      // can fetch it (GET /uploads/voice is gated on participation).
+      fd.append("toUserId", selectedFriend?.userId ?? "");
       const res = await apiFetch("social/upload-voice", {
         method: "POST",
         body: fd,

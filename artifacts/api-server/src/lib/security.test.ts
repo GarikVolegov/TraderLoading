@@ -142,11 +142,12 @@ assert.match(appSource, /store:\s*rateLimitStore/);
 
 assert.equal(isAllowedUploadPath("/post-images/post-1.png"), true);
 assert.equal(isAllowedUploadPath("/bg-1.png"), true);
-assert.equal(isAllowedUploadPath("/voice/voice-1.webm"), true); // shared with public stories
 assert.equal(isAllowedUploadPath("/community-files/cfile-1.pdf"), true);
-// DM file attachments are private: served only via an authenticated,
-// participant-scoped route (routes/social.ts), never the public static handler.
+// DM file attachments AND voice notes are private: served only via an
+// authenticated, participant-scoped route (routes/social.ts, gated on
+// chat_file_access), never the public static handler (audit 0.1).
 assert.equal(isAllowedUploadPath("/chat-files/chat-1.pdf"), false);
+assert.equal(isAllowedUploadPath("/voice/voice-1.webm"), false);
 assert.equal(isAllowedUploadPath("/../.env"), false);
 assert.equal(isAllowedUploadPath("/post-images/.secret"), false);
 assert.equal(isAllowedUploadPath("/post-images/malware.exe"), false);

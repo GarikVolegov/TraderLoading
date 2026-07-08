@@ -531,10 +531,50 @@ const voiceUpload = multer({ storage: voiceStorage, limits: { fileSize: 20 * 102
 router.post("/social/upload-voice", (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
-  voiceUpload.single("audio")(req, res, (err) => {
+  voiceUpload.single("audio")(req, res, async (err) => {
     if (err || !req.file) { res.status(400).json({ error: "Upload fallito" }); return; }
+    // Voice notes are private (DM voice messages, story voice-replies). Record
+    // who may later fetch this file — the uploader and the intended recipient
+    // (the DM peer, or the story owner) — so the authenticated GET /uploads/voice
+    // route below can gate on it. Recipient is required (audit 0.1).
+    const toUserId = typeof req.body?.toUserId === "string" ? req.body.toUserId.trim() : "";
+    if (!toUserId) { res.status(400).json({ error: "Destinatario mancante" }); return; }
+    try {
+      await db
+        .insert(chatFileAccessTable)
+        .values({ fileKey: req.file.filename, ownerUserId: userId, peerUserId: toUserId })
+        .onConflictDoNothing({ target: chatFileAccessTable.fileKey });
+    } catch {
+      res.status(500).json({ error: "Errore interno" }); return;
+    }
     res.json({ audioUrl: `/api/uploads/voice/${req.file.filename}` });
   });
+});
+
+// Serve a voice note only to the two participants (uploader + recipient recorded
+// at upload). No longer exposed by the public /api/uploads static handler (see
+// lib/security.ts). Not-found and not-a-participant both return 404.
+router.get("/uploads/voice/:filename", async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  try {
+    const filename = String(req.params.filename);
+    const [row] = await db
+      .select()
+      .from(chatFileAccessTable)
+      .where(eq(chatFileAccessTable.fileKey, filename))
+      .limit(1);
+    if (!row || (row.ownerUserId !== userId && row.peerUserId !== userId)) {
+      res.status(404).json({ error: "File non trovato" }); return;
+    }
+    const filePath = path.join(VOICE_DIR, filename);
+    if (!fs.existsSync(filePath)) { res.status(404).json({ error: "File non trovato" }); return; }
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.sendFile(filePath);
+  } catch {
+    res.status(500).json({ error: "Errore interno" });
+  }
 });
 
 // ─── Post Comments ────────────────────────────────────────────────────────────

@@ -158,6 +158,9 @@ export function StoryViewer({
     if (!replyBlob) return;
     const fd = new FormData();
     fd.append("audio", replyBlob, "reply.webm");
+    // Recipient = the story owner, recorded server-side so only the two of us can
+    // fetch the note (GET /uploads/voice is gated on participation).
+    fd.append("toUserId", group.userId);
     try {
       const res = await apiFetch("social/upload-voice", {
         method: "POST",

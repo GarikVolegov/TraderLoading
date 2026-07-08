@@ -38,7 +38,6 @@ const DEV_ORIGINS = [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/];
 // by routes/wiki.ts with a wikiSourcesTable.userId check.
 const ALLOWED_UPLOAD_DIRS = new Set([
   "post-images",
-  "voice",
   "community-files",
   "community-assets",
   "milestone-files",
