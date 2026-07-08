@@ -2,7 +2,9 @@ import type { IncomingMessage, Server } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocket } from "ws";
 import { and, eq } from "drizzle-orm";
-import { db, communityChannelsTable, communityMembersTable } from "@workspace/db";
+import { db, communityChannelsTable, communityChannelEntitlementsTable } from "@workspace/db";
+import { getMemberContext, hasPermission } from "../communityPermissions.js";
+import { canAccessChannel, isChannelFree } from "../community/channelAccess.js";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
 import { authorizeWebSocketUpgrade, rejectWebSocketUpgrade, type WebSocketAuthContext, type WebSocketSecurityOptions } from "../webSocketAuth.js";
 import { canSend, createControlWebSocketServer, startHeartbeat } from "../webSocketHeartbeat.js";
@@ -23,20 +25,38 @@ export interface SocialHubWebSocketServer {
   close(): Promise<void>;
 }
 
-/** Channel access == community membership, mirroring GET .../channels/:id/messages. */
+/** Channel access mirrors the HTTP read gate (assertChannelAccess): community
+ *  membership for free channels, plus an active entitlement (or owner/channels.manage)
+ *  for paid channels — so live push never leaks a locked paid channel's messages. */
 async function defaultCanAccessChannel(userId: string, channelId: number): Promise<boolean> {
   const [channel] = await db
-    .select({ communityId: communityChannelsTable.communityId })
+    .select({ communityId: communityChannelsTable.communityId, priceCredits: communityChannelsTable.priceCredits })
     .from(communityChannelsTable)
     .where(eq(communityChannelsTable.id, channelId))
     .limit(1);
   if (!channel) return false;
-  const [membership] = await db
-    .select({ id: communityMembersTable.id })
-    .from(communityMembersTable)
-    .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
+
+  const ctx = await getMemberContext(channel.communityId, userId);
+  if (ctx.isBanned) return false;
+  if (!ctx.isMember && !ctx.isOwner) return false;
+
+  if (isChannelFree({ priceCredits: channel.priceCredits })) return true;
+
+  const [entitlement] = await db
+    .select({ expiresAt: communityChannelEntitlementsTable.expiresAt })
+    .from(communityChannelEntitlementsTable)
+    .where(and(
+      eq(communityChannelEntitlementsTable.channelId, channelId),
+      eq(communityChannelEntitlementsTable.userId, userId),
+    ))
     .limit(1);
-  return Boolean(membership);
+  return canAccessChannel({
+    isFree: false,
+    isOwner: ctx.isOwner,
+    canManage: hasPermission(ctx, "channels.manage"),
+    entitlement: entitlement ?? null,
+    now: new Date(),
+  });
 }
 
 function parse(raw: WebSocket.RawData): ClientMessage | null {

@@ -107,6 +107,25 @@ async function assertChannelAccess(
   return true;
 }
 
+// Resolve + authorize a voice channel for the presence/signalling endpoints in one
+// place: 404 if gone, 403 if not a member, 402 if it's a locked paid channel.
+async function resolveVoiceChannelOrDeny(
+  userId: string,
+  channelId: number,
+  res: Response,
+): Promise<typeof communityChannelsTable.$inferSelect | null> {
+  const [channel] = await db.select().from(communityChannelsTable).where(eq(communityChannelsTable.id, channelId)).limit(1);
+  if (!channel) { res.status(404).json({ error: "Canale non trovato" }); return null; }
+  const [membership] = await db
+    .select({ id: communityMembersTable.id })
+    .from(communityMembersTable)
+    .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
+    .limit(1);
+  if (!membership) { res.status(403).json({ error: "Non sei membro" }); return null; }
+  if (!(await assertChannelAccess(userId, channel, res))) return null;
+  return channel;
+}
+
 // ─── List communities ──────────────────────────────────────────────────────────
 router.get("/community", async (req, res) => {
   const userId = requireAuth(req, res);
@@ -648,6 +667,7 @@ router.get("/community/voice/:channelId/presence", async (req, res) => {
   if (!userId) return;
   try {
     const channelId = parseInt(req.params.channelId);
+    if (!(await resolveVoiceChannelOrDeny(userId, channelId, res))) return;
     const cutoff = new Date(Date.now() - 15_000);
     const participants = await db
       .select()
@@ -674,6 +694,7 @@ router.post("/community/voice/:channelId/signal", async (req, res) => {
   try {
     const { to, type, data } = req.body;
     if (!to || !type) { res.status(400).json({ error: "Parametri mancanti" }); return; }
+    if (!(await resolveVoiceChannelOrDeny(userId, parseInt(req.params.channelId), res))) return;
     await pushSignal({ scope: `voice:${req.params.channelId}`, to, from: userId, type, data: data ?? "" });
     res.json({ ok: true });
   } catch (err) {
@@ -685,6 +706,7 @@ router.get("/community/voice/:channelId/signals", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
+    if (!(await resolveVoiceChannelOrDeny(userId, parseInt(req.params.channelId), res))) return;
     const signals = await consumeSignals(`voice:${req.params.channelId}`, userId);
     res.json({ signals });
   } catch (err) {
@@ -836,6 +858,10 @@ router.get("/uploads/community-files/:filename", async (req, res) => {
 
     const ctx = await getMemberContext(file.communityId, userId);
     if (!ctx.isMember && !ctx.isOwner) { res.status(403).json({ error: "Non sei membro della community" }); return; }
+
+    // Paid-channel gate (sub-project C): a file in a locked channel needs an entitlement.
+    const [fileChannel] = await db.select().from(communityChannelsTable).where(eq(communityChannelsTable.id, file.channelId)).limit(1);
+    if (fileChannel && !(await assertChannelAccess(userId, fileChannel, res))) return;
 
     const filePath = path.join(COMMUNITY_FILES_DIR, filename);
     if (!fs.existsSync(filePath)) { res.status(404).json({ error: "File non trovato sul server" }); return; }

@@ -1,14 +1,17 @@
 // Atomic "unlock a paid channel" orchestration (sub-project C). One transaction:
-// load the channel, guard the purchase, move credits buyer → owner, and upsert the
-// buyer's entitlement — so a crash can never charge a buyer without granting access.
+// take a per-(channel,user) advisory lock, load the channel FOR UPDATE, authorize the
+// buyer (member, not banned, not owner/manager), guard the purchase, move credits
+// buyer → owner, and upsert the entitlement — so no crash or concurrent double-click
+// can charge a buyer without granting access, or charge twice for one unlock.
 import {
   db,
   communitiesTable,
   communityChannelsTable,
   communityChannelEntitlementsTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { transferCredits, getBalance } from "../credits/wallet.js";
+import { getMemberContext, hasPermission } from "../communityPermissions.js";
 import { isChannelFree, canPurchase, computeEntitlementExpiry } from "./channelAccess.js";
 
 export class ChannelNotFoundError extends Error {
@@ -23,6 +26,12 @@ export class AlreadyOwnedError extends Error {
 export class OwnerCannotBuyError extends Error {
   constructor() { super("owner_cannot_buy"); this.name = "OwnerCannotBuyError"; }
 }
+export class NotMemberError extends Error {
+  constructor() { super("not_member"); this.name = "NotMemberError"; }
+}
+export class BannedError extends Error {
+  constructor() { super("banned"); this.name = "BannedError"; }
+}
 
 export interface UnlockResult {
   balance: number;
@@ -35,10 +44,17 @@ export async function unlockChannel(userId: string, channelId: number): Promise<
   const now = new Date();
 
   const expiresAt = await db.transaction(async (tx) => {
+    // Serialize concurrent unlocks of THIS channel by THIS user (the double-click /
+    // client-retry TOCTOU): the second waits, then reads the first's committed
+    // entitlement and is rejected instead of charging twice.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`chan:${channelId}:user:${userId}`}))`);
+
+    // FOR UPDATE so a concurrent channel delete/price change serializes against us.
     const [channel] = await tx
       .select()
       .from(communityChannelsTable)
       .where(eq(communityChannelsTable.id, channelId))
+      .for("update")
       .limit(1);
     if (!channel) throw new ChannelNotFoundError();
     if (isChannelFree(channel)) throw new ChannelFreeError();
@@ -49,8 +65,13 @@ export async function unlockChannel(userId: string, channelId: number): Promise<
       .where(eq(communitiesTable.id, channel.communityId))
       .limit(1);
     if (!community) throw new ChannelNotFoundError();
-    // The owner (and manage roles) already preview paid channels for free.
-    if (community.creatorId === userId) throw new OwnerCannotBuyError();
+
+    // Authorize the buyer: owners and channels.manage holders already preview paid
+    // channels for free (don't charge them); non-members and banned users can't buy.
+    const ctx = await getMemberContext(channel.communityId, userId);
+    if (ctx.isOwner || hasPermission(ctx, "channels.manage")) throw new OwnerCannotBuyError();
+    if (ctx.isBanned) throw new BannedError();
+    if (!ctx.isMember) throw new NotMemberError();
 
     const [existing] = await tx
       .select({ expiresAt: communityChannelEntitlementsTable.expiresAt })
@@ -62,6 +83,10 @@ export async function unlockChannel(userId: string, channelId: number): Promise<
         ),
       )
       .limit(1);
+
+    // A permanent (one-time) grant is never re-charged, even if the creator later
+    // switched the model to subscription — the buyer keeps what they paid for.
+    if (existing && existing.expiresAt === null) throw new AlreadyOwnedError();
 
     const accessModel = channel.accessModel ?? "one_time";
     const purchasable = canPurchase({

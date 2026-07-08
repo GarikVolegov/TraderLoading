@@ -19,6 +19,8 @@ import {
   ChannelFreeError,
   AlreadyOwnedError,
   OwnerCannotBuyError,
+  NotMemberError,
+  BannedError,
 } from "../services/community/channelUnlock.js";
 import { InsufficientCreditsError } from "../services/credits/wallet.js";
 
@@ -82,6 +84,8 @@ router.post("/community/channels/:channelId/unlock", async (req, res) => {
     if (err instanceof ChannelNotFoundError) { res.status(404).json({ error: "Canale non trovato" }); return; }
     if (err instanceof ChannelFreeError) { res.status(400).json({ error: "Canale gratuito", code: "free" }); return; }
     if (err instanceof OwnerCannotBuyError) { res.status(400).json({ error: "Hai già accesso", code: "already_access" }); return; }
+    if (err instanceof NotMemberError) { res.status(403).json({ error: "Non sei membro", code: "not_member" }); return; }
+    if (err instanceof BannedError) { res.status(403).json({ error: "Sei stato bannato", code: "banned" }); return; }
     if (err instanceof AlreadyOwnedError) { res.status(409).json({ error: "Accesso già attivo", code: "already_owned" }); return; }
     if (err instanceof InsufficientCreditsError) { res.status(402).json({ error: "Crediti insufficienti", code: "insufficient_credits" }); return; }
     console.error("POST /community/channels/:channelId/unlock error:", err);
