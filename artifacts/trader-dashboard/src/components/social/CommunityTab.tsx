@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings } from "lucide-react";
+import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings, Lock, Coins } from "lucide-react";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { useCommunities, useCommunityDetail } from "./hooks";
@@ -13,6 +13,8 @@ import { CommunityReviews } from "./CommunityReviews";
 import { StarRating } from "./StarRating";
 import { TextChannelView } from "./TextChannelView";
 import { VoiceChannelView } from "./VoiceChannelView";
+import { ChannelUnlockPanel } from "./ChannelUnlockPanel";
+import { ChannelPricingModal } from "./ChannelPricingModal";
 
 export function CommunityTab({
   currentUserId,
@@ -35,6 +37,7 @@ export function CommunityTab({
     useCommunityDetail(selectedCommunityId);
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [pricingChannelId, setPricingChannelId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<
@@ -293,23 +296,44 @@ export function CommunityTab({
                     </button>
                   )}
                 </div>
-                {channels.map((ch) => (
-                  <button
+                {channels.map((ch) => {
+                  const isPaid = !!ch.priceCredits && ch.priceCredits > 0;
+                  return (
+                  <div
                     key={ch.id}
-                    onClick={() => selectChannel(ch.id)}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-all hover:bg-secondary/40 rounded-lg mx-1 ${selectedChannelId === ch.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`group flex items-center rounded-lg mx-1 ${selectedChannelId === ch.id ? "bg-primary/10" : "hover:bg-secondary/40"}`}
                     style={{ width: "calc(100% - 8px)" }}
                   >
-                    {ch.type === "text" ? (
-                      <Hash className="w-3.5 h-3.5 shrink-0" />
-                    ) : (
-                      <Volume2 className="w-3.5 h-3.5 shrink-0" />
+                    <button
+                      onClick={() => selectChannel(ch.id)}
+                      className={`flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 text-left transition-all ${selectedChannelId === ch.id ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {ch.type === "text" ? (
+                        <Hash className="w-3.5 h-3.5 shrink-0" />
+                      ) : (
+                        <Volume2 className="w-3.5 h-3.5 shrink-0" />
+                      )}
+                      <span className="text-xs font-medium truncate">{ch.name}</span>
+                      {ch.locked && <Lock className="w-3 h-3 shrink-0 opacity-70" />}
+                      {isPaid && (
+                        <span className="ml-auto flex items-center gap-0.5 text-[10px] tabular-nums shrink-0">
+                          <Coins className="w-3 h-3" />
+                          {ch.priceCredits}
+                        </span>
+                      )}
+                    </button>
+                    {canManageChannels && (
+                      <button
+                        onClick={() => setPricingChannelId(ch.id)}
+                        aria-label={t("channel.access.pricing_title")}
+                        className="p-1 mr-1 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity shrink-0"
+                      >
+                        <Settings className="w-3 h-3" />
+                      </button>
                     )}
-                    <span className="text-xs font-medium truncate">
-                      {ch.name}
-                    </span>
-                  </button>
-                ))}
+                  </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -360,7 +384,9 @@ export function CommunityTab({
     showReviews && communityDetail ? (
       <CommunityReviews detail={communityDetail} />
     ) : selectedChannel && communityDetail?.isMember ? (
-      selectedChannel.type === "text" ? (
+      selectedChannel.locked ? (
+        <ChannelUnlockPanel channel={selectedChannel} />
+      ) : selectedChannel.type === "text" ? (
         <TextChannelView
           channel={selectedChannel}
           currentUserId={currentUserId}
@@ -530,6 +556,12 @@ export function CommunityTab({
           onClose={() => setShowSettings(false)}
         />
       )}
+      {pricingChannelId != null && communityDetail && (() => {
+        const ch = communityDetail.channels.find((c) => c.id === pricingChannelId);
+        return ch ? (
+          <ChannelPricingModal channel={ch} onClose={() => setPricingChannelId(null)} />
+        ) : null;
+      })()}
     </>
   );
 }
