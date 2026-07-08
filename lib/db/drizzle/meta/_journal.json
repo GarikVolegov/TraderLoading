@@ -204,6 +204,13 @@
       "when": 1784044800000,
       "tag": "0028_credit_wallet",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1784131200000,
+      "tag": "0029_channel_paid_access",
+      "breakpoints": true
     }
   ]
 }

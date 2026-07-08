@@ -88,9 +88,28 @@ export const communityChannelsTable = pgTable("community_channels", {
   name: text("name").notNull(),
   type: text("type").notNull().default("text"),
   position: integer("position").notNull().default(0),
+  // Paid-channel pricing (sub-project C). NULL / <= 0 price ⇒ free channel.
+  priceCredits: integer("price_credits"),
+  accessModel: text("access_model"), // 'one_time' | 'subscription' (only when priced)
+  subscriptionPeriodDays: integer("subscription_period_days"), // > 0 when subscription
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [
   index("community_channels_community_idx").on(t.communityId),
+]);
+
+// Per-user access to a paid channel (sub-project C). One row per (channel,user);
+// renewals update `expiresAt` in place. NULL expiry ⇒ permanent (one-time unlock).
+export const communityChannelEntitlementsTable = pgTable("community_channel_entitlements", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  channelId: integer("channel_id").notNull(),
+  userId: text("user_id").notNull(),
+  source: text("source").notNull(), // 'purchase' | 'grant'
+  grantedAt: timestamp("granted_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"),
+}, (t) => [
+  uniqueIndex("community_channel_entitlements_pair_idx").on(t.channelId, t.userId),
+  index("community_channel_entitlements_user_idx").on(t.userId),
 ]);
 
 export const communityMessagesTable = pgTable("community_messages", {
@@ -210,6 +229,7 @@ export type CommunityMute = typeof communityMutesTable.$inferSelect;
 export type CommunityReview = typeof communityReviewsTable.$inferSelect;
 export type CommunityReviewReport = typeof communityReviewReportsTable.$inferSelect;
 export type CommunityChannel = typeof communityChannelsTable.$inferSelect;
+export type CommunityChannelEntitlement = typeof communityChannelEntitlementsTable.$inferSelect;
 export type CommunityMessage = typeof communityMessagesTable.$inferSelect;
 export type CommunityFile = typeof communityFilesTable.$inferSelect;
 export type VoicePresence = typeof voicePresenceTable.$inferSelect;
