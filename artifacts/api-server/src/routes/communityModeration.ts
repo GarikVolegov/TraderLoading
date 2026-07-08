@@ -8,6 +8,8 @@ import {
   communityMessagesTable,
   communityChannelsTable,
   communityMessageReportsTable,
+  communityJoinRequestsTable,
+  communityRolesTable,
   profileTable,
 } from "@workspace/db";
 import { eq, and, asc, desc, sql } from "drizzle-orm";
@@ -319,6 +321,88 @@ router.post("/community/message-reports/:reportId/resolve", async (req, res) => 
     res.json({ ok: true });
   } catch (err) {
     console.error("POST /community/message-reports/:reportId/resolve error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
+// ─── Private-community join requests (audit 0.5b) ────────────────────────────
+router.get("/community/:id/join-requests", async (req, res) => {
+  const communityId = parseInt(req.params.id);
+  const ctx = await requirePermission(req, res, communityId, "members.kick");
+  if (!ctx) return;
+  try {
+    const rows = await db
+      .select({
+        id: communityJoinRequestsTable.id,
+        userId: communityJoinRequestsTable.userId,
+        message: communityJoinRequestsTable.message,
+        createdAt: communityJoinRequestsTable.createdAt,
+        userName: profileTable.name,
+        avatarUrl: profileTable.avatarUrl,
+      })
+      .from(communityJoinRequestsTable)
+      .leftJoin(profileTable, eq(profileTable.userId, communityJoinRequestsTable.userId))
+      .where(and(
+        eq(communityJoinRequestsTable.communityId, communityId),
+        eq(communityJoinRequestsTable.status, "pending"),
+      ))
+      .orderBy(desc(communityJoinRequestsTable.createdAt));
+    res.json({ requests: rows });
+  } catch (err) {
+    console.error("GET /community/:id/join-requests error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
+router.post("/community/:id/join-requests/:requestId/resolve", async (req, res) => {
+  const communityId = parseInt(req.params.id);
+  const ctx = await requirePermission(req, res, communityId, "members.kick");
+  if (!ctx) return;
+  try {
+    const requestId = parseInt(req.params.requestId);
+    const decision = req.body?.decision;
+    if (decision !== "approve" && decision !== "reject") {
+      res.status(400).json({ error: "Decisione non valida" }); return;
+    }
+    const [request] = await db
+      .select()
+      .from(communityJoinRequestsTable)
+      .where(and(
+        eq(communityJoinRequestsTable.id, requestId),
+        eq(communityJoinRequestsTable.communityId, communityId),
+      ))
+      .limit(1);
+    if (!request) { res.status(404).json({ error: "Richiesta non trovata" }); return; }
+    if (request.status !== "pending") { res.status(409).json({ error: "Richiesta gia' gestita" }); return; }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(communityJoinRequestsTable)
+        .set({ status: decision === "approve" ? "approved" : "rejected", decidedByUserId: ctx.userId, decidedAt: new Date() })
+        .where(eq(communityJoinRequestsTable.id, requestId));
+
+      if (decision === "approve") {
+        const [defaultRole] = await tx
+          .select({ id: communityRolesTable.id })
+          .from(communityRolesTable)
+          .where(and(eq(communityRolesTable.communityId, communityId), eq(communityRolesTable.isDefault, true)))
+          .limit(1);
+        const inserted = await tx
+          .insert(communityMembersTable)
+          .values({ communityId, userId: request.userId, role: "member", roleId: defaultRole?.id ?? null })
+          .onConflictDoNothing({ target: [communityMembersTable.communityId, communityMembersTable.userId] })
+          .returning({ id: communityMembersTable.id });
+        if (inserted.length > 0) {
+          await tx
+            .update(communitiesTable)
+            .set({ memberCount: sql`${communitiesTable.memberCount} + 1` })
+            .where(eq(communitiesTable.id, communityId));
+        }
+      }
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /community/:id/join-requests/:requestId/resolve error:", err);
     res.status(500).json({ error: "Errore interno" });
   }
 });
