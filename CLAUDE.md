@@ -198,6 +198,25 @@ was adversarially self-reviewed (multi-agent workflows) — 6 real bugs found+fi
 measurement id, flip the email flag, Sentry PR #6 merge + token rotation, manual visual/device QA of the design+PWA
 changes, and 4.4 tests (need CI Postgres/jsdom). 5A/5C big features need a brainstorming pass before code.
 
+**Community monetization (A+B+C) — shipped (2026-07-08/09, branch `feat/community-management`).** Telegram-style
+paid/private communities, decomposed A→D; **in-app credits have NO cash value** (non-refundable/withdrawable,
+forfeited on account deletion — stays out of e-money regulation). All **off-contract**. Migrations **0027–0029**.
+- **A private + owner-approved join** (was audit 0.5b): `community_join_requests`, pure `services/community/joinPolicy.ts`,
+  request queue gated `members.kick`. Private communities are discoverable-but-locked (cover-only for non-members).
+- **B credit wallet + Stripe purchase**: `credit_wallets` + append-only `credit_transactions` (unique `stripe_event_id`
+  = idempotent grant). Pure `services/credits/{ledger,packs}.ts` (packs read `STRIPE_CREDIT_PRICE_{STARTER,PLUS,PRO}`),
+  `services/credits/wallet.ts` (getBalance/spend/grant/**transferCredits** atomic). Webhook branch in `routes/billing.ts`.
+  FE `components/settings/CreditsSettingsSection.tsx` (Settings → abbonamento; hidden until price IDs set → ships dark).
+- **C per-channel paid access** (creator picks **one-time OR subscription** per channel): channel price cols +
+  `community_channel_entitlements` (NULL expiry = permanent). Pure `services/community/channelAccess.ts`;
+  `channelUnlock.ts` = one tx (pg_advisory_xact_lock → FOR UPDATE → member/ban/manage gate → transferCredits buyer→owner
+  → upsert entitlement). Choke point `assertChannelAccess` in `routes/community.ts` on messages/files/voice + file-download
+  + WS `socketServer.ts`. Endpoints `routes/communityChannels.ts` (pricing PATCH `channels.manage` / unlock / access).
+  FE `components/social/{ChannelUnlockPanel,ChannelPricingModal}.tsx` + rail locks. **D real-money payout DEFERRED**
+  (Stripe Connect/KYC/AML). Adversarially reviewed (Workflow, 13 findings) — fixed a **critical TOCTOU double-charge**
+  + ungated content paths. Specs/plans: `docs/superpowers/{specs,plans}/2026-07-0{8,9}-*` (join / credit-wallet / paid-channels).
+  **Activation = user/env:** set the 3 `STRIPE_CREDIT_PRICE_*` ids; live purchase + route-authz e2e need CI Postgres/Stripe.
+
 > This section changes the most session-to-session — update it as the work moves.
 
 ## 8. Conventions & gotchas
