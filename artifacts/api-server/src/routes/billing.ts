@@ -528,9 +528,11 @@ async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<v
   if (event.type === "charge.dispute.created" || event.type === "charge.refunded") {
     // Claw back any CREDITS bought with this charge (sub-project B/D anti-fraud): a
     // refunded/disputed credit purchase must not stay spendable/cashable. Maps by the
-    // charge's payment_intent → the purchase grant; force-debits (may go negative).
-    const charge = event.data.object as Stripe.Charge;
-    const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id ?? null;
+    // payment_intent → the purchase grant; force-debits (may go negative). The refund
+    // event object is a Charge and the dispute object is a Dispute; both carry payment_intent.
+    const obj = event.data.object as Stripe.Charge | Stripe.Dispute;
+    const pi = obj.payment_intent;
+    const paymentIntentId = typeof pi === "string" ? pi : pi?.id ?? null;
     if (paymentIntentId) await reverseCreditPurchase(paymentIntentId, event.id);
 
     const customerId = await chargeCustomerId(event, stripe);
