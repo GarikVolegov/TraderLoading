@@ -223,6 +223,10 @@ forfeited on account deletion — stays out of e-money regulation). All **off-co
   (only transfers.create refund-guarded; refund only on deterministic StripeInvalidRequestError, ambiguous→pending for
   reconcile) + **AML** (only EARNED credits cashable, purchased excluded) + currency/overflow/account-race. Specs:
   `docs/superpowers/specs/2026-07-0{8,9}-*` (join / credit-wallet / paid-channels / creator-payout).
+- **Cross-cutting seam review** (arc A→D, migrations up to **0032**) fixed a **HIGH fiat-loss hole**: credit
+  chargebacks (`charge.refunded`/`dispute.created`) now reverse the granted credits (purchase grants persist
+  `stripe_payment_intent_id`; `reverseCreditPurchase` force-debits, may go negative → earned-cap blocks cashout);
+  plus earned = NET channel activity, concurrent double-cashout closed, GDPR coverage regex + library `created_by`.
   **Activation = user/env:** set `STRIPE_CREDIT_PRICE_*` (B) + `PAYOUT_CREDIT_CENTS`/`PAYOUT_*` (D, test-mode Connect
   first); live purchase/transfer + route-authz e2e need CI Postgres/Stripe. Full suite **340/340** green.
 
