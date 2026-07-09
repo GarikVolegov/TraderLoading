@@ -10,6 +10,7 @@ import {
   PayoutValidationError,
   AccountNotReadyError,
   TransferFailedError,
+  PayoutPendingError,
 } from "../services/payout/payoutService.js";
 
 const router: IRouter = Router();
@@ -87,6 +88,8 @@ router.post("/payout/request", async (req, res) => {
       return;
     }
     if (err instanceof AccountNotReadyError) { res.status(409).json({ error: "Account non pronto", code: "account_not_ready" }); return; }
+    // The Transfer may have executed — tell the client it's processing (reconcile finalizes).
+    if (err instanceof PayoutPendingError) { res.status(202).json({ status: "pending", code: "pending" }); return; }
     if (err instanceof TransferFailedError) { res.status(502).json({ error: "Trasferimento fallito (crediti restituiti)", code: "transfer_failed" }); return; }
     console.error("POST /payout/request error:", err);
     res.status(500).json({ error: "Errore interno" });

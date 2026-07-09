@@ -14,6 +14,8 @@ export const creatorPayoutAccountsTable = pgTable("creator_payout_accounts", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [
   uniqueIndex("creator_payout_accounts_user_unique").on(t.userId),
+  // One row per Stripe account — the account.updated webhook maps by this id.
+  uniqueIndex("creator_payout_accounts_stripe_unique").on(t.stripeAccountId),
 ]);
 
 export const creatorPayoutsTable = pgTable("creator_payouts", {

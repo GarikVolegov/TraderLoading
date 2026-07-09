@@ -218,6 +218,13 @@
       "when": 1784217600000,
       "tag": "0030_creator_payout",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1784304000000,
+      "tag": "0031_payout_account_stripe_unique",
+      "breakpoints": true
     }
   ]
 }

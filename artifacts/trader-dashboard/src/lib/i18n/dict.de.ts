@@ -1422,6 +1422,7 @@ const dict: Record<string, string> = {
   "payout.insufficient": "Du hast nicht genug Guthaben.",
   "payout.onboard_cta": "Auszahlungen einrichten",
   "payout.onboard_hint": "Richte Auszahlungen ein, um dein verdientes Guthaben in echtes Geld umzuwandeln.",
+  "payout.pending": "Auszahlung wird verarbeitet. Sie wird in Kürze abgeschlossen.",
   "payout.requested": "Auszahlung angefordert.",
   "payout.title": "Auszahlen",
   "referral.copied": "Link kopiert",

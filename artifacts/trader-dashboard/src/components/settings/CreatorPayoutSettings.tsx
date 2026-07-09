@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Banknote, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-import { fetchCreditWallet, creditWalletKey } from "@/lib/creditsApi";
+import { creditWalletKey } from "@/lib/creditsApi";
 import {
   fetchPayoutConfig,
   fetchPayoutAccount,
@@ -27,7 +27,6 @@ export function CreatorPayoutSettings() {
   const enabled = config?.enabled === true;
 
   const { data: account } = useQuery({ queryKey: payoutAccountKey(), queryFn: fetchPayoutAccount, retry: false, enabled });
-  const { data: wallet } = useQuery({ queryKey: creditWalletKey(), queryFn: fetchCreditWallet, retry: false, enabled });
 
   const onboard = useMutation({
     mutationFn: startPayoutOnboarding,
@@ -37,10 +36,12 @@ export function CreatorPayoutSettings() {
 
   const cashOut = useMutation({
     mutationFn: () => requestPayout(parseInt(credits) || 0),
-    onSuccess: () => {
+    onSuccess: (r) => {
       setCredits("");
       qc.invalidateQueries({ queryKey: creditWalletKey() });
-      toast({ description: t("payout.requested") });
+      qc.invalidateQueries({ queryKey: payoutAccountKey() });
+      // 202 ⇒ the transfer is still being confirmed (reconcile finalizes it).
+      toast({ description: r?.status === "pending" ? t("payout.pending") : t("payout.requested") });
     },
     onError: (err) => {
       const code = (err as { status?: number })?.status;
@@ -51,7 +52,8 @@ export function CreatorPayoutSettings() {
   // Dark by default: render nothing until the operator configures payouts.
   if (!config || !enabled) return null;
 
-  const balance = wallet?.balance ?? 0;
+  // Only EARNED-and-uncashed credits are cashable (purchased credits can't be cashed out).
+  const balance = account?.cashableCredits ?? 0;
   const ready = account?.onboarded && account?.payoutsEnabled;
   const creditsNum = parseInt(credits) || 0;
   const belowMin = creditsNum < config.minCredits;

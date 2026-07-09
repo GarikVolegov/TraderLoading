@@ -13,6 +13,7 @@ export interface PayoutAccount {
   payoutsEnabled: boolean;
   detailsSubmitted: boolean;
   status: string;
+  cashableCredits: number; // earned-and-uncashed credits (not the whole wallet)
 }
 
 export const payoutConfigKey = () => ["payout/config"] as const;

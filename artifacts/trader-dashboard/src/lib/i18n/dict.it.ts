@@ -1422,6 +1422,7 @@ const dict: Record<string, string> = {
   "payout.insufficient": "Non hai abbastanza crediti.",
   "payout.onboard_cta": "Configura i pagamenti",
   "payout.onboard_hint": "Configura i pagamenti per convertire i crediti guadagnati in denaro reale.",
+  "payout.pending": "Prelievo in elaborazione. Verrà completato a breve.",
   "payout.requested": "Prelievo richiesto.",
   "payout.title": "Preleva",
   "referral.copied": "Link copiato",
