@@ -211,6 +211,13 @@
       "when": 1784131200000,
       "tag": "0029_channel_paid_access",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1784217600000,
+      "tag": "0030_creator_payout",
+      "breakpoints": true
     }
   ]
 }
