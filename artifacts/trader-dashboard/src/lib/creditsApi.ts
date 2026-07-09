@@ -9,6 +9,20 @@ export interface CreditPack {
 
 export const creditWalletKey = () => ["/api/credits/wallet"] as const;
 export const creditPacksKey = () => ["/api/credits/packs"] as const;
+export const creditTransactionsKey = () => ["/api/credits/transactions"] as const;
+
+export interface CreditTransaction {
+  id: number;
+  delta: number;
+  reason: string;
+  refId: string | null;
+  balanceAfter: number;
+  createdAt: string;
+}
+
+export function fetchCreditTransactions(): Promise<{ transactions: CreditTransaction[]; nextCursor: number | null }> {
+  return apiJSON("credits/transactions");
+}
 
 export function fetchCreditWallet(): Promise<{ balance: number }> {
   return apiJSON("credits/wallet");

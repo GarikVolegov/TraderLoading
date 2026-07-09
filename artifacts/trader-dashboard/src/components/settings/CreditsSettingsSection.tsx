@@ -10,6 +10,7 @@ import {
   creditWalletKey,
   creditPacksKey,
 } from "@/lib/creditsApi";
+import { CreditActivity } from "./CreditActivity";
 
 // In-app credit wallet (sub-project B). Shows the balance + buy-credit packs that
 // redirect to Stripe Checkout. Packs with no configured Stripe price are hidden,
@@ -62,6 +63,8 @@ export function CreditsSettingsSection() {
           ))}
         </div>
       )}
+
+      <CreditActivity />
 
       <p className="text-[10px] leading-snug text-muted-foreground">{t("credits.disclaimer")}</p>
     </div>

@@ -13,6 +13,7 @@ import {
   payoutConfigKey,
   payoutAccountKey,
 } from "@/lib/payoutApi";
+import { PayoutHistory } from "./PayoutHistory";
 
 // Creator cash-out card (sub-project D). Hidden entirely unless payouts are configured
 // (dark by default). Shows onboarding when the Connect account isn't ready, else a
@@ -110,6 +111,8 @@ export function CreatorPayoutSettings() {
           </button>
         </>
       )}
+
+      {account?.onboarded && <PayoutHistory />}
 
       <p className="text-[10px] leading-snug text-muted-foreground">{t("payout.disclaimer")}</p>
     </div>

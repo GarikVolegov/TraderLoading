@@ -1,6 +1,8 @@
 // Creator payout endpoints (sub-project D). Off-contract. Dark by default: without
 // PAYOUT_CREDIT_CENTS + a Stripe secret every route reports disabled and the UI hides.
 import { Router, type IRouter, type Request, type Response } from "express";
+import { db, creatorPayoutsTable } from "@workspace/db";
+import { desc, eq } from "drizzle-orm";
 import { getStripeBillingConfig, createStripeClient } from "../lib/billing.js";
 import { createMoneyRateLimiter } from "../lib/moneyRateLimit.js";
 import { readPayoutConfig, isPayoutConfigured } from "../services/payout/payoutMath.js";
@@ -46,6 +48,31 @@ router.get("/payout/config", (_req, res) => {
     feeBps: config.feeBps,
     currency: config.currency,
   });
+});
+
+// ─── The creator's own payout history (transparency) ─────────────────────────
+router.get("/payout/history", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  try {
+    const rows = await db
+      .select({
+        id: creatorPayoutsTable.id,
+        credits: creatorPayoutsTable.credits,
+        netCents: creatorPayoutsTable.netCents,
+        currency: creatorPayoutsTable.currency,
+        status: creatorPayoutsTable.status,
+        createdAt: creatorPayoutsTable.createdAt,
+      })
+      .from(creatorPayoutsTable)
+      .where(eq(creatorPayoutsTable.userId, userId))
+      .orderBy(desc(creatorPayoutsTable.id))
+      .limit(50);
+    res.json({ payouts: rows });
+  } catch (err) {
+    console.error("GET /payout/history error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
 });
 
 // ─── Viewer's Connect account status ─────────────────────────────────────────

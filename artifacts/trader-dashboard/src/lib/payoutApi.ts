@@ -18,6 +18,20 @@ export interface PayoutAccount {
 
 export const payoutConfigKey = () => ["payout/config"] as const;
 export const payoutAccountKey = () => ["payout/account"] as const;
+export const payoutHistoryKey = () => ["payout/history"] as const;
+
+export interface PayoutHistoryRow {
+  id: number;
+  credits: number;
+  netCents: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+}
+
+export function fetchPayoutHistory(): Promise<{ payouts: PayoutHistoryRow[] }> {
+  return apiJSON("payout/history");
+}
 
 export function fetchPayoutConfig(): Promise<PayoutConfig> {
   return apiJSON("payout/config");
