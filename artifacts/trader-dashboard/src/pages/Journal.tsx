@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, addWeeks, isWithinInterval } from "date-fns";
 import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles } from "lucide-react";
@@ -41,8 +42,7 @@ import {
   saveJournalRecap,
   type JournalRecapFields,
 } from "@/lib/journalRecapsApi";
-
-type Tab = "panoramica" | "trades" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
+import { parseJournalTab, type JournalTab } from "@/lib/journalTabs";
 
 function SyncedTradeDetails({ content }: { content: string }) {
   const parsed = useMemo(() => parseTradeContent(content), [content]);
@@ -1100,9 +1100,11 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
 
 export default function Journal() {
   const { t } = useLanguage();
-  const [tab, setTab] = useState<Tab>("panoramica");
+  const [, navigate] = useLocation();
+  const tab = parseJournalTab(useSearch());
+  const setTab = (next: JournalTab) => navigate(`/journal?t=${next}`);
 
-  const tabs: { id: Tab; labelKey: string; icon: typeof BookOpen }[] = [
+  const tabs: { id: JournalTab; labelKey: string; icon: typeof BookOpen }[] = [
     { id: "panoramica", labelKey: "journal.tab.overview", icon: TrendingUp },
     { id: "trades", labelKey: "journal.tab.trades", icon: BookOpen },
     { id: "recap-settimanale", labelKey: "journal.tab.weekly", icon: BarChart3 },

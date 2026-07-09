@@ -230,6 +230,19 @@ forfeited on account deletion — stays out of e-money regulation). All **off-co
   **Activation = user/env:** set `STRIPE_CREDIT_PRICE_*` (B) + `PAYOUT_CREDIT_CENTS`/`PAYOUT_*` (D, test-mode Connect
   first); live purchase/transfer + route-authz e2e need CI Postgres/Stripe. Full suite **340/340** green.
 
+**Bottom nav — generalized contextual hub swap (2026-07-10, done).** The two-level contextual bar built for the
+Community hub (PR #5) is now a generic multi-hub mechanism: `lib/navHubs.ts` (`HUBS` registry + `matchHub(location)`
++ `splitHubItems` mobile-pill-fit rule — ≤5 sub-items shown flat, >5 → 4 primary + a "Più" overflow `Sheet`) replaces
+the old hardcoded `COMMUNITY_ROUTES` boolean in `BottomNav.tsx`. Journal and Zen (each with 6 in-page tabs, previously
+local-state-only) are now hubs too, deep-linkable via `?t=` (`lib/journalTabs.ts`/`zenTabs.ts`, mirroring the
+pre-existing `chatTabs.ts`); Backtest/Wiki/Library/Routine stay flat (no internal tab structure to promote). The
+desktop sidebar (previously always flat, an explicit non-goal in the original spec) is now hub-contextual too,
+showing the full hub item list with no overflow cap. TDD throughout (`navHubs.test.ts` + per-hub `.static.test.ts`),
+adversarially reviewed (1 real bug found+fixed: the `?t=` active-tab fallback was hardcoded to Community's `"social"`,
+leaving Journal/Zen's own default tab unhighlighted on a bare `/journal`/`/zen` load — fixed via a `defaultTab` prop).
+Manually verified live via `scripts/verify-nav-hubs/drive.mjs` (Clerk test-user Playwright driver, mirrors
+`verify-archive`). `BottomNav.community-nav.static.test.ts` retired in favor of `BottomNav.hub-nav.static.test.ts`.
+
 > This section changes the most session-to-session — update it as the work moves.
 
 ## 8. Conventions & gotchas

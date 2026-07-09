@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageLayout } from "@/components/PageLayout";
@@ -10,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Eye, BookOpen, Heart, Clock, Play, Pause, RotateCcw, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MoodPerformanceInsight } from "@/components/MoodPerformanceInsight";
+import { parseZenTab, type ZenTab } from "@/lib/zenTabs";
 
 type Phase = "inspira" | "trattieni" | "espira" | "riposa";
 
@@ -412,6 +414,9 @@ function MeditationTimer() {
 
 export default function Zen() {
   const { t } = useLanguage();
+  const [, navigate] = useLocation();
+  const tab = parseZenTab(useSearch());
+  const setTab = (next: ZenTab) => navigate(`/zen?t=${next}`);
   return (
     <PageLayout>
       <PageHeader title={t("zen.title")} subtitle={t("zen.subtitle")} />
@@ -420,7 +425,7 @@ export default function Zen() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Tabs defaultValue="breathing" className="w-full">
+        <Tabs value={tab} onValueChange={(next) => setTab(next as ZenTab)} className="w-full">
           <div className="flex flex-col md:flex-row gap-4 md:gap-6">
             <TabsList className="flex md:flex-col w-full md:w-1/3 h-auto gap-1 bg-card/50 backdrop-blur-md p-1.5 rounded-xl border border-border md:self-start">
               <TabsTrigger value="breathing"     className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.breathing")}</TabsTrigger>
