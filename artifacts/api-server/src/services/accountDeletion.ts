@@ -332,6 +332,11 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`DELETE FROM credit_transactions WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM credit_wallets WHERE user_id = ${userId}`);
 
+    // Creator payout records (sub-project D): erase OUR copy of the Connect linkage +
+    // payout ledger. Stripe retains its own account/transfer records for legal/tax.
+    await tx.execute(sql`DELETE FROM creator_payouts WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM creator_payout_accounts WHERE user_id = ${userId}`);
+
     // Legacy express-session store (jsonb). No-op under Clerk, safe otherwise.
     await tx.execute(sql`DELETE FROM sessions WHERE sess->'user'->>'id' = ${userId}`);
 

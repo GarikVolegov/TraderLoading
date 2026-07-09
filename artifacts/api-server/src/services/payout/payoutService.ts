@@ -31,6 +31,22 @@ export interface PayoutAccountStatus {
   status: string;
 }
 
+/** Sync a Connect account's capability state from a Stripe `account.updated` webhook.
+ *  Updates the existing row (created at onboarding) by its Stripe account id. */
+export async function syncConnectAccount(account: {
+  id: string;
+  payouts_enabled?: boolean | null;
+  details_submitted?: boolean | null;
+}): Promise<void> {
+  const payoutsEnabled = !!account.payouts_enabled;
+  const detailsSubmitted = !!account.details_submitted;
+  const status = payoutsEnabled ? "verified" : detailsSubmitted ? "restricted" : "pending";
+  await db
+    .update(creatorPayoutAccountsTable)
+    .set({ payoutsEnabled, detailsSubmitted, status, updatedAt: new Date() })
+    .where(eq(creatorPayoutAccountsTable.stripeAccountId, account.id));
+}
+
 export async function getAccountStatus(userId: string): Promise<PayoutAccountStatus> {
   const [row] = await db
     .select()

@@ -15,6 +15,7 @@ import {
 import logger from "../lib/logger.js";
 import { grantCredits } from "../services/credits/wallet.js";
 import { packCredits } from "../services/credits/packs.js";
+import { syncConnectAccount } from "../services/payout/payoutService.js";
 
 type SubscriptionLike = {
   plan: string;
@@ -479,6 +480,13 @@ export async function processStripeEventOnce(
 }
 
 async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<void> {
+  // Creator payout (sub-project D): Connect account capability changes (onboarding
+  // finished, payouts enabled/restricted) so /payout/account reflects Stripe's truth.
+  if (event.type === "account.updated") {
+    await syncConnectAccount(event.data.object as Stripe.Account);
+    return;
+  }
+
   if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
     await upsertStripeSubscription(event.data.object as Stripe.Subscription);
     return;
