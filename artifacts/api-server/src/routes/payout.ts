@@ -2,6 +2,7 @@
 // PAYOUT_CREDIT_CENTS + a Stripe secret every route reports disabled and the UI hides.
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getStripeBillingConfig, createStripeClient } from "../lib/billing.js";
+import { createMoneyRateLimiter } from "../lib/moneyRateLimit.js";
 import { readPayoutConfig, isPayoutConfigured } from "../services/payout/payoutMath.js";
 import {
   getAccountStatus,
@@ -14,6 +15,10 @@ import {
 } from "../services/payout/payoutService.js";
 
 const router: IRouter = Router();
+
+// Money-out + Stripe-Connect-resource endpoints get a tight per-user limit.
+const onboardLimiter = createMoneyRateLimiter({ windowMs: 60_000, limit: 5 });
+const payoutLimiter = createMoneyRateLimiter({ windowMs: 60_000, limit: 5 });
 
 function requireAuth(req: Request, res: Response): string | null {
   const userId = req.user?.id;
@@ -56,7 +61,7 @@ router.get("/payout/account", async (req, res) => {
 });
 
 // ─── Start / resume Stripe Connect onboarding ────────────────────────────────
-router.post("/payout/account/onboard", async (req, res) => {
+router.post("/payout/account/onboard", onboardLimiter, async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   const cfg = payoutStripe();
@@ -72,7 +77,7 @@ router.post("/payout/account/onboard", async (req, res) => {
 });
 
 // ─── Request a payout (spend credits → Stripe Transfer) ──────────────────────
-router.post("/payout/request", async (req, res) => {
+router.post("/payout/request", payoutLimiter, async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   const cfg = payoutStripe();

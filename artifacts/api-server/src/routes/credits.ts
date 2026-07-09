@@ -5,9 +5,13 @@ import { Router, type IRouter } from "express";
 import { createStripeClient, getStripeBillingConfig } from "../lib/billing.js";
 import { getBalance } from "../services/credits/wallet.js";
 import { CREDIT_PACKS, creditPackFor, packPriceId } from "../services/credits/packs.js";
+import { createMoneyRateLimiter } from "../lib/moneyRateLimit.js";
 import logger from "../lib/logger.js";
 
 const router: IRouter = Router();
+
+// Cap how often a user can spin up Stripe Checkout sessions.
+const checkoutLimiter = createMoneyRateLimiter({ windowMs: 60_000, limit: 10 });
 
 router.get("/credits/wallet", async (req, res) => {
   const userId = req.user?.id;
@@ -31,7 +35,7 @@ router.get("/credits/packs", (_req, res) => {
   });
 });
 
-router.post("/credits/checkout", async (req, res) => {
+router.post("/credits/checkout", checkoutLimiter, async (req, res) => {
   const user = req.user;
   if (!user?.id) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
   const pack = creditPackFor(req.body?.packId);

@@ -24,8 +24,13 @@ import {
   PriceChangedError,
 } from "../services/community/channelUnlock.js";
 import { InsufficientCreditsError } from "../services/credits/wallet.js";
+import { createMoneyRateLimiter } from "../lib/moneyRateLimit.js";
 
 const router: IRouter = Router();
+
+// Unlock spends credits — cap attempts per user (the advisory lock already blocks
+// double-charge, this bounds churn / brute abuse).
+const unlockLimiter = createMoneyRateLimiter({ windowMs: 60_000, limit: 20 });
 
 function requireAuth(req: Request, res: Response): string | null {
   const userId = req.user?.id;
@@ -72,11 +77,11 @@ router.patch("/community/channels/:channelId/pricing", async (req, res) => {
 });
 
 // ─── Unlock (purchase / renew) a paid channel ────────────────────────────────
-router.post("/community/channels/:channelId/unlock", async (req, res) => {
+router.post("/community/channels/:channelId/unlock", unlockLimiter, async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const channelId = parseInt(req.params.channelId);
+    const channelId = parseInt(String(req.params.channelId));
     if (isNaN(channelId)) { res.status(400).json({ error: "Canale non valido" }); return; }
 
     const rawExpected = req.body?.expectedPriceCredits;
