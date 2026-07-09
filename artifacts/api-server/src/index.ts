@@ -4,6 +4,7 @@ import app from "./app";
 import { cotScheduler } from "./routes/tools.js";
 import { startTorneiScheduler } from "./cron/torneiScheduler.js";
 import { startLifecycleScheduler } from "./cron/lifecycleScheduler.js";
+import { startPayoutScheduler } from "./cron/payoutScheduler.js";
 import { startSessionScheduler } from "./routes/push.js";
 import { attachAccountBridgeWebSocket } from "./services/accountBridge/socketServer.js";
 import { attachBrokerHubWebSocket } from "./services/brokerHub/socketServer.js";
@@ -59,6 +60,7 @@ const noopCloseHandle: CloseHandle = {
 let sessionScheduler: CloseHandle = noopCloseHandle;
 let torneiScheduler: { close(): void | Promise<void> } = { close() {} };
 let lifecycleScheduler: { close(): void | Promise<void> } = { close() {} };
+let payoutScheduler: { close(): void | Promise<void> } = { close() {} };
 let isShuttingDown = false;
 
 function closeHttpServer(): Promise<void> {
@@ -107,6 +109,7 @@ async function shutdown(reason: string, exitCode = 0): Promise<void> {
     sessionScheduler.close(),
     torneiScheduler.close(),
     lifecycleScheduler.close(),
+    payoutScheduler.close(),
     brokerHubRuntime.close(),
     cotScheduler.close(),
     newsHubRuntime.stop(),
@@ -162,6 +165,7 @@ server.listen(port, () => {
   sessionScheduler = startSessionScheduler();
   torneiScheduler = startTorneiScheduler();
   lifecycleScheduler = startLifecycleScheduler();
+  payoutScheduler = startPayoutScheduler();
   newsProviderSockets = attachNewsProviderSockets(newsHubRuntime);
   void newsHubRuntime.refresh({ force: true }).catch((error) => {
     logger.warn({ err: error }, "Initial news refresh failed");
