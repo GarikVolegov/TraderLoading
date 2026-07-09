@@ -159,6 +159,22 @@ export async function requestPayout(userId: string, credits: number, stripe: Str
   // ── Reserve: debit credits + write the pending payout row atomically ──────────
   const payoutId = await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`payout:user:${userId}`}))`);
+    // Authoritative EARNED re-check UNDER the lock. The pre-check above is racy: a
+    // concurrent payout's pending row wasn't visible then. Holding the per-user lock, a
+    // prior request has committed its pending row, so `earnedNow` already nets it out —
+    // two requests can't each cash the same earned credits. (The wallet FOR-UPDATE in
+    // spendCreditsInTx alone can't catch this: purchased credits mask the earned cap.)
+    const [er] = await tx
+      .select({ v: sql<string>`COALESCE(SUM(${creditTransactionsTable.delta}), 0)` })
+      .from(creditTransactionsTable)
+      .where(and(eq(creditTransactionsTable.userId, userId), eq(creditTransactionsTable.reason, "channel_sale"), gt(creditTransactionsTable.delta, 0)));
+    const [pr] = await tx
+      .select({ v: sql<string>`COALESCE(SUM(${creatorPayoutsTable.credits}), 0)` })
+      .from(creatorPayoutsTable)
+      .where(and(eq(creatorPayoutsTable.userId, userId), inArray(creatorPayoutsTable.status, ["paid", "pending"])));
+    const earnedNow = Math.max(0, Number(er?.v ?? 0) - Number(pr?.v ?? 0));
+    if (credits > earnedNow) throw new PayoutValidationError("insufficient");
+
     const [row] = await tx
       .insert(creatorPayoutsTable)
       .values({ userId, credits, grossCents, feeCents, netCents, currency: config.currency, status: "pending" })
