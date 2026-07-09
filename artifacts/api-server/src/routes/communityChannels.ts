@@ -21,6 +21,7 @@ import {
   OwnerCannotBuyError,
   NotMemberError,
   BannedError,
+  PriceChangedError,
 } from "../services/community/channelUnlock.js";
 import { InsufficientCreditsError } from "../services/credits/wallet.js";
 
@@ -78,11 +79,15 @@ router.post("/community/channels/:channelId/unlock", async (req, res) => {
     const channelId = parseInt(req.params.channelId);
     if (isNaN(channelId)) { res.status(400).json({ error: "Canale non valido" }); return; }
 
-    const result = await unlockChannel(userId, channelId);
+    const rawExpected = req.body?.expectedPriceCredits;
+    const expectedPriceCredits = typeof rawExpected === "number" && Number.isInteger(rawExpected) ? rawExpected : undefined;
+
+    const result = await unlockChannel(userId, channelId, expectedPriceCredits);
     res.json(result);
   } catch (err) {
     if (err instanceof ChannelNotFoundError) { res.status(404).json({ error: "Canale non trovato" }); return; }
     if (err instanceof ChannelFreeError) { res.status(400).json({ error: "Canale gratuito", code: "free" }); return; }
+    if (err instanceof PriceChangedError) { res.status(409).json({ error: "Prezzo cambiato", code: "price_changed", priceCredits: err.currentPrice }); return; }
     if (err instanceof OwnerCannotBuyError) { res.status(400).json({ error: "Hai già accesso", code: "already_access" }); return; }
     if (err instanceof NotMemberError) { res.status(403).json({ error: "Non sei membro", code: "not_member" }); return; }
     if (err instanceof BannedError) { res.status(403).json({ error: "Sei stato bannato", code: "banned" }); return; }

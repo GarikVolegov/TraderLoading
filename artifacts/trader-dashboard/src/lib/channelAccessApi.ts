@@ -13,9 +13,14 @@ export interface UnlockResult {
   entitlement: { expiresAt: string | null };
 }
 
-/** Purchase / renew access to a paid channel (spends credits → owner's wallet). */
-export function unlockChannel(channelId: number): Promise<UnlockResult> {
-  return apiJSON(`community/channels/${channelId}/unlock`, { method: "POST" });
+/** Purchase / renew access to a paid channel (spends credits → owner's wallet).
+ *  Pass the price the user saw; the server rejects (409) if it changed meanwhile. */
+export function unlockChannel(channelId: number, expectedPriceCredits?: number): Promise<UnlockResult> {
+  return apiJSON(`community/channels/${channelId}/unlock`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(expectedPriceCredits != null ? { expectedPriceCredits } : {}),
+  });
 }
 
 export interface ChannelPricingInput {

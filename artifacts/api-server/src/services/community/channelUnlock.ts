@@ -32,6 +32,9 @@ export class NotMemberError extends Error {
 export class BannedError extends Error {
   constructor() { super("banned"); this.name = "BannedError"; }
 }
+export class PriceChangedError extends Error {
+  constructor(public currentPrice: number) { super("price_changed"); this.name = "PriceChangedError"; }
+}
 
 export interface UnlockResult {
   balance: number;
@@ -39,8 +42,14 @@ export interface UnlockResult {
 }
 
 /** Purchase (or renew) access to a paid channel for `userId`. Throws typed errors
- *  the route maps to HTTP; InsufficientCreditsError bubbles from transferCredits. */
-export async function unlockChannel(userId: string, channelId: number): Promise<UnlockResult> {
+ *  the route maps to HTTP; InsufficientCreditsError bubbles from transferCredits.
+ *  If `expectedPriceCredits` is given, a mismatch with the live price throws
+ *  PriceChangedError (so a buyer is never silently charged a price they didn't see). */
+export async function unlockChannel(
+  userId: string,
+  channelId: number,
+  expectedPriceCredits?: number,
+): Promise<UnlockResult> {
   const now = new Date();
 
   const expiresAt = await db.transaction(async (tx) => {
@@ -58,6 +67,11 @@ export async function unlockChannel(userId: string, channelId: number): Promise<
       .limit(1);
     if (!channel) throw new ChannelNotFoundError();
     if (isChannelFree(channel)) throw new ChannelFreeError();
+
+    // Consent guard: charge only the price the buyer actually saw.
+    if (expectedPriceCredits != null && (channel.priceCredits ?? 0) !== expectedPriceCredits) {
+      throw new PriceChangedError(channel.priceCredits ?? 0);
+    }
 
     const [community] = await tx
       .select({ creatorId: communitiesTable.creatorId })

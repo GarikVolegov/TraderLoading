@@ -100,9 +100,14 @@ export function CommunityTab({
   useEffect(() => {
     // A locked private community returns a cover-only payload (no channels).
     if (communityDetail?.channels?.length && !selectedChannelId) {
+      const chans = communityDetail.channels;
+      // Prefer a channel the member can actually read (first unlocked text channel),
+      // so opening a community doesn't dump them on a paywall by default.
       const first =
-        communityDetail.channels.find((c) => c.type === "text") ??
-        communityDetail.channels[0];
+        chans.find((c) => c.type === "text" && !c.locked) ??
+        chans.find((c) => !c.locked) ??
+        chans.find((c) => c.type === "text") ??
+        chans[0];
       if (first) setSelectedChannelId(first.id);
     }
   }, [communityDetail?.id]);

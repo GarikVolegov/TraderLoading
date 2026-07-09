@@ -1399,6 +1399,7 @@ const dict: Record<string, string> = {
   "channel.access.one_time_desc": "Desbloquea este canal por {credits} créditos: acceso permanente.",
   "channel.access.period_label": "Días de acceso",
   "channel.access.price_label": "Precio en créditos",
+  "channel.access.price_changed": "El precio cambió. Revisa el nuevo precio e inténtalo de nuevo.",
   "channel.access.pricing_hint": "Los miembros gastan créditos para acceder a este canal; los créditos van a tu monedero.",
   "channel.access.pricing_title": "Precio del canal",
   "channel.access.save": "Guardar",
