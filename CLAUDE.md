@@ -212,10 +212,19 @@ forfeited on account deletion — stays out of e-money regulation). All **off-co
   `channelUnlock.ts` = one tx (pg_advisory_xact_lock → FOR UPDATE → member/ban/manage gate → transferCredits buyer→owner
   → upsert entitlement). Choke point `assertChannelAccess` in `routes/community.ts` on messages/files/voice + file-download
   + WS `socketServer.ts`. Endpoints `routes/communityChannels.ts` (pricing PATCH `channels.manage` / unlock / access).
-  FE `components/social/{ChannelUnlockPanel,ChannelPricingModal}.tsx` + rail locks. **D real-money payout DEFERRED**
-  (Stripe Connect/KYC/AML). Adversarially reviewed (Workflow, 13 findings) — fixed a **critical TOCTOU double-charge**
-  + ungated content paths. Specs/plans: `docs/superpowers/{specs,plans}/2026-07-0{8,9}-*` (join / credit-wallet / paid-channels).
-  **Activation = user/env:** set the 3 `STRIPE_CREDIT_PRICE_*` ids; live purchase + route-authz e2e need CI Postgres/Stripe.
+  FE `components/social/{ChannelUnlockPanel,ChannelPricingModal}.tsx` + rail locks. Adversarially reviewed (backend
+  13 findings — fixed a **critical TOCTOU double-charge** + ungated content paths; frontend 8 findings — stale-price
+  consent guard/deep-link/a11y).
+- **D real-money creator payout** (Stripe Connect Express; migrations 0030+0031): `services/payout/` (`payoutMath.ts`
+  pure config-driven+fail-safe; `payoutService.ts` money-out **saga**: reserve advisory-lock tx → `stripe.transfers.create`
+  idempotency-keyed → settle/compensate; `payoutReconcile.ts` + `cron/payoutScheduler.ts`), `routes/payout.ts`
+  (config/account/onboard/request), `account.updated` in `routes/billing.ts`, FE `components/settings/CreatorPayoutSettings.tsx`.
+  **Dark by default** (`PAYOUT_CREDIT_CENTS` unset ⇒ off). Adversarially reviewed (10 findings) — fixed **never-double-pay**
+  (only transfers.create refund-guarded; refund only on deterministic StripeInvalidRequestError, ambiguous→pending for
+  reconcile) + **AML** (only EARNED credits cashable, purchased excluded) + currency/overflow/account-race. Specs:
+  `docs/superpowers/specs/2026-07-0{8,9}-*` (join / credit-wallet / paid-channels / creator-payout).
+  **Activation = user/env:** set `STRIPE_CREDIT_PRICE_*` (B) + `PAYOUT_CREDIT_CENTS`/`PAYOUT_*` (D, test-mode Connect
+  first); live purchase/transfer + route-authz e2e need CI Postgres/Stripe. Full suite **340/340** green.
 
 > This section changes the most session-to-session — update it as the work moves.
 
