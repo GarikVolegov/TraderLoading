@@ -7,7 +7,8 @@ import { eq } from "drizzle-orm";
 import { applyLedger } from "./ledger.js";
 
 // The transaction handle drizzle hands to db.transaction's callback.
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type WalletTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type Tx = WalletTx;
 
 export type CreditReason = "purchase" | "spend" | "grant" | "refund" | "channel_sale";
 
@@ -85,6 +86,17 @@ function mutate(
  *  balance is insufficient — no mutation. Amount is coerced to a positive debit. */
 export function spendCredits(userId: string, amount: number, refId?: string): Promise<{ ok: boolean; balance: number }> {
   return mutate(userId, -Math.abs(amount), "spend", { refId: refId ?? null });
+}
+
+/** Spend within a caller-supplied transaction, so the debit and a sibling write (e.g.
+ *  the payout ledger row) commit atomically. ok:false if the balance is insufficient. */
+export function spendCreditsInTx(
+  tx: WalletTx,
+  userId: string,
+  amount: number,
+  refId: string,
+): Promise<{ ok: boolean; balance: number }> {
+  return applyMutationTx(tx, userId, -Math.abs(amount), "spend", { refId });
 }
 
 /** Credit the wallet (Stripe purchase or admin grant). For purchases pass the
