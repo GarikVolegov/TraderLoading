@@ -34,6 +34,7 @@ import { WalletSettings } from "@/components/tornei/WalletSettings";
 import { ReviewSettingsSection } from "@/components/settings/ReviewSettingsSection";
 import { ReferralSettingsSection } from "@/components/settings/ReferralSettingsSection";
 import { CreditsSettingsSection } from "@/components/settings/CreditsSettingsSection";
+import { CreatorPayoutSettings } from "@/components/settings/CreatorPayoutSettings";
 
 type TileId =
   | "profilo"
@@ -305,6 +306,7 @@ export default function Settings() {
       <div className="space-y-6">
         <BillingSubscriptionPanel />
         <CreditsSettingsSection />
+        <CreatorPayoutSettings />
         <WalletSettings />
       </div>
     ),
