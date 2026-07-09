@@ -13,7 +13,7 @@ import {
   type StripeBillingConfig,
 } from "../lib/billing.js";
 import logger from "../lib/logger.js";
-import { grantCredits } from "../services/credits/wallet.js";
+import { grantCredits, reverseCreditPurchase } from "../services/credits/wallet.js";
 import { packCredits } from "../services/credits/packs.js";
 import { syncConnectAccount } from "../services/payout/payoutService.js";
 
@@ -501,7 +501,10 @@ async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<v
       const userId = session.metadata.userId;
       const credits = packCredits(session.metadata.packId);
       if (userId && credits) {
-        await grantCredits(userId, credits, "purchase", { refId: session.metadata.packId, stripeEventId: event.id });
+        // Persist the payment_intent so a later refund/dispute (which carries the PI, not
+        // our event id) can reverse these credits.
+        const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
+        await grantCredits(userId, credits, "purchase", { refId: session.metadata.packId, stripeEventId: event.id, paymentIntentId });
       }
       return;
     }
@@ -523,6 +526,13 @@ async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<v
   // A chargeback or refund does NOT cancel the Stripe subscription, so without
   // this the entitlement stays active after the user pulled their money back.
   if (event.type === "charge.dispute.created" || event.type === "charge.refunded") {
+    // Claw back any CREDITS bought with this charge (sub-project B/D anti-fraud): a
+    // refunded/disputed credit purchase must not stay spendable/cashable. Maps by the
+    // charge's payment_intent → the purchase grant; force-debits (may go negative).
+    const charge = event.data.object as Stripe.Charge;
+    const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id ?? null;
+    if (paymentIntentId) await reverseCreditPurchase(paymentIntentId, event.id);
+
     const customerId = await chargeCustomerId(event, stripe);
     if (customerId) await revokeStripeProForCustomer(customerId, event.type);
   }

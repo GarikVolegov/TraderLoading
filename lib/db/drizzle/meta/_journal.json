@@ -225,6 +225,13 @@
       "when": 1784304000000,
       "tag": "0031_payout_account_stripe_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1784390400000,
+      "tag": "0032_credit_payment_intent",
+      "breakpoints": true
     }
   ]
 }

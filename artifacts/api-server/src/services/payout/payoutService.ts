@@ -4,7 +4,7 @@
 // reconcile job, never refunded, so money-out is never doubled. Only EARNED credits are
 // cashable, so purchased/granted credits can't be converted to cash (AML).
 import Stripe from "stripe";
-import { sql, eq, and, gt, inArray } from "drizzle-orm";
+import { sql, eq, and, inArray } from "drizzle-orm";
 import { db, creatorPayoutAccountsTable, creatorPayoutsTable, creditTransactionsTable } from "@workspace/db";
 import { getBalance, spendCreditsInTx, grantCredits } from "../credits/wallet.js";
 import { readPayoutConfig, validatePayoutRequest, computePayout, isPayoutConfigured, type PayoutConfig } from "./payoutMath.js";
@@ -23,8 +23,11 @@ export class PayoutPendingError extends Error {
   constructor() { super("payout_pending"); this.name = "PayoutPendingError"; }
 }
 
-/** Credits a creator has EARNED from channel sales and not yet cashed out. Purchased or
- *  granted credits are excluded, so they can never be converted to real money. */
+/** Credits a creator has EARNED from channel sales and not yet cashed out. NET of the
+ *  creator's OWN channel purchases (channel_sale debits, delta<0) so that spending earned
+ *  credits on other channels lowers the cashable ceiling — otherwise purchased/granted
+ *  credits become cashable once gross sales ever matched them. Purchased/granted credits
+ *  (reason 'purchase'/'grant') are never counted, so they can't be converted to real money. */
 export async function getEarnedBalance(userId: string): Promise<number> {
   const [earned] = await db
     .select({ v: sql<string>`COALESCE(SUM(${creditTransactionsTable.delta}), 0)` })
@@ -32,7 +35,6 @@ export async function getEarnedBalance(userId: string): Promise<number> {
     .where(and(
       eq(creditTransactionsTable.userId, userId),
       eq(creditTransactionsTable.reason, "channel_sale"),
-      gt(creditTransactionsTable.delta, 0),
     ));
   const [paid] = await db
     .select({ v: sql<string>`COALESCE(SUM(${creatorPayoutsTable.credits}), 0)` })
@@ -167,7 +169,7 @@ export async function requestPayout(userId: string, credits: number, stripe: Str
     const [er] = await tx
       .select({ v: sql<string>`COALESCE(SUM(${creditTransactionsTable.delta}), 0)` })
       .from(creditTransactionsTable)
-      .where(and(eq(creditTransactionsTable.userId, userId), eq(creditTransactionsTable.reason, "channel_sale"), gt(creditTransactionsTable.delta, 0)));
+      .where(and(eq(creditTransactionsTable.userId, userId), eq(creditTransactionsTable.reason, "channel_sale")));
     const [pr] = await tx
       .select({ v: sql<string>`COALESCE(SUM(${creatorPayoutsTable.credits}), 0)` })
       .from(creatorPayoutsTable)

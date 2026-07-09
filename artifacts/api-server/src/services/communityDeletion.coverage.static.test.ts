@@ -13,7 +13,7 @@ const schemaSrc = readFileSync(
 );
 const deletionSrc = readFileSync(new URL("./communityDeletion.ts", import.meta.url), "utf8");
 
-const communityTables = [...schemaSrc.matchAll(/pgTable\(\s*["']([a-z_]+)["']/g)].map((m) => m[1]);
+const communityTables = [...schemaSrc.matchAll(/pgTable\(\s*["']([a-z0-9_]+)["']/g)].map((m) => m[1]);
 
 // Sanity: the extractor must find the full set, not silently zero out.
 assert.ok(communityTables.length >= 11, `expected >=11 community tables, got ${communityTables.length}`);

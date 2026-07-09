@@ -337,6 +337,11 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`DELETE FROM creator_payouts WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM creator_payout_accounts WHERE user_id = ${userId}`);
 
+    // Anonymize library authorship — created_by holds the (possibly deleted) author's id.
+    // The curated content stays; only the PII link is scrubbed.
+    await tx.execute(sql`UPDATE library_collections SET created_by = NULL WHERE created_by = ${userId}`);
+    await tx.execute(sql`UPDATE library_contents SET created_by = NULL WHERE created_by = ${userId}`);
+
     // Legacy express-session store (jsonb). No-op under Clerk, safe otherwise.
     await tx.execute(sql`DELETE FROM sessions WHERE sess->'user'->>'id' = ${userId}`);
 

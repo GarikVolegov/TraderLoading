@@ -18,7 +18,7 @@ function userTablesFromSchema(): string[] {
   for (const file of readdirSync(schemaDir)) {
     if (!file.endsWith(".ts") || file === "index.ts" || file.includes(".test.")) continue;
     const src = readFileSync(new URL(file, new URL("../../../../lib/db/src/schema/", import.meta.url)), "utf8");
-    const re = /pgTable\(\s*["']([a-z_]+)["']([\s\S]*?)(?=export const|\n\}\s*\)\s*;\s*\nexport|$)/g;
+    const re = /pgTable\(\s*["']([a-z0-9_]+)["']([\s\S]*?)(?=export const|\n\}\s*\)\s*;\s*\nexport|$)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(src)) !== null) {
       const [, name, body] = m;

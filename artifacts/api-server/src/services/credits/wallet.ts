@@ -3,14 +3,14 @@
 // balance + an append-only ledger row atomically. spend/grant wrap it in their own
 // transaction; transferCredits moves credits between two wallets in a single transaction.
 import { db, creditWalletsTable, creditTransactionsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { applyLedger } from "./ledger.js";
 
 // The transaction handle drizzle hands to db.transaction's callback.
 export type WalletTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Tx = WalletTx;
 
-export type CreditReason = "purchase" | "spend" | "grant" | "refund" | "channel_sale";
+export type CreditReason = "purchase" | "spend" | "grant" | "refund" | "channel_sale" | "chargeback";
 
 export class InsufficientCreditsError extends Error {
   constructor() {
@@ -31,6 +31,7 @@ export async function getBalance(userId: string): Promise<number> {
 export interface MutateOpts {
   refId?: string | null;
   stripeEventId?: string | null;
+  paymentIntentId?: string | null;
 }
 
 // Core ledger step, on a caller-supplied transaction: ensure the wallet exists, lock it,
@@ -68,6 +69,7 @@ async function applyMutationTx(
     reason,
     refId: opts.refId ?? null,
     stripeEventId: opts.stripeEventId ?? null,
+    stripePaymentIntentId: opts.paymentIntentId ?? null,
     balanceAfter: res.balance,
   });
   return { ok: true, balance: res.balance };
@@ -86,6 +88,45 @@ function mutate(
  *  balance is insufficient — no mutation. Amount is coerced to a positive debit. */
 export function spendCredits(userId: string, amount: number, refId?: string): Promise<{ ok: boolean; balance: number }> {
   return mutate(userId, -Math.abs(amount), "spend", { refId: refId ?? null });
+}
+
+/** Reverse the credits granted for a Stripe charge that was refunded/disputed. Force-
+ *  debits (allowing a NEGATIVE balance) so a buyer who already spent purchased credits
+ *  ends up owing and can't cash out — the payout earned-cap treats a negative wallet as
+ *  zero-cashable. Idempotent per payment_intent (a refund AND a dispute may both fire). */
+export async function reverseCreditPurchase(paymentIntentId: string, stripeEventId: string): Promise<void> {
+  if (!paymentIntentId) return;
+  await db.transaction(async (tx) => {
+    const purchases = await tx
+      .select({ userId: creditTransactionsTable.userId, delta: creditTransactionsTable.delta })
+      .from(creditTransactionsTable)
+      .where(and(eq(creditTransactionsTable.stripePaymentIntentId, paymentIntentId), eq(creditTransactionsTable.reason, "purchase")));
+    if (purchases.length === 0) return; // not a credit purchase — nothing to reverse
+
+    const [already] = await tx
+      .select({ id: creditTransactionsTable.id })
+      .from(creditTransactionsTable)
+      .where(and(eq(creditTransactionsTable.stripePaymentIntentId, paymentIntentId), eq(creditTransactionsTable.reason, "chargeback")))
+      .limit(1);
+    if (already) return; // already reversed
+
+    const userId = purchases[0].userId;
+    const credits = purchases.reduce((sum, p) => sum + Math.abs(p.delta), 0);
+
+    await tx.insert(creditWalletsTable).values({ userId, balance: 0 }).onConflictDoNothing({ target: creditWalletsTable.userId });
+    const [w] = await tx
+      .select({ balance: creditWalletsTable.balance })
+      .from(creditWalletsTable)
+      .where(eq(creditWalletsTable.userId, userId))
+      .for("update")
+      .limit(1);
+    const next = (w?.balance ?? 0) - credits; // may go negative — intentional
+    await tx.update(creditWalletsTable).set({ balance: next, updatedAt: new Date() }).where(eq(creditWalletsTable.userId, userId));
+    await tx.insert(creditTransactionsTable).values({
+      userId, delta: -credits, reason: "chargeback", refId: paymentIntentId, stripeEventId, stripePaymentIntentId: paymentIntentId, balanceAfter: next,
+    });
+    console.error(`[credits] chargeback reversed ${credits} credits for user ${userId} (pi ${paymentIntentId}); balance now ${next}`);
+  });
 }
 
 /** Spend within a caller-supplied transaction, so the debit and a sibling write (e.g.
