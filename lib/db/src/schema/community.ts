@@ -88,12 +88,9 @@ export const communityChannelsTable = pgTable("community_channels", {
   name: text("name").notNull(),
   type: text("type").notNull().default("text"),
   position: integer("position").notNull().default(0),
-  // Paid-channel pricing. Marketplace model (Stripe Connect direct charges): price in
-  // real-currency cents. NULL / <= 0 ⇒ free. (priceCredits/subscriptionPeriodDays are the
-  // legacy credit-model columns, dropped in 0034.)
-  priceCredits: integer("price_credits"),
+  // Paid-channel pricing (marketplace, Stripe Connect direct charges): price in
+  // real-currency cents. NULL / <= 0 ⇒ free.
   accessModel: text("access_model"), // 'one_time' | 'subscription' (only when priced)
-  subscriptionPeriodDays: integer("subscription_period_days"), // legacy (credit model)
   priceCents: integer("price_cents"), // marketplace price in currency minor units
   subInterval: text("sub_interval"), // 'month' | 'year' (subscription only)
   currency: text("currency").notNull().default("eur"),

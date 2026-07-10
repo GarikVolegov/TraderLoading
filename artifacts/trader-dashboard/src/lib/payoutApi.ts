@@ -1,41 +1,15 @@
-// Off-contract client for creator payout (sub-project D).
+// Off-contract client for the creator Stripe Connect account (marketplace model).
 import { apiJSON } from "./apiFetch";
 
-export interface PayoutConfig {
-  enabled: boolean;
-  creditCents: number | null;
-  minCredits: number;
-  feeBps: number;
-  currency: string;
-}
 export interface PayoutAccount {
   onboarded: boolean;
   payoutsEnabled: boolean;
   detailsSubmitted: boolean;
   status: string;
-  cashableCredits: number; // earned-and-uncashed credits (not the whole wallet)
 }
 
-export const payoutConfigKey = () => ["payout/config"] as const;
 export const payoutAccountKey = () => ["payout/account"] as const;
-export const payoutHistoryKey = () => ["payout/history"] as const;
 
-export interface PayoutHistoryRow {
-  id: number;
-  credits: number;
-  netCents: number;
-  currency: string;
-  status: string;
-  createdAt: string;
-}
-
-export function fetchPayoutHistory(): Promise<{ payouts: PayoutHistoryRow[] }> {
-  return apiJSON("payout/history");
-}
-
-export function fetchPayoutConfig(): Promise<PayoutConfig> {
-  return apiJSON("payout/config");
-}
 export function fetchPayoutAccount(): Promise<PayoutAccount> {
   return apiJSON("payout/account");
 }
@@ -48,27 +22,4 @@ export function startPayoutOnboarding(): Promise<{ url: string }> {
 /** Stripe Express dashboard login link for an onboarded creator. */
 export function fetchDashboardLink(): Promise<{ url: string }> {
   return apiJSON("payout/account/dashboard");
-}
-
-export interface PayoutResult {
-  id: number;
-  credits: number;
-  netCents: number;
-  currency: string;
-  status: string;
-}
-export function requestPayout(credits: number): Promise<PayoutResult> {
-  return apiJSON("payout/request", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ credits }),
-  });
-}
-
-/** Net payout in currency units after the platform fee (mirrors server computePayout). */
-export function estimateNet(credits: number, cfg: PayoutConfig): number {
-  if (!cfg.creditCents) return 0;
-  const gross = credits * cfg.creditCents;
-  const fee = Math.floor((gross * cfg.feeBps) / 10000);
-  return (gross - fee) / 100;
 }

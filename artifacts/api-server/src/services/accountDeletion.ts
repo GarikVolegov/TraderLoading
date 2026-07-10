@@ -327,14 +327,8 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     // Lifecycle-email state (welcome/digest/win-back timestamps + opt-out).
     await tx.execute(sql`DELETE FROM email_lifecycle_state WHERE user_id = ${userId}`);
 
-    // Credit wallet + ledger. Credits have no cash value, so they are forfeited
-    // on deletion (stated in ToS) — no payout owed (sub-project B).
-    await tx.execute(sql`DELETE FROM credit_transactions WHERE user_id = ${userId}`);
-    await tx.execute(sql`DELETE FROM credit_wallets WHERE user_id = ${userId}`);
-
-    // Creator payout records (sub-project D): erase OUR copy of the Connect linkage +
-    // payout ledger. Stripe retains its own account/transfer records for legal/tax.
-    await tx.execute(sql`DELETE FROM creator_payouts WHERE user_id = ${userId}`);
+    // Creator Stripe Connect account link (marketplace): erase OUR copy. Stripe retains
+    // its own account/transfer records for legal/tax.
     await tx.execute(sql`DELETE FROM creator_payout_accounts WHERE user_id = ${userId}`);
 
     // Anonymize library authorship — created_by holds the (possibly deleted) author's id.
