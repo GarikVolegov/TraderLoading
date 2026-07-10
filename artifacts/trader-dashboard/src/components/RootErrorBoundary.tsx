@@ -42,6 +42,7 @@ export class RootErrorBoundary extends Component<Props, State> {
     return (
       <div
         role="alert"
+        data-root-error-boundary
         style={{
           minHeight: "100dvh",
           display: "flex",
