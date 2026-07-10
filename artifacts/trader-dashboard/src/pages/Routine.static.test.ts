@@ -27,4 +27,7 @@ assert.match(friendPanel, /RANK_ACCENT/);
 assert.match(friendPanel, /slate-300/);
 assert.match(friendPanel, /amber-700/);
 
+// CustomRoutineCard: same accent-strip treatment as ProgramCard, for visual consistency.
+assert.match(customCard, /h-0\.75 w-full/);
+
 console.log("routine page static checks passed");
