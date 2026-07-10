@@ -4,7 +4,8 @@ import { WebSocket } from "ws";
 import { and, eq } from "drizzle-orm";
 import { db, communityChannelsTable, communityChannelEntitlementsTable } from "@workspace/db";
 import { getMemberContext, hasPermission } from "../communityPermissions.js";
-import { canAccessChannel, isChannelFree } from "../community/channelAccess.js";
+import { canAccessChannel } from "../community/channelAccess.js";
+import { isChannelFree } from "../community/channelPricing.js";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
 import { authorizeWebSocketUpgrade, rejectWebSocketUpgrade, type WebSocketAuthContext, type WebSocketSecurityOptions } from "../webSocketAuth.js";
 import { canSend, createControlWebSocketServer, startHeartbeat } from "../webSocketHeartbeat.js";
@@ -30,7 +31,7 @@ export interface SocialHubWebSocketServer {
  *  for paid channels — so live push never leaks a locked paid channel's messages. */
 async function defaultCanAccessChannel(userId: string, channelId: number): Promise<boolean> {
   const [channel] = await db
-    .select({ communityId: communityChannelsTable.communityId, priceCredits: communityChannelsTable.priceCredits })
+    .select({ communityId: communityChannelsTable.communityId, priceCents: communityChannelsTable.priceCents })
     .from(communityChannelsTable)
     .where(eq(communityChannelsTable.id, channelId))
     .limit(1);
@@ -40,7 +41,7 @@ async function defaultCanAccessChannel(userId: string, channelId: number): Promi
   if (ctx.isBanned) return false;
   if (!ctx.isMember && !ctx.isOwner) return false;
 
-  if (isChannelFree({ priceCredits: channel.priceCredits })) return true;
+  if (isChannelFree({ priceCents: channel.priceCents })) return true;
 
   const [entitlement] = await db
     .select({ expiresAt: communityChannelEntitlementsTable.expiresAt })

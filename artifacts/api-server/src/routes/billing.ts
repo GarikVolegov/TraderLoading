@@ -16,6 +16,7 @@ import logger from "../lib/logger.js";
 import { grantCredits, reverseCreditPurchase } from "../services/credits/wallet.js";
 import { packCredits } from "../services/credits/packs.js";
 import { syncConnectAccount } from "../services/payout/payoutService.js";
+import { grantOneTimeEntitlement, grantSubscriptionEntitlement, syncSubscriptionEntitlement } from "../services/community/channelEntitlements.js";
 
 type SubscriptionLike = {
   plan: string;
@@ -488,12 +489,35 @@ async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<v
   }
 
   if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
-    await upsertStripeSubscription(event.data.object as Stripe.Subscription);
+    const sub = event.data.object as Stripe.Subscription;
+    // Paid-channel subscriptions (marketplace) keep the entitlement's expiry in step with
+    // Stripe; everything else is the Pro-plan subscription.
+    if (sub.metadata?.type === "channel_sub") {
+      await syncSubscriptionEntitlement(sub.id, new Date((subscriptionCurrentPeriodEnd(sub) ?? Math.floor(Date.now() / 1000)) * 1000));
+      return;
+    }
+    await upsertStripeSubscription(sub);
     return;
   }
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+    // Paid-channel unlock (marketplace): grant the entitlement the webhook is the source of.
+    if (session.metadata?.type === "channel_unlock") {
+      const { channelId, userId, communityId } = session.metadata;
+      if (channelId && userId && communityId) {
+        await grantOneTimeEntitlement(Number(communityId), Number(channelId), userId);
+      }
+      return;
+    }
+    if (session.metadata?.type === "channel_sub" && typeof session.subscription === "string") {
+      const { channelId, userId, communityId } = session.metadata;
+      const sub = await stripe.subscriptions.retrieve(session.subscription);
+      if (channelId && userId && communityId) {
+        await grantSubscriptionEntitlement(Number(communityId), Number(channelId), userId, sub.id, new Date((subscriptionCurrentPeriodEnd(sub) ?? Math.floor(Date.now() / 1000)) * 1000));
+      }
+      return;
+    }
     // Credit purchase (sub-project B): one-time payment, not a subscription. Grant
     // the pack's credits. processStripeEventOnce already dedupes by event id; the
     // credit_transactions.stripe_event_id unique index is a second backstop.

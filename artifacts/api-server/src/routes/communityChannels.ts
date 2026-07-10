@@ -1,5 +1,5 @@
-// Paid-channel pricing, unlock (purchase/renew) and per-viewer access state
-// (sub-project C). Off-contract (direct JSON, like the rest of the community API).
+// Paid-channel pricing (in real currency), Stripe-Connect checkout and per-viewer access
+// state (marketplace model). Off-contract. Entitlements are granted on the webhook.
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, communityChannelsTable, communityChannelEntitlementsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -8,29 +8,25 @@ import {
   requirePermission,
   hasPermission,
 } from "../services/communityPermissions.js";
+import { canAccessChannel } from "../services/community/channelAccess.js";
+import { isChannelFree, validateChannelPrice } from "../services/community/channelPricing.js";
 import {
-  isChannelFree,
-  canAccessChannel,
-  validateChannelPricing,
-} from "../services/community/channelAccess.js";
-import {
-  unlockChannel,
+  createChannelCheckout,
   ChannelNotFoundError,
   ChannelFreeError,
   AlreadyOwnedError,
   OwnerCannotBuyError,
   NotMemberError,
   BannedError,
-  PriceChangedError,
-} from "../services/community/channelUnlock.js";
-import { InsufficientCreditsError } from "../services/credits/wallet.js";
+  CreatorNotOnboardedError,
+} from "../services/community/channelCheckout.js";
+import { getStripeBillingConfig, createStripeClient } from "../lib/billing.js";
 import { createMoneyRateLimiter } from "../lib/moneyRateLimit.js";
 
 const router: IRouter = Router();
 
-// Unlock spends credits — cap attempts per user (the advisory lock already blocks
-// double-charge, this bounds churn / brute abuse).
-const unlockLimiter = createMoneyRateLimiter({ windowMs: 60_000, limit: 20 });
+// Cap checkout-session creation per user (each hits Stripe).
+const checkoutLimiter = createMoneyRateLimiter({ windowMs: 60_000, limit: 20 });
 
 function requireAuth(req: Request, res: Response): string | null {
   const userId = req.user?.id;
@@ -41,7 +37,7 @@ function requireAuth(req: Request, res: Response): string | null {
 // ─── Set / clear a channel's price (creator or channels.manage) ──────────────
 router.patch("/community/channels/:channelId/pricing", async (req, res) => {
   try {
-    const channelId = parseInt(req.params.channelId);
+    const channelId = parseInt(String(req.params.channelId));
     if (isNaN(channelId)) { res.status(400).json({ error: "Canale non valido" }); return; }
 
     const [channel] = await db
@@ -53,19 +49,21 @@ router.patch("/community/channels/:channelId/pricing", async (req, res) => {
 
     if (!(await requirePermission(req, res, channel.communityId, "channels.manage"))) return;
 
-    const result = validateChannelPricing({
-      priceCredits: req.body?.priceCredits ?? null,
+    const result = validateChannelPrice({
+      priceCents: req.body?.priceCents ?? null,
       accessModel: req.body?.accessModel ?? null,
-      subscriptionPeriodDays: req.body?.subscriptionPeriodDays ?? null,
+      subInterval: req.body?.subInterval ?? null,
     });
-    if (!result.ok) { res.status(400).json({ error: result.error }); return; }
+    if (!result.ok) { res.status(400).json({ error: result.reason }); return; }
 
+    // Changing price/model invalidates any cached Stripe Price for a subscription channel.
     await db
       .update(communityChannelsTable)
       .set({
-        priceCredits: result.normalized.priceCredits,
+        priceCents: result.normalized.priceCents,
         accessModel: result.normalized.accessModel,
-        subscriptionPeriodDays: result.normalized.subscriptionPeriodDays,
+        subInterval: result.normalized.subInterval,
+        stripePriceId: null,
       })
       .where(eq(communityChannelsTable.id, channelId));
 
@@ -76,30 +74,28 @@ router.patch("/community/channels/:channelId/pricing", async (req, res) => {
   }
 });
 
-// ─── Unlock (purchase / renew) a paid channel ────────────────────────────────
-router.post("/community/channels/:channelId/unlock", unlockLimiter, async (req, res) => {
+// ─── Start a Stripe Checkout to unlock a paid channel ─────────────────────────
+router.post("/community/channels/:channelId/checkout", checkoutLimiter, async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
+  const billing = getStripeBillingConfig();
+  if (!billing.secretKey) { res.status(402).json({ error: "Pagamenti non disponibili", code: "unconfigured" }); return; }
   try {
     const channelId = parseInt(String(req.params.channelId));
     if (isNaN(channelId)) { res.status(400).json({ error: "Canale non valido" }); return; }
 
-    const rawExpected = req.body?.expectedPriceCredits;
-    const expectedPriceCredits = typeof rawExpected === "number" && Number.isInteger(rawExpected) ? rawExpected : undefined;
-
-    const result = await unlockChannel(userId, channelId, expectedPriceCredits);
-    res.json(result);
+    const url = await createChannelCheckout(userId, channelId, createStripeClient(billing.secretKey), billing.appBaseUrl);
+    res.json({ url });
   } catch (err) {
     if (err instanceof ChannelNotFoundError) { res.status(404).json({ error: "Canale non trovato" }); return; }
     if (err instanceof ChannelFreeError) { res.status(400).json({ error: "Canale gratuito", code: "free" }); return; }
-    if (err instanceof PriceChangedError) { res.status(409).json({ error: "Prezzo cambiato", code: "price_changed", priceCredits: err.currentPrice }); return; }
     if (err instanceof OwnerCannotBuyError) { res.status(400).json({ error: "Hai già accesso", code: "already_access" }); return; }
     if (err instanceof NotMemberError) { res.status(403).json({ error: "Non sei membro", code: "not_member" }); return; }
     if (err instanceof BannedError) { res.status(403).json({ error: "Sei stato bannato", code: "banned" }); return; }
     if (err instanceof AlreadyOwnedError) { res.status(409).json({ error: "Accesso già attivo", code: "already_owned" }); return; }
-    if (err instanceof InsufficientCreditsError) { res.status(402).json({ error: "Crediti insufficienti", code: "insufficient_credits" }); return; }
-    console.error("POST /community/channels/:channelId/unlock error:", err);
-    res.status(500).json({ error: "Errore interno" });
+    if (err instanceof CreatorNotOnboardedError) { res.status(409).json({ error: "Il creatore non può ancora ricevere pagamenti", code: "creator_not_onboarded" }); return; }
+    console.error("POST /community/channels/:channelId/checkout error:", err);
+    res.status(502).json({ error: "Checkout non disponibile" });
   }
 });
 
@@ -108,7 +104,7 @@ router.get("/community/channels/:channelId/access", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const channelId = parseInt(req.params.channelId);
+    const channelId = parseInt(String(req.params.channelId));
     if (isNaN(channelId)) { res.status(400).json({ error: "Canale non valido" }); return; }
 
     const [channel] = await db
@@ -122,30 +118,24 @@ router.get("/community/channels/:channelId/access", async (req, res) => {
     const [entitlement] = await db
       .select({ expiresAt: communityChannelEntitlementsTable.expiresAt })
       .from(communityChannelEntitlementsTable)
-      .where(
-        and(
-          eq(communityChannelEntitlementsTable.channelId, channelId),
-          eq(communityChannelEntitlementsTable.userId, userId),
-        ),
-      )
+      .where(and(eq(communityChannelEntitlementsTable.channelId, channelId), eq(communityChannelEntitlementsTable.userId, userId)))
       .limit(1);
 
-    const now = new Date();
     const isFree = isChannelFree(channel);
-    const canManage = hasPermission(ctx, "channels.manage");
     const locked = !canAccessChannel({
       isFree,
       isOwner: ctx.isOwner,
-      canManage,
+      canManage: hasPermission(ctx, "channels.manage"),
       entitlement: entitlement ?? null,
-      now,
+      now: new Date(),
     });
 
     res.json({
       isFree,
-      priceCredits: channel.priceCredits ?? null,
+      priceCents: channel.priceCents ?? null,
       accessModel: channel.accessModel ?? null,
-      subscriptionPeriodDays: channel.subscriptionPeriodDays ?? null,
+      subInterval: channel.subInterval ?? null,
+      currency: channel.currency,
       locked,
       entitlement: entitlement ? { expiresAt: entitlement.expiresAt } : null,
     });

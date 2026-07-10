@@ -5,7 +5,8 @@ import fs from "fs";
 import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, communityRolesTable, communityBansTable, communityMutesTable, voicePresenceTable, profileTable, communityJoinRequestsTable, communityChannelEntitlementsTable } from "@workspace/db";
 import { eq, and, desc, asc, sql, lt, type SQL } from "drizzle-orm";
 import { canSeeFullCommunity, decideJoin, canRequestJoin } from "../services/community/joinPolicy.js";
-import { isChannelFree, canAccessChannel } from "../services/community/channelAccess.js";
+import { canAccessChannel } from "../services/community/channelAccess.js";
+import { isChannelFree } from "../services/community/channelPricing.js";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
 import {
@@ -98,9 +99,10 @@ async function assertChannelAccess(
     res.status(402).json({
       error: "Canale a pagamento",
       code: "channel_locked",
-      priceCredits: channel.priceCredits ?? null,
+      priceCents: channel.priceCents ?? null,
       accessModel: channel.accessModel ?? null,
-      subscriptionPeriodDays: channel.subscriptionPeriodDays ?? null,
+      subInterval: channel.subInterval ?? null,
+      currency: channel.currency,
     });
     return false;
   }
