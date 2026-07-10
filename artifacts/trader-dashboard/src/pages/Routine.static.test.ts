@@ -37,8 +37,17 @@ assert.match(routinePage, /<RoutineStatsPanel\b/);
 assert.match(routinePage, /<SessionModal\b/);
 assert.doesNotMatch(routinePage, /loadCustomRoutines|createCustomRoutine|CreateRoutinePanel|CustomRoutineCard|FriendCompetitionPanel/);
 
-// Routine page composes ZenZone; the removed sections are gone.
-assert.match(routinePage, /<ZenZone/);
-assert.doesNotMatch(routinePage, /FriendCompetitionPanel|CreateRoutinePanel|CustomRoutineCard/);
+const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
+const bottomNav = readFileSync(new URL("../components/BottomNav.tsx", import.meta.url), "utf8");
+const commandPalette = readFileSync(new URL("../components/CommandPalette.tsx", import.meta.url), "utf8");
+const navHubs = readFileSync(new URL("../lib/navHubs.ts", import.meta.url), "utf8");
+
+// /zen is gone from routing, nav, command palette, and hubs.
+assert.doesNotMatch(app, /pages\/Zen|path="\/zen"/);
+assert.doesNotMatch(bottomNav, /href: "\/zen"/);
+const rootItemsBlock = bottomNav.slice(bottomNav.indexOf("const ROOT_ITEMS"), bottomNav.indexOf("const SECONDARY_ITEMS"));
+assert.match(rootItemsBlock, /href: "\/routine"/, "routine takes over zen's old root-level mobile nav slot");
+assert.doesNotMatch(commandPalette, /zen\.title/);
+assert.doesNotMatch(navHubs, /ZEN_HUB|\/zen/);
 
 console.log("routine+zen merge static checks passed");

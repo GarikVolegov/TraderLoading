@@ -11,22 +11,21 @@ assert.equal(matchHub("/chat/sub")?.id, "community", "nested chat path still mat
 assert.equal(matchHub("/tornei")?.id, "community", "tornei is part of the community hub");
 assert.equal(matchHub("/journal")?.id, "journal");
 assert.equal(matchHub("/journal/anything")?.id, "journal");
-assert.equal(matchHub("/zen")?.id, "zen");
+assert.equal(matchHub("/zen"), undefined, "zen no longer exists as a route");
+assert.equal(matchHub("/routine"), undefined, "routine has no hub (flat page, absorbed zen's content instead)");
 
 // Registry shape
-assert.equal(HUBS.length, 3, "three hubs registered: community, journal, zen");
+assert.equal(HUBS.length, 2, "two hubs registered: community, journal");
 assert.deepEqual(
   HUBS.map((h) => h.id).sort(),
-  ["community", "journal", "zen"],
+  ["community", "journal"],
 );
 
 const community = HUBS.find((h) => h.id === "community")!;
 const journal = HUBS.find((h) => h.id === "journal")!;
-const zen = HUBS.find((h) => h.id === "zen")!;
 
 assert.equal(community.items.length, 5, "community keeps its 5 existing sub-items");
 assert.equal(journal.items.length, 6, "journal exposes its 6 in-page tabs");
-assert.equal(zen.items.length, 6, "zen exposes its 6 in-page tabs");
 
 for (const hub of HUBS) {
   for (const item of hub.items) {

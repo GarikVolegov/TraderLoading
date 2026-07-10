@@ -56,7 +56,6 @@ const News = lazy(() => import("./pages/News"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Backtest = lazy(() => import("./pages/Backtest"));
 const Wiki = lazy(() => import("./pages/Wiki"));
-const Zen = lazy(() => import("./pages/Zen"));
 const Milestones = lazy(() => import("./pages/Milestones"));
 const Library = lazy(() => import("./pages/Library"));
 const Routine = lazy(() => import("./pages/Routine"));
@@ -302,7 +301,6 @@ function AppRouter() {
           <Route path="/backtest" component={Backtest} />
           <Route path="/tools" component={Backtest} />
           <Route path="/wiki" component={Wiki} />
-          <Route path="/zen" component={Zen} />
           <Route path="/milestones" component={Milestones} />
           <Route path="/library" component={Library} />
           <Route path="/routine" component={Routine} />

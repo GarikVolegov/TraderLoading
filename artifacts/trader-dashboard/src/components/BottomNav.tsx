@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useRoute, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, BookOpen, Brain, FlaskConical, Archive, Users,
+  LayoutDashboard, BookOpen, FlaskConical, Archive, Users,
   ArrowLeft, MoreHorizontal,
   Library, Sunrise, Settings, Rocket,
 } from "lucide-react";
@@ -11,13 +11,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { matchHub, splitHubItems, TORNEI_ITEM } from "@/lib/navHubs";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
-// Root hubs (level 0). Archivio is a direct hub; Community/Journal/Zen are
-// hubs that, once entered, swap the bar to their own sub-nav (see navHubs.ts).
+// Root hubs (level 0). Archivio is a direct hub; Community/Journal are hubs
+// that, once entered, swap the bar to their own sub-nav (see navHubs.ts).
 const ROOT_ITEMS = [
   { href: "/",         icon: LayoutDashboard, labelKey: "nav.home",      isChat: false },
   { href: "/journal",  icon: BookOpen,        labelKey: "nav.journal",   isChat: false },
   { href: "/backtest", icon: FlaskConical,    labelKey: "nav.backtest",  isChat: false },
-  { href: "/zen",      icon: Brain,           labelKey: "nav.zen",       isChat: false },
+  { href: "/routine",  icon: Sunrise,         labelKey: "nav.routine",   isChat: false },
   { href: "/wiki",     icon: Archive,         labelKey: "nav.wiki",      isChat: false },
   { href: "/chat",     icon: Users,           labelKey: "nav.community", isChat: true  },
 ] as const;
@@ -25,7 +25,6 @@ const ROOT_ITEMS = [
 // Desktop-only secondary group (Archivio lives in the root group now).
 const SECONDARY_ITEMS = [
   { href: "/library",  icon: Library,  labelKey: "nav.library"  },
-  { href: "/routine",  icon: Sunrise,  labelKey: "nav.routine"  },
   { href: "/settings", icon: Settings, labelKey: "nav.settings" },
 ] as const;
 

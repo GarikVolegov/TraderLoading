@@ -1,7 +1,6 @@
 import {
   Globe, MessageCircle, Radio, Trophy, Award,
   TrendingUp, BookOpen, Lightbulb, Target, BarChart3, Calendar,
-  Wind, Clock, Eye, Heart, BrainCircuit,
 } from "lucide-react";
 
 export type HubItem = {
@@ -46,20 +45,7 @@ const JOURNAL_HUB: Hub = {
   ],
 };
 
-const ZEN_HUB: Hub = {
-  id: "zen",
-  routes: ["/zen"],
-  items: [
-    { href: "/zen?t=breathing",     path: "/zen", tab: "breathing",     icon: Wind,         labelKey: "zen.tab.breathing" },
-    { href: "/zen?t=meditation",    path: "/zen", tab: "meditation",    icon: Clock,        labelKey: "zen.tab.meditation" },
-    { href: "/zen?t=visualization", path: "/zen", tab: "visualization", icon: Eye,          labelKey: "zen.tab.visualization" },
-    { href: "/zen?t=gratitude",     path: "/zen", tab: "gratitude",     icon: Heart,        labelKey: "zen.tab.gratitude" },
-    { href: "/zen?t=quotes",        path: "/zen", tab: "quotes",        icon: BookOpen,     labelKey: "zen.tab.quotes" },
-    { href: "/zen?t=insight",       path: "/zen", tab: "insight",       icon: BrainCircuit, labelKey: "zen.tab.insight" },
-  ],
-};
-
-export const HUBS: readonly Hub[] = [COMMUNITY_HUB, JOURNAL_HUB, ZEN_HUB];
+export const HUBS: readonly Hub[] = [COMMUNITY_HUB, JOURNAL_HUB];
 
 /** Tornei, reused as a standalone shortcut on the desktop sidebar outside any hub. */
 export const TORNEI_ITEM = COMMUNITY_HUB.items[4];
