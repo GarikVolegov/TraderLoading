@@ -88,10 +88,16 @@ export const communityChannelsTable = pgTable("community_channels", {
   name: text("name").notNull(),
   type: text("type").notNull().default("text"),
   position: integer("position").notNull().default(0),
-  // Paid-channel pricing (sub-project C). NULL / <= 0 price ⇒ free channel.
+  // Paid-channel pricing. Marketplace model (Stripe Connect direct charges): price in
+  // real-currency cents. NULL / <= 0 ⇒ free. (priceCredits/subscriptionPeriodDays are the
+  // legacy credit-model columns, dropped in 0034.)
   priceCredits: integer("price_credits"),
   accessModel: text("access_model"), // 'one_time' | 'subscription' (only when priced)
-  subscriptionPeriodDays: integer("subscription_period_days"), // > 0 when subscription
+  subscriptionPeriodDays: integer("subscription_period_days"), // legacy (credit model)
+  priceCents: integer("price_cents"), // marketplace price in currency minor units
+  subInterval: text("sub_interval"), // 'month' | 'year' (subscription only)
+  currency: text("currency").notNull().default("eur"),
+  stripePriceId: text("stripe_price_id"), // lazily-created Connect Price for subscriptions
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [
   index("community_channels_community_idx").on(t.communityId),
@@ -107,9 +113,13 @@ export const communityChannelEntitlementsTable = pgTable("community_channel_enti
   source: text("source").notNull(), // 'purchase' | 'grant'
   grantedAt: timestamp("granted_at").notNull().defaultNow(),
   expiresAt: timestamp("expires_at"),
+  // Subscription channels: the Stripe subscription funding this entitlement, so its
+  // renew/cancel webhooks map back here to extend/revoke access.
+  stripeSubscriptionId: text("stripe_subscription_id"),
 }, (t) => [
   uniqueIndex("community_channel_entitlements_pair_idx").on(t.channelId, t.userId),
   index("community_channel_entitlements_user_idx").on(t.userId),
+  index("community_channel_entitlements_sub_idx").on(t.stripeSubscriptionId),
 ]);
 
 export const communityMessagesTable = pgTable("community_messages", {

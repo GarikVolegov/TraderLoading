@@ -232,6 +232,13 @@
       "when": 1784390400000,
       "tag": "0032_credit_payment_intent",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1784476800000,
+      "tag": "0033_channel_marketplace_pricing",
+      "breakpoints": true
     }
   ]
 }
