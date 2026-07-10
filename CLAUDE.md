@@ -198,6 +198,22 @@ was adversarially self-reviewed (multi-agent workflows) — 6 real bugs found+fi
 measurement id, flip the email flag, Sentry PR #6 merge + token rotation, manual visual/device QA of the design+PWA
 changes, and 4.4 tests (need CI Postgres/jsdom). 5A/5C big features need a brainstorming pass before code.
 
+**⚠️ MONETIZATION PIVOT → MARKETPLACE (2026-07-10, license-free).** The credit-wallet model below (A→D)
+is being **REMOVED**: withdrawable 1:1-€ credits = e-money (needs a license). Replaced by a **Stripe Connect
+marketplace** — the platform never custodies funds. Paid channels are bought with **direct Stripe payments**
+(Connect *destination charge* one-time / *subscription*), the creator's share routed straight to their connected
+account, platform takes `PLATFORM_FEE_BPS`, Stripe pays creators out. **Done (green, 348 tests):** pure
+`services/community/channelPricing.ts` (price_cents), migration **0033** (price_cents/sub_interval/currency/
+stripe_price_id + entitlement.stripe_subscription_id), `channelCheckout.ts` + `POST /community/channels/:id/checkout`,
+webhook grant/sync in `routes/billing.ts` (checkout.session.completed + customer.subscription.* keyed on
+`metadata.type` channel_unlock/channel_sub), gating switched to price_cents, FE (€ pricing editor, buy-access →
+Stripe Checkout, creator "receive payments" card + Express dashboard link, credit-buy UI removed). Spec:
+`docs/superpowers/specs/2026-07-10-marketplace-connect-pivot-design.md`. **Remaining:** Phase 5 = delete the dead
+credit/payout-withdraw code + drop tables (migration 0034: credit_wallets, credit_transactions, creator_payouts;
+drop community_channels.price_credits/subscription_period_days) — dead-but-harmless until then; Phase 6 = adversarial
+review of the marketplace money-in path. Connect onboarding infra (`creator_payout_accounts` + payoutService
+account fns + `account.updated`) is REUSED. The A→D text below is the SUPERSEDED credit model (kept for history).
+
 **Community monetization (A+B+C) — shipped (2026-07-08/09, branch `feat/community-management`).** Telegram-style
 paid/private communities, decomposed A→D; **in-app credits have NO cash value** (non-refundable/withdrawable,
 forfeited on account deletion — stays out of e-money regulation). All **off-contract**. Migrations **0027–0029**.
