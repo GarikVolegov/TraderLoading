@@ -17,6 +17,7 @@ import logger from "./lib/logger";
 import { captureError } from "./lib/observability";
 import { classifyApiError } from "./lib/apiError";
 import { getUploadsDir } from "./lib/uploads";
+import { resolveSnapshotIndexPath } from "./lib/staticSnapshot";
 import {
   createCorsOptions,
   createHelmetOptions,
@@ -127,6 +128,20 @@ function serveFrontendApp(expressApp: Express) {
     logger.warn({ frontendDir }, "Frontend build not found; API-only mode enabled");
     return;
   }
+
+  expressApp.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      next();
+      return;
+    }
+    const snapshotPath = resolveSnapshotIndexPath(frontendDir, req.path);
+    if (snapshotPath) {
+      res.setHeader("Cache-Control", "no-store");
+      res.sendFile(snapshotPath);
+      return;
+    }
+    next();
+  });
 
   expressApp.use(
     express.static(frontendDir, {
