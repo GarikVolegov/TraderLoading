@@ -163,7 +163,7 @@ async function startBillingServer(options = {}) {
       manualOverride: false,
       stripeCustomerId: "cus_1234567890",
       stripeSubscriptionId: "sub_1234567890",
-      currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+      currentPeriodEnd: new Date("2027-07-10T00:00:00.000Z"),
       cancelAtPeriodEnd: false,
     }),
   });
@@ -257,7 +257,7 @@ async function startBillingServer(options = {}) {
       status: "active",
       stripeCustomerId: "cus_123",
       stripeSubscriptionId: "sub_123",
-      currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+      currentPeriodEnd: new Date("2027-07-10T00:00:00.000Z"),
       cancelAtPeriodEnd: false,
     }),
     cancelSubscription: async (userId: string, subscriptionId: string) => {
@@ -267,7 +267,7 @@ async function startBillingServer(options = {}) {
         status: "active",
         stripeCustomerId: "cus_123",
         stripeSubscriptionId: "sub_123",
-        currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+        currentPeriodEnd: new Date("2027-07-10T00:00:00.000Z"),
         cancelAtPeriodEnd: true,
       };
     },
@@ -278,7 +278,7 @@ async function startBillingServer(options = {}) {
         status: "active",
         stripeCustomerId: "cus_123",
         stripeSubscriptionId: "sub_123",
-        currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+        currentPeriodEnd: new Date("2027-07-10T00:00:00.000Z"),
         cancelAtPeriodEnd: false,
       };
     },
@@ -323,7 +323,7 @@ async function startBillingServer(options = {}) {
           currency: "eur",
           hostedInvoiceUrl: "https://stripe.test/invoice/in_123",
           periodStart: "2026-06-10T00:00:00.000Z",
-          periodEnd: "2026-07-10T00:00:00.000Z",
+          periodEnd: "2027-07-10T00:00:00.000Z",
         },
       ];
     },
@@ -341,7 +341,7 @@ async function startBillingServer(options = {}) {
           currency: "eur",
           hostedInvoiceUrl: "https://stripe.test/invoice/in_123",
           periodStart: "2026-06-10T00:00:00.000Z",
-          periodEnd: "2026-07-10T00:00:00.000Z",
+          periodEnd: "2027-07-10T00:00:00.000Z",
         },
       ],
     });
