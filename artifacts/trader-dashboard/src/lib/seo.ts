@@ -201,6 +201,43 @@ export function seoPageAlternates(page: SeoPageKey): HreflangAlternate[] {
   return alts;
 }
 
+/** URL path for the blog index in a given language. */
+export function blogIndexPath(lang: Language): string {
+  return lang === "en" ? "/blog" : `/${lang}/blog`;
+}
+
+/** URL path for a blog article in a given language (same slug across languages). */
+export function blogPostPath(slug: string, lang: Language): string {
+  return lang === "en" ? `/blog/${slug}` : `/${lang}/blog/${slug}`;
+}
+
+/** hreflang alternates (all 5 languages + x-default) for the blog index. */
+export function blogIndexAlternates(): HreflangAlternate[] {
+  const alts: HreflangAlternate[] = LANG_ORDER.map((lang) => ({
+    hreflang: lang,
+    href: absoluteUrl(blogIndexPath(lang)),
+  }));
+  alts.push({ hreflang: "x-default", href: absoluteUrl(blogIndexPath("en")) });
+  return alts;
+}
+
+/**
+ * hreflang alternates for a blog post — only for the languages that actually
+ * have a published translation (unlike the static keyword pages, a post may
+ * not exist in all 5 languages). x-default points at English only if an
+ * English translation exists.
+ */
+export function blogPostAlternates(slug: string, langs: Language[]): HreflangAlternate[] {
+  const alts: HreflangAlternate[] = langs.map((lang) => ({
+    hreflang: lang,
+    href: absoluteUrl(blogPostPath(slug, lang)),
+  }));
+  if (langs.includes("en")) {
+    alts.push({ hreflang: "x-default", href: absoluteUrl(blogPostPath(slug, "en")) });
+  }
+  return alts;
+}
+
 /** Every public marketing URL (landing + keyword pages) across all languages. */
 export function allMarketingPaths(): string[] {
   const paths = LANG_ORDER.map((lang) => landingPath(lang));
@@ -301,5 +338,18 @@ export function pricingProductJsonLd(
     url,
     brand: { "@type": "Brand", name: "TraderLoading" },
     offers: TRADERLOADING_OFFERS,
+  };
+}
+
+/** schema.org BlogPosting for a blog article. */
+export function articleJsonLd(title: string, description: string, url: string, lang: Language): JsonLd {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: title,
+    description,
+    url,
+    inLanguage: lang,
+    publisher: { "@type": "Organization", name: "TraderLoading", url: `${SITE_ORIGIN}/` },
   };
 }

@@ -128,3 +128,30 @@ assert.equal(faq.mainEntity[0].name, "Q?");
 assert.equal(faq.mainEntity[0].acceptedAnswer.text, "A.");
 
 console.log("seo helpers checks passed");
+
+// ─── blog helpers ───────────────────────────────────────────────────────────
+import { blogIndexPath, blogPostPath, blogIndexAlternates, blogPostAlternates, articleJsonLd } from "./seo.ts";
+
+assert.equal(blogIndexPath("en"), "/blog");
+assert.equal(blogIndexPath("it"), "/it/blog");
+assert.equal(blogPostPath("risk-management-basics", "en"), "/blog/risk-management-basics");
+assert.equal(blogPostPath("risk-management-basics", "it"), "/it/blog/risk-management-basics");
+
+const idxAlts = blogIndexAlternates();
+assert.equal(idxAlts.length, 6, "5 languages + x-default");
+assert.ok(idxAlts.some((a) => a.hreflang === "x-default" && a.href === "https://traderloading.com/blog"));
+
+const postAlts = blogPostAlternates("risk-management-basics", ["en", "it"]);
+assert.deepEqual(
+  postAlts.map((a) => a.hreflang),
+  ["en", "it", "x-default"],
+  "only the given languages + x-default (not all 5) — a post may not have every translation",
+);
+assert.equal(postAlts[2].href, "https://traderloading.com/blog/risk-management-basics", "x-default points at English");
+
+const jsonLd = articleJsonLd("Come iniziare a fare trading", "Guida pratica", "https://traderloading.com/it/blog/come-iniziare", "it");
+assert.equal(jsonLd["@type"], "BlogPosting");
+assert.equal(jsonLd.headline, "Come iniziare a fare trading");
+assert.equal(jsonLd.inLanguage, "it");
+
+console.log("blog seo helper tests passed");
