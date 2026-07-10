@@ -272,6 +272,25 @@ helpers from these files, not the restyled components, so it needed no changes. 
 (desktop + mobile screenshots via a throwaway Clerk test-user Playwright script, same pattern as
 `scripts/verify-nav-hubs/drive.mjs`).
 
+**SEO/GEO Phase 1 — technical hardening (2026-07-10, done).** Audited the existing SEO/GEO machinery
+(robots.txt AI-crawler allowlist, multilingual sitemap, `llms.txt`, `Seo.tsx` JSON-LD/hreflang, headless-Chromium
+prerender) and closed three verified gaps: **prerendering now hard-fails** instead of silently degrading —
+`puppeteer`/`sirv` moved from `optionalDependencies` to `dependencies`, and `scripts/seoSnapshot.ts`
+(`isValidSnapshot`) rejects a captured page missing an `<h1>` or carrying the new
+`data-root-error-boundary` marker (added to `RootErrorBoundary.tsx`) so a crashed render can never ship to
+crawlers unnoticed; **the redirect hop is gone** — `artifacts/api-server/src/lib/staticSnapshot.ts`
+(`resolveSnapshotIndexPath`) serves a prerendered `<route>/index.html` directly (200, no 301) from
+`serveFrontendApp` in `app.ts`; **`robots.txt` drift closed** (`/wiki`, `/tornei`, `/support`, `/welcome`,
+`/styleguide` were undisallowed). `docs/seo/keyword-strategy.md` gained a concrete GSC/Bing/GA4 verification
+runbook (user-executed, not automatable). Spec/plan:
+`docs/superpowers/{specs,plans}/2026-07-10-seo-geo-technical-hardening*`. Verified end-to-end: a real build
+with a valid Clerk key produces 45/45 valid prerendered routes, and an HTTP-level check confirms `/about`
+now 200s directly with no redirect. **Phase 2 (public blog + Library cross-linking for organic/GEO content
+depth) is a separate future spec** — Library (`routes/library.ts`, `library_collections`/`library_contents`)
+is currently an XP-gated in-app content feed with no public route, ships empty (no seed data). Off-repo
+follow-ups needed for actual ranking (documented in the runbook, not code): GSC/Bing domain verification +
+sitemap submission, `VITE_GA_MEASUREMENT_ID`, backlinks/off-site authority.
+
 > This section changes the most session-to-session — update it as the work moves.
 
 ## 8. Conventions & gotchas
