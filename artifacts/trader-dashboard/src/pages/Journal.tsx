@@ -1104,38 +1104,9 @@ export default function Journal() {
   const tab = parseJournalTab(useSearch());
   const setTab = (next: JournalTab) => navigate(`/journal?t=${next}`);
 
-  const tabs: { id: JournalTab; labelKey: string; icon: typeof BookOpen }[] = [
-    { id: "panoramica", labelKey: "journal.tab.overview", icon: TrendingUp },
-    { id: "trades", labelKey: "journal.tab.trades", icon: BookOpen },
-    { id: "recap-settimanale", labelKey: "journal.tab.weekly", icon: BarChart3 },
-    { id: "recap-mensile", labelKey: "journal.tab.four_week", icon: Calendar },
-    { id: "idee", labelKey: "journal.tab.ideas", icon: Lightbulb },
-    { id: "obiettivi", labelKey: "journal.tab.goals", icon: Target },
-  ];
-
   return (
     <PageLayout>
       <PageHeader title={t("journal.title")} subtitle={t("journal.subtitle")} />
-
-      <div className="flex items-center gap-1 bg-card/50 backdrop-blur-md p-1.5 rounded-xl border border-border w-full overflow-x-auto">
-        {tabs.map(tabItem => {
-          const Icon = tabItem.icon;
-          return (
-            <button
-              key={tabItem.id}
-              onClick={() => setTab(tabItem.id)}
-              className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 flex-1 ${
-                tab === tabItem.id
-                  ? "bg-primary/10 text-primary shadow-[inset_0_0_20px_rgba(34,197,94,0.1)]"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {t(tabItem.labelKey)}
-            </button>
-          );
-        })}
-      </div>
 
       <AnimatePresence mode="wait">
         <motion.div

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useLocation, useSearch } from "wouter";
+import { useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Eye, BookOpen, Heart, Clock, Play, Pause, RotateCcw, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MoodPerformanceInsight } from "@/components/MoodPerformanceInsight";
-import { parseZenTab, type ZenTab } from "@/lib/zenTabs";
+import { parseZenTab } from "@/lib/zenTabs";
 
 type Phase = "inspira" | "trattieni" | "espira" | "riposa";
 
@@ -414,38 +413,22 @@ function MeditationTimer() {
 
 export default function Zen() {
   const { t } = useLanguage();
-  const [, navigate] = useLocation();
   const tab = parseZenTab(useSearch());
-  const setTab = (next: ZenTab) => navigate(`/zen?t=${next}`);
   return (
     <PageLayout>
       <PageHeader title={t("zen.title")} subtitle={t("zen.subtitle")} />
       <motion.section
+        key={tab}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Tabs value={tab} onValueChange={(next) => setTab(next as ZenTab)} className="w-full">
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-            <TabsList className="flex md:flex-col w-full md:w-1/3 h-auto gap-1 bg-card/50 backdrop-blur-md p-1.5 rounded-xl border border-border md:self-start">
-              <TabsTrigger value="breathing"     className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.breathing")}</TabsTrigger>
-              <TabsTrigger value="visualization" className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.visualization")}</TabsTrigger>
-              <TabsTrigger value="quotes"        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.quotes")}</TabsTrigger>
-              <TabsTrigger value="gratitude"     className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.gratitude")}</TabsTrigger>
-              <TabsTrigger value="meditation"    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.meditation")}</TabsTrigger>
-              <TabsTrigger value="insight"       className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm flex-1 md:w-full">{t("zen.tab.insight")}</TabsTrigger>
-            </TabsList>
-
-            <div className="md:w-2/3">
-              <TabsContent value="breathing"     className="mt-0"><BreathingExercise /></TabsContent>
-              <TabsContent value="visualization" className="mt-0"><ResultVisualization /></TabsContent>
-              <TabsContent value="quotes"        className="mt-0"><MotivationalQuotes /></TabsContent>
-              <TabsContent value="gratitude"     className="mt-0"><Gratitude /></TabsContent>
-              <TabsContent value="meditation"    className="mt-0"><MeditationTimer /></TabsContent>
-              <TabsContent value="insight"       className="mt-0"><MoodPerformanceInsight /></TabsContent>
-            </div>
-          </div>
-        </Tabs>
+        {tab === "breathing" && <BreathingExercise />}
+        {tab === "visualization" && <ResultVisualization />}
+        {tab === "quotes" && <MotivationalQuotes />}
+        {tab === "gratitude" && <Gratitude />}
+        {tab === "meditation" && <MeditationTimer />}
+        {tab === "insight" && <MoodPerformanceInsight />}
       </motion.section>
     </PageLayout>
   );

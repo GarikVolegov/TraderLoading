@@ -17,4 +17,11 @@ assert.match(src, /navigate\(\s*`\/journal\?t=\$\{[^}]+\}`\s*\)/,
 assert.doesNotMatch(src, /type Tab = "panoramica"/,
   "the local Tab union is replaced by the shared JournalTab type");
 
+// No more in-page selector UI: the contextual nav owns tab switching now.
+assert.doesNotMatch(src, /tabs\.map\(/,
+  "the in-page tab-strip render loop must be removed");
+for (const tab of ["panoramica", "trades", "recap-settimanale", "recap-mensile", "idee", "obiettivi"]) {
+  assert.match(src, new RegExp(`tab === "${tab}"`), `content still switches on tab === "${tab}"`);
+}
+
 console.log("Journal hub-tab static checks passed");

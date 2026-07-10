@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
@@ -7,7 +7,7 @@ import { parseChatTab, type ChatTab } from "@/lib/chatTabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { useAuth } from "@workspace/replit-auth-web";
-import { Loader2, LogIn, Globe, Lock, Trophy, Radio } from "lucide-react";
+import { Loader2, LogIn, Globe } from "lucide-react";
 import type { SocialUser } from "@/components/social/types";
 import { SocialTab } from "@/components/social/SocialTab";
 import { MessaggiTab } from "@/components/social/MessaggiTab";
@@ -22,8 +22,6 @@ export default function Chat() {
   const [, navigate] = useLocation();
   const activeTab: ChatTab = parseChatTab(useSearch());
   const [pendingChat, setPendingChat] = useState<SocialUser | null>(null);
-
-  const setActiveTab = (tab: ChatTab) => navigate(`/chat?t=${tab}`);
 
   const handleStartChat = (u: SocialUser) => {
     setPendingChat(u);
@@ -66,25 +64,6 @@ export default function Chat() {
       </PageLayout>
     );
 
-  const tabs: { id: ChatTab; label: string; icon: ReactNode }[] = [
-    {
-      id: "social",
-      label: t("chat.tab.social"),
-      icon: <Globe className="w-4 h-4" />,
-    },
-    {
-      id: "messaggi",
-      label: t("chat.tab.messages"),
-      icon: <Lock className="w-4 h-4" />,
-    },
-    { id: "comunita", label: t("chat.tab.community"), icon: <Radio className="w-4 h-4" /> },
-    {
-      id: "classifica",
-      label: t("chat.tab.leaderboard"),
-      icon: <Trophy className="w-4 h-4" />,
-    },
-  ];
-
   return (
     <PageLayout>
       <PageHeader title={t("chat.title")} subtitle={t("chat.subtitle")} />
@@ -94,19 +73,6 @@ export default function Chat() {
         transition={{ delay: 0.1 }}
         className="bg-card/30 backdrop-blur-md border border-border rounded-2xl overflow-hidden flex flex-col min-h-0 h-[calc(100dvh-var(--safe-top)-4.6rem-var(--bottom-nav-clearance))] sm:h-[calc(100dvh-var(--safe-top)-8.5rem-var(--bottom-nav-clearance))]"
       >
-        <div className="flex border-b border-border shrink-0 overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-all whitespace-nowrap px-2 ${activeTab === tab.id ? "text-primary border-b-2 border-primary bg-primary/5" : "text-muted-foreground hover:text-foreground hover:bg-white/5"}`}
-            >
-              {tab.icon}
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
         <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === "social" && (
             <SocialTab

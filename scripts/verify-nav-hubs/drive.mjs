@@ -159,6 +159,32 @@ async function main() {
     console.log("  [journal/desktop] recap-mensile also directly visible (desktop = no cap):", await page.locator('a[title="Recap 4 settimane"]').count());
     await shot(page, "06-journal-desktop-sidebar.png");
 
+    // ── In-page selectors removed: the contextual nav alone drives tabs now ──
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${BASE}/journal`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1000);
+    for (let i = 0; i < 6; i++) { await dismiss(page); await page.waitForTimeout(500); }
+    console.log("  [journal] in-page tab-strip text gone (should be 0):", await page.getByText("Panoramica", { exact: true }).count());
+    await shot(page, "07-journal-no-inpage-tabs.png");
+    // Tap the nav item for "Trade" (href-based, label only flashes on tap) → content switches.
+    await page.locator('a[href="/journal?t=trades"]').first().click();
+    await page.waitForTimeout(700);
+    console.log("  [journal] URL after nav tap:", page.url());
+    console.log("  [journal] Trade content visible (Aggiungi trade / import):", await page.getByText(/trade/i).count() > 0);
+    await shot(page, "08-journal-trades-via-nav-only.png");
+
+    await page.goto(`${BASE}/zen`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1000);
+    for (let i = 0; i < 6; i++) { await dismiss(page); await page.waitForTimeout(500); }
+    console.log("  [zen] in-page TabsList text gone (should be 0):", await page.getByText("Respira", { exact: true }).count());
+    await shot(page, "09-zen-no-inpage-tabs.png");
+
+    await page.goto(`${BASE}/chat?t=social`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1000);
+    for (let i = 0; i < 6; i++) { await dismiss(page); await page.waitForTimeout(500); }
+    console.log("  [chat] in-page tab-strip text gone (should be 0):", await page.getByText("Classifica", { exact: true }).count());
+    await shot(page, "10-chat-no-inpage-tabs.png");
+
     console.log("DONE");
   } catch (err) {
     console.error("driver error:", err?.message ?? err);
