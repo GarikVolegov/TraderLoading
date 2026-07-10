@@ -17,6 +17,11 @@ assert.doesNotMatch(zenZone, /MeditationTimer|MotivationalQuotes|ResultVisualiza
 assert.match(programCard, /h-11 w-11/); // 44px = h-11/w-11 in Tailwind's 4px scale
 assert.doesNotMatch(programCard, /steps\.filter/);
 
+// RoutineStatsPanel: 4 tiles only (Streak/Completate/Mattutine/Serali), no per-routine list.
+assert.match(statsPanel, /Mattutine/);
+assert.match(statsPanel, /Serali/);
+assert.doesNotMatch(statsPanel, /byRoutine/);
+
 // Routine page composes ZenZone; the removed sections are gone.
 assert.match(routinePage, /<ZenZone/);
 assert.doesNotMatch(routinePage, /FriendCompetitionPanel|CreateRoutinePanel|CustomRoutineCard/);
