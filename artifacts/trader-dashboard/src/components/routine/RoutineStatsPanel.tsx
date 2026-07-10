@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { uiText } from "@/contexts/LanguageContext";
 import { getRoutineMetrics } from "@/pages/Routine.storage";
-import { CheckCircle2, Flame, Clock, Layers } from "lucide-react";
 
 function formatRoutineDate(value: string | null): string {
   if (!value) return "Mai";
@@ -23,10 +22,10 @@ export function RoutineStatsPanel({
   metrics: ReturnType<typeof getRoutineMetrics>;
 }) {
   const stats = [
-    { label: "Completamenti", value: metrics.totalCompletions, icon: CheckCircle2, color: "text-primary" },
-    { label: "Streak routine", value: `${metrics.currentStreakDays}d`, icon: Flame, color: "text-amber-400" },
-    { label: "Routine create", value: metrics.customRoutineCount, icon: Layers, color: "text-sky-300" },
-    { label: "Ultima sessione", value: formatRoutineDate(metrics.lastCompletedAt), icon: Clock, color: "text-muted-foreground" },
+    { label: "Completamenti", value: String(metrics.totalCompletions) },
+    { label: "Streak routine", value: `${metrics.currentStreakDays}d` },
+    { label: "Routine create", value: String(metrics.customRoutineCount) },
+    { label: "Ultima sessione", value: formatRoutineDate(metrics.lastCompletedAt) },
   ];
 
   return (
@@ -45,11 +44,13 @@ export function RoutineStatsPanel({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {stats.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="rounded-2xl border border-border/25 bg-background/25 p-3">
-            <Icon className={`h-4 w-4 ${color}`} />
-            <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/45">{label}</p>
-            <p className="mt-1 truncate font-mono text-lg font-bold">{value}</p>
+        {stats.map(({ label, value }) => (
+          <div
+            key={label}
+            className="flex flex-col items-center justify-center gap-0.5 rounded-xl border border-border/40 bg-secondary/55 p-2.5 text-center shadow-[inset_0_1px_0_hsl(var(--foreground)/0.04)]"
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/85">{label}</span>
+            <span className="font-mono text-lg font-bold tabular-nums tracking-tight">{value}</span>
           </div>
         ))}
       </div>
