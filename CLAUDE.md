@@ -262,18 +262,29 @@ leaving Journal/Zen's own default tab unhighlighted on a bare `/journal`/`/zen` 
 Manually verified live via `scripts/verify-nav-hubs/drive.mjs` (Clerk test-user Playwright driver, mirrors
 `verify-archive`). `BottomNav.community-nav.static.test.ts` retired in favor of `BottomNav.hub-nav.static.test.ts`.
 
-**Routine → Claude Design restyle (2026-07-10, done).** Pure 1:1 visual restyle of `/routine` onto a new
-Claude Design template, `templates/routine/RoutineProgrammi.dc.html` ("Routine & Programmi") in the
-"TraderLoading Design System" project — same precedent as archivio/diario/auth/tornei. Audited the existing
-page first: `Routine.tsx`'s header/hero/how-it-works and `CreateRoutinePanel.tsx` already matched the target
-glass-card token language, so only the components with a real visible delta changed —
-`components/routine/ProgramCard.tsx` + `CustomRoutineCard.tsx` (accent-color top strip), `RoutineStatsPanel.tsx`
-(restyled onto the `StatTile` spec — centered label over a mono tabular value, icons dropped), and
-`FriendCompetitionPanel.tsx` (silver/bronze rank accents for 2nd/3rd, not just gold 1st). New
-`pages/Routine.static.test.ts` locks in each marker. `RoutineWidget.tsx` only reuses `SessionModal`/storage
-helpers from these files, not the restyled components, so it needed no changes. Manually verified live
-(desktop + mobile screenshots via a throwaway Clerk test-user Playwright script, same pattern as
-`scripts/verify-nav-hubs/drive.mjs`).
+**Routine + Zen merge (2026-07-10, done, supersedes an earlier same-day restyle-only pass).** `/routine`
+rebuilt to faithfully match the actual Claude Design mockup — `RoutineView`+`ZenZone` in
+`ui_kits/dashboard/views-life.jsx` ("TraderLoading Design System" project), found only after a first,
+narrower restyle pass (a `templates/routine/RoutineProgrammi.dc.html` I authored myself, matching only
+token colors) was rejected by the user as "not extracted." Root-cause: I checked only the `templates/`
+folder in the Claude Design project, not `ui_kits/dashboard/`, and separately made a unilateral call to
+narrow scope down to a token-only diff instead of a structural port — both captured in memory
+[[claude-design-port-fidelity]]. The real mockup composes Routine and Zen into one page, so `/zen` is
+**removed as a standalone hub** — breathing (ported verbatim from `Zen.tsx`'s animated ring timer) + a new
+mood check-in are folded into a new `components/routine/ZenZone.tsx` inside Routine. Also dropped (not in
+the mockup, user-confirmed): friend leaderboard (`FriendCompetitionPanel.tsx`), create-custom-routine panel,
+custom-routine grid, and Zen's other 4 tabs (meditation/visualization/quotes/mood-performance `insight`).
+`ProgramCard`/`RoutineStatsPanel` simplified to the mockup's spec (44px icon no per-card step list; 4 plain
+stat tiles). `SessionModal`'s shell got the `RoutinePlayer` visual treatment (bigger icon, single prominent
+progress bar, "Passo N di M") — its 10 step components (goals/visualization/trade-review/reflection/tomorrow
+etc.) are untouched, real trading-specific content kept over the mockup's generic 7-step flow. Removed
+`pages/Zen.tsx` + `lib/zenTabs.ts` + `components/MoodPerformanceInsight.tsx` + `lib/moodPerformance.ts`
+(verified zero other callers) and all `/zen` wiring (`App.tsx` route, `BottomNav.tsx` — Routine now takes
+Zen's old mobile-reachable root nav slot — `CommandPalette.tsx`, `lib/navHubs.ts`'s `ZEN_HUB`). New copy
+(ZenZone strings, page title/subtitle/section headings) routed through `uiText()` with keys added to all 5
+languages, per the i18n-enforced-new-UI gate. Manually verified live (desktop screenshot + mood-check-in
+click + session-modal flow via a throwaway Clerk test-user Playwright script, same pattern as
+`scripts/verify-nav-hubs/drive.mjs`). Full suite 347/347 green.
 
 **SEO/GEO Phase 1 — technical hardening (2026-07-10, done).** Audited the existing SEO/GEO machinery
 (robots.txt AI-crawler allowlist, multilingual sitemap, `llms.txt`, `Seo.tsx` JSON-LD/hreflang, headless-Chromium
