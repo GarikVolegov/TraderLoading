@@ -73,6 +73,8 @@ const Admin = lazy(() => import("./pages/Admin"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const Styleguide = lazy(() => import("@/components/ui/styleguide/Styleguide"));
 const SeoArticlePage = lazy(() => import("./pages/seo/SeoArticlePage"));
+const BlogIndexPage = lazy(() => import("./pages/blog/BlogIndexPage"));
+const BlogArticlePage = lazy(() => import("./pages/blog/BlogArticlePage"));
 
 // Public marketing languages served under a /{lang} URL prefix (English lives
 // at the root and is the x-default).
@@ -516,12 +518,36 @@ function LocalizedMarketingRoute({ lang, slug }: { lang: Language; slug?: string
   );
 }
 
+function BlogRoute({ lang, slug }: { lang: Language; slug?: string }) {
+  const { setLanguage } = useLanguage();
+  useEffect(() => {
+    setLanguage(lang, false);
+  }, [lang, setLanguage]);
+  return (
+    <Suspense fallback={<PageFallback />}>
+      {slug ? <BlogArticlePage lang={lang} slug={slug} /> : <BlogIndexPage lang={lang} />}
+    </Suspense>
+  );
+}
+
 // English keyword/marketing pages at the root, plus a /{lang}/:slug? route per
 // localized language (matches both the localized landing and its keyword pages).
 const marketingRoutes = [
   ...SEO_PAGE_KEYS.map((page) => (
     <Route key={`en-${page}`} path={seoPagePath(page, "en")}>
       <MarketingPage lang="en" page={page} />
+    </Route>
+  )),
+  <Route key="blog-en" path="/blog/:slug?">
+    {(params: { slug?: string }) => <BlogRoute lang="en" slug={params.slug} />}
+  </Route>,
+  // Blog routes for localized languages MUST come before the generic
+  // "/{lang}/:slug?" catch-all below — otherwise a bare "/it/blog" (no
+  // article) would match the catch-all first (slug="blog") and 404 via
+  // seoPageFromSlug instead of reaching BlogRoute.
+  ...LOCALIZED_LANGS.map((lang) => (
+    <Route key={`blog-${lang}`} path={`/${lang}/blog/:slug?`}>
+      {(params: { slug?: string }) => <BlogRoute lang={lang} slug={params.slug} />}
     </Route>
   )),
   ...LOCALIZED_LANGS.map((lang) => (
