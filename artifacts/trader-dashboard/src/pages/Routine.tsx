@@ -3,6 +3,7 @@ import { AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { uiText } from "@/contexts/LanguageContext";
 import { getRoutineStartProgram } from "./Routine.helpers";
 import { getRoutineMetrics, loadRoutineCompletions } from "./Routine.storage";
 import { recordRoutineCompletion } from "@/lib/routineApi";
@@ -99,18 +100,18 @@ export default function Routine() {
     <>
       <PageLayout>
         <PageHeader
-          title="Routine & Programmi"
-          subtitle="Programmi guidati e zona zen per costruire la tua costanza"
+          title={uiText("routine.title")}
+          subtitle={uiText("routine.subtitle")}
           badge={
             <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary uppercase tracking-wider">
-              Interattivo
+              {uiText("common.interactive")}
             </span>
           }
         />
 
         <div className="flex items-baseline justify-between">
-          <h2 className="text-base font-bold">Programmi guidati</h2>
-          <span className="font-mono text-[11px] text-muted-foreground/60">2 programmi · 7 step ciascuno</span>
+          <h2 className="text-base font-bold">{uiText("routine.section.guided_programs")}</h2>
+          <span className="font-mono text-[11px] text-muted-foreground/60">{uiText("routine.section.guided_programs_count")}</span>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5">

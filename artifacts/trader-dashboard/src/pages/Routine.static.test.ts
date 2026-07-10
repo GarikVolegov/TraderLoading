@@ -9,8 +9,8 @@ const sessionModal = readFileSync(new URL("../components/routine/SessionModal.ts
 
 // ZenZone: breathing + mood check-in, no Zen-only tabs survive.
 assert.match(zenZone, /export function ZenZone/);
-assert.match(zenZone, /Respirazione guidata/);
-assert.match(zenZone, /Check-in emotivo/);
+assert.match(zenZone, /routine\.zenzone\.breathing_title/);
+assert.match(zenZone, /routine\.zenzone\.mood_title/);
 assert.doesNotMatch(zenZone, /MeditationTimer|MotivationalQuotes|ResultVisualization/);
 
 // ProgramCard: simplified per the mockup — 44px icon, no per-card step-pill list.

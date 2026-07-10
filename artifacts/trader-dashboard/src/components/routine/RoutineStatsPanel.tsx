@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { uiText } from "@/contexts/LanguageContext";
 
 export function RoutineStatsPanel({
   streakDays,
@@ -25,8 +26,8 @@ export function RoutineStatsPanel({
       transition={{ delay: 0.24 }}
       className="rounded-3xl border border-border/30 bg-card/35 p-4 sm:p-5"
     >
-      <p className="font-mono text-base font-bold tracking-tight">Le tue statistiche</p>
-      <p className="mt-0.5 text-xs text-muted-foreground/50">Costanza nella routine</p>
+      <p className="font-mono text-base font-bold tracking-tight">{uiText("routine.stats.title")}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground/50">{uiText("routine.stats.subtitle")}</p>
 
       <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {stats.map(({ label, value }) => (

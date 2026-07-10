@@ -53,7 +53,7 @@ const SHORTCUT_ITEMS = [
     keys: ["Tools", "→", "Backtest"],
     action: "Allenamento su grafici storici",
   },
-  { keys: ["Zen"], action: "Mood tracking e meditazione" },
+  { keys: ["Routine", "→", "Zona Zen"], action: "Respirazione guidata e check-in emotivo" },
 ];
 
 const HELP_FAQS = [

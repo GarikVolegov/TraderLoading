@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, RotateCcw, ChevronRight, Brain } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage, uiText } from "@/contexts/LanguageContext";
 
 type Phase = "inspira" | "trattieni" | "espira" | "riposa";
 
@@ -69,7 +69,7 @@ function BreathingExercise() {
 
   return (
     <div className="flex flex-col items-center gap-5 rounded-2xl border border-border/25 bg-card/25 p-4 text-center">
-      <p className="font-mono text-sm font-bold">Respirazione guidata</p>
+      <p className="font-mono text-sm font-bold">{uiText("routine.zenzone.breathing_title")}</p>
       <div className="relative h-40 w-40">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="46" fill="none" strokeWidth="3" className="stroke-muted-foreground/15" />
@@ -115,8 +115,8 @@ function BreathingExercise() {
         {t("zen.breathing.cycles")} <span className="font-semibold text-foreground">{count}</span>
       </p>
       <div className="flex gap-3">
-        <Button onClick={() => setIsActive(!isActive)} size="sm" className="min-w-[110px] gap-2">
-          {isActive ? <><Pause className="h-4 w-4" /> Pausa</> : <><Play className="h-4 w-4" /> Avvia sessione</>}
+        <Button onClick={() => setIsActive(!isActive)} size="sm" className="min-w-27.5 gap-2">
+          {isActive ? <><Pause className="h-4 w-4" /> {uiText("common.pause")}</> : <><Play className="h-4 w-4" /> {uiText("routine.zenzone.breathing_start")}</>}
         </Button>
         <Button
           variant="outline"
@@ -124,7 +124,7 @@ function BreathingExercise() {
           onClick={() => { setIsActive(false); setPhase("inspira"); setCount(0); setElapsed(0); }}
           className="gap-2"
         >
-          <RotateCcw className="h-4 w-4" /> Reset
+          <RotateCcw className="h-4 w-4" /> {uiText("common.reset")}
         </Button>
       </div>
     </div>
@@ -145,8 +145,8 @@ function MoodCheckIn() {
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-border/25 bg-card/25 p-4">
       <div>
-        <p className="font-mono text-sm font-bold">Check-in emotivo</p>
-        <p className="mt-1 text-xs text-muted-foreground/60">Come ti senti in questo momento?</p>
+        <p className="font-mono text-sm font-bold">{uiText("routine.zenzone.mood_title")}</p>
+        <p className="mt-1 text-xs text-muted-foreground/60">{uiText("routine.zenzone.mood_subtitle")}</p>
       </div>
       <div className="grid flex-1 grid-cols-5 gap-2">
         {MOODS.map(([emoji, label]) => {
@@ -170,9 +170,9 @@ function MoodCheckIn() {
       </div>
       <p className="text-xs text-muted-foreground/50">
         {mood ? (
-          <>Umore registrato: <strong className="text-foreground">{mood}</strong></>
+          <>{uiText("routine.zenzone.mood_recorded")} <strong className="text-foreground">{mood}</strong></>
         ) : (
-          "Il check-in ti aiuta a essere consapevole del tuo stato mentale prima di operare."
+          uiText("routine.zenzone.mood_hint")
         )}
       </p>
     </div>
@@ -188,12 +188,12 @@ export function ZenZone() {
             <Brain className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-mono text-base font-bold">Zona Zen</p>
-            <p className="text-xs text-muted-foreground/60">Respira, medita e coltiva la mentalità giusta</p>
+            <p className="font-mono text-base font-bold">{uiText("zen.title")}</p>
+            <p className="text-xs text-muted-foreground/60">{uiText("zen.subtitle")}</p>
           </div>
         </div>
         <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-          Interattivo
+          {uiText("common.interactive")}
         </span>
       </CardHeader>
       <CardContent>
