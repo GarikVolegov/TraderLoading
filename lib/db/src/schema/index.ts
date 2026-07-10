@@ -23,3 +23,4 @@ export * from "./tornei";
 export * from "./referral";
 export * from "./emailLifecycle";
 export * from "./payout";
+export * from "./blog";
