@@ -1,10 +1,11 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db, libraryCollectionsTable, libraryContentsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { resolveUploadPath } from "../lib/uploads.js";
+import { isPlatformAdmin, requireAdmin } from "../lib/platformAdmin.js";
 
 const router: IRouter = Router();
 
@@ -36,25 +37,6 @@ const upload = multer({
     else cb(new Error("Tipo file non consentito"));
   },
 });
-
-function requireAuth(req: Request, res: Response): string | null {
-  const userId = req.user?.id;
-  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return null; }
-  return userId;
-}
-function isPlatformAdmin(userId: string): boolean {
-  const ids = (process.env.PLATFORM_ADMIN_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
-  return ids.includes(userId);
-}
-function requireAdmin(req: Request, res: Response): string | null {
-  const userId = requireAuth(req, res);
-  if (!userId) return null;
-  if (!isPlatformAdmin(userId)) {
-    res.status(403).json({ error: "Solo l'amministratore della piattaforma può eseguire questa azione" });
-    return null;
-  }
-  return userId;
-}
 
 function parseTags(input: unknown): string {
   if (Array.isArray(input)) return JSON.stringify(input.map((t) => String(t)).filter(Boolean));
