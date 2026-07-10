@@ -243,6 +243,19 @@ leaving Journal/Zen's own default tab unhighlighted on a bare `/journal`/`/zen` 
 Manually verified live via `scripts/verify-nav-hubs/drive.mjs` (Clerk test-user Playwright driver, mirrors
 `verify-archive`). `BottomNav.community-nav.static.test.ts` retired in favor of `BottomNav.hub-nav.static.test.ts`.
 
+**Routine → Claude Design restyle (2026-07-10, done).** Pure 1:1 visual restyle of `/routine` onto a new
+Claude Design template, `templates/routine/RoutineProgrammi.dc.html` ("Routine & Programmi") in the
+"TraderLoading Design System" project — same precedent as archivio/diario/auth/tornei. Audited the existing
+page first: `Routine.tsx`'s header/hero/how-it-works and `CreateRoutinePanel.tsx` already matched the target
+glass-card token language, so only the components with a real visible delta changed —
+`components/routine/ProgramCard.tsx` + `CustomRoutineCard.tsx` (accent-color top strip), `RoutineStatsPanel.tsx`
+(restyled onto the `StatTile` spec — centered label over a mono tabular value, icons dropped), and
+`FriendCompetitionPanel.tsx` (silver/bronze rank accents for 2nd/3rd, not just gold 1st). New
+`pages/Routine.static.test.ts` locks in each marker. `RoutineWidget.tsx` only reuses `SessionModal`/storage
+helpers from these files, not the restyled components, so it needed no changes. Manually verified live
+(desktop + mobile screenshots via a throwaway Clerk test-user Playwright script, same pattern as
+`scripts/verify-nav-hubs/drive.mjs`).
+
 > This section changes the most session-to-session — update it as the work moves.
 
 ## 8. Conventions & gotchas
