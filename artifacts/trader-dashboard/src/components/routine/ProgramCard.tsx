@@ -52,6 +52,9 @@ export function ProgramCard({
       }`}
       style={isActive ? { boxShadow: `0 0 60px -12px ${accentColor}25` } : {}}
     >
+      {/* Accent strip */}
+      <div className="h-0.75 w-full shrink-0" style={{ backgroundColor: accentColor }} />
+
       {/* Glow */}
       {isActive && (
         <div
