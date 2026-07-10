@@ -208,11 +208,14 @@ stripe_price_id + entitlement.stripe_subscription_id), `channelCheckout.ts` + `P
 webhook grant/sync in `routes/billing.ts` (checkout.session.completed + customer.subscription.* keyed on
 `metadata.type` channel_unlock/channel_sub), gating switched to price_cents, FE (€ pricing editor, buy-access →
 Stripe Checkout, creator "receive payments" card + Express dashboard link, credit-buy UI removed). Spec:
-`docs/superpowers/specs/2026-07-10-marketplace-connect-pivot-design.md`. **Remaining:** Phase 5 = delete the dead
-credit/payout-withdraw code + drop tables (migration 0034: credit_wallets, credit_transactions, creator_payouts;
-drop community_channels.price_credits/subscription_period_days) — dead-but-harmless until then; Phase 6 = adversarial
-review of the marketplace money-in path. Connect onboarding infra (`creator_payout_accounts` + payoutService
-account fns + `account.updated`) is REUSED. The A→D text below is the SUPERSEDED credit model (kept for history).
+`docs/superpowers/specs/2026-07-10-marketplace-connect-pivot-design.md`. **Phase 5 DONE** (migration 0034 dropped
+credit_wallets/credit_transactions/creator_payouts + legacy channel credit cols; credit/withdraw code deleted).
+**Phase 6 DONE** — adversarial review (7 findings) fixed: channel-sub invoice no longer grants platform Pro;
+refund/chargeback revokes the channel entitlement (PI metadata maps charge→channel); grant only on
+payment_status=paid / sub active|trialing + async_payment handler; status-aware subscription sync (past_due revokes);
+moving a channel off subscription cancels live Stripe subs. Config `PLATFORM_FEE_BPS`; webhook must add
+`checkout.session.async_payment_succeeded`. Connect onboarding infra (`creator_payout_accounts` + payoutService
+account fns + `account.updated`) is REUSED. **The A→D text below is the SUPERSEDED/DELETED credit model (history only).**
 
 **Community monetization (A+B+C) — shipped (2026-07-08/09, branch `feat/community-management`).** Telegram-style
 paid/private communities, decomposed A→D; **in-app credits have NO cash value** (non-refundable/withdrawable,
