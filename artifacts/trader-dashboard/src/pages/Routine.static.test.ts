@@ -26,6 +26,17 @@ assert.doesNotMatch(statsPanel, /byRoutine/);
 assert.match(sessionModal, /Passo \{stepIdx \+ 1\} di \{steps\.length\}/);
 assert.doesNotMatch(sessionModal, /Step pills/);
 
+// Removed sections are gone from routineApi.ts too.
+const routineApi = readFileSync(new URL("../lib/routineApi.ts", import.meta.url), "utf8");
+assert.doesNotMatch(routineApi, /fetchRoutineCompetition|routineCompetitionQueryKey|RoutineCompetitionEntry/);
+
+// Routine.tsx composes the new sections in order and drops custom-routine UI.
+assert.match(routinePage, /<ProgramCard\b/);
+assert.match(routinePage, /<ZenZone/);
+assert.match(routinePage, /<RoutineStatsPanel\b/);
+assert.match(routinePage, /<SessionModal\b/);
+assert.doesNotMatch(routinePage, /loadCustomRoutines|createCustomRoutine|CreateRoutinePanel|CustomRoutineCard|FriendCompetitionPanel/);
+
 // Routine page composes ZenZone; the removed sections are gone.
 assert.match(routinePage, /<ZenZone/);
 assert.doesNotMatch(routinePage, /FriendCompetitionPanel|CreateRoutinePanel|CustomRoutineCard/);
