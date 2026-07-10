@@ -22,4 +22,9 @@ assert.match(programCard, /h-0\.75 w-full shrink-0/);
 assert.match(statsPanel, /shadow-\[inset_0_1px_0_hsl\(var\(--foreground\)\/0\.04\)\]/);
 assert.doesNotMatch(statsPanel, /CheckCircle2/);
 
+// FriendCompetitionPanel: silver/bronze accents for rank 2/3, not just gold rank 1.
+assert.match(friendPanel, /RANK_ACCENT/);
+assert.match(friendPanel, /slate-300/);
+assert.match(friendPanel, /amber-700/);
+
 console.log("routine page static checks passed");

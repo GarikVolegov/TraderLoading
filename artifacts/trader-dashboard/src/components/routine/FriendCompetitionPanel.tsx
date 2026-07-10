@@ -3,6 +3,11 @@ import { uiText } from "@/contexts/LanguageContext";
 import type { RoutineCompetitionEntry } from "@/lib/routineApi";
 import { Crown, Trophy, User } from "lucide-react";
 
+const RANK_ACCENT: Record<number, string> = {
+  2: "border-slate-300/45 bg-slate-300/15 text-slate-200",
+  3: "border-amber-700/45 bg-amber-700/20 text-amber-500",
+};
+
 function FriendRankBadge({ rank }: { rank: number }) {
   if (rank === 1) {
     return (
@@ -12,9 +17,11 @@ function FriendRankBadge({ rank }: { rank: number }) {
     );
   }
 
+  const accent = RANK_ACCENT[rank] ?? "border-border/35 bg-background/35 text-muted-foreground";
+
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border/35 bg-background/35">
-      <span className="font-mono text-xs font-bold text-muted-foreground">#{rank}</span>
+    <div className={`flex h-8 w-8 items-center justify-center rounded-full border ${accent}`}>
+      <span className="font-mono text-xs font-bold">#{rank}</span>
     </div>
   );
 }
