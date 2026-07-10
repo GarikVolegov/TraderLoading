@@ -1,7 +1,7 @@
-// Grant / sync paid-channel entitlements from Stripe webhooks (marketplace model). The
-// entitlement is the source of truth for access; subscription lifecycle events keep its
-// expiry in step with Stripe.
-import { eq } from "drizzle-orm";
+// Grant / sync / revoke paid-channel entitlements from Stripe webhooks (marketplace
+// model). The entitlement is the source of truth for access; subscription lifecycle and
+// refund/dispute events keep it honest.
+import { eq, and } from "drizzle-orm";
 import { db, communityChannelEntitlementsTable } from "@workspace/db";
 
 /** Permanent access from a one-time purchase (idempotent upsert per channel+user). */
@@ -33,11 +33,26 @@ export async function grantSubscriptionEntitlement(
     });
 }
 
-/** Renewal/cancel: set the entitlement's expiry to the subscription's period end (or the
- *  cancel instant), found by the stored subscription id. No-op if we don't track it. */
-export async function syncSubscriptionEntitlement(subscriptionId: string, expiresAt: Date): Promise<void> {
+// Stripe subscription statuses that mean "currently paid" — anything else must not extend access.
+const PAID_STATUSES = new Set(["active", "trialing"]);
+
+/** Renewal/cancel/failure: for a paid status, extend the entitlement to the period end;
+ *  for any non-paying status (past_due, unpaid, canceled, incomplete*) revoke NOW so a
+ *  failed renewal can't hand out a free period. Found by the stored subscription id. */
+export async function syncSubscriptionEntitlement(subscriptionId: string, periodEnd: Date, status: string): Promise<void> {
+  const expiresAt = PAID_STATUSES.has(status) ? periodEnd : new Date();
   await db
     .update(communityChannelEntitlementsTable)
     .set({ expiresAt })
     .where(eq(communityChannelEntitlementsTable.stripeSubscriptionId, subscriptionId));
+}
+
+/** Revoke a one-time entitlement (refund/chargeback) — remove access entirely. */
+export async function revokeChannelEntitlement(channelId: number, userId: string): Promise<void> {
+  await db
+    .delete(communityChannelEntitlementsTable)
+    .where(and(
+      eq(communityChannelEntitlementsTable.channelId, channelId),
+      eq(communityChannelEntitlementsTable.userId, userId),
+    ));
 }

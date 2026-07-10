@@ -3,7 +3,7 @@
 // platform's application fee to us — the platform never custodies the funds. Entitlement
 // is granted on the webhook (checkout.session.completed), never here.
 import type Stripe from "stripe";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNotNull } from "drizzle-orm";
 import {
   db,
   communitiesTable,
@@ -25,6 +25,27 @@ export class CreatorNotOnboardedError extends Error { constructor() { super("cre
 function platformFeeBps(env: NodeJS.ProcessEnv = process.env): number {
   const raw = Number(env.PLATFORM_FEE_BPS);
   return Number.isInteger(raw) && raw >= 0 && raw < 10000 ? raw : 0;
+}
+
+/** Cancel every live Stripe subscription funding this channel — called when a creator moves
+ *  a subscription channel to free/one-time, so buyers stop being charged. The resulting
+ *  customer.subscription.deleted webhooks revoke the entitlements. */
+export async function cancelChannelSubscriptions(channelId: number, stripe: Stripe): Promise<void> {
+  const rows = await db
+    .select({ subId: communityChannelEntitlementsTable.stripeSubscriptionId })
+    .from(communityChannelEntitlementsTable)
+    .where(and(
+      eq(communityChannelEntitlementsTable.channelId, channelId),
+      isNotNull(communityChannelEntitlementsTable.stripeSubscriptionId),
+    ));
+  for (const r of rows) {
+    if (!r.subId) continue;
+    try {
+      await stripe.subscriptions.cancel(r.subId);
+    } catch (err) {
+      console.error(`[channel] cancel subscription ${r.subId} failed:`, err);
+    }
+  }
 }
 
 /** Ensure a reusable Stripe Price exists for a subscription channel; created lazily on the
@@ -110,6 +131,9 @@ export async function createChannelCheckout(
     payment_intent_data: {
       application_fee_amount: computeApplicationFee(priceCents, feeBps),
       transfer_data: { destination: acct.stripeAccountId },
+      // Stamp the PI so a later refund/dispute (which carries the PI, not our session)
+      // can map back to the entitlement to revoke it.
+      metadata: { type: "channel_unlock", channelId: String(channelId), userId, communityId: String(channel.communityId) },
     },
     metadata: { type: "channel_unlock", channelId: String(channelId), userId, communityId: String(channel.communityId) },
     success_url: successUrl,

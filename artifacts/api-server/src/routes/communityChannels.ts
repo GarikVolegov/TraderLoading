@@ -12,6 +12,7 @@ import { canAccessChannel } from "../services/community/channelAccess.js";
 import { isChannelFree, validateChannelPrice } from "../services/community/channelPricing.js";
 import {
   createChannelCheckout,
+  cancelChannelSubscriptions,
   ChannelNotFoundError,
   ChannelFreeError,
   AlreadyOwnedError,
@@ -41,7 +42,7 @@ router.patch("/community/channels/:channelId/pricing", async (req, res) => {
     if (isNaN(channelId)) { res.status(400).json({ error: "Canale non valido" }); return; }
 
     const [channel] = await db
-      .select({ communityId: communityChannelsTable.communityId })
+      .select({ communityId: communityChannelsTable.communityId, accessModel: communityChannelsTable.accessModel })
       .from(communityChannelsTable)
       .where(eq(communityChannelsTable.id, channelId))
       .limit(1);
@@ -66,6 +67,15 @@ router.patch("/community/channels/:channelId/pricing", async (req, res) => {
         stripePriceId: null,
       })
       .where(eq(communityChannelsTable.id, channelId));
+
+    // Leaving subscription (→ free/one-time): cancel live Stripe subs so buyers stop being
+    // charged; their access is revoked by the resulting subscription.deleted webhook.
+    if (channel.accessModel === "subscription" && result.normalized.accessModel !== "subscription") {
+      const billing = getStripeBillingConfig();
+      if (billing.secretKey) {
+        await cancelChannelSubscriptions(channelId, createStripeClient(billing.secretKey));
+      }
+    }
 
     res.json({ ...result.normalized });
   } catch (err) {

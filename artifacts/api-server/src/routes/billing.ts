@@ -14,7 +14,7 @@ import {
 } from "../lib/billing.js";
 import logger from "../lib/logger.js";
 import { syncConnectAccount } from "../services/payout/payoutService.js";
-import { grantOneTimeEntitlement, grantSubscriptionEntitlement, syncSubscriptionEntitlement } from "../services/community/channelEntitlements.js";
+import { grantOneTimeEntitlement, grantSubscriptionEntitlement, syncSubscriptionEntitlement, revokeChannelEntitlement } from "../services/community/channelEntitlements.js";
 
 type SubscriptionLike = {
   plan: string;
@@ -489,33 +489,25 @@ async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<v
   if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
     const sub = event.data.object as Stripe.Subscription;
     // Paid-channel subscriptions (marketplace) keep the entitlement's expiry in step with
-    // Stripe; everything else is the Pro-plan subscription.
+    // Stripe — status-aware, so a past_due/canceled sub revokes access; everything else is
+    // the Pro-plan subscription.
     if (sub.metadata?.type === "channel_sub") {
-      await syncSubscriptionEntitlement(sub.id, new Date((subscriptionCurrentPeriodEnd(sub) ?? Math.floor(Date.now() / 1000)) * 1000));
+      await syncSubscriptionEntitlement(sub.id, subPeriodEndDate(sub), sub.status);
       return;
     }
     await upsertStripeSubscription(sub);
     return;
   }
 
-  if (event.type === "checkout.session.completed") {
+  // Grant on the definitive settlement event; delayed methods (SEPA etc.) settle later.
+  if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     const session = event.data.object as Stripe.Checkout.Session;
-    // Paid-channel unlock (marketplace): grant the entitlement the webhook is the source of.
-    if (session.metadata?.type === "channel_unlock") {
-      const { channelId, userId, communityId } = session.metadata;
-      if (channelId && userId && communityId) {
-        await grantOneTimeEntitlement(Number(communityId), Number(channelId), userId);
-      }
+    const mdType = session.metadata?.type;
+    if (mdType === "channel_unlock" || mdType === "channel_sub") {
+      await grantFromChannelSession(session, stripe);
       return;
     }
-    if (session.metadata?.type === "channel_sub" && typeof session.subscription === "string") {
-      const { channelId, userId, communityId } = session.metadata;
-      const sub = await stripe.subscriptions.retrieve(session.subscription);
-      if (channelId && userId && communityId) {
-        await grantSubscriptionEntitlement(Number(communityId), Number(channelId), userId, sub.id, new Date((subscriptionCurrentPeriodEnd(sub) ?? Math.floor(Date.now() / 1000)) * 1000));
-      }
-      return;
-    }
+    // Pro-plan checkout (subscription).
     if (typeof session.subscription !== "string") return;
     const subscription = await stripe.subscriptions.retrieve(session.subscription);
     await upsertStripeSubscription(subscription);
@@ -527,15 +519,58 @@ async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<v
     const subscriptionId = invoiceSubscriptionId(invoice);
     if (!subscriptionId) return;
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    // A channel subscription's invoice must NOT touch the platform Pro plan — sync the
+    // channel entitlement (status-aware) instead.
+    if (subscription.metadata?.type === "channel_sub") {
+      await syncSubscriptionEntitlement(subscription.id, subPeriodEndDate(subscription), subscription.status);
+      return;
+    }
     await upsertStripeSubscription(subscription);
     return;
   }
 
-  // A chargeback or refund does NOT cancel the Stripe subscription, so without
-  // this the entitlement stays active after the user pulled their money back.
   if (event.type === "charge.dispute.created" || event.type === "charge.refunded") {
+    // Revoke a paid-channel entitlement bought with this charge (mapped via the PI metadata
+    // we stamp at checkout) — otherwise the buyer keeps access after clawing back the money.
+    const obj = event.data.object as Stripe.Charge | Stripe.Dispute;
+    const piId = typeof obj.payment_intent === "string" ? obj.payment_intent : obj.payment_intent?.id ?? null;
+    if (piId) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(piId);
+        if (pi.metadata?.type === "channel_unlock" && pi.metadata.channelId && pi.metadata.userId) {
+          await revokeChannelEntitlement(Number(pi.metadata.channelId), pi.metadata.userId);
+        }
+      } catch (err) {
+        console.error("[billing] channel refund/dispute revoke failed:", err);
+      }
+    }
+    // A chargeback/refund does NOT cancel the Pro subscription on its own.
     const customerId = await chargeCustomerId(event, stripe);
     if (customerId) await revokeStripeProForCustomer(customerId, event.type);
+  }
+}
+
+function subPeriodEndDate(sub: Stripe.Subscription): Date {
+  return new Date((subscriptionCurrentPeriodEnd(sub) ?? Math.floor(Date.now() / 1000)) * 1000);
+}
+
+/** Grant a paid-channel entitlement from a settled Checkout session. Only grants when the
+ *  payment is actually paid (one-time) / the subscription is active|trialing — so delayed
+ *  or failed payments never hand out access. */
+async function grantFromChannelSession(session: Stripe.Checkout.Session, stripe: Stripe): Promise<void> {
+  const md = session.metadata ?? {};
+  if (md.type === "channel_unlock") {
+    if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") return;
+    if (md.channelId && md.userId && md.communityId) {
+      await grantOneTimeEntitlement(Number(md.communityId), Number(md.channelId), md.userId);
+    }
+    return;
+  }
+  if (md.type === "channel_sub" && typeof session.subscription === "string") {
+    const sub = await stripe.subscriptions.retrieve(session.subscription);
+    if ((sub.status === "active" || sub.status === "trialing") && md.channelId && md.userId && md.communityId) {
+      await grantSubscriptionEntitlement(Number(md.communityId), Number(md.channelId), md.userId, sub.id, subPeriodEndDate(sub));
+    }
   }
 }
 
