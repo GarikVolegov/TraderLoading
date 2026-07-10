@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url";
 import type { AddressInfo } from "node:net";
 import { allMarketingPaths } from "../src/lib/seo.ts";
 import { isValidSnapshot } from "./seoSnapshot.ts";
+import { fetchPublishedBlogData, allBlogPaths, respondToBlogApiRequest } from "./blogPaths.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const distDir = resolve(here, "../dist/public");
@@ -45,13 +46,26 @@ async function main() {
     fail(`puppeteer/sirv failed to import — ${(err as Error).message}`);
   }
 
+  const publishedBlogPosts = await fetchPublishedBlogData();
+
   const serveStatic = sirv(distDir, { single: true, dev: false });
-  const server = createServer((req, res) =>
+  const server = createServer((req, res) => {
+    if (req.url?.startsWith("/api/blog/")) {
+      const url = new URL(req.url, "http://localhost");
+      const lang = url.searchParams.get("lang") ?? "en";
+      const apiResult = respondToBlogApiRequest(publishedBlogPosts, req.method ?? "GET", url.pathname, lang);
+      if (apiResult) {
+        res.statusCode = apiResult.status;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(apiResult.body));
+        return;
+      }
+    }
     serveStatic(req, res, () => {
       res.statusCode = 404;
       res.end("not found");
-    }),
-  );
+    });
+  });
   await new Promise<void>((ok) => server.listen(0, ok));
   const { port } = server.address() as AddressInfo;
   const origin = `http://127.0.0.1:${port}`;
@@ -70,7 +84,7 @@ async function main() {
 
     // allMarketingPaths() already includes "/" (English x-default) + every
     // /{lang} landing and localized keyword page.
-    const paths = Array.from(new Set(allMarketingPaths()));
+    const paths = Array.from(new Set([...allMarketingPaths(), ...allBlogPaths(publishedBlogPosts)]));
     let done = 0;
 
     for (const path of paths) {

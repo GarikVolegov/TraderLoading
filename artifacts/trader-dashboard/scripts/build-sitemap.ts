@@ -17,8 +17,12 @@ import {
   landingPath,
   seoPageAlternates,
   seoPagePath,
+  blogIndexPath,
+  blogPostPath,
+  blogPostAlternates,
   type HreflangAlternate,
 } from "../src/lib/seo.ts";
+import { fetchPublishedBlogData, type PublishedBlogPost } from "./blogPaths.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -62,6 +66,23 @@ function buildEntries(): SitemapEntry[] {
   return entries;
 }
 
+function buildBlogEntries(posts: PublishedBlogPost[]): SitemapEntry[] {
+  const entries: SitemapEntry[] = [];
+  for (const lang of SUPPORTED_LANGUAGES) {
+    entries.push({ loc: absoluteUrl(blogIndexPath(lang)), changefreq: "weekly", priority: "0.6" });
+  }
+  for (const post of posts) {
+    const langs = post.translations
+      .map((t) => t.lang)
+      .filter((l) => (SUPPORTED_LANGUAGES as readonly string[]).includes(l)) as typeof SUPPORTED_LANGUAGES[number][];
+    const alternates = blogPostAlternates(post.slug, langs);
+    for (const lang of langs) {
+      entries.push({ loc: absoluteUrl(blogPostPath(post.slug, lang)), changefreq: "monthly", priority: "0.7", alternates });
+    }
+  }
+  return entries;
+}
+
 function renderSitemap(entries: SitemapEntry[]): string {
   const urls = entries
     .map((entry) => {
@@ -91,7 +112,8 @@ ${urls}
 `;
 }
 
-const xml = renderSitemap(buildEntries());
+const blogPosts = await fetchPublishedBlogData();
+const xml = renderSitemap([...buildEntries(), ...buildBlogEntries(blogPosts)]);
 
 const targets = [
   resolve(here, "../public/sitemap.xml"),
