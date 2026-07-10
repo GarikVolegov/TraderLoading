@@ -1,4 +1,4 @@
-// Off-contract client for paid-channel access (sub-project C).
+// Off-contract client for paid-channel access (marketplace model — Stripe Connect).
 import { apiJSON } from "./apiFetch";
 import type { ChannelAccessState } from "@/components/social/types";
 
@@ -8,25 +8,16 @@ export function fetchChannelAccess(channelId: number): Promise<ChannelAccessStat
   return apiJSON(`community/channels/${channelId}/access`);
 }
 
-export interface UnlockResult {
-  balance: number;
-  entitlement: { expiresAt: string | null };
-}
-
-/** Purchase / renew access to a paid channel (spends credits → owner's wallet).
- *  Pass the price the user saw; the server rejects (409) if it changed meanwhile. */
-export function unlockChannel(channelId: number, expectedPriceCredits?: number): Promise<UnlockResult> {
-  return apiJSON(`community/channels/${channelId}/unlock`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(expectedPriceCredits != null ? { expectedPriceCredits } : {}),
-  });
+/** Start a Stripe Checkout to buy access to a paid channel; returns the hosted URL to
+ *  redirect to. The entitlement is granted server-side on the webhook, not here. */
+export function startChannelCheckout(channelId: number): Promise<{ url: string | null }> {
+  return apiJSON(`community/channels/${channelId}/checkout`, { method: "POST" });
 }
 
 export interface ChannelPricingInput {
-  priceCredits: number | null;
+  priceCents: number | null;
   accessModel: "one_time" | "subscription" | null;
-  subscriptionPeriodDays: number | null;
+  subInterval: "month" | "year" | null;
 }
 
 /** Set / clear a channel's price (requires the channels.manage permission). */

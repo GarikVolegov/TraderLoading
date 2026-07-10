@@ -153,18 +153,20 @@ export interface ChannelType {
   name: string;
   type: "text" | "voice";
   position: number;
-  // Paid-channel pricing (sub-project C). priceCredits null/<=0 ⇒ free.
-  priceCredits?: number | null;
+  // Paid-channel pricing (marketplace). priceCents null/<=0 ⇒ free.
+  priceCents?: number | null;
   accessModel?: "one_time" | "subscription" | null;
-  subscriptionPeriodDays?: number | null;
+  subInterval?: "month" | "year" | null;
+  currency?: string;
   locked?: boolean; // per-viewer: true when the current user can't yet read it
 }
 
 export interface ChannelAccessState {
   isFree: boolean;
-  priceCredits: number | null;
+  priceCents: number | null;
   accessModel: "one_time" | "subscription" | null;
-  subscriptionPeriodDays: number | null;
+  subInterval: "month" | "year" | null;
+  currency: string;
   locked: boolean;
   entitlement: { expiresAt: string | null } | null;
 }

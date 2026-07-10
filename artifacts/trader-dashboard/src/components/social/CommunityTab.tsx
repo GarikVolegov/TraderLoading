@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings, Lock, Coins } from "lucide-react";
+import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings, Lock } from "lucide-react";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { useCommunities, useCommunityDetail } from "./hooks";
@@ -302,7 +302,7 @@ export function CommunityTab({
                   )}
                 </div>
                 {channels.map((ch) => {
-                  const isPaid = !!ch.priceCredits && ch.priceCredits > 0;
+                  const isPaid = !!ch.priceCents && ch.priceCents > 0;
                   return (
                   <div
                     key={ch.id}
@@ -321,9 +321,8 @@ export function CommunityTab({
                       <span className="text-xs font-medium truncate">{ch.name}</span>
                       {ch.locked && <Lock className="w-3 h-3 shrink-0 opacity-70" />}
                       {isPaid && (
-                        <span className="ml-auto flex items-center gap-0.5 text-[10px] tabular-nums shrink-0">
-                          <Coins className="w-3 h-3" />
-                          {ch.priceCredits}
+                        <span className="ml-auto text-[10px] tabular-nums shrink-0">
+                          {(ch.priceCents! / 100).toFixed(0)} {(ch.currency ?? "eur").toUpperCase()}
                         </span>
                       )}
                     </button>

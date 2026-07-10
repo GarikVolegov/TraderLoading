@@ -8,33 +8,32 @@ import type { ChannelType } from "./types";
 
 type Mode = "free" | "one_time" | "subscription";
 
-// Creator/channels.manage editor for a channel's price. "free" clears the price;
-// one-time/subscription set a credit price (subscription also a period in days).
+// Creator/channels.manage editor for a channel's price (marketplace, real €). "free"
+// clears the price; one-time/subscription set a € price (subscription also an interval).
+// Buyers pay via Stripe; the creator receives the money on their connected account.
 export function ChannelPricingModal({ channel, onClose }: { channel: ChannelType; onClose: () => void }) {
   const { t } = useLanguage();
   const qc = useQueryClient();
 
   const initialMode: Mode =
-    channel.priceCredits && channel.priceCredits > 0
+    channel.priceCents && channel.priceCents > 0
       ? channel.accessModel === "subscription"
         ? "subscription"
         : "one_time"
       : "free";
   const [mode, setMode] = useState<Mode>(initialMode);
-  const [price, setPrice] = useState<string>(channel.priceCredits ? String(channel.priceCredits) : "");
-  const [days, setDays] = useState<string>(channel.subscriptionPeriodDays ? String(channel.subscriptionPeriodDays) : "30");
+  const [price, setPrice] = useState<string>(channel.priceCents ? (channel.priceCents / 100).toFixed(2) : "");
+  const [interval, setInterval] = useState<"month" | "year">(channel.subInterval ?? "month");
 
-  const priceNum = Number(price);
-  const daysNum = Number(days);
-  const priceInvalid = mode !== "free" && (!Number.isInteger(priceNum) || priceNum <= 0);
-  const daysInvalid = mode === "subscription" && (!Number.isInteger(daysNum) || daysNum <= 0);
+  const priceCents = Math.round((parseFloat(price) || 0) * 100);
+  const priceInvalid = mode !== "free" && (!(priceCents > 0) || priceCents < 50); // Stripe min ~€0.50
 
   const save = useMutation({
     mutationFn: () =>
       updateChannelPricing(channel.id, {
-        priceCredits: mode === "free" ? null : priceNum,
+        priceCents: mode === "free" ? null : priceCents,
         accessModel: mode === "free" ? null : mode,
-        subscriptionPeriodDays: mode === "subscription" ? daysNum : null,
+        subInterval: mode === "subscription" ? interval : null,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["community", channel.communityId] });
@@ -63,34 +62,33 @@ export function ChannelPricingModal({ channel, onClose }: { channel: ChannelType
             <span className="text-xs font-medium text-muted-foreground">{t("channel.access.price_label")}</span>
             <input
               type="number"
-              min={1}
-              step={1}
+              min={0.5}
+              step={0.5}
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              placeholder="100"
+              placeholder="5.00"
               className="w-full bg-secondary/30 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary/50"
             />
           </label>
         )}
 
         {mode === "subscription" && (
-          <label className="block space-y-1">
-            <span className="text-xs font-medium text-muted-foreground">{t("channel.access.period_label")}</span>
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={days}
-              onChange={(e) => setDays(e.target.value)}
-              placeholder="30"
-              className="w-full bg-secondary/30 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary/50"
-            />
-          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {(["month", "year"] as const).map((iv) => (
+              <button
+                key={iv}
+                onClick={() => setInterval(iv)}
+                className={`p-2.5 rounded-xl border text-xs font-semibold transition-all ${interval === iv ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/30"}`}
+              >
+                {t(`channel.access.interval_${iv}`)}
+              </button>
+            ))}
+          </div>
         )}
 
         <button
           onClick={() => save.mutate()}
-          disabled={save.isPending || priceInvalid || daysInvalid}
+          disabled={save.isPending || priceInvalid}
           className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {save.isPending ? "…" : t("channel.access.save")}

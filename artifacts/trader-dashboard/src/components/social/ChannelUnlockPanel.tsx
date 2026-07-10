@@ -1,51 +1,31 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Lock, Loader2, Coins } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Lock, Loader2, CreditCard } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { unlockChannel, fetchChannelAccess, channelAccessKey } from "@/lib/channelAccessApi";
-import { creditWalletKey } from "@/lib/creditsApi";
+import { startChannelCheckout, fetchChannelAccess, channelAccessKey } from "@/lib/channelAccessApi";
 import type { ChannelType } from "./types";
 
-// Shown in the content area when the viewer selects a locked paid channel. Fetches the
-// authoritative access state (fresh price/model) and offers an unlock/subscribe button
-// that spends credits — passing the shown price so the server rejects a stale charge.
+// Shown when the viewer selects a locked paid channel. Fetches the authoritative price
+// and starts a Stripe Checkout (Connect) — the creator is paid directly, entitlement is
+// granted on the webhook when the payment completes.
 export function ChannelUnlockPanel({ channel }: { channel: ChannelType }) {
   const { t } = useLanguage();
-  const qc = useQueryClient();
-  const [, navigate] = useLocation();
 
-  // Fresh, server-authoritative price/model (the channel prop can be up to ~10s stale).
   const { data: access } = useQuery({
     queryKey: channelAccessKey(channel.id),
     queryFn: () => fetchChannelAccess(channel.id),
     staleTime: 0,
   });
 
-  const price = access?.priceCredits ?? channel.priceCredits ?? 0;
+  const priceCents = access?.priceCents ?? channel.priceCents ?? 0;
+  const currency = (access?.currency ?? channel.currency ?? "eur").toUpperCase();
   const isSubscription = (access?.accessModel ?? channel.accessModel) === "subscription";
-  const days = access?.subscriptionPeriodDays ?? channel.subscriptionPeriodDays ?? 0;
+  const interval = access?.subInterval ?? channel.subInterval ?? "month";
+  const amount = (priceCents / 100).toFixed(2);
 
-  const unlock = useMutation({
-    mutationFn: () => unlockChannel(channel.id, price),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["community", channel.communityId] });
-      qc.invalidateQueries({ queryKey: channelAccessKey(channel.id) });
-      qc.invalidateQueries({ queryKey: creditWalletKey() });
-    },
-    onError: (err) => {
-      // A concurrent price change (409) — refresh the shown price so the retry is honest.
-      if ((err as { status?: number })?.status === 409) {
-        qc.invalidateQueries({ queryKey: channelAccessKey(channel.id) });
-        qc.invalidateQueries({ queryKey: ["community", channel.communityId] });
-      }
-    },
+  const checkout = useMutation({
+    mutationFn: () => startChannelCheckout(channel.id),
+    onSuccess: (r) => { if (r.url) window.location.href = r.url; },
   });
-
-  const status = (unlock.error as { status?: number } | null)?.status;
-  const insufficient = status === 402;
-  const priceChanged = status === 409;
-  // Keep the button disabled after success too — it re-enables before the panel unmounts.
-  const busy = unlock.isPending || unlock.isSuccess;
 
   return (
     <div className="flex-1 flex items-center justify-center p-8">
@@ -57,43 +37,29 @@ export function ChannelUnlockPanel({ channel }: { channel: ChannelType }) {
           <h3 className="font-bold text-base">{channel.name}</h3>
           <p className="text-sm text-muted-foreground mt-1">
             {isSubscription
-              ? t("channel.access.subscription_desc", { credits: price, days })
-              : t("channel.access.one_time_desc", { credits: price })}
+              ? t("channel.access.subscription_desc", { amount, currency, interval: t(`channel.access.interval_${interval}`) })
+              : t("channel.access.one_time_desc", { amount, currency })}
           </p>
         </div>
 
         <button
-          onClick={() => unlock.mutate()}
-          disabled={busy}
+          onClick={() => checkout.mutate()}
+          disabled={checkout.isPending || checkout.isSuccess}
           className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
         >
-          {busy ? (
+          {checkout.isPending || checkout.isSuccess ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <Coins className="w-4 h-4" />
+            <CreditCard className="w-4 h-4" />
           )}
           {isSubscription
-            ? t("channel.access.subscribe_cta", { credits: price })
-            : t("channel.access.unlock_cta", { credits: price })}
+            ? t("channel.access.subscribe_cta", { amount, currency })
+            : t("channel.access.unlock_cta", { amount, currency })}
         </button>
 
-        {insufficient ? (
-          <div className="space-y-2">
-            <p className="text-xs text-destructive">{t("channel.access.insufficient")}</p>
-            <button
-              onClick={() => navigate("/settings?section=abbonamento")}
-              className="text-xs text-primary hover:underline font-medium"
-            >
-              {t("channel.access.buy_credits")}
-            </button>
-          </div>
-        ) : priceChanged ? (
-          <p className="text-xs text-destructive">{t("channel.access.price_changed")}</p>
-        ) : unlock.isError ? (
-          <p className="text-xs text-destructive">{t("channel.access.error")}</p>
-        ) : null}
+        {checkout.isError && <p className="text-xs text-destructive">{t("channel.access.error")}</p>}
 
-        <p className="text-[10px] leading-snug text-muted-foreground">{t("credits.disclaimer")}</p>
+        <p className="text-[10px] leading-snug text-muted-foreground">{t("channel.access.secure_note")}</p>
       </div>
     </div>
   );
