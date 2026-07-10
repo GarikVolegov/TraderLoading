@@ -116,9 +116,9 @@ async function getOrCreateAccountId(userId: string, stripe: Stripe): Promise<str
   });
 }
 
-/** Create a Stripe onboarding Account Link the creator opens to finish KYC/bank setup. */
+/** Create a Stripe onboarding Account Link the creator opens to finish KYC/bank setup.
+ *  (Marketplace model: onboarding needs only Stripe, not the legacy payout config.) */
 export async function createOnboardingLink(userId: string, stripe: Stripe, appBaseUrl: string): Promise<string> {
-  if (!isPayoutConfigured(readPayoutConfig())) throw new PayoutValidationError("disabled");
   const accountId = await getOrCreateAccountId(userId, stripe);
   const returnUrl = `${appBaseUrl}/settings?section=abbonamento`;
   const link = await stripe.accountLinks.create({
@@ -127,6 +127,18 @@ export async function createOnboardingLink(userId: string, stripe: Stripe, appBa
     return_url: returnUrl,
     type: "account_onboarding",
   });
+  return link.url;
+}
+
+/** Express-dashboard login link so an onboarded creator manages payouts/details at Stripe. */
+export async function createDashboardLink(userId: string, stripe: Stripe): Promise<string | null> {
+  const [acct] = await db
+    .select({ stripeAccountId: creatorPayoutAccountsTable.stripeAccountId })
+    .from(creatorPayoutAccountsTable)
+    .where(eq(creatorPayoutAccountsTable.userId, userId))
+    .limit(1);
+  if (!acct) return null;
+  const link = await stripe.accounts.createLoginLink(acct.stripeAccountId);
   return link.url;
 }
 

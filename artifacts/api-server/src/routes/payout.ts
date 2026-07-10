@@ -9,6 +9,7 @@ import { readPayoutConfig, isPayoutConfigured } from "../services/payout/payoutM
 import {
   getAccountStatus,
   createOnboardingLink,
+  createDashboardLink,
   requestPayout,
   PayoutValidationError,
   AccountNotReadyError,
@@ -84,6 +85,22 @@ router.get("/payout/account", async (req, res) => {
   } catch (err) {
     console.error("GET /payout/account error:", err);
     res.status(500).json({ error: "Errore interno" });
+  }
+});
+
+// ─── Stripe Express dashboard login link (manage payouts on Stripe) ──────────
+router.get("/payout/account/dashboard", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const billing = getStripeBillingConfig();
+  if (!billing.secretKey) { res.status(402).json({ error: "Non disponibile" }); return; }
+  try {
+    const url = await createDashboardLink(userId, createStripeClient(billing.secretKey));
+    if (!url) { res.status(404).json({ error: "Account non trovato" }); return; }
+    res.json({ url });
+  } catch (err) {
+    console.error("GET /payout/account/dashboard error:", err);
+    res.status(502).json({ error: "Non disponibile" });
   }
 });
 

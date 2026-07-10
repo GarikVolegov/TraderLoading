@@ -45,6 +45,11 @@ export function startPayoutOnboarding(): Promise<{ url: string }> {
   return apiJSON("payout/account/onboard", { method: "POST" });
 }
 
+/** Stripe Express dashboard login link for an onboarded creator. */
+export function fetchDashboardLink(): Promise<{ url: string }> {
+  return apiJSON("payout/account/dashboard");
+}
+
 export interface PayoutResult {
   id: number;
   credits: number;
