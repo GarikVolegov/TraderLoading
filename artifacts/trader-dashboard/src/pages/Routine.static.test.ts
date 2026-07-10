@@ -13,6 +13,10 @@ assert.match(zenZone, /Respirazione guidata/);
 assert.match(zenZone, /Check-in emotivo/);
 assert.doesNotMatch(zenZone, /MeditationTimer|MotivationalQuotes|ResultVisualization/);
 
+// ProgramCard: simplified per the mockup — 44px icon, no per-card step-pill list.
+assert.match(programCard, /h-11 w-11/); // 44px = h-11/w-11 in Tailwind's 4px scale
+assert.doesNotMatch(programCard, /steps\.filter/);
+
 // Routine page composes ZenZone; the removed sections are gone.
 assert.match(routinePage, /<ZenZone/);
 assert.doesNotMatch(routinePage, /FriendCompetitionPanel|CreateRoutinePanel|CustomRoutineCard/);
