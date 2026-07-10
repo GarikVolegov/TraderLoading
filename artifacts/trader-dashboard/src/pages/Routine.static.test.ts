@@ -22,6 +22,10 @@ assert.match(statsPanel, /Mattutine/);
 assert.match(statsPanel, /Serali/);
 assert.doesNotMatch(statsPanel, /byRoutine/);
 
+// SessionModal: single prominent progress bar + "Passo N di M" label (no segmented pills).
+assert.match(sessionModal, /Passo \{stepIdx \+ 1\} di \{steps\.length\}/);
+assert.doesNotMatch(sessionModal, /Step pills/);
+
 // Routine page composes ZenZone; the removed sections are gone.
 assert.match(routinePage, /<ZenZone/);
 assert.doesNotMatch(routinePage, /FriendCompetitionPanel|CreateRoutinePanel|CustomRoutineCard/);
