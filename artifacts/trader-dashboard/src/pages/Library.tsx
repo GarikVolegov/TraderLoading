@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearch } from "wouter";
 import { motion } from "framer-motion";
 import {
   Library as LibraryIcon, FileText, Video, Network, Lock, Plus, Pencil, Trash2,
@@ -12,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { MindMapEditor, MindMapView, isMindMapData, type MindMapData } from "@/components/MindMapEditor";
-import { uiText } from "@/contexts/LanguageContext";
+import { uiText, useLanguage } from "@/contexts/LanguageContext";
+import { fetchBlogPosts } from "@/lib/blogApi";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type ContentType = "document" | "mindmap" | "video";
@@ -234,10 +236,11 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
 }
 
 // ─── Content card ─────────────────────────────────────────────────────────────
-function ContentCard({ item, locked, isAdmin, onOpen, onEdit, onDelete }: {
-  item: Content; locked: boolean; isAdmin: boolean;
+function ContentCard({ item, locked, isAdmin, blogSlug, onOpen, onEdit, onDelete }: {
+  item: Content; locked: boolean; isAdmin: boolean; blogSlug?: string;
   onOpen: () => void; onEdit: () => void; onDelete: () => void;
 }) {
+  const { t } = useLanguage();
   const M = TYPE_META[item.type];
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -261,6 +264,11 @@ function ContentCard({ item, locked, isAdmin, onOpen, onEdit, onDelete }: {
       <Button variant={locked ? "outline" : "default"} size="sm" disabled={locked} onClick={onOpen} className="mt-auto">
         {locked ? <><Lock className="w-3.5 h-3.5 mr-1" /> Livello {item.requiredLevel}</> : "Apri"}
       </Button>
+      {blogSlug && (
+        <a href={`/it/blog/${blogSlug}`} className="text-xs text-primary hover:underline mt-1">
+          {t("library.blogLink")} →
+        </a>
+      )}
     </motion.div>
   );
 }
@@ -276,8 +284,24 @@ export default function Library() {
 
   const { data: contents = [] } = useQuery<Content[]>({ queryKey: ["library", "contents"], queryFn: () => apiJSON("library/contents") });
 
+  const { data: blogPosts = [] } = useQuery({
+    queryKey: ["blog", "posts", "it"],
+    queryFn: () => fetchBlogPosts("it"),
+  });
+  const blogSlugByLibraryContentId = new Map(
+    blogPosts.filter((p) => p.relatedLibraryContentId != null).map((p) => [p.relatedLibraryContentId as number, p.slug]),
+  );
+
   const [viewing, setViewing] = useState<Content | null>(null);
   const [editContent, setEditContent] = useState<Content | null | "new">(null);
+
+  const search = useSearch();
+  useEffect(() => {
+    const openId = new URLSearchParams(search).get("open");
+    if (!openId) return;
+    const match = contents.find((c) => c.id === Number(openId));
+    if (match) setViewing(match);
+  }, [search, contents]);
 
   const delContent = useMutation({
     mutationFn: (id: number) => apiJSON(`library/contents/${id}`, { method: "DELETE" }),
@@ -344,6 +368,7 @@ export default function Library() {
             {byLevel.get(level)!.map((item) => (
               <ContentCard key={item.id} item={item} isAdmin={isAdmin}
                 locked={item.requiredLevel > userLevel && !isAdmin}
+                blogSlug={blogSlugByLibraryContentId.get(item.id)}
                 onOpen={() => setViewing(item)} onEdit={() => setEditContent(item)} onDelete={() => delContent.mutate(item.id)} />
             ))}
           </div>
