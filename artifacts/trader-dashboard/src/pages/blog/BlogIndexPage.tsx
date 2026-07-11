@@ -175,6 +175,10 @@ export default function BlogIndexPage({ lang }: { lang: Language }) {
         canonical={absoluteUrl(blogIndexPath(lang))}
         alternates={blogIndexAlternates()}
       />
+      {/* PageHeader renders its title as an <h2> (fine for the authenticated-app
+          pages it was built for); the public blog index needs a real <h1> for
+          SEO/prerender validation, so it's added here visually-hidden. */}
+      <h1 className="sr-only">{t("blog.index.title")}</h1>
       <PageHeader
         title={t("blog.index.title")}
         subtitle={t("blog.index.subtitle")}
