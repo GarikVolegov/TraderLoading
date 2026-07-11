@@ -113,6 +113,56 @@ function FreshnessBadge({ article }: { article: Article }) {
   );
 }
 
+type ImpactBand = "all" | "high" | "med" | "low";
+type SentimentFilter = "all" | "bullish" | "bearish" | "neutral";
+
+function impactBand(score: number): Exclude<ImpactBand, "all"> {
+  return score >= 8 ? "high" : score >= 5 ? "med" : "low";
+}
+
+const IMPACT_FILTER_OPTIONS: { id: ImpactBand; label: string }[] = [
+  { id: "all", label: "Tutti" },
+  { id: "high", label: "Alto" },
+  { id: "med", label: "Medio" },
+  { id: "low", label: "Basso" },
+];
+
+const SENTIMENT_FILTER_OPTIONS: { id: SentimentFilter; label: string }[] = [
+  { id: "all", label: "Tutti" },
+  { id: "bullish", label: "Rialzista" },
+  { id: "bearish", label: "Ribassista" },
+  { id: "neutral", label: "Neutrale" },
+];
+
+function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { id: T; label: string }[];
+  value: T;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div className="inline-flex gap-0.5 rounded-full border border-border/50 bg-secondary/50 p-0.5">
+      {options.map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          onClick={() => onChange(option.id)}
+          className={`rounded-full px-2.5 py-1 text-xs font-bold transition-colors ${
+            value === option.id
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground/70 hover:text-foreground"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function PairBadge({ pair }: { pair: string }) {
   return (
     <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-primary/10 text-primary border border-primary/25 whitespace-nowrap">
@@ -564,6 +614,9 @@ export default function News() {
   const socketRef = useRef<WebSocket | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [votes, setVotes] = useState<Record<string, number>>({});
+  const [impactFilter, setImpactFilter] = useState<ImpactBand>("all");
+  const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>("all");
+  const [currencyFilters, setCurrencyFilters] = useState<string[]>([]);
   const voteMutation = useMutation({
     mutationFn: (payload: { articleKey: string; source: string; vote: number }) =>
       apiJSON("news/feedback", { method: "POST", body: JSON.stringify(payload) }),
@@ -585,6 +638,25 @@ export default function News() {
     });
 
   const articles = useMemo(() => flattenNewsPages(data), [data]);
+
+  const allCurrencies = useMemo(
+    () => [...new Set(articles.flatMap((article) => article.affectedPairs ?? []))],
+    [articles],
+  );
+  const toggleCurrencyFilter = (currency: string) =>
+    setCurrencyFilters((current) =>
+      current.includes(currency) ? current.filter((c) => c !== currency) : [...current, currency],
+    );
+  const filteredArticles = useMemo(
+    () =>
+      articles.filter(
+        (article) =>
+          (impactFilter === "all" || impactBand(article.impactScore ?? 0) === impactFilter) &&
+          (sentimentFilter === "all" || article.sentiment === sentimentFilter) &&
+          (currencyFilters.length === 0 || (article.affectedPairs ?? []).some((pair) => currencyFilters.includes(pair))),
+      ),
+    [articles, impactFilter, sentimentFilter, currencyFilters],
+  );
 
   // Load the next page when the sentinel near the bottom scrolls into view.
   useEffect(() => {
@@ -738,6 +810,35 @@ export default function News() {
 
       <FeedTrainingPanel onApplied={() => { qc.invalidateQueries({ queryKey: ["news-preferences"] }); qc.invalidateQueries({ queryKey }); }} />
 
+      {/* Filters (impact / sentiment / currency) */}
+      {articles.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2.5">
+          <SegmentedControl options={IMPACT_FILTER_OPTIONS} value={impactFilter} onChange={setImpactFilter} />
+          <SegmentedControl options={SENTIMENT_FILTER_OPTIONS} value={sentimentFilter} onChange={setSentimentFilter} />
+          {allCurrencies.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {allCurrencies.map((currency) => {
+                const active = currencyFilters.includes(currency);
+                return (
+                  <button
+                    key={currency}
+                    type="button"
+                    onClick={() => toggleCurrencyFilter(currency)}
+                    className={`rounded-md border px-2 py-1 font-mono text-[11px] font-bold transition-colors ${
+                      active
+                        ? "border-primary/45 bg-primary/12 text-primary"
+                        : "border-border/50 bg-secondary/40 text-muted-foreground/70"
+                    }`}
+                  >
+                    {currency}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* News grid */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -745,10 +846,10 @@ export default function News() {
             <div key={i} className="h-48 animate-pulse rounded-lg border border-border/30 bg-secondary/40" />
           ))}
         </div>
-      ) : articles.length > 0 ? (
+      ) : filteredArticles.length > 0 ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {articles.map((article, idx) => (
+            {filteredArticles.map((article, idx) => (
               <ArticleCard key={`${articleKey(article)}-${idx}`} article={article} idx={idx} isAI={isAI} onOpen={setSelectedArticle} vote={votes[articleKey(article)] ?? 0} onVote={(v) => handleVote(article, v)} />
             ))}
           </div>
@@ -767,6 +868,14 @@ export default function News() {
             </p>
           )}
         </div>
+      ) : articles.length > 0 ? (
+        <Card className="border-dashed border-border/40 bg-card/50">
+          <CardContent className="p-10 text-center">
+            <p className="text-sm text-muted-foreground/70">
+              Nessuna notizia con i filtri selezionati.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <Card className="border-border/40 bg-card/70">
           <CardContent className="p-16 text-center">
