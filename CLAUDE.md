@@ -286,6 +286,19 @@ languages, per the i18n-enforced-new-UI gate. Manually verified live (desktop sc
 click + session-modal flow via a throwaway Clerk test-user Playwright script, same pattern as
 `scripts/verify-nav-hubs/drive.mjs`). Full suite 347/347 green.
 
+**Notizie Macro filters (2026-07-11, done).** Applied the same [[claude-design-port-fidelity]] lesson to
+`pages/News.tsx` (route `/news`, already titled "Notizie Macro") — compared it line-by-line against the
+actual Claude Design source, `NewsView()` in `ui_kits/dashboard/views-trading.jsx` (not the
+`templates/notizie-macro/NotizieMacro.dc.html` mockup authored in an earlier, unrelated pass), before
+touching anything. Header, agent-summary panel, meta bar, and article-card grid (impact strip, badges, vote
+thumbs) already matched closely — the one real structural gap was the missing impact/sentiment/currency
+filter row. Added `impactFilter`/`sentimentFilter`/`currencyFilters` state + a `SegmentedControl` component,
+filtering the already-fetched `articles` client-side (`impactScore`/`sentiment`/`affectedPairs` were already
+on the real `Article` data — no backend change). TDD via `pages/News.filters.static.test.ts`. Verified live
+(Clerk test-user Playwright script): filter pills render, clicking "Alto" correctly narrows the grid to
+8-9/10-impact articles only. `views-trading.jsx` also has `JournalView`/`BacktestView`/`CalendarView` mockups
+not yet compared against their real pages — candidates for the same treatment if requested.
+
 **SEO/GEO Phase 1 — technical hardening (2026-07-10, done).** Audited the existing SEO/GEO machinery
 (robots.txt AI-crawler allowlist, multilingual sitemap, `llms.txt`, `Seo.tsx` JSON-LD/hreflang, headless-Chromium
 prerender) and closed three verified gaps: **prerendering now hard-fails** instead of silently degrading —
