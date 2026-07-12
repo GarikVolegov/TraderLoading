@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import {
   COOKIE_CONSENT_ACCEPTED_VALUE,
+  COOKIE_CONSENT_DECLINED_VALUE,
   COOKIE_CONSENT_STORAGE_KEY,
   acceptCookieConsent,
+  declineCookieConsent,
   hasAcceptedCookieConsent,
+  hasRespondedToCookieConsent,
 } from "./cookieConsent.js";
 
 function createStorage(throws = false): Storage {
@@ -45,5 +48,21 @@ assert.equal(hasAcceptedCookieConsent(storage), true);
 
 assert.equal(hasAcceptedCookieConsent(createStorage(true)), false);
 assert.doesNotThrow(() => acceptCookieConsent(createStorage(true)));
+
+// Decline: the banner must not re-prompt, but analytics stays off.
+const declined = createStorage();
+assert.equal(hasRespondedToCookieConsent(declined), false);
+declineCookieConsent(declined);
+assert.equal(declined.getItem(COOKIE_CONSENT_STORAGE_KEY), COOKIE_CONSENT_DECLINED_VALUE);
+assert.equal(hasRespondedToCookieConsent(declined), true);
+assert.equal(hasAcceptedCookieConsent(declined), false);
+
+// Accept counts as a response too, and can overwrite a previous decline.
+acceptCookieConsent(declined);
+assert.equal(hasRespondedToCookieConsent(declined), true);
+assert.equal(hasAcceptedCookieConsent(declined), true);
+
+assert.equal(hasRespondedToCookieConsent(createStorage(true)), false);
+assert.doesNotThrow(() => declineCookieConsent(createStorage(true)));
 
 console.log("cookie consent storage helpers passed");
