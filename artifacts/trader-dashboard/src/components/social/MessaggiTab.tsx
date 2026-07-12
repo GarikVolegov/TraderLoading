@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ChangeEvent } from "react";
-import { uiText } from "@/contexts/LanguageContext";
+import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
 import { useE2EEKeys } from "@/hooks/useE2EEKeys";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,7 @@ export function MessaggiTab({
   initialPeer?: SocialUser | null;
 }) {
   const { toast } = useToast();
+  const { language } = useLanguage();
   const {
     keyPair,
     isReady: e2eeReady,
@@ -584,7 +585,7 @@ export function MessaggiTab({
       <p
         className={`text-[10px] mt-1 ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}
       >
-        {new Date(msg.createdAt).toLocaleTimeString("it-IT", {
+        {new Date(msg.createdAt).toLocaleTimeString(language, {
           hour: "2-digit",
           minute: "2-digit",
         })}
@@ -623,7 +624,7 @@ export function MessaggiTab({
             </p>
           )}
           <video
-            aria-label={msg.fileName ?? "Video allegato"}
+            aria-label={msg.fileName ?? uiText("auto.ui.b6e35988de")}
             controls
             src={msg.content}
             className="max-w-[320px] max-h-64 w-full bg-black"
@@ -638,7 +639,7 @@ export function MessaggiTab({
             {fileIcon(msg.mimeType ?? "")}
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">
-                {msg.fileName ?? "File allegato"}
+                {msg.fileName ?? uiText("auto.ui.e1d31d101d")}
               </p>
               <p className="text-[11px] opacity-70 truncate">
                 {(msg.mimeType || "file").split(";")[0]}
@@ -683,14 +684,14 @@ export function MessaggiTab({
         )}
         <div>
           <p className="text-white font-semibold text-lg">
-            {callPeer?.name ?? "Chiamata..."}
+            {callPeer?.name ?? uiText("auto.ui.2c16453638")}
           </p>
           <p className="text-white/60 text-sm mt-1">
             {callState === "calling"
-              ? "In chiamata..."
+              ? uiText("auto.ui.763d15b850")
               : callState === "incoming"
-                ? "Chiamata in arrivo"
-                : "● Connesso"}
+                ? uiText("auto.ui.ca90ebdac5")
+                : uiText("auto.ui.ead33bc883")}
           </p>
         </div>
         <div className="flex items-center justify-center gap-5">
@@ -745,7 +746,7 @@ export function MessaggiTab({
         <div className="text-center space-y-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
           <p className="text-muted-foreground text-sm">
-            Inizializzazione crittografia...
+            {uiText("auto.ui.d8059d85da")}
           </p>
         </div>
       </div>
@@ -764,7 +765,7 @@ export function MessaggiTab({
               onClick={() => setCallState("incoming")}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 text-xs font-medium animate-pulse"
             >
-              <PhoneCall className="w-3.5 h-3.5" /> Chiamata
+              <PhoneCall className="w-3.5 h-3.5" /> {uiText("auto.ui.ac7a6591d5")}
             </button>
           )}
           {(unreadData?.count ?? 0) > 0 && (
@@ -784,8 +785,7 @@ export function MessaggiTab({
             <UserCheck className="w-12 h-12 mx-auto opacity-20" />
             <p className="font-medium text-sm">{uiText("auto.ui.76d784258a")}</p>
             <p className="text-xs leading-relaxed">
-              Seguiti e seguaci possono chattare. Vai nel tab Social per trovare
-              altri trader!
+              {uiText("auto.ui.ef32130649")}
             </p>
           </div>
         ) : (
@@ -800,7 +800,7 @@ export function MessaggiTab({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{u.name}</p>
                   <p className="text-xs text-primary flex items-center gap-1">
-                    <UserCheck className="w-3 h-3" /> {u.isMutual ? "Mutual" : "Amico"}
+                    <UserCheck className="w-3 h-3" /> {u.isMutual ? "Mutual" : uiText("auto.ui.b2ae4f16d1")}
                   </p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -894,7 +894,7 @@ export function MessaggiTab({
                       {fmtDur(recordDuration)}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      Registrazione in corso...
+                      {uiText("auto.ui.f1f16a5abb")}
                     </span>
                   </div>
                   <button
@@ -957,7 +957,7 @@ export function MessaggiTab({
               <button
                 onClick={isRecording ? stopRecording : startRecording}
                 disabled={!!recordedBlob}
-                title={isRecording ? "Ferma registrazione" : "Registra vocale"}
+                title={isRecording ? uiText("auto.ui.bce10aee8e") : uiText("auto.ui.38fbbb0c51")}
                 className={`p-2 rounded-lg transition-colors ${isRecording ? "text-red-400 bg-red-500/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"} disabled:opacity-40`}
               >
                 <Mic className="w-4 h-4" />

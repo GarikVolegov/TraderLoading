@@ -140,7 +140,7 @@ export function CommunityTab({
             {myCommunities.length > 0 && (
               <div className="mb-3">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-1">
-                  Le tue
+                  {uiText("auto.ui.c28dcf855a")}
                 </p>
                 {myCommunities.map((c) => (
                   <button
@@ -158,7 +158,7 @@ export function CommunityTab({
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold truncate">{c.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {c.memberCount} membri
+                        {uiText("auto.ui.edc243eae0", { count: c.memberCount })}
                       </p>
                     </div>
                   </button>
@@ -168,7 +168,7 @@ export function CommunityTab({
             {discoverCommunities.length > 0 && (
               <div>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-1">
-                  Scopri
+                  {uiText("auto.ui.b4aad9f0d8")}
                 </p>
                 {discoverCommunities.map((c) => (
                   <button
@@ -185,7 +185,7 @@ export function CommunityTab({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold truncate">{c.name}</p>
-                      <p className="text-[10px]">{c.memberCount} membri</p>
+                      <p className="text-[10px]">{uiText("auto.ui.edc243eae0", { count: c.memberCount })}</p>
                       {(c.ratingCount ?? 0) > 0 && (
                         <div className="flex items-center gap-1 mt-0.5">
                           <StarRating value={c.ratingAvg ?? 0} readOnly size={9} />
@@ -201,13 +201,13 @@ export function CommunityTab({
               <div className="text-center py-8 px-4">
                 <Radio className="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
                 <p className="text-xs text-muted-foreground">
-                  Nessuna community ancora
+                  {uiText("auto.ui.c2c4ac30ec")}
                 </p>
                 <button
                   onClick={() => setShowCreateCommunity(true)}
                   className="mt-3 text-xs text-primary hover:underline"
                 >
-                  Crea la prima!
+                  {uiText("auto.ui.eba55dd340")}
                 </button>
               </div>
             )}
@@ -256,7 +256,7 @@ export function CommunityTab({
           <div className="flex items-center gap-2 mt-1.5">
             <Users className="w-3 h-3 text-muted-foreground" />
             <span className="text-[10px] text-muted-foreground">
-              {communityDetail.memberCount} membri
+              {uiText("auto.ui.edc243eae0", { count: communityDetail.memberCount })}
             </span>
           </div>
           <button
@@ -290,7 +290,7 @@ export function CommunityTab({
               <div key={type} className="mb-2">
                 <div className="flex items-center justify-between px-3 py-1">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                    {type === "text" ? "Testo" : "Voce"}
+                    {type === "text" ? uiText("auto.ui.db36ee74bb") : uiText("auto.ui.5cf4dba953")}
                   </p>
                   {canManageChannels && (
                     <button
@@ -350,7 +350,7 @@ export function CommunityTab({
                 onClick={() => leaveCommunity(communityDetail.id)}
                 className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors py-1.5 rounded-lg hover:bg-destructive/10"
               >
-                Lascia community
+                {uiText("auto.ui.b7cc70d51f")}
               </button>
             ) : null
           ) : communityDetail.joinRequestStatus === "pending" ? (
@@ -369,7 +369,7 @@ export function CommunityTab({
                 ? communityDetail.joinRequestStatus === "rejected"
                   ? t("community.join.declined")
                   : t("community.join.request")
-                : "Unisciti"}
+                : uiText("auto.ui.d7339a9583")}
             </button>
           )}
         </div>
@@ -411,7 +411,7 @@ export function CommunityTab({
               <Radio className="w-12 h-12 mx-auto opacity-20 mb-3" />
               <p className="text-sm font-medium">{uiText("chat.community.select_title")}</p>
               <p className="text-xs mt-1">
-                Unisciti o creane una nuova per iniziare
+                {uiText("auto.ui.4129dbfd67")}
               </p>
             </>
           ) : !communityDetail?.isMember ? (
@@ -419,7 +419,7 @@ export function CommunityTab({
               <UserPlus className="w-12 h-12 mx-auto opacity-20 mb-3" />
               <p className="text-sm font-medium">{communityDetail?.name}</p>
               <p className="text-xs mt-1 mb-2">
-                {communityDetail?.memberCount} membri
+                {uiText("auto.ui.edc243eae0", { count: communityDetail?.memberCount ?? 0 })}
               </p>
               {(communityDetail?.ratingCount ?? 0) > 0 && (
                 <button
@@ -460,7 +460,7 @@ export function CommunityTab({
                     ? communityDetail?.joinRequestStatus === "rejected"
                       ? t("community.join.declined")
                       : t("community.join.request")
-                    : "Unisciti alla community"}
+                    : uiText("auto.ui.5e5f5f332a")}
                 </button>
               )}
             </>
