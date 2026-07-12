@@ -112,9 +112,27 @@ tools/metatrader-companion/   MT5 expert advisor
 
 ## 7. Active work / current focus
 
-**Candle warehouse (Phase 1).** Replacing live-only candle fetches with a persistent **M1-based** OHLCV
-store in Postgres: native **monthly RANGE partitioning**, SQL-side aggregation to any timeframe, ingestion
-from Dukascopy/Binance, behind the `CANDLE_WAREHOUSE` feature flag with live fallback. Files:
+**Backtest Replay Terminal (2026-07-12, DONE — port fedele del mockup Claude Design).** The old in-page
+ChartReplay is retired: `/backtest/:id/replay` is a **full-screen TradingView-style terminal**
+(`pages/BacktestReplay.tsx` + `components/backtest-terminal/*`, ~15 files + scoped `terminal.css`) on
+**lightweight-charts v5** — timeframe tabs M1→D1 with close-time anchoring, chart types candles/heikin/line,
+volume, watermark, indicator system (EMA/SMA/WMA/BB/VWAP price-pane + RSI/MACD/ATR/Stoch sub-panes +
+**custom-formula indicator** via a safe recursive-descent parser, NO eval — `lib/replay/formulaParser.ts`),
+drawing tools (trend/hline/rect/fib/ruler/long/short/text, magnet, persistence), order ticket with
+**risk %/€ → lot sizing**, draggable SL/TP/entry with R:R zones, account panel (equity curve, max DD),
+journal (Win Rate/Net R/Expectancy), transport bar 0.25×–4× + scrubber + date jump, full hotkeys. Pure
+logic TDD in `lib/replay/` (10 modules); trades auto-persist to the on-contract endpoints (dedupe per
+session); terminal state in localStorage v2. Both sides adversarially reviewed (backend 8 finding, frontend
+16 — all real ones fixed). E2E driver: `scripts/verify-backtest-replay/drive.mjs` (Clerk test user), run
+green on warehouse data. Spec: `docs/superpowers/specs/2026-07-11-backtest-replay-terminal-design.md`.
+
+**Candle warehouse — ACTIVE locally (M1 Postgres-first, live fallback).** `getCandles` is DB-first behind
+`CANDLE_WAREHOUSE=1` (now set in `.env.local`); serving supports **M1**, cursor **paging**
+(`from`/`to`/`limit` + `nextFrom`, bucket-aligned) and `GET /api/backtest/candles/meta` (watermark for the
+terminal's date-jump bounds). Seeded locally: **BTCUSD 5y** (Binance, ~2.6M rows) + **EURUSD ~4.7y**
+(Dukascopy, 16/61 monthly chunks failed on transient fetches — re-run seed to heal; upserts are idempotent).
+Runbook: [docs/candle-warehouse-seeding.md](docs/candle-warehouse-seeding.md). **Prod pending (user):** seed
+remaining symbols + flip `CANDLE_WAREHOUSE=1` on Railway. Files:
 
 - Spec: [docs/superpowers/specs/2026-06-14-candle-warehouse-design.md](docs/superpowers/specs/2026-06-14-candle-warehouse-design.md)
 - Schema: [lib/db/src/schema/candles.ts](lib/db/src/schema/candles.ts) · migration `lib/db/drizzle/0006_candle_warehouse.sql`
@@ -299,7 +317,7 @@ on the real `Article` data — no backend change). TDD via `pages/News.filters.s
 8-9/10-impact articles only. `views-trading.jsx` also has `JournalView`/`BacktestView`/`CalendarView` mockups
 not yet compared against their real pages — candidates for the same treatment if requested.
 
-**Pre-launch page audit — Fasi 1-4 done (2026-07-11/12).** Page-by-page audit of every app/public surface
+**Pre-launch page audit — ALL 5 phases done (2026-07-11/13).** Page-by-page audit of every app/public surface
 (3 parallel explore agents + manual verification of critical findings; 2 false positives discarded, incl.
 "Chat auth is broken" — the backend authMiddleware shims Clerk, so the legacy path worked). Plan with all
 findings: [docs/superpowers/plans/2026-07-11-pre-launch-page-audit-fix-plan.md](docs/superpowers/plans/2026-07-11-pre-launch-page-audit-fix-plan.md).
@@ -324,8 +342,14 @@ palette — `BottomNav.tsx` gained a root-level "Più" overflow (mobile) surfaci
 parity (`SECONDARY_ITEMS` now Library+Clock+News+Settings); minor hygiene (`console.error` →
 `reportClientError` in MessaggiTab/StoryViewer/VoiceChannelView, a leaking `createObjectURL` fixed to
 create-once/revoke-on-cleanup, missing error toasts added to Library upload and Checklist delete).
-Gate across all 4 phases: typecheck ✓, 360/360 tests ✓, i18n parity 2301 keys × 5 languages ✓.
-**Remaining: Fase 5** (manual Playwright smoke) — see the plan doc.
+**Fase 5 (`scripts/verify-prelaunch-fase5/`)**: manual Playwright smoke against the local dev server —
+cookie banner, the new root "Più" overflow (Biblioteca/Orologio/Notizie) + desktop sidebar parity, the
+old inverted broker label confirmed gone, `QueryErrorState` renders (not the empty state) with `/api/journal`
+aborted, BillingReturn's "not completed" branch verified by code/tests since the `verify_clerk_test` Clerk
+user already has Pro in this env (documented gap, not a blocker). Gate across all 5 phases: typecheck ✓,
+360/360 tests ✓, i18n parity 2301 keys × 5 languages ✓. **No open code-side items remain** — only the
+pre-existing user/env reminders (GA4, email flag, Sentry, device visual QA, Stripe/Payout env) from before
+the audit.
 
 **SEO/GEO Phase 1 — technical hardening (2026-07-10, done).** Audited the existing SEO/GEO machinery
 (robots.txt AI-crawler allowlist, multilingual sitemap, `llms.txt`, `Seo.tsx` JSON-LD/hreflang, headless-Chromium

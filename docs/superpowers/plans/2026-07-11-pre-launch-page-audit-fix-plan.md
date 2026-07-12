@@ -1,10 +1,15 @@
 # Pre-launch page audit — piano di sistemazione a step (2026-07-11)
 
-> **STATO (2026-07-12): FASI 1-4 COMPLETATE.** Fase 1 bug fix `ccbae77`. Fase 2 GDPR/legal/landing
-> `741efdb`. Fase 3 i18n sweep (batch A/B/C1/C2) `9aed0bb`+`58cde17`+`cbf9d9d`+`66ee137` — 96+ nuove
-> chiavi `auto.ui.*` in 5 lingue, verificate hash-esatte + accenti ES/FR/DE. Fase 4 mobile reachability
-> + igiene minore `011771c`. Gate: typecheck ✓, 360/360 test ✓, parity 2301 chiavi × 5 lingue ✓.
-> **Resta solo Fase 5** (smoke Playwright manuale) — nessun blocco noto, item di verifica finale.
+> **STATO (2026-07-13): PIANO COMPLETO — TUTTE E 5 LE FASI FATTE.** Fase 1 bug fix `ccbae77`. Fase 2
+> GDPR/legal/landing `741efdb`. Fase 3 i18n sweep (batch A/B/C1/C2) `9aed0bb`+`58cde17`+`cbf9d9d`+`66ee137`
+> — 96+ nuove chiavi `auto.ui.*` in 5 lingue, verificate hash-esatte + accenti ES/FR/DE. Fase 4 mobile
+> reachability + igiene minore `011771c`. Fase 5 smoke Playwright manuale (`scripts/verify-prelaunch-fase5/`)
+> — cookie banner, overflow "Più" root (Biblioteca/Orologio/Notizie) + parità sidebar desktop, label broker
+> invertita confermata sparita, `QueryErrorState` renderizzato al posto dell'empty state su `/journal` con
+> `/api/journal` bloccato, BillingReturn (test-user già Pro → stato "not completed" non raggiungibile in
+> questo ambiente, verificato invece via codice/typecheck/test in Fase 1). Gate: typecheck ✓, 360/360 test ✓,
+> parity 2301 chiavi × 5 lingue ✓. **Nessun item aperto lato codice** — restano solo i reminder user/env
+> (GA4, flag email, Sentry, QA visuale device, env Stripe/Payout) già noti da prima dell'audit.
 
 > Audit pagina-per-pagina del frontend (tutte le ~24 pagine app + landing/auth/legal/admin/shell)
 > in ottica "app pronta al pubblico". 3 agenti di esplorazione in parallelo + verifica manuale dei
