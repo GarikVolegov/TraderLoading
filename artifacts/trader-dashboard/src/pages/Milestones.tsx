@@ -33,6 +33,7 @@ import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { formatFileSize } from "@/lib/fileFormatting";
 import { uiText } from "@/contexts/LanguageContext";
+import { parseSkills } from "./Milestones.helpers";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -339,9 +340,7 @@ function MilestoneEditor({
   const [title, setTitle] = useState(milestone?.title ?? "");
   const [description, setDescription] = useState(milestone?.description ?? "");
   const [skillInput, setSkillInput] = useState("");
-  const [skills, setSkills] = useState<string[]>(
-    milestone?.skills ? (JSON.parse(milestone.skills) as string[]) : [],
-  );
+  const [skills, setSkills] = useState<string[]>(parseSkills(milestone?.skills));
   const [badgeEmoji, setBadgeEmoji] = useState(milestone?.badgeEmoji ?? "🏆");
   const [badgeColor, setBadgeColor] = useState(
     milestone?.badgeColor ?? "#22c55e",
@@ -663,9 +662,7 @@ function LevelRow({
 
   const milestone = detail?.milestone ?? null;
   const files = detail?.files ?? [];
-  const skills: string[] = milestone?.skills
-    ? JSON.parse(milestone.skills)
-    : [];
+  const skills: string[] = parseSkills(milestone?.skills);
 
   return (
     <div

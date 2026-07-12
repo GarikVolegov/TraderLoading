@@ -6,7 +6,7 @@ import { useLocation, useSearch } from "wouter";
 import { parseChatTab, type ChatTab } from "@/lib/chatTabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useUser } from "@clerk/react";
 import { Loader2, LogIn, Globe } from "lucide-react";
 import type { SocialUser } from "@/components/social/types";
 import { SocialTab } from "@/components/social/SocialTab";
@@ -18,8 +18,13 @@ import { CommunityTab } from "@/components/social/CommunityTab";
 
 export default function Chat() {
   const { t } = useLanguage();
-  const { isAuthenticated, isLoading: authLoading, login, user } = useAuth();
+  // Clerk è la fonte auth dell'app (lo shim legacy replit-auth-web faceva una
+  // fetch ridondante e la sua CTA puntava al vecchio login OIDC, morto in prod).
+  const { user, isSignedIn, isLoaded } = useUser();
+  const authLoading = !isLoaded;
+  const isAuthenticated = !!isSignedIn;
   const [, navigate] = useLocation();
+  const login = () => navigate("/sign-in");
   const activeTab: ChatTab = parseChatTab(useSearch());
   const [pendingChat, setPendingChat] = useState<SocialUser | null>(null);
 

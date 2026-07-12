@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGetProfile } from "@workspace/api-client-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
@@ -274,7 +275,11 @@ export default function Library() {
   const { data: admin } = useQuery<{ isAdmin: boolean }>({ queryKey: ["library", "admin"], queryFn: () => apiJSON("library/admin/status") });
   const isAdmin = admin?.isAdmin ?? false;
 
-  const { data: contents = [] } = useQuery<Content[]>({ queryKey: ["library", "contents"], queryFn: () => apiJSON("library/contents") });
+  const {
+    data: contents = [],
+    isError: contentsError,
+    refetch: refetchContents,
+  } = useQuery<Content[]>({ queryKey: ["library", "contents"], queryFn: () => apiJSON("library/contents") });
 
   const [viewing, setViewing] = useState<Content | null>(null);
   const [editContent, setEditContent] = useState<Content | null | "new">(null);
@@ -372,8 +377,10 @@ export default function Library() {
         </div>
       )}
 
+      {contentsError && <QueryErrorState onRetry={() => void refetchContents()} />}
+
       {/* Empty state */}
-      {contents.length === 0 && (
+      {!contentsError && contents.length === 0 && (
         <div className="tl-panel p-10 sm:p-16 text-center">
           <LibraryIcon className="w-14 h-14 mx-auto mb-4 opacity-15" />
           <h3 className="text-xl font-bold mb-2">{uiText("auto.ui.d6bf322405")}</h3>

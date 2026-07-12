@@ -24,6 +24,18 @@ const DATE_FNS_LOCALES: Record<Language, Locale> = {
 
 const STORAGE_KEY = "tl_language";
 
+/**
+ * Whether this device has an explicit, persisted language choice. Used by the
+ * server-sync logic to tell "user picked this" apart from "browser default".
+ */
+export function hasStoredLanguagePreference(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) != null;
+  } catch {
+    return false;
+  }
+}
+
 // `import.meta.env` only exists under Vite; guard so module eval doesn't throw
 // in the plain-node static test runner.
 const ROUTER_BASE = (import.meta.env?.BASE_URL ?? "/").replace(/\/$/, "");

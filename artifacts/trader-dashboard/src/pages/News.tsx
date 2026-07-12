@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { QueryErrorState } from "@/components/QueryErrorState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -627,7 +628,7 @@ export default function News() {
     voteMutation.mutate({ articleKey: key, source: article.source, vote: v });
   };
 
-  const { data, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } =
+  const { data, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, isError, refetch } =
     useInfiniteQuery<NewsData>({
       queryKey,
       queryFn: ({ pageParam }) =>
@@ -846,6 +847,8 @@ export default function News() {
             <div key={i} className="h-48 animate-pulse rounded-lg border border-border/30 bg-secondary/40" />
           ))}
         </div>
+      ) : isError && articles.length === 0 ? (
+        <QueryErrorState onRetry={() => void refetch()} />
       ) : filteredArticles.length > 0 ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

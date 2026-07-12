@@ -23,7 +23,13 @@ export function ChannelUnlockPanel({ channel }: { channel: ChannelType }) {
   const amount = (priceCents / 100).toFixed(2);
 
   const checkout = useMutation({
-    mutationFn: () => startChannelCheckout(channel.id),
+    mutationFn: async () => {
+      const r = await startChannelCheckout(channel.id);
+      // No URL means Stripe couldn't produce a session: surface the error state
+      // instead of leaving the button stuck on isSuccess with no redirect.
+      if (!r.url) throw new Error("channel checkout returned no redirect url");
+      return r;
+    },
     onSuccess: (r) => { if (r.url) window.location.href = r.url; },
   });
 

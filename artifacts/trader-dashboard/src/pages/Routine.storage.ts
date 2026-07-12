@@ -1,5 +1,16 @@
 export const ROUTINE_HISTORY_KEY = "tl_routine_completion_history_v1";
 export const ROUTINE_CUSTOM_KEY = "tl_custom_routines_v1";
+export const ZEN_MOOD_KEY = "tl_zen_mood_v1";
+
+// Bounded history: the check-in only ever reads single days, so anything
+// beyond a quarter is dead weight in localStorage.
+const ZEN_MOOD_MAX_RECORDS = 90;
+
+export interface ZenMoodRecord {
+  date: string;
+  mood: string;
+  recordedAt: string;
+}
 
 export type RoutineTemplate = "morning" | "evening";
 
@@ -75,6 +86,23 @@ function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
     .slice(0, 32);
+}
+
+export function readMoodForDate(date: Date, storage?: Storage): string | null {
+  const key = dateKey(date);
+  const record = readArray<ZenMoodRecord>(ZEN_MOOD_KEY, storage).find(
+    (item) => item.date === key && typeof item.mood === "string",
+  );
+  return record?.mood ?? null;
+}
+
+export function saveMoodForDate(mood: string, date: Date, storage?: Storage): void {
+  const key = dateKey(date);
+  const others = readArray<ZenMoodRecord>(ZEN_MOOD_KEY, storage).filter(
+    (item) => item.date !== key,
+  );
+  const next = [...others, { date: key, mood, recordedAt: new Date().toISOString() }];
+  writeArray(ZEN_MOOD_KEY, next.slice(-ZEN_MOOD_MAX_RECORDS), storage);
 }
 
 export function loadCustomRoutines(storage?: Storage): CustomRoutine[] {

@@ -39,7 +39,7 @@ function StatusStrip({ snapshot, message }: ReturnType<typeof useBrokerHub>) {
       ].map(([label, value]) => (
         <div key={label} className="rounded-xl border border-border/40 bg-secondary/25 p-3">
           <p className="text-[11px] uppercase text-muted-foreground">{label}</p>
-          <p className="mt-1 font-mono text-lg font-bold">{format(Number(value))}</p>
+          <p className="mt-1 font-mono text-lg font-bold">{Number.isFinite(Number(value)) ? format(Number(value)) : "—"}</p>
         </div>
       ))}
       {(snapshot.error || message) && (
@@ -85,7 +85,7 @@ function AccountsPanel({ hub, onConnected }: { hub: ReturnType<typeof useBrokerH
             <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
               <span className="rounded-full border border-border/40 px-2 py-1">{profile.environment === "live" ? "Reale" : "Demo"}</span>
               <span className="rounded-full border border-border/40 px-2 py-1">{simpleStatusLabel(profile.health ?? profile.connectionStatus)}</span>
-              <span className="rounded-full border border-border/40 px-2 py-1">{profile.tradingEnabled ? "Trading non disponibile" : "Trading bloccato"}</span>
+              <span className="rounded-full border border-border/40 px-2 py-1">{profile.tradingEnabled ? uiText("broker_hub.trading_enabled") : uiText("broker_hub.trading_blocked")}</span>
               {!capabilities.placeOrders && <span className="rounded-full border border-border/40 px-2 py-1">{uiText("auto.ui.6c3cdfe1cc")}</span>}
             </div>
           </div>

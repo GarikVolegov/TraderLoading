@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -514,7 +515,7 @@ function SessionMetric({ label, value, color }: { label: string; value: string; 
 export default function Backtest() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: sessions, isLoading } = useGetBacktestSessions();
+  const { data: sessions, isLoading, isError, refetch } = useGetBacktestSessions();
   const deleteMutation = useDeleteBacktestSession();
   const [showNew, setShowNew] = useState(false);
   const [activeSession, setActiveSession] = useState<BacktestSession | null>(null);
@@ -562,6 +563,8 @@ export default function Backtest() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse" />)}
         </div>
+      ) : isError ? (
+        <QueryErrorState onRetry={() => void refetch()} />
       ) : !sessions || sessions.length === 0 ? (
         <Card className="border-dashed border-white/10">
           <CardContent className="px-4 py-12 sm:p-16 text-center">

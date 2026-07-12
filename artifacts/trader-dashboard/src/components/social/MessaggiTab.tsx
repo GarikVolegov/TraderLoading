@@ -374,6 +374,27 @@ export function MessaggiTab({
     setPendingOffer(null);
   }, []);
 
+  // Teardown su unmount: lasciare la pagina a chiamata o registrazione attiva
+  // non deve lasciare vivi microfono, RTCPeerConnection o timer.
+  useEffect(() => {
+    return () => {
+      cleanupCall();
+      const recorder = mediaRecorderRef.current;
+      if (recorder) {
+        if (recorder.state !== "inactive") {
+          try {
+            recorder.stop();
+          } catch {
+            // recorder già fermo
+          }
+        }
+        recorder.stream.getTracks().forEach((t) => t.stop());
+        mediaRecorderRef.current = null;
+      }
+      clearInterval(recordTimerRef.current);
+    };
+  }, [cleanupCall]);
+
   const startCall = async () => {
     if (!selectedFriend?.userId) return;
     const cid = newCallId();

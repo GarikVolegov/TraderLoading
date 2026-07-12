@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, RotateCcw, ChevronRight, Brain } from "lucide-react";
 import { useLanguage, uiText } from "@/contexts/LanguageContext";
+import { readMoodForDate, saveMoodForDate } from "@/pages/Routine.storage";
 
 type Phase = "inspira" | "trattieni" | "espira" | "riposa";
 
@@ -131,16 +132,24 @@ function BreathingExercise() {
   );
 }
 
-const MOODS: [string, string][] = [
-  ["😣", "Teso"],
-  ["😐", "Neutro"],
-  ["🙂", "Calmo"],
-  ["😄", "Carico"],
-  ["😴", "Stanco"],
+// Stable ids go to storage; labels are display-only.
+const MOODS: { id: string; emoji: string; label: string }[] = [
+  { id: "tense", emoji: "😣", label: "Teso" },
+  { id: "neutral", emoji: "😐", label: "Neutro" },
+  { id: "calm", emoji: "🙂", label: "Calmo" },
+  { id: "charged", emoji: "😄", label: "Carico" },
+  { id: "tired", emoji: "😴", label: "Stanco" },
 ];
 
 function MoodCheckIn() {
-  const [mood, setMood] = useState<string | null>(null);
+  // Persisted per-day: reopening the page shows today's check-in instead of
+  // silently forgetting it (the "recorded" copy must be truthful).
+  const [mood, setMood] = useState<string | null>(() => readMoodForDate(new Date()));
+
+  const selectMood = (id: string) => {
+    setMood(id);
+    saveMoodForDate(id, new Date());
+  };
 
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-border/25 bg-card/25 p-4">
@@ -149,13 +158,13 @@ function MoodCheckIn() {
         <p className="mt-1 text-xs text-muted-foreground/60">{uiText("routine.zenzone.mood_subtitle")}</p>
       </div>
       <div className="grid flex-1 grid-cols-5 gap-2">
-        {MOODS.map(([emoji, label]) => {
-          const active = mood === label;
+        {MOODS.map(({ id, emoji, label }) => {
+          const active = mood === id;
           return (
             <button
-              key={label}
+              key={id}
               type="button"
-              onClick={() => setMood(label)}
+              onClick={() => selectMood(id)}
               className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-colors ${
                 active ? "border-primary/45 bg-primary/15" : "border-border/25 bg-background/25"
               }`}
@@ -170,7 +179,12 @@ function MoodCheckIn() {
       </div>
       <p className="text-xs text-muted-foreground/50">
         {mood ? (
-          <>{uiText("routine.zenzone.mood_recorded")} <strong className="text-foreground">{mood}</strong></>
+          <>
+            {uiText("routine.zenzone.mood_recorded")}{" "}
+            <strong className="text-foreground">
+              {MOODS.find((item) => item.id === mood)?.label ?? mood}
+            </strong>
+          </>
         ) : (
           uiText("routine.zenzone.mood_hint")
         )}

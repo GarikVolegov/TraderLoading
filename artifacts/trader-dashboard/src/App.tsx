@@ -37,7 +37,7 @@ import { PairOnboardingWrapper } from "./components/PairOnboardingWrapper";
 import { AppTutorialWrapper } from "./components/AppTutorialWrapper";
 import { TopNav } from "./components/TopNav";
 import { BottomNav } from "./components/BottomNav";
-import { useLanguage } from "./contexts/LanguageContext";
+import { hasStoredLanguagePreference, LANGUAGES, useLanguage } from "./contexts/LanguageContext";
 import type { Language } from "./lib/i18n";
 import {
   SEO_PAGE_KEYS,
@@ -45,7 +45,8 @@ import {
   seoPagePath,
   type SeoPageKey,
 } from "./lib/seo";
-import { getGetUserSettingsQueryKey, useUpdateUserSettings } from "@workspace/api-client-react";
+import { getGetUserSettingsQueryKey, useGetUserSettings, useUpdateUserSettings } from "@workspace/api-client-react";
+import { decideLanguageSync } from "./lib/languageSync";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Journal = lazy(() => import("./pages/Journal"));
@@ -55,6 +56,7 @@ const Checklist = lazy(() => import("./pages/Checklist"));
 const News = lazy(() => import("./pages/News"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Backtest = lazy(() => import("./pages/Backtest"));
+const BacktestReplay = lazy(() => import("./pages/BacktestReplay"));
 const Wiki = lazy(() => import("./pages/Wiki"));
 const Milestones = lazy(() => import("./pages/Milestones"));
 const Library = lazy(() => import("./pages/Library"));
@@ -263,19 +265,44 @@ function PageFallback() {
 }
 
 function LanguageServerSync() {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const updateSettings = useUpdateUserSettings();
   const qc = useQueryClient();
+  const settings = useGetUserSettings();
+  const decidedRef = useRef(false);
   const lastSyncedRef = useRef<string | null>(null);
 
   useEffect(() => {
+    // Aspetta l'esito della lettura: scrivere prima di aver letto è ciò che
+    // sovrascriveva la preferenza salvata su un device nuovo.
+    if (!settings.isSuccess && !settings.isError) return;
+
+    if (!decidedRef.current) {
+      decidedRef.current = true;
+      const decision = decideLanguageSync<Language>({
+        serverLanguage: settings.data?.language ?? null,
+        clientLanguage: language,
+        hasExplicitLocalChoice: hasStoredLanguagePreference(),
+        supported: Object.keys(LANGUAGES),
+      });
+      if (decision.action === "adopt") {
+        lastSyncedRef.current = decision.language;
+        setLanguage(decision.language);
+        return;
+      }
+      if (decision.action === "none") {
+        lastSyncedRef.current = language;
+        return;
+      }
+    }
+
     if (lastSyncedRef.current === language) return;
     lastSyncedRef.current = language;
     updateSettings.mutate(
       { data: { language } },
       { onSuccess: () => qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() }) },
     );
-  }, [language, qc, updateSettings]);
+  }, [settings.isSuccess, settings.isError, settings.data, language, qc, updateSettings, setLanguage]);
 
   return null;
 }
@@ -298,6 +325,7 @@ function AppRouter() {
           <Route path="/checklist" component={Checklist} />
           <Route path="/news" component={News} />
           <Route path="/chat" component={Chat} />
+          <Route path="/backtest/:id/replay" component={BacktestReplay} />
           <Route path="/backtest" component={Backtest} />
           <Route path="/tools" component={Backtest} />
           <Route path="/wiki" component={Wiki} />

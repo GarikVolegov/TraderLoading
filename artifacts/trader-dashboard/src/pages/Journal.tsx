@@ -6,6 +6,7 @@ import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, 
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
+import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -134,7 +135,7 @@ function TradesTab() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
-  const { data: entries, isLoading } = useGetJournalEntries({
+  const { data: entries, isLoading, isError, refetch } = useGetJournalEntries({
     query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 30_000 },
   });
   const deleteMutation = useDeleteJournalEntry();
@@ -192,10 +193,12 @@ function TradesTab() {
             <div key={i} className="h-64 rounded-2xl animate-pulse bg-card/60 border border-border/30" />
           ))}
         </div>
+      ) : isError ? (
+        <QueryErrorState onRetry={() => void refetch()} />
       ) : entries && entries.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <AnimatePresence>
-            {entries
+            {[...entries]
               .sort((a, b) => new Date(b.tradeDate).getTime() - new Date(a.tradeDate).getTime())
               .map((entry, idx) => {
                 const resConfig = getResultConfig(entry.result);

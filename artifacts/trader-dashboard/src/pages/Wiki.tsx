@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
+import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
 import { ArchiveRail } from "@/components/archive/ArchiveRail";
 import { ArchiveToolbar, type ArchiveDensity, type ArchiveView } from "@/components/archive/ArchiveToolbar";
@@ -43,7 +44,11 @@ export default function Wiki() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
-  const { data: sources = [] } = useQuery({
+  const {
+    data: sources = [],
+    isError: sourcesError,
+    refetch: refetchSources,
+  } = useQuery({
     queryKey: ["wiki", "sources"],
     queryFn: () => apiFetch<WikiSource[]>(`${API}/wiki/sources`),
     refetchInterval: (query) =>
@@ -212,7 +217,9 @@ export default function Wiki() {
               />
               <TypeChips value={typeFilter} onChange={setTypeFilter} />
 
-              {sources.length === 0 ? (
+              {sourcesError ? (
+                <QueryErrorState onRetry={() => void refetchSources()} />
+              ) : sources.length === 0 ? (
                 <EmptyState onAdd={() => setAddOpen(true)} />
               ) : filtered.length === 0 ? (
                 <NoResults onClear={clearFilters} />

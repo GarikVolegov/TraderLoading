@@ -56,7 +56,8 @@ export default function Tornei() {
         qc.invalidateQueries({ queryKey: torneiMeKey() });
       } else {
         const key = `tornei.enroll.error.${res.reason}`;
-        toast({ title: t(key === `tornei.enroll.error.${res.reason}` ? key : "tornei.enroll.error.generic"), variant: "destructive" });
+        const title = t(key);
+        toast({ title: title === key ? t("tornei.enroll.error.generic") : title, variant: "destructive" });
       }
     },
     onError: () => toast({ title: t("tornei.enroll.error.generic"), variant: "destructive" }),

@@ -21,6 +21,10 @@ export default function BillingReturn() {
   const queryClient = useQueryClient();
   const { t } = useLanguage();
   const [timedOut, setTimedOut] = useState(false);
+  const [confirmFailed, setConfirmFailed] = useState(false);
+  const [hasSessionId] = useState(() =>
+    Boolean(new URLSearchParams(window.location.search).get("session_id")),
+  );
   const billing = useQuery({
     ...billingStatusQueryOptions(),
     refetchInterval: (query) =>
@@ -35,7 +39,10 @@ export default function BillingReturn() {
     if (sessionId) {
       confirmCheckoutSession(sessionId)
         .then((status) => queryClient.setQueryData(billingQueryKey, status))
-        .catch(() => queryClient.invalidateQueries({ queryKey: billingQueryKey }));
+        .catch(() => {
+          setConfirmFailed(true);
+          queryClient.invalidateQueries({ queryKey: billingQueryKey });
+        });
     } else {
       queryClient.invalidateQueries({ queryKey: billingQueryKey });
     }
@@ -44,6 +51,10 @@ export default function BillingReturn() {
   }, [queryClient]);
 
   const isPro = billing.data?.pro === true;
+  // Senza session_id (arrivo diretto/annullato) o con conferma fallita, dopo il
+  // timeout non c'è nulla che possa ancora sbloccarsi da solo: meglio dirlo
+  // chiaramente che lasciare un "in elaborazione" indefinito.
+  const notCompleted = timedOut && !isPro && (!hasSessionId || confirmFailed);
 
   return (
     <PageLayout>
@@ -90,13 +101,26 @@ export default function BillingReturn() {
                   <Clock3 className="h-7 w-7" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold">{t("billing.return.processing")}</h1>
+                  <h1 className="text-xl font-bold">
+                    {t(notCompleted ? "billing.return.not_completed" : "billing.return.processing")}
+                  </h1>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {t("billing.return.processing_sub")}
+                    {t(notCompleted ? "billing.return.not_completed_sub" : "billing.return.processing_sub")}
                   </p>
                 </div>
                 <div className="flex flex-col justify-center gap-2 sm:flex-row">
-                  <Button type="button" onClick={() => billing.refetch()}>
+                  {notCompleted && (
+                    <Link href="/pro">
+                      <Button type="button" className="w-full sm:w-auto">
+                        {t("billing.return.retry")}
+                      </Button>
+                    </Link>
+                  )}
+                  <Button
+                    type="button"
+                    variant={notCompleted ? "outline" : "default"}
+                    onClick={() => billing.refetch()}
+                  >
                     <RefreshCw className="mr-2 h-4 w-4" />
                     {t("billing.update_status")}
                   </Button>
