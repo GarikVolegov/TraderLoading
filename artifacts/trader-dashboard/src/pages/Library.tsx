@@ -12,8 +12,10 @@ import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
+import { reportClientError } from "@/lib/clientErrorReporter";
 import { MindMapEditor, MindMapView, isMindMapData, type MindMapData } from "@/components/MindMapEditor";
 import { uiText } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type ContentType = "document" | "mindmap" | "video";
@@ -141,6 +143,7 @@ function ContentViewer({ content, onClose }: { content: Content; onClose: () => 
 // ─── Admin: content form ────────────────────────────────────────────────────
 function ContentForm({ initial, onClose }: { initial: Content | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [form, setForm] = useState({
     type: (initial?.type ?? "document") as ContentType,
     title: initial?.title ?? "", description: initial?.description ?? "",
@@ -168,8 +171,24 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
       const fd = new FormData(); fd.append("file", file);
       const r = await apiFetch("library/upload", { method: "POST", body: fd });
       const d = await r.json();
-      if (d.fileUrl) setForm((f) => ({ ...f, fileUrl: d.fileUrl, fileName: d.fileName, fileSize: d.fileSize, mimeType: d.mimeType }));
-    } finally { setUploading(false); }
+      if (d.fileUrl) {
+        setForm((f) => ({ ...f, fileUrl: d.fileUrl, fileName: d.fileName, fileSize: d.fileSize, mimeType: d.mimeType }));
+      } else {
+        reportClientError(new Error("upload response missing fileUrl"), {
+          context: "library content upload",
+          fallbackMessage: uiText("auto.ui.657c9641cf"),
+          toast,
+        });
+      }
+    } catch (error) {
+      reportClientError(error, {
+        context: "library content upload",
+        fallbackMessage: uiText("auto.ui.657c9641cf"),
+        toast,
+      });
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (

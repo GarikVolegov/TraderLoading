@@ -50,6 +50,18 @@ export function MessaggiTab({
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(
     undefined,
   );
+  // Un solo object URL per blob registrato: creato una volta e revocato al
+  // cambio/unmount, invece di rigenerarlo (e perderlo) a ogni render.
+  const [recordedBlobUrl, setRecordedBlobUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!recordedBlob) {
+      setRecordedBlobUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(recordedBlob);
+    setRecordedBlobUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [recordedBlob]);
 
   // Voice call (WebRTC)
   const [callState, setCallState] = useState<
@@ -152,7 +164,7 @@ export function MessaggiTab({
         );
         setDecryptedMessages(decrypted);
       } catch (err) {
-        console.error("Decrypt error:", err);
+        reportClientError(err, { context: "DM decrypt", notify: false });
       }
     };
     decrypt();
@@ -208,9 +220,13 @@ export function MessaggiTab({
       setMessageInput("");
       setShowEmojiDM(false);
     } catch (err) {
-      console.error("Send error:", err);
+      reportClientError(err, {
+        context: "DM send",
+        fallbackMessage: "Invio messaggio non riuscito.",
+        toast,
+      });
     }
-  }, [messageInput, sendE2EE]);
+  }, [messageInput, sendE2EE, toast]);
 
   // Attachment DM
   const handleDmAttachment = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -282,7 +298,11 @@ export function MessaggiTab({
         1000,
       );
     } catch (err) {
-      console.error("Mic error:", err);
+      reportClientError(err, {
+        context: "DM voice recording start",
+        fallbackMessage: "Impossibile accedere al microfono.",
+        toast,
+      });
     }
   };
 
@@ -321,7 +341,11 @@ export function MessaggiTab({
       setRecordedBlob(null);
       setRecordDuration(0);
     } catch (err) {
-      console.error("Voice send error:", err);
+      reportClientError(err, {
+        context: "DM voice send",
+        fallbackMessage: "Invio messaggio vocale non riuscito.",
+        toast,
+      });
     }
   };
 
@@ -437,7 +461,11 @@ export function MessaggiTab({
         cid,
       );
     } catch (err) {
-      console.error("Call error:", err);
+      reportClientError(err, {
+        context: "direct call start",
+        fallbackMessage: "Impossibile avviare la chiamata.",
+        toast,
+      });
       cleanupCall();
     }
   };
@@ -484,7 +512,11 @@ export function MessaggiTab({
       );
       setPendingOffer(null);
     } catch (err) {
-      console.error("Accept call error:", err);
+      reportClientError(err, {
+        context: "direct call accept",
+        fallbackMessage: "Impossibile rispondere alla chiamata.",
+        toast,
+      });
       cleanupCall();
     }
   };
@@ -913,7 +945,7 @@ export function MessaggiTab({
                 <>
                   <audio
                     controls
-                    src={URL.createObjectURL(recordedBlob!)}
+                    src={recordedBlobUrl ?? undefined}
                     className="flex-1 h-8"
                   />
                   <button

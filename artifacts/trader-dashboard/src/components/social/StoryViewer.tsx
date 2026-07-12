@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
 import { uiText } from "@/contexts/LanguageContext";
 import { apiRequest as apiFetch } from "@/lib/apiFetch";
+import { reportClientError } from "@/lib/clientErrorReporter";
 import { X, Clock, Reply, Send, Loader2, Camera, Mic } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { fmtDur } from "./format";
@@ -96,7 +97,7 @@ export function StoryViewer({
         setReplyBlob(null);
       }, 1500);
     } catch (err) {
-      console.error("Reply error:", err);
+      reportClientError(err, { context: "story reply", notify: false });
     }
   };
 
@@ -115,7 +116,7 @@ export function StoryViewer({
       const { imageUrl } = await res.json();
       await sendStoryReply(imageUrl, "image");
     } catch (err) {
-      console.error("Story image reply error:", err);
+      reportClientError(err, { context: "story image reply", notify: false });
     } finally {
       setReplyImgUploading(false);
       if (replyFileRef.current) replyFileRef.current.value = "";
@@ -143,8 +144,8 @@ export function StoryViewer({
         () => setReplyDuration((d) => d + 1),
         1000,
       );
-    } catch {
-      console.error("Mic error");
+    } catch (err) {
+      reportClientError(err, { context: "story reply mic", notify: false });
     }
   };
 
@@ -171,8 +172,8 @@ export function StoryViewer({
       await sendStoryReply(audioUrl, "voice");
       setReplyBlob(null);
       setReplyDuration(0);
-    } catch {
-      console.error("Voice reply error");
+    } catch (err) {
+      reportClientError(err, { context: "story voice reply", notify: false });
     }
   };
 

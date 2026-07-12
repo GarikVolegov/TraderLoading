@@ -39,8 +39,12 @@ export default function Checklist() {
   };
 
   const handleDelete = async (id: number) => {
-    await deleteMutation.mutateAsync({ id });
-    invalidate();
+    try {
+      await deleteMutation.mutateAsync({ id });
+      invalidate();
+    } catch {
+      toast({ description: t("checklist.error_delete"), variant: "destructive" });
+    }
   };
 
   const total = items?.length ?? 0;

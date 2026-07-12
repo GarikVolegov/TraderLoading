@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, BookOpen, FlaskConical, Archive, Users,
   ArrowLeft, MoreHorizontal,
-  Library, Sunrise, Settings, Rocket,
+  Library, Sunrise, Settings, Rocket, Clock, Newspaper,
 } from "lucide-react";
 import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -24,8 +24,19 @@ const ROOT_ITEMS = [
 
 // Desktop-only secondary group (Archivio lives in the root group now).
 const SECONDARY_ITEMS = [
-  { href: "/library",  icon: Library,  labelKey: "nav.library"  },
-  { href: "/settings", icon: Settings, labelKey: "nav.settings" },
+  { href: "/library",  icon: Library,   labelKey: "nav.library"  },
+  { href: "/clock",    icon: Clock,     labelKey: "nav.clock"    },
+  { href: "/news",     icon: Newspaper, labelKey: "nav.news"     },
+  { href: "/settings", icon: Settings,  labelKey: "nav.settings" },
+] as const;
+
+// Mobile has no persistent sidebar, so these three would otherwise be
+// reachable only via the desktop-only Cmd+K palette. Settings stays out of
+// this list — it already has its own shortcut via the TopNav avatar on mobile.
+const ROOT_OVERFLOW_ITEMS = [
+  { href: "/library", icon: Library,   labelKey: "nav.library" },
+  { href: "/clock",   icon: Clock,     labelKey: "nav.clock"   },
+  { href: "/news",    icon: Newspaper, labelKey: "nav.news"    },
 ] as const;
 
 function NavItem({
@@ -300,18 +311,30 @@ export function BottomNav() {
                   badge={item.isChat ? unreadCount : undefined}
                 />
               ))}
+              {/* Mobile has no persistent sidebar: Library/Clock/News would
+                  otherwise be reachable only via the desktop-only Cmd+K palette. */}
+              <button
+                type="button"
+                onClick={() => setMoreOpen(true)}
+                aria-label={t("nav.more")}
+                title={t("nav.more")}
+                className="relative flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2 text-muted-foreground transition-colors duration-200 hover:text-foreground"
+              >
+                <MoreHorizontal className="h-5 w-5 sm:h-[22px] sm:w-[22px]" />
+              </button>
             </div>
           )}
         </div>
       </motion.nav>
 
-      {/* Overflow sheet — reached via "Più" when a hub has more sub-items than fit the pill */}
-      {activeHub && overflow.length > 0 && (
+      {/* Overflow sheet — reached via "Più": a hub's extra sub-items, or (at
+          the root) the pages with no persistent nav slot on mobile. */}
+      {(!activeHub || overflow.length > 0) && (
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
           <SheetContent side="bottom" className="lg:hidden">
             <SheetTitle>{t("nav.more")}</SheetTitle>
             <div className="mt-2 flex flex-col gap-1">
-              {overflow.map((item) => (
+              {(activeHub ? overflow : ROOT_OVERFLOW_ITEMS).map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
