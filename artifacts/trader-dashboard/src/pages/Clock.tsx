@@ -89,10 +89,10 @@ export default function Clock() {
           </div>
         }
         title={uiText("auto.ui.87a7806fa2")}
-        subtitle={`Sessioni operative, countdown apertura/chiusura e orari solo locali (${localTimeZoneLabel})`}
+        subtitle={uiText("auto.ui.60bd9cc0be", { tz: localTimeZoneLabel })}
         badge={
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-             <Radio className="h-3 w-3" /> {closedActive ? "Mercato chiuso" : `${activeCount} attive`}
+             <Radio className="h-3 w-3" /> {closedActive ? uiText("auto.ui.aafe59a8f3") : uiText("auto.ui.7c72ea46ea", { count: activeCount })}
           </span>
         }
       />
@@ -103,13 +103,13 @@ export default function Clock() {
       {/* Sessioni di mercato */}
       <div>
         <h3 className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-          <Hourglass className="h-3.5 w-3.5" /> Sessioni di mercato
+          <Hourglass className="h-3.5 w-3.5" /> {uiText("auto.ui.45e809db60")}
         </h3>
 
         {sessions.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-sm text-muted-foreground">
-              Nessuna sessione attivata. Configura le sessioni dalle impostazioni dello sfondo.
+              {uiText("auto.ui.3d94117b41")}
             </CardContent>
           </Card>
         ) : (
@@ -152,9 +152,9 @@ export default function Clock() {
                   {active ? (
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-muted-foreground">{closed ? "Periodo di chiusura" : "Avanzamento"}</span>
+                        <span className="text-muted-foreground">{closed ? uiText("auto.ui.b3de9ecf4f") : uiText("auto.ui.8f2b8b4ced")}</span>
                         <span className={cn("font-mono font-bold", closed ? "text-red-400" : "text-primary")}>
-                          termina tra {formatCountdown(untilClose)}
+                          {uiText("auto.ui.37ef226c4c", { time: formatCountdown(untilClose) })}
                         </span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-secondary/50">

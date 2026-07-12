@@ -77,7 +77,10 @@ const missingUsedKeys = [...new Set(usedTranslationKeys)].filter((key) => !itali
 assert.deepEqual(missingUsedKeys, [], "Every literal t() key should exist in DICT");
 
 const newsSource = readFileSync(new URL("pages/News.tsx", import.meta.url), "utf8");
-assert.match(newsSource, /Apri articolo/);
+// "Apri articolo" is now routed through i18n (auto.ui.ee8a13250e) rather than
+// a literal — assert the key + its Italian translation instead of the literal.
+assert.match(newsSource, /auto\.ui\.ee8a13250e/);
+assert.match(i18nSource, /"auto\.ui\.ee8a13250e":\s*"Apri articolo"/);
 assert.doesNotMatch(newsSource, /Sito fonte/);
 
 const localizedSurfaceNeedles: Record<string, string[]> = {

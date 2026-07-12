@@ -20,7 +20,7 @@ import {
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { useBackground } from "@/contexts/BackgroundContext";
-import { useLanguage, useDateLocale } from "@/contexts/LanguageContext";
+import { useLanguage, useDateLocale, uiText } from "@/contexts/LanguageContext";
 import {
   createNewsQueryKey,
   createNewsRefreshMessage,
@@ -69,8 +69,8 @@ function ImpactScore({ score }: { score: number }) {
     score >= 5 ? "text-amber-400 border-amber-500/40 bg-amber-500/10" :
                  "text-emerald-400 border-emerald-500/40 bg-emerald-500/10";
   const label =
-    score >= 8 ? "ALTO" :
-    score >= 5 ? "MEDIO" : "BASSO";
+    score >= 8 ? uiText("auto.ui.d32aa72141") :
+    score >= 5 ? uiText("auto.ui.4ed09f9264") : uiText("auto.ui.e9d822f15f");
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border whitespace-nowrap ${color}`}>
       <Zap className="w-2.5 h-2.5" />
@@ -98,10 +98,10 @@ function FreshnessBadge({ article }: { article: Article }) {
   const age = article.ageMinutes;
   const label =
     tier === "live" ? "Live" :
-    tier === "fresh" && typeof age === "number" && age <= 60 ? "Nuova" :
-    tier === "fresh" ? "Aggiornata" :
-    tier === "fallback" ? "Archivio utile" :
-    "Storico";
+    tier === "fresh" && typeof age === "number" && age <= 60 ? uiText("auto.ui.9a07f2bb32") :
+    tier === "fresh" ? uiText("auto.ui.99db104f23") :
+    tier === "fallback" ? uiText("auto.ui.0ebd91a99e") :
+    uiText("auto.ui.b38270fe36");
   const color =
     tier === "live" || tier === "fresh"
       ? "text-sky-300 border-sky-500/30 bg-sky-500/10"
@@ -121,18 +121,20 @@ function impactBand(score: number): Exclude<ImpactBand, "all"> {
   return score >= 8 ? "high" : score >= 5 ? "med" : "low";
 }
 
-const IMPACT_FILTER_OPTIONS: { id: ImpactBand; label: string }[] = [
-  { id: "all", label: "Tutti" },
-  { id: "high", label: "Alto" },
-  { id: "med", label: "Medio" },
-  { id: "low", label: "Basso" },
+// labelKey (not a pre-resolved label) so the option stays reactive to language
+// changes — these arrays are module-level consts, evaluated once at import.
+const IMPACT_FILTER_OPTIONS: { id: ImpactBand; labelKey: string }[] = [
+  { id: "all", labelKey: "auto.ui.148ba18ee0" },
+  { id: "high", labelKey: "auto.ui.f46edd0236" },
+  { id: "med", labelKey: "auto.ui.5ae9f5bf54" },
+  { id: "low", labelKey: "auto.ui.97f1c99bbc" },
 ];
 
-const SENTIMENT_FILTER_OPTIONS: { id: SentimentFilter; label: string }[] = [
-  { id: "all", label: "Tutti" },
-  { id: "bullish", label: "Rialzista" },
-  { id: "bearish", label: "Ribassista" },
-  { id: "neutral", label: "Neutrale" },
+const SENTIMENT_FILTER_OPTIONS: { id: SentimentFilter; labelKey: string }[] = [
+  { id: "all", labelKey: "auto.ui.148ba18ee0" },
+  { id: "bullish", labelKey: "auto.ui.94f006e5a1" },
+  { id: "bearish", labelKey: "auto.ui.9dbe58d934" },
+  { id: "neutral", labelKey: "auto.ui.628ea0ce38" },
 ];
 
 function SegmentedControl<T extends string>({
@@ -140,7 +142,7 @@ function SegmentedControl<T extends string>({
   value,
   onChange,
 }: {
-  options: { id: T; label: string }[];
+  options: { id: T; labelKey: string }[];
   value: T;
   onChange: (id: T) => void;
 }) {
@@ -157,7 +159,7 @@ function SegmentedControl<T extends string>({
               : "text-muted-foreground/70 hover:text-foreground"
           }`}
         >
-          {option.label}
+          {uiText(option.labelKey)}
         </button>
       ))}
     </div>
@@ -278,7 +280,7 @@ function RefreshCountdown({ nextRefreshAt }: { nextRefreshAt?: string }) {
   return (
     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/50">
       <Clock className="w-3 h-3" />
-      Aggiornamento tra {remaining}
+      {uiText("auto.ui.f35bea07da", { remaining })}
     </span>
   );
 }
@@ -322,9 +324,9 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
           {deepDive ? (
             <div className="grid gap-3">
               {[
-                ["Cosa è successo", deepDive.whatHappened],
-                ["Perché influenza l'asset", deepDive.whyItMatters],
-                ["Come può impattare", deepDive.possibleImpact],
+                [uiText("auto.ui.814395b5a9"), deepDive.whatHappened],
+                [uiText("auto.ui.3c4f0698e2"), deepDive.whyItMatters],
+                [uiText("auto.ui.cf43d6477f"), deepDive.possibleImpact],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-primary/15 bg-primary/5 p-3">
                   <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">{label}</p>
@@ -362,7 +364,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
                 className="inline-flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 <ExternalLink className="w-4 h-4" />
-                Apri articolo
+                {uiText("auto.ui.ee8a13250e")}
               </a>
             )}
             {article.sourceUrl && article.sourceUrl !== detailUrl && (
@@ -373,7 +375,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
                 className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary"
               >
                 <ExternalLink className="w-4 h-4" />
-                Apri articolo
+                {uiText("auto.ui.ee8a13250e")}
               </a>
             )}
           </div>
@@ -469,7 +471,7 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
                 className="flex items-center gap-1 text-[10px] text-primary/60 hover:text-primary transition-colors font-medium"
               >
                 {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                Perché rilevante
+                {uiText("auto.ui.0fe5a7669f")}
               </button>
               <AnimatePresence>
                 {expanded && (
@@ -554,7 +556,7 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
     <div className="tl-panel p-3 sm:p-4">
       <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 text-sm font-semibold">
         <SlidersHorizontal className="w-4 h-4 text-primary" />
-        Addestra il feed con le tue info
+        {uiText("auto.ui.fd67dc1c1c")}
         {open ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
       </button>
       {open && (
@@ -592,7 +594,7 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
             <p className="text-[11px] text-muted-foreground/60">{t("news.personalization.feedback_hint")}</p>
             <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
               {save.isPending && <RefreshCw className="w-4 h-4 mr-1 animate-spin" />}
-              Salva e ri-ordina
+              {uiText("auto.ui.21a71b1d79")}
             </Button>
           </div>
         </div>
@@ -719,13 +721,13 @@ export default function News() {
   const newsData = data?.pages?.[0];
   const isAI = newsData?.source === "ai";
   const liveLabel =
-    liveStatus === "connecting" ? "Aggiornamento" : simpleStatusLabel(liveStatus);
+    liveStatus === "connecting" ? uiText("auto.ui.9fc25260f0") : simpleStatusLabel(liveStatus);
   const hasFreshArticles = (newsData?.freshArticlesCount ?? articles.filter((article) => !article.isFallback).length) > 0;
   const freshnessLabel = hasFreshArticles
-    ? `Ultime ${newsData?.freshnessWindowHours ?? 48}h`
+    ? uiText("auto.ui.826f7a559f", { hours: newsData?.freshnessWindowHours ?? 48 })
     : articles.length > 0
-      ? "Archivio storico"
-      : "Aggiornato ora";
+      ? uiText("auto.ui.4ad305722b")
+      : uiText("auto.ui.8941db7b73");
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -862,12 +864,12 @@ export default function News() {
           {isFetchingNextPage && (
             <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground/70">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              Caricamento altre notizie…
+              {uiText("auto.ui.b5ac7a492b")}
             </div>
           )}
           {!hasNextPage && (
             <p className="py-4 text-center text-xs text-muted-foreground/40">
-              Hai raggiunto la fine delle notizie disponibili.
+              {uiText("auto.ui.3ada7a8dc3")}
             </p>
           )}
         </div>
@@ -875,7 +877,7 @@ export default function News() {
         <Card className="border-dashed border-border/40 bg-card/50">
           <CardContent className="p-10 text-center">
             <p className="text-sm text-muted-foreground/70">
-              Nessuna notizia con i filtri selezionati.
+              {uiText("auto.ui.92464ec4e0")}
             </p>
           </CardContent>
         </Card>
