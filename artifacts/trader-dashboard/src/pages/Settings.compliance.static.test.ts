@@ -30,7 +30,7 @@ assert.match(
 );
 assert.match(
   source,
-  /Privacy, licenza e disclaimer/,
+  /auto\.ui\.9ce5cd227f/,
   "Settings must expose a privacy/data disclosure area",
 );
 assert.match(

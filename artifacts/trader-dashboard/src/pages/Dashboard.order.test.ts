@@ -15,7 +15,11 @@ assert.doesNotMatch(source, /id: "clock"/); // clock left the widget registry
 assert.match(source, /import \{ LotCalculatorWidget \} from "@\/components\/LotCalculatorWidget";/);
 assert.match(
   source,
-  /\{\s*id: "lot",\s*label: "Dimensionamento",\s*icon: BarChart2,\s*component: LotCalculatorWidget\s*\}/s,
+  /\{\s*id: "lot",\s*labelKey: "auto\.ui\.4200011b72",\s*icon: BarChart2,\s*component: LotCalculatorWidget\s*\}/s,
+);
+assert.match(
+  readFileSync(new URL("../lib/i18n/dict.it.ts", import.meta.url), "utf8"),
+  /"auto\.ui\.4200011b72":\s*"Dimensionamento"/,
 );
 assert.doesNotMatch(source, /route: "\/tools\?tab=/);
 // La curva equity vive dentro il widget Broker Hub ("account"), non come widget separato.

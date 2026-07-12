@@ -32,40 +32,40 @@ import { PageHeader } from "@/components/PageHeader";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { formatFileSize } from "@/lib/fileFormatting";
-import { uiText } from "@/contexts/LanguageContext";
+import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { parseSkills } from "./Milestones.helpers";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const XP_PER_LEVEL = 500;
 
-const LEVEL_NAMES: Record<number, string> = {
-  1: "Novizio Consapevole",
-  2: "Apprendista Disciplinato",
-  3: "Osservatore Silenzioso",
-  4: "Analista in Formazione",
-  5: "Samurai della Pazienza",
-  6: "Cacciatore di Pattern",
-  7: "Guardiano del Risk",
-  8: "Maestro del Timeframe",
-  9: "Sentinella dei Mercati",
-  10: "Stratega dell'Incertezza",
-  11: "Architetto del Piano",
-  12: "Mente Antifrágile",
-  13: "Ombra del Mercato",
-  14: "Custode della Disciplina",
-  15: "Ninja della Liquidità",
-  16: "Alchimista delle Probabilità",
-  17: "Falco dello Smart Money",
-  18: "Sensei dell'Order Flow",
-  19: "Leggenda del Trading",
-  20: "Maestro Supremo",
+const LEVEL_NAME_KEYS: Record<number, string> = {
+  1: "auto.ui.4559a17b5e",
+  2: "auto.ui.2caa1da9b9",
+  3: "auto.ui.e498ae1a14",
+  4: "auto.ui.64eeac7848",
+  5: "auto.ui.20000353da",
+  6: "auto.ui.4834240463",
+  7: "auto.ui.ed854bfbb4",
+  8: "auto.ui.0fe1013fcc",
+  9: "auto.ui.428726eb20",
+  10: "auto.ui.2c80fd1a95",
+  11: "auto.ui.c2e7ae2034",
+  12: "auto.ui.02e0a648b7",
+  13: "auto.ui.f982b763ec",
+  14: "auto.ui.01c01c665c",
+  15: "auto.ui.f10db535d1",
+  16: "auto.ui.b1d38a66f0",
+  17: "auto.ui.130ee38a83",
+  18: "auto.ui.4d60c4ebda",
+  19: "auto.ui.94c1e9a613",
+  20: "auto.ui.d3ba7cadf3",
 };
 
 function getLevelName(level: number): string {
-  if (level in LEVEL_NAMES) return LEVEL_NAMES[level];
-  if (level > 20) return "Maestro Supremo";
-  return `Trader Livello ${level}`;
+  if (level in LEVEL_NAME_KEYS) return uiText(LEVEL_NAME_KEYS[level]);
+  if (level > 20) return uiText(LEVEL_NAME_KEYS[20]);
+  return uiText("auto.ui.429bca7afd", { level });
 }
 
 const BADGE_COLORS = [
@@ -169,7 +169,8 @@ function certHash(cert: { id: number; level: number; userId: string }): string {
 }
 
 function CertificateCard({ cert }: { cert: Certificate }) {
-  const date = new Date(cert.awardedAt).toLocaleDateString("it-IT", {
+  const { language } = useLanguage();
+  const date = new Date(cert.awardedAt).toLocaleDateString(language, {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -434,7 +435,7 @@ function MilestoneEditor({
     >
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-primary">
-          Modifica Traguardo Livello {level}
+          {uiText("auto.ui.6ddd3bca3c", { level })}
         </span>
         <button
           onClick={onClose}
@@ -447,7 +448,7 @@ function MilestoneEditor({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            Titolo traguardo
+            {uiText("auto.ui.259cbd5e44")}
           </label>
           <input
             value={title}
@@ -459,7 +460,7 @@ function MilestoneEditor({
         <div className="flex items-end gap-2">
           <div className="space-y-1.5 flex-1">
             <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              Badge Emoji
+              {uiText("auto.ui.633288e36d")}
             </label>
             <div className="flex flex-wrap gap-1">
               {BADGE_EMOJIS.map((e) => (
@@ -476,7 +477,7 @@ function MilestoneEditor({
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            Colore badge
+            {uiText("auto.ui.6062c61902")}
           </label>
           <div className="flex flex-wrap gap-2">
             {BADGE_COLORS.map((c) => (
@@ -501,7 +502,7 @@ function MilestoneEditor({
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            Competenze acquisite
+            {uiText("auto.ui.2b7a7f86e7")}
           </label>
           <div className="flex gap-2">
             <input
@@ -545,7 +546,7 @@ function MilestoneEditor({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            File e risorse
+            {uiText("auto.ui.1ccd55f663")}
           </label>
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -557,7 +558,7 @@ function MilestoneEditor({
             ) : (
               <Upload className="w-3 h-3" />
             )}
-            {uploading ? "Caricamento..." : "Carica file"}
+            {uploading ? uiText("common.loading") : uiText("auto.ui.6cdd9c8c78")}
           </button>
           <input
             ref={fileInputRef}
@@ -604,7 +605,7 @@ function MilestoneEditor({
         )}
         {files.length === 0 && (
           <p className="text-[11px] text-muted-foreground/50 text-center py-3 border border-dashed border-border rounded-xl">
-            Nessun file — clicca "Carica file" per aggiungerne
+            {uiText("auto.ui.133509ea5d")}
           </p>
         )}
       </div>
@@ -620,7 +621,7 @@ function MilestoneEditor({
           ) : (
             <Save className="w-4 h-4" />
           )}
-          {saving ? "Salvataggio..." : "Salva Traguardo"}
+          {saving ? uiText("auto.ui.7760459f96") : uiText("auto.ui.157ad75db3")}
         </button>
       </div>
     </motion.div>
@@ -713,12 +714,12 @@ function LevelRow({
             </span>
             {isCurrent && (
               <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-primary/20 text-primary border border-primary/30">
-                ATTUALE
+                {uiText("auto.ui.a1991c83d4")}
               </span>
             )}
             {hasCert && (
               <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                CERTIFICATO
+                {uiText("auto.ui.8a14d6fe3e")}
               </span>
             )}
           </div>
@@ -781,8 +782,8 @@ function LevelRow({
               ) : !milestone && !isAdmin ? (
                 <p className="text-sm text-muted-foreground/50 text-center py-6">
                   {isUnlocked
-                    ? "Nessun contenuto ancora per questo livello."
-                    : "Sblocca questo livello per vederne i contenuti."}
+                    ? uiText("auto.ui.8a1c12312a")
+                    : uiText("auto.ui.4def9897d2")}
                 </p>
               ) : (
                 <div className="pt-4 space-y-4">
@@ -819,7 +820,7 @@ function LevelRow({
                       {files.length > 0 && (
                         <div className="space-y-2">
                           <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider font-semibold">
-                            Risorse e file
+                            {uiText("auto.ui.af5851ff1f")}
                           </p>
                           <div className="space-y-1.5">
                             {files.map((f) => (
@@ -879,8 +880,8 @@ function LevelRow({
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                       {milestone
-                        ? "Modifica contenuto traguardo"
-                        : "Aggiungi contenuto a questo traguardo"}
+                        ? uiText("auto.ui.8fc65674bd")
+                        : uiText("auto.ui.891575ec6a")}
                     </button>
                   )}
                 </div>
@@ -930,7 +931,7 @@ export default function Milestones() {
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary/30 bg-primary/5">
             <Shield className="w-4 h-4 text-primary shrink-0" />
             <p className="text-xs text-primary font-semibold">
-              Modalità Admin — puoi modificare i contenuti di ogni traguardo
+              {uiText("auto.ui.50d51bf562")}
             </p>
           </div>
         )}
@@ -944,15 +945,15 @@ export default function Milestones() {
                   {getLevelName(currentLevel)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Livello {currentLevel} · {profile.xp.toLocaleString()} XP
+                  {uiText("auto.ui.4b9b12f947", { level: currentLevel, xp: profile.xp.toLocaleString() })}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-[10px] text-muted-foreground/60">
-                  Prossimo livello
+                  {uiText("auto.ui.045b6647d0")}
                 </p>
                 <p className="text-xs font-bold text-primary">
-                  {profile.xpToNextLevel.toLocaleString()} XP mancanti
+                  {uiText("auto.ui.e3cbd44ccc", { n: profile.xpToNextLevel.toLocaleString() })}
                 </p>
               </div>
             </div>
@@ -989,11 +990,10 @@ export default function Milestones() {
           <div className="rounded-2xl border border-dashed border-border/50 p-6 text-center">
             <Medal className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
             <p className="text-sm font-semibold text-muted-foreground/60">
-              Nessun certificato ancora
+              {uiText("auto.ui.10d95bd8f9")}
             </p>
             <p className="text-xs text-muted-foreground/40 mt-1">
-              Completa missioni e sali di livello per sbloccare i tuoi
-              certificati NFT
+              {uiText("auto.ui.5d94f02c42")}
             </p>
           </div>
         )}
@@ -1003,7 +1003,7 @@ export default function Milestones() {
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="w-4 h-4 text-muted-foreground" />
             <h3 className="text-sm font-bold text-muted-foreground">
-              Tutti i livelli
+              {uiText("auto.ui.477ae9d11a")}
             </h3>
           </div>
           {levels.map((level) => (

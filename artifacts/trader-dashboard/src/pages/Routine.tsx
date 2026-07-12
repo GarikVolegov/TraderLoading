@@ -53,7 +53,7 @@ export default function Routine() {
     setActiveSession({
       program: requested,
       routineId: requested,
-      routineTitle: requested === "morning" ? "Programma Mattutino" : "Programma Serale",
+      routineTitle: requested === "morning" ? uiText("auto.ui.17f5f49624") : uiText("auto.ui.f706ef5c94"),
       markDailyProgram: true,
     });
     setLocation("/routine", { replace: true });
@@ -71,7 +71,7 @@ export default function Routine() {
     setActiveSession({
       program,
       routineId: program,
-      routineTitle: program === "morning" ? "Programma Mattutino" : "Programma Serale",
+      routineTitle: program === "morning" ? uiText("auto.ui.17f5f49624") : uiText("auto.ui.f706ef5c94"),
       markDailyProgram: true,
     });
   };
@@ -117,9 +117,9 @@ export default function Routine() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5">
           <ProgramCard
             program="morning"
-            label="Programma Mattutino"
+            label={uiText("auto.ui.17f5f49624")}
             timeLabel="05:00 – 13:00"
-            description="7 step interattivi per centrare la mente, caricare l'energia e definire il piano prima di aprire i mercati."
+            description={uiText("auto.ui.560b2184aa")}
             totalSteps={MORNING_STEPS.length}
             isActive={isMorningActive}
             accentColor="#f59e0b"
@@ -130,9 +130,9 @@ export default function Routine() {
           />
           <ProgramCard
             program="evening"
-            label="Programma Serale"
+            label={uiText("auto.ui.f706ef5c94")}
             timeLabel="17:00 – 23:00"
-            description="7 step interattivi per analizzare la sessione, decomprimersi e preparare la mente al riposo e al giorno dopo."
+            description={uiText("auto.ui.477912a54a")}
             totalSteps={EVENING_STEPS.length}
             isActive={isEveningActive}
             accentColor="#818cf8"
@@ -153,7 +153,7 @@ export default function Routine() {
         />
 
         <p className="text-center text-sm italic text-muted-foreground/30">
-          &ldquo;Il trading di successo è il 20% tecnica e l&apos;80% psicologia.&rdquo;
+          &ldquo;{uiText("auto.ui.b48f2e2158")}&rdquo;
         </p>
       </PageLayout>
 

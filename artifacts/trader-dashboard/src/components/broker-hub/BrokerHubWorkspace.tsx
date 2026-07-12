@@ -71,11 +71,11 @@ function AccountsPanel({ hub, onConnected }: { hub: ReturnType<typeof useBrokerH
                   {active && <CheckCircle2 className="h-4 w-4 text-primary" />}
                 </div>
                 <p className="mt-1 font-mono text-xs text-muted-foreground">{profile.brokerName}</p>
-                <p className="text-xs text-muted-foreground">{profile.accountId || "account non selezionato"}</p>
+                <p className="text-xs text-muted-foreground">{profile.accountId || uiText("auto.ui.eb54425206")}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" onClick={() => void hub.connectProfile(profile.id).then(onConnected)}>
-                  {active ? "Aggiorna" : "Connetti"}
+                  {active ? uiText("auto.ui.4ba2114446") : uiText("auto.ui.136c9ce323")}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => void hub.deleteProfile(profile.id)}>
                   <Trash2 className="h-3.5 w-3.5" />
@@ -83,7 +83,7 @@ function AccountsPanel({ hub, onConnected }: { hub: ReturnType<typeof useBrokerH
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-              <span className="rounded-full border border-border/40 px-2 py-1">{profile.environment === "live" ? "Reale" : "Demo"}</span>
+              <span className="rounded-full border border-border/40 px-2 py-1">{profile.environment === "live" ? uiText("auto.ui.115b8fbb87") : "Demo"}</span>
               <span className="rounded-full border border-border/40 px-2 py-1">{simpleStatusLabel(profile.health ?? profile.connectionStatus)}</span>
               <span className="rounded-full border border-border/40 px-2 py-1">{profile.tradingEnabled ? uiText("broker_hub.trading_enabled") : uiText("broker_hub.trading_blocked")}</span>
               {!capabilities.placeOrders && <span className="rounded-full border border-border/40 px-2 py-1">{uiText("auto.ui.6c3cdfe1cc")}</span>}
@@ -104,7 +104,7 @@ function HistoryPanel({ hub }: { hub: ReturnType<typeof useBrokerHub> }) {
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-bold">
         <History className="h-4 w-4 text-primary" />
-        Storico / Diario
+        {uiText("auto.ui.6c03b80bd5")}
       </div>
       {hub.history.length === 0 && <div className="rounded-xl border border-border/40 bg-secondary/20 p-4 text-sm text-muted-foreground">{uiText("broker_hub.history_empty")}</div>}
       {hub.history.map((deal) => (

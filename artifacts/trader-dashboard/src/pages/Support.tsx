@@ -37,8 +37,8 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function formatWhen(value: string): string {
-  return new Date(value).toLocaleString();
+function formatWhen(value: string, language: string): string {
+  return new Date(value).toLocaleString(language);
 }
 
 function NewTicketForm() {
@@ -104,7 +104,7 @@ function NewTicketForm() {
 }
 
 function TicketList() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { data: tickets, isLoading } = useGetSupportTickets();
 
   return (
@@ -130,7 +130,7 @@ function TicketList() {
                       {ticket.subject}
                     </span>
                     <span className="block text-xs text-muted-foreground">
-                      {formatWhen(ticket.updatedAt)}
+                      {formatWhen(ticket.updatedAt, language)}
                     </span>
                   </span>
                   <StatusBadge status={ticket.status} />
@@ -145,7 +145,7 @@ function TicketList() {
 }
 
 function MessageBubble({ message }: { message: SupportTicketMessage }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const isSupport = message.authorType === "support";
   return (
     <li
@@ -158,7 +158,7 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
           {isSupport ? t("support.author.support") : t("support.author.user")}
         </span>
         <span className="text-[11px] text-muted-foreground">
-          {formatWhen(message.createdAt)}
+          {formatWhen(message.createdAt, language)}
         </span>
       </div>
       <p className="whitespace-pre-wrap text-sm">{message.body}</p>

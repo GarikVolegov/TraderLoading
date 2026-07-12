@@ -23,8 +23,13 @@ assert.match(
 
 assert.match(
   source,
-  /aria-label=\{`Apri pagina \$\{def\.label\}`\}/,
+  /aria-label=\{uiText\("auto\.ui\.d51d1796fa", \{ label: uiText\(def\.labelKey\) \}\)\}/,
   "open-page affordance must expose an accessible label",
+);
+assert.match(
+  readFileSync(new URL("../lib/i18n/dict.it.ts", import.meta.url), "utf8"),
+  /"auto\.ui\.d51d1796fa":\s*"Apri pagina \{label\}"/,
+  "the accessible label template must exist in the i18n catalog",
 );
 
 console.log("dashboard calendar widget interaction checks passed");

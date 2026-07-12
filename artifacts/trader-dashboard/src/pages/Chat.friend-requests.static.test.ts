@@ -26,11 +26,20 @@ assert.match(source, /useSearchUsers/);
 assert.match(source, /useSendFriendRequest/);
 assert.match(source, /useGetPendingFriendRequests/);
 assert.match(source, /useRespondToFriendRequest/);
-assert.match(source, /Aggiungi amico/);
-assert.match(source, /Richiesta inviata/);
-assert.match(source, /Richieste amicizia/);
-assert.match(source, /Accetta/);
-assert.match(source, /Rifiuta/);
+// Copy passata all'i18n durante il sweep Fase 3: chiave in pagina, testo nel catalogo.
+assert.match(source, /auto\.ui\.7fd20b6519/); // "Aggiungi amico"
+assert.match(source, /auto\.ui\.f4fbb496bb/); // "Richiesta inviata"
+assert.match(source, /auto\.ui\.4555767847/); // "Richieste amicizia"
+assert.match(source, /auto\.ui\.ab8585e7c5/); // "Accetta"
+assert.match(source, /auto\.ui\.68b880f2a6/); // "Rifiuta"
+{
+  const itDict = fs.readFileSync("src/lib/i18n/dict.it.ts", "utf8");
+  assert.match(itDict, /"auto\.ui\.7fd20b6519":\s*"Aggiungi amico"/);
+  assert.match(itDict, /"auto\.ui\.f4fbb496bb":\s*"Richiesta inviata"/);
+  assert.match(itDict, /"auto\.ui\.4555767847":\s*"Richieste amicizia"/);
+  assert.match(itDict, /"auto\.ui\.ab8585e7c5":\s*"Accetta"/);
+  assert.match(itDict, /"auto\.ui\.68b880f2a6":\s*"Rifiuta"/);
+}
 assert.match(source, /acceptedFriends/);
 assert.match(source, /messageContacts/);
 assert.match(source, /friendUserId/);

@@ -266,7 +266,7 @@ function TradesTab() {
                     <div className="flex justify-end gap-2 mt-auto pt-4 border-t border-border/50 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="sm" className="h-8" onClick={() => { setEditingEntry(entry); setIsModalOpen(true); }}>
                         <Edit2 className="w-4 h-4 mr-2" />
-                        {syncedTrade ? "Commenta" : t("journal.edit")}
+                        {syncedTrade ? uiText("auto.ui.8459cac879") : t("journal.edit")}
                       </Button>
                       <Button variant="ghost" size="sm" className="h-8 text-destructive hover:bg-destructive/20" onClick={() => handleDelete(entry.id)}>
                         <Trash2 className="w-4 h-4" />
@@ -449,8 +449,8 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
     downloadICS(`obiettivo-${item.id}.ics`, [
       {
         uid: `goal-${item.id}-${today.toISOString().slice(0, 10)}@traderloading`,
-        summary: `Obiettivo: ${item.content}`,
-        description: item.cadence ? `Cadence: ${item.cadence}` : undefined,
+        summary: uiText("auto.ui.29c0a275cf", { content: item.content }),
+        description: item.cadence ? uiText("auto.ui.f1ddb939f2", { cadence: item.cadence }) : undefined,
         dtstart: start,
         dtend: end,
         alarm: reminderMin,
@@ -525,7 +525,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                           onClick={() => { setNewDeadline(isSelected ? "" : val); setCustomDays(""); }}
                           className={`text-[11px] px-2 py-1 rounded-lg border transition-all ${isSelected ? "border-primary bg-primary/15 text-primary font-medium" : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary/70"}`}
                         >
-                          +{days}gg
+                          {uiText("auto.ui.601739fd77", { days })}
                         </button>
                       );
                     })}
