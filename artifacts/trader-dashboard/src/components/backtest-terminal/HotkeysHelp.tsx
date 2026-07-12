@@ -1,6 +1,22 @@
 // ─── Hotkeys cheatsheet ──────────────────────────────────────────────────────
+import { useEffect } from "react";
 import { X } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
+
+/** Close on Esc, consuming the event so the page-level Esc (exit) stays idle. */
+export function useEscapeToClose(onClose: () => void): void {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
+  }, [onClose]);
+}
 
 const HOTKEYS: Array<{ keys: string; labelKey: string }> = [
   { keys: "Space", labelKey: "backtest_terminal.hk.play" },
@@ -15,6 +31,7 @@ const HOTKEYS: Array<{ keys: string; labelKey: string }> = [
 ];
 
 export function HotkeysHelp({ onClose }: { onClose: () => void }) {
+  useEscapeToClose(onClose);
   return (
     <div
       role="dialog"

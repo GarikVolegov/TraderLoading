@@ -597,6 +597,9 @@
 .btm-posoverlay { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
 .btm-posoverlay .btm-handle { pointer-events: auto; cursor: ns-resize; }
 
+/* ── drawings overlay ───────────────────────────────────────────── */
+.btm-drawoverlay { position: absolute; inset: 0; z-index: 5; }
+
 /* ── overlays / states ──────────────────────────────────────────── */
 .btm-center {
   position: absolute;

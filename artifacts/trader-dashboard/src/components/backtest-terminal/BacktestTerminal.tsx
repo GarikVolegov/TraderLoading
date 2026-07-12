@@ -4,7 +4,7 @@
 // the engine hook and the chart; the order ticket, account and journal panels
 // land in the trading phase, drawings in the final phase.
 import { useEffect, useRef, useState } from "react";
-import { Crosshair } from "lucide-react";
+import { Settings2, Trash2 } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
 import type { ClosedTrade } from "@/lib/replay/types";
 import { AccountPanel } from "./AccountPanel";
@@ -15,6 +15,7 @@ import { OrderTicket } from "./OrderTicket";
 import { ReplayChart, type ReplayChartApi } from "./ReplayChart";
 import { TerminalHeader } from "./TerminalHeader";
 import { TerminalSettingsDialog } from "./TerminalSettingsDialog";
+import { DRAWING_TOOLS, type DrawingToolId } from "./toolRailModel";
 import { TransportBar } from "./TransportBar";
 import { useReplayEngine } from "./useReplayEngine";
 import { useReplayHotkeys } from "./useReplayHotkeys";
@@ -43,6 +44,8 @@ export function BacktestTerminal({
   const [panelOpen, setPanelOpen] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"indicators" | "tools">("indicators");
+  const [activeTool, setActiveTool] = useState<DrawingToolId>("cursor");
 
   // Notify the page of newly closed trades (it persists them, deduped).
   const notifiedIdsRef = useRef<Set<number>>(new Set());
@@ -72,19 +75,48 @@ export function BacktestTerminal({
         panelOpen={panelOpen}
         onTogglePanel={() => setPanelOpen((open) => !open)}
         onToggleHelp={() => setHelpOpen((open) => !open)}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={() => {
+          setSettingsTab("indicators");
+          setSettingsOpen(true);
+        }}
       />
 
       <div className="btm-main">
         <aside className="btm-rail" aria-label={uiText("backtest_terminal.tools")}>
+          {DRAWING_TOOLS.filter((tool) => engine.settings.visibleTools[tool.id] !== false).map((tool) => (
+            <button
+              key={tool.id}
+              type="button"
+              className="btm-iconbtn"
+              data-active={activeTool === tool.id}
+              onClick={() => setActiveTool(activeTool === tool.id ? "cursor" : tool.id)}
+              title={uiText(tool.labelKey)}
+              aria-label={uiText(tool.labelKey)}
+            >
+              <tool.Icon size={16} />
+            </button>
+          ))}
+          <div className="btm-rail-sep" aria-hidden="true" />
           <button
             type="button"
             className="btm-iconbtn"
-            data-active="true"
-            title={uiText("backtest_terminal.tool_cursor")}
-            aria-label={uiText("backtest_terminal.tool_cursor")}
+            onClick={() => {
+              setSettingsTab("tools");
+              setSettingsOpen(true);
+            }}
+            title={uiText("backtest_terminal.tools_tab")}
+            aria-label={uiText("backtest_terminal.tools_tab")}
           >
-            <Crosshair size={16} />
+            <Settings2 size={15} />
+          </button>
+          <button
+            type="button"
+            className="btm-iconbtn"
+            onClick={() => engine.setDrawings([])}
+            title={uiText("backtest_terminal.clear_drawings")}
+            aria-label={uiText("backtest_terminal.clear_drawings")}
+          >
+            <Trash2 size={15} />
           </button>
         </aside>
 
@@ -94,7 +126,12 @@ export function BacktestTerminal({
             {limitedHistory && !engine.loading && !engine.error && (
               <div className="btm-notice">{uiText("backtest_terminal.limited_history")}</div>
             )}
-            <ReplayChart engine={engine} apiRef={chartApiRef} />
+            <ReplayChart
+              engine={engine}
+              apiRef={chartApiRef}
+              activeTool={activeTool}
+              onToolDone={() => setActiveTool("cursor")}
+            />
             {engine.loading && (
               <div className="btm-center">
                 <div className="btm-spin" aria-hidden="true" />
@@ -107,7 +144,9 @@ export function BacktestTerminal({
               </div>
             )}
             {helpOpen && <HotkeysHelp onClose={() => setHelpOpen(false)} />}
-            {settingsOpen && <TerminalSettingsDialog engine={engine} onClose={() => setSettingsOpen(false)} />}
+            {settingsOpen && (
+              <TerminalSettingsDialog engine={engine} initialTab={settingsTab} onClose={() => setSettingsOpen(false)} />
+            )}
           </div>
         </div>
 

@@ -5,6 +5,7 @@
 import { useMemo, useState } from "react";
 import { Trash2, X } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
+import { useEscapeToClose } from "./HotkeysHelp";
 import { FormulaError, parseFormula } from "@/lib/replay/formulaParser";
 import {
   createIndicator,
@@ -228,6 +229,7 @@ export function TerminalSettingsDialog({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<"indicators" | "tools">(initialTab);
+  useEscapeToClose(onClose);
   const { indicators, setIndicators, settings, setSettings } = engine;
   const idCounterRef = useState(() => ({ value: Date.now() }))[0];
 

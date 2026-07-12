@@ -26,8 +26,10 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { computeIndicator } from "@/lib/replay/indicatorCatalog";
 import { toHeikinAshi } from "@/lib/replay/heikinAshi";
 import type { ReplayCandle } from "@/lib/replay/types";
+import { DrawingsOverlay } from "./DrawingsOverlay";
 import { formatPrice, priceDecimals, terminalLocale } from "./format";
 import { PositionOverlay, type ChartProjector } from "./PositionOverlay";
+import type { DrawingToolId } from "./toolRailModel";
 import type { ReplayEngine } from "./useReplayEngine";
 
 export interface ReplayChartApi {
@@ -46,9 +48,13 @@ type PriceSeries =
 export function ReplayChart({
   engine,
   apiRef,
+  activeTool = "cursor",
+  onToolDone,
 }: {
   engine: ReplayEngine;
   apiRef?: React.MutableRefObject<ReplayChartApi | null>;
+  activeTool?: DrawingToolId;
+  onToolDone?: () => void;
 }) {
   const { language } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -494,6 +500,10 @@ export function ReplayChart({
         return coordinate == null ? null : coordinate;
       },
       priceForY: (y: number) => price.series.coordinateToPrice(y),
+      timeForX: (x: number) => {
+        const time = chart.timeScale().coordinateToTime(x);
+        return typeof time === "number" ? time : null;
+      },
       width: overlaySize.width,
       height: overlaySize.height,
     };
@@ -504,6 +514,15 @@ export function ReplayChart({
     <>
       <div ref={containerRef} className="btm-chart" data-testid="replay-chart" />
       {projector && <PositionOverlay engine={engine} projector={projector} revision={revision} />}
+      {projector && (
+        <DrawingsOverlay
+          engine={engine}
+          projector={projector}
+          revision={revision}
+          activeTool={activeTool}
+          onToolDone={onToolDone ?? (() => undefined)}
+        />
+      )}
     </>
   );
 }

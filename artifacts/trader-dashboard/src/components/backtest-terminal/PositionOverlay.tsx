@@ -11,6 +11,8 @@ export interface ChartProjector {
   xForTime: (time: number) => number | null;
   yForPrice: (price: number) => number | null;
   priceForY: (y: number) => number | null;
+  /** Bar open-time (unix seconds) under the x coordinate, null off-data. */
+  timeForX: (x: number) => number | null;
   width: number;
   height: number;
 }
