@@ -41,7 +41,7 @@ import { JournalWidget } from "@/components/JournalWidget";
 import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
 import { TradingViewWatchlistWidget } from "@/components/TradingViewWatchlistWidget";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { columnsForWidth, distributeColumns, visibleWidgetOrder } from "./Dashboard.layout";
 import { useIsDesktop } from "@/hooks/use-media-query";
 
@@ -65,7 +65,10 @@ function CotWidget() {
 
 interface WidgetDef {
   id: string;
-  label: string;
+  /** i18n key (not a pre-resolved label) — WIDGET_DEFS is a module-level
+   * const evaluated once at import, so labels must stay keys to remain
+   * reactive to language changes; resolved via uiText() at render sites. */
+  labelKey: string;
   icon: React.ElementType;
   /** Rotta della pagina dedicata aperta al click. Assente = widget non cliccabile. */
   route?: string;
@@ -74,18 +77,18 @@ interface WidgetDef {
 }
 
 const WIDGET_DEFS: WidgetDef[] = [
-  { id: "account",    label: "Broker Hub",           icon: Wallet,         route: "/broker",                 component: BrokerHubWidget },
-  { id: "tradingview-watchlist", label: "Watchlist Realtime", icon: Activity, component: TradingViewWatchlistWidget },
-  { id: "quote",      label: "Citazione del Giorno", icon: BookOpen,                                         component: QuoteWidget },
-  { id: "routine",    label: "Routine Giornaliera",  icon: Sunrise,        route: "/routine",                component: RoutineWidget },
-  { id: "missions",   label: "Missioni Giornaliere", icon: Target,         route: "/missions",               component: MissionsWidget },
-  { id: "checklist",  label: "Checklist Pre-Trade",  icon: ClipboardCheck, route: "/checklist",              component: ChecklistDashboardWidget },
-  { id: "lot",        label: "Dimensionamento",      icon: BarChart2,                                      component: LotCalculatorWidget },
-  { id: "journal",    label: "Diario Trading",       icon: BookOpen,       route: "/journal",                component: JournalWidget },
-  { id: "calendar",   label: "Calendario Avanzato",  icon: CalendarDays,   route: "/calendar",               component: CalendarWidget, bodyHandlesOwnClicks: true },
-  { id: "sentiment",  label: "Sentiment di Mercato", icon: BarChart2,                                      component: SentimentWidget },
-  { id: "volatility", label: "Volatilita & ADR",     icon: TrendingUp,                                     component: VolatilityWidget },
-  { id: "cot",        label: "COT Report",           icon: BookMarked,                                     component: CotWidget },
+  { id: "account",    labelKey: "auto.ui.56c86a8f0d", icon: Wallet,         route: "/broker",                 component: BrokerHubWidget },
+  { id: "tradingview-watchlist", labelKey: "auto.ui.b97144823c", icon: Activity, component: TradingViewWatchlistWidget },
+  { id: "quote",      labelKey: "auto.ui.070b588c21", icon: BookOpen,                                         component: QuoteWidget },
+  { id: "routine",    labelKey: "auto.ui.d19a336199", icon: Sunrise,        route: "/routine",                component: RoutineWidget },
+  { id: "missions",   labelKey: "auto.ui.0a38d7a6de", icon: Target,         route: "/missions",               component: MissionsWidget },
+  { id: "checklist",  labelKey: "auto.ui.291e9f4b97", icon: ClipboardCheck, route: "/checklist",              component: ChecklistDashboardWidget },
+  { id: "lot",        labelKey: "auto.ui.4200011b72", icon: BarChart2,                                      component: LotCalculatorWidget },
+  { id: "journal",    labelKey: "auto.ui.aeecb365d3", icon: BookOpen,       route: "/journal",                component: JournalWidget },
+  { id: "calendar",   labelKey: "auto.ui.67a969a120", icon: CalendarDays,   route: "/calendar",               component: CalendarWidget, bodyHandlesOwnClicks: true },
+  { id: "sentiment",  labelKey: "auto.ui.dc850cabd8", icon: BarChart2,                                      component: SentimentWidget },
+  { id: "volatility", labelKey: "auto.ui.92ef7e46bf", icon: TrendingUp,                                     component: VolatilityWidget },
+  { id: "cot",        labelKey: "cot.report_title",   icon: BookMarked,                                     component: CotWidget },
 ];
 
 const DEFAULT_ORDER = [
@@ -199,7 +202,7 @@ function SortableWidget({
       {isHidden && isEditing ? (
         <div className="flex h-full w-full items-center justify-center gap-3 rounded-[0.625rem] border-2 border-dashed border-border/40 bg-background/20 opacity-50">
           <Icon className="w-4 h-4 text-muted-foreground/50" />
-          <span className="text-xs font-bold text-muted-foreground/50 font-mono">{def.label}</span>
+          <span className="text-xs font-bold text-muted-foreground/50 font-mono">{uiText(def.labelKey)}</span>
         </div>
       ) : (
         <motion.div
@@ -227,7 +230,7 @@ function SortableWidget({
               type="button"
               style={{ height: "2.25rem", width: "2.25rem" }}
               className="absolute bottom-2.5 right-2.5 z-[5] flex items-center justify-center rounded-full border border-primary/30 bg-card/85 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-primary/10 group-hover:opacity-100 focus-visible:opacity-100"
-              aria-label={`Apri pagina ${def.label}`}
+              aria-label={uiText("auto.ui.d51d1796fa", { label: uiText(def.labelKey) })}
               onClick={(event) => {
                 event.stopPropagation();
                 onOpen(def.id);
@@ -258,7 +261,7 @@ function SortableWidget({
             <div className="flex items-center gap-2">
               <Icon className={`w-3.5 h-3.5 ${isHidden ? "text-muted-foreground/40" : "text-primary/60"}`} />
               <span className={`text-xs font-bold font-mono ${isHidden ? "text-muted-foreground/40 line-through" : "text-primary/70"}`}>
-                {def.label}
+                {uiText(def.labelKey)}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -271,7 +274,7 @@ function SortableWidget({
                     ? "bg-border/30 text-muted-foreground/50 hover:bg-primary/20 hover:text-primary"
                     : "bg-primary/10 text-primary/70 hover:bg-primary/25 hover:text-primary"
                 }`}
-                title={isHidden ? "Mostra widget" : "Nascondi widget"}
+                title={isHidden ? uiText("auto.ui.071e9cf53d") : uiText("auto.ui.8ffeb1a351")}
               >
                 {isHidden
                   ? <EyeOff className="w-3.5 h-3.5" />
@@ -301,7 +304,7 @@ function WidgetGhost({ def }: { def: WidgetDef }) {
         <Icon className="w-4.5 h-4.5 text-primary" />
       </div>
       <div>
-        <p className="text-sm font-bold font-mono">{def.label}</p>
+        <p className="text-sm font-bold font-mono">{uiText(def.labelKey)}</p>
         <p className="text-[10px] text-muted-foreground/50 mt-0.5">{t("dashboard.drag_hint")}</p>
       </div>
       <GripVertical className="w-4 h-4 text-primary/40 ml-auto" />
