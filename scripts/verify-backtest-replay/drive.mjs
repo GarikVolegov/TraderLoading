@@ -92,6 +92,18 @@ async function main() {
     });
     const authHeaders = { "Content-Type": "application/json", ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {}) };
 
+    // ── silence first-run onboarding: ChecklistSetupModal opens whenever the
+    // user has zero checklist items, overlaying the terminal (both z-60) ────
+    await page.evaluate(async ({ headers }) => {
+      const existing = await fetch("/api/checklist", { headers }).then((res) => res.json()).catch(() => []);
+      if (Array.isArray(existing) && existing.length > 0) return;
+      await fetch("/api/checklist", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ text: "verify: setup replay terminal", completed: true }),
+      });
+    }, { headers: authHeaders });
+
     // ── create a session via API (deterministic, no UI dependency) ─────────
     const created = await page.evaluate(async ({ headers, symbol }) => {
       const res = await fetch("/api/backtest/sessions", {
@@ -114,6 +126,23 @@ async function main() {
       { timeout: 30000 },
     );
     await page.waitForTimeout(2500);
+
+    // Dismiss app-level onboarding modals (e.g. ChecklistSetupModal on a fresh
+    // user) that overlay the terminal. Buttons only — NEVER Escape here, the
+    // terminal binds Esc to exit.
+    const DISMISS = [/^Dopo$/i, /^Salta$/i, /^Skip$/i, /^Chiudi$/i, /Più tardi/i, /^Ho capito$/i];
+    for (let pass = 0; pass < 5; pass++) {
+      let acted = false;
+      for (const re of DISMISS) {
+        const btn = page.getByRole("button", { name: re }).first();
+        if ((await btn.count()) && (await btn.isVisible().catch(() => false))) {
+          await btn.click().catch(() => {});
+          acted = true;
+          await page.waitForTimeout(300);
+        }
+      }
+      if (!acted) break;
+    }
     const counter = await page.locator(".btm-clock-count").textContent();
     console.log("  [terminal] candle counter:", counter?.trim());
     await shot(page, "01-terminal-loaded.png");
