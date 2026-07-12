@@ -67,6 +67,10 @@ export function ReplayChart({
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const [revision, setRevision] = useState(0);
   const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 });
+  // Bumped when the chart instance is recreated (e.g. language change): the
+  // data/watermark/marker/price-line effects must re-run against the new chart
+  // even though their own deps did not change.
+  const [chartEpoch, setChartEpoch] = useState(0);
   const lastRenderRef = useRef<{ firstTime: number | null; length: number; chartType: string }>({
     firstTime: null,
     length: 0,
@@ -150,6 +154,7 @@ export function ReplayChart({
     });
     resizeObserver.observe(container);
     setOverlaySize({ width: container.clientWidth, height: container.clientHeight });
+    setChartEpoch((epoch) => epoch + 1);
 
     return () => {
       resizeObserver.disconnect();
@@ -184,7 +189,7 @@ export function ReplayChart({
         },
       ],
     });
-  }, [symbol, interval]);
+  }, [symbol, interval, chartEpoch]);
 
   // ── price series management (type swaps recreate the series) ──────────────
   const ensurePriceSeries = useCallback((): PriceSeries | null => {
@@ -227,6 +232,7 @@ export function ReplayChart({
     if (!chart || !price) return;
 
     // volume series lives in the main pane, scaled to the bottom band
+    let volumeJustCreated = false;
     if (showVolume && !volumeSeriesRef.current) {
       const series = chart.addSeries(HistogramSeries, {
         color: "rgba(120,120,120,0.3)",
@@ -237,6 +243,7 @@ export function ReplayChart({
       });
       chart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
       volumeSeriesRef.current = series;
+      volumeJustCreated = true;
     } else if (!showVolume && volumeSeriesRef.current) {
       chart.removeSeries(volumeSeriesRef.current);
       volumeSeriesRef.current = null;
@@ -244,6 +251,22 @@ export function ReplayChart({
 
     const last = lastRenderRef.current;
     const firstTime = displayCandles.length > 0 ? displayCandles[0].time : null;
+    // Same window, same cursor (e.g. a prefetch append behind the cursor or an
+    // unrelated re-render): the visible data is unchanged — never touch the
+    // series or the user's pan/zoom. (A just-toggled volume series still needs
+    // its first fill.)
+    if (last.firstTime === firstTime && last.chartType === chartType && last.length === displayCandles.length) {
+      if (volumeJustCreated && volumeSeriesRef.current) {
+        volumeSeriesRef.current.setData(
+          displayCandles.map((candle) => ({
+            time: candle.time as Time,
+            value: candle.volume ?? 0,
+            color: candle.close >= candle.open ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)",
+          })),
+        );
+      }
+      return;
+    }
     const isIncremental =
       last.firstTime === firstTime &&
       last.chartType === chartType &&
@@ -282,7 +305,7 @@ export function ReplayChart({
     }
 
     lastRenderRef.current = { firstTime, length: displayCandles.length, chartType };
-  }, [displayCandles, chartType, showVolume, ensurePriceSeries]);
+  }, [displayCandles, chartType, showVolume, ensurePriceSeries, chartEpoch]);
 
   // ── indicator overlays and sub-panes ───────────────────────────────────────
   // Price-pane lines live in pane 0 next to the candles; each active sub-pane
@@ -374,7 +397,9 @@ export function ReplayChart({
           entry = { paneIndex, lines, histogram, levels: [] };
           subRegistry.set(config.id, entry);
           const pane = chart.panes()[paneIndex];
-          pane?.setStretchFactor(28);
+          // Relative weight vs. the main pane's default of 2: ≈0.6 → one sub-pane
+          // takes ~23% of the height, two take ~19% each (mockup proportions).
+          pane?.setStretchFactor(0.6);
         }
 
         output.lines.forEach((line, lineIndex) => {
@@ -429,7 +454,7 @@ export function ReplayChart({
         subRegistry.delete(id);
       }
     }
-  }, [indicators, revealed]);
+  }, [indicators, revealed, chartEpoch]);
 
   // ── closed-trade markers (entry arrows, exit dots) ─────────────────────────
   const lastRevealedTime = revealed.length > 0 ? revealed[revealed.length - 1].time : null;
@@ -459,7 +484,7 @@ export function ReplayChart({
     }
     markers.sort((a, b) => (a.time as number) - (b.time as number));
     markersApi.setMarkers(markers);
-  }, [engine.trades, lastRevealedTime, symbol, chartType]);
+  }, [engine.trades, lastRevealedTime, symbol, chartType, chartEpoch]);
 
   // ── open-position price lines (entry / SL / TP on the price axis) ──────────
   useEffect(() => {
@@ -483,7 +508,7 @@ export function ReplayChart({
       mk(position.stopLoss, DOWN, LineStyle.Dashed),
       mk(position.takeProfit, UP, LineStyle.Dashed),
     ];
-  }, [engine.position, chartType, symbol]);
+  }, [engine.position, chartType, symbol, chartEpoch]);
 
   // ── projector for the SVG overlay ──────────────────────────────────────────
   const projector: ChartProjector | null = useMemo(() => {

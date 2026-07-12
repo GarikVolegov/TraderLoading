@@ -50,11 +50,17 @@ export function formatBarTime(
   intervalSeconds: number,
   language: Language,
 ): string {
-  const closeTime = new Date((timeSeconds + intervalSeconds) * 1000);
   const locale = terminalLocale(language);
   if (intervalSeconds >= 86_400) {
-    return closeTime.toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" });
+    // Daily+ bars are labeled by their session day: the close timestamp is
+    // 00:00 of the NEXT day and would shift every label forward.
+    return new Date(timeSeconds * 1000).toLocaleDateString(locale, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   }
+  const closeTime = new Date((timeSeconds + intervalSeconds) * 1000);
   return closeTime.toLocaleString(locale, {
     day: "2-digit",
     month: "short",

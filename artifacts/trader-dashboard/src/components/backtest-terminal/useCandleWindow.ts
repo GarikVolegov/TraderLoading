@@ -25,6 +25,12 @@ export interface CandleWindow {
   source: string | null;
   /** True when a further page exists past the loaded window. */
   hasMore: boolean;
+  /**
+   * Request identity of the currently loaded window. Consumers must ignore the
+   * data (e.g. for cursor placement) until this matches their current request —
+   * effects can otherwise observe the previous window in the same commit.
+   */
+  loadedFor: { symbol: string; interval: string; startDate: string | null } | null;
   /** Prefetch the next page when the cursor is close to the loaded end. */
   ensureAhead: (cursor: number) => void;
 }
@@ -36,6 +42,8 @@ export function useCandleWindow(symbol: string, interval: string, startDate: str
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<ReplayCandlesMeta | null>(null);
   const [source, setSource] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadedFor, setLoadedFor] = useState<CandleWindow["loadedFor"]>(null);
   const nextFromRef = useRef<number | null>(null);
   const appendingRef = useRef(false);
   const generationRef = useRef(0);
@@ -64,12 +72,15 @@ export function useCandleWindow(symbol: string, interval: string, startDate: str
         setCandles(data.candles);
         setSource(data.source ?? null);
         nextFromRef.current = data.nextFrom ?? null;
+        setHasMore(data.nextFrom != null);
+        setLoadedFor({ symbol, interval, startDate });
         setLoading(false);
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted || generation !== generationRef.current) return;
         setError(err instanceof Error ? err.message : String(err));
         setCandles([]);
+        setLoadedFor({ symbol, interval, startDate });
         setLoading(false);
       });
 
@@ -89,6 +100,7 @@ export function useCandleWindow(symbol: string, interval: string, startDate: str
         .then((data) => {
           if (generation !== generationRef.current) return;
           nextFromRef.current = data.nextFrom ?? null;
+          setHasMore(data.nextFrom != null);
           if (data.candles.length > 0) {
             setCandles((prev) => {
               const lastTime = prev.length > 0 ? prev[prev.length - 1].time : -Infinity;
@@ -116,7 +128,8 @@ export function useCandleWindow(symbol: string, interval: string, startDate: str
     error,
     meta,
     source,
-    hasMore: nextFromRef.current != null,
+    hasMore,
+    loadedFor,
     ensureAhead,
   };
 }

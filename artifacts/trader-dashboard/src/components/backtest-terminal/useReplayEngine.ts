@@ -5,6 +5,7 @@
 // persisted terminal state. UI components consume the returned API only.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getReplayIntervalSeconds } from "../chartReplayWindow";
+import { getPipMultiplier } from "@/lib/pipMultiplier";
 import { buildAccountState } from "@/lib/replay/accountTracker";
 import { defaultIndicators, type IndicatorConfig } from "@/lib/replay/indicatorCatalog";
 import { computeJournalStats } from "@/lib/replay/journalStats";
@@ -88,7 +89,16 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const window_ = useCandleWindow(normalizedSymbol, interval, startDate);
   const { candles, ensureAhead } = window_;
 
-  const tradeIdRef = useRef(restored?.trades.reduce((max, trade) => Math.max(max, trade.id), 0) ?? 0);
+  // Trade ids are epoch-seconds-seeded and monotonic: they never collide with
+  // ids from earlier runs (or the retired ChartReplay's 1..N sequence), so the
+  // saved-to-DB dedupe set can't silently swallow new trades after a
+  // delete+reload or a legacy carry-over.
+  const tradeIdRef = useRef(
+    Math.max(
+      restored?.trades.reduce((max, trade) => Math.max(max, trade.id), 0) ?? 0,
+      Math.floor(Date.now() / 1000),
+    ),
+  );
   const anchorRef = useRef<{ closeTime: number; price: number } | null>(null);
   const restoreCursorRef = useRef<number | null>(restored?.cursorTime ?? null);
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -105,9 +115,22 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
 
   // ── cursor placement on (re)load ───────────────────────────────────────────
   // Runs once per loaded window (initial, timeframe switch, date jump); guarded
-  // by cursorReady so forward-page appends never re-place the cursor.
+  // by cursorReady so forward-page appends never re-place the cursor, and by
+  // loadedFor so the same-commit run after a timeframe switch (when `candles`
+  // is still the previous window and `loading` hasn't flipped yet) never
+  // consumes the anchor against stale data.
   useEffect(() => {
-    if (window_.loading || candles.length === 0 || cursorReady) return;
+    const loadedFor = window_.loadedFor;
+    if (
+      window_.loading ||
+      candles.length === 0 ||
+      cursorReady ||
+      !loadedFor ||
+      loadedFor.interval !== interval ||
+      (loadedFor.startDate ?? null) !== (startDate ?? null)
+    ) {
+      return;
+    }
 
     const anchor = anchorRef.current;
     if (anchor) {
@@ -137,7 +160,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
       : Math.max(MIN_REVEALED_BARS, Math.floor(candles.length * 0.52));
     setCursor(clampCursor(fallback, candles.length, MIN_REVEALED_BARS));
     setCursorReady(true);
-  }, [window_.loading, candles, interval, startDate, cursorReady]);
+  }, [window_.loading, window_.loadedFor, candles, interval, startDate, cursorReady]);
 
   // ── trading ──────────────────────────────────────────────────────────────
   const currentBar = candles.length > 0 ? candles[Math.min(cursor, candles.length - 1)] : null;
@@ -156,19 +179,22 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
 
   const closeAt = useCallback(
     (exitPrice: number, exitTime: number, exitReason: "sl" | "tp" | "manual") => {
-      setPosition((current) => {
-        if (!current) return null;
-        tradeIdRef.current += 1;
-        const closed = closePosition(current, {
-          exitPrice,
-          exitTime,
-          exitReason,
-          id: tradeIdRef.current,
-          symbol: normalizedSymbol,
-        });
-        setTrades((old) => [closed, ...old]);
-        return null;
+      // Side effects live OUTSIDE the state updater (updaters may re-run under
+      // StrictMode/rebasing); positionRef mirrors state synchronously enough
+      // for the transport/hotkey call sites.
+      const current = positionRef.current;
+      if (!current) return;
+      positionRef.current = null;
+      tradeIdRef.current += 1;
+      const closed = closePosition(current, {
+        exitPrice,
+        exitTime,
+        exitReason,
+        id: tradeIdRef.current,
+        symbol: normalizedSymbol,
       });
+      setPosition(null);
+      setTrades((old) => [closed, ...old]);
     },
     [normalizedSymbol],
   );
@@ -205,10 +231,18 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     return true;
   }, [candles.length, ensureAhead, revealBar, stop]);
 
+  /** Lowest cursor allowed right now: an open position pins it to its entry bar. */
+  const minCursorIndex = useCallback((): number => {
+    const open = positionRef.current;
+    if (!open) return MIN_REVEALED_BARS;
+    const entryIndex = candles.findIndex((candle) => candle.time >= open.entryTime);
+    return entryIndex === -1 ? MIN_REVEALED_BARS : Math.max(MIN_REVEALED_BARS, entryIndex);
+  }, [candles]);
+
   const stepBack = useCallback(() => {
     stop();
-    setCursor((current) => stepCursor(current, -1, candles.length, MIN_REVEALED_BARS));
-  }, [candles.length, stop]);
+    setCursor((current) => stepCursor(current, -1, candles.length, minCursorIndex()));
+  }, [candles.length, minCursorIndex, stop]);
 
   // ── play loop ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -218,6 +252,12 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
       if (cancelled) return;
       const advanced = stepForward();
       if (!advanced) {
+        // At the loaded edge: if a forward page is still on its way, idle one
+        // tick instead of dropping out of play.
+        if (window_.appending || window_.hasMore) {
+          playTimerRef.current = setTimeout(tick, BASE_TICK_MS);
+          return;
+        }
         setPlaying(false);
         return;
       }
@@ -231,7 +271,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
         playTimerRef.current = null;
       }
     };
-  }, [playing, speed, stepForward]);
+  }, [playing, speed, stepForward, window_.appending, window_.hasMore]);
 
   const togglePlay = useCallback(() => {
     setPlaying((current) => !current);
@@ -249,9 +289,27 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const seekFraction = useCallback(
     (fraction: number) => {
       stop();
-      setCursor(cursorFromFraction(fraction, candles.length, MIN_REVEALED_BARS));
+      // Backward seeks can't cross the open position's entry bar; forward
+      // seeks replay the SL/TP checks across every skipped bar, so scrubbing
+      // cannot fast-forward through a stop-out.
+      const target = cursorFromFraction(fraction, candles.length, minCursorIndex());
+      const from = cursorRef.current;
+      if (target > from && positionRef.current) {
+        for (let index = from + 1; index <= target; index++) {
+          const open = positionRef.current;
+          const bar = candles[index];
+          if (!open || !bar) break;
+          const hit = checkStopHit(open, bar);
+          if (hit) {
+            closeAt(hit.exitPrice, bar.time, hit.exitReason);
+            break;
+          }
+        }
+      }
+      setCursor(target);
+      ensureAhead(target);
     },
-    [candles.length, stop],
+    [candles, closeAt, ensureAhead, minCursorIndex, stop],
   );
 
   const jumpToDate = useCallback(
@@ -323,9 +381,22 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
 
   const updatePositionLevels = useCallback(
     (levels: { stopLoss?: number; takeProfit?: number; entryPrice?: number }) => {
-      setPosition((current) => (current ? { ...current, ...levels } : current));
+      // Re-derive the pip distances so R:R, the hit checks' guards and the
+      // closed trade's R multiple track the dragged lines, not the original
+      // ticket values.
+      const multiplier = getPipMultiplier(normalizedSymbol);
+      const roundPips = (value: number) => Math.round(value * 10) / 10;
+      setPosition((current) => {
+        if (!current) return current;
+        const next = { ...current, ...levels };
+        const sign = next.direction === "buy" ? 1 : -1;
+        next.slPips = Math.max(0, roundPips((next.entryPrice - next.stopLoss) * sign * multiplier));
+        next.tpPips = Math.max(0, roundPips((next.takeProfit - next.entryPrice) * sign * multiplier));
+        positionRef.current = next;
+        return next;
+      });
     },
-    [],
+    [normalizedSymbol],
   );
 
   const deleteTrade = useCallback((id: number) => {
@@ -373,6 +444,14 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const openProfit = position && currentPrice > 0 ? unrealizedProfit(position, currentPrice, normalizedSymbol) : 0;
   const openPips = position && currentPrice > 0 ? positionPips(position, currentPrice, normalizedSymbol) : 0;
 
+  // Stable identity: the chart's reveal effect keys on this array, and a fresh
+  // slice per render would reset the user's pan/zoom on every unrelated
+  // interaction (typing in the ticket, toggling the panel, pausing…).
+  const revealed = useMemo(
+    () => (cursorReady ? candles.slice(0, cursor + 1) : []),
+    [cursorReady, candles, cursor],
+  );
+
   return {
     symbol: normalizedSymbol,
     interval,
@@ -383,7 +462,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     meta: window_.meta,
     appending: window_.appending,
     cursor,
-    revealed: cursorReady ? candles.slice(0, cursor + 1) : [],
+    revealed,
     currentBar,
     currentPrice,
     progress: cursorFraction(cursor, candles.length, MIN_REVEALED_BARS),

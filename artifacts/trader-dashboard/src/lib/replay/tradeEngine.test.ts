@@ -37,30 +37,44 @@ assert.equal(sell.takeProfit.toFixed(3), "155.900");
 
 // ── checkStopHit ─────────────────────────────────────────────────────────────
 // buy: low touches SL
-assert.deepEqual(checkStopHit(buy, bar({ low: 1.0979, high: 1.1001 })), {
+assert.deepEqual(checkStopHit(buy, bar({ open: 1.1, low: 1.0979, high: 1.1001 })), {
   exitPrice: buy.stopLoss,
   exitReason: "sl",
 });
 // buy: high touches TP
-assert.deepEqual(checkStopHit(buy, bar({ low: 1.0999, high: 1.1041 })), {
+assert.deepEqual(checkStopHit(buy, bar({ open: 1.1, low: 1.0999, high: 1.1041 })), {
   exitPrice: buy.takeProfit,
   exitReason: "tp",
 });
 // buy: both in the same bar → conservative SL-first
-assert.deepEqual(checkStopHit(buy, bar({ low: 1.09, high: 1.11 })), {
+assert.deepEqual(checkStopHit(buy, bar({ open: 1.1, low: 1.09, high: 1.11 })), {
   exitPrice: buy.stopLoss,
   exitReason: "sl",
 });
 // no touch
-assert.equal(checkStopHit(buy, bar({ low: 1.0990, high: 1.1030 })), null);
+assert.equal(checkStopHit(buy, bar({ open: 1.1, low: 1.0990, high: 1.1030 })), null);
 // sell: high touches SL / low touches TP
-assert.deepEqual(checkStopHit(sell, bar({ low: 156.0, high: 156.81 })), {
+assert.deepEqual(checkStopHit(sell, bar({ open: 156.5, low: 156.0, high: 156.81 })), {
   exitPrice: sell.stopLoss,
   exitReason: "sl",
 });
-assert.deepEqual(checkStopHit(sell, bar({ low: 155.89, high: 156.6 })), {
+assert.deepEqual(checkStopHit(sell, bar({ open: 156.3, low: 155.89, high: 156.6 })), {
   exitPrice: sell.takeProfit,
   exitReason: "tp",
+});
+// gap-aware fills: a bar OPENING beyond the level fills at the open, not at a
+// price the market never traded
+assert.deepEqual(checkStopHit(buy, bar({ open: 1.09, low: 1.088, high: 1.095 })), {
+  exitPrice: 1.09,
+  exitReason: "sl",
+});
+assert.deepEqual(checkStopHit(buy, bar({ open: 1.108, low: 1.106, high: 1.112 })), {
+  exitPrice: 1.108,
+  exitReason: "tp",
+});
+assert.deepEqual(checkStopHit(sell, bar({ open: 157.2, low: 156.9, high: 157.5 })), {
+  exitPrice: 157.2,
+  exitReason: "sl",
 });
 
 // ── mark-to-market ───────────────────────────────────────────────────────────

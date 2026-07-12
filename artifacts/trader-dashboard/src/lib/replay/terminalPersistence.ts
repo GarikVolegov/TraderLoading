@@ -130,12 +130,28 @@ function isDrawing(value: unknown): value is ReplayDrawing {
   }
 }
 
+const INDICATOR_TYPES = new Set([
+  "ema",
+  "sma",
+  "wma",
+  "bb",
+  "vwap",
+  "rsi",
+  "macd",
+  "atr",
+  "stoch",
+  "volume",
+  "custom",
+]);
+
 function isIndicator(value: unknown): value is IndicatorConfig {
   const indicator = value as Partial<IndicatorConfig> | null;
   return Boolean(
     indicator &&
       typeof indicator.id === "string" &&
       typeof indicator.type === "string" &&
+      // Unknown types would crash INDICATOR_META lookups downstream.
+      INDICATOR_TYPES.has(indicator.type) &&
       typeof indicator.on === "boolean" &&
       typeof indicator.color === "string",
   );

@@ -205,10 +205,14 @@ export function DrawingsOverlay({
   };
 
   // ── delete selected / cancel draft ─────────────────────────────────────────
+  // Capture phase: the page-level Esc handler (exit terminal) is a bubble
+  // listener registered earlier — canceling a draft must consume the event
+  // before it, or Esc mid-draw kicks the user out of the terminal.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && (draft || selectedId || textDraft)) {
         event.preventDefault();
+        event.stopPropagation();
         setDraft(null);
         setSelectedId(null);
         setTextDraft(null);
@@ -222,8 +226,8 @@ export function DrawingsOverlay({
         setSelectedId(null);
       }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [draft, selectedId, textDraft, setDrawings]);
 
   // Deselect when the selected drawing disappears (clear-all).

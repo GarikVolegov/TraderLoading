@@ -171,11 +171,15 @@ async function main() {
     await shot(page, "03-trade-closed.png");
 
     // ── persistence: the closed trade reached the on-contract API ──────────
+    // (fresh token: Clerk session tokens expire in ~60s, the login one is stale)
     await page.waitForTimeout(1500);
-    const persisted = await page.evaluate(async ({ headers, id }) => {
-      const res = await fetch(`/api/backtest/sessions/${id}/trades`, { headers });
+    const persisted = await page.evaluate(async ({ id }) => {
+      const token = await window.Clerk?.session?.getToken();
+      const res = await fetch(`/api/backtest/sessions/${id}/trades`, {
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
       return res.json();
-    }, { headers: authHeaders, id: created.id });
+    }, { id: created.id });
     console.log("  [persistence] trades in DB:", Array.isArray(persisted) ? persisted.length : persisted);
 
     // ── hotkeys: Space toggles play (button label flips to pause) ──────────

@@ -33,25 +33,29 @@ export function openPosition(input: {
   };
 }
 
-/** SL/TP touch on a revealed bar; SL wins when both are inside the bar's range. */
+/**
+ * SL/TP touch on a revealed bar; SL wins when both are inside the bar's range.
+ * Gap-aware: when the bar OPENS beyond the level (weekend gap, news candle)
+ * the fill happens at the open, not at a price the market never traded.
+ */
 export function checkStopHit(
   position: OpenPosition,
   bar: ReplayCandle,
 ): { exitPrice: number; exitReason: "sl" | "tp" } | null {
   if (position.direction === "buy") {
     if (position.slPips > 0 && bar.low <= position.stopLoss) {
-      return { exitPrice: position.stopLoss, exitReason: "sl" };
+      return { exitPrice: Math.min(bar.open, position.stopLoss), exitReason: "sl" };
     }
     if (position.tpPips > 0 && bar.high >= position.takeProfit) {
-      return { exitPrice: position.takeProfit, exitReason: "tp" };
+      return { exitPrice: Math.max(bar.open, position.takeProfit), exitReason: "tp" };
     }
     return null;
   }
   if (position.slPips > 0 && bar.high >= position.stopLoss) {
-    return { exitPrice: position.stopLoss, exitReason: "sl" };
+    return { exitPrice: Math.max(bar.open, position.stopLoss), exitReason: "sl" };
   }
   if (position.tpPips > 0 && bar.low <= position.takeProfit) {
-    return { exitPrice: position.takeProfit, exitReason: "tp" };
+    return { exitPrice: Math.min(bar.open, position.takeProfit), exitReason: "tp" };
   }
   return null;
 }
