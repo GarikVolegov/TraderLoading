@@ -299,19 +299,33 @@ on the real `Article` data — no backend change). TDD via `pages/News.filters.s
 8-9/10-impact articles only. `views-trading.jsx` also has `JournalView`/`BacktestView`/`CalendarView` mockups
 not yet compared against their real pages — candidates for the same treatment if requested.
 
-**Pre-launch page audit — Fase 1 done (2026-07-11/12).** Page-by-page audit of every app/public surface
+**Pre-launch page audit — Fasi 1-4 done (2026-07-11/12).** Page-by-page audit of every app/public surface
 (3 parallel explore agents + manual verification of critical findings; 2 false positives discarded, incl.
 "Chat auth is broken" — the backend authMiddleware shims Clerk, so the legacy path worked). Plan with all
 findings: [docs/superpowers/plans/2026-07-11-pre-launch-page-audit-fix-plan.md](docs/superpowers/plans/2026-07-11-pre-launch-page-audit-fix-plan.md).
-**Fase 1 (12 bug fix) shipped in `ccbae77`**: Broker inverted trading label + NaN guard, Milestones defensive
-`parseSkills`, Journal cache-safe sort, Tornei reachable error fallback, ChannelUnlockPanel no-url error
-state, BillingReturn "payment not completed" state (5 langs), `LanguageServerSync` server-preference
-read-back (pure `lib/languageSync.ts`), ZenZone mood persisted per-day (`tl_zen_mood_v1`), MessaggiTab
-WebRTC/recorder unmount teardown, shared `QueryErrorState` on Journal/Backtest/Wiki/Library/News (error ≠
-empty state), Chat migrated off `replit-auth-web` to Clerk `useUser` (+ static import-ban test), News
-filters test anchored to real JSX wiring. **Remaining: Fasi 2-5** (GDPR cookie-reject + legal EN/Seo;
-hardcoded-Italian i18n sweep across ~12 pages; mobile reachability for /clock /library /news; Playwright
-smoke) — see the plan doc.
+**Fase 1 (`ccbae77`)**: Broker inverted trading label + NaN guard, Milestones defensive `parseSkills`,
+Journal cache-safe sort, Tornei reachable error fallback, ChannelUnlockPanel no-url error state, BillingReturn
+"payment not completed" state (5 langs), `LanguageServerSync` server-preference read-back (pure
+`lib/languageSync.ts`), ZenZone mood persisted per-day (`tl_zen_mood_v1`), MessaggiTab WebRTC/recorder
+unmount teardown, shared `QueryErrorState` on Journal/Backtest/Wiki/Library/News, Chat migrated off
+`replit-auth-web` to Clerk `useUser`, News filters test anchored to real JSX wiring.
+**Fase 2 (`741efdb`)**: GDPR cookie banner gets an explicit "Rifiuta" when GA is configured (remembers
+accept/decline, `tl_cookie_consent_v1`); LegalPage privacy/terms body localized in 5 langs + `<Seo>`
+canonical; landing Sign-in visible <640px, dead "Blog"/"Status" footer links and decorative social icons
+removed. **Fase 3 (`9aed0bb`+`58cde17`+`cbf9d9d`+`66ee137`)**: full hardcoded-Italian sweep across News,
+Backtest (+ user-locale date-fns instead of fixed `it`), Clock, the whole Chat/community cluster
+(CommunityTab/MessaggiTab/SocialTab), Dashboard widget labels, Library, Milestones (20 level names +
+admin editor), Missions, Settings tiles, Routine/ZenZone, Journal/Support/BrokerHubWorkspace residuals —
+96+ new `auto.ui.*` keys in 5 languages (each hash-verified against its Italian source, ES/FR/DE accents
+checked byte-for-byte after an earlier ASCII-flattening slip was caught and fixed). Several pre-existing
+static tests that grepped literal Italian strings were re-anchored to the new key + dict value instead.
+**Fase 4 (`011771c`)**: `/clock`, `/library`, `/news` were reachable only via the desktop-only Cmd+K
+palette — `BottomNav.tsx` gained a root-level "Più" overflow (mobile) surfacing them, plus desktop sidebar
+parity (`SECONDARY_ITEMS` now Library+Clock+News+Settings); minor hygiene (`console.error` →
+`reportClientError` in MessaggiTab/StoryViewer/VoiceChannelView, a leaking `createObjectURL` fixed to
+create-once/revoke-on-cleanup, missing error toasts added to Library upload and Checklist delete).
+Gate across all 4 phases: typecheck ✓, 360/360 tests ✓, i18n parity 2301 keys × 5 languages ✓.
+**Remaining: Fase 5** (manual Playwright smoke) — see the plan doc.
 
 **SEO/GEO Phase 1 — technical hardening (2026-07-10, done).** Audited the existing SEO/GEO machinery
 (robots.txt AI-crawler allowlist, multilingual sitemap, `llms.txt`, `Seo.tsx` JSON-LD/hreflang, headless-Chromium
