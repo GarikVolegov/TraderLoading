@@ -152,6 +152,7 @@ function isAllowedVisibleLiteral(value: string): boolean {
     "MT5",
     "P&L",
     "P&L $",
+    "R:R",
     "SL",
     "STOP LOSS",
     "Stop Loss",

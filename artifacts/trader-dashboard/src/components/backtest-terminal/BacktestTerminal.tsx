@@ -3,11 +3,14 @@
 // rail · chart column · 340px right panel) / 54px transport bar. Orchestrates
 // the engine hook and the chart; the order ticket, account and journal panels
 // land in the trading phase, drawings in the final phase.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Crosshair } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
 import type { ClosedTrade } from "@/lib/replay/types";
+import { AccountPanel } from "./AccountPanel";
 import { HotkeysHelp } from "./HotkeysHelp";
+import { JournalPanel } from "./JournalPanel";
+import { OrderTicket } from "./OrderTicket";
 import { ReplayChart, type ReplayChartApi } from "./ReplayChart";
 import { TerminalHeader } from "./TerminalHeader";
 import { TransportBar } from "./TransportBar";
@@ -31,11 +34,23 @@ export function BacktestTerminal({
   symbol,
   initialInterval,
   onExit,
+  onTradeClosed,
 }: BacktestTerminalProps) {
   const engine = useReplayEngine({ sessionKey, symbol, initialInterval });
   const chartApiRef = useRef<ReplayChartApi | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
+
+  // Notify the page of newly closed trades (it persists them, deduped).
+  const notifiedIdsRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    if (!onTradeClosed) return;
+    for (const trade of engine.trades) {
+      if (notifiedIdsRef.current.has(trade.id)) continue;
+      notifiedIdsRef.current.add(trade.id);
+      onTradeClosed(trade);
+    }
+  }, [engine.trades, onTradeClosed]);
 
   useReplayHotkeys(engine, {
     enabled: !helpOpen,
@@ -92,9 +107,9 @@ export function BacktestTerminal({
 
         {panelOpen && (
           <aside className="btm-panel" aria-label={uiText("backtest_terminal.panel")}>
-            <div className="btm-center" style={{ position: "static", flex: 1 }}>
-              <span>{uiText("backtest_terminal.journal_empty")}</span>
-            </div>
+            <OrderTicket engine={engine} />
+            <AccountPanel engine={engine} />
+            <JournalPanel engine={engine} />
           </aside>
         )}
       </div>

@@ -3,25 +3,31 @@
 // heikin / line), volume histogram, watermark, price-pane indicator overlays
 // and the reveal mechanic (setData on seeks, series.update on single steps).
 // Sub-pane indicators and trade overlays are layered on in later phases.
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CandlestickSeries,
   ColorType,
   createChart,
+  createSeriesMarkers,
   createTextWatermark,
   CrosshairMode,
   HistogramSeries,
   LineSeries,
+  LineStyle,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
+  type ISeriesMarkersPluginApi,
   type ITextWatermarkPluginApi,
+  type SeriesMarker,
   type Time,
 } from "lightweight-charts";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { computeIndicator } from "@/lib/replay/indicatorCatalog";
 import { toHeikinAshi } from "@/lib/replay/heikinAshi";
 import type { ReplayCandle } from "@/lib/replay/types";
-import { priceDecimals, terminalLocale } from "./format";
+import { formatPrice, priceDecimals, terminalLocale } from "./format";
+import { PositionOverlay, type ChartProjector } from "./PositionOverlay";
 import type { ReplayEngine } from "./useReplayEngine";
 
 export interface ReplayChartApi {
@@ -51,6 +57,10 @@ export function ReplayChart({
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const indicatorSeriesRef = useRef<Map<string, ISeriesApi<"Line">[]>>(new Map());
   const watermarkRef = useRef<ITextWatermarkPluginApi<Time> | null>(null);
+  const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const priceLinesRef = useRef<IPriceLine[]>([]);
+  const [revision, setRevision] = useState(0);
+  const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 });
   const lastRenderRef = useRef<{ firstTime: number | null; length: number; chartType: string }>({
     firstTime: null,
     length: 0,
@@ -124,11 +134,24 @@ export function ReplayChart({
       };
     }
 
+    // Overlay re-projection: pan/zoom and container resizes bump `revision`.
+    const bump = () => setRevision((value) => value + 1);
+    chart.timeScale().subscribeVisibleLogicalRangeChange(bump);
+    const resizeObserver = new ResizeObserver(() => {
+      setOverlaySize({ width: container.clientWidth, height: container.clientHeight });
+      bump();
+    });
+    resizeObserver.observe(container);
+    setOverlaySize({ width: container.clientWidth, height: container.clientHeight });
+
     return () => {
+      resizeObserver.disconnect();
       if (apiRef) apiRef.current = null;
       watermarkRef.current = null;
       priceSeriesRef.current = null;
       volumeSeriesRef.current = null;
+      markersRef.current = null;
+      priceLinesRef.current = [];
       indicatorSeries.clear();
       lastRenderRef.current = { firstTime: null, length: 0, chartType: "candles" };
       chart.remove();
@@ -183,6 +206,9 @@ export function ReplayChart({
       });
       priceSeriesRef.current = { type: "candles", series };
     }
+    // Markers and price lines are bound to the price series: rebind on swap.
+    markersRef.current = createSeriesMarkers(priceSeriesRef.current.series);
+    priceLinesRef.current = [];
     return priceSeriesRef.current;
   }, [chartType, symbol]);
 
@@ -302,5 +328,85 @@ export function ReplayChart({
     }
   }, [indicators, revealed]);
 
-  return <div ref={containerRef} className="btm-chart" data-testid="replay-chart" />;
+  // ── closed-trade markers (entry arrows, exit dots) ─────────────────────────
+  const lastRevealedTime = revealed.length > 0 ? revealed[revealed.length - 1].time : null;
+  useEffect(() => {
+    const markersApi = markersRef.current;
+    if (!markersApi || lastRevealedTime == null) return;
+    const markers: SeriesMarker<Time>[] = [];
+    for (const trade of engine.trades) {
+      if (trade.entryTime <= lastRevealedTime) {
+        markers.push({
+          time: trade.entryTime as Time,
+          position: trade.direction === "buy" ? "belowBar" : "aboveBar",
+          color: trade.direction === "buy" ? UP : DOWN,
+          shape: trade.direction === "buy" ? "arrowUp" : "arrowDown",
+          text: `${trade.direction === "buy" ? "▲" : "▼"} ${formatPrice(trade.entryPrice, symbol)}`,
+        });
+      }
+      if (trade.exitTime <= lastRevealedTime) {
+        markers.push({
+          time: trade.exitTime as Time,
+          position: "aboveBar",
+          color: trade.result === "win" ? UP : trade.result === "loss" ? DOWN : "#eab308",
+          shape: "circle",
+          text: formatPrice(trade.exitPrice, symbol),
+        });
+      }
+    }
+    markers.sort((a, b) => (a.time as number) - (b.time as number));
+    markersApi.setMarkers(markers);
+  }, [engine.trades, lastRevealedTime, symbol, chartType]);
+
+  // ── open-position price lines (entry / SL / TP on the price axis) ──────────
+  useEffect(() => {
+    const price = priceSeriesRef.current;
+    if (!price) return;
+    for (const line of priceLinesRef.current) price.series.removePriceLine(line);
+    priceLinesRef.current = [];
+    const position = engine.position;
+    if (!position) return;
+    const mk = (value: number, color: string, style: LineStyle) =>
+      price.series.createPriceLine({
+        price: value,
+        color,
+        lineWidth: 1,
+        lineStyle: style,
+        axisLabelVisible: true,
+        title: "",
+      });
+    priceLinesRef.current = [
+      mk(position.entryPrice, "#3b82f6", LineStyle.Solid),
+      mk(position.stopLoss, DOWN, LineStyle.Dashed),
+      mk(position.takeProfit, UP, LineStyle.Dashed),
+    ];
+  }, [engine.position, chartType, symbol]);
+
+  // ── projector for the SVG overlay ──────────────────────────────────────────
+  const projector: ChartProjector | null = useMemo(() => {
+    const chart = chartRef.current;
+    const price = priceSeriesRef.current;
+    if (!chart || !price || overlaySize.width <= 0) return null;
+    return {
+      xForTime: (time: number) => {
+        const coordinate = chart.timeScale().timeToCoordinate(time as Time);
+        return coordinate == null ? null : coordinate;
+      },
+      yForPrice: (value: number) => {
+        const coordinate = price.series.priceToCoordinate(value);
+        return coordinate == null ? null : coordinate;
+      },
+      priceForY: (y: number) => price.series.coordinateToPrice(y),
+      width: overlaySize.width,
+      height: overlaySize.height,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- revision invalidates chart coordinates after pan/zoom
+  }, [overlaySize, revision, revealed.length]);
+
+  return (
+    <>
+      <div ref={containerRef} className="btm-chart" data-testid="replay-chart" />
+      {projector && <PositionOverlay engine={engine} projector={projector} revision={revision} />}
+    </>
+  );
 }
