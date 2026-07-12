@@ -25,12 +25,7 @@ import {
   getGetBacktestTradesQueryKey,
   type BacktestSession,
 } from "@workspace/api-client-react";
-import ChartReplay from "@/components/ChartReplay";
-import {
-  createReplaySavedTradeIdsStorageKey,
-  parseReplaySavedTradeIds,
-  serializeReplaySavedTradeIds,
-} from "@/components/chartReplayPersistence";
+import { useLocation } from "wouter";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { calculateBacktestStats } from "@/lib/backtestStats";
@@ -159,16 +154,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
   const createTrade = useCreateBacktestTrade();
   const deleteTrade = useDeleteBacktestTrade();
   const [mode, setMode] = useState<"chart" | "manual">("chart");
-  const [pendingChartTrades, setPendingChartTrades] = useState<Array<{
-    id: number;
-    direction: "buy" | "sell";
-    entryPrice: number;
-    exitPrice?: number;
-    stopLoss?: number;
-    takeProfit?: number;
-    result?: "win" | "loss" | "breakeven";
-    pips?: number;
-  }>>([]);
+  const [, navigate] = useLocation();
 
   const [direction, setDirection] = useState<"buy" | "sell">("buy");
   const [entryPrice, setEntryPrice] = useState("");
@@ -208,58 +194,6 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
     } catch {
       toast({ description: uiText("auto.ui.1d24d6b2b5"), variant: "destructive" });
     }
-  };
-
-  const savedTradeIdsStorageKey = createReplaySavedTradeIdsStorageKey(`backtest-session-${session.id}`);
-  const [savedTradeIds, setSavedTradeIds] = useState<Set<number>>(() => {
-    if (typeof window === "undefined") return new Set();
-    return parseReplaySavedTradeIds(window.localStorage.getItem(savedTradeIdsStorageKey));
-  });
-
-  const handleSaveChartTrades = async (chartTrades: Array<{
-    id: number;
-    direction: "buy" | "sell";
-    entryPrice: number;
-    exitPrice?: number;
-    stopLoss?: number;
-    takeProfit?: number;
-    result?: "win" | "loss" | "breakeven";
-    pips?: number;
-  }>) => {
-    const unsaved = chartTrades.filter((t) => !savedTradeIds.has(t.id) && t.exitPrice && t.result != null);
-    if (unsaved.length === 0) {
-      toast({ description: uiText("auto.ui.905ca2e9c5") });
-      return;
-    }
-    let saved = 0;
-    const newIds = new Set(savedTradeIds);
-    for (const t of unsaved) {
-      try {
-        await createTrade.mutateAsync({
-          id: session.id,
-          data: {
-            direction: t.direction,
-            entryPrice: t.entryPrice.toFixed(5),
-            exitPrice: t.exitPrice!.toFixed(5),
-            stopLoss: t.stopLoss?.toFixed(5),
-            takeProfit: t.takeProfit?.toFixed(5),
-            lotSize: "0.01",
-            result: t.result!,
-            pips: (t.pips ?? 0).toFixed(1),
-            tradeDate: format(new Date(), "yyyy-MM-dd"),
-          },
-        });
-        newIds.add(t.id);
-        saved++;
-      } catch {
-        /* skip failed */
-      }
-    }
-    setSavedTradeIds(newIds);
-    window.localStorage.setItem(savedTradeIdsStorageKey, serializeReplaySavedTradeIds(newIds));
-    setPendingChartTrades([]);
-    qc.invalidateQueries({ queryKey: getGetBacktestTradesQueryKey(session.id) });
-    toast({ description: uiText("auto.ui.2940e6814f", { saved }) });
   };
 
   const handleDeleteTrade = async (id: number) => {
@@ -307,26 +241,21 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
       </div>
 
       {mode === "chart" ? (
-        <div className="space-y-3">
-          <ChartReplay
-            symbol={session.pair}
-            interval={session.timeframe}
-            persistenceKey={`backtest-session-${session.id}`}
-            onTradesChange={(chartTrades) => {
-              const completed = chartTrades.filter((t) => t.exitPrice != null && !savedTradeIds.has(t.id));
-              setPendingChartTrades(completed);
-            }}
-          />
-          {pendingChartTrades.length > 0 && (
-            <Button
-              onClick={() => handleSaveChartTrades(pendingChartTrades)}
-              disabled={createTrade.isPending}
-              className="w-full"
-            >
-              {uiText("auto.ui.e9144d926b", { count: pendingChartTrades.length })}
+        <Card className="border-dashed">
+          <CardContent className="p-8 flex flex-col items-center text-center gap-3">
+            <div className="w-14 h-14 rounded-2xl bg-primary/15 text-primary flex items-center justify-center">
+              <Play className="w-7 h-7" />
+            </div>
+            <h4 className="text-base font-bold">{uiText("backtest_terminal.launch_title")}</h4>
+            <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
+              {uiText("backtest_terminal.launch_subtitle")}
+            </p>
+            <Button className="mt-2" onClick={() => navigate(`/backtest/${session.id}/replay`)}>
+              <Play className="w-4 h-4 mr-2" />
+              {uiText("backtest_terminal.launch_cta")}
             </Button>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-4">
           <Card>
