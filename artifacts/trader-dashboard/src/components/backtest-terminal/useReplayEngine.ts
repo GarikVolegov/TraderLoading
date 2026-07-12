@@ -43,7 +43,7 @@ import type {
 import { useCandleWindow } from "./useCandleWindow";
 
 export const REPLAY_SPEEDS = [0.25, 0.5, 1, 2, 4] as const;
-export const REPLAY_TIMEFRAMES = ["M1", "M5", "M15", "H1", "H4", "D1"] as const;
+export const REPLAY_TIMEFRAMES = ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"] as const;
 const INITIAL_BALANCE = 10_000;
 const BASE_TICK_MS = 720;
 

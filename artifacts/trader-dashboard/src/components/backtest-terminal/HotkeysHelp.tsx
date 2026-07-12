@@ -26,7 +26,7 @@ const HOTKEYS: Array<{ keys: string; labelKey: string }> = [
   { keys: "C", labelKey: "backtest_terminal.hk.close" },
   { keys: "R", labelKey: "backtest_terminal.hk.restart" },
   { keys: "+ −", labelKey: "backtest_terminal.hk.zoom" },
-  { keys: "1…6", labelKey: "backtest_terminal.hk.timeframe" },
+  { keys: "1…8", labelKey: "backtest_terminal.hk.timeframe" },
   { keys: "Esc", labelKey: "backtest_terminal.hk.exit" },
 ];
 
