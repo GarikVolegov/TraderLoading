@@ -1,5 +1,9 @@
 # Pre-launch page audit — piano di sistemazione a step (2026-07-11)
 
+> **STATO (2026-07-12): FASE 1 COMPLETATA** — tutti i 12 bug fix in commit `ccbae77`
+> (typecheck ✓, 361/361 test ✓, vite build ✓). Restano Fasi 2 (GDPR/legal), 3 (sweep i18n),
+> 4 (UX/mobile), 5 (smoke Playwright).
+
 > Audit pagina-per-pagina del frontend (tutte le ~24 pagine app + landing/auth/legal/admin/shell)
 > in ottica "app pronta al pubblico". 3 agenti di esplorazione in parallelo + verifica manuale dei
 > finding critici sul codice. **Non** ri-elenca ciò che l'audit di luglio (229 finding) ha già chiuso.

@@ -299,6 +299,20 @@ on the real `Article` data — no backend change). TDD via `pages/News.filters.s
 8-9/10-impact articles only. `views-trading.jsx` also has `JournalView`/`BacktestView`/`CalendarView` mockups
 not yet compared against their real pages — candidates for the same treatment if requested.
 
+**Pre-launch page audit — Fase 1 done (2026-07-11/12).** Page-by-page audit of every app/public surface
+(3 parallel explore agents + manual verification of critical findings; 2 false positives discarded, incl.
+"Chat auth is broken" — the backend authMiddleware shims Clerk, so the legacy path worked). Plan with all
+findings: [docs/superpowers/plans/2026-07-11-pre-launch-page-audit-fix-plan.md](docs/superpowers/plans/2026-07-11-pre-launch-page-audit-fix-plan.md).
+**Fase 1 (12 bug fix) shipped in `ccbae77`**: Broker inverted trading label + NaN guard, Milestones defensive
+`parseSkills`, Journal cache-safe sort, Tornei reachable error fallback, ChannelUnlockPanel no-url error
+state, BillingReturn "payment not completed" state (5 langs), `LanguageServerSync` server-preference
+read-back (pure `lib/languageSync.ts`), ZenZone mood persisted per-day (`tl_zen_mood_v1`), MessaggiTab
+WebRTC/recorder unmount teardown, shared `QueryErrorState` on Journal/Backtest/Wiki/Library/News (error ≠
+empty state), Chat migrated off `replit-auth-web` to Clerk `useUser` (+ static import-ban test), News
+filters test anchored to real JSX wiring. **Remaining: Fasi 2-5** (GDPR cookie-reject + legal EN/Seo;
+hardcoded-Italian i18n sweep across ~12 pages; mobile reachability for /clock /library /news; Playwright
+smoke) — see the plan doc.
+
 **SEO/GEO Phase 1 — technical hardening (2026-07-10, done).** Audited the existing SEO/GEO machinery
 (robots.txt AI-crawler allowlist, multilingual sitemap, `llms.txt`, `Seo.tsx` JSON-LD/hreflang, headless-Chromium
 prerender) and closed three verified gaps: **prerendering now hard-fails** instead of silently degrading —
