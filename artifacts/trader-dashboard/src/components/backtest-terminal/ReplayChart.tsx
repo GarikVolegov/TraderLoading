@@ -85,6 +85,7 @@ export function ReplayChart({
     const container = containerRef.current;
     if (!container) return;
     const indicatorSeries = indicatorSeriesRef.current;
+    const subSeries = subSeriesRef.current;
 
     const chart = createChart(container, {
       autoSize: true,
@@ -153,6 +154,7 @@ export function ReplayChart({
       markersRef.current = null;
       priceLinesRef.current = [];
       indicatorSeries.clear();
+      subSeries.clear();
       lastRenderRef.current = { firstTime: null, length: 0, chartType: "candles" };
       chart.remove();
       chartRef.current = null;
@@ -276,54 +278,149 @@ export function ReplayChart({
     lastRenderRef.current = { firstTime, length: displayCandles.length, chartType };
   }, [displayCandles, chartType, showVolume, ensurePriceSeries]);
 
-  // ── price-pane indicator overlays ──────────────────────────────────────────
+  // ── indicator overlays and sub-panes ───────────────────────────────────────
+  // Price-pane lines live in pane 0 next to the candles; each active sub-pane
+  // indicator (RSI/MACD/ATR/Stoch/custom-sub) gets its own pane below, in
+  // configuration order. Series are keyed per indicator id and recreated when
+  // the shape (line count or pane index) changes.
+  const subSeriesRef = useRef<
+    Map<string, { paneIndex: number; lines: ISeriesApi<"Line">[]; histogram: ISeriesApi<"Histogram"> | null; levels: IPriceLine[] }>
+  >(new Map());
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
     const registry = indicatorSeriesRef.current;
+    const subRegistry = subSeriesRef.current;
     const activeIds = new Set<string>();
+    const activeSubIds = new Set<string>();
+    let nextPaneIndex = 1;
+
+    const zip = (values: (number | null)[]): { time: Time; value: number }[] => {
+      const data: { time: Time; value: number }[] = [];
+      for (let i = 0; i < values.length && i < revealed.length; i++) {
+        const value = values[i];
+        if (value != null) data.push({ time: revealed[i].time as Time, value });
+      }
+      return data;
+    };
 
     for (const config of indicators) {
       if (!config.on) continue;
       const output = computeIndicator(config, revealed);
-      if (output.pane !== "price" || output.lines.length === 0) continue;
-      activeIds.add(config.id);
 
-      let seriesList = registry.get(config.id) ?? [];
-      // Recreate when the line count changes (e.g. custom → bollinger edit).
-      if (seriesList.length !== output.lines.length) {
-        for (const series of seriesList) chart.removeSeries(series);
-        seriesList = output.lines.map(() =>
-          chart.addSeries(LineSeries, {
-            lineWidth: 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false,
-          }),
-        );
-        registry.set(config.id, seriesList);
+      if (output.pane === "price" && output.lines.length > 0) {
+        activeIds.add(config.id);
+        let seriesList = registry.get(config.id) ?? [];
+        // Recreate when the line count changes (e.g. custom → bollinger edit).
+        if (seriesList.length !== output.lines.length) {
+          for (const series of seriesList) chart.removeSeries(series);
+          seriesList = output.lines.map(() =>
+            chart.addSeries(LineSeries, {
+              lineWidth: 2,
+              priceLineVisible: false,
+              lastValueVisible: false,
+              crosshairMarkerVisible: false,
+            }),
+          );
+          registry.set(config.id, seriesList);
+        }
+        output.lines.forEach((line, lineIndex) => {
+          const series = seriesList[lineIndex];
+          series.applyOptions({
+            color: line.color,
+            lineStyle: line.dashed ? 2 : 0,
+            lineWidth: lineIndex === 0 ? 2 : 1,
+          });
+          series.setData(zip(line.values));
+        });
+        continue;
       }
 
-      output.lines.forEach((line, lineIndex) => {
-        const series = seriesList[lineIndex];
-        series.applyOptions({
-          color: line.color,
-          lineStyle: line.dashed ? 2 : 0,
-          lineWidth: lineIndex === 0 ? 2 : 1,
-        });
-        const data: { time: Time; value: number }[] = [];
-        for (let i = 0; i < line.values.length && i < revealed.length; i++) {
-          const value = line.values[i];
-          if (value != null) data.push({ time: revealed[i].time as Time, value });
+      if (output.pane === "sub" && output.lines.length > 0) {
+        activeSubIds.add(config.id);
+        const paneIndex = nextPaneIndex++;
+        let entry = subRegistry.get(config.id) ?? null;
+        const needsHistogram = output.histogram != null;
+        if (
+          !entry ||
+          entry.paneIndex !== paneIndex ||
+          entry.lines.length !== output.lines.length ||
+          (entry.histogram != null) !== needsHistogram
+        ) {
+          if (entry) {
+            for (const series of entry.lines) chart.removeSeries(series);
+            if (entry.histogram) chart.removeSeries(entry.histogram);
+          }
+          const histogram = needsHistogram
+            ? chart.addSeries(
+                HistogramSeries,
+                { priceLineVisible: false, lastValueVisible: false, priceFormat: { type: "price", precision: 4, minMove: 0.0001 } },
+                paneIndex,
+              )
+            : null;
+          const lines = output.lines.map(() =>
+            chart.addSeries(
+              LineSeries,
+              { lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false },
+              paneIndex,
+            ),
+          );
+          entry = { paneIndex, lines, histogram, levels: [] };
+          subRegistry.set(config.id, entry);
+          const pane = chart.panes()[paneIndex];
+          pane?.setStretchFactor(28);
         }
-        series.setData(data);
-      });
+
+        output.lines.forEach((line, lineIndex) => {
+          const series = entry!.lines[lineIndex];
+          series.applyOptions({
+            color: line.color,
+            lineStyle: line.dashed ? 2 : 0,
+            lineWidth: lineIndex === 0 ? 2 : 1,
+          });
+          series.setData(zip(line.values));
+        });
+        if (entry.histogram && output.histogram) {
+          const histogramData: { time: Time; value: number; color: string }[] = [];
+          for (let i = 0; i < output.histogram.values.length && i < revealed.length; i++) {
+            const value = output.histogram.values[i];
+            if (value != null) {
+              histogramData.push({
+                time: revealed[i].time as Time,
+                value,
+                color: value >= 0 ? output.histogram.positiveColor : output.histogram.negativeColor,
+              });
+            }
+          }
+          entry.histogram.setData(histogramData);
+        }
+        // Reference levels (RSI 30/70, Stoch 20/80) as dashed price lines.
+        if (entry.levels.length === 0 && output.levels && entry.lines[0]) {
+          entry.levels = output.levels.map((level) =>
+            entry!.lines[0].createPriceLine({
+              price: level,
+              color: "rgba(148,163,184,0.35)",
+              lineWidth: 1,
+              lineStyle: LineStyle.Dashed,
+              axisLabelVisible: false,
+              title: "",
+            }),
+          );
+        }
+      }
     }
 
     for (const [id, seriesList] of registry) {
       if (!activeIds.has(id)) {
         for (const series of seriesList) chart.removeSeries(series);
         registry.delete(id);
+      }
+    }
+    for (const [id, entry] of subRegistry) {
+      if (!activeSubIds.has(id)) {
+        for (const series of entry.lines) chart.removeSeries(series);
+        if (entry.histogram) chart.removeSeries(entry.histogram);
+        subRegistry.delete(id);
       }
     }
   }, [indicators, revealed]);

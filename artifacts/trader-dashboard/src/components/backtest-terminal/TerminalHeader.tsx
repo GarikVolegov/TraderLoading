@@ -1,7 +1,7 @@
 // ─── Terminal header ─────────────────────────────────────────────────────────
 // Mockup layout: back/logo + badge, session symbol, timeframe tabs, account
 // chips (Saldo/Equity/P&L/DD) and the panel/help toggles on the right.
-import { ArrowLeft, Keyboard, PanelRight } from "lucide-react";
+import { ArrowLeft, Keyboard, PanelRight, Settings2 } from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { formatMoney, formatPercent, formatSignedMoney } from "./format";
 import { REPLAY_TIMEFRAMES, type ReplayEngine } from "./useReplayEngine";
@@ -13,6 +13,7 @@ export function TerminalHeader({
   panelOpen,
   onTogglePanel,
   onToggleHelp,
+  onOpenSettings,
 }: {
   engine: ReplayEngine;
   sessionName: string;
@@ -20,6 +21,7 @@ export function TerminalHeader({
   panelOpen: boolean;
   onTogglePanel: () => void;
   onToggleHelp: () => void;
+  onOpenSettings: () => void;
 }) {
   const { language } = useLanguage();
   const { account, openProfit } = engine;
@@ -82,6 +84,15 @@ export function TerminalHeader({
           aria-label={uiText("backtest_terminal.toggle_panel")}
         >
           <PanelRight size={16} />
+        </button>
+        <button
+          type="button"
+          className="btm-iconbtn"
+          onClick={onOpenSettings}
+          title={uiText("backtest_terminal.settings")}
+          aria-label={uiText("backtest_terminal.settings")}
+        >
+          <Settings2 size={16} />
         </button>
         <button
           type="button"

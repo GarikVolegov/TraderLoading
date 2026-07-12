@@ -9,10 +9,12 @@ import { uiText } from "@/contexts/LanguageContext";
 import type { ClosedTrade } from "@/lib/replay/types";
 import { AccountPanel } from "./AccountPanel";
 import { HotkeysHelp } from "./HotkeysHelp";
+import { IndicatorStrip } from "./IndicatorStrip";
 import { JournalPanel } from "./JournalPanel";
 import { OrderTicket } from "./OrderTicket";
 import { ReplayChart, type ReplayChartApi } from "./ReplayChart";
 import { TerminalHeader } from "./TerminalHeader";
+import { TerminalSettingsDialog } from "./TerminalSettingsDialog";
 import { TransportBar } from "./TransportBar";
 import { useReplayEngine } from "./useReplayEngine";
 import { useReplayHotkeys } from "./useReplayHotkeys";
@@ -40,6 +42,7 @@ export function BacktestTerminal({
   const chartApiRef = useRef<ReplayChartApi | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Notify the page of newly closed trades (it persists them, deduped).
   const notifiedIdsRef = useRef<Set<number>>(new Set());
@@ -53,7 +56,7 @@ export function BacktestTerminal({
   }, [engine.trades, onTradeClosed]);
 
   useReplayHotkeys(engine, {
-    enabled: !helpOpen,
+    enabled: !helpOpen && !settingsOpen,
     zoomIn: () => chartApiRef.current?.zoomIn(),
     zoomOut: () => chartApiRef.current?.zoomOut(),
   });
@@ -69,6 +72,7 @@ export function BacktestTerminal({
         panelOpen={panelOpen}
         onTogglePanel={() => setPanelOpen((open) => !open)}
         onToggleHelp={() => setHelpOpen((open) => !open)}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       <div className="btm-main">
@@ -85,6 +89,7 @@ export function BacktestTerminal({
         </aside>
 
         <div className="btm-chartcol">
+          <IndicatorStrip engine={engine} onOpenSettings={() => setSettingsOpen(true)} />
           <div className="btm-chartwrap">
             {limitedHistory && !engine.loading && !engine.error && (
               <div className="btm-notice">{uiText("backtest_terminal.limited_history")}</div>
@@ -102,6 +107,7 @@ export function BacktestTerminal({
               </div>
             )}
             {helpOpen && <HotkeysHelp onClose={() => setHelpOpen(false)} />}
+            {settingsOpen && <TerminalSettingsDialog engine={engine} onClose={() => setSettingsOpen(false)} />}
           </div>
         </div>
 
