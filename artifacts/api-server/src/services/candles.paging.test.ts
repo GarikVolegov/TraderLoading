@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   getCandles,
   getCandlesMeta,
+  latestWindowCandles,
   paginateCandles,
   resolveWarehouseWindow,
   type Candle,
@@ -62,6 +63,25 @@ function makeCandles(count: number, baseTime: number, step: number): Candle[] {
   assert.equal(past.nextFrom, undefined);
 }
 
+// ── latestWindowCandles (pure) ───────────────────────────────────────────────
+{
+  const candles = makeCandles(130, 1_780_000_000, M15);
+
+  // no options: the whole series
+  assert.equal(latestWindowCandles(candles, {}).length, 130);
+
+  // a limit keeps the MOST RECENT bars (never the oldest head)
+  const trimmed = latestWindowCandles(candles, { limit: 50 });
+  assert.equal(trimmed.length, 50);
+  assert.equal(trimmed[0].time, candles[80].time);
+  assert.equal(trimmed[49].time, candles[129].time);
+
+  // `to` bounds the window (exclusive) before trimming
+  const bounded = latestWindowCandles(candles, { to: candles[100].time, limit: 10 });
+  assert.equal(bounded.length, 10);
+  assert.equal(bounded[9].time, candles[99].time);
+}
+
 // ── resolveWarehouseWindow (pure) ────────────────────────────────────────────
 {
   const now = 1_800_000_000;
@@ -83,25 +103,44 @@ function makeCandles(count: number, baseTime: number, step: number): Candle[] {
     fromStart: true,
   });
 
-  const paged = resolveWarehouseWindow({ from: 1_790_000_000, limit: 200 }, M15, now);
+  // the scan span is bounded by the MAX page size, not the requested limit —
+  // a small limit must not starve the read below the min-candles guard
+  // (1_790_000_100 is M15-aligned: 1_790_000_100 / 900 = 1_988_889)
+  const alignedFrom = 1_790_000_100;
+  const paged = resolveWarehouseWindow({ from: alignedFrom, limit: 200 }, M15, now);
   assert.deepEqual(paged, {
-    fromTs: 1_790_000_000,
-    toTs: Math.min(now, 1_790_000_000 + 200 * M15 * 3),
+    fromTs: alignedFrom,
+    toTs: Math.min(now, alignedFrom + 5000 * M15 * 3),
     limit: 200,
     fromStart: true,
   });
 
-  const window = resolveWarehouseWindow({ from: 1_790_000_000, to: 1_790_010_000 }, M15, now);
+  const window = resolveWarehouseWindow({ from: alignedFrom, to: 1_790_010_000 }, M15, now);
   assert.deepEqual(window, {
-    fromTs: 1_790_000_000,
+    fromTs: alignedFrom,
     toTs: 1_790_010_000,
     limit: 5000,
     fromStart: true,
   });
 
+  // mid-bucket bounds are aligned: `from` up (SQL LIMIT must not count a
+  // bucket the paginator drops), `to` down (no truncated partial bar)
+  const unaligned = resolveWarehouseWindow({ from: alignedFrom + 300, to: alignedFrom + 10 * M15 + 300 }, M15, now);
+  assert.equal(unaligned.fromTs, alignedFrom + M15);
+  assert.equal(unaligned.toTs, alignedFrom + 10 * M15);
+
   // `to` in the future is clamped to now
-  const clamped = resolveWarehouseWindow({ from: 1_790_000_000, to: now + 999 }, M15, now);
+  const clamped = resolveWarehouseWindow({ from: alignedFrom, to: now + 999 }, M15, now);
   assert.equal(clamped.toTs, now);
+
+  // `to` without `from`: a bounded window ending at (aligned) `to`
+  const boundedLatest = resolveWarehouseWindow({ to: alignedFrom }, M15, now);
+  assert.deepEqual(boundedLatest, {
+    fromTs: alignedFrom - 5000 * M15 * 3,
+    toTs: alignedFrom,
+    limit: 5000,
+    fromStart: false,
+  });
 }
 
 // ── getCandles: M1 chain + paging on the live path ───────────────────────────
@@ -167,6 +206,10 @@ try {
   assert.match(calls[1] ?? "", /interval=1m&/);
   assert.match(calls[1] ?? "", /range=5d/);
 
+  // From here the paged/latest cases pin the chain to Yahoo alone: with the
+  // relaxed paged guard a shallow TwelveData mock would win the chain.
+  delete process.env.TWELVEDATA_API_KEY;
+
   // cursor paging on the live path: filter + limit + nextFrom
   calls.length = 0;
   const page = await getCandles("EURJPY", "M15", { from: baseTime + 10 * M15, limit: 50 });
@@ -180,6 +223,14 @@ try {
   const tail = await getCandles("GBPJPY", "M15", { from: baseTime + 500 * M15 });
   assert.equal(tail.candles.length, 0);
   assert.equal(tail.nextFrom, undefined);
+
+  // latest window (no cursor/startDate) with a limit keeps the MOST RECENT
+  // bars of a deep fetch — never the oldest head — and exposes no cursor
+  const latestPage = await getCandles("EURGBP", "M15", { limit: 50 });
+  assert.equal(latestPage.candles.length, 50);
+  assert.equal(latestPage.candles[0].time, yahooCandles[80].time);
+  assert.equal(latestPage.candles[49].time, yahooCandles[129].time);
+  assert.equal(latestPage.nextFrom, undefined);
 
   // initial loads (no `from`) keep the minimum-candles guard
   globalThis.fetch = (async () => Response.json({

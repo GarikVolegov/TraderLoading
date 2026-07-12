@@ -29,6 +29,13 @@ router.get("/backtest/candles", async (req, res) => {
     return;
   }
 
+  // Bound the cursors: a timestamp past tomorrow is garbage input, not a page.
+  const horizon = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+  if ((from != null && from > horizon) || (to != null && to > horizon)) {
+    res.status(400).json({ error: "from/to must be unix seconds not further than one day in the future" });
+    return;
+  }
+
   try {
     const data = await getCandles(symbol, interval, { startDate, from, to, limit });
     res.json(data);
