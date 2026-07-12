@@ -1,11 +1,23 @@
 import assert from "node:assert/strict";
-import { atr, bollinger, ema, macd, rsi, sma, stochastic } from "./chartIndicatorEngine.js";
+import { atr, bollinger, ema, macd, rsi, sma, stochastic, wma } from "./chartIndicatorEngine.js";
 
 const approx = (a: number | null, b: number, eps = 1e-9) =>
   a != null && Math.abs(a - b) < eps;
 
 // ── SMA ──────────────────────────────────────────────────────────────────────
 assert.deepEqual(sma([1, 2, 3, 4, 5], 3), [null, null, 2, 3, 4]);
+
+// ── WMA (linear weights, latest heaviest) ────────────────────────────────────
+{
+  // wma([1,2,3], 3) = (1·1 + 2·2 + 3·3) / 6 = 14/6
+  const w = wma([1, 2, 3, 4, 5], 3);
+  assert.equal(w[0], null);
+  assert.equal(w[1], null);
+  assert.ok(approx(w[2], 14 / 6));
+  assert.ok(approx(w[3], (2 * 1 + 3 * 2 + 4 * 3) / 6));
+  assert.ok(approx(w[4], (3 * 1 + 4 * 2 + 5 * 3) / 6));
+  assert.deepEqual(wma([1, 2], 0), [null, null], "degenerate period");
+}
 
 // ── EMA (SMA-seeded) ─────────────────────────────────────────────────────────
 {
