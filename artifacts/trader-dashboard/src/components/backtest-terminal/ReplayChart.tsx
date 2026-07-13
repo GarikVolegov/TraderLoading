@@ -29,12 +29,15 @@ import type { ReplayCandle } from "@/lib/replay/types";
 import { DrawingsOverlay } from "./DrawingsOverlay";
 import { formatPrice, priceDecimals, terminalLocale } from "./format";
 import { PositionOverlay, type ChartProjector } from "./PositionOverlay";
+import { SessionOpensOverlay } from "./SessionOpensOverlay";
 import type { DrawingToolId } from "./toolRailModel";
 import type { ReplayEngine } from "./useReplayEngine";
 
 export interface ReplayChartApi {
   zoomIn: () => void;
   zoomOut: () => void;
+  /** PNG snapshot of the chart (data URL), null before the chart mounts. */
+  takeScreenshot: () => string | null;
 }
 
 const UP = "#10b981";
@@ -142,6 +145,13 @@ export function ReplayChart({
       apiRef.current = {
         zoomIn: () => zoomBy(1 / 1.35),
         zoomOut: () => zoomBy(1.35),
+        takeScreenshot: () => {
+          try {
+            return chart.takeScreenshot().toDataURL("image/png");
+          } catch {
+            return null;
+          }
+        },
       };
     }
 
@@ -535,9 +545,24 @@ export function ReplayChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- revision invalidates chart coordinates after pan/zoom
   }, [overlaySize, revision, revealed.length]);
 
+  // Right-click = replay jump to the bar under the cursor (FX Replay behavior);
+  // the browser menu stays available on the rest of the terminal.
+  const onContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
+    const chart = chartRef.current;
+    const container = containerRef.current;
+    if (!chart || !container) return;
+    event.preventDefault();
+    const x = event.clientX - container.getBoundingClientRect().left;
+    const time = chart.timeScale().coordinateToTime(x);
+    if (typeof time === "number") engine.seekToTime(time);
+  };
+
   return (
     <>
-      <div ref={containerRef} className="btm-chart" data-testid="replay-chart" />
+      <div ref={containerRef} className="btm-chart" data-testid="replay-chart" onContextMenu={onContextMenu} />
+      {projector && settings.showSessions && (
+        <SessionOpensOverlay engine={engine} projector={projector} revision={revision} />
+      )}
       {projector && <PositionOverlay engine={engine} projector={projector} revision={revision} />}
       {projector && (
         <DrawingsOverlay

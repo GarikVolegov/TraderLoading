@@ -30,7 +30,78 @@ export function openPosition(input: {
     riskAmount,
     slPips,
     tpPips,
+    initialSlPips: slPips,
+    bestPips: 0,
+    worstPips: 0,
+    breakevenApplied: false,
   };
+}
+
+export interface ManageRules {
+  /** Move the stop to entry once favorable excursion reaches this many R (initial risk). */
+  breakevenAtR?: number | null;
+  /** Trail the stop this many pips behind the best favorable price. */
+  trailingPips?: number | null;
+}
+
+/**
+ * Process one revealed bar for an open position: stop check first (against the
+ * PRE-bar levels — no intra-bar look-ahead), then excursion tracking, then
+ * auto-breakeven and trailing, which only ever move the stop in the position's
+ * favor and take effect from the NEXT bar.
+ */
+export function manageBar(
+  position: OpenPosition,
+  bar: ReplayCandle,
+  rules: ManageRules,
+  symbol: string,
+): { position: OpenPosition; hit: { exitPrice: number; exitReason: "sl" | "tp" } | null } {
+  const hit = checkStopHit(position, bar);
+  const sign = position.direction === "buy" ? 1 : -1;
+  const multiplier = getPipMultiplier(symbol);
+  const size = pipSize(symbol);
+  const roundPips = (value: number) => Math.round(value * 10) / 10;
+
+  const favorableExtreme = position.direction === "buy" ? bar.high : bar.low;
+  const adverseExtreme = position.direction === "buy" ? bar.low : bar.high;
+  const bestPips = Math.max(
+    position.bestPips ?? 0,
+    roundPips((favorableExtreme - position.entryPrice) * sign * multiplier),
+  );
+  const worstPips = Math.min(
+    position.worstPips ?? 0,
+    roundPips((adverseExtreme - position.entryPrice) * sign * multiplier),
+  );
+  let next: OpenPosition = { ...position, bestPips, worstPips };
+
+  if (hit) return { position: next, hit };
+
+  const initialRisk = next.initialSlPips ?? next.slPips;
+  if (
+    rules.breakevenAtR != null &&
+    rules.breakevenAtR > 0 &&
+    !next.breakevenApplied &&
+    initialRisk > 0 &&
+    bestPips >= rules.breakevenAtR * initialRisk
+  ) {
+    const raised = position.direction === "buy" ? Math.max(next.stopLoss, next.entryPrice) : Math.min(next.stopLoss, next.entryPrice);
+    next = { ...next, stopLoss: raised, breakevenApplied: true };
+  }
+
+  if (rules.trailingPips != null && rules.trailingPips > 0) {
+    const trailed =
+      position.direction === "buy"
+        ? favorableExtreme - rules.trailingPips * size
+        : favorableExtreme + rules.trailingPips * size;
+    const improved = position.direction === "buy" ? Math.max(next.stopLoss, trailed) : Math.min(next.stopLoss, trailed);
+    if (improved !== next.stopLoss) next = { ...next, stopLoss: improved };
+  }
+
+  if (next.stopLoss !== position.stopLoss) {
+    next = { ...next, slPips: Math.max(0, roundPips((next.entryPrice - next.stopLoss) * sign * multiplier)) };
+  }
+
+  return { position: next, hit: null };
 }
 
 /**
@@ -81,6 +152,8 @@ export function closePosition(
 ): ClosedTrade {
   const pips = positionPips(position, close.exitPrice, close.symbol);
   const profit = pips * pipValuePerLot(close.symbol) * position.lots;
+  const initialRisk = position.initialSlPips ?? position.slPips;
+  const round2 = (value: number) => Math.round(value * 100) / 100;
   return {
     id: close.id,
     direction: position.direction,
@@ -93,8 +166,10 @@ export function closePosition(
     lots: position.lots,
     pips,
     profit,
-    rMultiple: position.slPips > 0 ? pips / position.slPips : null,
+    rMultiple: initialRisk > 0 ? pips / initialRisk : null,
     exitReason: close.exitReason,
     result: pips > 0 ? "win" : pips < 0 ? "loss" : "breakeven",
+    maeR: initialRisk > 0 ? round2(Math.max(0, -(position.worstPips ?? 0)) / initialRisk) : null,
+    mfeR: initialRisk > 0 ? round2(Math.max(0, position.bestPips ?? 0) / initialRisk) : null,
   };
 }

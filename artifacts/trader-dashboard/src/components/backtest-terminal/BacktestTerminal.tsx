@@ -75,6 +75,14 @@ export function BacktestTerminal({
         panelOpen={panelOpen}
         onTogglePanel={() => setPanelOpen((open) => !open)}
         onToggleHelp={() => setHelpOpen((open) => !open)}
+        onScreenshot={() => {
+          const dataUrl = chartApiRef.current?.takeScreenshot();
+          if (!dataUrl) return;
+          const anchor = document.createElement("a");
+          anchor.href = dataUrl;
+          anchor.download = `replay-${engine.symbol}-${engine.interval}.png`;
+          anchor.click();
+        }}
         onOpenSettings={() => {
           setSettingsTab("indicators");
           setSettingsOpen(true);

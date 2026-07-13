@@ -11,6 +11,10 @@ export interface TerminalTicket {
   riskValue: number;
   slPips: number;
   tpPips: number;
+  /** Auto-breakeven trigger in R (null = off). */
+  breakevenAtR: number | null;
+  /** Trailing-stop distance in pips (null = off). */
+  trailingPips: number | null;
 }
 
 export interface TerminalSettings {
@@ -28,6 +32,8 @@ export const DEFAULT_TICKET: TerminalTicket = {
   riskValue: 1,
   slPips: 20,
   tpPips: 40,
+  breakevenAtR: null,
+  trailingPips: null,
 };
 
 export const DEFAULT_TERMINAL_SETTINGS: TerminalSettings = {
@@ -165,7 +171,68 @@ function parseTicket(value: unknown): TerminalTicket {
     riskValue: isFiniteNumber(ticket.riskValue) ? ticket.riskValue : DEFAULT_TICKET.riskValue,
     slPips: isFiniteNumber(ticket.slPips) ? ticket.slPips : DEFAULT_TICKET.slPips,
     tpPips: isFiniteNumber(ticket.tpPips) ? ticket.tpPips : DEFAULT_TICKET.tpPips,
+    breakevenAtR: isFiniteNumber(ticket.breakevenAtR) && ticket.breakevenAtR > 0 ? ticket.breakevenAtR : null,
+    trailingPips: isFiniteNumber(ticket.trailingPips) && ticket.trailingPips > 0 ? ticket.trailingPips : null,
   };
+}
+
+// ── named ticket profiles (Scalper Mode) — global, not per-session ──────────
+export function createTicketProfilesStorageKey(): string {
+  return "traderloading:backtest-terminal:ticket-profiles";
+}
+
+export function serializeTicketProfiles(profiles: Record<string, TerminalTicket>): string {
+  return JSON.stringify({ version: 1, profiles });
+}
+
+export function parseTicketProfiles(raw: string | null): Record<string, TerminalTicket> {
+  if (!raw) return {};
+  try {
+    const data = JSON.parse(raw) as { version?: unknown; profiles?: unknown };
+    if (data.version !== 1 || data.profiles == null || typeof data.profiles !== "object") return {};
+    const out: Record<string, TerminalTicket> = {};
+    for (const [name, ticket] of Object.entries(data.profiles as Record<string, unknown>)) {
+      if (name.trim() === "") continue;
+      out[name] = parseTicket(ticket);
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+// ── chart templates (indicators + settings) — global, session-independent ───
+export interface ChartTemplate {
+  indicators: IndicatorConfig[];
+  settings: TerminalSettings;
+}
+
+export function createChartTemplateStorageKey(): string {
+  return "traderloading:backtest-terminal:chart-templates";
+}
+
+export function serializeChartTemplates(templates: Record<string, ChartTemplate>): string {
+  return JSON.stringify({ version: 1, templates });
+}
+
+export function parseChartTemplates(raw: string | null): Record<string, ChartTemplate> {
+  if (!raw) return {};
+  try {
+    const data = JSON.parse(raw) as { version?: unknown; templates?: unknown };
+    if (data.version !== 1 || data.templates == null || typeof data.templates !== "object") return {};
+    const out: Record<string, ChartTemplate> = {};
+    for (const [name, template] of Object.entries(data.templates as Record<string, unknown>)) {
+      if (name.trim() === "") continue;
+      const entry = template as { indicators?: unknown; settings?: unknown } | null;
+      out[name] = {
+        indicators: Array.isArray(entry?.indicators) ? entry.indicators.filter(isIndicator) : [],
+        settings: parseSettings(entry?.settings ?? null),
+      };
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 function parseSettings(value: unknown): TerminalSettings {

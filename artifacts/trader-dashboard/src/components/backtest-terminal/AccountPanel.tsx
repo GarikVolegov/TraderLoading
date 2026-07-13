@@ -23,15 +23,16 @@ export function AccountPanel({ engine }: { engine: ReplayEngine }) {
     min -= pad;
     max += pad;
     const stepX = CURVE_WIDTH / (points.length - 1);
-    const path = points
-      .map((value, index) => {
-        const x = index * stepX;
-        const y = CURVE_HEIGHT - ((value - min) / (max - min)) * CURVE_HEIGHT;
-        return `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-      })
+    const coords = points.map((value, index) => ({
+      x: index * stepX,
+      y: CURVE_HEIGHT - ((value - min) / (max - min)) * CURVE_HEIGHT,
+      value,
+    }));
+    const path = coords
+      .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)},${point.y.toFixed(1)}`)
       .join(" ");
     const rising = points[points.length - 1] >= points[0];
-    return { path, rising };
+    return { path, rising, points: coords };
   }, [account.equityCurve]);
 
   const returnColor = account.returnPct > 0 ? "var(--btm-up)" : account.returnPct < 0 ? "var(--btm-dn)" : undefined;
@@ -50,7 +51,8 @@ export function AccountPanel({ engine }: { engine: ReplayEngine }) {
           className="btm-eqcurve"
           viewBox={`0 0 ${CURVE_WIDTH} ${CURVE_HEIGHT}`}
           preserveAspectRatio="none"
-          aria-hidden="true"
+          role="img"
+          aria-label={uiText("backtest_terminal.account")}
         >
           <path
             d={curve.path}
@@ -58,6 +60,11 @@ export function AccountPanel({ engine }: { engine: ReplayEngine }) {
             stroke={curve.rising ? "hsl(142 71% 45%)" : "hsl(0 84% 60%)"}
             strokeWidth={1.6}
           />
+          {curve.points.map((point, index) => (
+            <circle key={index} cx={point.x} cy={point.y} r={4} fill="transparent" stroke="none">
+              <title>{`#${index} · ${formatMoney(point.value, language)}`}</title>
+            </circle>
+          ))}
         </svg>
       ) : (
         <div style={{ fontSize: 11.5, color: "var(--btm-mut)" }}>{uiText("backtest_terminal.equity_empty")}</div>

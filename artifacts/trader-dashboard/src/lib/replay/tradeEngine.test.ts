@@ -125,3 +125,72 @@ const noisy = closePosition(buy, { exitPrice: 1.10123, exitTime: 6_000, exitReas
 assert.equal(noisy.pips, 12.3);
 
 console.log("tradeEngine checks passed");
+
+// ── manageBar: excursion tracking + auto-breakeven + trailing stop ──────────
+{
+  const { manageBar } = await import("./tradeEngine");
+  const base = openPosition({
+    direction: "buy",
+    entryPrice: 1.1,
+    entryTime: 1_000,
+    slPips: 20,
+    tpPips: 100,
+    lots: 0.5,
+    riskAmount: 100,
+    symbol: "EURUSD",
+  });
+
+  // no rules: excursion tracked, no hit, levels untouched
+  const step1 = manageBar(base, bar({ open: 1.1, low: 1.099, high: 1.1015, close: 1.101 }), {}, "EURUSD");
+  assert.equal(step1.hit, null);
+  assert.equal(step1.position.bestPips, 15);
+  assert.equal(step1.position.worstPips, -10);
+  assert.equal(step1.position.stopLoss, base.stopLoss);
+
+  // auto-breakeven: +1R favorable (20 pips) moves SL to entry, once
+  const be1 = manageBar(base, bar({ open: 1.1, low: 1.0999, high: 1.1021, close: 1.102 }), { breakevenAtR: 1 }, "EURUSD");
+  assert.equal(be1.hit, null);
+  assert.equal(be1.position.stopLoss, 1.1);
+  assert.equal(be1.position.breakevenApplied, true);
+  // not re-applied nor lowered afterwards
+  const be2 = manageBar(be1.position, bar({ open: 1.102, low: 1.1005, high: 1.103, close: 1.1025 }), { breakevenAtR: 1 }, "EURUSD");
+  assert.equal(be2.position.stopLoss, 1.1);
+
+  // below the trigger: SL untouched
+  const beNo = manageBar(base, bar({ open: 1.1, low: 1.0999, high: 1.1015, close: 1.101 }), { breakevenAtR: 1 }, "EURUSD");
+  assert.equal(beNo.position.stopLoss, base.stopLoss);
+
+  // trailing: SL follows the best price at a fixed pip distance, never lowers
+  const tr1 = manageBar(base, bar({ open: 1.1, low: 1.0995, high: 1.104, close: 1.1035 }), { trailingPips: 15 }, "EURUSD");
+  assert.equal(tr1.hit, null);
+  assert.equal(tr1.position.stopLoss.toFixed(5), "1.10250"); // 1.104 − 15 pip
+  const tr2 = manageBar(tr1.position, bar({ open: 1.1035, low: 1.103, high: 1.1038, close: 1.1032 }), { trailingPips: 15 }, "EURUSD");
+  assert.equal(tr2.position.stopLoss.toFixed(5), "1.10250", "never lowered");
+
+  // the stop check runs BEFORE management (no intra-bar look-ahead): a bar
+  // that hits the pre-bar SL closes there even if it also ran far in favor
+  const hitFirst = manageBar(base, bar({ open: 1.1, low: 1.0979, high: 1.105, close: 1.104 }), { trailingPips: 5 }, "EURUSD");
+  assert.deepEqual(hitFirst.hit, { exitPrice: base.stopLoss, exitReason: "sl" });
+
+  // sell-side trailing lowers the stop toward the lows
+  const sellPos = openPosition({
+    direction: "sell",
+    entryPrice: 156.5,
+    entryTime: 2_000,
+    slPips: 30,
+    tpPips: 120,
+    lots: 0.1,
+    riskAmount: 30,
+    symbol: "USDJPY",
+  });
+  const trS = manageBar(sellPos, bar({ open: 156.5, low: 156.1, high: 156.55, close: 156.15 }), { trailingPips: 20 }, "USDJPY");
+  assert.equal(trS.position.stopLoss.toFixed(3), "156.300"); // 156.10 + 20 pip
+
+  // closePosition carries MAE/MFE in R from the tracked excursion
+  const closedWithExcursion = closePosition(
+    { ...be1.position, worstPips: -8, bestPips: 42 },
+    { exitPrice: 1.103, exitTime: 9_000, exitReason: "manual", id: 99, symbol: "EURUSD" },
+  );
+  assert.equal(closedWithExcursion.maeR, 0.4); // 8 / 20 (initial risk)
+  assert.equal(closedWithExcursion.mfeR, 2.1); // 42 / 20
+}

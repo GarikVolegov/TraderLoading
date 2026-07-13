@@ -29,6 +29,14 @@ export interface OpenPosition {
   riskAmount: number;
   slPips: number;
   tpPips: number;
+  /** Stop distance at entry (risk unit for MAE/MFE/BE triggers); slPips changes when the stop is dragged/trailed. */
+  initialSlPips?: number;
+  /** Running best favorable excursion in pips (≥ 0). */
+  bestPips?: number;
+  /** Running worst adverse excursion in pips (≤ 0). */
+  worstPips?: number;
+  /** True once auto-breakeven moved the stop to entry. */
+  breakevenApplied?: boolean;
 }
 
 export interface ClosedTrade {
@@ -49,6 +57,10 @@ export interface ClosedTrade {
   rMultiple: number | null;
   exitReason: ExitReason;
   result: TradeResult;
+  /** Max adverse excursion in R (positive magnitude), null when unsized. */
+  maeR?: number | null;
+  /** Max favorable excursion in R (positive magnitude), null when unsized. */
+  mfeR?: number | null;
 }
 
 export type RiskMode = "percent" | "fixed";

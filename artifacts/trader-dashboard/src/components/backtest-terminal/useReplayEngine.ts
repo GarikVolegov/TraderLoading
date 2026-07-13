@@ -19,8 +19,8 @@ import {
   stepCursor,
 } from "@/lib/replay/replayCursor";
 import {
-  checkStopHit,
   closePosition,
+  manageBar,
   openPosition,
   positionPips,
   unrealizedProfit,
@@ -199,18 +199,29 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     [normalizedSymbol],
   );
 
-  /** SL/TP check for a newly revealed bar; returns true when it closed the position. */
+  /**
+   * Full per-bar processing of the open position: stop check (pre-bar levels),
+   * excursion tracking, auto-breakeven and trailing per the ticket rules.
+   * Returns true when the bar closed the position.
+   */
   const revealBar = useCallback(
     (index: number): boolean => {
       const open = positionRef.current;
       const bar = candles[index];
       if (!open || !bar) return false;
-      const hit = checkStopHit(open, bar);
+      const { position: managed, hit } = manageBar(
+        open,
+        bar,
+        { breakevenAtR: ticket.breakevenAtR, trailingPips: ticket.trailingPips },
+        normalizedSymbol,
+      );
+      positionRef.current = managed;
+      setPosition(managed);
       if (!hit) return false;
       closeAt(hit.exitPrice, bar.time, hit.exitReason);
       return true;
     },
-    [candles, closeAt],
+    [candles, closeAt, normalizedSymbol, ticket.breakevenAtR, ticket.trailingPips],
   );
 
   const stop = useCallback(() => {
@@ -286,30 +297,38 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     setCursor(clampCursor(fallback, candles.length, MIN_REVEALED_BARS));
   }, [candles.length, startDate, stop]);
 
-  const seekFraction = useCallback(
-    (fraction: number) => {
-      stop();
-      // Backward seeks can't cross the open position's entry bar; forward
-      // seeks replay the SL/TP checks across every skipped bar, so scrubbing
-      // cannot fast-forward through a stop-out.
-      const target = cursorFromFraction(fraction, candles.length, minCursorIndex());
+  // Backward seeks can't cross the open position's entry bar; forward seeks
+  // replay the full per-bar management (stops, BE, trailing) across every
+  // skipped bar, so scrubbing cannot fast-forward through a stop-out.
+  const seekToIndex = useCallback(
+    (target: number) => {
       const from = cursorRef.current;
       if (target > from && positionRef.current) {
         for (let index = from + 1; index <= target; index++) {
-          const open = positionRef.current;
-          const bar = candles[index];
-          if (!open || !bar) break;
-          const hit = checkStopHit(open, bar);
-          if (hit) {
-            closeAt(hit.exitPrice, bar.time, hit.exitReason);
-            break;
-          }
+          if (revealBar(index) || !positionRef.current) break;
         }
       }
       setCursor(target);
       ensureAhead(target);
     },
-    [candles, closeAt, ensureAhead, minCursorIndex, stop],
+    [ensureAhead, revealBar],
+  );
+
+  const seekFraction = useCallback(
+    (fraction: number) => {
+      stop();
+      seekToIndex(cursorFromFraction(fraction, candles.length, minCursorIndex()));
+    },
+    [candles.length, minCursorIndex, seekToIndex, stop],
+  );
+
+  /** Jump the replay to the bar at/after `time` (right-click jump, Go-To). */
+  const seekToTime = useCallback(
+    (time: number) => {
+      stop();
+      seekToIndex(seekCursorToTime(candles, time, minCursorIndex()));
+    },
+    [candles, minCursorIndex, seekToIndex, stop],
   );
 
   const jumpToDate = useCallback(
@@ -492,6 +511,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     stepBack,
     restart,
     seekFraction,
+    seekToTime,
     jumpToDate,
     changeInterval,
     changeSpeed,

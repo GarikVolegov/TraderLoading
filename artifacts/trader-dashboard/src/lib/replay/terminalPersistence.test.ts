@@ -52,7 +52,7 @@ const draft: TerminalStateDraft = {
   drawings,
   trades: [trade],
   openPosition: position,
-  ticket: { riskMode: "fixed", riskValue: 150, slPips: 25, tpPips: 50 },
+  ticket: { riskMode: "fixed", riskValue: 150, slPips: 25, tpPips: 50, breakevenAtR: null, trailingPips: null },
   settings: { ...DEFAULT_TERMINAL_SETTINGS, chartType: "heikin", magnet: false },
   initialBalance: 10_000,
 };
@@ -109,3 +109,66 @@ assert.deepEqual(flat?.trades, []);
 assert.equal(flat?.cursorTime, null);
 
 console.log("terminalPersistence checks passed");
+
+// ── ticket rules + named profiles + chart templates ─────────────────────────
+{
+  const {
+    parseTerminalState: parseState,
+    serializeTerminalState: serializeState,
+    parseTicketProfiles,
+    serializeTicketProfiles,
+    parseChartTemplates,
+    serializeChartTemplates,
+    createTicketProfilesStorageKey,
+    createChartTemplateStorageKey,
+    DEFAULT_TICKET: DT,
+  } = await import("./terminalPersistence");
+
+  // ticket BE/trailing rules round-trip (and default to null = off)
+  assert.equal(DT.breakevenAtR, null);
+  assert.equal(DT.trailingPips, null);
+  const withRules = {
+    ...draft,
+    ticket: { ...draft.ticket, breakevenAtR: 1.5, trailingPips: 25 },
+  };
+  const parsedRules = parseState(serializeState(withRules), "EURUSD");
+  assert.equal(parsedRules?.ticket.breakevenAtR, 1.5);
+  assert.equal(parsedRules?.ticket.trailingPips, 25);
+  // legacy state without the fields → null
+  const legacy = JSON.parse(serializeState(draft)) as Record<string, unknown>;
+  delete (legacy.ticket as Record<string, unknown>).breakevenAtR;
+  delete (legacy.ticket as Record<string, unknown>).trailingPips;
+  const parsedLegacy = parseState(JSON.stringify(legacy), "EURUSD");
+  assert.equal(parsedLegacy?.ticket.breakevenAtR, null);
+
+  // named ticket profiles (Scalper / Swing …): global, validated per entry
+  assert.equal(createTicketProfilesStorageKey(), "traderloading:backtest-terminal:ticket-profiles");
+  const profiles = {
+    Scalper: { riskMode: "percent" as const, riskValue: 0.5, slPips: 8, tpPips: 12, breakevenAtR: 1, trailingPips: 6 },
+    Swing: { riskMode: "fixed" as const, riskValue: 200, slPips: 60, tpPips: 180, breakevenAtR: null, trailingPips: null },
+  };
+  const roundTripped = parseTicketProfiles(serializeTicketProfiles(profiles));
+  assert.deepEqual(roundTripped, profiles);
+  assert.deepEqual(parseTicketProfiles(null), {});
+  assert.deepEqual(parseTicketProfiles("boom"), {});
+  const dirty = JSON.parse(serializeTicketProfiles(profiles)) as { profiles: Record<string, unknown> };
+  dirty.profiles.Broken = { riskMode: 42 };
+  const rescuedProfiles = parseTicketProfiles(JSON.stringify(dirty));
+  assert.deepEqual(Object.keys(rescuedProfiles).sort(), ["Broken", "Scalper", "Swing"]);
+  assert.equal(rescuedProfiles.Broken.riskMode, "percent", "malformed entries degrade to defaults");
+
+  // chart templates: indicators + settings, session-independent
+  assert.equal(createChartTemplateStorageKey(), "traderloading:backtest-terminal:chart-templates");
+  const templates = {
+    "Momentum": { indicators: draft.indicators, settings: draft.settings },
+  };
+  const parsedTemplates = parseChartTemplates(serializeChartTemplates(templates));
+  assert.deepEqual(parsedTemplates.Momentum.indicators, draft.indicators);
+  assert.equal(parsedTemplates.Momentum.settings.chartType, draft.settings.chartType);
+  assert.deepEqual(parseChartTemplates(null), {});
+  const dirtyTemplates = JSON.parse(serializeChartTemplates(templates)) as { templates: Record<string, unknown> };
+  dirtyTemplates.templates.Bad = { indicators: "nope", settings: 7 };
+  const rescuedTemplates = parseChartTemplates(JSON.stringify(dirtyTemplates));
+  assert.deepEqual(rescuedTemplates.Bad.indicators, []);
+  assert.equal(rescuedTemplates.Bad.settings.chartType, "candles");
+}

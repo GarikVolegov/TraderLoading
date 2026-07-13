@@ -34,6 +34,8 @@ assert.deepEqual(empty, {
   expectancy: null,
   totalPips: 0,
   totalProfit: 0,
+  avgMaeR: null,
+  avgMfeR: null,
 });
 
 const stats = computeJournalStats([
@@ -58,3 +60,35 @@ assert.equal(unsized.expectancy, null);
 assert.equal(unsized.netR, 0);
 
 console.log("journalStats checks passed");
+
+// ── MAE/MFE aggregates + time buckets ────────────────────────────────────────
+{
+  const { computeJournalStats, computeTimeBuckets } = await import("./journalStats");
+  const mk = (over: Record<string, unknown>) => ({
+    ...trade({ pips: 10, profit: 50, r: 1, id: 1 }),
+    ...over,
+  });
+  const withExcursion = computeJournalStats([
+    mk({ id: 1, maeR: 0.5, mfeR: 2 }),
+    mk({ id: 2, maeR: 0.3, mfeR: 1 }),
+    mk({ id: 3, maeR: null, mfeR: null }),
+  ] as never);
+  assert.equal(withExcursion.avgMaeR, 0.4);
+  assert.equal(withExcursion.avgMfeR, 1.5);
+  assert.equal(computeJournalStats([]).avgMaeR, null);
+
+  // buckets: entry at 2021-01-04T09:30Z (Monday) and 2021-01-05T14:00Z (Tuesday)
+  const buckets = computeTimeBuckets([
+    mk({ id: 1, entryTime: Date.UTC(2021, 0, 4, 9, 30) / 1000, r: 2 }),
+    mk({ id: 2, entryTime: Date.UTC(2021, 0, 4, 9, 45) / 1000, r: -1 }),
+    mk({ id: 3, entryTime: Date.UTC(2021, 0, 5, 14, 0) / 1000, r: 0.5 }),
+  ].map((t, i) => ({ ...t, rMultiple: [2, -1, 0.5][i] })) as never);
+  const nine = buckets.byHour.find((b) => b.bucket === 9);
+  assert.ok(nine);
+  assert.equal(nine?.count, 2);
+  assert.equal(nine?.netR, 1);
+  const tuesday = buckets.byWeekday.find((b) => b.bucket === 2);
+  assert.equal(tuesday?.count, 1);
+  assert.equal(tuesday?.netR, 0.5);
+  assert.equal(buckets.byHour.reduce((s, b) => s + b.count, 0), 3);
+}

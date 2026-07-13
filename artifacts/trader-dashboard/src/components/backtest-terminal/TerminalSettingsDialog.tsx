@@ -17,6 +17,11 @@ import {
   type IndicatorSource,
   type IndicatorType,
 } from "@/lib/replay/indicatorCatalog";
+import {
+  createChartTemplateStorageKey,
+  parseChartTemplates,
+  serializeChartTemplates,
+} from "@/lib/replay/terminalPersistence";
 import type { ChartType } from "@/lib/replay/types";
 import { DRAWING_TOOLS } from "./toolRailModel";
 import type { ReplayEngine } from "./useReplayEngine";
@@ -219,6 +224,90 @@ function IndicatorCard({
   );
 }
 
+/** Saved chart templates (indicators + settings), global across sessions. */
+function ChartTemplates({ engine }: { engine: ReplayEngine }) {
+  const [templates, setTemplates] = useState(() => {
+    try {
+      return parseChartTemplates(window.localStorage.getItem(createChartTemplateStorageKey()));
+    } catch {
+      return {};
+    }
+  });
+  const [name, setName] = useState("");
+
+  const persist = (next: ReturnType<typeof parseChartTemplates>) => {
+    setTemplates(next);
+    try {
+      window.localStorage.setItem(createChartTemplateStorageKey(), serializeChartTemplates(next));
+    } catch {
+      /* storage unavailable */
+    }
+  };
+
+  const saveCurrent = () => {
+    const trimmed = name.trim();
+    if (trimmed === "") return;
+    persist({ ...templates, [trimmed]: { indicators: engine.indicators, settings: engine.settings } });
+    setName("");
+  };
+
+  const names = Object.keys(templates).sort();
+
+  return (
+    <div className="btm-field">
+      <span className="btm-field-label">{uiText("backtest_terminal.templates")}</span>
+      {names.map((templateName) => (
+        <div key={templateName} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span style={{ flex: 1, fontSize: 12.5 }}>{templateName}</span>
+          <button
+            type="button"
+            className="btm-toggle"
+            data-on="true"
+            onClick={() => {
+              engine.setIndicators(templates[templateName].indicators.map((config) => ({ ...config })));
+              engine.setSettings({ ...templates[templateName].settings });
+            }}
+          >
+            {uiText("backtest_terminal.template_apply")}
+          </button>
+          <button
+            type="button"
+            className="btm-trash"
+            onClick={() => {
+              const next = { ...templates };
+              delete next[templateName];
+              persist(next);
+            }}
+            title={uiText("backtest_terminal.template_delete")}
+            aria-label={uiText("backtest_terminal.template_delete")}
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      ))}
+      <div style={{ display: "flex", gap: 6 }}>
+        <input
+          className="btm-input"
+          value={name}
+          placeholder={uiText("backtest_terminal.template_name")}
+          onChange={(event) => setName(event.target.value)}
+          aria-label={uiText("backtest_terminal.template_name")}
+        />
+        <button
+          type="button"
+          className="btm-toggle"
+          data-on="true"
+          style={{ flexShrink: 0 }}
+          disabled={name.trim() === ""}
+          onClick={saveCurrent}
+        >
+          {uiText("backtest_terminal.template_save")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function TerminalSettingsDialog({
   engine,
   initialTab = "indicators",
@@ -347,6 +436,21 @@ export function TerminalSettingsDialog({
                   {uiText(settings.magnet ? "backtest_terminal.magnet_on" : "backtest_terminal.magnet_off")}
                 </button>
               </div>
+
+              <div className="btm-field">
+                <span className="btm-field-label">{uiText("backtest_terminal.session_opens")}</span>
+                <button
+                  type="button"
+                  className="btm-toggle"
+                  data-on={settings.showSessions}
+                  style={{ alignSelf: "flex-start" }}
+                  onClick={() => setSettings({ ...settings, showSessions: !settings.showSessions })}
+                >
+                  {uiText(settings.showSessions ? "backtest_terminal.ind_on" : "backtest_terminal.ind_off")}
+                </button>
+              </div>
+
+              <ChartTemplates engine={engine} />
 
               <div className="btm-field">
                 <span className="btm-field-label">{uiText("backtest_terminal.visible_tools")}</span>
