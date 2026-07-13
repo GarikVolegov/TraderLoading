@@ -112,6 +112,43 @@ tools/metatrader-companion/   MT5 expert advisor
 
 ## 7. Active work / current focus
 
+**Usability audit — Phase 1 shipped, driver sweep partial (2026-07-13, branch `feat/community-management`).**
+Full app usability pass (bugs, UX polish, dead-end/demo features) requested after the pre-launch page
+audit. Live-drove 3 flows for the first time with new Playwright drivers (`scripts/verify-usability/`,
+mirrors `verify-nav-hubs`): onboarding, Pro paywall, journal happy-path. This surfaced and fixed two real
+bugs no static test caught: **ChecklistSetupModal could block the mandatory pair-onboarding screen**
+(both are `fixed inset-0` overlays at the same z-index; the checklist modal now gates on
+`settingsLoaded && selectedPairs.length > 0` and no longer nags back open after dismissal), and **the
+local DB was missing migrations 0018→0034** (review-prompt/referral/join-request/payout/channel-pricing
+tables never existed locally — applied by hand, confirmed idempotent, `/api/reviews/prompt-status` now
+200s instead of 500). Fixed the "feature vuota" audit list: SentimentWidget hides itself instead of
+showing MYFXBOOK demo data as real; Tornei cert claim shows "mint on-chain in arrivo" instead of a button
+that always 503s (`mintEnabled` from `getMintProvider()`); Pro/payout CTAs show an honest unavailable
+notice instead of opening a dialog that then 503s/402s (`checkoutAvailable`/`available` fields, on-contract
+for billing); `/styleguide` is DEV-only; HelpSection no longer promises an unbuilt CSV export. Added
+`useDialogA11y` (extracted from the `components/ui/modal.tsx` focus-trap, finding 3.4) and wired it into
+**12 custom overlays** that had no dialog semantics/focus-trap (SessionCheckinModal, both UserProfileModal
+variants, ChecklistSetupModal, LevelRewardModal, ReviewPromptModal, routine/SessionModal,
+ScheduledCallOverlay, 4 social Create*/CommunitySettingsModal dialogs). Added a global
+`MutationCache.onError` (`lib/mutationErrorPolicy.ts`) so a failed mutation with no local handler toasts
+instead of failing silently (closes Wiki's 8 unhandled mutations); JournalEntryModal opts out via
+`meta.suppressGlobalError` to avoid double-toasting its own error message. **Adversarially reviewed**
+(7 parallel finder passes, high effort): fixed a Rules-of-Hooks crash in `CreatorPayoutSettings`
+(early return before two `useMutation` calls), two `UserProfileModal` variants that never actually
+moved focus into the dialog, `CreatePostModal`'s pre-existing `autoFocus` textarea being silently
+overridden by the new hook (added an opt-in `initialFocusRef`), and the checklist-modal reopen-after-
+dismiss bug above. **Known gaps, not silently dropped:** ~19 other pre-existing `mutateAsync`+local-toast
+call sites still risk a double toast under the new global handler (JournalEntryModal was the one fixed,
+as the most-cited example); the AnimatePresence-exit-timing and cross-instance scroll-lock/focus-stack
+gaps in `useDialogA11y` are pre-existing characteristics inherited from the original `modal.tsx`, not new
+regressions, and weren't fixed (architectural, out of scope for this pass). **Sweep scope not completed:**
+only onboarding/pro/journal were live-driven; community (join-request/DM/paid-channel), tornei, missions,
+admin and the lighter dashboard/settings/routine/news/library drivers were planned but not built — the
+`Workflow` tool hit repeated infra failures (usage-limit + connection-reset) authoring them in parallel,
+so the remaining sweep is a follow-up. Design-system consistency (Tornei's parallel `--tl-*` token system,
+Settings' 14 arbitrary accent colors) was explicitly scoped OUT per user decision — separate future pass.
+Gate: typecheck + 369/369 tests + full build (both packages, 45/45 prerendered routes) all green.
+
 **Backtest Replay Terminal (2026-07-12, DONE — port fedele del mockup Claude Design).** The old in-page
 ChartReplay is retired: `/backtest/:id/replay` is a **full-screen TradingView-style terminal**
 (`pages/BacktestReplay.tsx` + `components/backtest-terminal/*`, ~15 files + scoped `terminal.css`) on
