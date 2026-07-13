@@ -286,6 +286,12 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
           </div>
         </div>
 
+        {engine.lots <= 0 && (
+          <p style={{ margin: 0, fontSize: 10.5, color: "var(--btm-mut)", textAlign: "center" }}>
+            {uiText("backtest_terminal.size_hint")}
+          </p>
+        )}
+
         <div className="btm-buysell">
           <button
             type="button"

@@ -628,6 +628,17 @@
   font-size: 11px;
   line-height: 1.4;
 }
+.btm-notice-dismiss {
+  margin-left: 8px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 0;
+  vertical-align: middle;
+}
+.btm-notice-dismiss:hover { opacity: 1; }
 .btm-spin {
   width: 26px;
   height: 26px;
@@ -637,3 +648,54 @@
   animation: btm-rotate 0.8s linear infinite;
 }
 @keyframes btm-rotate { to { transform: rotate(360deg); } }
+
+/* ── transient event banner (order filled / stopped out / target hit) ─── */
+.btm-eventbanner {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 99px;
+  border: 1px solid var(--btm-hair);
+  background: var(--btm-panel);
+  color: var(--btm-fg);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--btm-mono);
+  cursor: pointer;
+  box-shadow: 0 6px 20px hsl(222 47% 3% / 0.5);
+  animation: btm-banner-in 0.2s var(--btm-ease, ease-out);
+}
+.btm-eventbanner[data-kind="fill"] { border-color: hsl(217 91% 60% / 0.5); color: hsl(217 91% 72%); }
+.btm-eventbanner[data-kind="tp"] { border-color: hsl(142 71% 45% / 0.5); color: hsl(142 71% 55%); }
+.btm-eventbanner[data-kind="sl"] { border-color: hsl(0 84% 60% / 0.5); color: hsl(0 84% 68%); }
+@keyframes btm-banner-in {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ── desktop-only gate (the terminal needs the full layout) ───────────── */
+.btm-desktop-only { display: none; }
+/* `contents` so the wrapper is transparent to the flex layout above 900px. */
+.btm-desktop-shell { display: contents; }
+@media (max-width: 900px) {
+  .btm-desktop-shell { display: none; }
+  .btm-desktop-only {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    height: 100%;
+    padding: 32px;
+    text-align: center;
+    color: var(--btm-fg);
+  }
+  .btm-desktop-only h2 { margin: 0; font-size: 17px; }
+  .btm-desktop-only p { margin: 0; font-size: 13px; color: var(--btm-mut); max-width: 320px; line-height: 1.5; }
+}

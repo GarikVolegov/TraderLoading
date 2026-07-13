@@ -1,7 +1,7 @@
 // ─── Terminal hotkeys ────────────────────────────────────────────────────────
-// Mockup bindings: Space play/pause, ←/→ step, ↑/↓ speed, B/S buy/sell,
-// C close, R restart, +/− zoom, 1..6 timeframe. Skipped while typing in a
-// form field or when a dialog is open.
+// Bindings: Space play/pause, ←/→ step, ↑/↓ speed, B/S market buy/sell,
+// C close at market, X cancel pending order, R rewind, +/− zoom, 1..8
+// timeframe. Skipped while typing in a form field or when a dialog is open.
 import { useEffect } from "react";
 import { REPLAY_TIMEFRAMES, type ReplayEngine } from "./useReplayEngine";
 
@@ -74,6 +74,10 @@ export function useReplayHotkeys(
       }
       if (key === "c") {
         engine.closeMarket();
+        return;
+      }
+      if (key === "x") {
+        engine.cancelOrder();
         return;
       }
       const timeframeIndex = Number.parseInt(event.key, 10);

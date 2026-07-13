@@ -4,10 +4,11 @@
 // the engine hook and the chart; the order ticket, account and journal panels
 // land in the trading phase, drawings in the final phase.
 import { useEffect, useRef, useState } from "react";
-import { Settings2, Trash2 } from "lucide-react";
+import { Settings2, Trash2, X } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
 import type { ClosedTrade } from "@/lib/replay/types";
 import { AccountPanel } from "./AccountPanel";
+import { formatPrice } from "./format";
 import { HotkeysHelp } from "./HotkeysHelp";
 import { IndicatorStrip } from "./IndicatorStrip";
 import { JournalPanel } from "./JournalPanel";
@@ -44,6 +45,7 @@ export function BacktestTerminal({
   const [panelOpen, setPanelOpen] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [limitedDismissed, setLimitedDismissed] = useState(false);
   const [settingsTab, setSettingsTab] = useState<"indicators" | "tools">("indicators");
   const [activeTool, setActiveTool] = useState<DrawingToolId>("cursor");
 
@@ -68,6 +70,14 @@ export function BacktestTerminal({
 
   return (
     <div className="btm-root" data-testid="backtest-terminal">
+      <div className="btm-desktop-only">
+        <h2>{uiText("backtest_terminal.desktop_only_title")}</h2>
+        <p>{uiText("backtest_terminal.desktop_only_body")}</p>
+        <button type="button" className="btm-close-btn" style={{ width: "auto", padding: "9px 18px" }} onClick={onExit}>
+          {uiText("backtest_terminal.exit")}
+        </button>
+      </div>
+      <div className="btm-desktop-shell">
       <TerminalHeader
         engine={engine}
         sessionName={sessionName}
@@ -131,8 +141,18 @@ export function BacktestTerminal({
         <div className="btm-chartcol">
           <IndicatorStrip engine={engine} onOpenSettings={() => setSettingsOpen(true)} />
           <div className="btm-chartwrap">
-            {limitedHistory && !engine.loading && !engine.error && (
-              <div className="btm-notice">{uiText("backtest_terminal.limited_history")}</div>
+            {limitedHistory && !engine.loading && !engine.error && !limitedDismissed && (
+              <div className="btm-notice">
+                {uiText("backtest_terminal.limited_history")}
+                <button
+                  type="button"
+                  className="btm-notice-dismiss"
+                  onClick={() => setLimitedDismissed(true)}
+                  aria-label={uiText("backtest_terminal.close")}
+                >
+                  <X size={12} />
+                </button>
+              </div>
             )}
             <ReplayChart
               engine={engine}
@@ -151,6 +171,23 @@ export function BacktestTerminal({
                 <span>{engine.error}</span>
               </div>
             )}
+            {engine.noData && !engine.loading && !engine.error && (
+              <div className="btm-center">
+                <span>{uiText("backtest_terminal.no_data")}</span>
+              </div>
+            )}
+            {engine.notice && (
+              <button
+                type="button"
+                className="btm-eventbanner"
+                data-kind={engine.notice.kind}
+                onClick={engine.dismissNotice}
+              >
+                {uiText(`backtest_terminal.notice_${engine.notice.kind}`, {
+                  price: formatPrice(engine.notice.price, engine.symbol),
+                })}
+              </button>
+            )}
             {helpOpen && <HotkeysHelp onClose={() => setHelpOpen(false)} />}
             {settingsOpen && (
               <TerminalSettingsDialog engine={engine} initialTab={settingsTab} onClose={() => setSettingsOpen(false)} />
@@ -168,6 +205,7 @@ export function BacktestTerminal({
       </div>
 
       <TransportBar engine={engine} />
+      </div>
     </div>
   );
 }

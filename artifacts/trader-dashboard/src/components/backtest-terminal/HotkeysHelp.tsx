@@ -24,6 +24,7 @@ const HOTKEYS: Array<{ keys: string; labelKey: string }> = [
   { keys: "↑ ↓", labelKey: "backtest_terminal.hk.speed" },
   { keys: "B / S", labelKey: "backtest_terminal.hk.trade" },
   { keys: "C", labelKey: "backtest_terminal.hk.close" },
+  { keys: "X", labelKey: "backtest_terminal.hk.cancel" },
   { keys: "R", labelKey: "backtest_terminal.hk.restart" },
   { keys: "+ −", labelKey: "backtest_terminal.hk.zoom" },
   { keys: "1…8", labelKey: "backtest_terminal.hk.timeframe" },

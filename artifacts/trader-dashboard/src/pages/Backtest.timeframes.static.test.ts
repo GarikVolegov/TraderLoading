@@ -9,7 +9,7 @@ const engine = readFileSync(
   "utf8",
 );
 
-assert.match(backtest, /const TIMEFRAMES = \["M5", "M15", "M30", "H1", "H4", "D1", "W1"\]/);
+assert.match(backtest, /const TIMEFRAMES = \["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"\]/);
 assert.match(engine, /REPLAY_TIMEFRAMES = \["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"\] as const/);
 
 console.log("backtest timeframe checks passed");

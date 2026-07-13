@@ -89,6 +89,24 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     restored?.indicators.length ? restored.indicators : defaultIndicators(),
   );
   const [drawings, setDrawings] = useState<ReplayDrawing[]>(restored?.drawings ?? []);
+  // Transient event feedback (order filled, stopped out, target hit); the shell
+  // renders it as a brief banner and it self-clears.
+  const [notice, setNotice] = useState<{ id: number; kind: "fill" | "sl" | "tp"; price: number } | null>(null);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noticeIdRef = useRef(0);
+  const pushNotice = useCallback((kind: "fill" | "sl" | "tp", price: number) => {
+    noticeIdRef.current += 1;
+    setNotice({ id: noticeIdRef.current, kind, price });
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), 3500);
+  }, []);
+  const dismissNotice = useCallback(() => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    setNotice(null);
+  }, []);
+  useEffect(() => () => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+  }, []);
 
   const window_ = useCandleWindow(normalizedSymbol, interval, startDate);
   const { candles, ensureAhead } = window_;
@@ -131,12 +149,21 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     const loadedFor = window_.loadedFor;
     if (
       window_.loading ||
-      candles.length === 0 ||
       cursorReady ||
       !loadedFor ||
       loadedFor.interval !== interval ||
       (loadedFor.startDate ?? null) !== (startDate ?? null)
     ) {
+      return;
+    }
+
+    // Load resolved for THIS request but returned no bars (e.g. a date jump into
+    // a range with no data for a live-only symbol). Leave the spinner — mark
+    // ready so the UI can show an explicit empty state instead of hanging.
+    if (candles.length === 0) {
+      anchorRef.current = null;
+      restoreCursorRef.current = null;
+      setCursorReady(true);
       return;
     }
 
@@ -227,6 +254,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
           positionRef.current = opened;
           setPendingOrder(null);
           setPosition(opened);
+          pushNotice("fill", fillPrice);
           return false;
         }
       }
@@ -242,10 +270,11 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
       positionRef.current = managed;
       setPosition(managed);
       if (!hit) return false;
+      pushNotice(hit.exitReason, hit.exitPrice);
       closeAt(hit.exitPrice, bar.time, hit.exitReason);
       return true;
     },
-    [candles, closeAt, normalizedSymbol, ticket.breakevenAtR, ticket.trailingPips],
+    [candles, closeAt, normalizedSymbol, pushNotice, ticket.breakevenAtR, ticket.trailingPips],
   );
 
   const stop = useCallback(() => {
@@ -549,6 +578,9 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     appending: window_.appending,
     cursor,
     revealed,
+    noData: !window_.loading && cursorReady && candles.length === 0,
+    notice,
+    dismissNotice,
     currentBar,
     currentPrice,
     progress: cursorFraction(cursor, candles.length, MIN_REVEALED_BARS),
