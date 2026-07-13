@@ -131,7 +131,10 @@ async function startBillingServer(options = {}) {
 }
 
 {
-  const server = await startBillingServer({ getSubscription: async () => null });
+  const server = await startBillingServer({
+    getSubscription: async () => null,
+    config: { configured: false, missing: ["STRIPE_SECRET_KEY"], appBaseUrl: "" },
+  });
   try {
     const response = await fetch(`${server.base}/billing/me`);
     assert.equal(response.status, 200);
@@ -148,7 +151,25 @@ async function startBillingServer(options = {}) {
       canCancel: false,
       canResume: false,
       canViewInvoices: false,
+      // Stripe not configured ⇒ the FE must not offer a checkout that would 503.
+      checkoutAvailable: false,
     });
+  } finally {
+    await server.close();
+  }
+}
+
+// With Stripe configured, /billing/me advertises that checkout is available.
+{
+  const server = await startBillingServer({
+    getSubscription: async () => null,
+    config: { configured: true, missing: [], secretKey: "sk_test_x", priceId: "price_x", appBaseUrl: "http://localhost" },
+  });
+  try {
+    const response = await fetch(`${server.base}/billing/me`);
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { checkoutAvailable: boolean };
+    assert.equal(body.checkoutAvailable, true);
   } finally {
     await server.close();
   }

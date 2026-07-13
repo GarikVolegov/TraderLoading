@@ -61,7 +61,7 @@ function toIsoFromSeconds(value: unknown): string | null {
   return date ? date.toISOString() : null;
 }
 
-function serializeBillingStatus(subscription: SubscriptionLike | null) {
+function serializeBillingStatus(subscription: SubscriptionLike | null, checkoutAvailable: boolean) {
   const plan = getPlanFromSubscription(subscription);
   const capabilities = getBillingCapabilities(subscription);
   return {
@@ -75,6 +75,9 @@ function serializeBillingStatus(subscription: SubscriptionLike | null) {
     stripeCustomerId: subscription?.stripeCustomerId ?? null,
     stripeSubscriptionId: maskStripeId(subscription?.stripeSubscriptionId),
     ...capabilities,
+    // Whether POST /billing/checkout-session can succeed (Stripe env present).
+    // The FE uses this to replace dead-end "Upgrade" CTAs with an honest notice.
+    checkoutAvailable,
   };
 }
 
@@ -292,6 +295,8 @@ function handleStripeRouteError(error: unknown, res: Response): boolean {
 export function createBillingRouter(options: BillingRouterOptions = {}): IRouter {
   const router: IRouter = Router();
   const getSubscription = options.getSubscription ?? getUserSubscription;
+  const resolveConfig = () => options.config ?? getStripeBillingConfig();
+  const checkoutAvailable = () => resolveConfig().configured;
 
   router.get("/billing/me", async (req, res) => {
     const user = requireBillingUser(req);
@@ -301,7 +306,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
     }
 
     const subscription = await getSubscription(user.id);
-    res.json(serializeBillingStatus(subscription));
+    res.json(serializeBillingStatus(subscription, checkoutAvailable()));
   });
 
   router.post("/billing/checkout-session", async (req, res) => {
@@ -311,7 +316,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
       return;
     }
 
-    const config = options.config ?? getStripeBillingConfig();
+    const config = resolveConfig();
     if (!config.configured) {
       res.status(503).json({ error: "stripe_not_configured", missing: config.missing });
       return;
@@ -346,7 +351,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
 
     try {
       const confirm = options.confirmCheckoutSession ?? defaultConfirmCheckoutSession;
-      res.json(serializeBillingStatus(await confirm(user, sessionId)));
+      res.json(serializeBillingStatus(await confirm(user, sessionId), checkoutAvailable()));
     } catch (error) {
       if ((error as { code?: string }).code === "session_user_mismatch") {
         res.status(403).json({ error: "session_user_mismatch" });
@@ -372,7 +377,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
 
     try {
       const cancel = options.cancelSubscription ?? defaultCancelSubscription;
-      res.json(serializeBillingStatus(await cancel(user.id, subscription.stripeSubscriptionId)));
+      res.json(serializeBillingStatus(await cancel(user.id, subscription.stripeSubscriptionId), checkoutAvailable()));
     } catch (error) {
       if (handleStripeRouteError(error, res)) return;
       throw error;
@@ -394,7 +399,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
 
     try {
       const resume = options.resumeSubscription ?? defaultResumeSubscription;
-      res.json(serializeBillingStatus(await resume(user.id, subscription.stripeSubscriptionId)));
+      res.json(serializeBillingStatus(await resume(user.id, subscription.stripeSubscriptionId), checkoutAvailable()));
     } catch (error) {
       if (handleStripeRouteError(error, res)) return;
       throw error;

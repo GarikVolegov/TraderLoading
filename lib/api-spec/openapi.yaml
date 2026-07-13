@@ -1933,6 +1933,7 @@ components:
         - canCancel
         - canResume
         - canViewInvoices
+        - checkoutAvailable
       properties:
         plan:
           type: string
@@ -1976,6 +1977,9 @@ components:
           type: boolean
         canViewInvoices:
           type: boolean
+        checkoutAvailable:
+          type: boolean
+          description: Whether POST /billing/checkout-session can succeed (Stripe configured server-side).
 
     BillingCheckoutSession:
       type: object

@@ -24,7 +24,11 @@ router.get("/payout/account", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    res.json(await getAccountStatus(userId));
+    const status = await getAccountStatus(userId);
+    // available: whether Stripe Connect is configured at all. The FE hides the
+    // whole "receive payments" card when false, instead of showing an onboard
+    // button that always 402s (Stripe not configured).
+    res.json({ ...status, available: Boolean(getStripeBillingConfig().secretKey) });
   } catch (err) {
     console.error("GET /payout/account error:", err);
     res.status(500).json({ error: "Errore interno" });

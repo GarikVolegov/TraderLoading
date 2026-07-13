@@ -227,7 +227,10 @@ router.get("/tornei/wallet", async (req: Request, res: Response) => {
     .from(profileTable)
     .where(eq(profileTable.userId, userId))
     .limit(1);
-  res.json({ walletAddress: profile?.walletAddress ?? null });
+  // mintEnabled: whether the on-chain mint is configured (TORNEI_MINT_*). The FE
+  // hides the claim CTA and shows an honest "mint in arrivo" label when false,
+  // instead of promising an NFT that POST /certificates/:id/claim will 503 on.
+  res.json({ walletAddress: profile?.walletAddress ?? null, mintEnabled: getMintProvider() !== null });
 });
 
 router.put("/tornei/wallet", async (req: Request, res: Response) => {

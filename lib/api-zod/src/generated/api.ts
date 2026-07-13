@@ -211,6 +211,11 @@ export const GetBillingStatusResponse = zod.object({
   canCancel: zod.boolean(),
   canResume: zod.boolean(),
   canViewInvoices: zod.boolean(),
+  checkoutAvailable: zod
+    .boolean()
+    .describe(
+      "Whether POST \/billing\/checkout-session can succeed (Stripe configured server-side).",
+    ),
 });
 
 /**
@@ -253,6 +258,11 @@ export const CancelBillingSubscriptionResponse = zod.object({
   canCancel: zod.boolean(),
   canResume: zod.boolean(),
   canViewInvoices: zod.boolean(),
+  checkoutAvailable: zod
+    .boolean()
+    .describe(
+      "Whether POST \/billing\/checkout-session can succeed (Stripe configured server-side).",
+    ),
 });
 
 /**
@@ -288,6 +298,11 @@ export const ResumeBillingSubscriptionResponse = zod.object({
   canCancel: zod.boolean(),
   canResume: zod.boolean(),
   canViewInvoices: zod.boolean(),
+  checkoutAvailable: zod
+    .boolean()
+    .describe(
+      "Whether POST \/billing\/checkout-session can succeed (Stripe configured server-side).",
+    ),
 });
 
 /**
