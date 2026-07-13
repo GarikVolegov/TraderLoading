@@ -37,7 +37,7 @@ export function PositionOverlay({
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<DragTarget | null>(null);
 
-  const { position, trades, symbol, revealed } = engine;
+  const { position, pendingOrder, trades, symbol, revealed } = engine;
   const { width, height } = projector;
   if (width <= 0 || height <= 0) return null;
 
@@ -165,9 +165,26 @@ export function PositionOverlay({
     }
   }
 
+  let pendingLayer: React.ReactNode = null;
+  if (pendingOrder && !position) {
+    const y = projector.yForPrice(pendingOrder.price);
+    if (y != null) {
+      const color = pendingOrder.direction === "buy" ? GREEN : RED;
+      pendingLayer = (
+        <g>
+          <line x1={0} y1={y} x2={width - 58} y2={y} stroke={color} strokeWidth={1.2} strokeDasharray="2 3" opacity={0.8} />
+          <text x={6} y={y - 4} fontSize={9.5} fontWeight={700} fill={color} fontFamily="var(--btm-mono)">
+            {`${pendingOrder.direction === "buy" ? "BUY" : "SELL"} ${pendingOrder.kind.toUpperCase()} ${formatPrice(pendingOrder.price, symbol)}`}
+          </text>
+        </g>
+      );
+    }
+  }
+
   return (
     <svg ref={svgRef} className="btm-posoverlay" width={width} height={height} aria-hidden="true">
       {connectors}
+      {pendingLayer}
       {positionLayer}
     </svg>
   );

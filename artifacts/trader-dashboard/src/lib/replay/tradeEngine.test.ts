@@ -194,3 +194,50 @@ console.log("tradeEngine checks passed");
   assert.equal(closedWithExcursion.maeR, 0.4); // 8 / 20 (initial risk)
   assert.equal(closedWithExcursion.mfeR, 2.1); // 42 / 20
 }
+
+// ── pending orders: limit/stop fill ─────────────────────────────────────────
+{
+  const { checkPendingFill, fillPendingOrder } = await import("./tradeEngine");
+  const mkOrder = (over: Record<string, unknown>) => ({
+    direction: "buy" as const,
+    kind: "limit" as const,
+    price: 1.09,
+    slPips: 20,
+    tpPips: 40,
+    lots: 0.5,
+    riskAmount: 100,
+    placedTime: 500,
+    ...over,
+  });
+
+  // BUY LIMIT (below): fills when the low reaches the level
+  const buyLimit = mkOrder({ kind: "limit", direction: "buy", price: 1.09 });
+  assert.equal(checkPendingFill(buyLimit, bar({ open: 1.1, low: 1.0905, high: 1.101 })), null);
+  assert.equal(checkPendingFill(buyLimit, bar({ open: 1.1, low: 1.0895, high: 1.101 })), 1.09);
+  // gap through: opens below the limit → fills at the (better) open
+  assert.equal(checkPendingFill(buyLimit, bar({ open: 1.088, low: 1.087, high: 1.089 })), 1.088);
+
+  // BUY STOP (above): fills when the high reaches the level
+  const buyStop = mkOrder({ kind: "stop", direction: "buy", price: 1.11 });
+  assert.equal(checkPendingFill(buyStop, bar({ open: 1.1, low: 1.099, high: 1.1095 })), null);
+  assert.equal(checkPendingFill(buyStop, bar({ open: 1.1, low: 1.099, high: 1.111 })), 1.11);
+  // gap up through the stop → fills at the (worse) open
+  assert.equal(checkPendingFill(buyStop, bar({ open: 1.115, low: 1.114, high: 1.116 })), 1.115);
+
+  // SELL LIMIT (above): fills when the high reaches the level
+  const sellLimit = mkOrder({ kind: "limit", direction: "sell", price: 1.11 });
+  assert.equal(checkPendingFill(sellLimit, bar({ open: 1.1, low: 1.099, high: 1.111 })), 1.11);
+  // SELL STOP (below): fills when the low reaches the level
+  const sellStop = mkOrder({ kind: "stop", direction: "sell", price: 1.09 });
+  assert.equal(checkPendingFill(sellStop, bar({ open: 1.1, low: 1.0895, high: 1.101 })), 1.09);
+
+  // fillPendingOrder → OpenPosition anchored to the fill bar, SL/TP from pips
+  const filled = fillPendingOrder(buyLimit, 1.09, 900, "EURUSD");
+  assert.equal(filled.direction, "buy");
+  assert.equal(filled.entryPrice, 1.09);
+  assert.equal(filled.entryTime, 900);
+  assert.equal(filled.stopLoss.toFixed(5), "1.08800"); // 20 pips below
+  assert.equal(filled.takeProfit.toFixed(5), "1.09400"); // 40 pips above
+  assert.equal(filled.lots, 0.5);
+  assert.equal(filled.initialSlPips, 20);
+}

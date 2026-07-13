@@ -4,7 +4,7 @@
 // chartReplayPersistence it supersedes; malformed entries degrade field-by-field
 // instead of discarding the whole state.
 import type { IndicatorConfig } from "./indicatorCatalog";
-import type { ChartType, ClosedTrade, OpenPosition, ReplayDrawing, RiskMode } from "./types";
+import type { ChartType, ClosedTrade, OpenPosition, PendingOrder, ReplayDrawing, RiskMode } from "./types";
 
 export interface TerminalTicket {
   riskMode: RiskMode;
@@ -54,6 +54,7 @@ export interface TerminalStateDraft {
   drawings: ReplayDrawing[];
   trades: ClosedTrade[];
   openPosition: OpenPosition | null;
+  pendingOrder: PendingOrder | null;
   ticket: TerminalTicket;
   settings: TerminalSettings;
   initialBalance: number;
@@ -102,6 +103,20 @@ function isOpenPosition(value: unknown): value is OpenPosition {
       isFiniteNumber(position.lots) &&
       isFiniteNumber(position.slPips) &&
       isFiniteNumber(position.tpPips),
+  );
+}
+
+function isPendingOrder(value: unknown): value is PendingOrder {
+  const order = value as Partial<PendingOrder> | null;
+  return Boolean(
+    order &&
+      (order.direction === "buy" || order.direction === "sell") &&
+      (order.kind === "limit" || order.kind === "stop") &&
+      isFiniteNumber(order.price) &&
+      isFiniteNumber(order.slPips) &&
+      isFiniteNumber(order.tpPips) &&
+      isFiniteNumber(order.lots) &&
+      isFiniteNumber(order.placedTime),
   );
 }
 
@@ -265,6 +280,7 @@ export function serializeTerminalState(draft: TerminalStateDraft): string {
     drawings: draft.drawings.filter(isDrawing),
     indicators: draft.indicators.filter(isIndicator),
     openPosition: draft.openPosition && isOpenPosition(draft.openPosition) ? draft.openPosition : null,
+    pendingOrder: draft.pendingOrder && isPendingOrder(draft.pendingOrder) ? draft.pendingOrder : null,
     version: 2,
     savedAt: new Date().toISOString(),
   };
@@ -287,6 +303,7 @@ export function parseTerminalState(raw: string | null, symbol: string): Persiste
       drawings: Array.isArray(data.drawings) ? data.drawings.filter(isDrawing) : [],
       trades: Array.isArray(data.trades) ? data.trades.filter(isClosedTrade) : [],
       openPosition: data.openPosition && isOpenPosition(data.openPosition) ? data.openPosition : null,
+      pendingOrder: data.pendingOrder && isPendingOrder(data.pendingOrder) ? data.pendingOrder : null,
       ticket: parseTicket(data.ticket),
       settings: parseSettings(data.settings),
       initialBalance: isFiniteNumber(data.initialBalance) ? data.initialBalance : 10_000,

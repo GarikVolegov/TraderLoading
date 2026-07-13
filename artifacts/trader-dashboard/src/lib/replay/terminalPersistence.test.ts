@@ -54,6 +54,7 @@ const draft: TerminalStateDraft = {
   drawings,
   trades: [trade],
   openPosition: position,
+  pendingOrder: null,
   ticket: { riskMode: "fixed", riskValue: 150, slPips: 25, tpPips: 50, breakevenAtR: null, trailingPips: null },
   settings: { ...DEFAULT_TERMINAL_SETTINGS, chartType: "heikin", magnet: false },
   initialBalance: 10_000,
@@ -109,6 +110,28 @@ const flat = parseTerminalState(serializeTerminalState(flatDraft), "EURUSD");
 assert.equal(flat?.openPosition, null);
 assert.deepEqual(flat?.trades, []);
 assert.equal(flat?.cursorTime, null);
+
+// pending order round-trips; malformed → null
+const withPending: TerminalStateDraft = {
+  ...draft,
+  openPosition: null,
+  pendingOrder: {
+    direction: "buy",
+    kind: "limit",
+    price: 1.085,
+    slPips: 20,
+    tpPips: 40,
+    lots: 0.5,
+    riskAmount: 100,
+    placedTime: 1_700_000_000,
+  },
+};
+const pendingParsed = parseTerminalState(serializeTerminalState(withPending), "EURUSD");
+assert.deepEqual(pendingParsed?.pendingOrder, withPending.pendingOrder);
+const badPending = JSON.parse(serializeTerminalState(withPending)) as Record<string, unknown>;
+(badPending.pendingOrder as Record<string, unknown>).kind = "bogus";
+assert.equal(parseTerminalState(JSON.stringify(badPending), "EURUSD")?.pendingOrder, null);
+assert.equal(flat?.pendingOrder, null);
 
 console.log("terminalPersistence checks passed");
 

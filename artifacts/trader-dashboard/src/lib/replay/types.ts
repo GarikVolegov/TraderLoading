@@ -69,6 +69,23 @@ export interface ClosedTrade {
 
 export type RiskMode = "percent" | "fixed";
 
+export type PendingOrderKind = "limit" | "stop";
+
+/** A resting order that becomes an OpenPosition when price reaches its level. */
+export interface PendingOrder {
+  direction: TradeDirection;
+  kind: PendingOrderKind;
+  /** Trigger price where the order fills. */
+  price: number;
+  /** Stop-loss / take-profit distances applied at fill. */
+  slPips: number;
+  tpPips: number;
+  lots: number;
+  riskAmount: number;
+  /** Unix seconds of the bar the order was placed on (overlay x-anchor). */
+  placedTime: number;
+}
+
 /** A drawing point anchored to chart data (not pixels). */
 export type DrawingPoint = { time: number; price: number };
 

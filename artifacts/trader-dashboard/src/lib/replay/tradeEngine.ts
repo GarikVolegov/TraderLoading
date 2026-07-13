@@ -5,7 +5,14 @@
 // lower-timeframe data the intra-bar order is unknowable).
 import { getPipMultiplier } from "../pipMultiplier";
 import { pipSize, pipValuePerLot } from "./lotSizing";
-import type { ClosedTrade, ExitReason, OpenPosition, ReplayCandle, TradeDirection } from "./types";
+import type {
+  ClosedTrade,
+  ExitReason,
+  OpenPosition,
+  PendingOrder,
+  ReplayCandle,
+  TradeDirection,
+} from "./types";
 
 export function openPosition(input: {
   direction: TradeDirection;
@@ -35,6 +42,44 @@ export function openPosition(input: {
     worstPips: 0,
     breakevenApplied: false,
   };
+}
+
+/**
+ * Fill price for a pending order on a revealed bar, or null if untouched.
+ * Gap-aware: a bar opening beyond the trigger fills at the open (the price the
+ * market actually offered), not at the resting level.
+ * - buy limit / sell stop rest BELOW price → the bar's low must reach them;
+ * - buy stop / sell limit rest ABOVE price → the bar's high must reach them.
+ */
+export function checkPendingFill(order: PendingOrder, bar: ReplayCandle): number | null {
+  const triggersBelow =
+    (order.direction === "buy" && order.kind === "limit") ||
+    (order.direction === "sell" && order.kind === "stop");
+  if (triggersBelow) {
+    if (bar.low <= order.price) return Math.min(bar.open, order.price);
+    return null;
+  }
+  if (bar.high >= order.price) return Math.max(bar.open, order.price);
+  return null;
+}
+
+/** Turn a filled pending order into an open position anchored to the fill bar. */
+export function fillPendingOrder(
+  order: PendingOrder,
+  fillPrice: number,
+  fillTime: number,
+  symbol: string,
+): OpenPosition {
+  return openPosition({
+    direction: order.direction,
+    entryPrice: fillPrice,
+    entryTime: fillTime,
+    slPips: order.slPips,
+    tpPips: order.tpPips,
+    lots: order.lots,
+    riskAmount: order.riskAmount,
+    symbol,
+  });
 }
 
 export interface ManageRules {

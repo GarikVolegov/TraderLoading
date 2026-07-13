@@ -19,7 +19,9 @@ import {
   stepCursor,
 } from "@/lib/replay/replayCursor";
 import {
+  checkPendingFill,
   closePosition,
+  fillPendingOrder,
   manageBar,
   openPosition,
   positionPips,
@@ -37,6 +39,7 @@ import {
 import type {
   ClosedTrade,
   OpenPosition,
+  PendingOrder,
   ReplayDrawing,
   TradeDirection,
 } from "@/lib/replay/types";
@@ -77,6 +80,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const [speed, setSpeed] = useState(1);
   const [trades, setTrades] = useState<ClosedTrade[]>(restored?.trades ?? []);
   const [position, setPosition] = useState<OpenPosition | null>(restored?.openPosition ?? null);
+  const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(restored?.pendingOrder ?? null);
   const [ticket, setTicket] = useState<TerminalTicket>(restored?.ticket ?? { ...DEFAULT_TICKET });
   const [settings, setSettings] = useState<TerminalSettings>(
     restored?.settings ?? { ...DEFAULT_TERMINAL_SETTINGS },
@@ -103,6 +107,10 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const restoreCursorRef = useRef<number | null>(restored?.cursorTime ?? null);
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const positionRef = useRef<OpenPosition | null>(position);
+  const pendingRef = useRef<PendingOrder | null>(pendingOrder);
+  useEffect(() => {
+    pendingRef.current = pendingOrder;
+  }, [pendingOrder]);
   const cursorRef = useRef(cursor);
   useEffect(() => {
     positionRef.current = position;
@@ -206,9 +214,25 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
    */
   const revealBar = useCallback(
     (index: number): boolean => {
-      const open = positionRef.current;
       const bar = candles[index];
-      if (!open || !bar) return false;
+      if (!bar) return false;
+
+      // A resting order fills first; its position is then managed from the NEXT
+      // bar (no intra-bar look-ahead), so we return early on a fill.
+      if (!positionRef.current && pendingRef.current) {
+        const fillPrice = checkPendingFill(pendingRef.current, bar);
+        if (fillPrice != null) {
+          const opened = fillPendingOrder(pendingRef.current, fillPrice, bar.time, normalizedSymbol);
+          pendingRef.current = null;
+          positionRef.current = opened;
+          setPendingOrder(null);
+          setPosition(opened);
+          return false;
+        }
+      }
+
+      const open = positionRef.current;
+      if (!open) return false;
       const { position: managed, hit } = manageBar(
         open,
         bar,
@@ -291,6 +315,8 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const restart = useCallback(() => {
     stop();
     setPosition(null);
+    setPendingOrder(null);
+    pendingRef.current = null;
     const fallback = startDate
       ? MIN_REVEALED_BARS
       : Math.max(MIN_REVEALED_BARS, Math.floor(candles.length * 0.52));
@@ -298,14 +324,16 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   }, [candles.length, startDate, stop]);
 
   // Backward seeks can't cross the open position's entry bar; forward seeks
-  // replay the full per-bar management (stops, BE, trailing) across every
-  // skipped bar, so scrubbing cannot fast-forward through a stop-out.
+  // replay the full per-bar processing (pending fills, stops, BE, trailing)
+  // across every skipped bar, so scrubbing cannot fast-forward through a fill
+  // or a stop-out.
   const seekToIndex = useCallback(
     (target: number) => {
       const from = cursorRef.current;
-      if (target > from && positionRef.current) {
+      if (target > from && (positionRef.current || pendingRef.current)) {
         for (let index = from + 1; index <= target; index++) {
-          if (revealBar(index) || !positionRef.current) break;
+          const closed = revealBar(index);
+          if (closed || (!positionRef.current && !pendingRef.current)) break;
         }
       }
       setCursor(target);
@@ -393,6 +421,39 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
 
   const sell = useCallback(() => buy("sell"), [buy]);
 
+  /**
+   * Place a resting limit/stop order at `price`. Only one order (and no open
+   * position) at a time. The kind (limit vs stop) is inferred from where the
+   * price sits relative to the current close, matching broker conventions:
+   * buy below = limit / buy above = stop, and mirrored for sell.
+   */
+  const placeOrder = useCallback(
+    (direction: TradeDirection, price: number) => {
+      if (positionRef.current || pendingRef.current || !currentBar || lots <= 0) return;
+      if (!Number.isFinite(price) || price <= 0) return;
+      const below = price < currentBar.close;
+      const kind: "limit" | "stop" = direction === "buy" ? (below ? "limit" : "stop") : below ? "stop" : "limit";
+      const order = {
+        direction,
+        kind,
+        price,
+        slPips: ticket.slPips,
+        tpPips: ticket.tpPips,
+        lots,
+        riskAmount,
+        placedTime: currentBar.time,
+      };
+      pendingRef.current = order;
+      setPendingOrder(order);
+    },
+    [currentBar, lots, riskAmount, ticket.slPips, ticket.tpPips],
+  );
+
+  const cancelOrder = useCallback(() => {
+    pendingRef.current = null;
+    setPendingOrder(null);
+  }, []);
+
   const closeMarket = useCallback(() => {
     if (!positionRef.current || !currentBar) return;
     closeAt(currentBar.close, currentBar.time, "manual");
@@ -440,6 +501,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
           drawings,
           trades,
           openPosition: position,
+          pendingOrder,
           ticket,
           settings,
           initialBalance: restored?.initialBalance ?? INITIAL_BALANCE,
@@ -459,6 +521,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     drawings,
     trades,
     position,
+    pendingOrder,
     ticket,
     settings,
     restored?.initialBalance,
@@ -494,6 +557,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     startDate,
     trades,
     position,
+    pendingOrder,
     openProfit,
     openPips,
     account,
@@ -522,6 +586,8 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     bumpSpeed,
     buy: () => buy("buy"),
     sell,
+    placeOrder,
+    cancelOrder,
     closeMarket,
     updatePositionLevels,
     deleteTrade,

@@ -90,7 +90,9 @@ function TicketProfiles({ engine }: { engine: ReplayEngine }) {
 
 export function OrderTicket({ engine }: { engine: ReplayEngine }) {
   const { language } = useLanguage();
-  const { ticket, setTicket, position } = engine;
+  const { ticket, setTicket, position, pendingOrder } = engine;
+  const [pendingMode, setPendingMode] = useState(false);
+  const [orderPrice, setOrderPrice] = useState("");
 
   const numberInput = (
     value: number,
@@ -143,6 +145,48 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
       </section>
     );
   }
+
+  if (pendingOrder) {
+    const directionColor = pendingOrder.direction === "buy" ? "var(--btm-up)" : "var(--btm-dn)";
+    return (
+      <section className="btm-section" aria-label={uiText("backtest_terminal.ticket")}>
+        <h3 className="btm-section-title">
+          <ClipboardList size={13} />
+          {uiText("backtest_terminal.ticket")}
+        </h3>
+        <div className="btm-poscard" data-dir={pendingOrder.direction}>
+          <div className="btm-poscard-head">
+            <span style={{ color: directionColor }}>
+              {pendingOrder.direction === "buy" ? "BUY" : "SELL"} {pendingOrder.kind.toUpperCase()} {pendingOrder.lots.toFixed(2)}
+            </span>
+            <span style={{ color: "var(--btm-mut)", fontFamily: "var(--btm-mono)" }}>
+              @ {formatPrice(pendingOrder.price, engine.symbol)}
+            </span>
+          </div>
+          <div className="btm-poscard-levels">
+            <span style={{ color: "var(--btm-mut)" }}>{uiText("backtest_terminal.pending_waiting")}</span>
+          </div>
+          <button type="button" className="btm-close-btn" onClick={engine.cancelOrder}>
+            {uiText("backtest_terminal.cancel_order")}
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const parsedPrice = Number.parseFloat(orderPrice);
+  const canPlace = pendingMode && Number.isFinite(parsedPrice) && parsedPrice > 0 && engine.lots > 0;
+  const submit = (direction: "buy" | "sell") => {
+    if (pendingMode) {
+      if (canPlace) {
+        engine.placeOrder(direction, parsedPrice);
+        setOrderPrice("");
+      }
+      return;
+    }
+    if (direction === "buy") engine.buy();
+    else engine.sell();
+  };
 
   return (
     <section className="btm-section" aria-label={uiText("backtest_terminal.ticket")}>
@@ -200,6 +244,31 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
           </div>
         </div>
 
+        <div className="btm-field">
+          <span className="btm-field-label">{uiText("backtest_terminal.order_type")}</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <div className="btm-segmented" style={{ flex: 1 }}>
+              <button type="button" data-active={!pendingMode} onClick={() => setPendingMode(false)}>
+                {uiText("backtest_terminal.order_market")}
+              </button>
+              <button type="button" data-active={pendingMode} onClick={() => setPendingMode(true)}>
+                {uiText("backtest_terminal.order_pending")}
+              </button>
+            </div>
+            {pendingMode && (
+              <input
+                type="number"
+                className="btm-input"
+                style={{ width: 100 }}
+                value={orderPrice}
+                placeholder={uiText("backtest_terminal.order_price")}
+                onChange={(event) => setOrderPrice(event.target.value)}
+                aria-label={uiText("backtest_terminal.order_price")}
+              />
+            )}
+          </div>
+        </div>
+
         <TicketProfiles engine={engine} />
 
         <div className="btm-computed">
@@ -218,10 +287,20 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
         </div>
 
         <div className="btm-buysell">
-          <button type="button" className="btm-buy" onClick={engine.buy} disabled={engine.lots <= 0}>
+          <button
+            type="button"
+            className="btm-buy"
+            onClick={() => submit("buy")}
+            disabled={engine.lots <= 0 || (pendingMode && !canPlace)}
+          >
             <ArrowUp size={15} /> BUY
           </button>
-          <button type="button" className="btm-sell" onClick={engine.sell} disabled={engine.lots <= 0}>
+          <button
+            type="button"
+            className="btm-sell"
+            onClick={() => submit("sell")}
+            disabled={engine.lots <= 0 || (pendingMode && !canPlace)}
+          >
             <ArrowDown size={15} /> SELL
           </button>
         </div>
