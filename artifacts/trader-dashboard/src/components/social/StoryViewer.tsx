@@ -237,6 +237,7 @@ export function StoryViewer({
           {story.imageUrl ? (
             <img
               src={story.imageUrl}
+              alt={uiText("social.story.alt", { name: group.userName })}
               className="w-full h-full object-contain rounded-xl"
               onError={(event) => {
                 event.currentTarget.style.visibility = "hidden";

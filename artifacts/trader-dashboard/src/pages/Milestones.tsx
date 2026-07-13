@@ -484,6 +484,8 @@ function MilestoneEditor({
               <button
                 key={c}
                 onClick={() => setBadgeColor(c)}
+                aria-label={c}
+                aria-pressed={badgeColor === c}
                 className={`w-7 h-7 rounded-full border-2 transition-all ${badgeColor === c ? "scale-110 border-white" : "border-transparent"}`}
                 style={{ background: c }}
               />
@@ -595,6 +597,7 @@ function MilestoneEditor({
                 </button>
                 <button
                   onClick={() => deleteFile(f.id)}
+                  aria-label={uiText("common.delete")}
                   className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
