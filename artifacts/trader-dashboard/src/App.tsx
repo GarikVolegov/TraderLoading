@@ -1,8 +1,12 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from "wouter";
 import { motion } from "framer-motion";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { shouldRetryQuery } from "./lib/queryRetry";
+import { shouldNotifyGlobally } from "./lib/mutationErrorPolicy";
+import { toast } from "./hooks/use-toast";
+import { reportClientError } from "./lib/clientErrorReporter";
+import { uiText } from "./contexts/LanguageContext";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
 import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -80,6 +84,20 @@ const SeoArticlePage = lazy(() => import("./pages/seo/SeoArticlePage"));
 const LOCALIZED_LANGS: Language[] = ["it", "es", "fr", "de"];
 
 const queryClient = new QueryClient({
+  // A failed mutation with no local onError handler used to fail silently (no
+  // toast, no console) — e.g. every Wiki upload/rename/move mutation. This is
+  // the single fallback net; call sites that already show their own feedback
+  // opt out via meta.suppressGlobalError to avoid a double toast.
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      if (!shouldNotifyGlobally(mutation)) return;
+      reportClientError(error, {
+        context: "mutation",
+        fallbackMessage: uiText("errors.mutation.generic"),
+        toast,
+      });
+    },
+  }),
   defaultOptions: {
     queries: {
       // Retry transient server/network blips (so a momentary failure doesn't leave a
@@ -582,7 +600,9 @@ function ClerkProviderWithRoutes() {
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/terms" component={TermsPage} />
-          <Route path="/styleguide" component={Styleguide} />
+          {/* Internal design-system reference: dev-only, never reachable in a
+              production build (finding: was publicly reachable at /styleguide). */}
+          {import.meta.env.DEV && <Route path="/styleguide" component={Styleguide} />}
           <Route path="/welcome" component={WelcomePage} />
           {marketingRoutes}
           <Route path="/*?" component={AppShell} />

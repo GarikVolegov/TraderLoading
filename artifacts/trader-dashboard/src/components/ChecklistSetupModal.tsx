@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronDown, ChevronRight, Check, ShieldCheck } from "lucide-react";
@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useCreateChecklistItem, useGetChecklist, getGetChecklistQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { uiText } from "@/contexts/LanguageContext";
+import { useBackground } from "@/contexts/BackgroundContext";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface ConfirmationItem {
   id: string;
@@ -84,6 +86,7 @@ const CONFIRMATION_CATEGORIES: ConfirmationCategory[] = [
 
 export function ChecklistSetupModal() {
   const { data: items } = useGetChecklist();
+  const { selectedPairs, settingsLoaded } = useBackground();
   const [show, setShow] = useState(false);
   const [step, setStep] = useState<"intro" | "pick">("intro");
   const [expandedCat, setExpandedCat] = useState<string | null>("mtf");
@@ -92,10 +95,30 @@ export function ChecklistSetupModal() {
   const [saving, setSaving] = useState(false);
   const qc = useQueryClient();
   const createMutation = useCreateChecklistItem();
+  const dismissedRef = useRef(false);
 
+  // Both this modal and PairOnboardingScreen are full-screen `fixed inset-0`
+  // overlays that can be open at once for a brand-new user (empty checklist +
+  // no selected pairs yet), stacking unpredictably at the same z-index and
+  // stealing clicks from the mandatory onboarding screen underneath. Gate on
+  // settingsLoaded (not just "pairs not empty yet") so the initial render —
+  // before the settings fetch resolves — can't slip through and auto-show this
+  // before pair onboarding had a chance to run.
+  const onboardingDone = settingsLoaded && selectedPairs.length > 0;
   useEffect(() => {
-    if (items && items.length === 0) setShow(true);
-  }, [items]);
+    // `items` gets a new array reference on every refetch (staleTime 60s +
+    // refetchOnWindowFocus), even when still empty — without dismissedRef the
+    // modal would nag its way back open after the user already closed it.
+    if (items && items.length === 0 && onboardingDone && !dismissedRef.current) setShow(true);
+  }, [items, onboardingDone]);
+
+  const dismiss = () => {
+    dismissedRef.current = true;
+    setShow(false);
+  };
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: show, onClose: dismiss, panelRef });
 
   const toggleItem = (id: string) => {
     setSelectedIds((prev) => {
@@ -149,13 +172,16 @@ export function ChecklistSetupModal() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-60 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setShow(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) dismiss(); }}
         >
           <motion.div
+            ref={panelRef}
+            {...panelProps}
+            aria-labelledby={titleId}
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
-            className="relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+            className="relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl focus:outline-none"
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between px-5 py-4 border-b border-border">
@@ -164,11 +190,15 @@ export function ChecklistSetupModal() {
                   <ShieldCheck className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-bold text-sm leading-tight">{uiText("auto.ui.7d079ed9b3")}</p>
+                  <p id={titleId} className="font-bold text-sm leading-tight">{uiText("auto.ui.7d079ed9b3")}</p>
                   <p className="text-[10px] text-muted-foreground">{uiText("auto.ui.6092d086e4")}</p>
                 </div>
               </div>
-              <button onClick={() => setShow(false)} className="text-muted-foreground hover:text-foreground p-1">
+              <button
+                onClick={dismiss}
+                aria-label={uiText("common.close")}
+                className="text-muted-foreground hover:text-foreground p-1"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -206,10 +236,10 @@ export function ChecklistSetupModal() {
 
                   <div className="flex shrink-0 gap-2 border-t border-border p-4">
                     <Button onClick={() => setStep("pick")} className="flex-1">
-                      Scegli i miei criteri →
+                      {uiText("checklist_setup.choose_cta")}
                     </Button>
                     <Button onClick={() => setShow(false)} variant="outline" className="flex-1">
-                      Dopo
+                      {uiText("checklist_setup.later")}
                     </Button>
                   </div>
                 </motion.div>
@@ -251,7 +281,7 @@ export function ChecklistSetupModal() {
                                     : "border-border text-muted-foreground hover:border-primary/30"
                                 }`}
                               >
-                                {allSel ? "Tutti ✓" : "Tutti"}
+                                {allSel ? uiText("checklist_setup.select_all_done") : uiText("checklist_setup.select_all")}
                               </button>
                               {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                             </div>
@@ -295,13 +325,13 @@ export function ChecklistSetupModal() {
 
                     <div className="px-5 py-4 space-y-2">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Criteri personalizzati (uno per riga)
+                        {uiText("checklist_setup.custom_label")}
                       </p>
                       <textarea
                         value={customLines}
                         onChange={(e) => setCustomLines(e.target.value)}
                         rows={3}
-                        placeholder={"Il prezzo è sopra la EMA 200...\nBreakout confermato da volume..."}
+                        placeholder={uiText("checklist_setup.custom_placeholder")}
                         className="w-full text-xs bg-secondary/40 border border-border rounded-xl px-3 py-2.5 resize-none outline-none focus:border-primary/50 placeholder:text-muted-foreground/40 text-foreground"
                       />
                     </div>
@@ -317,7 +347,7 @@ export function ChecklistSetupModal() {
                         ))}
                         {allToSave.length > 6 && (
                           <span className="text-[9px] text-muted-foreground px-1.5 py-0.5">
-                            +{allToSave.length - 6} altri
+                            {uiText("checklist_setup.more_n", { n: allToSave.length - 6 })}
                           </span>
                         )}
                       </div>
@@ -327,18 +357,22 @@ export function ChecklistSetupModal() {
                         onClick={() => setStep("intro")}
                         className="text-xs text-muted-foreground hover:text-foreground px-3"
                       >
-                        ← Indietro
+                        {uiText("checklist_setup.back")}
                       </button>
                       <Button
                         onClick={handleSave}
                         disabled={saving || allToSave.length === 0}
                         className="flex-1"
                       >
-                        {saving ? "Salvataggio…" : allToSave.length > 0 ? `Salva ${allToSave.length} criteri` : "Seleziona almeno un criterio"}
+                        {saving
+                          ? uiText("checklist_setup.saving")
+                          : allToSave.length > 0
+                            ? uiText("checklist_setup.save_n", { n: allToSave.length })
+                            : uiText("checklist_setup.select_at_least_one")}
                       </Button>
                     </div>
                     <p className="text-[10px] text-muted-foreground text-center">
-                      Puoi modificare i criteri in Impostazioni → Checklist
+                      {uiText("checklist_setup.footer_hint")}
                     </p>
                   </div>
                 </motion.div>

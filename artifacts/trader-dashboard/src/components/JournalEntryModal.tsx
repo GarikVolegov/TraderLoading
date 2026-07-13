@@ -267,10 +267,14 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
   const { t } = useLanguage();
   const queryClient = useQueryClient();
 
-  const createMutation = useCreateJournalEntry();
-  const updateMutation = useUpdateJournalEntry();
-  const uploadImageMutation = useUploadJournalImage();
-  const deleteImageMutation = useDeleteJournalImage();
+  // All 4 are driven via mutateAsync inside handleSave's own try/catch (which
+  // already shows a "journal_modal.error" toast below) — suppressGlobalError
+  // opts them out of App.tsx's global MutationCache toast to avoid a double toast.
+  const suppressGlobalErrorMeta = { mutation: { meta: { suppressGlobalError: true } } };
+  const createMutation = useCreateJournalEntry(suppressGlobalErrorMeta);
+  const updateMutation = useUpdateJournalEntry(suppressGlobalErrorMeta);
+  const uploadImageMutation = useUploadJournalImage(suppressGlobalErrorMeta);
+  const deleteImageMutation = useDeleteJournalImage(suppressGlobalErrorMeta);
   const { data: savedTagsData = [] } = useSavedTags();
   const saveTagMutation = useMutation({
     mutationFn: (tag: string) => saveJournalTag(tag),

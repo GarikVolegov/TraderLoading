@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { motion } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -14,6 +15,7 @@ import { apiJSON } from "@/lib/apiFetch";
 import { formatIntlRelativeTime } from "@/lib/relativeTime";
 import { Avatar } from "./Avatar";
 import { useUserProfile } from "./hooks";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import type { SocialUser, Post } from "./types";
 
 export function UserProfileModal({
@@ -48,6 +50,13 @@ export function UserProfileModal({
     },
   });
 
+  // isOpen tracks !isLoading (not a hardcoded true): the loading branch below
+  // renders a different subtree with no panelRef attached, and the hook's
+  // focus-capture effect only re-runs when isOpen changes — so it must flip
+  // false→true once the real panel (with the ref) actually mounts.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: !isLoading, onClose, panelRef });
+
   if (isLoading)
     return (
       <div
@@ -79,9 +88,12 @@ export function UserProfileModal({
       onClick={onClose}
     >
       <motion.div
+        ref={panelRef}
+        {...panelProps}
+        aria-labelledby={titleId}
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-card rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-card rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5">
@@ -94,7 +106,7 @@ export function UserProfileModal({
                 ring="ring-primary/40"
               />
               <div>
-                <p className="font-bold text-lg">{profile?.name}</p>
+                <p id={titleId} className="font-bold text-lg">{profile?.name}</p>
                 <p className="text-xs text-muted-foreground">
                   Livello {profile?.level} · {profile?.xp?.toLocaleString()} XP
                 </p>
@@ -102,6 +114,7 @@ export function UserProfileModal({
             </div>
             <button
               onClick={onClose}
+              aria-label={uiText("common.close")}
               className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground"
             >
               <X className="w-5 h-5" />

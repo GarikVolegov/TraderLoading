@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, X, Users, Shield, Ban, Sliders, Inbox } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
+import { useToast } from "@/hooks/use-toast";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { useCommunityBans } from "./hooks";
 import { RoleEditor } from "./RoleEditor";
 import { MemberManager } from "./MemberManager";
@@ -22,6 +24,7 @@ export function CommunitySettingsModal({
   onClose: () => void;
 }) {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const qc = useQueryClient();
   const perms = detail.myPermissions ?? [];
   const can = (p: string) => detail.isOwner || perms.includes(p);
@@ -42,7 +45,7 @@ export function CommunitySettingsModal({
       await apiFetch(`community/${detail.id}/bans/${userId}`, { method: "DELETE" });
       qc.invalidateQueries({ queryKey: ["communityBans", detail.id] });
     } catch (error) {
-      reportClientError(error, { context: "community unban", notify: false });
+      reportClientError(error, { context: "community unban", toast, fallbackMessage: t("errors.mutation.generic") });
     } finally {
       setUnbanning(null);
     }
@@ -56,17 +59,23 @@ export function CommunitySettingsModal({
     { id: "bans", label: t("community.settings.tab.bans"), icon: Ban, show: canBan },
   ];
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose, panelRef });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <motion.div
+        ref={panelRef}
+        {...panelProps}
+        aria-labelledby={titleId}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh]"
+        className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh] focus:outline-none"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xl shrink-0">{detail.iconEmoji}</span>
-            <h2 className="font-bold text-base truncate">{t("community.settings.title")}</h2>
+            <h2 id={titleId} className="font-bold text-base truncate">{t("community.settings.title")}</h2>
           </div>
           <button
             onClick={onClose}

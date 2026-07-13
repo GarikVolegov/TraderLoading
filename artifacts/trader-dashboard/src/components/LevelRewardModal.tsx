@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetProfile } from "@workspace/api-client-react";
 import { X, Trophy, ExternalLink, Play, FileText, Presentation, Sparkles, ChevronRight } from "lucide-react";
 import { getRewardsForMilestone, MILESTONES, type Reward, type RewardType } from "@/lib/rewardsLibrary";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 function getCelebrated(): Set<number> {
   try {
@@ -91,20 +92,26 @@ interface MilestoneModalProps {
 function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
   const { t } = useLanguage();
   const rewards = getRewardsForMilestone(milestone);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose, panelRef });
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <motion.div
+        ref={panelRef}
+        {...panelProps}
+        aria-labelledby={titleId}
         initial={{ opacity: 0, scale: 0.85, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         transition={{ type: "spring", damping: 20, stiffness: 280 }}
-        className="relative bg-card border border-primary/30 rounded-2xl shadow-2xl shadow-primary/10 w-full max-w-lg overflow-hidden"
+        className="relative bg-card border border-primary/30 rounded-2xl shadow-2xl shadow-primary/10 w-full max-w-lg overflow-hidden focus:outline-none"
       >
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/20 to-transparent pointer-events-none" />
 
         <button
           onClick={onClose}
+          aria-label={t("common.close")}
           className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors z-10"
         >
           <X className="w-5 h-5" />
@@ -141,7 +148,7 @@ function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
             <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-1">
               {t("rewards.unlocked_badge")}
             </p>
-            <h2 className="text-2xl font-bold">{t("rewards.milestone_title", { n: String(milestone) })}</h2>
+            <h2 id={titleId} className="text-2xl font-bold">{t("rewards.milestone_title", { n: String(milestone) })}</h2>
             <p className="text-sm text-muted-foreground mt-1">
               {t("rewards.milestone_desc")}
             </p>

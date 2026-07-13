@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { X, ChevronRight, ChevronLeft, SkipForward, Check } from "lucide-react";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { uiText } from "@/contexts/LanguageContext";
 import type { Program, Answers } from "./types";
 import { MORNING_STEPS, EVENING_STEPS } from "./sessionSteps";
 import { EmotionQuizStep } from "./EmotionQuizStep";
@@ -56,6 +58,8 @@ export function SessionModal({
   };
 
   const Icon = step.icon;
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose, panelRef });
 
   // Fire confetti when reaching complete step
   useEffect(() => {
@@ -69,10 +73,13 @@ export function SessionModal({
 
   return (
     <motion.div
+      ref={panelRef}
+      {...panelProps}
+      aria-labelledby={titleId}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] bg-[hsl(224,71%,2%)]/97 backdrop-blur-sm flex flex-col"
+      className="fixed inset-0 z-[200] bg-[hsl(224,71%,2%)]/97 backdrop-blur-sm flex flex-col focus:outline-none"
     >
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border/20 shrink-0">
@@ -95,6 +102,7 @@ export function SessionModal({
 
         <button
           onClick={onClose}
+          aria-label={uiText("common.close")}
           className="w-8 h-8 rounded-full border border-border/30 flex items-center justify-center hover:border-border/70 hover:bg-card/40 transition-all"
         >
           <X className="w-4 h-4 text-muted-foreground/60" />
@@ -124,7 +132,7 @@ export function SessionModal({
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               className="text-center"
             >
-              <h2 className="text-2xl sm:text-3xl font-bold font-mono tracking-tight">{step.title}</h2>
+              <h2 id={titleId} className="text-2xl sm:text-3xl font-bold font-mono tracking-tight">{step.title}</h2>
               <p className="text-sm text-muted-foreground/60 mt-1">{step.subtitle}</p>
             </motion.div>
           </AnimatePresence>
