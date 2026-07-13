@@ -34,7 +34,15 @@ const FEATURE_ITEMS: { key: string; Icon: LucideIcon }[] = [
   { key: "billing.feature.account_sync", Icon: Link2 },
 ];
 
-function PaywallCard({ feature, onUpgrade }: { feature: ProFeature; onUpgrade: () => void }) {
+function PaywallCard({
+  feature,
+  onUpgrade,
+  checkoutAvailable,
+}: {
+  feature: ProFeature;
+  onUpgrade: () => void;
+  checkoutAvailable: boolean;
+}) {
   const { t } = useLanguage();
   const copy = FEATURE_COPY_KEYS[feature];
 
@@ -62,9 +70,13 @@ function PaywallCard({ feature, onUpgrade }: { feature: ProFeature; onUpgrade: (
             <p className="text-xs text-muted-foreground">{t("billing.stripe_note")}</p>
           </div>
           <div className="flex flex-col items-center gap-2">
-            <Button type="button" className="w-full sm:w-auto sm:px-8" onClick={onUpgrade}>
-              {t("billing.upgrade_cta")}
-            </Button>
+            {checkoutAvailable ? (
+              <Button type="button" className="w-full sm:w-auto sm:px-8" onClick={onUpgrade}>
+                {t("billing.upgrade_cta")}
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">{t("billing.checkout_unavailable")}</p>
+            )}
             <Link href="/pro">
               <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
                 {t("billing.discover_cta")}
@@ -121,7 +133,11 @@ export function ProUpgradeGate({
       </div>
       <div className="absolute inset-0 z-10 overflow-y-auto rounded-lg bg-background/40 p-4 backdrop-blur-[1px]">
         <div className="flex min-h-full items-center justify-center py-2">
-          <PaywallCard feature={feature} onUpgrade={() => setCheckoutOpen(true)} />
+          <PaywallCard
+            feature={feature}
+            onUpgrade={() => setCheckoutOpen(true)}
+            checkoutAvailable={billing.data?.checkoutAvailable ?? false}
+          />
         </div>
       </div>
       <ProCheckoutDialog open={checkoutOpen} onOpenChange={setCheckoutOpen} />

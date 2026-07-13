@@ -29,6 +29,12 @@ export function CreatorPayoutSettings() {
     onError: () => toast({ description: t("payout.error"), variant: "destructive" }),
   });
 
+  // Stripe Connect isn't configured at all: onboarding would always 402, so the
+  // card is hidden rather than offering a button that can only fail. Checked
+  // after all hooks (never before a hook call — hook count must stay constant
+  // across renders of the same instance).
+  if (account && !account.available) return null;
+
   const ready = account?.onboarded && account?.payoutsEnabled;
 
   return (

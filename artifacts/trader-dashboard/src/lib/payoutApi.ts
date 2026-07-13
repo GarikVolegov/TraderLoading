@@ -6,6 +6,9 @@ export interface PayoutAccount {
   payoutsEnabled: boolean;
   detailsSubmitted: boolean;
   status: string;
+  // Whether Stripe Connect is configured at all (STRIPE_SECRET_KEY present).
+  // When false, onboarding always 402s — the FE hides the card instead.
+  available: boolean;
 }
 
 export const payoutAccountKey = () => ["payout/account"] as const;

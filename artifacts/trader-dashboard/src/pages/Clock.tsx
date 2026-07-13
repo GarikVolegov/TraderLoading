@@ -108,8 +108,9 @@ export default function Clock() {
 
         {sessions.length === 0 ? (
           <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              {uiText("auto.ui.3d94117b41")}
+            <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
+              <Hourglass className="h-8 w-8 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">{uiText("auto.ui.3d94117b41")}</p>
             </CardContent>
           </Card>
         ) : (

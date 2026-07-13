@@ -56,6 +56,11 @@ export function SentimentWidget() {
         ? "text-destructive"
         : "text-warning";
 
+  // Without MYFXBOOK_EMAIL/PASSWORD the backend serves static demo numbers —
+  // showing them as if they were real sentiment data would be misleading, so
+  // hide the widget entirely rather than label it as a demo.
+  if (data && !data.hasCredentials) return null;
+
   return (
     <Card className="relative overflow-hidden flex flex-col bg-card/60 backdrop-blur-sm border-border/30">
       <WidgetHeader
@@ -147,12 +152,6 @@ export function SentimentWidget() {
                 );
               })}
             </div>
-
-            {!data.hasCredentials && (
-              <p className="text-[9px] text-warning/70 text-center">
-                Dati dimostrativi · configura MYFXBOOK_EMAIL/PASSWORD
-              </p>
-            )}
           </motion.div>
         )}
       </CardContent>

@@ -150,8 +150,16 @@ export function claimTorneiCertificate(
   );
 }
 
-export function fetchTorneiWallet(options?: RelativeApiOptions): Promise<{ walletAddress: string | null }> {
-  return apiJSON<{ walletAddress: string | null }>("tornei/wallet", undefined, options);
+export interface TorneiWallet {
+  walletAddress: string | null;
+  // Whether the on-chain mint is configured server-side (TORNEI_MINT_*). When
+  // false, claiming a certificate always 503s — the FE hides the claim CTA
+  // instead of promising an NFT that can never mint.
+  mintEnabled: boolean;
+}
+
+export function fetchTorneiWallet(options?: RelativeApiOptions): Promise<TorneiWallet> {
+  return apiJSON<TorneiWallet>("tornei/wallet", undefined, options);
 }
 
 export async function saveTorneiWallet(

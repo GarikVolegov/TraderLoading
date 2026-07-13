@@ -37,6 +37,9 @@ export default function Tornei() {
 
   const walletQuery = useQuery({ queryKey: torneiWalletKey(), queryFn: () => fetchTorneiWallet() });
   const hasWallet = Boolean(walletQuery.data?.walletAddress);
+  // Default to false while loading: better to briefly hide the claim CTA than
+  // flash it and immediately retract it once we know minting isn't configured.
+  const mintEnabled = walletQuery.data?.mintEnabled ?? false;
 
   const currentQuery = useQuery({ queryKey: torneiCurrentKey(), queryFn: () => fetchTorneiCurrent() });
   const standingsQuery = useQuery({
@@ -69,7 +72,13 @@ export default function Tornei() {
       if (res.certificate) setSelectedCert(res.certificate);
       qc.invalidateQueries({ queryKey: torneiMeKey() });
     },
-    onError: () => toast({ title: t("tornei.cert.failed"), variant: "destructive" }),
+    onError: (error) => {
+      const title =
+        (error as { status?: number })?.status === 503
+          ? t("tornei.cert.mintSoon")
+          : t("tornei.cert.failed");
+      toast({ title, variant: "destructive" });
+    },
   });
 
   const current = currentQuery.data;
@@ -133,6 +142,7 @@ export default function Tornei() {
           cert={selectedCert}
           claiming={claimMutation.isPending}
           hasWallet={hasWallet}
+          mintEnabled={mintEnabled}
           onClaim={(id) => claimMutation.mutate(id)}
           onClose={() => setSelectedCert(null)}
         />

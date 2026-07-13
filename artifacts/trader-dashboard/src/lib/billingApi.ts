@@ -14,6 +14,10 @@ export interface BillingStatus {
   canCancel?: boolean;
   canResume?: boolean;
   canViewInvoices?: boolean;
+  // Whether POST /billing/checkout-session can succeed (Stripe env configured
+  // server-side). When false, upgrade CTAs show an honest notice instead of a
+  // dialog that always 503s.
+  checkoutAvailable?: boolean;
 }
 
 export interface CheckoutSessionResponse {

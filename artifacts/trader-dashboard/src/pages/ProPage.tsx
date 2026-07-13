@@ -69,6 +69,13 @@ export default function ProPage() {
   const localeCode = language === "en" ? "en-US" : language;
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const isPro = billing.data?.pro === true;
+  // Fail open (unlike ProUpgradeGate, which already gates on billing.isPending
+  // and only needs a default for the rare error case): this page has no loading
+  // skeleton, so a fail-closed default would flash "unavailable" to EVERY user
+  // on EVERY visit during the normal (Stripe configured) case, which is worse
+  // than the narrow click-race window this guards — and a click in that window
+  // still lands on ProCheckoutDialog's existing graceful 503 retry UI, not a crash.
+  const checkoutAvailable = billing.data?.checkoutAvailable ?? true;
   const renewalDate = formatDate(billing.data?.currentPeriodEnd, localeCode, t("billing.date_unavailable"));
 
   return (
@@ -137,15 +144,19 @@ export default function ProPage() {
                   <span className="text-4xl font-extrabold">{t("billing.price_amount")}</span>
                   <span className="text-muted-foreground">{t("billing.per_month_suffix")}</span>
                 </p>
-                <Button
-                  type="button"
-                  size="lg"
-                  className="px-10 shadow-[0_0_30px_rgba(34,197,94,0.3)] transition-shadow hover:shadow-[0_0_40px_rgba(34,197,94,0.45)]"
-                  onClick={() => setCheckoutOpen(true)}
-                >
-                  <Crown className="mr-2 h-4 w-4" />
-                  {t("billing.upgrade_cta")}
-                </Button>
+                {checkoutAvailable ? (
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="px-10 shadow-[0_0_30px_rgba(34,197,94,0.3)] transition-shadow hover:shadow-[0_0_40px_rgba(34,197,94,0.45)]"
+                    onClick={() => setCheckoutOpen(true)}
+                  >
+                    <Crown className="mr-2 h-4 w-4" />
+                    {t("billing.upgrade_cta")}
+                  </Button>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("billing.checkout_unavailable")}</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {t("billing.pro_page.stripe_secure")}
                 </p>
@@ -241,10 +252,13 @@ export default function ProPage() {
                       </li>
                     ))}
                   </ul>
-                  {!isPro && (
+                  {!isPro && checkoutAvailable && (
                     <Button type="button" className="w-full" onClick={() => setCheckoutOpen(true)}>
                       {t("billing.upgrade_cta")}
                     </Button>
+                  )}
+                  {!isPro && !checkoutAvailable && (
+                    <p className="text-center text-xs text-muted-foreground">{t("billing.checkout_unavailable")}</p>
                   )}
                 </CardContent>
               </Card>

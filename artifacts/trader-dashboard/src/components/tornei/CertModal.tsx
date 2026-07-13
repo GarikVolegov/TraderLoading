@@ -7,6 +7,7 @@ interface CertModalProps {
   cert: TorneiCertificate | null;
   claiming: boolean;
   hasWallet: boolean;
+  mintEnabled: boolean;
   onClaim: (id: number) => void;
   onClose: () => void;
 }
@@ -18,7 +19,7 @@ const STATUS_KEY: Record<string, string> = {
   failed: "tornei.cert.failed",
 };
 
-export function CertModal({ cert, claiming, hasWallet, onClaim, onClose }: CertModalProps) {
+export function CertModal({ cert, claiming, hasWallet, mintEnabled, onClaim, onClose }: CertModalProps) {
   const { t } = useLanguage();
   if (!cert) return null;
   const tier = cert.tier as CertTier;
@@ -96,21 +97,29 @@ export function CertModal({ cert, claiming, hasWallet, onClaim, onClose }: CertM
 
         {cert.mintStatus !== "minted" && (
           <>
-            {!hasWallet && (
+            {!mintEnabled ? (
               <p style={{ margin: 0, textAlign: "center", fontSize: 12, color: "var(--tl-fg-muted)" }}>
-                {t("tornei.cert.noWallet")}
+                {t("tornei.cert.mintSoon")}
               </p>
+            ) : (
+              <>
+                {!hasWallet && (
+                  <p style={{ margin: 0, textAlign: "center", fontSize: 12, color: "var(--tl-fg-muted)" }}>
+                    {t("tornei.cert.noWallet")}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="trn-cta"
+                  disabled={claiming || !hasWallet || cert.mintStatus === "pending"}
+                  onClick={() => onClaim(cert.id)}
+                  style={{ alignSelf: "center" }}
+                >
+                  {claiming ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {t("tornei.cert.claim")}
+                </button>
+              </>
             )}
-            <button
-              type="button"
-              className="trn-cta"
-              disabled={claiming || !hasWallet || cert.mintStatus === "pending"}
-              onClick={() => onClaim(cert.id)}
-              style={{ alignSelf: "center" }}
-            >
-              {claiming ? <Loader2 size={16} className="animate-spin" /> : null}
-              {t("tornei.cert.claim")}
-            </button>
           </>
         )}
       </div>
