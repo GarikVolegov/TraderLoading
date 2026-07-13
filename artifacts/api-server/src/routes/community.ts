@@ -165,7 +165,7 @@ router.post("/community", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const { name, description, iconEmoji } = req.body;
+    const { name, description, iconEmoji, isPublic } = req.body;
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       res.status(400).json({ error: "Nome richiesto" });
       return;
@@ -182,6 +182,9 @@ router.post("/community", async (req, res) => {
         description: (description ?? "").slice(0, 200),
         iconEmoji: iconEmoji ?? "🏛️",
         creatorId: userId,
+        // Defaults to true (public) via the schema when omitted — private
+        // communities are owner-approved-join, discoverable-but-locked.
+        ...(typeof isPublic === "boolean" ? { isPublic } : {}),
       })
       .returning();
 
