@@ -38,13 +38,15 @@ const ALL_BT_PAIRS = [
   "BTC/USD", "ETH/USD",
 ];
 
-const TIMEFRAMES = ["M5", "M15", "M30", "H1", "H4", "D1", "W1"];
+const TIMEFRAMES = ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"];
 
 function NewSessionForm({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { selectedPairs: userPairs } = useBackground();
-  const createMutation = useCreateBacktestSession();
+  // The create handler's own catch already shows its own toast below — opt
+  // out of App.tsx's global mutation-error toast to avoid a double toast.
+  const createMutation = useCreateBacktestSession({ mutation: { meta: { suppressGlobalError: true } } });
   const [name, setName] = useState("");
   const pairOptions = useMemo(() => {
     if (userPairs.length === 0) return ALL_BT_PAIRS;
@@ -151,7 +153,9 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
   const qc = useQueryClient();
   const dateLocale = useDateLocale();
   const { data: trades, isLoading } = useGetBacktestTrades(session.id);
-  const createTrade = useCreateBacktestTrade();
+  // handleAddTrade's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const createTrade = useCreateBacktestTrade({ mutation: { meta: { suppressGlobalError: true } } });
   const deleteTrade = useDeleteBacktestTrade();
   const [mode, setMode] = useState<"chart" | "manual">("chart");
   const [, navigate] = useLocation();

@@ -22,8 +22,11 @@ export default function Checklist() {
   const qc = useQueryClient();
   const [newText, setNewText] = useState("");
   const { data: items, isLoading } = useGetChecklist();
-  const createMutation = useCreateChecklistItem();
-  const deleteMutation = useDeleteChecklistItem();
+  // Each handler's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const suppress = { mutation: { meta: { suppressGlobalError: true } } };
+  const createMutation = useCreateChecklistItem(suppress);
+  const deleteMutation = useDeleteChecklistItem(suppress);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
 

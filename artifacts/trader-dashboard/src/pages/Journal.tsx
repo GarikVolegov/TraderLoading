@@ -138,7 +138,9 @@ function TradesTab() {
   const { data: entries, isLoading, isError, refetch } = useGetJournalEntries({
     query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 30_000 },
   });
-  const deleteMutation = useDeleteJournalEntry();
+  // handleDelete's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const deleteMutation = useDeleteJournalEntry({ mutation: { meta: { suppressGlobalError: true } } });
 
   // Deep-link dalla command palette: /journal?new=1 apre subito il form nuovo trade.
   useEffect(() => {
@@ -314,7 +316,10 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { data: all, isLoading } = useGetIdeas();
-  const createMutation = useCreateIdea();
+  // handleAdd's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast. update/delete
+  // below have no local handling, so they correctly keep the global fallback.
+  const createMutation = useCreateIdea({ mutation: { meta: { suppressGlobalError: true } } });
   const updateMutation = useUpdateIdea();
   const deleteMutation = useDeleteIdea();
   const invalidate = () => qc.invalidateQueries({ queryKey: getGetIdeasQueryKey() });

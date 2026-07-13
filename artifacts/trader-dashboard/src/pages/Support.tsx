@@ -45,7 +45,9 @@ function NewTicketForm() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const createTicket = useCreateSupportTicket();
+  // submit's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const createTicket = useCreateSupportTicket({ mutation: { meta: { suppressGlobalError: true } } });
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
@@ -174,7 +176,9 @@ function TicketThread({ id }: { id: number }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data, isLoading } = useGetSupportTicketThread(id);
-  const sendMessage = useCreateSupportTicketMessage();
+  // The reply handler's own catch already shows its own toast below — opt
+  // out of App.tsx's global mutation-error toast to avoid a double toast.
+  const sendMessage = useCreateSupportTicketMessage({ mutation: { meta: { suppressGlobalError: true } } });
   const [reply, setReply] = useState("");
 
   const submit = async () => {

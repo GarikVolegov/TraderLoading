@@ -27,7 +27,10 @@ function TerminalWithPersistence({ session, onExit }: {
   onExit: () => void;
 }) {
   const qc = useQueryClient();
-  const createTrade = useCreateBacktestTrade();
+  // persistTrade's catch is deliberately silent (must never interrupt the
+  // replay; the trade stays local and is retried later) — opt out of App.tsx's
+  // global mutation-error toast to respect that design.
+  const createTrade = useCreateBacktestTrade({ mutation: { meta: { suppressGlobalError: true } } });
   const sessionKey = `backtest-session-${session.id}`;
   const savedIdsKey = useMemo(() => createReplaySavedTradeIdsStorageKey(sessionKey), [sessionKey]);
   const savedIdsRef = useRef<Set<number> | null>(null);

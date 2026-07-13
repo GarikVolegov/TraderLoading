@@ -46,7 +46,9 @@ export function SessionCheckinModal() {
   const { tradingSessions } = useBackground();
   const { data: settings } = useGetUserSettings();
   const { data: ideas } = useGetIdeas();
-  const createCheckin = useCreateCheckin();
+  // handleSubmit's own catch already shows a "checkin.error" toast below —
+  // opt out of App.tsx's global mutation-error toast to avoid a double toast.
+  const createCheckin = useCreateCheckin({ mutation: { meta: { suppressGlobalError: true } } });
   const { toast } = useToast();
   const { t } = useLanguage();
 
