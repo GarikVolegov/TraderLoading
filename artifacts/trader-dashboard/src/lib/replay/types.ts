@@ -61,6 +61,10 @@ export interface ClosedTrade {
   maeR?: number | null;
   /** Max favorable excursion in R (positive magnitude), null when unsized. */
   mfeR?: number | null;
+  /** Free-form setup tags the user attaches after the fact (journal review). */
+  tags?: string[];
+  /** Free-form note for the trade. */
+  note?: string;
 }
 
 export type RiskMode = "percent" | "fixed";

@@ -422,6 +422,10 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     setTrades((old) => old.filter((trade) => trade.id !== id));
   }, []);
 
+  const setTradeTags = useCallback((id: number, tags: string[]) => {
+    setTrades((old) => old.map((trade) => (trade.id === id ? { ...trade, tags } : trade)));
+  }, []);
+
   // ── persistence ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined" || window_.loading || !cursorReady) return;
@@ -521,6 +525,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     closeMarket,
     updatePositionLevels,
     deleteTrade,
+    setTradeTags,
   };
 }
 

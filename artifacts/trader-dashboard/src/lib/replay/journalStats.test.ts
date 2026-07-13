@@ -92,3 +92,36 @@ console.log("journalStats checks passed");
   assert.equal(tuesday?.netR, 0.5);
   assert.equal(buckets.byHour.reduce((s, b) => s + b.count, 0), 3);
 }
+
+// ── tag collection + filtering + per-tag stats ──────────────────────────────
+{
+  const { collectTags, filterTradesByTags, statsByTag } = await import("./journalStats");
+  const T = (id: number, tags: string[] | undefined, r: number) => ({
+    ...trade({ pips: r * 10, profit: r * 50, r, id }),
+    tags,
+  });
+  const list = [
+    T(1, ["breakout", "london"], 2),
+    T(2, ["breakout"], -1),
+    T(3, ["reversal"], 1),
+    T(4, undefined, 0.5),
+    T(5, ["breakout", "reversal"], -1),
+  ] as never[];
+
+  // collectTags: unique, sorted, ignores empty
+  assert.deepEqual(collectTags(list), ["breakout", "london", "reversal"]);
+  assert.deepEqual(collectTags([]), []);
+
+  // filter: OR semantics; empty selection = all
+  assert.deepEqual(filterTradesByTags(list, []).map((t) => t.id), [1, 2, 3, 4, 5]);
+  assert.deepEqual(filterTradesByTags(list, ["reversal"]).map((t) => t.id), [3, 5]);
+  assert.deepEqual(filterTradesByTags(list, ["london", "reversal"]).map((t) => t.id), [1, 3, 5]);
+  assert.deepEqual(filterTradesByTags(list, ["missing"]).map((t) => t.id), []);
+
+  // per-tag stats: count + net R, sorted by count desc
+  const byTag = statsByTag(list);
+  assert.deepEqual(byTag[0], { tag: "breakout", count: 3, netR: 0 }); // 2 − 1 − 1
+  const reversal = byTag.find((s) => s.tag === "reversal");
+  assert.deepEqual(reversal, { tag: "reversal", count: 2, netR: 0 }); // 1 − 1
+  assert.equal(byTag.find((s) => s.tag === "london")?.count, 1);
+}

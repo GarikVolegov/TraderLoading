@@ -68,6 +68,47 @@ export function computeJournalStats(trades: ClosedTrade[]): JournalStats {
   };
 }
 
+/** All distinct tags across the trades, unique and sorted, empties ignored. */
+export function collectTags(trades: ClosedTrade[]): string[] {
+  const set = new Set<string>();
+  for (const trade of trades) {
+    for (const tag of trade.tags ?? []) {
+      const trimmed = tag.trim();
+      if (trimmed !== "") set.add(trimmed);
+    }
+  }
+  return [...set].sort();
+}
+
+/** Trades carrying at least one of the selected tags (OR); empty selection = all. */
+export function filterTradesByTags(trades: ClosedTrade[], selected: string[]): ClosedTrade[] {
+  if (selected.length === 0) return trades;
+  const wanted = new Set(selected);
+  return trades.filter((trade) => (trade.tags ?? []).some((tag) => wanted.has(tag)));
+}
+
+export interface TagStat {
+  tag: string;
+  count: number;
+  netR: number;
+}
+
+/** Count + net R per tag, sorted by count desc then tag asc. */
+export function statsByTag(trades: ClosedTrade[]): TagStat[] {
+  const map = new Map<string, TagStat>();
+  for (const trade of trades) {
+    for (const tag of trade.tags ?? []) {
+      const trimmed = tag.trim();
+      if (trimmed === "") continue;
+      const entry = map.get(trimmed) ?? { tag: trimmed, count: 0, netR: 0 };
+      entry.count += 1;
+      entry.netR = Math.round((entry.netR + (trade.rMultiple ?? 0)) * 100) / 100;
+      map.set(trimmed, entry);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+}
+
 export interface TimeBucket {
   /** Hour 0–23 (UTC) or weekday 0–6 (0 = Sunday, UTC). */
   bucket: number;

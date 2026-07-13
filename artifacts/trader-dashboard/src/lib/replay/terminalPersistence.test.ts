@@ -25,6 +25,8 @@ const trade: ClosedTrade = {
   rMultiple: 1,
   exitReason: "manual",
   result: "win",
+  tags: ["breakout", "london"],
+  note: "clean retest",
 };
 
 const position: OpenPosition = {

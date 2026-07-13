@@ -1,17 +1,95 @@
 // ─── Journal panel ───────────────────────────────────────────────────────────
 // Trade count, Win Rate / Net R / Expectancy tiles, the W/BE/L split bar and
 // the scrollable trade list (direction, entry→exit, exit reason, P&L, R).
-import { useMemo } from "react";
-import { BookOpen, Download, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { useMemo, useState } from "react";
+import { BookOpen, Download, Plus, Trash2, TrendingDown, TrendingUp, X } from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { monteCarloBands } from "@/lib/equityProjection";
-import { computeTimeBuckets, type TimeBucket } from "@/lib/replay/journalStats";
+import {
+  collectTags,
+  computeTimeBuckets,
+  filterTradesByTags,
+  type TimeBucket,
+} from "@/lib/replay/journalStats";
 import type { ClosedTrade } from "@/lib/replay/types";
 import { formatPrice, formatSignedMoney } from "./format";
 import type { ReplayEngine } from "./useReplayEngine";
 
+/** Inline tag editor for a journal row: chips + add-input. */
+function TradeTags({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
+  const [adding, setAdding] = useState(false);
+  const [value, setValue] = useState("");
+
+  const commit = () => {
+    const trimmed = value.trim();
+    if (trimmed !== "" && !tags.includes(trimmed)) onChange([...tags, trimmed]);
+    setValue("");
+    setAdding(false);
+  };
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center", width: "100%", marginTop: 4 }}>
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 3,
+            fontSize: 9.5,
+            fontFamily: "var(--btm-mono)",
+            padding: "1px 6px",
+            borderRadius: 5,
+            background: "hsl(var(--accent-jade) / 0.14)",
+            color: "hsl(var(--accent-jade))",
+          }}
+        >
+          {tag}
+          <button
+            type="button"
+            onClick={() => onChange(tags.filter((t) => t !== tag))}
+            style={{ border: "none", background: "transparent", color: "inherit", cursor: "pointer", padding: 0, display: "flex" }}
+            aria-label={uiText("backtest_terminal.tag_remove")}
+          >
+            <X size={9} />
+          </button>
+        </span>
+      ))}
+      {adding ? (
+        <input
+          className="btm-input"
+          style={{ height: 22, width: 90, fontSize: 10, padding: "0 6px" }}
+          autoFocus
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") commit();
+            if (event.key === "Escape") {
+              setValue("");
+              setAdding(false);
+            }
+          }}
+          aria-label={uiText("backtest_terminal.tag_add")}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="btm-tag"
+          style={{ display: "inline-flex", alignItems: "center", gap: 2, cursor: "pointer", border: "none" }}
+          title={uiText("backtest_terminal.tag_add")}
+          aria-label={uiText("backtest_terminal.tag_add")}
+        >
+          <Plus size={9} /> tag
+        </button>
+      )}
+    </div>
+  );
+}
+
 function tradesToCsv(trades: ClosedTrade[], symbol: string): string {
-  const header = "id,symbol,direction,entryTime,exitTime,entryPrice,exitPrice,stopLoss,takeProfit,lots,pips,profit,rMultiple,maeR,mfeR,exitReason,result";
+  const header = "id,symbol,direction,entryTime,exitTime,entryPrice,exitPrice,stopLoss,takeProfit,lots,pips,profit,rMultiple,maeR,mfeR,exitReason,result,tags";
   const rows = [...trades]
     .sort((a, b) => a.exitTime - b.exitTime)
     .map((trade) =>
@@ -33,6 +111,7 @@ function tradesToCsv(trades: ClosedTrade[], symbol: string): string {
         trade.mfeR ?? "",
         trade.exitReason,
         trade.result,
+        (trade.tags ?? []).join("|"),
       ].join(","),
     );
   return [header, ...rows].join("\n");
@@ -77,6 +156,12 @@ const RESULT_COLOR: Record<ClosedTrade["result"], string> = {
 export function JournalPanel({ engine }: { engine: ReplayEngine }) {
   const { language } = useLanguage();
   const { stats, trades } = engine;
+
+  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const allTags = useMemo(() => collectTags(trades), [trades]);
+  // Keep the filter valid as tags are removed from the underlying trades.
+  const effectiveTags = useMemo(() => activeTags.filter((tag) => allTags.includes(tag)), [activeTags, allTags]);
+  const visibleTrades = useMemo(() => filterTradesByTags(trades, effectiveTags), [trades, effectiveTags]);
 
   const buckets = useMemo(() => computeTimeBuckets(trades), [trades]);
   const projection = useMemo(() => {
@@ -198,11 +283,31 @@ export function JournalPanel({ engine }: { engine: ReplayEngine }) {
             </div>
           )}
 
+          {allTags.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 9 }}>
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  className="btm-indchip"
+                  data-on={effectiveTags.includes(tag)}
+                  onClick={() =>
+                    setActiveTags((current) =>
+                      current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag],
+                    )
+                  }
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="btm-tradelist">
-            {trades.map((trade) => {
+            {visibleTrades.map((trade) => {
               const directionColor = trade.direction === "buy" ? RESULT_COLOR.win : RESULT_COLOR.loss;
               return (
-                <div key={trade.id} className="btm-traderow">
+                <div key={trade.id} className="btm-traderow" style={{ flexWrap: "wrap" }}>
                   <div
                     className="btm-traderow-icon"
                     style={{
@@ -254,6 +359,10 @@ export function JournalPanel({ engine }: { engine: ReplayEngine }) {
                   >
                     <Trash2 size={12} />
                   </button>
+                  <TradeTags
+                    tags={trade.tags ?? []}
+                    onChange={(tags) => engine.setTradeTags(trade.id, tags)}
+                  />
                 </div>
               );
             })}
