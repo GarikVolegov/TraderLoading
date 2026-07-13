@@ -132,19 +132,22 @@ function BreathingExercise() {
   );
 }
 
-// Stable ids go to storage; labels are display-only.
-const MOODS: { id: string; emoji: string; label: string }[] = [
-  { id: "tense", emoji: "😣", label: "Teso" },
-  { id: "neutral", emoji: "😐", label: "Neutro" },
-  { id: "calm", emoji: "🙂", label: "Calmo" },
-  { id: "charged", emoji: "😄", label: "Carico" },
-  { id: "tired", emoji: "😴", label: "Stanco" },
+// Stable ids go to storage; labels are display-only and localized inside the
+// component (built once per render, not at module scope — uiText() only
+// reflects the active language at the moment it's called).
+const MOOD_META: { id: string; emoji: string; labelKey: string }[] = [
+  { id: "tense", emoji: "😣", labelKey: "mood.tense" },
+  { id: "neutral", emoji: "😐", labelKey: "mood.neutral" },
+  { id: "calm", emoji: "🙂", labelKey: "mood.calm" },
+  { id: "charged", emoji: "😄", labelKey: "mood.charged" },
+  { id: "tired", emoji: "😴", labelKey: "mood.tired" },
 ];
 
 function MoodCheckIn() {
   // Persisted per-day: reopening the page shows today's check-in instead of
   // silently forgetting it (the "recorded" copy must be truthful).
   const [mood, setMood] = useState<string | null>(() => readMoodForDate(new Date()));
+  const MOODS = MOOD_META.map((m) => ({ ...m, label: uiText(m.labelKey) }));
 
   const selectMood = (id: string) => {
     setMood(id);

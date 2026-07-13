@@ -66,6 +66,14 @@ export default function Tornei() {
     onError: () => toast({ title: t("tornei.enroll.error.generic"), variant: "destructive" }),
   });
 
+  // enrollTornei's `consent` param is recorded server-side as the user's
+  // agreement to the contest rules + public pseudonymous leaderboard — it
+  // must reflect an actual confirmation, not be hardcoded true.
+  const handleEnroll = () => {
+    if (!window.confirm(t("tornei.consent"))) return;
+    enrollMutation.mutate();
+  };
+
   const claimMutation = useMutation({
     mutationFn: (id: number) => claimTorneiCertificate(id),
     onSuccess: (res) => {
@@ -125,14 +133,14 @@ export default function Tornei() {
               metric={metric}
               onMetric={setMetric}
               enrolling={enrollMutation.isPending}
-              onEnroll={() => enrollMutation.mutate()}
+              onEnroll={handleEnroll}
             />
           ) : (
             <PercorsoView
               me={meQuery.data}
               hall={hallQuery.data?.entries ?? []}
               enrolling={enrollMutation.isPending}
-              onEnroll={() => enrollMutation.mutate()}
+              onEnroll={handleEnroll}
               onCertClick={setSelectedCert}
             />
           )}
