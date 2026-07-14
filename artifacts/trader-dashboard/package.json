@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0 --strictPort",
-    "build": "vite build --config vite.config.ts && pnpm run build:sitemap && pnpm run prerender",
+    "build": "vite build --config vite.config.ts && pnpm run build:sitemap && pnpm run prerender-conditional",
     "build:sitemap": "tsx scripts/build-sitemap.ts",
     "prerender": "tsx scripts/prerender.ts",
+    "prerender-conditional": "tsx scripts/prerender-conditional.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
