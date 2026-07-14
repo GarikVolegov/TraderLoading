@@ -369,6 +369,8 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
   });
   const Icon = type === "idea" ? Lightbulb : Target;
   const placeholder = type === "idea" ? t("journal.add_idea") : t("journal.add_goal");
+  const listTitle = type === "idea" ? t("journal.ideas.list_title") : t("journal.goals.list_title");
+  const listSubtitle = type === "idea" ? t("journal.ideas.list_subtitle") : t("journal.goals.list_subtitle");
 
   const CADENCE_LABELS: Record<string, string> = {
     daily: t("journal.cadence.daily"),
@@ -601,7 +603,17 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Icon className="h-4 w-4 text-primary" />
+              <div>
+                <p className="text-sm font-semibold">{listTitle}</p>
+                <p className="text-xs text-muted-foreground">{listSubtitle}</p>
+              </div>
+            </div>
+            <Badge variant="secondary">{items.length}</Badge>
+          </CardHeader>
           <AnimatePresence>
             {items.map((item, idx) => (
               <motion.div
@@ -610,7 +622,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ delay: idx * 0.04 }}
-                className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-4 flex items-start gap-4 group hover:border-primary/40 transition-colors"
+                className="group flex items-start gap-4 border-t border-border/20 px-4 py-3 transition-colors hover:bg-secondary/20"
               >
                 <button
                   onClick={() => handleToggle(item.id, item.content, item.completed)}
@@ -756,6 +768,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                     variant="ghost"
                     size="sm"
                     className="opacity-0 group-hover:opacity-100 h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                    aria-label={uiText("common.delete")}
                     onClick={() => handleDelete(item.id)}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -764,7 +777,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
               </motion.div>
             ))}
           </AnimatePresence>
-        </div>
+        </Card>
       )}
     </div>
   );
