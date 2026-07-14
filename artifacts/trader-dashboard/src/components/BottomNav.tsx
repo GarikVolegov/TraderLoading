@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useRoute, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, BookOpen, FlaskConical, Archive, Users,
+  LayoutDashboard, BookOpen, FlaskConical, Archive, CalendarClock, Users,
   ArrowLeft, MoreHorizontal,
-  Library, Sunrise, Settings, Rocket, Clock, Newspaper,
+  Settings, Rocket,
 } from "lucide-react";
 import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -17,27 +17,20 @@ const ROOT_ITEMS = [
   { href: "/",         icon: LayoutDashboard, labelKey: "nav.home",      isChat: false },
   { href: "/journal",  icon: BookOpen,        labelKey: "nav.journal",   isChat: false },
   { href: "/backtest", icon: FlaskConical,    labelKey: "nav.backtest",  isChat: false },
-  { href: "/routine",  icon: Sunrise,         labelKey: "nav.routine",   isChat: false },
+  { href: "/routine",  icon: CalendarClock,   labelKey: "nav.routine",   isChat: false },
   { href: "/wiki",     icon: Archive,         labelKey: "nav.wiki",      isChat: false },
   { href: "/chat",     icon: Users,           labelKey: "nav.community", isChat: true  },
 ] as const;
 
 // Desktop-only secondary group (Archivio lives in the root group now).
 const SECONDARY_ITEMS = [
-  { href: "/library",  icon: Library,   labelKey: "nav.library"  },
-  { href: "/clock",    icon: Clock,     labelKey: "nav.clock"    },
-  { href: "/news",     icon: Newspaper, labelKey: "nav.news"     },
   { href: "/settings", icon: Settings,  labelKey: "nav.settings" },
 ] as const;
 
 // Mobile has no persistent sidebar, so these three would otherwise be
 // reachable only via the desktop-only Cmd+K palette. Settings stays out of
 // this list — it already has its own shortcut via the TopNav avatar on mobile.
-const ROOT_OVERFLOW_ITEMS = [
-  { href: "/library", icon: Library,   labelKey: "nav.library" },
-  { href: "/clock",   icon: Clock,     labelKey: "nav.clock"   },
-  { href: "/news",    icon: Newspaper, labelKey: "nav.news"    },
-] as const;
+const ROOT_OVERFLOW_ITEMS = [] as const;
 
 function NavItem({
   href,

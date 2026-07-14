@@ -330,12 +330,20 @@ function releaseWatchlistWarmSlot(): void {
   watchlistWarmWaiters.shift()?.();
 }
 
+import { emitWatchlistUpdate } from "../services/watchlist/watchlistHub.js";
+
 async function refreshWatchlistPair(pair: string): Promise<void> {
   const { candles } = await getCandles(pair, "D1");
   const item = buildWatchlistItem(pair, candles, true);
   watchlistLastGood.set(pair, item);
   await setJsonCache(watchlistFreshKey(pair), item, WATCHLIST_FRESH_TTL_SECONDS);
   await setJsonCache(watchlistStaleKey(pair), item, WATCHLIST_STALE_TTL_SECONDS);
+  // Broadcast to any in-process WS subscribers
+  try {
+    emitWatchlistUpdate(pair, item);
+  } catch {
+    // ignore emitter errors
+  }
 }
 
 function ensureWatchlistWarm(pair: string): Promise<void> {

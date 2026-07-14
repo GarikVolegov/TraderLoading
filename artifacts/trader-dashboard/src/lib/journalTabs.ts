@@ -1,16 +1,14 @@
 export type JournalTab =
   | "panoramica"
   | "trades"
-  | "idee"
-  | "obiettivi"
+  | "idee-obiettivi"
   | "recap-settimanale"
   | "recap-mensile";
 
 const JOURNAL_TABS: readonly JournalTab[] = [
   "panoramica",
   "trades",
-  "idee",
-  "obiettivi",
+  "idee-obiettivi",
   "recap-settimanale",
   "recap-mensile",
 ];

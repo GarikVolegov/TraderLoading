@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { Activity, RefreshCw, Settings } from "lucide-react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
 import { Sparkline } from "./ui/Sparkline";
@@ -129,6 +129,48 @@ export function TradingViewWatchlistWidget() {
     () => new Map((data?.items ?? []).map((item) => [item.pair, item])),
     [data],
   );
+
+  const queryClient = useQueryClient();
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    // connect websocket and subscribe to pairs
+    try {
+      const url = (import.meta.env.VITE_API_BASE ? new URL(import.meta.env.VITE_API_BASE) : new URL(window.location.origin));
+      url.pathname = "/api/tools/watchlist/ws";
+      const ws = new WebSocket(url.toString().replace(/^http/, "ws"));
+      wsRef.current = ws;
+      ws.addEventListener("open", () => {
+        ws.send(JSON.stringify({ type: "subscribe", pairs }));
+      });
+      ws.addEventListener("message", (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg && msg.type === "update" && typeof msg.pair === "string") {
+            // update react-query cache for the current pairsKey
+            queryClient.setQueryData(["tools-watchlist", pairsKey], (old: any) => {
+              const items = (old?.items ?? []).slice();
+              const idx = items.findIndex((it: any) => it.pair === msg.pair);
+              if (idx >= 0) {
+                items[idx] = msg.item;
+              } else {
+                items.push(msg.item);
+              }
+              return { items };
+            });
+          }
+        } catch {
+          // ignore
+        }
+      });
+      return () => {
+        try { ws.close(); } catch {}
+        wsRef.current = null;
+      };
+    } catch {
+      return;
+    }
+  }, [pairsKey, pairs.join(",")]);
 
   // Only claim "Live" when the newest D1 bar is actually recent; otherwise the feed
   // is delayed (e.g. Dukascopy lags ~1 day) and a pulsing badge would be dishonest.

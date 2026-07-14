@@ -1156,8 +1156,12 @@ export default function Journal() {
           {tab === "trades" && <TradesTab />}
           {tab === "recap-settimanale" && <RecapTab mode="weekly" />}
           {tab === "recap-mensile" && <RecapTab mode="four_week" />}
-          {tab === "idee" && <IdeasTab type="idea" />}
-          {tab === "obiettivi" && <IdeasTab type="goal" />}
+          {tab === "idee-obiettivi" && (
+            <div className="space-y-6">
+              <IdeasTab type="idea" />
+              <IdeasTab type="goal" />
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
     </PageLayout>

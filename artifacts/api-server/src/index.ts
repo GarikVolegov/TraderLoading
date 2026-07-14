@@ -12,6 +12,7 @@ import { newsHubRuntime } from "./services/newsHub/runtimeSingleton.js";
 import { attachNewsHubWebSocket } from "./services/newsHub/socketServer.js";
 import { attachNewsProviderSockets } from "./services/newsHub/providerSockets.js";
 import { attachSocialHubWebSocket } from "./services/socialHub/socketServer.js";
+import { attachWatchlistWebSocket } from "./services/watchlist/socketServer.js";
 import logger from "./lib/logger";
 import { assertRedisConfigured, closeSharedRedisClient } from "./lib/redisClient.js";
 import { uploadsPersistenceWarning } from "./lib/uploads.js";
@@ -46,6 +47,7 @@ const accountBridgeSocket = attachAccountBridgeWebSocket(server);
 const brokerHubSocket = attachBrokerHubWebSocket(server);
 const newsHubSocket = attachNewsHubWebSocket(server, newsHubRuntime);
 const socialHubSocket = attachSocialHubWebSocket(server);
+  const watchlistSocket = attachWatchlistWebSocket(server);
 let newsProviderSockets: ReturnType<typeof attachNewsProviderSockets> | null = null;
 
 type CloseHandle = {
@@ -103,6 +105,7 @@ async function shutdown(reason: string, exitCode = 0): Promise<void> {
     brokerHubSocket.close(),
     newsHubSocket.close(),
     socialHubSocket.close(),
+    watchlistSocket.close(),
     newsProviderSockets?.close(),
     sessionScheduler.close(),
     torneiScheduler.close(),
