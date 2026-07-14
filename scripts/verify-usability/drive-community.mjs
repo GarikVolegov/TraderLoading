@@ -169,7 +169,14 @@ async function main() {
     await settle(pageA);
     await shot(pageA, "01-comunita-A-initial.png");
 
-    await pageA.getByRole("button", { name: "Crea community" }).first().click();
+    // A session-boundary overlay (SessionCheckinModal) can pop up between the
+    // settle() above and this click if a trading session opens mid-run — dismiss
+    // defensively right before interacting, not just once at page load.
+    const creaCommunityBtn = pageA.getByRole("button", { name: "Crea community" }).first();
+    await creaCommunityBtn.click().catch(async () => {
+      await dismiss(pageA);
+      await creaCommunityBtn.click();
+    });
     const createDialog = pageA.getByRole("dialog");
     const createOpen = await createDialog
       .getByText("Crea Community", { exact: true })
@@ -495,6 +502,8 @@ async function main() {
       note("dm-contact-list", "assertion", "USER_C non appare nella lista contatti (Messaggi) di USER_A dopo il mutual-follow", "alta");
     } else {
       await contactRowA.click();
+      await pageA.waitForTimeout(500);
+      await shot(pageA, "10b-messaggi-A-after-click.png");
       const inputA = pageA.getByPlaceholder("Messaggio cifrato...");
       const inputVisible = await inputA.waitFor({ state: "visible", timeout: 8000 }).then(() => true).catch(() => false);
       if (!inputVisible) {
