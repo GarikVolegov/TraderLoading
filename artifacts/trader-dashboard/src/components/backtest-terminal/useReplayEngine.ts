@@ -351,6 +351,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const restart = useCallback(() => {
     stop();
     setPosition(null);
+    positionRef.current = null;
     setPendingOrder(null);
     pendingRef.current = null;
     const fallback = startDate
@@ -398,7 +399,12 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const jumpToDate = useCallback(
     (date: string) => {
       stop();
+      // Clear open position AND pending order (a resting order from the old
+      // date must not leak into and fill against the new window).
       setPosition(null);
+      positionRef.current = null;
+      setPendingOrder(null);
+      pendingRef.current = null;
       anchorRef.current = null;
       restoreCursorRef.current = null;
       setCursorReady(false);
@@ -438,19 +444,21 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
 
   const buy = useCallback(
     (direction: TradeDirection = "buy") => {
-      if (positionRef.current || !currentBar || lots <= 0) return;
-      setPosition(
-        openPosition({
-          direction,
-          entryPrice: currentBar.close,
-          entryTime: currentBar.time,
-          slPips: ticket.slPips,
-          tpPips: ticket.tpPips,
-          lots,
-          riskAmount,
-          symbol: normalizedSymbol,
-        }),
-      );
+      // Reject while a position OR a resting order exists (the B/S hotkeys reach
+      // here even when the ticket hides the buttons behind the pending card).
+      if (positionRef.current || pendingRef.current || !currentBar || lots <= 0) return;
+      const opened = openPosition({
+        direction,
+        entryPrice: currentBar.close,
+        entryTime: currentBar.time,
+        slPips: ticket.slPips,
+        tpPips: ticket.tpPips,
+        lots,
+        riskAmount,
+        symbol: normalizedSymbol,
+      });
+      positionRef.current = opened;
+      setPosition(opened);
     },
     [currentBar, lots, normalizedSymbol, riskAmount, ticket.slPips, ticket.tpPips],
   );
@@ -505,9 +513,11 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
       setPosition((current) => {
         if (!current) return current;
         const next = { ...current, ...levels };
-        const sign = next.direction === "buy" ? 1 : -1;
-        next.slPips = Math.max(0, roundPips((next.entryPrice - next.stopLoss) * sign * multiplier));
-        next.tpPips = Math.max(0, roundPips((next.takeProfit - next.entryPrice) * sign * multiplier));
+        // Magnitudes (the stop stays armed via hasStop even when dragged to the
+        // profit side of entry, where the signed distance would go negative).
+        next.slPips = roundPips(Math.abs((next.entryPrice - next.stopLoss) * multiplier));
+        next.tpPips = roundPips(Math.abs((next.takeProfit - next.entryPrice) * multiplier));
+        next.hasStop = true;
         positionRef.current = next;
         return next;
       });

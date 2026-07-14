@@ -266,7 +266,8 @@ console.log("tradeEngine checks passed");
   assert.equal(withCost.cost, 8.5); // buy.lots = 0.5 → 1×10×0.5 + 7×0.5
   assert.equal(withCost.profit, 191.5); // 200 gross − 8.5
   assert.equal(withCost.pips, 40, "gross pips unchanged");
-  assert.equal(withCost.rMultiple, 2, "R unchanged (price risk)");
+  // R is NET: cost 8.5 = 1.7 pips (8.5 / (10×0.5)); (40−1.7)/20 = 1.915 → 1.91
+  assert.equal(withCost.rMultiple, 1.91);
   assert.equal(withCost.result, "win");
 
   // a marginal winner fully eaten by costs flips to a loss (result follows NET)
@@ -296,4 +297,40 @@ console.log("tradeEngine checks passed");
   const free = closePosition(buy, { exitPrice: buy.takeProfit, exitTime: 5_000, exitReason: "tp", id: 22, symbol: "EURUSD" });
   assert.equal(free.cost, 0);
   assert.equal(free.profit, 200);
+}
+
+// ── H1 regression: BE/trailing stops must still FIRE (not disabled by slPips=0) ──
+{
+  const { manageBar } = await import("./tradeEngine");
+  const pos = openPosition({
+    direction: "buy", entryPrice: 1.1, entryTime: 0,
+    slPips: 20, tpPips: 100, lots: 0.5, riskAmount: 100, symbol: "EURUSD",
+  });
+  assert.equal(pos.hasStop, true);
+
+  // trailing raises the stop above entry (locks profit): slPips magnitude, stop still armed
+  const trailed = manageBar(pos, bar({ open: 1.1, low: 1.0995, high: 1.104, close: 1.1035 }), { trailingPips: 10 }, "EURUSD");
+  assert.equal(trailed.position.stopLoss.toFixed(5), "1.10300"); // 1.104 − 10 pip
+  assert.equal(trailed.position.hasStop, true);
+  assert.ok(trailed.position.slPips > 0, "profit-side stop keeps a positive magnitude");
+  // NEXT bar drops back through the trailed stop → MUST close at it
+  const stopped = manageBar(trailed.position, bar({ open: 1.1035, low: 1.101, high: 1.104, close: 1.1015 }), { trailingPips: 10 }, "EURUSD");
+  assert.equal(stopped.hit?.exitReason, "sl");
+  assert.ok(stopped.hit != null && Math.abs(stopped.hit.exitPrice - 1.103) < 1e-9, "closes at the trailed stop");
+
+  // auto-breakeven sets stop AT entry (slPips magnitude 0) but stop still armed
+  const be = manageBar(pos, bar({ open: 1.1, low: 1.0999, high: 1.1021, close: 1.102 }), { breakevenAtR: 1 }, "EURUSD");
+  assert.equal(be.position.stopLoss, 1.1);
+  assert.equal(be.position.hasStop, true, "BE stop remains armed");
+  // price returns to entry → BE scratch fires
+  const scratch = manageBar(be.position, bar({ open: 1.102, low: 1.0999, high: 1.1025, close: 1.1 }), { breakevenAtR: 1 }, "EURUSD");
+  assert.deepEqual(scratch.hit, { exitPrice: 1.1, exitReason: "sl" });
+
+  // a truly stopless position (slPips 0 at open) never checks a stop
+  const stopless = openPosition({
+    direction: "buy", entryPrice: 1.1, entryTime: 0,
+    slPips: 0, tpPips: 0, lots: 0.1, riskAmount: 0, symbol: "EURUSD",
+  });
+  assert.equal(stopless.hasStop, false);
+  assert.equal(checkStopHit(stopless, bar({ open: 1.1, low: 1.05, high: 1.15 })), null);
 }

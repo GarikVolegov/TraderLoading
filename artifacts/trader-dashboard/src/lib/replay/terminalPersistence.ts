@@ -99,8 +99,9 @@ function isClosedTrade(value: unknown): value is ClosedTrade {
 
 function isOpenPosition(value: unknown): value is OpenPosition {
   const position = value as Partial<OpenPosition> | null;
-  return Boolean(
-    position &&
+  if (
+    !(
+      position &&
       (position.direction === "buy" || position.direction === "sell") &&
       isFiniteNumber(position.entryPrice) &&
       isFiniteNumber(position.entryTime) &&
@@ -108,8 +109,14 @@ function isOpenPosition(value: unknown): value is OpenPosition {
       isFiniteNumber(position.takeProfit) &&
       isFiniteNumber(position.lots) &&
       isFiniteNumber(position.slPips) &&
-      isFiniteNumber(position.tpPips),
-  );
+      isFiniteNumber(position.tpPips)
+    )
+  ) {
+    return false;
+  }
+  // hasStop was added after v2 shipped: default from slPips for older state.
+  if (typeof position.hasStop !== "boolean") position.hasStop = position.slPips > 0;
+  return true;
 }
 
 function isPendingOrder(value: unknown): value is PendingOrder {

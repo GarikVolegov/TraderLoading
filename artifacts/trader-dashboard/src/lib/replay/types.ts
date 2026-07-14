@@ -27,8 +27,11 @@ export interface OpenPosition {
   lots: number;
   /** Account-currency amount risked when the position was sized. */
   riskAmount: number;
+  /** Absolute stop distance in pips (magnitude); 0 once the stop trails to entry. */
   slPips: number;
   tpPips: number;
+  /** Whether a stop is armed. Distinct from slPips, which is 0 at breakeven yet still armed. */
+  hasStop: boolean;
   /** Stop distance at entry (risk unit for MAE/MFE/BE triggers); slPips changes when the stop is dragged/trailed. */
   initialSlPips?: number;
   /** Running best favorable excursion in pips (≥ 0). */

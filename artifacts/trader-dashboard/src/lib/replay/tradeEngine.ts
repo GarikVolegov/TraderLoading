@@ -37,6 +37,7 @@ export function openPosition(input: {
     riskAmount,
     slPips,
     tpPips,
+    hasStop: slPips > 0,
     initialSlPips: slPips,
     bestPips: 0,
     worstPips: 0,
@@ -158,7 +159,13 @@ export function manageBar(
   }
 
   if (next.stopLoss !== position.stopLoss) {
-    next = { ...next, slPips: Math.max(0, roundPips((next.entryPrice - next.stopLoss) * sign * multiplier)) };
+    // slPips is a magnitude (0 at breakeven, positive once trailed into profit);
+    // the stop stays armed via hasStop regardless of which side of entry it sits.
+    next = {
+      ...next,
+      slPips: roundPips(Math.abs((next.entryPrice - next.stopLoss) * multiplier)),
+      hasStop: true,
+    };
   }
 
   return { position: next, hit: null };
@@ -174,7 +181,7 @@ export function checkStopHit(
   bar: ReplayCandle,
 ): { exitPrice: number; exitReason: "sl" | "tp" } | null {
   if (position.direction === "buy") {
-    if (position.slPips > 0 && bar.low <= position.stopLoss) {
+    if (position.hasStop && bar.low <= position.stopLoss) {
       return { exitPrice: Math.min(bar.open, position.stopLoss), exitReason: "sl" };
     }
     if (position.tpPips > 0 && bar.high >= position.takeProfit) {
@@ -182,7 +189,7 @@ export function checkStopHit(
     }
     return null;
   }
-  if (position.slPips > 0 && bar.high >= position.stopLoss) {
+  if (position.hasStop && bar.high >= position.stopLoss) {
     return { exitPrice: Math.max(bar.open, position.stopLoss), exitReason: "sl" };
   }
   if (position.tpPips > 0 && bar.low <= position.takeProfit) {
@@ -219,11 +226,17 @@ export function closePosition(
   },
 ): ClosedTrade {
   const pips = positionPips(position, close.exitPrice, close.symbol);
-  const grossProfit = pips * pipValuePerLot(close.symbol) * position.lots;
+  const pipValue = pipValuePerLot(close.symbol);
+  const grossProfit = pips * pipValue * position.lots;
   const cost = tradeCost(close.costs, position.lots, close.symbol);
   const profit = Math.round((grossProfit - cost) * 100) / 100;
   const initialRisk = position.initialSlPips ?? position.slPips;
   const round2 = (value: number) => Math.round(value * 100) / 100;
+  // R is NET of costs so it agrees with the net result and P&L: expressing the
+  // cost back in pips (cost / pips-worth) and subtracting keeps R, winRate and
+  // expectancy telling the same story (an edge measured after friction).
+  const costPips = pipValue > 0 && position.lots > 0 ? cost / (pipValue * position.lots) : 0;
+  const netPips = pips - costPips;
   return {
     id: close.id,
     direction: position.direction,
@@ -238,7 +251,7 @@ export function closePosition(
     profit,
     cost: round2(cost),
     // Result follows NET profit: a tiny winner eaten by costs is a loss.
-    rMultiple: initialRisk > 0 ? pips / initialRisk : null,
+    rMultiple: initialRisk > 0 ? round2(netPips / initialRisk) : null,
     exitReason: close.exitReason,
     result: profit > 0 ? "win" : profit < 0 ? "loss" : "breakeven",
     maeR: initialRisk > 0 ? round2(Math.max(0, -(position.worstPips ?? 0)) / initialRisk) : null,

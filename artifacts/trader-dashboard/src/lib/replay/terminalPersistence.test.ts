@@ -39,6 +39,7 @@ const position: OpenPosition = {
   riskAmount: 100,
   slPips: 20,
   tpPips: 40,
+  hasStop: true,
 };
 
 const drawings: ReplayDrawing[] = [
