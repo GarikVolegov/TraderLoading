@@ -112,42 +112,55 @@ tools/metatrader-companion/   MT5 expert advisor
 
 ## 7. Active work / current focus
 
-**Usability audit — Phase 1 shipped, driver sweep partial (2026-07-13, branch `feat/community-management`).**
+**Usability audit — Phase 1 DONE, full driver sweep completed (2026-07-13/14, branch `feat/community-management`).**
 Full app usability pass (bugs, UX polish, dead-end/demo features) requested after the pre-launch page
-audit. Live-drove 3 flows for the first time with new Playwright drivers (`scripts/verify-usability/`,
-mirrors `verify-nav-hubs`): onboarding, Pro paywall, journal happy-path. This surfaced and fixed two real
-bugs no static test caught: **ChecklistSetupModal could block the mandatory pair-onboarding screen**
-(both are `fixed inset-0` overlays at the same z-index; the checklist modal now gates on
-`settingsLoaded && selectedPairs.length > 0` and no longer nags back open after dismissal), and **the
-local DB was missing migrations 0018→0034** (review-prompt/referral/join-request/payout/channel-pricing
-tables never existed locally — applied by hand, confirmed idempotent, `/api/reviews/prompt-status` now
-200s instead of 500). Fixed the "feature vuota" audit list: SentimentWidget hides itself instead of
-showing MYFXBOOK demo data as real; Tornei cert claim shows "mint on-chain in arrivo" instead of a button
-that always 503s (`mintEnabled` from `getMintProvider()`); Pro/payout CTAs show an honest unavailable
-notice instead of opening a dialog that then 503s/402s (`checkoutAvailable`/`available` fields, on-contract
-for billing); `/styleguide` is DEV-only; HelpSection no longer promises an unbuilt CSV export. Added
-`useDialogA11y` (extracted from the `components/ui/modal.tsx` focus-trap, finding 3.4) and wired it into
-**12 custom overlays** that had no dialog semantics/focus-trap (SessionCheckinModal, both UserProfileModal
-variants, ChecklistSetupModal, LevelRewardModal, ReviewPromptModal, routine/SessionModal,
-ScheduledCallOverlay, 4 social Create*/CommunitySettingsModal dialogs). Added a global
+audit. Live-drove every planned flow with new Playwright drivers (`scripts/verify-usability/`, mirrors
+`verify-nav-hubs`): onboarding, Pro paywall, journal, tornei, missions/admin, misc (dashboard/settings/
+routine/news/checklist/clock/support/library), and — last, after the `Workflow` tool's infra failures
+forced a switch to direct `Agent`/`Bash` calls (see [[workflow-tool-vs-agent-iteration]]) — community
+(private join-request/approval, roles, DM, paid channel). Bugs found and fixed across both rounds:
+**ChecklistSetupModal could block the mandatory pair-onboarding screen** (both are `fixed inset-0`
+overlays at the same z-index; now gates on `settingsLoaded && selectedPairs.length > 0`, no longer nags
+back open after dismissal); **local DB was missing migrations 0018→0034** (applied by hand, idempotent);
+**Tornei enroll recorded `consent:true` with no consent UI ever shown** (`window.confirm(t("tornei.consent"))`
+gate added on both Arena/Percorso CTAs); ZenZone mood labels and the Checklist page's checked-looking
+icon (`CheckCircle2` → decorative `Circle`) were i18n/UX slips from earlier passes. **Feature vuota major
+finding: private communities were entirely unreachable** — `CreateCommunityModal`'s "private" toggle and
+`CommunityGeneralSettings`' privacy switch existed in the UI but `POST /community` and
+`PATCH /community/:id` never read `isPublic` from the body, so every community was created public
+regardless of the toggle. Fixed by wiring the write path in both routes; this in turn **exposed a
+pre-existing crash**: `CommunityTab.tsx` had 3 unguarded `.channels` accesses that threw when a private
+community's cover-only payload (audit 0.5b — channels/roles/myRole omitted for a non-member) reached a
+component assuming full-detail shape. Fixed by making those fields optional on `CommunityDetail` (forcing
+`tsc` to enumerate every unsafe access site — a reusable technique, see [[community-monetization]]) and
+guarding the 3 resulting call sites; verified live (crash gone, post-approval-access flow confirmed
+working). Also fixed the other "feature vuota" list: SentimentWidget hides itself instead of showing
+MYFXBOOK demo data as real; Tornei cert claim shows "mint on-chain in arrivo" instead of a button that
+always 503s; Pro/payout CTAs show an honest unavailable notice instead of a dialog that then 503s/402s
+(`checkoutAvailable`/`available`, on-contract for billing); `/styleguide` is DEV-only; HelpSection no
+longer promises an unbuilt CSV export. Added `useDialogA11y` (extracted from `components/ui/modal.tsx`'s
+focus-trap) and wired it into **12 custom overlays** with no dialog semantics/focus-trap. Added a global
 `MutationCache.onError` (`lib/mutationErrorPolicy.ts`) so a failed mutation with no local handler toasts
-instead of failing silently (closes Wiki's 8 unhandled mutations); JournalEntryModal opts out via
-`meta.suppressGlobalError` to avoid double-toasting its own error message. **Adversarially reviewed**
-(7 parallel finder passes, high effort): fixed a Rules-of-Hooks crash in `CreatorPayoutSettings`
-(early return before two `useMutation` calls), two `UserProfileModal` variants that never actually
-moved focus into the dialog, `CreatePostModal`'s pre-existing `autoFocus` textarea being silently
-overridden by the new hook (added an opt-in `initialFocusRef`), and the checklist-modal reopen-after-
-dismiss bug above. **Known gaps, not silently dropped:** ~19 other pre-existing `mutateAsync`+local-toast
-call sites still risk a double toast under the new global handler (JournalEntryModal was the one fixed,
-as the most-cited example); the AnimatePresence-exit-timing and cross-instance scroll-lock/focus-stack
-gaps in `useDialogA11y` are pre-existing characteristics inherited from the original `modal.tsx`, not new
-regressions, and weren't fixed (architectural, out of scope for this pass). **Sweep scope not completed:**
-only onboarding/pro/journal were live-driven; community (join-request/DM/paid-channel), tornei, missions,
-admin and the lighter dashboard/settings/routine/news/library drivers were planned but not built — the
-`Workflow` tool hit repeated infra failures (usage-limit + connection-reset) authoring them in parallel,
-so the remaining sweep is a follow-up. Design-system consistency (Tornei's parallel `--tl-*` token system,
-Settings' 14 arbitrary accent colors) was explicitly scoped OUT per user decision — separate future pass.
-Gate: typecheck + 369/369 tests + full build (both packages, 45/45 prerendered routes) all green.
+instead of failing silently (closes Wiki's 8 unhandled mutations); **14 pre-existing sites opted out**
+via `meta.suppressGlobalError` to avoid double-toasting their own error message (JournalEntryModal +
+13 settings/page files). **Adversarially reviewed** (7 parallel finder passes, high effort, both rounds):
+fixed a Rules-of-Hooks crash in `CreatorPayoutSettings`, two `UserProfileModal` variants that never moved
+focus into the dialog, `CreatePostModal`'s `autoFocus` silently overridden by the new hook (added an
+opt-in `initialFocusRef`), and the checklist-modal reopen-after-dismiss bug above. **Investigated and
+closed as not-a-bug:** the community driver's "dm-send" finding (DM input allegedly not visible after
+selecting a contact) — code review of `MessaggiTab.tsx` found no gate on the input's rendering and the
+driver's placeholder selector still matches the current i18n string; two re-drives to confirm both failed
+*earlier* in the flow for unrelated environmental reasons (a `SessionCheckinModal` race — fixed with a
+defensive `dismiss()` before the "Crea community" click — then a Clerk-JS CDN load failure), neither
+reproducing the original finding. **Known gaps, not silently dropped:** ~19 further pre-existing
+`mutateAsync`+local-toast call sites beyond the 14 fixed still risk a double toast; the
+AnimatePresence-exit-timing and cross-instance scroll-lock/focus-stack gaps in `useDialogA11y` are
+pre-existing, inherited from the original `modal.tsx`, not new regressions (architectural, out of scope);
+a React hydration warning (`<button>` nested in `<button>`, `StarRating` inside a clickable community-list
+row) surfaced in the community driver's console-error collection but wasn't fixed (cosmetic dev-console
+noise, not user-facing). Design-system consistency (Tornei's parallel `--tl-*` tokens, Settings' 14
+arbitrary accent colors) stays explicitly OUT per user decision — separate future pass. Gate: typecheck +
+375/375 tests all green.
 
 **Backtest Replay Terminal (2026-07-12, DONE — port fedele del mockup Claude Design).** The old in-page
 ChartReplay is retired: `/backtest/:id/replay` is a **full-screen TradingView-style terminal**
