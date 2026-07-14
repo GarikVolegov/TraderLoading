@@ -35,6 +35,56 @@ async function requireWikiUser(req: Request, res: Response): Promise<string | nu
   return userId;
 }
 
+// Serve a wiki archive file only to its owner. These files are no longer
+// exposed by the public /api/uploads static handler (see lib/security.ts): the
+// archive is private and its URLs were enumerable, so access is gated on
+// wikiSourcesTable.userId here. Local storage keys are exactly
+// "<userSegment>/<filename>" (two segments). Not found and not-owner both
+// return 404 so the route reveals nothing about which files exist.
+router.get("/uploads/wiki/:segment/:filename", async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Non autorizzato" });
+    return;
+  }
+  const storageKey = `${req.params.segment}/${req.params.filename}`;
+  const [source] = await db
+    .select()
+    .from(wikiSourcesTable)
+    .where(eq(wikiSourcesTable.storageKey, storageKey))
+    .limit(1);
+  if (!source || source.userId !== userId) {
+    res.status(404).json({ error: "File non trovato" });
+    return;
+  }
+
+  const storage = createWikiStorageFromEnv();
+  if (!storage.get) {
+    // Object-store deployments serve wiki files directly from the bucket URL;
+    // there is no local file to stream here.
+    res.status(404).json({ error: "File non trovato" });
+    return;
+  }
+  let buffer: Buffer;
+  try {
+    buffer = await storage.get(storageKey);
+  } catch {
+    res.status(404).json({ error: "File non trovato" });
+    return;
+  }
+
+  res.setHeader("Content-Type", source.mimeType || "application/octet-stream");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cache-Control", "private, max-age=0, no-store");
+  if (source.fileName) {
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${encodeURIComponent(source.fileName)}"`,
+    );
+  }
+  res.send(buffer);
+});
+
 router.get("/wiki/sources", async (req, res) => {
   const userId = await requireWikiUser(req, res);
   if (!userId) return;

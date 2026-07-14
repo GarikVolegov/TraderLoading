@@ -67,3 +67,7 @@ artifacts/api-server/uploads/
 .ds-sync/
 ralph/
 dev-up.sh
+auto/logs/
+auto/reports/
+auto/.lock
+auto/STOP

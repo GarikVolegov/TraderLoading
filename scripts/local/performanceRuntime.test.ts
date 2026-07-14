@@ -33,7 +33,9 @@ assert.match(viteConfig, /if \(!isServe\) \{\s*process\.env\.NODE_ENV = "product
 // which would render a black screen.
 assert.match(viteConfig, /VITE_CLERK_PUBLISHABLE_KEY is missing or invalid/);
 assert.match(viteConfig, /\.\.\.\(isServe\s*\?\s*\[runtimeErrorOverlay\(\)\]\s*:\s*\[\]\)/);
-assert.match(viteConfig, /sourcemap:\s*false/);
+// Sourcemaps stay off for users: `false` by default, and "hidden" only when a Sentry
+// token uploads + deletes them (filesToDeleteAfterUpload) — never shipped either way.
+assert.match(viteConfig, /sourcemap:\s*(false|uploadSourcemaps\s*\?\s*"hidden"\s*:\s*false)/);
 assert.match(viteConfig, /minify:\s*"esbuild"/);
 assert.match(viteConfig, /cssMinify:\s*true/);
 

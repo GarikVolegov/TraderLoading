@@ -80,4 +80,14 @@ assert.equal(snapshot.metrics.freeMargin, 2400);
 assert.equal(snapshot.positions[0]?.symbol, "AAPL");
 assert.equal(snapshot.positions[0]?.profit, 90);
 
+// Finding 2.1: every SnapTrade request carries an AbortSignal so a hung broker API
+// can't stall the sync cycle indefinitely (no default fetch timeout).
+assert.ok(requests.length > 0);
+for (const request of requests) {
+  assert.ok(
+    request.init?.signal instanceof AbortSignal,
+    `SnapTrade request to ${request.url} must carry an AbortSignal timeout`,
+  );
+}
+
 console.log("snaptrade provider checks passed");

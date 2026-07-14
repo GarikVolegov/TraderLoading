@@ -90,6 +90,20 @@ try {
 
     await assert.rejects(apiJSON("missing", undefined, { basePath: "/" }), /404/);
   }
+
+  // Finding 2.8: apiJSON discarded the {error} body and threw just the status code,
+  // so off-contract callers (tornei/admin/community) showed "400" instead of the
+  // real server message. It must surface {error} like apiFetch/apiUpload.
+  {
+    mockFetch(() => Response.json({ error: "Already joined this season" }, { status: 400 }));
+    await assert.rejects(apiJSON("tornei/join", undefined, { basePath: "/" }), /Already joined this season/);
+  }
+
+  // A non-ok body without a usable `error` falls back to HTTP <status>.
+  {
+    mockFetch(() => Response.json({ message: "nope" }, { status: 500 }));
+    await assert.rejects(apiJSON("x", undefined, { basePath: "/" }), /HTTP 500/);
+  }
 } finally {
   globalThis.fetch = originalFetch;
 }

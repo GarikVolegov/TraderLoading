@@ -1,3 +1,5 @@
+import { getPipMultiplier } from "./pipMultiplier.js";
+
 export type BacktestTradeDirection = "buy" | "sell";
 
 export type ManualBacktestTradeResult = {
@@ -9,6 +11,7 @@ export function calculateManualBacktestTradeResult(
   entryPrice: string,
   exitPrice: string,
   direction: BacktestTradeDirection,
+  symbol: string,
 ): ManualBacktestTradeResult {
   const entry = parseFloat(entryPrice);
   const exit = parseFloat(exitPrice);
@@ -18,7 +21,9 @@ export function calculateManualBacktestTradeResult(
   }
 
   const diff = direction === "buy" ? exit - entry : entry - exit;
-  const pips = (diff * 10000).toFixed(1);
+  // Pip size is instrument-specific (JPY/gold/indices/crypto differ from FX
+  // majors); the replay uses the same helper, so both modes agree.
+  const pips = (diff * getPipMultiplier(symbol)).toFixed(1);
   const result = diff > 0 ? "win" : diff < 0 ? "loss" : "breakeven";
 
   return { result, pips };

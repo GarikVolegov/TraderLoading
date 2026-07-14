@@ -58,8 +58,25 @@ export const globalChatMessagesTable = pgTable("global_chat_messages", {
   index("idx_global_chat_created").on(table.createdAt),
 ]);
 
+// Authorizes downloads of DM media (images/voice/files). The media URL lives
+// inside the message ciphertext, so the server can't map a file to its DM from
+// the message; instead the two participants are recorded here at upload time and
+// the serving route allows only owner_user_id / peer_user_id.
+export const chatFileAccessTable = pgTable("chat_file_access", {
+  id: serial("id").primaryKey(),
+  fileKey: text("file_key").notNull(),
+  ownerUserId: text("owner_user_id").notNull(),
+  peerUserId: text("peer_user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("chat_file_access_file_key_unique").on(table.fileKey),
+  index("chat_file_access_owner_idx").on(table.ownerUserId),
+  index("chat_file_access_peer_idx").on(table.peerUserId),
+]);
+
 export type Friendship = typeof friendshipsTable.$inferSelect;
 export type ChatMessage = typeof chatMessagesTable.$inferSelect;
 export type UserPublicKey = typeof userPublicKeysTable.$inferSelect;
 export type UserE2eeKeyBackup = typeof userE2eeKeyBackupsTable.$inferSelect;
 export type GlobalChatMessage = typeof globalChatMessagesTable.$inferSelect;
+export type ChatFileAccess = typeof chatFileAccessTable.$inferSelect;

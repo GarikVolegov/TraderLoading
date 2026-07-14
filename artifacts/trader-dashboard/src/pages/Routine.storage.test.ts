@@ -5,8 +5,11 @@ import {
   getRoutineMetrics,
   loadCustomRoutines,
   loadRoutineCompletions,
+  readMoodForDate,
   ROUTINE_CUSTOM_KEY,
   ROUTINE_HISTORY_KEY,
+  saveMoodForDate,
+  ZEN_MOOD_KEY,
 } from "./Routine.storage.js";
 
 class MemoryStorage {
@@ -89,3 +92,33 @@ assert.deepEqual(loadCustomRoutines(storage), []);
 assert.deepEqual(loadRoutineCompletions(storage), []);
 
 console.log("routine storage checks passed");
+
+// ── Zen mood check-in persistence ────────────────────────────────────────────
+{
+  const moodStorage = new MemoryStorage() as Storage;
+  const today = new Date("2026-07-12T09:00:00Z");
+  const yesterday = new Date("2026-07-11T09:00:00Z");
+
+  assert.equal(readMoodForDate(today, moodStorage), null);
+
+  saveMoodForDate("calm", today, moodStorage);
+  assert.equal(readMoodForDate(today, moodStorage), "calm");
+  assert.equal(readMoodForDate(yesterday, moodStorage), null);
+
+  // Same-day re-selection overwrites instead of appending.
+  saveMoodForDate("tense", today, moodStorage);
+  assert.equal(readMoodForDate(today, moodStorage), "tense");
+  assert.equal(
+    (JSON.parse(moodStorage.getItem(ZEN_MOOD_KEY) ?? "[]") as unknown[]).length,
+    1,
+  );
+
+  saveMoodForDate("tired", yesterday, moodStorage);
+  assert.equal(readMoodForDate(yesterday, moodStorage), "tired");
+
+  // Corrupted payload degrades to "no mood recorded".
+  moodStorage.setItem(ZEN_MOOD_KEY, "not-json");
+  assert.equal(readMoodForDate(today, moodStorage), null);
+
+  console.log("zen mood storage checks passed");
+}

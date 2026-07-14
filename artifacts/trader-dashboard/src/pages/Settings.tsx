@@ -32,6 +32,8 @@ import { HelpSection } from "@/components/settings/HelpSection";
 import { TermsSection } from "@/components/settings/TermsSection";
 import { WalletSettings } from "@/components/tornei/WalletSettings";
 import { ReviewSettingsSection } from "@/components/settings/ReviewSettingsSection";
+import { ReferralSettingsSection } from "@/components/settings/ReferralSettingsSection";
+import { CreatorPayoutSettings } from "@/components/settings/CreatorPayoutSettings";
 
 type TileId =
   | "profilo"
@@ -154,8 +156,8 @@ export default function Settings() {
     {
       id: "abbonamento",
       icon: <Star className="w-6 h-6" />,
-      label: "Abbonamento",
-      subtitle: "Piano Pro, rinnovo e fatture",
+      label: uiText("auto.ui.b776b1b8f3"),
+      subtitle: uiText("auto.ui.986f7f7f05"),
       color: "text-primary",
       glow: "group-hover:shadow-primary/20",
     },
@@ -245,7 +247,7 @@ export default function Settings() {
       id: "traguardi",
       icon: <Trophy className="w-6 h-6" />,
       label: t("nav.milestones"),
-      subtitle: "Certificati NFT e livelli sbloccati",
+      subtitle: uiText("auto.ui.082626517e"),
       color: "text-yellow-400",
       glow: "group-hover:shadow-yellow-400/20",
     },
@@ -260,16 +262,16 @@ export default function Settings() {
     {
       id: "aiuto",
       icon: <LifeBuoy className="w-6 h-6" />,
-      label: "Aiuto",
-      subtitle: "Guida rapida e tutorial",
+      label: uiText("auto.ui.3df4de1ddd"),
+      subtitle: uiText("auto.ui.b2eaac0417"),
       color: "text-purple-400",
       glow: "group-hover:shadow-purple-400/20",
     },
     {
       id: "termini",
       icon: <FileText className="w-6 h-6" />,
-      label: "Termini & Condizioni",
-      subtitle: "Privacy, licenza e disclaimer",
+      label: uiText("auto.ui.173c92dc46"),
+      subtitle: uiText("auto.ui.9ce5cd227f"),
       color: "text-pink-400",
       glow: "group-hover:shadow-pink-400/20",
     },
@@ -295,12 +297,14 @@ export default function Settings() {
     profilo: (
       <div className="space-y-6">
         <ProfileWidget />
+        <ReferralSettingsSection />
         <ReviewSettingsSection />
       </div>
     ),
     abbonamento: (
       <div className="space-y-6">
         <BillingSubscriptionPanel />
+        <CreatorPayoutSettings />
         <WalletSettings />
       </div>
     ),
@@ -317,7 +321,7 @@ export default function Settings() {
           onClick={() => navigate("/?layout=edit")}
         >
           <LayoutGrid className="w-4 h-4" />
-          Modifica layout dashboard
+          {uiText("auto.ui.4432b3c245")}
         </Button>
       </div>
     ),

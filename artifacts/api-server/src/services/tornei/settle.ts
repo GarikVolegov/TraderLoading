@@ -19,7 +19,6 @@ import { qualifyPrizes } from "./prizes.js";
 import type { ComputedStanding } from "./standings.js";
 import type { CertTier } from "./constants.js";
 import { extendProEntitlement } from "./proEntitlement.js";
-import { getMintProvider } from "./mint/provider.js";
 import { computeLevel } from "../../routes/profile.js";
 
 const CERT_META: Record<CertTier, { title: string; rarity: string; edition: string }> = {
@@ -58,72 +57,64 @@ export async function settleSeason(
   }));
 
   const awards = qualifyPrizes(computed);
-  const provider = getMintProvider();
   const now = new Date();
   let awardsGranted = 0;
   let certificatesCreated = 0;
 
   for (const a of awards) {
-    const inserted = await db
-      .insert(tournamentPrizesTable)
-      .values({
-        seasonId,
-        userId: a.userId,
-        tier: a.tier,
-        xpAwarded: a.xp,
-        proMonths: a.proMonths,
-        status: "granted",
-      })
-      .onConflictDoNothing({
-        target: [tournamentPrizesTable.seasonId, tournamentPrizesTable.userId, tournamentPrizesTable.tier],
-      })
-      .returning({ id: tournamentPrizesTable.id });
-    if (inserted.length === 0) continue; // già assegnato in una run precedente
-    awardsGranted += 1;
-
-    // XP (riusa il sistema esistente; ricalcola il livello).
-    if (a.xp > 0) {
-      const [p] = await db
-        .select({ xp: profileTable.xp })
-        .from(profileTable)
-        .where(eq(profileTable.userId, a.userId))
-        .limit(1);
-      const newXp = (p?.xp ?? 0) + a.xp;
-      const { level } = computeLevel(newXp);
-      await db
-        .update(profileTable)
-        .set({ xp: newXp, level })
-        .where(eq(profileTable.userId, a.userId));
-    }
-
-    // Pro: estende l'entitlement interno (nessun addebito Stripe).
-    if (a.proMonths > 0) {
-      const [sub] = await db
-        .select({ currentPeriodEnd: adminUserSubscriptionsTable.currentPeriodEnd })
-        .from(adminUserSubscriptionsTable)
-        .where(eq(adminUserSubscriptionsTable.userId, a.userId))
-        .limit(1);
-      const end = extendProEntitlement(
-        { currentPeriodEnd: sub?.currentPeriodEnd ?? null },
-        a.proMonths,
-        now,
-      );
-      const reason = `Torneo ${season.label} – ${a.tier}`;
-      await db
-        .insert(adminUserSubscriptionsTable)
+    // Each award (prize marker + XP + Pro + certificate) is applied atomically.
+    // The prize insert is the idempotency marker: if the process dies mid-award
+    // the transaction rolls back INCLUDING that marker, so a re-run re-applies
+    // everything instead of finding the marker and skipping never-granted XP/Pro.
+    const outcome = await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(tournamentPrizesTable)
         .values({
+          seasonId,
           userId: a.userId,
-          plan: "pro",
-          status: "active",
-          source: "tornei",
-          manualOverride: true,
-          currentPeriodEnd: end,
-          reason,
-          updatedBy: "tornei",
+          tier: a.tier,
+          xpAwarded: a.xp,
+          proMonths: a.proMonths,
+          status: "granted",
         })
-        .onConflictDoUpdate({
-          target: adminUserSubscriptionsTable.userId,
-          set: {
+        .onConflictDoNothing({
+          target: [tournamentPrizesTable.seasonId, tournamentPrizesTable.userId, tournamentPrizesTable.tier],
+        })
+        .returning({ id: tournamentPrizesTable.id });
+      if (inserted.length === 0) return { granted: false, certCreated: false }; // già assegnato
+
+      // XP (riusa il sistema esistente; ricalcola il livello).
+      if (a.xp > 0) {
+        const [p] = await tx
+          .select({ xp: profileTable.xp })
+          .from(profileTable)
+          .where(eq(profileTable.userId, a.userId))
+          .limit(1);
+        const newXp = (p?.xp ?? 0) + a.xp;
+        const { level } = computeLevel(newXp);
+        await tx
+          .update(profileTable)
+          .set({ xp: newXp, level })
+          .where(eq(profileTable.userId, a.userId));
+      }
+
+      // Pro: estende l'entitlement interno (nessun addebito Stripe).
+      if (a.proMonths > 0) {
+        const [sub] = await tx
+          .select({ currentPeriodEnd: adminUserSubscriptionsTable.currentPeriodEnd })
+          .from(adminUserSubscriptionsTable)
+          .where(eq(adminUserSubscriptionsTable.userId, a.userId))
+          .limit(1);
+        const end = extendProEntitlement(
+          { currentPeriodEnd: sub?.currentPeriodEnd ?? null },
+          a.proMonths,
+          now,
+        );
+        const reason = `Torneo ${season.label} – ${a.tier}`;
+        await tx
+          .insert(adminUserSubscriptionsTable)
+          .values({
+            userId: a.userId,
             plan: "pro",
             status: "active",
             source: "tornei",
@@ -131,60 +122,79 @@ export async function settleSeason(
             currentPeriodEnd: end,
             reason,
             updatedBy: "tornei",
-            updatedAt: now,
-          },
-        });
-    }
-
-    // Certificato NFT: pending se wallet presente e provider configurato, altrimenti claimable.
-    if (a.certTier) {
-      const meta = CERT_META[a.certTier];
-      const [profile] = await db
-        .select({
-          name: profileTable.name,
-          avatarUrl: profileTable.avatarUrl,
-          walletAddress: profileTable.walletAddress,
-        })
-        .from(profileTable)
-        .where(eq(profileTable.userId, a.userId))
-        .limit(1);
-      const willMint = Boolean(profile?.walletAddress) && provider !== null;
-      const certRows = await db
-        .insert(tournamentCertificatesTable)
-        .values({
-          seasonId,
-          seasonLabel: season.label,
-          userId: a.userId,
-          userName: profile?.name ?? "Trader",
-          avatarUrl: profile?.avatarUrl ?? null,
-          tier: a.certTier,
-          edition: meta.edition,
-          rarity: meta.rarity,
-          mintStatus: willMint ? "pending" : "claimable",
-          walletAddress: profile?.walletAddress ?? null,
-        })
-        .onConflictDoNothing({
-          target: [
-            tournamentCertificatesTable.seasonId,
-            tournamentCertificatesTable.userId,
-            tournamentCertificatesTable.tier,
-          ],
-        })
-        .returning({ id: tournamentCertificatesTable.id });
-      if (certRows.length > 0) {
-        certificatesCreated += 1;
-        await db
-          .update(tournamentPrizesTable)
-          .set({ certificateId: certRows[0].id })
-          .where(
-            and(
-              eq(tournamentPrizesTable.seasonId, seasonId),
-              eq(tournamentPrizesTable.userId, a.userId),
-              eq(tournamentPrizesTable.tier, a.tier),
-            ),
-          );
+          })
+          .onConflictDoUpdate({
+            target: adminUserSubscriptionsTable.userId,
+            set: {
+              plan: "pro",
+              status: "active",
+              source: "tornei",
+              manualOverride: true,
+              currentPeriodEnd: end,
+              reason,
+              updatedBy: "tornei",
+              updatedAt: now,
+            },
+          });
       }
-    }
+
+      // Certificato NFT: sempre "claimable". Il conio avviene solo con l'azione
+      // esplicita di claim dell'utente (protetta da compare-and-set), così non
+      // restano certificati "pending" mai coniati e bloccati.
+      let certCreated = false;
+      if (a.certTier) {
+        const meta = CERT_META[a.certTier];
+        const [profile] = await tx
+          .select({
+            name: profileTable.name,
+            avatarUrl: profileTable.avatarUrl,
+            walletAddress: profileTable.walletAddress,
+          })
+          .from(profileTable)
+          .where(eq(profileTable.userId, a.userId))
+          .limit(1);
+        const certRows = await tx
+          .insert(tournamentCertificatesTable)
+          .values({
+            seasonId,
+            seasonLabel: season.label,
+            userId: a.userId,
+            userName: profile?.name ?? "Trader",
+            avatarUrl: profile?.avatarUrl ?? null,
+            tier: a.certTier,
+            edition: meta.edition,
+            rarity: meta.rarity,
+            mintStatus: "claimable",
+            walletAddress: profile?.walletAddress ?? null,
+          })
+          .onConflictDoNothing({
+            target: [
+              tournamentCertificatesTable.seasonId,
+              tournamentCertificatesTable.userId,
+              tournamentCertificatesTable.tier,
+            ],
+          })
+          .returning({ id: tournamentCertificatesTable.id });
+        if (certRows.length > 0) {
+          certCreated = true;
+          await tx
+            .update(tournamentPrizesTable)
+            .set({ certificateId: certRows[0].id })
+            .where(
+              and(
+                eq(tournamentPrizesTable.seasonId, seasonId),
+                eq(tournamentPrizesTable.userId, a.userId),
+                eq(tournamentPrizesTable.tier, a.tier),
+              ),
+            );
+        }
+      }
+
+      return { granted: true, certCreated };
+    });
+
+    if (outcome.granted) awardsGranted += 1;
+    if (outcome.certCreated) certificatesCreated += 1;
   }
 
   await db

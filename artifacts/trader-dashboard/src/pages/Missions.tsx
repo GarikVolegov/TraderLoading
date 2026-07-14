@@ -53,7 +53,7 @@ export default function Missions() {
       onSuccess: (data) => {
         qc.invalidateQueries({ queryKey: getGetMissionsQueryKey() });
         qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
-        toast({ title: "Missione completata", description: `+${data.mission.xpReward} XP` });
+        toast({ title: uiText("auto.ui.f16def3338"), description: `+${data.mission.xpReward} XP` });
         if (data.levelUp) {
           const end = Date.now() + 3000;
           const frame = () => {
@@ -63,8 +63,8 @@ export default function Missions() {
           };
           frame();
           toast({
-            title: "Level up!",
-            description: `Hai raggiunto il livello ${data.profile.level}`,
+            title: uiText("auto.ui.ff8e233b1b"),
+            description: uiText("auto.ui.2c7129d177", { level: data.profile.level }),
             className: "bg-primary text-primary-foreground border-none font-bold",
             duration: 6000,
           });
@@ -103,8 +103,8 @@ export default function Missions() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-lg font-bold">{profile?.levelName ?? "Trader"}</p>
                 <p className="text-xs text-muted-foreground">
-                  {profile ? `${profile.xp} XP totali` : "Caricamento…"}
-                  {profile?.xpToNextLevel ? ` · ${profile.xpToNextLevel} XP al prossimo livello` : ""}
+                  {profile ? uiText("auto.ui.4cff443fcb", { xp: profile.xp }) : uiText("common.loading")}
+                  {profile?.xpToNextLevel ? uiText("auto.ui.4d9cf271fb", { xp: profile.xpToNextLevel }) : ""}
                 </p>
                 {profile?.xpToNextLevel ? (
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary/50">
@@ -131,7 +131,7 @@ export default function Missions() {
         <CardContent className="p-4">
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-sm font-bold">
-              <Zap className="h-4 w-4 text-primary" /> Progresso di oggi
+              <Zap className="h-4 w-4 text-primary" /> {uiText("auto.ui.85c01a96b7")}
             </span>
             <span className="font-mono text-xs text-muted-foreground">{totalXp}/{totalPossible} XP · {completed.length}/{missions?.length ?? 0}</span>
           </div>
@@ -154,7 +154,7 @@ export default function Missions() {
       ) : !missions || missions.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            Nessuna missione per oggi. Configura le missioni dalle impostazioni.
+            {uiText("auto.ui.974a860ce1")}
           </CardContent>
         </Card>
       ) : (
@@ -203,7 +203,7 @@ export default function Missions() {
                         disabled={completeMutation.isPending}
                         className="group flex items-center gap-0.5 rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1.5 text-[11px] font-bold text-primary transition-all hover:border-primary/35 hover:bg-primary/20"
                       >
-                        Completa
+                        {uiText("auto.ui.1f4e9341c0")}
                         <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                       </button>
                     )}

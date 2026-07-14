@@ -1,11 +1,13 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { useLocation, useSearch } from "wouter";
+import { parseChatTab, type ChatTab } from "@/lib/chatTabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
-import { useAuth } from "@workspace/replit-auth-web";
-import { Loader2, LogIn, Globe, Lock, Trophy, Radio } from "lucide-react";
+import { useUser } from "@clerk/react";
+import { Loader2, LogIn, Globe } from "lucide-react";
 import type { SocialUser } from "@/components/social/types";
 import { SocialTab } from "@/components/social/SocialTab";
 import { MessaggiTab } from "@/components/social/MessaggiTab";
@@ -14,24 +16,28 @@ import { CommunityTab } from "@/components/social/CommunityTab";
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 
-type Tab = "social" | "messaggi" | "classifica" | "comunita";
-
 export default function Chat() {
   const { t } = useLanguage();
-  const { isAuthenticated, isLoading: authLoading, login, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("social");
+  // Clerk è la fonte auth dell'app (lo shim legacy replit-auth-web faceva una
+  // fetch ridondante e la sua CTA puntava al vecchio login OIDC, morto in prod).
+  const { user, isSignedIn, isLoaded } = useUser();
+  const authLoading = !isLoaded;
+  const isAuthenticated = !!isSignedIn;
+  const [, navigate] = useLocation();
+  const login = () => navigate("/sign-in");
+  const activeTab: ChatTab = parseChatTab(useSearch());
   const [pendingChat, setPendingChat] = useState<SocialUser | null>(null);
 
   const handleStartChat = (u: SocialUser) => {
-    setActiveTab("messaggi");
     setPendingChat(u);
+    navigate("/chat?t=messaggi");
   };
 
   useEffect(() => {
     if (activeTab === "messaggi" && pendingChat) {
       setPendingChat(null);
     }
-  }, [activeTab]);
+  }, [activeTab, pendingChat]);
 
   if (authLoading)
     return (
@@ -63,25 +69,6 @@ export default function Chat() {
       </PageLayout>
     );
 
-  const tabs: { id: Tab; label: string; icon: ReactNode }[] = [
-    {
-      id: "social",
-      label: t("chat.tab.social"),
-      icon: <Globe className="w-4 h-4" />,
-    },
-    {
-      id: "messaggi",
-      label: t("chat.tab.messages"),
-      icon: <Lock className="w-4 h-4" />,
-    },
-    { id: "comunita", label: "Comunità", icon: <Radio className="w-4 h-4" /> },
-    {
-      id: "classifica",
-      label: t("chat.tab.leaderboard"),
-      icon: <Trophy className="w-4 h-4" />,
-    },
-  ];
-
   return (
     <PageLayout>
       <PageHeader title={t("chat.title")} subtitle={t("chat.subtitle")} />
@@ -89,21 +76,8 @@ export default function Chat() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-card/30 backdrop-blur-md border border-border rounded-2xl overflow-hidden flex flex-col min-h-0 h-[calc(100dvh-4.6rem-var(--bottom-nav-clearance))] sm:h-[calc(100dvh-8.5rem-var(--bottom-nav-clearance))]"
+        className="bg-card/30 backdrop-blur-md border border-border rounded-2xl overflow-hidden flex flex-col min-h-0 h-[calc(100dvh-var(--safe-top)-4.6rem-var(--bottom-nav-clearance))] sm:h-[calc(100dvh-var(--safe-top)-8.5rem-var(--bottom-nav-clearance))]"
       >
-        <div className="flex border-b border-border shrink-0 overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-all whitespace-nowrap px-2 ${activeTab === tab.id ? "text-primary border-b-2 border-primary bg-primary/5" : "text-muted-foreground hover:text-foreground hover:bg-white/5"}`}
-            >
-              {tab.icon}
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
         <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === "social" && (
             <SocialTab

@@ -7,6 +7,7 @@ import { buildMacroTickerSummary, ensureMacroDeepDive, macroArticleToNewsLike, m
 import type { NewsDeepDive } from "../services/newsHub/types.js";
 import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
+import { parseMonteCarloParams } from "../services/monteCarloParams.js";
 import {
   calculateVolatilityMetrics,
   candlesToVolatilityInput,
@@ -14,36 +15,34 @@ import {
   YAHOO_VOLATILITY_PAIRS,
   type VolatilityMetricResponse,
 } from "../services/volatility.js";
-import { getCandles } from "../services/candles.js";
+import { getCandles, isSupportedSymbol } from "../services/candles.js";
+import {
+  buildWatchlistItem,
+  parseWatchlistPairsParam,
+  type WatchlistItem,
+} from "../services/watchlistQuotes.js";
 import { getJsonCache, setJsonCache } from "../lib/cache.js";
+import { captureError } from "../lib/observability.js";
 
 const router = Router();
+
+// COT fetch runs from a cron and at boot, detached from any request. A failure
+// here was previously swallowed to console and never reached Sentry; report it so
+// a silently-stale COT feed is visible in production.
+function onCotFetchError(err: unknown): void {
+  console.error("[tools/cot] fetch failed", err);
+  captureError(err, { surface: "cron", job: "cot-fetch" });
+}
 
 // ─── 1. MONTE CARLO ───────────────────────────────────────────────────────────
 // Scenario-based Monte Carlo: ogni simulazione ha la propria sequenza di regimi
 // di mercato (bull / neutral / bear) che cambiano stocasticamente. Questo rende
 // ogni curva genuinamente unica, con drawdown, recuperi e fasi di trend diversi.
 router.post("/tools/montecarlo", (req, res) => {
-  const {
-    winrate: rawWinrate = 55,
-    avgR = 1.5,
-    lossR = 1,
-    numTrades = 100,
-    riskPercent = 1,
-    initialBalance = 10000,
-    simCount = 50,
-  } = req.body as {
-    winrate?: number;
-    avgR?: number;
-    lossR?: number;
-    numTrades?: number;
-    riskPercent?: number;
-    initialBalance?: number;
-    simCount?: number;
-  };
-
-  // Normalize winrate: accept 0-100 or 0-1
-  const winrate = rawWinrate > 1 ? rawWinrate / 100 : rawWinrate;
+  // Validate + clamp every input (numTrades/simCount bound the work) so a crafted
+  // body can't spin the CPU or allocate unbounded curves. winrate is normalized to 0..1.
+  const { winrate, avgR, lossR, numTrades, riskPercent, initialBalance, simCount } =
+    parseMonteCarloParams(req.body);
 
   // Regime definitions: multipliers applied to base parameters
   type Regime = "bull" | "neutral" | "bear";
@@ -79,7 +78,7 @@ router.post("/tools/montecarlo", (req, res) => {
 
   const simulations: number[][] = [];
   const finalValues: number[] = [];
-  const N = Math.min(simCount, 200);
+  const N = simCount; // already clamped to [1, 200] by parseMonteCarloParams
 
   for (let s = 0; s < N; s++) {
     const curve: number[] = [initialBalance];
@@ -293,6 +292,99 @@ router.get("/tools/volatility", async (req, res) => {
     return;
   }
   res.status(503).json({ error: "Dati di volatilita in aggiornamento" });
+});
+
+// ─── 3b. WATCHLIST (dashboard sparkline rows over the D1 candle chain) ───────
+// Same stale-while-revalidate discipline as volatility: a request only ever
+// reads cache and triggers a deduped, concurrency-capped background refresh, so
+// the slow no-key source (Dukascopy) never blocks the HTTP request. Pure payload
+// shaping lives in services/watchlistQuotes.ts.
+
+const WATCHLIST_FRESH_TTL_SECONDS = 2 * 60;
+const WATCHLIST_STALE_TTL_SECONDS = 7 * 24 * 60 * 60;
+const WATCHLIST_WARM_MAX = 3;
+
+const watchlistLastGood = new Map<string, WatchlistItem>();
+const watchlistInFlight = new Map<string, Promise<void>>();
+let watchlistWarmActive = 0;
+const watchlistWarmWaiters: Array<() => void> = [];
+
+const watchlistFreshKey = (pair: string) => `watchlist:v1:${pair}`;
+const watchlistStaleKey = (pair: string) => `watchlist:stale:v1:${pair}`;
+
+function acquireWatchlistWarmSlot(): Promise<void> {
+  if (watchlistWarmActive < WATCHLIST_WARM_MAX) {
+    watchlistWarmActive++;
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    watchlistWarmWaiters.push(() => {
+      watchlistWarmActive++;
+      resolve();
+    });
+  });
+}
+
+function releaseWatchlistWarmSlot(): void {
+  watchlistWarmActive--;
+  watchlistWarmWaiters.shift()?.();
+}
+
+import { emitWatchlistUpdate } from "../services/watchlist/watchlistHub.js";
+
+async function refreshWatchlistPair(pair: string): Promise<void> {
+  const { candles } = await getCandles(pair, "D1");
+  const item = buildWatchlistItem(pair, candles, true);
+  watchlistLastGood.set(pair, item);
+  await setJsonCache(watchlistFreshKey(pair), item, WATCHLIST_FRESH_TTL_SECONDS);
+  await setJsonCache(watchlistStaleKey(pair), item, WATCHLIST_STALE_TTL_SECONDS);
+  // Broadcast to any in-process WS subscribers
+  try {
+    emitWatchlistUpdate(pair, item);
+  } catch {
+    // ignore emitter errors
+  }
+}
+
+function ensureWatchlistWarm(pair: string): Promise<void> {
+  const existing = watchlistInFlight.get(pair);
+  if (existing) return existing;
+  const job = (async () => {
+    await acquireWatchlistWarmSlot();
+    try {
+      await refreshWatchlistPair(pair);
+    } catch (err) {
+      console.warn(`[tools/watchlist] warm ${pair}: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      releaseWatchlistWarmSlot();
+      watchlistInFlight.delete(pair);
+    }
+  })();
+  watchlistInFlight.set(pair, job);
+  return job;
+}
+
+async function resolveWatchlistItem(pair: string): Promise<WatchlistItem> {
+  if (!isSupportedSymbol(pair)) return buildWatchlistItem(pair, null, false);
+
+  const fresh = await getJsonCache<WatchlistItem>(watchlistFreshKey(pair));
+  if (fresh) return fresh;
+
+  // Cache miss: kick off a background refresh and serve the best we have now.
+  void ensureWatchlistWarm(pair);
+  const stale =
+    watchlistLastGood.get(pair) ?? (await getJsonCache<WatchlistItem>(watchlistStaleKey(pair)));
+  return stale ?? buildWatchlistItem(pair, null, true);
+}
+
+router.get("/tools/watchlist", async (req, res) => {
+  const pairs = parseWatchlistPairsParam(req.query["pairs"]);
+  if (pairs.length === 0) {
+    res.status(400).json({ error: "Parametro pairs mancante o non valido" });
+    return;
+  }
+  const items = await Promise.all(pairs.map((pair) => resolveWatchlistItem(pair)));
+  res.json({ items });
 });
 
 // ─── 4. COT REPORT (CFTC, aggiornamento ogni venerdì) ────────────────────────
@@ -825,7 +917,7 @@ function runCotFetch(): Promise<void> {
 // Cron: ogni venerdì alle 21:00 UTC (30 min dopo pubblicazione CFTC)
 const cotTask = cron.schedule("0 21 * * 5", () => {
   console.info("[tools/cot] Cron triggered — fetching new COT data");
-  runCotFetch().catch(console.error);
+  runCotFetch().catch(onCotFetchError);
 }, { timezone: "UTC" });
 
 export const cotScheduler = {
@@ -837,7 +929,7 @@ export const cotScheduler = {
 };
 
 // Fetch iniziale al boot del server
-runCotFetch().catch(console.error);
+runCotFetch().catch(onCotFetchError);
 
 router.get("/tools/cot", async (req, res) => {
   const now = Date.now();

@@ -12,7 +12,7 @@ export const ideasTable = pgTable("ideas", {
   deadlineDate: text("deadline_date"),
   userId: text("user_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [index("ideas_user_created_idx").on(t.userId, t.createdAt)]);
 
 export const checklistItemsTable = pgTable("checklist_items", {
   id: serial("id").primaryKey(),
@@ -21,7 +21,7 @@ export const checklistItemsTable = pgTable("checklist_items", {
   order: integer("order").notNull().default(0),
   userId: text("user_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [index("checklist_items_user_order_idx").on(t.userId, t.order)]);
 
 export const userSettingsTable = pgTable("user_settings", {
   id: serial("id").primaryKey(),
@@ -63,7 +63,7 @@ export const quotesTable = pgTable("quotes", {
   author: text("author"),
   userId: text("user_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [index("quotes_user_idx").on(t.userId)]);
 
 export const checkinsTable = pgTable("checkins", {
   id: serial("id").primaryKey(),
@@ -73,7 +73,7 @@ export const checkinsTable = pgTable("checkins", {
   userId: text("user_id"),
   date: text("date").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [index("checkins_user_created_idx").on(t.userId, t.createdAt)]);
 
 export const loginAccessTable = pgTable("login_access", {
   id: serial("id").primaryKey(),

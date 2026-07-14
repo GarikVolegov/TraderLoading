@@ -134,6 +134,118 @@
       "when": 1783180800000,
       "tag": "0018_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1783267200000,
+      "tag": "0019_account_trades_user_status_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1783353600000,
+      "tag": "0020_stripe_webhook_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1783440000000,
+      "tag": "0021_chat_file_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1783526400000,
+      "tag": "0022_widget_user_indices",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1783612800000,
+      "tag": "0023_community_moderation_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1783699200000,
+      "tag": "0024_referrals",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1783785600000,
+      "tag": "0025_email_lifecycle_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1783872000000,
+      "tag": "0026_community_message_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1783958400000,
+      "tag": "0027_community_join_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1784044800000,
+      "tag": "0028_credit_wallet",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1784131200000,
+      "tag": "0029_channel_paid_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1784217600000,
+      "tag": "0030_creator_payout",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1784304000000,
+      "tag": "0031_payout_account_stripe_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1784390400000,
+      "tag": "0032_credit_payment_intent",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1784476800000,
+      "tag": "0033_channel_marketplace_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1784563200000,
+      "tag": "0034_drop_credit_wallet",
+      "breakpoints": true
     }
   ]
 }

@@ -124,7 +124,7 @@ export function SeasonBanner({ season, progress, enrolled, enrolling, onEnroll }
       {season.status !== "upcoming" && (
         <div style={{ position: "relative", marginTop: 18 }}>
           <div style={{ height: 7, borderRadius: 99, background: "hsl(222 47% 5% / 0.7)", border: "1px solid hsl(215 25% 27% / 0.4)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${Math.round(progress * 100)}%`, background: "linear-gradient(90deg, hsl(45 96% 55% / 0.8), hsl(142 71% 50%))" }} />
+            <div style={{ height: "100%", width: `${Math.round(progress * 100)}%`, background: "linear-gradient(90deg, hsl(45 96% 55% / 0.8), hsl(var(--accent-jade)))" }} />
           </div>
         </div>
       )}

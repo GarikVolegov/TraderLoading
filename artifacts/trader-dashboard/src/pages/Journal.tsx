@@ -1,12 +1,16 @@
 import { useState, useRef, useMemo, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, addWeeks, isWithinInterval } from "date-fns";
-import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles } from "lucide-react";
+import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
+import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { StatTile } from "@/components/ui/StatTile";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { JournalEntryModal } from "@/components/JournalEntryModal";
@@ -32,6 +36,7 @@ import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTra
 import { PnlHeatmap } from "@/components/PnlHeatmap";
 import { TradeChartSnapshot } from "@/components/TradeChartSnapshot";
 import { JournalOverview } from "@/components/journal/JournalOverview";
+import { CsvImportButton } from "@/components/journal/CsvImportButton";
 import {
   emptyJournalRecapFields,
   fetchJournalRecap,
@@ -40,8 +45,7 @@ import {
   saveJournalRecap,
   type JournalRecapFields,
 } from "@/lib/journalRecapsApi";
-
-type Tab = "panoramica" | "trades" | "idee" | "obiettivi" | "recap-settimanale" | "recap-mensile";
+import { parseJournalTab, type JournalTab } from "@/lib/journalTabs";
 
 function SyncedTradeDetails({ content }: { content: string }) {
   const parsed = useMemo(() => parseTradeContent(content), [content]);
@@ -133,10 +137,12 @@ function TradesTab() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
-  const { data: entries, isLoading } = useGetJournalEntries({
-    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 10_000 },
+  const { data: entries, isLoading, isError, refetch } = useGetJournalEntries({
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 30_000 },
   });
-  const deleteMutation = useDeleteJournalEntry();
+  // handleDelete's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const deleteMutation = useDeleteJournalEntry({ mutation: { meta: { suppressGlobalError: true } } });
 
   // Deep-link dalla command palette: /journal?new=1 apre subito il form nuovo trade.
   useEffect(() => {
@@ -173,7 +179,8 @@ function TradesTab() {
 
   return (
     <>
-      <div className="flex justify-end mb-4 sm:mb-6">
+      <div className="flex justify-end gap-2 mb-4 sm:mb-6">
+        <CsvImportButton />
         <Button onClick={() => { setEditingEntry(null); setIsModalOpen(true); }}>
           <Plus className="w-4 h-4 mr-2" />
           {t("journal.new_trade")}
@@ -190,10 +197,12 @@ function TradesTab() {
             <div key={i} className="h-64 rounded-2xl animate-pulse bg-card/60 border border-border/30" />
           ))}
         </div>
+      ) : isError ? (
+        <QueryErrorState onRetry={() => void refetch()} />
       ) : entries && entries.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <AnimatePresence>
-            {entries
+            {[...entries]
               .sort((a, b) => new Date(b.tradeDate).getTime() - new Date(a.tradeDate).getTime())
               .map((entry, idx) => {
                 const resConfig = getResultConfig(entry.result);
@@ -261,9 +270,15 @@ function TradesTab() {
                     <div className="flex justify-end gap-2 mt-auto pt-4 border-t border-border/50 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="sm" className="h-8" onClick={() => { setEditingEntry(entry); setIsModalOpen(true); }}>
                         <Edit2 className="w-4 h-4 mr-2" />
-                        {syncedTrade ? "Commenta" : t("journal.edit")}
+                        {syncedTrade ? uiText("auto.ui.8459cac879") : t("journal.edit")}
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 text-destructive hover:bg-destructive/20" onClick={() => handleDelete(entry.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-destructive hover:bg-destructive/20"
+                        aria-label={uiText("common.delete")}
+                        onClick={() => handleDelete(entry.id)}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -309,7 +324,10 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { data: all, isLoading } = useGetIdeas();
-  const createMutation = useCreateIdea();
+  // handleAdd's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast. update/delete
+  // below have no local handling, so they correctly keep the global fallback.
+  const createMutation = useCreateIdea({ mutation: { meta: { suppressGlobalError: true } } });
   const updateMutation = useUpdateIdea();
   const deleteMutation = useDeleteIdea();
   const invalidate = () => qc.invalidateQueries({ queryKey: getGetIdeasQueryKey() });
@@ -351,6 +369,8 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
   });
   const Icon = type === "idea" ? Lightbulb : Target;
   const placeholder = type === "idea" ? t("journal.add_idea") : t("journal.add_goal");
+  const listTitle = type === "idea" ? t("journal.ideas.list_title") : t("journal.goals.list_title");
+  const listSubtitle = type === "idea" ? t("journal.ideas.list_subtitle") : t("journal.goals.list_subtitle");
 
   const CADENCE_LABELS: Record<string, string> = {
     daily: t("journal.cadence.daily"),
@@ -444,8 +464,8 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
     downloadICS(`obiettivo-${item.id}.ics`, [
       {
         uid: `goal-${item.id}-${today.toISOString().slice(0, 10)}@traderloading`,
-        summary: `Obiettivo: ${item.content}`,
-        description: item.cadence ? `Cadence: ${item.cadence}` : undefined,
+        summary: uiText("auto.ui.29c0a275cf", { content: item.content }),
+        description: item.cadence ? uiText("auto.ui.f1ddb939f2", { cadence: item.cadence }) : undefined,
         dtstart: start,
         dtend: end,
         alarm: reminderMin,
@@ -520,7 +540,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                           onClick={() => { setNewDeadline(isSelected ? "" : val); setCustomDays(""); }}
                           className={`text-[11px] px-2 py-1 rounded-lg border transition-all ${isSelected ? "border-primary bg-primary/15 text-primary font-medium" : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary/70"}`}
                         >
-                          +{days}gg
+                          {uiText("auto.ui.601739fd77", { days })}
                         </button>
                       );
                     })}
@@ -583,7 +603,17 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Icon className="h-4 w-4 text-primary" />
+              <div>
+                <p className="text-sm font-semibold">{listTitle}</p>
+                <p className="text-xs text-muted-foreground">{listSubtitle}</p>
+              </div>
+            </div>
+            <Badge variant="secondary">{items.length}</Badge>
+          </CardHeader>
           <AnimatePresence>
             {items.map((item, idx) => (
               <motion.div
@@ -592,7 +622,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ delay: idx * 0.04 }}
-                className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-xl p-4 flex items-start gap-4 group hover:border-primary/40 transition-colors"
+                className="group flex items-start gap-4 border-t border-border/20 px-4 py-3 transition-colors hover:bg-secondary/20"
               >
                 <button
                   onClick={() => handleToggle(item.id, item.content, item.completed)}
@@ -738,6 +768,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                     variant="ghost"
                     size="sm"
                     className="opacity-0 group-hover:opacity-100 h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                    aria-label={uiText("common.delete")}
                     onClick={() => handleDelete(item.id)}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -746,7 +777,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
               </motion.div>
             ))}
           </AnimatePresence>
-        </div>
+        </Card>
       )}
     </div>
   );
@@ -769,7 +800,7 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: entries, isLoading } = useGetJournalEntries({
-    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 10_000 },
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 30_000 },
   });
   const [offset, setOffset] = useState(0);
 
@@ -929,48 +960,57 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
         ) : (
           <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard label={t("journal.total_trades")} value={stats.total} icon={<BarChart3 className="w-4 h-4" />} color="text-foreground" />
-            <StatCard label={t("journal.wins")} value={stats.wins} icon={<TrendingUp className="w-4 h-4" />} color="text-green-400" />
-            <StatCard label={t("journal.losses")} value={stats.losses} icon={<TrendingDown className="w-4 h-4" />} color="text-red-400" />
-            <StatCard label={t("journal.breakevens")} value={stats.breakevens} icon={<Minus className="w-4 h-4" />} color="text-yellow-400" />
+            <StatTile label={t("journal.total_trades")} value={String(stats.total)} size="lg" />
+            <StatTile label={t("journal.wins")} value={String(stats.wins)} tone="success" size="lg" />
+            <StatTile label={t("journal.losses")} value={String(stats.losses)} tone="destructive" size="lg" />
+            <StatTile label={t("journal.breakevens")} value={String(stats.breakevens)} size="lg" />
           </div>
 
-          <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 sm:p-6">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">{t("journal.win_rate")}</p>
-            <div className="flex items-end gap-3">
-              <span className={`text-4xl sm:text-5xl font-mono font-bold ${stats.winRate >= 50 ? "text-green-400" : "text-red-400"}`}>
-                {stats.winRate}%
-              </span>
-              <span className="text-sm text-muted-foreground mb-1.5">
-                ({stats.wins}W / {stats.losses}L / {stats.breakevens}BE)
-              </span>
-            </div>
-            <div className="mt-3 h-3 rounded-full bg-secondary/40 overflow-hidden flex">
-              {stats.wins > 0 && (
-                <div
-                  className="h-full bg-green-500 transition-all duration-500"
-                  style={{ width: `${(stats.wins / stats.total) * 100}%` }}
-                />
-              )}
-              {stats.breakevens > 0 && (
-                <div
-                  className="h-full bg-yellow-500 transition-all duration-500"
-                  style={{ width: `${(stats.breakevens / stats.total) * 100}%` }}
-                />
-              )}
-              {stats.losses > 0 && (
-                <div
-                  className="h-full bg-red-500 transition-all duration-500"
-                  style={{ width: `${(stats.losses / stats.total) * 100}%` }}
-                />
-              )}
-            </div>
-          </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">{t("journal.win_rate")}</p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-3">
+                <span className={`text-4xl sm:text-5xl font-mono font-bold ${stats.winRate >= 50 ? "text-success" : "text-destructive"}`}>
+                  {stats.winRate}%
+                </span>
+                <span className="text-sm text-muted-foreground mb-1.5">
+                  ({stats.wins}W / {stats.losses}L / {stats.breakevens}BE)
+                </span>
+              </div>
+              <div className="mt-3 h-3 rounded-full bg-secondary/40 overflow-hidden flex">
+                {stats.wins > 0 && (
+                  <div
+                    className="h-full bg-green-500 transition-all duration-500"
+                    style={{ width: `${(stats.wins / stats.total) * 100}%` }}
+                  />
+                )}
+                {stats.breakevens > 0 && (
+                  <div
+                    className="h-full bg-yellow-500 transition-all duration-500"
+                    style={{ width: `${(stats.breakevens / stats.total) * 100}%` }}
+                  />
+                )}
+                {stats.losses > 0 && (
+                  <div
+                    className="h-full bg-red-500 transition-all duration-500"
+                    style={{ width: `${(stats.losses / stats.total) * 100}%` }}
+                  />
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {stats.dailyBreakdown.length > 0 && (
-            <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 sm:p-6">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-4">{t("journal.daily_breakdown")}</p>
-              <div className="space-y-2.5">
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">{t("journal.daily_breakdown")}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2.5">
                 {stats.dailyBreakdown.map(([day, data]) => {
                   const dayTotal = data.wins + data.losses + data.breakevens;
                   return (
@@ -1006,41 +1046,50 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
                     </div>
                   );
                 })}
-              </div>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {stats.topTags.length > 0 && (
-            <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 sm:p-6">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">{t("journal.top_tags")}</p>
-              <div className="flex flex-wrap gap-2">
-                {stats.topTags.map(([tag, count]) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium border border-primary/20"
-                  >
-                    <Tag className="w-3 h-3" />
-                    {tag}
-                    <span className="bg-primary/20 px-1.5 py-0.5 rounded text-[10px] font-bold">{count}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <Tag className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">{t("journal.top_tags")}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {stats.topTags.map(([tag, count]) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium border border-primary/20"
+                    >
+                      <Tag className="w-3 h-3" />
+                      {tag}
+                      <span className="bg-primary/20 px-1.5 py-0.5 rounded text-[10px] font-bold">{count}</span>
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )}
           </>
         )}
 
-        <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 sm:p-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-5">
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t("journal.recap.title")}</p>
-              <h4 className="text-base font-bold">{periodInfo.label}</h4>
+        <Card>
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <div>
+                <p className="text-sm font-semibold">{t("journal.recap.title")}</p>
+                <p className="text-xs text-muted-foreground">{periodInfo.label}</p>
+              </div>
             </div>
-            <div className={`text-xs rounded-lg px-3 py-2 border ${recapEditable ? "border-primary/25 bg-primary/10 text-primary" : "border-white/10 bg-white/5 text-muted-foreground"}`}>
+            <Badge variant={recapEditable ? "secondary" : "outline"}>
               {recapEditable ? t("journal.recap.open") : t("journal.recap.window", { dates: recapWindowLabel })}
-            </div>
-          </div>
-
+            </Badge>
+          </CardHeader>
+          <CardContent>
           {!recapEditable && !recapQuery.data && (
             <p className="mb-4 text-sm text-muted-foreground">{t("journal.recap.locked")}</p>
           )}
@@ -1078,60 +1127,22 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
               </Button>
             </div>
           )}
-        </div>
+          </CardContent>
+        </Card>
       </>
-    </div>
-  );
-}
-
-function StatCard({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: string }) {
-  return (
-    <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 text-center">
-      <div className={`flex items-center justify-center gap-1.5 mb-1 ${color}`}>
-        {icon}
-        <span className="text-[11px] uppercase tracking-wider font-medium text-muted-foreground">{label}</span>
-      </div>
-      <p className={`text-2xl sm:text-3xl font-mono font-bold ${color}`}>{value}</p>
     </div>
   );
 }
 
 export default function Journal() {
   const { t } = useLanguage();
-  const [tab, setTab] = useState<Tab>("panoramica");
-
-  const tabs: { id: Tab; labelKey: string; icon: typeof BookOpen }[] = [
-    { id: "panoramica", labelKey: "journal.tab.overview", icon: TrendingUp },
-    { id: "trades", labelKey: "journal.tab.trades", icon: BookOpen },
-    { id: "recap-settimanale", labelKey: "journal.tab.weekly", icon: BarChart3 },
-    { id: "recap-mensile", labelKey: "journal.tab.four_week", icon: Calendar },
-    { id: "idee", labelKey: "journal.tab.ideas", icon: Lightbulb },
-    { id: "obiettivi", labelKey: "journal.tab.goals", icon: Target },
-  ];
+  const [, navigate] = useLocation();
+  const tab = parseJournalTab(useSearch());
+  const setTab = (next: JournalTab) => navigate(`/journal?t=${next}`);
 
   return (
     <PageLayout>
       <PageHeader title={t("journal.title")} subtitle={t("journal.subtitle")} />
-
-      <div className="flex items-center gap-1 bg-card/50 backdrop-blur-md p-1.5 rounded-xl border border-border w-full overflow-x-auto">
-        {tabs.map(tabItem => {
-          const Icon = tabItem.icon;
-          return (
-            <button
-              key={tabItem.id}
-              onClick={() => setTab(tabItem.id)}
-              className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 flex-1 ${
-                tab === tabItem.id
-                  ? "bg-primary/10 text-primary shadow-[inset_0_0_20px_rgba(34,197,94,0.1)]"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {t(tabItem.labelKey)}
-            </button>
-          );
-        })}
-      </div>
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -1145,8 +1156,12 @@ export default function Journal() {
           {tab === "trades" && <TradesTab />}
           {tab === "recap-settimanale" && <RecapTab mode="weekly" />}
           {tab === "recap-mensile" && <RecapTab mode="four_week" />}
-          {tab === "idee" && <IdeasTab type="idea" />}
-          {tab === "obiettivi" && <IdeasTab type="goal" />}
+          {tab === "idee-obiettivi" && (
+            <div className="space-y-6">
+              <IdeasTab type="idea" />
+              <IdeasTab type="goal" />
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
     </PageLayout>

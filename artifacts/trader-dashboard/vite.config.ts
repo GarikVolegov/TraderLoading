@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 const rawPort = process.env.PORT ?? "5173";
 
@@ -24,6 +25,11 @@ function isValidClerkKey(key: string): boolean {
 
 export default defineConfig(async ({ command }) => {
   const isServe = command === "serve";
+  // Upload sourcemaps to Sentry only on a production build WITH a token configured —
+  // so prod stack traces symbolicate. Without the token the build behaves exactly as
+  // before (no maps emitted, nothing uploaded). Maps are deleted after upload so they
+  // are never served to clients.
+  const uploadSourcemaps = !isServe && Boolean(process.env.SENTRY_AUTH_TOKEN);
   if (!isServe) {
     process.env.NODE_ENV = "production";
     // Vite inlines VITE_* env at build time. An empty key here produces a bundle
@@ -45,7 +51,7 @@ export default defineConfig(async ({ command }) => {
   base: basePath,
   plugins: [
     react(),
-    tailwindcss({ optimize: false }),
+    tailwindcss(),
     ...(isServe ? [runtimeErrorOverlay()] : []),
     ...(isServe &&
     process.env.REPL_ID !== undefined
@@ -60,6 +66,18 @@ export default defineConfig(async ({ command }) => {
           ),
         ]
       : []),
+    ...(uploadSourcemaps
+      ? sentryVitePlugin({
+          // Region-aware: EU orgs (o…ingest.de.sentry.io) need the de.sentry.io URL,
+          // otherwise the upload 401/404s against the US control silo.
+          url: process.env.SENTRY_URL,
+          org: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT,
+          authToken: process.env.SENTRY_AUTH_TOKEN,
+          release: { name: process.env.VITE_APP_VERSION },
+          sourcemaps: { filesToDeleteAfterUpload: ["**/*.map"] },
+        })
+      : []),
   ],
   resolve: {
     alias: {
@@ -72,31 +90,17 @@ export default defineConfig(async ({ command }) => {
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    sourcemap: false,
+    // 'hidden' emits maps but adds no //# sourceMappingURL to the bundles, so the
+    // Sentry plugin can upload them without the browser ever fetching them.
+    sourcemap: uploadSourcemaps ? "hidden" : false,
     minify: "esbuild",
     cssMinify: true,
     reportCompressedSize: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return undefined;
-          // lightweight-charts is framework-agnostic (canvas) and large → safe to isolate.
-          if (id.includes("lightweight-charts")) return "vendor-lightweight-charts";
-          // @dnd-kit is used ONLY by the (lazy) Dashboard page and is a leaf that just
-          // consumes React (one-way edge → vendor, no cycle), so it can live in its own
-          // chunk that loads with Dashboard instead of bloating the eager vendor chunk.
-          if (id.includes("@dnd-kit")) return "vendor-dnd";
-          // Everything else — React itself AND every library that touches React APIs
-          // (forwardRef/hooks) at module-init time (@radix-ui, lucide-react, recharts,
-          // framer-motion, @dnd-kit, @clerk, wouter), plus React's CommonJS-interop
-          // helper modules — MUST live in one chunk. Splitting them across vendor-ui /
-          // vendor-react / vendor-recharts produced CIRCULAR chunk graphs
-          // (vendor-ui ↔ vendor-react), so a UI chunk evaluated before React was ready
-          // → "Cannot read properties of undefined (reading 'forwardRef')" → black screen.
-          return "vendor";
-        },
-      },
-    },
+    // No manualChunks: Rollup's default per-dynamic-import chunking is
+    // topologically ordered (no circular chunk graphs), so page-only libraries
+    // (recharts, @xyflow, lightweight-charts, @dnd-kit) load with their lazy
+    // page instead of in an eager vendor mega-chunk. The old manual grouping
+    // that black-screened (forwardRef undefined) is exactly what this avoids.
   },
   server: {
     port,

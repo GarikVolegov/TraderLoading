@@ -57,6 +57,37 @@ export function isMuteActive(mute: { until: Date | null } | null, now: Date): bo
   return mute.until.getTime() > now.getTime();
 }
 
+// ─── Role hierarchy ───────────────────────────────────────────────────────────
+// A member's "rank" is their role's `position` (higher = more senior); the
+// community owner sits above every role. Privileged actions require the actor
+// to STRICTLY outrank the role/member they act on, so a `roles.manage` holder
+// can't edit the Admin role, promote themselves to it, or moderate a peer.
+
+/** The owner is above any role position. */
+export const OWNER_RANK = Number.POSITIVE_INFINITY;
+/** A member with no assigned role is below any positioned role. */
+export const NO_ROLE_RANK = Number.NEGATIVE_INFINITY;
+
+export function memberRank(actor: { isOwner: boolean; rolePosition: number | null }): number {
+  if (actor.isOwner) return OWNER_RANK;
+  return actor.rolePosition ?? NO_ROLE_RANK;
+}
+
+/** True when `actorRank` may act on something at `targetRank` (strictly above). */
+export function outranks(actorRank: number, targetRank: number): boolean {
+  return actorRank > targetRank;
+}
+
+/** Owners may grant any permission; others only permissions they already hold. */
+export function canGrantPermissions(
+  actor: { isOwner: boolean; permissions: string[] },
+  desired: string[],
+): boolean {
+  if (actor.isOwner) return true;
+  const held = new Set(actor.permissions);
+  return desired.every((perm) => held.has(perm));
+}
+
 /** Keep only valid, de-duplicated permission keys from untrusted input. */
 export function sanitizePermissions(input: unknown): CommunityPermission[] {
   if (!Array.isArray(input)) return [];
@@ -76,6 +107,7 @@ export interface MemberContext {
   isMember: boolean;
   isOwner: boolean;
   roleId: number | null;
+  rolePosition: number | null;
   permissions: CommunityPermission[];
   isBanned: boolean;
   mute: { until: Date | null } | null;
@@ -90,6 +122,7 @@ export async function getMemberContext(communityId: number, userId: string): Pro
     isMember: false,
     isOwner: false,
     roleId: null,
+    rolePosition: null,
     permissions: [],
     isBanned: false,
     mute: null,
@@ -114,11 +147,15 @@ export async function getMemberContext(communityId: number, userId: string): Pro
 
   if (membership?.roleId != null) {
     const [role] = await db
-      .select({ permissions: communityRolesTable.permissions })
+      .select({
+        permissions: communityRolesTable.permissions,
+        position: communityRolesTable.position,
+      })
       .from(communityRolesTable)
       .where(eq(communityRolesTable.id, membership.roleId))
       .limit(1);
     base.permissions = sanitizePermissions(role?.permissions);
+    base.rolePosition = role?.position ?? null;
   }
 
   const [ban] = await db
@@ -136,6 +173,33 @@ export async function getMemberContext(communityId: number, userId: string): Pro
   base.mute = mute ? { until: mute.until ?? null } : null;
 
   return base;
+}
+
+/**
+ * Hierarchy rank of a target member (owner > role position > no role), for the
+ * outranks() checks that gate moderation and role assignment.
+ */
+export async function getMemberRank(communityId: number, userId: string): Promise<number> {
+  const [community] = await db
+    .select({ creatorId: communitiesTable.creatorId })
+    .from(communitiesTable)
+    .where(eq(communitiesTable.id, communityId))
+    .limit(1);
+  if (community?.creatorId === userId) return OWNER_RANK;
+
+  const [membership] = await db
+    .select({ roleId: communityMembersTable.roleId })
+    .from(communityMembersTable)
+    .where(and(eq(communityMembersTable.communityId, communityId), eq(communityMembersTable.userId, userId)))
+    .limit(1);
+  if (!membership || membership.roleId == null) return NO_ROLE_RANK;
+
+  const [role] = await db
+    .select({ position: communityRolesTable.position })
+    .from(communityRolesTable)
+    .where(eq(communityRolesTable.id, membership.roleId))
+    .limit(1);
+  return role?.position ?? NO_ROLE_RANK;
 }
 
 /**

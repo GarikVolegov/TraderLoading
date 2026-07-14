@@ -2,13 +2,13 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { getPairLabel } from "@workspace/pair-catalog";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO } from "date-fns";
-import { it } from "date-fns/locale";
 import {
   Plus, Trash2, ArrowLeft, TrendingUp, TrendingDown,
   BarChart3, FlaskConical, ChevronRight, Play,
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,16 +25,11 @@ import {
   getGetBacktestTradesQueryKey,
   type BacktestSession,
 } from "@workspace/api-client-react";
-import ChartReplay from "@/components/ChartReplay";
-import {
-  createReplaySavedTradeIdsStorageKey,
-  parseReplaySavedTradeIds,
-  serializeReplaySavedTradeIds,
-} from "@/components/chartReplayPersistence";
+import { useLocation } from "wouter";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { calculateBacktestStats } from "@/lib/backtestStats";
-import { uiText } from "@/contexts/LanguageContext";
+import { uiText, useDateLocale } from "@/contexts/LanguageContext";
 import { calculateManualBacktestTradeResult } from "@/lib/backtestTradeResult";
 
 const ALL_BT_PAIRS = [
@@ -43,13 +38,15 @@ const ALL_BT_PAIRS = [
   "BTC/USD", "ETH/USD",
 ];
 
-const TIMEFRAMES = ["M5", "M15", "M30", "H1", "H4", "D1", "W1"];
+const TIMEFRAMES = ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"];
 
 function NewSessionForm({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { selectedPairs: userPairs } = useBackground();
-  const createMutation = useCreateBacktestSession();
+  // The create handler's own catch already shows its own toast below — opt
+  // out of App.tsx's global mutation-error toast to avoid a double toast.
+  const createMutation = useCreateBacktestSession({ mutation: { meta: { suppressGlobalError: true } } });
   const [name, setName] = useState("");
   const pairOptions = useMemo(() => {
     if (userPairs.length === 0) return ALL_BT_PAIRS;
@@ -81,10 +78,10 @@ function NewSessionForm({ onClose }: { onClose: () => void }) {
         data: { name: name.trim(), pair, timeframe, strategy: strategy.trim() || undefined },
       });
       qc.invalidateQueries({ queryKey: getGetBacktestSessionsQueryKey() });
-      toast({ description: "Sessione creata." });
+      toast({ description: uiText("auto.ui.77da81d703") });
       onClose();
     } catch {
-      toast({ description: "Errore.", variant: "destructive" });
+      toast({ description: uiText("auto.ui.1d24d6b2b5"), variant: "destructive" });
     }
   };
 
@@ -95,11 +92,11 @@ function NewSessionForm({ onClose }: { onClose: () => void }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground uppercase tracking-wider">{uiText("backtest.session_name")}</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="es. Strategia Breakout Londra" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={uiText("auto.ui.41eceb478a")} />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground uppercase tracking-wider">{uiText("backtest.strategy")}</label>
-            <Input value={strategy} onChange={(e) => setStrategy(e.target.value)} placeholder="es. Breakout + FVG" />
+            <Input value={strategy} onChange={(e) => setStrategy(e.target.value)} placeholder={uiText("auto.ui.a4b1c0aace")} />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.569cf0cb1d")}</label>
@@ -143,7 +140,7 @@ function NewSessionForm({ onClose }: { onClose: () => void }) {
           <Button variant="ghost" onClick={onClose}>{uiText("auto.ui.6c3de5381b")}</Button>
           <Button onClick={handleSubmit} disabled={!name.trim() || createMutation.isPending}>
             <Plus className="w-4 h-4 mr-2" />
-            Crea Sessione
+            {uiText("auto.ui.1a33586f3b")}
           </Button>
         </div>
       </CardContent>
@@ -154,20 +151,14 @@ function NewSessionForm({ onClose }: { onClose: () => void }) {
 function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const dateLocale = useDateLocale();
   const { data: trades, isLoading } = useGetBacktestTrades(session.id);
-  const createTrade = useCreateBacktestTrade();
+  // handleAddTrade's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const createTrade = useCreateBacktestTrade({ mutation: { meta: { suppressGlobalError: true } } });
   const deleteTrade = useDeleteBacktestTrade();
   const [mode, setMode] = useState<"chart" | "manual">("chart");
-  const [pendingChartTrades, setPendingChartTrades] = useState<Array<{
-    id: number;
-    direction: "buy" | "sell";
-    entryPrice: number;
-    exitPrice?: number;
-    stopLoss?: number;
-    takeProfit?: number;
-    result?: "win" | "loss" | "breakeven";
-    pips?: number;
-  }>>([]);
+  const [, navigate] = useLocation();
 
   const [direction, setDirection] = useState<"buy" | "sell">("buy");
   const [entryPrice, setEntryPrice] = useState("");
@@ -185,8 +176,8 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
   };
 
   const computedResult = useMemo(
-    () => calculateManualBacktestTradeResult(entryPrice, exitPrice, direction),
-    [entryPrice, exitPrice, direction],
+    () => calculateManualBacktestTradeResult(entryPrice, exitPrice, direction, session.pair),
+    [entryPrice, exitPrice, direction, session.pair],
   );
 
   const handleAddTrade = async () => {
@@ -202,63 +193,11 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
         },
       });
       qc.invalidateQueries({ queryKey: getGetBacktestTradesQueryKey(session.id) });
-      toast({ description: "Trade aggiunto." });
+      toast({ description: uiText("auto.ui.8a03b17e2e") });
       resetForm();
     } catch {
-      toast({ description: "Errore.", variant: "destructive" });
+      toast({ description: uiText("auto.ui.1d24d6b2b5"), variant: "destructive" });
     }
-  };
-
-  const savedTradeIdsStorageKey = createReplaySavedTradeIdsStorageKey(`backtest-session-${session.id}`);
-  const [savedTradeIds, setSavedTradeIds] = useState<Set<number>>(() => {
-    if (typeof window === "undefined") return new Set();
-    return parseReplaySavedTradeIds(window.localStorage.getItem(savedTradeIdsStorageKey));
-  });
-
-  const handleSaveChartTrades = async (chartTrades: Array<{
-    id: number;
-    direction: "buy" | "sell";
-    entryPrice: number;
-    exitPrice?: number;
-    stopLoss?: number;
-    takeProfit?: number;
-    result?: "win" | "loss" | "breakeven";
-    pips?: number;
-  }>) => {
-    const unsaved = chartTrades.filter((t) => !savedTradeIds.has(t.id) && t.exitPrice && t.result != null);
-    if (unsaved.length === 0) {
-      toast({ description: "Nessun nuovo trade da salvare." });
-      return;
-    }
-    let saved = 0;
-    const newIds = new Set(savedTradeIds);
-    for (const t of unsaved) {
-      try {
-        await createTrade.mutateAsync({
-          id: session.id,
-          data: {
-            direction: t.direction,
-            entryPrice: t.entryPrice.toFixed(5),
-            exitPrice: t.exitPrice!.toFixed(5),
-            stopLoss: t.stopLoss?.toFixed(5),
-            takeProfit: t.takeProfit?.toFixed(5),
-            lotSize: "0.01",
-            result: t.result!,
-            pips: (t.pips ?? 0).toFixed(1),
-            tradeDate: format(new Date(), "yyyy-MM-dd"),
-          },
-        });
-        newIds.add(t.id);
-        saved++;
-      } catch {
-        /* skip failed */
-      }
-    }
-    setSavedTradeIds(newIds);
-    window.localStorage.setItem(savedTradeIdsStorageKey, serializeReplaySavedTradeIds(newIds));
-    setPendingChartTrades([]);
-    qc.invalidateQueries({ queryKey: getGetBacktestTradesQueryKey(session.id) });
-    toast({ description: `${saved} trade salvati.` });
   };
 
   const handleDeleteTrade = async (id: number) => {
@@ -292,7 +231,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
           }`}
         >
           <Play className="w-4 h-4" />
-          Replay Grafico
+          {uiText("auto.ui.9d2efd75f5")}
         </button>
         <button
           onClick={() => setMode("manual")}
@@ -301,31 +240,26 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
           }`}
         >
           <Plus className="w-4 h-4" />
-          Manuale
+          {uiText("auto.ui.58ab848a29")}
         </button>
       </div>
 
       {mode === "chart" ? (
-        <div className="space-y-3">
-          <ChartReplay
-            symbol={session.pair}
-            interval={session.timeframe}
-            persistenceKey={`backtest-session-${session.id}`}
-            onTradesChange={(chartTrades) => {
-              const completed = chartTrades.filter((t) => t.exitPrice != null && !savedTradeIds.has(t.id));
-              setPendingChartTrades(completed);
-            }}
-          />
-          {pendingChartTrades.length > 0 && (
-            <Button
-              onClick={() => handleSaveChartTrades(pendingChartTrades)}
-              disabled={createTrade.isPending}
-              className="w-full"
-            >
-              Salva {pendingChartTrades.length} trade nel database
+        <Card className="border-dashed">
+          <CardContent className="p-8 flex flex-col items-center text-center gap-3">
+            <div className="w-14 h-14 rounded-2xl bg-primary/15 text-primary flex items-center justify-center">
+              <Play className="w-7 h-7" />
+            </div>
+            <h4 className="text-base font-bold">{uiText("backtest_terminal.launch_title")}</h4>
+            <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
+              {uiText("backtest_terminal.launch_subtitle")}
+            </p>
+            <Button className="mt-2" onClick={() => navigate(`/backtest/${session.id}/replay`)}>
+              <Play className="w-4 h-4 mr-2" />
+              {uiText("backtest_terminal.launch_cta")}
             </Button>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-4">
           <Card>
@@ -374,7 +308,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
                   <Input type="date" value={tradeDate} onChange={(e) => setTradeDate(e.target.value)} />
                 </div>
               </div>
-              <Input placeholder="Note (opzionale)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <Input placeholder={uiText("auto.ui.de19a24223")} value={notes} onChange={(e) => setNotes(e.target.value)} />
               {entryPrice && exitPrice && (
                 <div className={`text-center py-2 rounded-lg text-sm font-bold ${
                   computedResult.result === "win" ? "bg-green-500/10 text-green-400"
@@ -386,7 +320,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
               )}
               <div className="flex gap-3 justify-end">
                 <Button onClick={handleAddTrade} disabled={!entryPrice || !exitPrice || createTrade.isPending}>
-                  Aggiungi Trade
+                  {uiText("auto.ui.f10b3356ff")}
                 </Button>
               </div>
             </CardContent>
@@ -399,8 +333,8 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatBox label="Trade" value={stats.total} color="text-foreground" icon={<BarChart3 className="w-4 h-4" />} />
             <StatBox label="Win Rate" value={`${stats.winRate}%`} color={stats.winRate >= 50 ? "text-green-400" : "text-red-400"} icon={<TrendingUp className="w-4 h-4" />} />
-            <StatBox label="Pips Totali" value={stats.totalPips} color={parseFloat(stats.totalPips) >= 0 ? "text-green-400" : "text-red-400"} icon={<BarChart3 className="w-4 h-4" />} />
-            {stats.avgRR && <StatBox label="R:R Medio" value={stats.avgRR} color={parseFloat(stats.avgRR) >= 1 ? "text-green-400" : "text-orange-400"} icon={<TrendingUp className="w-4 h-4" />} />}
+            <StatBox label={uiText("auto.ui.47918b5643")} value={stats.totalPips} color={parseFloat(stats.totalPips) >= 0 ? "text-green-400" : "text-red-400"} icon={<BarChart3 className="w-4 h-4" />} />
+            {stats.avgRR && <StatBox label={uiText("auto.ui.37d3f03245")} value={stats.avgRR} color={parseFloat(stats.avgRR) >= 1 ? "text-green-400" : "text-orange-400"} icon={<TrendingUp className="w-4 h-4" />} />}
           </div>
           <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4">
             <div className="flex items-end gap-3">
@@ -449,7 +383,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
                       {trade.result === "win" ? "+" : ""}{trade.pips ?? "0"} pips
                     </span>
                     <span className="text-[10px] text-muted-foreground/60">
-                      {format(parseISO(trade.tradeDate), "d MMM", { locale: it })}
+                      {format(parseISO(trade.tradeDate), "d MMM", { locale: dateLocale })}
                     </span>
                     {trade.notes && <span className="text-[10px] text-muted-foreground/50 truncate">{trade.notes}</span>}
                   </div>
@@ -514,7 +448,8 @@ function SessionMetric({ label, value, color }: { label: string; value: string; 
 export default function Backtest() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: sessions, isLoading } = useGetBacktestSessions();
+  const dateLocale = useDateLocale();
+  const { data: sessions, isLoading, isError, refetch } = useGetBacktestSessions();
   const deleteMutation = useDeleteBacktestSession();
   const [showNew, setShowNew] = useState(false);
   const [activeSession, setActiveSession] = useState<BacktestSession | null>(null);
@@ -523,7 +458,7 @@ export default function Backtest() {
     if (!confirm(uiText("auto.ui.7006c72ada"))) return;
     await deleteMutation.mutateAsync({ id });
     qc.invalidateQueries({ queryKey: getGetBacktestSessionsQueryKey() });
-    toast({ description: "Sessione eliminata." });
+    toast({ description: uiText("auto.ui.f3f3973e11") });
   };
 
   if (activeSession) {
@@ -545,7 +480,7 @@ export default function Backtest() {
         action={
           <Button onClick={() => setShowNew(!showNew)}>
             <Plus className="w-4 h-4 mr-2" />
-            Nuova Sessione
+            {uiText("auto.ui.60b228a51f")}
           </Button>
         }
       />
@@ -562,17 +497,19 @@ export default function Backtest() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse" />)}
         </div>
+      ) : isError ? (
+        <QueryErrorState onRetry={() => void refetch()} />
       ) : !sessions || sessions.length === 0 ? (
         <Card className="border-dashed border-white/10">
           <CardContent className="px-4 py-12 sm:p-16 text-center">
             <FlaskConical className="w-12 h-12 mx-auto mb-4 opacity-20" />
             <h3 className="text-xl font-bold mb-2">{uiText("backtest.empty_title")}</h3>
             <p className="text-muted-foreground max-w-md mx-auto mb-6">
-              Crea una sessione per iniziare a fare replay su grafici reali e testare le tue strategie.
+              {uiText("auto.ui.1c5e4ae4f3")}
             </p>
             <Button onClick={() => setShowNew(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              Prima Sessione
+              {uiText("auto.ui.20fe4cdc4d")}
             </Button>
           </CardContent>
         </Card>
@@ -620,17 +557,17 @@ export default function Backtest() {
                 </div>
                 {session.strategy && (
                   <p className="text-xs text-muted-foreground/70 mb-3 truncate">
-                    Strategia: {session.strategy}
+                    {uiText("auto.ui.1af8e91d4b", { strategy: session.strategy })}
                   </p>
                 )}
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   <SessionMetric label="Win Rate" value={`${stats.winRate}%`} color={winRateColor} />
                   <SessionMetric label="R:R" value={stats.avgRR ?? "--"} color={avgRRColor} />
-                  <SessionMetric label="Profitto" value={formatSignedPips(stats.totalPips)} color={profitColor} />
+                  <SessionMetric label={uiText("auto.ui.82907d818c")} value={formatSignedPips(stats.totalPips)} color={profitColor} />
                 </div>
                 <div className="flex items-center justify-between mt-auto pt-3 border-t border-border/30">
                   <span className="text-[10px] text-muted-foreground/50">
-                    {format(parseISO(session.createdAt), "d MMM yyyy", { locale: it })}
+                    {format(parseISO(session.createdAt), "d MMM yyyy", { locale: dateLocale })}
                   </span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>

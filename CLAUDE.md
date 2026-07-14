@@ -112,9 +112,109 @@ tools/metatrader-companion/   MT5 expert advisor
 
 ## 7. Active work / current focus
 
-**Candle warehouse (Phase 1).** Replacing live-only candle fetches with a persistent **M1-based** OHLCV
-store in Postgres: native **monthly RANGE partitioning**, SQL-side aggregation to any timeframe, ingestion
-from Dukascopy/Binance, behind the `CANDLE_WAREHOUSE` feature flag with live fallback. Files:
+**Usability audit — DONE incl. adversarial re-review (2026-07-13/14, branch `feat/community-management`).**
+Full app usability pass (bugs, UX polish, dead-end/demo features) requested after the pre-launch page
+audit. Live-drove every planned flow with new Playwright drivers (`scripts/verify-usability/`, mirrors
+`verify-nav-hubs`): onboarding, Pro paywall, journal, tornei, missions/admin, misc (dashboard/settings/
+routine/news/checklist/clock/support/library), and — last, after the `Workflow` tool's infra failures
+forced a switch to direct `Agent`/`Bash` calls (see [[workflow-tool-vs-agent-iteration]]) — community
+(private join-request/approval, roles, DM, paid channel). Bugs found and fixed across both rounds:
+**ChecklistSetupModal could block the mandatory pair-onboarding screen** (both are `fixed inset-0`
+overlays at the same z-index; now gates on `settingsLoaded && selectedPairs.length > 0`, no longer nags
+back open after dismissal); **local DB was missing migrations 0018→0034** (applied by hand, idempotent);
+**Tornei enroll recorded `consent:true` with no consent UI ever shown** (`window.confirm(t("tornei.consent"))`
+gate added on both Arena/Percorso CTAs); ZenZone mood labels and the Checklist page's checked-looking
+icon (`CheckCircle2` → decorative `Circle`) were i18n/UX slips from earlier passes. **Feature vuota major
+finding: private communities were entirely unreachable** — `CreateCommunityModal`'s "private" toggle and
+`CommunityGeneralSettings`' privacy switch existed in the UI but `POST /community` and
+`PATCH /community/:id` never read `isPublic` from the body, so every community was created public
+regardless of the toggle. Fixed by wiring the write path in both routes; this in turn **exposed a
+pre-existing crash**: `CommunityTab.tsx` had 3 unguarded `.channels` accesses that threw when a private
+community's cover-only payload (audit 0.5b — channels/roles/myRole omitted for a non-member) reached a
+component assuming full-detail shape. Fixed by making those fields optional on `CommunityDetail` (forcing
+`tsc` to enumerate every unsafe access site — a reusable technique, see [[community-monetization]]) and
+guarding the 3 resulting call sites; verified live (crash gone, post-approval-access flow confirmed
+working). Also fixed the other "feature vuota" list: SentimentWidget hides itself instead of showing
+MYFXBOOK demo data as real; Tornei cert claim shows "mint on-chain in arrivo" instead of a button that
+always 503s; Pro/payout CTAs show an honest unavailable notice instead of a dialog that then 503s/402s
+(`checkoutAvailable`/`available`, on-contract for billing); `/styleguide` is DEV-only; HelpSection no
+longer promises an unbuilt CSV export. Added `useDialogA11y` (extracted from `components/ui/modal.tsx`'s
+focus-trap) and wired it into **12 custom overlays** with no dialog semantics/focus-trap. Added a global
+`MutationCache.onError` (`lib/mutationErrorPolicy.ts`) so a failed mutation with no local handler toasts
+instead of failing silently (closes Wiki's 8 unhandled mutations); **14 pre-existing sites opted out**
+via `meta.suppressGlobalError` to avoid double-toasting their own error message (JournalEntryModal +
+13 settings/page files). **Adversarially reviewed** (7 parallel finder passes, high effort, both rounds):
+fixed a Rules-of-Hooks crash in `CreatorPayoutSettings`, two `UserProfileModal` variants that never moved
+focus into the dialog, `CreatePostModal`'s `autoFocus` silently overridden by the new hook (added an
+opt-in `initialFocusRef`), and the checklist-modal reopen-after-dismiss bug above. **Investigated and
+closed as not-a-bug:** the community driver's "dm-send" finding (DM input allegedly not visible after
+selecting a contact) — code review of `MessaggiTab.tsx` found no gate on the input's rendering and the
+driver's placeholder selector still matches the current i18n string; two re-drives to confirm both failed
+*earlier* in the flow for unrelated environmental reasons (a `SessionCheckinModal` race — fixed with a
+defensive `dismiss()` before the "Crea community" click — then a Clerk-JS CDN load failure), neither
+reproducing the original finding. **Known gaps, not silently dropped:** ~19 further pre-existing
+`mutateAsync`+local-toast call sites beyond the 14 fixed still risk a double toast; the
+AnimatePresence-exit-timing and cross-instance scroll-lock/focus-stack gaps in `useDialogA11y` are
+pre-existing, inherited from the original `modal.tsx`, not new regressions (architectural, out of scope).
+Design-system consistency (Tornei's parallel `--tl-*` tokens, Settings' 14 arbitrary accent colors) stays
+explicitly OUT per user decision — separate future pass.
+
+**Third round — resweep + 47-agent adversarial review of the full 14-commit diff (2026-07-14).** Re-ran
+every driver once more (found+fixed a `dismiss` import bug I'd introduced in the community driver, plus
+3 more real app bugs: the same isLoading-vs-empty race in `Wiki.tsx`/`Milestones.tsx`/
+`RewardsLibrarySection.tsx`/`CreatorPayoutSettings.tsx`, two Tornei empty-states rendering raw "—"
+placeholders instead of an honest label, and a `StarRating`-in-`CommunityTab`-row hydration warning fixed
+by rendering read-only stars as a `<span>` instead of a disabled `<button>`). Then ran a dedicated
+`Workflow` — 10 finder angles + 1-vote verify + sweep, 47 agents total — against a hand-assembled diff of
+just the audit's own 14 commits (excluding interleaved concurrent work on the same shared branch); it
+returned 36 confirmed/plausible findings. Fixed the concrete ones: `ChecklistSetupModal`'s "Dopo" button
+bypassed `dismiss()` (dismissedRef stayed false, modal could still nag back open) and `dismissedRef`
+itself was a plain `useRef` reset by the `/admin` route's full unmount/remount (now sessionStorage-backed);
+`ProPage.tsx`'s compare-plans-card CTA and `BillingSubscriptionPanel.tsx`'s upgrade button both rendered
+without checking `checkoutAvailable` at all (the latter despite commit `b9c4176`'s message claiming it
+was fixed — it never touched that file); `CommunityTab.tsx` silently swallowed join/leave errors (same
+gap already closed one file over) and its auto-select-first-channel effect depended only on
+`communityDetail?.id`, so a same-id background refetch after an out-of-band join approval never re-ran
+it; `MessaggiTab.tsx`'s `sendMessageMutation` double-toasted (missed by the earlier 14-file sweep);
+`CommunityGeneralSettings.tsx`'s `isPublic` toggle was seeded once via `useState` and never re-synced,
+so a concurrent privacy change could be silently reverted by an unrelated Save; `CommunityDetail.creatorId`/
+`.createdAt` were still typed as always-present despite the same cover-only payload omitting them (dormant,
+made optional for consistency with the other 5 fields already fixed). Also fixed a concrete driver bug the
+review surfaced: Tornei's enroll consent gate is a native `window.confirm()`, which Playwright auto-resolves
+to `false` when unhandled — `drive-tornei.mjs` never actually exercised the real enroll path until a
+`page.on("dialog")` handler was added. **Deferred, documented not dropped:** several DRY/duplication
+findings (no shared `suppressGlobalError` constant across ~18 call sites, the private-toggle JSX duplicated
+between `CreateCommunityModal`/`CommunityGeneralSettings`, the unavailable-CTA ternary duplicated 3×), perf
+findings the reviewers themselves rated low-impact (`focusableWithin()` recompute per Tab keypress,
+unmemoized `BackgroundContext` value, `getMintProvider()` re-allocated per request, `ZenZone`'s `MOODS`
+array rebuilt per render), and two architectural gaps: `useDialogA11y` only inerts the background for 1
+of 12 overlays (the ones rendered inline vs. portaled — explicitly tested/commented as a tradeoff, not an
+oversight) and the independently-mounted auto-show overlays (`SessionCheckinModal`, `LevelRewardModal`,
+`ReviewPromptModal`, `ScheduledCallOverlay`) have no shared coordinator, so the same click-stealing bug
+class fixed once for `ChecklistSetupModal` can still recur for the others. Gate: typecheck + 383/383 tests
++ full build (45/45 prerendered routes) all green.
+
+**Backtest Replay Terminal (2026-07-12, DONE — port fedele del mockup Claude Design).** The old in-page
+ChartReplay is retired: `/backtest/:id/replay` is a **full-screen TradingView-style terminal**
+(`pages/BacktestReplay.tsx` + `components/backtest-terminal/*`, ~15 files + scoped `terminal.css`) on
+**lightweight-charts v5** — timeframe tabs M1→D1 with close-time anchoring, chart types candles/heikin/line,
+volume, watermark, indicator system (EMA/SMA/WMA/BB/VWAP price-pane + RSI/MACD/ATR/Stoch sub-panes +
+**custom-formula indicator** via a safe recursive-descent parser, NO eval — `lib/replay/formulaParser.ts`),
+drawing tools (trend/hline/rect/fib/ruler/long/short/text, magnet, persistence), order ticket with
+**risk %/€ → lot sizing**, draggable SL/TP/entry with R:R zones, account panel (equity curve, max DD),
+journal (Win Rate/Net R/Expectancy), transport bar 0.25×–4× + scrubber + date jump, full hotkeys. Pure
+logic TDD in `lib/replay/` (10 modules); trades auto-persist to the on-contract endpoints (dedupe per
+session); terminal state in localStorage v2. Both sides adversarially reviewed (backend 8 finding, frontend
+16 — all real ones fixed). E2E driver: `scripts/verify-backtest-replay/drive.mjs` (Clerk test user), run
+green on warehouse data. Spec: `docs/superpowers/specs/2026-07-11-backtest-replay-terminal-design.md`.
+
+**Candle warehouse — ACTIVE locally (M1 Postgres-first, live fallback).** `getCandles` is DB-first behind
+`CANDLE_WAREHOUSE=1` (now set in `.env.local`); serving supports **M1**, cursor **paging**
+(`from`/`to`/`limit` + `nextFrom`, bucket-aligned) and `GET /api/backtest/candles/meta` (watermark for the
+terminal's date-jump bounds). Seeded locally: **BTCUSD 5y** (Binance, ~2.6M rows) + **EURUSD ~4.7y**
+(Dukascopy, 16/61 monthly chunks failed on transient fetches — re-run seed to heal; upserts are idempotent).
+Runbook: [docs/candle-warehouse-seeding.md](docs/candle-warehouse-seeding.md). **Prod pending (user):** seed
+remaining symbols + flip `CANDLE_WAREHOUSE=1` on Railway. Files:
 
 - Spec: [docs/superpowers/specs/2026-06-14-candle-warehouse-design.md](docs/superpowers/specs/2026-06-14-candle-warehouse-design.md)
 - Schema: [lib/db/src/schema/candles.ts](lib/db/src/schema/candles.ts) · migration `lib/db/drizzle/0006_candle_warehouse.sql`
@@ -152,6 +252,205 @@ split brand panel with truthful trust rows + real-time testimonial rating (`/pub
 `rating:{average,count}`), a segmented Accedi/Registrati toggle, themed Clerk form, and a skippable
 post-sign-up nickname step at `/welcome` (reuses `/profile` + `/profile/check-name`). Spec/plan:
 `docs/superpowers/{specs,plans}/2026-06-28-auth-screen-redesign*`.
+
+**Performance lightening — DONE (2026-07-02/03, all 9 tasks).** Eager JS cut from 1,991 kB / 573 kB gzip
+to **923 kB / 283 kB gzip (−53.7% / −50.5%)**: default Rollup chunking, font preconnect, lazy CotWidget,
+poll retune (quote 8s→1h, idle ~25→~4 req/min), per-language i18n split, image compression (public/ 10→3.3 MB),
+Tailwind optimizer + dead-dep pruning, plus `feat/scalability-hardening` merged (DB index, journal N+1 fix,
+social WS hub, bounded caches, Stripe idempotency; migrations 0019/0020). Gate: 292/292 tests.
+Plan + final numbers: [docs/superpowers/plans/2026-07-02-performance-lightening.md](docs/superpowers/plans/2026-07-02-performance-lightening.md).
+Manual browser verification checklist (smoke test, language switch, COT widget, WS chat) → pending with user.
+
+**Watchlist widget → native Claude Design rows (2026-07-03, done).** The dashboard "Watchlist Realtime"
+card no longer embeds TradingView iframes: each row is the kit sparkline-row (pair label · daily **D1**
+`Sparkline` · price · daily change %), fed by the new **off-contract** `GET /api/tools/watchlist?pairs=…`
+(SWR cache volatility-style over the shared D1 candle chain; pure logic in
+`services/watchlistQuotes.ts`, route in `routes/tools.ts`; client polls 120 s, 15 s while warming). Rows
+still deep-link to TradingView; chrome (glass card, Live badge, gear) unchanged. Freshness = last D1 bar
+(TwelveData/Binance serve the developing candle; Dukascopy lags ~1 day — set `TWELVEDATA_API_KEY` in prod).
+Spec/plan: `docs/superpowers/{specs,plans}/2026-07-03-watchlist-claude-design-daily*`.
+
+**Nightshift (agente autonomo notturno) — ATTIVO da 2026-07-06.** Harness locale in [auto/](auto/):
+ogni notte alle 01:00 (launchd + caffeinate, `NIGHTSHIFT_SCHEDULED=1`) `run.sh` lavora la coda
+`auto/queue.json` (seed: critici del piano audit; poi PRD e chore ricorrenti) in worktree isolati
+`.worktrees/auto-*`, gate meccanico (typecheck+test+anti-secret+migrazioni intoccate), push su
+branch `auto/*` e PR verso `feat/community-management`; prima passa in review le PR aperte
+(commento `<!-- nightshift-review -->`). Report in `auto/reports/`, stop con `touch auto/STOP`.
+Runbook: [auto/README.md](auto/README.md) · Spec:
+[docs/superpowers/specs/2026-07-05-nightshift-autonomous-agent-design.md](docs/superpowers/specs/2026-07-05-nightshift-autonomous-agent-design.md).
+Prima run notturna = collaudo canarino (`TEST-canary`, `MAX_TASKS=1` temporaneo → poi 2).
+Lo step audit 0.2 (E2EE) è fuori coda: decisione di prodotto pendente.
+
+**Audit-implementation plan — essentially COMPLETE (2026-07-07/08, branch `feat/community-management`).** The 6-phase
+plan ([docs/superpowers/plans/2026-07-05-audit-completo-piano-implementazione.md](docs/superpowers/plans/2026-07-05-audit-completo-piano-implementazione.md))
+is done for every item actionable without prod/CI. New subsystems shipped (all off-contract unless noted, TDD on pure
+cores, migrations up to **0025**): **referral** (`routes/referral.ts`, tables `referral_codes`/`referrals`, idempotent
++XP with a daily anti-farm cap), **lifecycle emails** (`services/email/lifecycle*` — welcome/digest/win-back, daily cron,
+**DARK by default** behind `RESEND_API_KEY`+`EMAIL_LIFECYCLE_ENABLED=1`), **quant 5B/5D** (`services/edgeStats.ts` Wilson/
+Kelly/drawdown/histogram + `/journal/risk-of-ruin`, `/journal/correlation`; surfaced in Panoramica; **EdgeStats is
+on-contract** in openapi), **manual-trade form → coach** (3.5, trade fields on JournalEntry create/update + non-destructive
+`hasTradeIntent` sync guard), **CSV statement import** (`/journal/import-csv`, capped + batched), **community message
+moderation** (3.6, report/queue/resolve), **server-side reminder push** (3.3 — daily/goal/macro now fire from the
+leader-elected minute scheduler in `routes/push.ts`, not just an in-tab setTimeout). Also: **i18n debt cleared** (347
+`auto.ui.*` keys translated to en/es/fr/de), **Tornei + Clerk auth recoloured onto jade/graphite** (3.2), **modal a11y
+focus-trap** (3.4), **PR #5 merged** (PWA notch `--safe-top` + contextual bottom nav, Tornei now mobile-reachable). Work
+was adversarially self-reviewed (multi-agent workflows) — 6 real bugs found+fixed. **Pending = user/env only:** GA4
+measurement id, flip the email flag, Sentry PR #6 merge + token rotation, manual visual/device QA of the design+PWA
+changes, and 4.4 tests (need CI Postgres/jsdom). 5A/5C big features need a brainstorming pass before code.
+
+**⚠️ MONETIZATION PIVOT → MARKETPLACE (2026-07-10, license-free).** The credit-wallet model below (A→D)
+is being **REMOVED**: withdrawable 1:1-€ credits = e-money (needs a license). Replaced by a **Stripe Connect
+marketplace** — the platform never custodies funds. Paid channels are bought with **direct Stripe payments**
+(Connect *destination charge* one-time / *subscription*), the creator's share routed straight to their connected
+account, platform takes `PLATFORM_FEE_BPS`, Stripe pays creators out. **Done (green, 348 tests):** pure
+`services/community/channelPricing.ts` (price_cents), migration **0033** (price_cents/sub_interval/currency/
+stripe_price_id + entitlement.stripe_subscription_id), `channelCheckout.ts` + `POST /community/channels/:id/checkout`,
+webhook grant/sync in `routes/billing.ts` (checkout.session.completed + customer.subscription.* keyed on
+`metadata.type` channel_unlock/channel_sub), gating switched to price_cents, FE (€ pricing editor, buy-access →
+Stripe Checkout, creator "receive payments" card + Express dashboard link, credit-buy UI removed). Spec:
+`docs/superpowers/specs/2026-07-10-marketplace-connect-pivot-design.md`. **Phase 5 DONE** (migration 0034 dropped
+credit_wallets/credit_transactions/creator_payouts + legacy channel credit cols; credit/withdraw code deleted).
+**Phase 6 DONE** — adversarial review (7 findings) fixed: channel-sub invoice no longer grants platform Pro;
+refund/chargeback revokes the channel entitlement (PI metadata maps charge→channel); grant only on
+payment_status=paid / sub active|trialing + async_payment handler; status-aware subscription sync (past_due revokes);
+moving a channel off subscription cancels live Stripe subs. Config `PLATFORM_FEE_BPS`; webhook must add
+`checkout.session.async_payment_succeeded`. Connect onboarding infra (`creator_payout_accounts` + payoutService
+account fns + `account.updated`) is REUSED. **The A→D text below is the SUPERSEDED/DELETED credit model (history only).**
+
+**Community monetization (A+B+C) — shipped (2026-07-08/09, branch `feat/community-management`).** Telegram-style
+paid/private communities, decomposed A→D; **in-app credits have NO cash value** (non-refundable/withdrawable,
+forfeited on account deletion — stays out of e-money regulation). All **off-contract**. Migrations **0027–0029**.
+- **A private + owner-approved join** (was audit 0.5b): `community_join_requests`, pure `services/community/joinPolicy.ts`,
+  request queue gated `members.kick`. Private communities are discoverable-but-locked (cover-only for non-members).
+- **B credit wallet + Stripe purchase**: `credit_wallets` + append-only `credit_transactions` (unique `stripe_event_id`
+  = idempotent grant). Pure `services/credits/{ledger,packs}.ts` (packs read `STRIPE_CREDIT_PRICE_{STARTER,PLUS,PRO}`),
+  `services/credits/wallet.ts` (getBalance/spend/grant/**transferCredits** atomic). Webhook branch in `routes/billing.ts`.
+  FE `components/settings/CreditsSettingsSection.tsx` (Settings → abbonamento; hidden until price IDs set → ships dark).
+- **C per-channel paid access** (creator picks **one-time OR subscription** per channel): channel price cols +
+  `community_channel_entitlements` (NULL expiry = permanent). Pure `services/community/channelAccess.ts`;
+  `channelUnlock.ts` = one tx (pg_advisory_xact_lock → FOR UPDATE → member/ban/manage gate → transferCredits buyer→owner
+  → upsert entitlement). Choke point `assertChannelAccess` in `routes/community.ts` on messages/files/voice + file-download
+  + WS `socketServer.ts`. Endpoints `routes/communityChannels.ts` (pricing PATCH `channels.manage` / unlock / access).
+  FE `components/social/{ChannelUnlockPanel,ChannelPricingModal}.tsx` + rail locks. Adversarially reviewed (backend
+  13 findings — fixed a **critical TOCTOU double-charge** + ungated content paths; frontend 8 findings — stale-price
+  consent guard/deep-link/a11y).
+- **D real-money creator payout** (Stripe Connect Express; migrations 0030+0031): `services/payout/` (`payoutMath.ts`
+  pure config-driven+fail-safe; `payoutService.ts` money-out **saga**: reserve advisory-lock tx → `stripe.transfers.create`
+  idempotency-keyed → settle/compensate; `payoutReconcile.ts` + `cron/payoutScheduler.ts`), `routes/payout.ts`
+  (config/account/onboard/request), `account.updated` in `routes/billing.ts`, FE `components/settings/CreatorPayoutSettings.tsx`.
+  **Dark by default** (`PAYOUT_CREDIT_CENTS` unset ⇒ off). Adversarially reviewed (10 findings) — fixed **never-double-pay**
+  (only transfers.create refund-guarded; refund only on deterministic StripeInvalidRequestError, ambiguous→pending for
+  reconcile) + **AML** (only EARNED credits cashable, purchased excluded) + currency/overflow/account-race. Specs:
+  `docs/superpowers/specs/2026-07-0{8,9}-*` (join / credit-wallet / paid-channels / creator-payout).
+- **Cross-cutting seam review** (arc A→D, migrations up to **0032**) fixed a **HIGH fiat-loss hole**: credit
+  chargebacks (`charge.refunded`/`dispute.created`) now reverse the granted credits (purchase grants persist
+  `stripe_payment_intent_id`; `reverseCreditPurchase` force-debits, may go negative → earned-cap blocks cashout);
+  plus earned = NET channel activity, concurrent double-cashout closed, GDPR coverage regex + library `created_by`.
+  **Activation = user/env:** set `STRIPE_CREDIT_PRICE_*` (B) + `PAYOUT_CREDIT_CENTS`/`PAYOUT_*` (D, test-mode Connect
+  first); live purchase/transfer + route-authz e2e need CI Postgres/Stripe. Full suite **340/340** green.
+
+**Bottom nav — generalized contextual hub swap (2026-07-10, done).** The two-level contextual bar built for the
+Community hub (PR #5) is now a generic multi-hub mechanism: `lib/navHubs.ts` (`HUBS` registry + `matchHub(location)`
++ `splitHubItems` mobile-pill-fit rule — ≤5 sub-items shown flat, >5 → 4 primary + a "Più" overflow `Sheet`) replaces
+the old hardcoded `COMMUNITY_ROUTES` boolean in `BottomNav.tsx`. Journal and Zen (each with 6 in-page tabs, previously
+local-state-only) are now hubs too, deep-linkable via `?t=` (`lib/journalTabs.ts`/`zenTabs.ts`, mirroring the
+pre-existing `chatTabs.ts`); Backtest/Wiki/Library/Routine stay flat (no internal tab structure to promote). The
+desktop sidebar (previously always flat, an explicit non-goal in the original spec) is now hub-contextual too,
+showing the full hub item list with no overflow cap. TDD throughout (`navHubs.test.ts` + per-hub `.static.test.ts`),
+adversarially reviewed (1 real bug found+fixed: the `?t=` active-tab fallback was hardcoded to Community's `"social"`,
+leaving Journal/Zen's own default tab unhighlighted on a bare `/journal`/`/zen` load — fixed via a `defaultTab` prop).
+Manually verified live via `scripts/verify-nav-hubs/drive.mjs` (Clerk test-user Playwright driver, mirrors
+`verify-archive`). `BottomNav.community-nav.static.test.ts` retired in favor of `BottomNav.hub-nav.static.test.ts`.
+
+**Routine + Zen merge (2026-07-10, done, supersedes an earlier same-day restyle-only pass).** `/routine`
+rebuilt to faithfully match the actual Claude Design mockup — `RoutineView`+`ZenZone` in
+`ui_kits/dashboard/views-life.jsx` ("TraderLoading Design System" project), found only after a first,
+narrower restyle pass (a `templates/routine/RoutineProgrammi.dc.html` I authored myself, matching only
+token colors) was rejected by the user as "not extracted." Root-cause: I checked only the `templates/`
+folder in the Claude Design project, not `ui_kits/dashboard/`, and separately made a unilateral call to
+narrow scope down to a token-only diff instead of a structural port — both captured in memory
+[[claude-design-port-fidelity]]. The real mockup composes Routine and Zen into one page, so `/zen` is
+**removed as a standalone hub** — breathing (ported verbatim from `Zen.tsx`'s animated ring timer) + a new
+mood check-in are folded into a new `components/routine/ZenZone.tsx` inside Routine. Also dropped (not in
+the mockup, user-confirmed): friend leaderboard (`FriendCompetitionPanel.tsx`), create-custom-routine panel,
+custom-routine grid, and Zen's other 4 tabs (meditation/visualization/quotes/mood-performance `insight`).
+`ProgramCard`/`RoutineStatsPanel` simplified to the mockup's spec (44px icon no per-card step list; 4 plain
+stat tiles). `SessionModal`'s shell got the `RoutinePlayer` visual treatment (bigger icon, single prominent
+progress bar, "Passo N di M") — its 10 step components (goals/visualization/trade-review/reflection/tomorrow
+etc.) are untouched, real trading-specific content kept over the mockup's generic 7-step flow. Removed
+`pages/Zen.tsx` + `lib/zenTabs.ts` + `components/MoodPerformanceInsight.tsx` + `lib/moodPerformance.ts`
+(verified zero other callers) and all `/zen` wiring (`App.tsx` route, `BottomNav.tsx` — Routine now takes
+Zen's old mobile-reachable root nav slot — `CommandPalette.tsx`, `lib/navHubs.ts`'s `ZEN_HUB`). New copy
+(ZenZone strings, page title/subtitle/section headings) routed through `uiText()` with keys added to all 5
+languages, per the i18n-enforced-new-UI gate. Manually verified live (desktop screenshot + mood-check-in
+click + session-modal flow via a throwaway Clerk test-user Playwright script, same pattern as
+`scripts/verify-nav-hubs/drive.mjs`). Full suite 347/347 green.
+
+**Notizie Macro filters (2026-07-11, done).** Applied the same [[claude-design-port-fidelity]] lesson to
+`pages/News.tsx` (route `/news`, already titled "Notizie Macro") — compared it line-by-line against the
+actual Claude Design source, `NewsView()` in `ui_kits/dashboard/views-trading.jsx` (not the
+`templates/notizie-macro/NotizieMacro.dc.html` mockup authored in an earlier, unrelated pass), before
+touching anything. Header, agent-summary panel, meta bar, and article-card grid (impact strip, badges, vote
+thumbs) already matched closely — the one real structural gap was the missing impact/sentiment/currency
+filter row. Added `impactFilter`/`sentimentFilter`/`currencyFilters` state + a `SegmentedControl` component,
+filtering the already-fetched `articles` client-side (`impactScore`/`sentiment`/`affectedPairs` were already
+on the real `Article` data — no backend change). TDD via `pages/News.filters.static.test.ts`. Verified live
+(Clerk test-user Playwright script): filter pills render, clicking "Alto" correctly narrows the grid to
+8-9/10-impact articles only. `views-trading.jsx` also has `JournalView`/`BacktestView`/`CalendarView` mockups
+not yet compared against their real pages — candidates for the same treatment if requested.
+
+**Pre-launch page audit — ALL 5 phases done (2026-07-11/13).** Page-by-page audit of every app/public surface
+(3 parallel explore agents + manual verification of critical findings; 2 false positives discarded, incl.
+"Chat auth is broken" — the backend authMiddleware shims Clerk, so the legacy path worked). Plan with all
+findings: [docs/superpowers/plans/2026-07-11-pre-launch-page-audit-fix-plan.md](docs/superpowers/plans/2026-07-11-pre-launch-page-audit-fix-plan.md).
+**Fase 1 (`ccbae77`)**: Broker inverted trading label + NaN guard, Milestones defensive `parseSkills`,
+Journal cache-safe sort, Tornei reachable error fallback, ChannelUnlockPanel no-url error state, BillingReturn
+"payment not completed" state (5 langs), `LanguageServerSync` server-preference read-back (pure
+`lib/languageSync.ts`), ZenZone mood persisted per-day (`tl_zen_mood_v1`), MessaggiTab WebRTC/recorder
+unmount teardown, shared `QueryErrorState` on Journal/Backtest/Wiki/Library/News, Chat migrated off
+`replit-auth-web` to Clerk `useUser`, News filters test anchored to real JSX wiring.
+**Fase 2 (`741efdb`)**: GDPR cookie banner gets an explicit "Rifiuta" when GA is configured (remembers
+accept/decline, `tl_cookie_consent_v1`); LegalPage privacy/terms body localized in 5 langs + `<Seo>`
+canonical; landing Sign-in visible <640px, dead "Blog"/"Status" footer links and decorative social icons
+removed. **Fase 3 (`9aed0bb`+`58cde17`+`cbf9d9d`+`66ee137`)**: full hardcoded-Italian sweep across News,
+Backtest (+ user-locale date-fns instead of fixed `it`), Clock, the whole Chat/community cluster
+(CommunityTab/MessaggiTab/SocialTab), Dashboard widget labels, Library, Milestones (20 level names +
+admin editor), Missions, Settings tiles, Routine/ZenZone, Journal/Support/BrokerHubWorkspace residuals —
+96+ new `auto.ui.*` keys in 5 languages (each hash-verified against its Italian source, ES/FR/DE accents
+checked byte-for-byte after an earlier ASCII-flattening slip was caught and fixed). Several pre-existing
+static tests that grepped literal Italian strings were re-anchored to the new key + dict value instead.
+**Fase 4 (`011771c`)**: `/clock`, `/library`, `/news` were reachable only via the desktop-only Cmd+K
+palette — `BottomNav.tsx` gained a root-level "Più" overflow (mobile) surfacing them, plus desktop sidebar
+parity (`SECONDARY_ITEMS` now Library+Clock+News+Settings); minor hygiene (`console.error` →
+`reportClientError` in MessaggiTab/StoryViewer/VoiceChannelView, a leaking `createObjectURL` fixed to
+create-once/revoke-on-cleanup, missing error toasts added to Library upload and Checklist delete).
+**Fase 5 (`scripts/verify-prelaunch-fase5/`)**: manual Playwright smoke against the local dev server —
+cookie banner, the new root "Più" overflow (Biblioteca/Orologio/Notizie) + desktop sidebar parity, the
+old inverted broker label confirmed gone, `QueryErrorState` renders (not the empty state) with `/api/journal`
+aborted, BillingReturn's "not completed" branch verified by code/tests since the `verify_clerk_test` Clerk
+user already has Pro in this env (documented gap, not a blocker). Gate across all 5 phases: typecheck ✓,
+360/360 tests ✓, i18n parity 2301 keys × 5 languages ✓. **No open code-side items remain** — only the
+pre-existing user/env reminders (GA4, email flag, Sentry, device visual QA, Stripe/Payout env) from before
+the audit.
+
+**SEO/GEO Phase 1 — technical hardening (2026-07-10, done).** Audited the existing SEO/GEO machinery
+(robots.txt AI-crawler allowlist, multilingual sitemap, `llms.txt`, `Seo.tsx` JSON-LD/hreflang, headless-Chromium
+prerender) and closed three verified gaps: **prerendering now hard-fails** instead of silently degrading —
+`puppeteer`/`sirv` moved from `optionalDependencies` to `dependencies`, and `scripts/seoSnapshot.ts`
+(`isValidSnapshot`) rejects a captured page missing an `<h1>` or carrying the new
+`data-root-error-boundary` marker (added to `RootErrorBoundary.tsx`) so a crashed render can never ship to
+crawlers unnoticed; **the redirect hop is gone** — `artifacts/api-server/src/lib/staticSnapshot.ts`
+(`resolveSnapshotIndexPath`) serves a prerendered `<route>/index.html` directly (200, no 301) from
+`serveFrontendApp` in `app.ts`; **`robots.txt` drift closed** (`/wiki`, `/tornei`, `/support`, `/welcome`,
+`/styleguide` were undisallowed). `docs/seo/keyword-strategy.md` gained a concrete GSC/Bing/GA4 verification
+runbook (user-executed, not automatable). Spec/plan:
+`docs/superpowers/{specs,plans}/2026-07-10-seo-geo-technical-hardening*`. Verified end-to-end: a real build
+with a valid Clerk key produces 45/45 valid prerendered routes, and an HTTP-level check confirms `/about`
+now 200s directly with no redirect. **Phase 2 (public blog + Library cross-linking for organic/GEO content
+depth) is a separate future spec** — Library (`routes/library.ts`, `library_collections`/`library_contents`)
+is currently an XP-gated in-app content feed with no public route, ships empty (no seed data). Off-repo
+follow-ups needed for actual ranking (documented in the runbook, not code): GSC/Bing domain verification +
+sitemap submission, `VITE_GA_MEASUREMENT_ID`, backlinks/off-site authority.
 
 > This section changes the most session-to-session — update it as the work moves.
 

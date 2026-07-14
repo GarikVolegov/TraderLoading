@@ -12,6 +12,7 @@ import {
   isTradingSession,
   type MarketSessionConfig,
 } from "@/lib/marketSessions";
+import { sessionBadgeClasses, toneForSessionColor, type SessionTone } from "@/lib/sessionBadge";
 import { getGetRandomQuoteQueryKey, useGetRandomQuote } from "@workspace/api-client-react";
 
 function parseTime(t: string): number {
@@ -26,28 +27,6 @@ function isInSession(localHours: number, session: TradingSessionConfig): boolean
   return localHours >= open || localHours < close;
 }
 
-function getNextSession(
-  localHours: number,
-  sessions: TradingSessionConfig[],
-): { session: TradingSessionConfig; minutesUntil: number } | null {
-  const enabled = sessions.filter((s) => s.enabled && isTradingSession(s as MarketSessionConfig));
-  if (enabled.length === 0) return null;
-  let best: { session: TradingSessionConfig; minutesUntil: number } | null = null;
-  for (const session of enabled) {
-    let diff = parseTime(session.openUTC) - localHours;
-    if (diff <= 0) diff += 24;
-    const minutes = Math.round(diff * 60);
-    if (!best || minutes < best.minutesUntil) best = { session, minutesUntil: minutes };
-  }
-  return best;
-}
-
-function formatCountdown(totalMinutes: number): string {
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
 export function ClockWidget() {
   const [time, setTime] = useState(new Date());
   const { tradingSessions } = useBackground();
@@ -55,8 +34,8 @@ export function ClockWidget() {
   const { data: quote } = useGetRandomQuote({
     query: {
       queryKey: getGetRandomQuoteQueryKey(),
-      staleTime: 0,
-      refetchInterval: 8000,
+      refetchInterval: 60 * 60_000,
+      staleTime: 60 * 60_000,
     },
   });
 
@@ -82,25 +61,8 @@ export function ClockWidget() {
     return enabled.find((s) => isInSession(localHours, s)) ?? null;
   }, [activeSession, localHours, time, tradingSessions]);
 
-  const nextSessionInfo = useMemo(() => {
-    if (activeSession) return null;
-    return getNextSession(localHours, tradingSessions);
-  }, [localHours, tradingSessions, activeSession]);
-
-  const colorMap: Record<string, { bg: string; glow: string }> = {
-    "session-asian": { bg: "bg-[hsl(var(--session-asian))]", glow: "neon-glow-asian" },
-    "session-london": { bg: "bg-[hsl(var(--session-london))]", glow: "neon-glow-london" },
-    "session-ny": { bg: "bg-[hsl(var(--session-ny))]", glow: "neon-glow-ny" },
-    "session-volume": { bg: "bg-[hsl(var(--session-volume))]", glow: "neon-glow-volume" },
-    "session-closed": { bg: "bg-[hsl(var(--session-closed))]", glow: "neon-glow-volume" },
-  };
-
   const dayOfWeek = time.getDay();
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-  const activeColors = activeSession ? colorMap[activeSession.color] : activeClosedSession ? colorMap[activeClosedSession.color] : null;
-  const countdownText = nextSessionInfo
-    ? `${nextSessionInfo.session.name} tra ${formatCountdown(nextSessionInfo.minutesUntil)}`
-    : "";
 
   const badgeLabel = activeSession
     ? activeSession.name
@@ -111,25 +73,15 @@ export function ClockWidget() {
     : "Mercato aperto";
   const compactBadgeLabel = badgeLabel === "Conferma Vol." ? "Conferma" : badgeLabel;
 
-  const badgeDotClass = activeSession
-    ? cn(activeColors?.bg, "animate-pulse shadow-[0_0_8px_currentColor]")
-    : activeClosedSession
-    ? cn(activeColors?.bg ?? "bg-destructive", "animate-pulse shadow-[0_0_8px_currentColor]")
-    : isWeekend
-    ? "bg-destructive"
-    : "bg-success";
-
-  const badgeTextClass = activeSession
-    ? "text-foreground"
+  // Claude Design session pill — the session colour tints text, translucent bg,
+  // border and outer glow (destructive when closed/weekend, success when open).
+  const badgeTone: SessionTone = activeSession
+    ? toneForSessionColor(activeSession.color)
     : activeClosedSession || isWeekend
-    ? "text-destructive"
-    : "text-success";
-
-  const badgeBorderClass = activeSession
-    ? ""
-    : activeClosedSession || isWeekend
-    ? "border-destructive/30 bg-destructive/10"
-    : "border-success/30 bg-success/10";
+    ? "destructive"
+    : "success";
+  const badge = sessionBadgeClasses(badgeTone);
+  const isBadgePulsing = Boolean(activeSession || activeClosedSession);
 
   return (
     <Card className="relative h-16 overflow-hidden rounded-[0.625rem]">
@@ -171,13 +123,18 @@ export function ClockWidget() {
 
           <div
             className={cn(
-              "ml-3 mr-2 flex h-[1.875rem] w-[5.9rem] min-w-0 items-center justify-center gap-[0.35rem] justify-self-end rounded-md border border-[#1d2740] bg-[#151b31] px-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]",
-              activeColors?.glow ?? "",
-              !activeSession && badgeBorderClass,
+              "ml-3 mr-2 flex h-[1.875rem] w-[5.9rem] min-w-0 items-center justify-center gap-[0.35rem] justify-self-end rounded-lg px-2",
+              badge.container,
             )}
           >
-            <div className={cn("h-[0.4rem] w-[0.4rem] shrink-0 rounded-full", badgeDotClass)} />
-            <span className={cn("truncate text-[0.59rem] font-bold leading-none tracking-normal sm:text-[0.64rem]", badgeTextClass)}>
+            <div
+              className={cn(
+                "h-[0.4rem] w-[0.4rem] shrink-0 rounded-full",
+                badge.dot,
+                isBadgePulsing && "animate-pulse",
+              )}
+            />
+            <span className="truncate text-[0.59rem] font-bold leading-none tracking-normal sm:text-[0.64rem]">
               {compactBadgeLabel}
             </span>
           </div>

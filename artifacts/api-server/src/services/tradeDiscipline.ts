@@ -11,6 +11,7 @@
 //   - drawdown        : longest losing streak + max peak-to-trough P&L drawdown.
 
 import { rMultiple, type EdgeTrade } from "./tradeAnalytics.js";
+import { tradingDay } from "../lib/tradingTime.js";
 
 export interface DisciplineStop {
   /** Losing trades with a computable R. */
@@ -106,16 +107,11 @@ function computeHoldTime(trades: EdgeTrade[]): DisciplineHoldTime | null {
   return { avgWinnerMinutes, avgLoserMinutes };
 }
 
-function utcDay(openTime: string): string | null {
-  const date = new Date(openTime);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
-}
-
 function computeOvertrading(trades: EdgeTrade[]): DisciplineOvertrading | null {
   const byDay = new Map<string, EdgeTrade[]>();
   for (const trade of trades) {
-    const day = utcDay(trade.openTime);
+    // Europe/Rome day, so "trades per day" matches the risk guard's "today".
+    const day = tradingDay(new Date(trade.openTime));
     if (day === null) continue;
     const bucket = byDay.get(day);
     if (bucket) bucket.push(trade);

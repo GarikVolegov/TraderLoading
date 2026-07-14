@@ -1,4 +1,5 @@
 import type { BrokerAccountProfile, BrokerDeal, BrokerSnapshot } from "./types.js";
+import { accountTradeChanged, toComparableTrade } from "./accountTradeDiff.js";
 
 export interface BrokerAccountDataSyncInput {
   profile: BrokerAccountProfile;
@@ -183,10 +184,7 @@ export async function importBrokerAccountData(input: BrokerAccountDataSyncInput)
       imported += 1;
     } else {
       const [current] = await db
-        .select({
-          id: accountTradesTable.id,
-          journalEntryId: accountTradesTable.journalEntryId,
-        })
+        .select()
         .from(accountTradesTable)
         .where(uniqueTradeWhere)
         .limit(1);
@@ -194,8 +192,12 @@ export async function importBrokerAccountData(input: BrokerAccountDataSyncInput)
       if (!current) continue;
       accountTradeId = current.id;
       journalEntryId = current.journalEntryId;
-      await db.update(accountTradesTable).set(values).where(eq(accountTradesTable.id, current.id));
-      updated += 1;
+      // A closed deal re-imports identically every cycle; skip the no-op UPDATE
+      // (this was the bulk of the broker write load). Only write on a real change.
+      if (accountTradeChanged(toComparableTrade(current), toComparableTrade(values))) {
+        await db.update(accountTradesTable).set(values).where(eq(accountTradesTable.id, current.id));
+        updated += 1;
+      }
     }
 
     if (!accountTradeId || journalEntryId || !shouldCreateJournal) continue;

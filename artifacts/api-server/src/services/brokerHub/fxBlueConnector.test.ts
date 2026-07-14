@@ -172,4 +172,27 @@ const privateSnapshot = await privateProfile.connect();
 assert.equal(privateSnapshot.status, "error");
 assert.equal(privateSnapshot.error, "Profilo FX Blue privato o feed non accessibile.");
 
+// Finding 2.1: the default fetch path (real external FX Blue calls) must carry an
+// AbortSignal so a hung feed can't stall the sync cycle indefinitely. Exercise the
+// default dependencies by stubbing global fetch and capturing each request's init.
+const fxBlueInits: Array<{ url: string; init?: RequestInit }> = [];
+const originalFetch = globalThis.fetch;
+globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+  fxBlueInits.push({ url: String(input), init });
+  return new Response("", { status: 404 });
+}) as typeof fetch;
+try {
+  const defaultConnector = createFxBlueBrokerConnector({ ...profile, providerUserId: "timeout-user" });
+  await defaultConnector.connect();
+} finally {
+  globalThis.fetch = originalFetch;
+}
+assert.ok(fxBlueInits.length > 0, "default FX Blue connector must issue fetches");
+for (const request of fxBlueInits) {
+  assert.ok(
+    request.init?.signal instanceof AbortSignal,
+    `FX Blue request to ${request.url} must carry an AbortSignal timeout`,
+  );
+}
+
 console.log("fx blue connector checks passed");

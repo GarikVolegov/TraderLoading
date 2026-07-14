@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { uiText } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2, Lock, Plus, X } from "lucide-react";
 import { apiJSON } from "@/lib/apiFetch";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { Switch } from "@/components/ui/switch";
 import { COMMUNITY_EMOJIS } from "./constants";
 
 export function CreateCommunityModal({
@@ -17,6 +19,10 @@ export function CreateCommunityModal({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [emoji, setEmoji] = useState("🏛️");
+  // Private communities are discoverable-but-locked: joining requires the
+  // owner's approval (see JoinRequestsPanel). This is the only place that can
+  // ever set isPublic:false — without it every community defaults to public.
+  const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,6 +41,7 @@ export function CreateCommunityModal({
           name: name.trim(),
           description: description.trim(),
           iconEmoji: emoji,
+          isPublic: !isPrivate,
         }),
       });
       qc.invalidateQueries({ queryKey: ["communities"] });
@@ -46,17 +53,24 @@ export function CreateCommunityModal({
     }
   };
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose, panelRef });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <motion.div
+        ref={panelRef}
+        {...panelProps}
+        aria-labelledby={titleId}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl"
+        className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl focus:outline-none"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-bold text-base">{uiText("auto.ui.5fff6009cd")}</h2>
+          <h2 id={titleId} className="font-bold text-base">{uiText("auto.ui.5fff6009cd")}</h2>
           <button
             onClick={onClose}
+            aria-label={uiText("common.close")}
             className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground"
           >
             <X className="w-4 h-4" />
@@ -101,6 +115,16 @@ export function CreateCommunityModal({
               placeholder={uiText("auto.ui.4f747c4d42")}
               className="w-full bg-secondary/30 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50 resize-none"
             />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/20 px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-xs font-semibold">{uiText("community.create.private_label")}</p>
+                <p className="text-[10px] text-muted-foreground">{uiText("community.create.private_hint")}</p>
+              </div>
+            </div>
+            <Switch checked={isPrivate} onCheckedChange={setIsPrivate} />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <button

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const source = await readFile(new URL("./BrokerHubWorkspace.tsx", import.meta.url), "utf8");
-const i18nDict = await readFile(new URL("../../lib/i18n.ts", import.meta.url), "utf8");
+const i18nDict = await readFile(new URL("../../lib/i18n/dict.it.ts", import.meta.url), "utf8");
 
 assert.match(source, /ConnectAccountWizard/);
 // Il badge "Sola lettura" è passato all'i18n e resta legato a !capabilities.placeOrders.

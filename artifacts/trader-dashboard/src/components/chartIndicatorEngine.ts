@@ -20,6 +20,19 @@ export function sma(values: number[], period: number): (number | null)[] {
   return out;
 }
 
+/** Linearly-weighted moving average (most recent value weighs `period`). */
+export function wma(values: number[], period: number): (number | null)[] {
+  const out: (number | null)[] = new Array(values.length).fill(null);
+  if (period <= 0) return out;
+  const denominator = (period * (period + 1)) / 2;
+  for (let i = period - 1; i < values.length; i++) {
+    let weighted = 0;
+    for (let j = 0; j < period; j++) weighted += values[i - j] * (period - j);
+    out[i] = weighted / denominator;
+  }
+  return out;
+}
+
 /** Exponential moving average, seeded with the SMA of the first `period` values. */
 export function ema(values: number[], period: number): (number | null)[] {
   const out: (number | null)[] = new Array(values.length).fill(null);

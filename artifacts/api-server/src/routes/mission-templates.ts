@@ -2,6 +2,9 @@ import { Router, type IRouter } from "express";
 import { db, missionTemplatesTable } from "@workspace/db";
 import { eq, and, isNull } from "drizzle-orm";
 import { getUserId } from "./profile.js";
+import { clampMissionXpReward } from "../lib/missionXp.js";
+
+const XP_REWARD_ERROR = "xpReward must be a number between 1 and 100";
 
 const router: IRouter = Router();
 
@@ -29,9 +32,15 @@ router.post("/mission-templates", async (req, res) => {
     return;
   }
 
+  const clampedXp = clampMissionXpReward(xpReward);
+  if (clampedXp == null) {
+    res.status(400).json({ error: XP_REWARD_ERROR });
+    return;
+  }
+
   const [created] = await db
     .insert(missionTemplatesTable)
-    .values({ title, description, xpReward: Number(xpReward), userId })
+    .values({ title, description, xpReward: clampedXp, userId })
     .returning();
 
   res.status(201).json({
@@ -59,12 +68,22 @@ router.put("/mission-templates/:id", async (req, res) => {
     return;
   }
 
+  let nextXpReward = existing.xpReward;
+  if (xpReward != null) {
+    const clampedXp = clampMissionXpReward(xpReward);
+    if (clampedXp == null) {
+      res.status(400).json({ error: XP_REWARD_ERROR });
+      return;
+    }
+    nextXpReward = clampedXp;
+  }
+
   const [updated] = await db
     .update(missionTemplatesTable)
     .set({
       title: title ?? existing.title,
       description: description ?? existing.description,
-      xpReward: xpReward != null ? Number(xpReward) : existing.xpReward,
+      xpReward: nextXpReward,
     })
     .where(eq(missionTemplatesTable.id, id))
     .returning();

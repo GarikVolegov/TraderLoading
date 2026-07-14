@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, adminUserSubscriptionsTable } from "@workspace/db";
+import { db, adminUserSubscriptionsTable, stripeWebhookEventsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import {
@@ -13,6 +13,8 @@ import {
   type StripeBillingConfig,
 } from "../lib/billing.js";
 import logger from "../lib/logger.js";
+import { syncConnectAccount } from "../services/payout/payoutService.js";
+import { grantOneTimeEntitlement, grantSubscriptionEntitlement, syncSubscriptionEntitlement, revokeChannelEntitlement } from "../services/community/channelEntitlements.js";
 
 type SubscriptionLike = {
   plan: string;
@@ -59,7 +61,7 @@ function toIsoFromSeconds(value: unknown): string | null {
   return date ? date.toISOString() : null;
 }
 
-function serializeBillingStatus(subscription: SubscriptionLike | null) {
+function serializeBillingStatus(subscription: SubscriptionLike | null, checkoutAvailable: boolean) {
   const plan = getPlanFromSubscription(subscription);
   const capabilities = getBillingCapabilities(subscription);
   return {
@@ -73,6 +75,9 @@ function serializeBillingStatus(subscription: SubscriptionLike | null) {
     stripeCustomerId: subscription?.stripeCustomerId ?? null,
     stripeSubscriptionId: maskStripeId(subscription?.stripeSubscriptionId),
     ...capabilities,
+    // Whether POST /billing/checkout-session can succeed (Stripe env present).
+    // The FE uses this to replace dead-end "Upgrade" CTAs with an honest notice.
+    checkoutAvailable,
   };
 }
 
@@ -128,6 +133,27 @@ async function defaultCreateCheckoutSession(user: NonNullable<Request["user"]>):
   return { clientSecret: session.client_secret };
 }
 
+/**
+ * The subscription's current period end (unix seconds). In the pinned API
+ * (2026-05-27.dahlia) this moved off the Subscription top level onto the
+ * SubscriptionItem, so reading `subscription.current_period_end` is always
+ * undefined; read it from the first item instead.
+ */
+export function subscriptionCurrentPeriodEnd(subscription: Stripe.Subscription): number | null {
+  const item = subscription.items?.data?.[0] as { current_period_end?: number } | undefined;
+  return item?.current_period_end ?? null;
+}
+
+/**
+ * The subscription id referenced by an invoice. In the pinned API it moved from
+ * the top-level `invoice.subscription` to `invoice.parent.subscription_details.subscription`.
+ */
+export function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const sub = invoice.parent?.subscription_details?.subscription ?? null;
+  if (typeof sub === "string") return sub;
+  return sub?.id ?? null;
+}
+
 async function upsertStripeSubscriptionForUser(
   userId: string,
   subscription: Stripe.Subscription,
@@ -154,7 +180,7 @@ async function upsertStripeSubscriptionForUser(
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscription.id,
       stripePriceId: item?.price?.id ?? null,
-      currentPeriodEnd: toDateFromSeconds((subscription as { current_period_end?: number }).current_period_end),
+      currentPeriodEnd: toDateFromSeconds(subscriptionCurrentPeriodEnd(subscription)),
       cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
       updatedAt: new Date(),
     })
@@ -168,7 +194,7 @@ async function upsertStripeSubscriptionForUser(
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscription.id,
         stripePriceId: item?.price?.id ?? null,
-        currentPeriodEnd: toDateFromSeconds((subscription as { current_period_end?: number }).current_period_end),
+        currentPeriodEnd: toDateFromSeconds(subscriptionCurrentPeriodEnd(subscription)),
         cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
         updatedAt: new Date(),
       },
@@ -269,6 +295,8 @@ function handleStripeRouteError(error: unknown, res: Response): boolean {
 export function createBillingRouter(options: BillingRouterOptions = {}): IRouter {
   const router: IRouter = Router();
   const getSubscription = options.getSubscription ?? getUserSubscription;
+  const resolveConfig = () => options.config ?? getStripeBillingConfig();
+  const checkoutAvailable = () => resolveConfig().configured;
 
   router.get("/billing/me", async (req, res) => {
     const user = requireBillingUser(req);
@@ -278,7 +306,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
     }
 
     const subscription = await getSubscription(user.id);
-    res.json(serializeBillingStatus(subscription));
+    res.json(serializeBillingStatus(subscription, checkoutAvailable()));
   });
 
   router.post("/billing/checkout-session", async (req, res) => {
@@ -288,7 +316,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
       return;
     }
 
-    const config = options.config ?? getStripeBillingConfig();
+    const config = resolveConfig();
     if (!config.configured) {
       res.status(503).json({ error: "stripe_not_configured", missing: config.missing });
       return;
@@ -323,7 +351,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
 
     try {
       const confirm = options.confirmCheckoutSession ?? defaultConfirmCheckoutSession;
-      res.json(serializeBillingStatus(await confirm(user, sessionId)));
+      res.json(serializeBillingStatus(await confirm(user, sessionId), checkoutAvailable()));
     } catch (error) {
       if ((error as { code?: string }).code === "session_user_mismatch") {
         res.status(403).json({ error: "session_user_mismatch" });
@@ -349,7 +377,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
 
     try {
       const cancel = options.cancelSubscription ?? defaultCancelSubscription;
-      res.json(serializeBillingStatus(await cancel(user.id, subscription.stripeSubscriptionId)));
+      res.json(serializeBillingStatus(await cancel(user.id, subscription.stripeSubscriptionId), checkoutAvailable()));
     } catch (error) {
       if (handleStripeRouteError(error, res)) return;
       throw error;
@@ -371,7 +399,7 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
 
     try {
       const resume = options.resumeSubscription ?? defaultResumeSubscription;
-      res.json(serializeBillingStatus(await resume(user.id, subscription.stripeSubscriptionId)));
+      res.json(serializeBillingStatus(await resume(user.id, subscription.stripeSubscriptionId), checkoutAvailable()));
     } catch (error) {
       if (handleStripeRouteError(error, res)) return;
       throw error;
@@ -428,14 +456,63 @@ async function upsertStripeSubscription(subscription: Stripe.Subscription): Prom
   await upsertStripeSubscriptionForUser(userId, subscription, { preserveManualOverride: true });
 }
 
+/**
+ * Run a Stripe webhook event's side effects at most once. Stripe retries delivery
+ * on any non-2xx response or timeout, so without a dedup guard a retried event
+ * would re-apply its effects. `claim` atomically records the event id and returns
+ * false if it was already recorded (a duplicate → skip). If handling throws we
+ * `release` the claim so the next retry can re-process; otherwise the claim
+ * persists and future duplicates short-circuit.
+ */
+export async function processStripeEventOnce(
+  event: { id: string; type: string },
+  deps: {
+    claim: (eventId: string, type: string) => Promise<boolean>;
+    release: (eventId: string) => Promise<void>;
+    handle: () => Promise<void>;
+  },
+): Promise<{ processed: boolean; duplicate: boolean }> {
+  const claimed = await deps.claim(event.id, event.type);
+  if (!claimed) return { processed: false, duplicate: true };
+  try {
+    await deps.handle();
+  } catch (err) {
+    await deps.release(event.id);
+    throw err;
+  }
+  return { processed: true, duplicate: false };
+}
+
 async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<void> {
-  if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
-    await upsertStripeSubscription(event.data.object as Stripe.Subscription);
+  // Creator payout (sub-project D): Connect account capability changes (onboarding
+  // finished, payouts enabled/restricted) so /payout/account reflects Stripe's truth.
+  if (event.type === "account.updated") {
+    await syncConnectAccount(event.data.object as Stripe.Account);
     return;
   }
 
-  if (event.type === "checkout.session.completed") {
+  if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+    const sub = event.data.object as Stripe.Subscription;
+    // Paid-channel subscriptions (marketplace) keep the entitlement's expiry in step with
+    // Stripe — status-aware, so a past_due/canceled sub revokes access; everything else is
+    // the Pro-plan subscription.
+    if (sub.metadata?.type === "channel_sub") {
+      await syncSubscriptionEntitlement(sub.id, subPeriodEndDate(sub), sub.status);
+      return;
+    }
+    await upsertStripeSubscription(sub);
+    return;
+  }
+
+  // Grant on the definitive settlement event; delayed methods (SEPA etc.) settle later.
+  if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     const session = event.data.object as Stripe.Checkout.Session;
+    const mdType = session.metadata?.type;
+    if (mdType === "channel_unlock" || mdType === "channel_sub") {
+      await grantFromChannelSession(session, stripe);
+      return;
+    }
+    // Pro-plan checkout (subscription).
     if (typeof session.subscription !== "string") return;
     const subscription = await stripe.subscriptions.retrieve(session.subscription);
     await upsertStripeSubscription(subscription);
@@ -443,15 +520,100 @@ async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<v
   }
 
   if (event.type === "invoice.payment_failed" || event.type === "invoice.payment_succeeded") {
-    const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
-    const subscriptionId =
-      typeof invoice.subscription === "string"
-        ? invoice.subscription
-        : invoice.subscription?.id;
+    const invoice = event.data.object as Stripe.Invoice;
+    const subscriptionId = invoiceSubscriptionId(invoice);
     if (!subscriptionId) return;
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    // A channel subscription's invoice must NOT touch the platform Pro plan — sync the
+    // channel entitlement (status-aware) instead.
+    if (subscription.metadata?.type === "channel_sub") {
+      await syncSubscriptionEntitlement(subscription.id, subPeriodEndDate(subscription), subscription.status);
+      return;
+    }
     await upsertStripeSubscription(subscription);
+    return;
   }
+
+  if (event.type === "charge.dispute.created" || event.type === "charge.refunded") {
+    // Revoke a paid-channel entitlement bought with this charge (mapped via the PI metadata
+    // we stamp at checkout) — otherwise the buyer keeps access after clawing back the money.
+    const obj = event.data.object as Stripe.Charge | Stripe.Dispute;
+    const piId = typeof obj.payment_intent === "string" ? obj.payment_intent : obj.payment_intent?.id ?? null;
+    if (piId) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(piId);
+        if (pi.metadata?.type === "channel_unlock" && pi.metadata.channelId && pi.metadata.userId) {
+          await revokeChannelEntitlement(Number(pi.metadata.channelId), pi.metadata.userId);
+        }
+      } catch (err) {
+        console.error("[billing] channel refund/dispute revoke failed:", err);
+      }
+    }
+    // A chargeback/refund does NOT cancel the Pro subscription on its own.
+    const customerId = await chargeCustomerId(event, stripe);
+    if (customerId) await revokeStripeProForCustomer(customerId, event.type);
+  }
+}
+
+function subPeriodEndDate(sub: Stripe.Subscription): Date {
+  return new Date((subscriptionCurrentPeriodEnd(sub) ?? Math.floor(Date.now() / 1000)) * 1000);
+}
+
+/** Grant a paid-channel entitlement from a settled Checkout session. Only grants when the
+ *  payment is actually paid (one-time) / the subscription is active|trialing — so delayed
+ *  or failed payments never hand out access. */
+async function grantFromChannelSession(session: Stripe.Checkout.Session, stripe: Stripe): Promise<void> {
+  const md = session.metadata ?? {};
+  if (md.type === "channel_unlock") {
+    if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") return;
+    if (md.channelId && md.userId && md.communityId) {
+      await grantOneTimeEntitlement(Number(md.communityId), Number(md.channelId), md.userId);
+    }
+    return;
+  }
+  if (md.type === "channel_sub" && typeof session.subscription === "string") {
+    const sub = await stripe.subscriptions.retrieve(session.subscription);
+    if ((sub.status === "active" || sub.status === "trialing") && md.channelId && md.userId && md.communityId) {
+      await grantSubscriptionEntitlement(Number(md.communityId), Number(md.channelId), md.userId, sub.id, subPeriodEndDate(sub));
+    }
+  }
+}
+
+/** Resolve the Stripe customer id behind a charge/dispute event. */
+async function chargeCustomerId(event: Stripe.Event, stripe: Stripe): Promise<string | null> {
+  const readCustomer = (charge: Stripe.Charge): string | null =>
+    typeof charge.customer === "string" ? charge.customer : charge.customer?.id ?? null;
+
+  if (event.type === "charge.refunded") {
+    return readCustomer(event.data.object as Stripe.Charge);
+  }
+  // charge.dispute.created: the object is a Dispute, which carries the charge id
+  // but not the customer, so fetch the charge.
+  const dispute = event.data.object as Stripe.Dispute;
+  const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+  if (!chargeId) return null;
+  const charge = await stripe.charges.retrieve(chargeId);
+  return readCustomer(charge);
+}
+
+/** Revoke a Stripe-sourced Pro entitlement after a dispute/refund. Leaves manual
+ *  admin grants and internal (tornei) entitlements untouched. */
+async function revokeStripeProForCustomer(customerId: string, reason: string): Promise<void> {
+  const [row] = await db
+    .select({
+      userId: adminUserSubscriptionsTable.userId,
+      source: adminUserSubscriptionsTable.source,
+      manualOverride: adminUserSubscriptionsTable.manualOverride,
+    })
+    .from(adminUserSubscriptionsTable)
+    .where(eq(adminUserSubscriptionsTable.stripeCustomerId, customerId))
+    .limit(1);
+  if (!row || row.source !== "stripe" || row.manualOverride) return;
+  await db
+    .update(adminUserSubscriptionsTable)
+    .set({ plan: "free", status: "canceled", reason, updatedAt: new Date() })
+    .where(eq(adminUserSubscriptionsTable.userId, row.userId));
+  logger.info({ userId: row.userId, reason }, "Revoked Stripe Pro entitlement after dispute/refund");
 }
 
 export function createStripeWebhookRouter(): IRouter {
@@ -476,8 +638,23 @@ export function createStripeWebhookRouter(): IRouter {
       }
       const payload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(String(req.body ?? ""));
       const event = stripe.webhooks.constructEvent(payload, signature, config.webhookSecret);
-      await handleStripeEvent(event, stripe);
-      res.json({ received: true });
+      const { duplicate } = await processStripeEventOnce(event, {
+        // Atomic claim: inserting the event id conflicts (returns no row) when the
+        // event was already processed, so a Stripe retry is acked without re-running.
+        claim: async (eventId, type) => {
+          const inserted = await db
+            .insert(stripeWebhookEventsTable)
+            .values({ eventId, type })
+            .onConflictDoNothing()
+            .returning({ eventId: stripeWebhookEventsTable.eventId });
+          return inserted.length > 0;
+        },
+        release: async (eventId) => {
+          await db.delete(stripeWebhookEventsTable).where(eq(stripeWebhookEventsTable.eventId, eventId));
+        },
+        handle: () => handleStripeEvent(event, stripe),
+      });
+      res.json({ received: true, duplicate });
     } catch (error) {
       logger.warn({ err: error }, "Stripe webhook rejected");
       res.status(400).json({ error: "stripe_webhook_invalid" });

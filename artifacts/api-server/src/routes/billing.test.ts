@@ -4,7 +4,29 @@ import { createServer } from "node:http";
 
 process.env.DATABASE_URL ??= "postgres://user:pass@127.0.0.1:5432/test";
 
-const { createBillingRouter, shouldPreserveManualSubscriptionOverride } = await import("./billing.js");
+const {
+  createBillingRouter,
+  shouldPreserveManualSubscriptionOverride,
+  processStripeEventOnce,
+  subscriptionCurrentPeriodEnd,
+  invoiceSubscriptionId,
+} = await import("./billing.js");
+
+// currentPeriodEnd moved from the Subscription top level to the SubscriptionItem
+// in the pinned API (2026-05-27.dahlia). Read it from the item, ignore the
+// legacy top-level field (which is now always undefined).
+assert.equal(subscriptionCurrentPeriodEnd({ items: { data: [{ current_period_end: 1234 }] } } as never), 1234);
+assert.equal(subscriptionCurrentPeriodEnd({ items: { data: [] } } as never), null);
+assert.equal(
+  subscriptionCurrentPeriodEnd({ current_period_end: 999, items: { data: [{ current_period_end: 555 }] } } as never),
+  555,
+);
+
+// The invoice's subscription id moved to invoice.parent.subscription_details.
+assert.equal(invoiceSubscriptionId({ parent: { subscription_details: { subscription: "sub_1" } } } as never), "sub_1");
+assert.equal(invoiceSubscriptionId({ parent: { subscription_details: { subscription: { id: "sub_2" } } } } as never), "sub_2");
+assert.equal(invoiceSubscriptionId({ parent: null } as never), null);
+assert.equal(invoiceSubscriptionId({} as never), null);
 
 assert.equal(
   shouldPreserveManualSubscriptionOverride({
@@ -27,6 +49,62 @@ assert.equal(
   }),
   false,
 );
+
+// Stripe webhook idempotency control flow: each event id is processed at most
+// once. A retried (duplicate) delivery is acked without re-running side effects;
+// a processing failure releases the claim so Stripe's next retry can re-process.
+{
+  const handled: string[] = [];
+  const released: string[] = [];
+  const first = await processStripeEventOnce(
+    { id: "evt_1", type: "customer.subscription.updated" },
+    {
+      claim: async () => true,
+      release: async (id: string) => {
+        released.push(id);
+      },
+      handle: async () => {
+        handled.push("evt_1");
+      },
+    },
+  );
+  assert.deepEqual(first, { processed: true, duplicate: false });
+  assert.deepEqual(handled, ["evt_1"]);
+  assert.deepEqual(released, []);
+
+  const dupHandled: string[] = [];
+  const dup = await processStripeEventOnce(
+    { id: "evt_1", type: "customer.subscription.updated" },
+    {
+      claim: async () => false,
+      release: async () => {},
+      handle: async () => {
+        dupHandled.push("x");
+      },
+    },
+  );
+  assert.deepEqual(dup, { processed: false, duplicate: true });
+  assert.deepEqual(dupHandled, []);
+
+  const releasedOnFail: string[] = [];
+  await assert.rejects(
+    () =>
+      processStripeEventOnce(
+        { id: "evt_2", type: "invoice.payment_succeeded" },
+        {
+          claim: async () => true,
+          release: async (id: string) => {
+            releasedOnFail.push(id);
+          },
+          handle: async () => {
+            throw new Error("boom");
+          },
+        },
+      ),
+    /boom/,
+  );
+  assert.deepEqual(releasedOnFail, ["evt_2"]);
+}
 
 async function startBillingServer(options = {}) {
   const app = express();
@@ -53,7 +131,10 @@ async function startBillingServer(options = {}) {
 }
 
 {
-  const server = await startBillingServer({ getSubscription: async () => null });
+  const server = await startBillingServer({
+    getSubscription: async () => null,
+    config: { configured: false, missing: ["STRIPE_SECRET_KEY"], appBaseUrl: "" },
+  });
   try {
     const response = await fetch(`${server.base}/billing/me`);
     assert.equal(response.status, 200);
@@ -70,7 +151,25 @@ async function startBillingServer(options = {}) {
       canCancel: false,
       canResume: false,
       canViewInvoices: false,
+      // Stripe not configured ⇒ the FE must not offer a checkout that would 503.
+      checkoutAvailable: false,
     });
+  } finally {
+    await server.close();
+  }
+}
+
+// With Stripe configured, /billing/me advertises that checkout is available.
+{
+  const server = await startBillingServer({
+    getSubscription: async () => null,
+    config: { configured: true, missing: [], secretKey: "sk_test_x", priceId: "price_x", appBaseUrl: "http://localhost" },
+  });
+  try {
+    const response = await fetch(`${server.base}/billing/me`);
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { checkoutAvailable: boolean };
+    assert.equal(body.checkoutAvailable, true);
   } finally {
     await server.close();
   }
@@ -85,7 +184,7 @@ async function startBillingServer(options = {}) {
       manualOverride: false,
       stripeCustomerId: "cus_1234567890",
       stripeSubscriptionId: "sub_1234567890",
-      currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+      currentPeriodEnd: new Date("2027-07-10T00:00:00.000Z"),
       cancelAtPeriodEnd: false,
     }),
   });
@@ -179,7 +278,7 @@ async function startBillingServer(options = {}) {
       status: "active",
       stripeCustomerId: "cus_123",
       stripeSubscriptionId: "sub_123",
-      currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+      currentPeriodEnd: new Date("2027-07-10T00:00:00.000Z"),
       cancelAtPeriodEnd: false,
     }),
     cancelSubscription: async (userId: string, subscriptionId: string) => {
@@ -189,7 +288,7 @@ async function startBillingServer(options = {}) {
         status: "active",
         stripeCustomerId: "cus_123",
         stripeSubscriptionId: "sub_123",
-        currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+        currentPeriodEnd: new Date("2027-07-10T00:00:00.000Z"),
         cancelAtPeriodEnd: true,
       };
     },
@@ -200,7 +299,7 @@ async function startBillingServer(options = {}) {
         status: "active",
         stripeCustomerId: "cus_123",
         stripeSubscriptionId: "sub_123",
-        currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+        currentPeriodEnd: new Date("2027-07-10T00:00:00.000Z"),
         cancelAtPeriodEnd: false,
       };
     },
@@ -245,7 +344,7 @@ async function startBillingServer(options = {}) {
           currency: "eur",
           hostedInvoiceUrl: "https://stripe.test/invoice/in_123",
           periodStart: "2026-06-10T00:00:00.000Z",
-          periodEnd: "2026-07-10T00:00:00.000Z",
+          periodEnd: "2027-07-10T00:00:00.000Z",
         },
       ];
     },
@@ -263,7 +362,7 @@ async function startBillingServer(options = {}) {
           currency: "eur",
           hostedInvoiceUrl: "https://stripe.test/invoice/in_123",
           periodStart: "2026-06-10T00:00:00.000Z",
-          periodEnd: "2026-07-10T00:00:00.000Z",
+          periodEnd: "2027-07-10T00:00:00.000Z",
         },
       ],
     });

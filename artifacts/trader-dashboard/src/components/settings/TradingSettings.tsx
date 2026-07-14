@@ -36,7 +36,10 @@ function detectOverlap(sessions: TradingSessionConfig[]): string | null {
 export function TradingSettings() {
   const { tradingSessions, setTradingSessions, lotDivisor, setLotDivisor } =
     useBackground();
-  const updateMutation = useUpdateUserSettings();
+  // All 3 handlers using this mutation (sessions save, divider save, restore
+  // defaults) already show their own toast on catch — opt out of App.tsx's
+  // global mutation-error toast to avoid a double toast.
+  const updateMutation = useUpdateUserSettings({ mutation: { meta: { suppressGlobalError: true } } });
   const qc = useQueryClient();
   const { toast } = useToast();
   const [localSessions, setLocalSessions] =

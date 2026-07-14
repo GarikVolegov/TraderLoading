@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings } from "lucide-react";
+import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings, Lock } from "lucide-react";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
+import { useToast } from "@/hooks/use-toast";
 import { useCommunities, useCommunityDetail } from "./hooks";
 import { CreateCommunityModal } from "./CreateCommunityModal";
 import { CreateChannelModal } from "./CreateChannelModal";
@@ -13,6 +14,8 @@ import { CommunityReviews } from "./CommunityReviews";
 import { StarRating } from "./StarRating";
 import { TextChannelView } from "./TextChannelView";
 import { VoiceChannelView } from "./VoiceChannelView";
+import { ChannelUnlockPanel } from "./ChannelUnlockPanel";
+import { ChannelPricingModal } from "./ChannelPricingModal";
 
 export function CommunityTab({
   currentUserId,
@@ -23,6 +26,7 @@ export function CommunityTab({
 }) {
   const qc = useQueryClient();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const { data: communities = [], isLoading: loadingCommunities } =
     useCommunities();
   const [selectedCommunityId, setSelectedCommunityId] = useState<number | null>(
@@ -35,6 +39,7 @@ export function CommunityTab({
     useCommunityDetail(selectedCommunityId);
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [pricingChannelId, setPricingChannelId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<
@@ -42,7 +47,7 @@ export function CommunityTab({
   >("communities");
 
   const selectedChannel =
-    communityDetail?.channels.find((c) => c.id === selectedChannelId) ?? null;
+    communityDetail?.channels?.find((c) => c.id === selectedChannelId) ?? null;
   const myPerms = communityDetail?.myPermissions ?? [];
   const isOwner = communityDetail?.isOwner ?? false;
   const can = (p: string) => isOwner || myPerms.includes(p);
@@ -60,7 +65,7 @@ export function CommunityTab({
       qc.invalidateQueries({ queryKey: ["communities"] });
       qc.invalidateQueries({ queryKey: ["community", id] });
     } catch (error) {
-      reportClientError(error, { context: "community join", notify: false });
+      reportClientError(error, { context: "community join", toast, fallbackMessage: t("errors.mutation.generic") });
     }
   };
 
@@ -72,7 +77,7 @@ export function CommunityTab({
       setSelectedChannelId(null);
       setMobilePanel("communities");
     } catch (error) {
-      reportClientError(error, { context: "community leave", notify: false });
+      reportClientError(error, { context: "community leave", toast, fallbackMessage: t("errors.mutation.generic") });
     }
   };
 
@@ -95,13 +100,25 @@ export function CommunityTab({
   };
 
   useEffect(() => {
-    if (communityDetail?.channels.length && !selectedChannelId) {
+    // A locked private community returns a cover-only payload (no channels).
+    // Depend on channels.length too (not just the community id): a pending
+    // join request approved elsewhere lands via a same-id background refetch
+    // (refetchOnWindowFocus) that flips channels from absent to populated
+    // without the id ever changing — without this dependency the effect
+    // never re-fires and the content pane is stuck on the empty placeholder
+    // even though the now-unlocked sidebar is visible and clickable.
+    if (communityDetail?.channels?.length && !selectedChannelId) {
+      const chans = communityDetail.channels;
+      // Prefer a channel the member can actually read (first unlocked text channel),
+      // so opening a community doesn't dump them on a paywall by default.
       const first =
-        communityDetail.channels.find((c) => c.type === "text") ??
-        communityDetail.channels[0];
+        chans.find((c) => c.type === "text" && !c.locked) ??
+        chans.find((c) => !c.locked) ??
+        chans.find((c) => c.type === "text") ??
+        chans[0];
       if (first) setSelectedChannelId(first.id);
     }
-  }, [communityDetail?.id]);
+  }, [communityDetail?.id, communityDetail?.channels?.length, selectedChannelId]);
 
   const myCommunities = communities.filter((c) => c.isMember);
   const discoverCommunities = communities.filter((c) => !c.isMember);
@@ -131,7 +148,7 @@ export function CommunityTab({
             {myCommunities.length > 0 && (
               <div className="mb-3">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-1">
-                  Le tue
+                  {uiText("auto.ui.c28dcf855a")}
                 </p>
                 {myCommunities.map((c) => (
                   <button
@@ -149,7 +166,7 @@ export function CommunityTab({
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold truncate">{c.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {c.memberCount} membri
+                        {uiText("auto.ui.edc243eae0", { count: c.memberCount })}
                       </p>
                     </div>
                   </button>
@@ -159,7 +176,7 @@ export function CommunityTab({
             {discoverCommunities.length > 0 && (
               <div>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-1">
-                  Scopri
+                  {uiText("auto.ui.b4aad9f0d8")}
                 </p>
                 {discoverCommunities.map((c) => (
                   <button
@@ -176,7 +193,7 @@ export function CommunityTab({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold truncate">{c.name}</p>
-                      <p className="text-[10px]">{c.memberCount} membri</p>
+                      <p className="text-[10px]">{uiText("auto.ui.edc243eae0", { count: c.memberCount })}</p>
                       {(c.ratingCount ?? 0) > 0 && (
                         <div className="flex items-center gap-1 mt-0.5">
                           <StarRating value={c.ratingAvg ?? 0} readOnly size={9} />
@@ -192,13 +209,13 @@ export function CommunityTab({
               <div className="text-center py-8 px-4">
                 <Radio className="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
                 <p className="text-xs text-muted-foreground">
-                  Nessuna community ancora
+                  {uiText("auto.ui.c2c4ac30ec")}
                 </p>
                 <button
                   onClick={() => setShowCreateCommunity(true)}
                   className="mt-3 text-xs text-primary hover:underline"
                 >
-                  Crea la prima!
+                  {uiText("auto.ui.eba55dd340")}
                 </button>
               </div>
             )}
@@ -247,7 +264,7 @@ export function CommunityTab({
           <div className="flex items-center gap-2 mt-1.5">
             <Users className="w-3 h-3 text-muted-foreground" />
             <span className="text-[10px] text-muted-foreground">
-              {communityDetail.memberCount} membri
+              {uiText("auto.ui.edc243eae0", { count: communityDetail.memberCount })}
             </span>
           </div>
           <button
@@ -273,7 +290,7 @@ export function CommunityTab({
 
         <div className="flex-1 overflow-y-auto py-2">
           {(["text", "voice"] as const).map((type) => {
-            const channels = communityDetail.channels.filter(
+            const channels = (communityDetail.channels ?? []).filter(
               (c) => c.type === type,
             );
             if (channels.length === 0 && !canManageChannels) return null;
@@ -281,7 +298,7 @@ export function CommunityTab({
               <div key={type} className="mb-2">
                 <div className="flex items-center justify-between px-3 py-1">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                    {type === "text" ? "Testo" : "Voce"}
+                    {type === "text" ? uiText("auto.ui.db36ee74bb") : uiText("auto.ui.5cf4dba953")}
                   </p>
                   {canManageChannels && (
                     <button
@@ -292,23 +309,43 @@ export function CommunityTab({
                     </button>
                   )}
                 </div>
-                {channels.map((ch) => (
-                  <button
+                {channels.map((ch) => {
+                  const isPaid = !!ch.priceCents && ch.priceCents > 0;
+                  return (
+                  <div
                     key={ch.id}
-                    onClick={() => selectChannel(ch.id)}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-all hover:bg-secondary/40 rounded-lg mx-1 ${selectedChannelId === ch.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`group flex items-center rounded-lg mx-1 ${selectedChannelId === ch.id ? "bg-primary/10" : "hover:bg-secondary/40"}`}
                     style={{ width: "calc(100% - 8px)" }}
                   >
-                    {ch.type === "text" ? (
-                      <Hash className="w-3.5 h-3.5 shrink-0" />
-                    ) : (
-                      <Volume2 className="w-3.5 h-3.5 shrink-0" />
+                    <button
+                      onClick={() => selectChannel(ch.id)}
+                      className={`flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 text-left transition-all ${selectedChannelId === ch.id ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {ch.type === "text" ? (
+                        <Hash className="w-3.5 h-3.5 shrink-0" />
+                      ) : (
+                        <Volume2 className="w-3.5 h-3.5 shrink-0" />
+                      )}
+                      <span className="text-xs font-medium truncate">{ch.name}</span>
+                      {ch.locked && <Lock className="w-3 h-3 shrink-0 opacity-70" />}
+                      {isPaid && (
+                        <span className="ml-auto text-[10px] tabular-nums shrink-0">
+                          {(ch.priceCents! / 100).toFixed(0)} {(ch.currency ?? "eur").toUpperCase()}
+                        </span>
+                      )}
+                    </button>
+                    {canManageChannels && (
+                      <button
+                        onClick={() => setPricingChannelId(ch.id)}
+                        aria-label={t("channel.access.pricing_title")}
+                        className="p-1 mr-1 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity shrink-0"
+                      >
+                        <Settings className="w-3 h-3" />
+                      </button>
                     )}
-                    <span className="text-xs font-medium truncate">
-                      {ch.name}
-                    </span>
-                  </button>
-                ))}
+                  </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -321,15 +358,26 @@ export function CommunityTab({
                 onClick={() => leaveCommunity(communityDetail.id)}
                 className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors py-1.5 rounded-lg hover:bg-destructive/10"
               >
-                Lascia community
+                {uiText("auto.ui.b7cc70d51f")}
               </button>
             ) : null
+          ) : communityDetail.joinRequestStatus === "pending" ? (
+            <button
+              disabled
+              className="w-full py-2 bg-secondary text-muted-foreground rounded-lg text-xs font-semibold cursor-default"
+            >
+              {t("community.join.requested")}
+            </button>
           ) : (
             <button
               onClick={() => joinCommunity(communityDetail.id)}
               className="w-full py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
             >
-              Unisciti
+              {communityDetail.locked
+                ? communityDetail.joinRequestStatus === "rejected"
+                  ? t("community.join.declined")
+                  : t("community.join.request")
+                : uiText("auto.ui.d7339a9583")}
             </button>
           )}
         </div>
@@ -348,7 +396,9 @@ export function CommunityTab({
     showReviews && communityDetail ? (
       <CommunityReviews detail={communityDetail} />
     ) : selectedChannel && communityDetail?.isMember ? (
-      selectedChannel.type === "text" ? (
+      selectedChannel.locked ? (
+        <ChannelUnlockPanel channel={selectedChannel} />
+      ) : selectedChannel.type === "text" ? (
         <TextChannelView
           channel={selectedChannel}
           currentUserId={currentUserId}
@@ -369,7 +419,7 @@ export function CommunityTab({
               <Radio className="w-12 h-12 mx-auto opacity-20 mb-3" />
               <p className="text-sm font-medium">{uiText("chat.community.select_title")}</p>
               <p className="text-xs mt-1">
-                Unisciti o creane una nuova per iniziare
+                {uiText("auto.ui.4129dbfd67")}
               </p>
             </>
           ) : !communityDetail?.isMember ? (
@@ -377,7 +427,7 @@ export function CommunityTab({
               <UserPlus className="w-12 h-12 mx-auto opacity-20 mb-3" />
               <p className="text-sm font-medium">{communityDetail?.name}</p>
               <p className="text-xs mt-1 mb-2">
-                {communityDetail?.memberCount} membri
+                {uiText("auto.ui.edc243eae0", { count: communityDetail?.memberCount ?? 0 })}
               </p>
               {(communityDetail?.ratingCount ?? 0) > 0 && (
                 <button
@@ -395,14 +445,32 @@ export function CommunityTab({
                   {communityDetail.welcomeMessage}
                 </p>
               )}
-              <button
-                onClick={() =>
-                  communityDetail && joinCommunity(communityDetail.id)
-                }
-                className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
-              >
-                Unisciti alla community
-              </button>
+              {communityDetail?.locked && (
+                <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-3">
+                  {t("community.join.locked_hint")}
+                </p>
+              )}
+              {communityDetail?.joinRequestStatus === "pending" ? (
+                <button
+                  disabled
+                  className="px-5 py-2.5 bg-secondary text-muted-foreground rounded-xl text-sm font-semibold cursor-default"
+                >
+                  {t("community.join.requested")}
+                </button>
+              ) : (
+                <button
+                  onClick={() =>
+                    communityDetail && joinCommunity(communityDetail.id)
+                  }
+                  className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  {communityDetail?.locked
+                    ? communityDetail?.joinRequestStatus === "rejected"
+                      ? t("community.join.declined")
+                      : t("community.join.request")
+                    : uiText("auto.ui.5e5f5f332a")}
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -500,6 +568,12 @@ export function CommunityTab({
           onClose={() => setShowSettings(false)}
         />
       )}
+      {pricingChannelId != null && communityDetail && (() => {
+        const ch = communityDetail.channels?.find((c) => c.id === pricingChannelId);
+        return ch ? (
+          <ChannelPricingModal channel={ch} onClose={() => setPricingChannelId(null)} />
+        ) : null;
+      })()}
     </>
   );
 }

@@ -1,9 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, ImagePlus, Save } from "lucide-react";
+import { Loader2, ImagePlus, Lock, Save } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { apiJSON, apiUpload } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
+import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 import { COMMUNITY_EMOJIS } from "./constants";
 import type { CommunityDetail } from "./types";
 
@@ -11,6 +13,7 @@ const DEFAULT_ACCENT = "#51a488";
 
 export function CommunityGeneralSettings({ detail }: { detail: CommunityDetail }) {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const qc = useQueryClient();
   const [name, setName] = useState(detail.name);
   const [description, setDescription] = useState(detail.description ?? "");
@@ -18,11 +21,25 @@ export function CommunityGeneralSettings({ detail }: { detail: CommunityDetail }
   const [accentColor, setAccentColor] = useState(detail.accentColor ?? DEFAULT_ACCENT);
   const [rules, setRules] = useState(detail.rules ?? "");
   const [welcome, setWelcome] = useState(detail.welcomeMessage ?? "");
+  const [isPublic, setIsPublic] = useState(detail.isPublic);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"avatar" | "banner" | null>(null);
 
   const avatarInput = useRef<HTMLInputElement>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
+
+  // isPublic is seeded once from the prop, like every other field here, but
+  // unlike a cosmetic field (name/rules/…) a stale value here has a real
+  // access-control consequence: an unrelated Save would silently PATCH back
+  // whatever privacy state this component mounted with, undoing a concurrent
+  // change (another admin, or the same owner in a different tab). Re-sync
+  // from the prop whenever it changes, but only if the user hasn't already
+  // touched the toggle in this session — don't clobber their own in-progress,
+  // not-yet-saved edit either.
+  const isPublicTouchedRef = useRef(false);
+  useEffect(() => {
+    if (!isPublicTouchedRef.current) setIsPublic(detail.isPublic);
+  }, [detail.isPublic]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["community", detail.id] });
@@ -35,11 +52,11 @@ export function CommunityGeneralSettings({ detail }: { detail: CommunityDetail }
       await apiJSON(`community/${detail.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, iconEmoji: emoji, accentColor, rules, welcomeMessage: welcome }),
+        body: JSON.stringify({ name, description, iconEmoji: emoji, accentColor, rules, welcomeMessage: welcome, isPublic }),
       });
       refresh();
     } catch (error) {
-      reportClientError(error, { context: "community settings save", notify: false });
+      reportClientError(error, { context: "community settings save", toast, fallbackMessage: t("errors.mutation.generic") });
     } finally {
       setSaving(false);
     }
@@ -54,7 +71,7 @@ export function CommunityGeneralSettings({ detail }: { detail: CommunityDetail }
       await apiUpload(`community/${detail.id}/${kind}`, fd);
       refresh();
     } catch (error) {
-      reportClientError(error, { context: "community image upload", notify: false });
+      reportClientError(error, { context: "community image upload", toast, fallbackMessage: t("errors.mutation.generic") });
     } finally {
       setUploading(null);
     }
@@ -143,6 +160,24 @@ export function CommunityGeneralSettings({ detail }: { detail: CommunityDetail }
             className="w-10 h-10 rounded-xl border border-border bg-transparent cursor-pointer"
           />
         </div>
+      </div>
+
+      {/* Privacy */}
+      <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/20 px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <Lock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <div>
+            <p className="text-xs font-semibold">{t("community.create.private_label")}</p>
+            <p className="text-[10px] text-muted-foreground">{t("community.create.private_hint")}</p>
+          </div>
+        </div>
+        <Switch
+          checked={!isPublic}
+          onCheckedChange={(checked) => {
+            isPublicTouchedRef.current = true;
+            setIsPublic(!checked);
+          }}
+        />
       </div>
 
       {/* Description */}

@@ -2,12 +2,14 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { db, followsTable, postsTable, postLikesTable, postCommentsTable, profileTable, userPublicKeysTable } from "@workspace/db";
-import { eq, and, or, desc, asc, sql, inArray, gt, isNull } from "drizzle-orm";
+import { db, followsTable, postsTable, postLikesTable, postCommentsTable, profileTable, userPublicKeysTable, chatFileAccessTable } from "@workspace/db";
+import { eq, and, or, desc, asc, sql, inArray, gt, isNull, lt } from "drizzle-orm";
+import { areMutualFollowers } from "./chat.js";
 import { getUserNotificationLanguage, sendPushToUser } from "./push.js";
 import { getServerNotificationCopy } from "../services/notifications/notificationCopy.js";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
+import { parseFeedPagination, nextFeedCursor } from "../services/feedPagination.js";
 
 const POST_IMAGES_DIR = resolveUploadPath("post-images");
 const CHAT_FILES_DIR = resolveUploadPath("chat-files");
@@ -238,16 +240,58 @@ router.post("/social/upload-image", (req: Request, res: Response) => {
 router.post("/social/upload-file", (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
-  chatFileUpload.single("file")(req, res, (err) => {
+  chatFileUpload.single("file")(req, res, async (err) => {
     if (err) { res.status(400).json({ error: err.message ?? "Upload fallito" }); return; }
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
-    res.json({
-      fileUrl: `/api/uploads/chat-files/${req.file.filename}`,
-      fileName: req.file.originalname,
-      mimeType: req.file.mimetype || "application/octet-stream",
-      size: req.file.size,
-    });
+    try {
+      // Record who may later download this DM attachment. Only mutual followers
+      // can DM, so the same gate applies here; the two participants are the only
+      // ones the authenticated serving route will let read the file.
+      const toUserId = typeof req.body?.toUserId === "string" ? req.body.toUserId : "";
+      if (!toUserId || !(await areMutualFollowers(userId, toUserId))) {
+        res.status(400).json({ error: "Destinatario non valido" }); return;
+      }
+      await db
+        .insert(chatFileAccessTable)
+        .values({ fileKey: req.file.filename, ownerUserId: userId, peerUserId: toUserId })
+        .onConflictDoNothing({ target: chatFileAccessTable.fileKey });
+      res.json({
+        fileUrl: `/api/uploads/chat-files/${req.file.filename}`,
+        fileName: req.file.originalname,
+        mimeType: req.file.mimetype || "application/octet-stream",
+        size: req.file.size,
+      });
+    } catch {
+      res.status(500).json({ error: "Errore interno" });
+    }
   });
+});
+
+// Serve a DM file attachment only to the two conversation participants. These
+// files are no longer exposed by the public /api/uploads static handler (see
+// lib/security.ts): access is gated on chat_file_access. Not-found and
+// not-a-participant both return 404 (no existence signal).
+router.get("/uploads/chat-files/:filename", async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  try {
+    const filename = String(req.params.filename);
+    const [row] = await db
+      .select()
+      .from(chatFileAccessTable)
+      .where(eq(chatFileAccessTable.fileKey, filename))
+      .limit(1);
+    if (!row || (row.ownerUserId !== userId && row.peerUserId !== userId)) {
+      res.status(404).json({ error: "File non trovato" }); return;
+    }
+    const filePath = path.join(CHAT_FILES_DIR, filename);
+    if (!fs.existsSync(filePath)) { res.status(404).json({ error: "File non trovato" }); return; }
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.sendFile(filePath);
+  } catch {
+    res.status(500).json({ error: "Errore interno" });
+  }
 });
 
 router.post("/social/posts", async (req, res) => {
@@ -337,14 +381,18 @@ router.get("/social/feed", async (req, res) => {
     const followingIds = [...followingRows.map(r => r.followingId), userId];
 
     const now = new Date();
+    // Keyset pagination over post id (desc): the newest page has no cursor, "load
+    // older" passes the last id it saw as `cursor` so the feed scrolls past 50.
+    const { limit, cursor } = parseFeedPagination(req.query);
     const posts = await db.select().from(postsTable)
       .where(and(
         inArray(postsTable.userId, followingIds),
         eq(postsTable.isStory, false),
-        or(isNull(postsTable.expiresAt), gt(postsTable.expiresAt, now))
+        or(isNull(postsTable.expiresAt), gt(postsTable.expiresAt, now)),
+        ...(cursor !== null ? [lt(postsTable.id, cursor)] : []),
       ))
-      .orderBy(desc(postsTable.createdAt))
-      .limit(50);
+      .orderBy(desc(postsTable.id))
+      .limit(limit);
 
     const likedRows = posts.length > 0
       ? await db.select({ postId: postLikesTable.postId }).from(postLikesTable)
@@ -352,8 +400,8 @@ router.get("/social/feed", async (req, res) => {
       : [];
     const likedSet = new Set(likedRows.map(r => r.postId));
 
-    const followingSet = new Set(followingIds);
-    res.json(posts.map(p => ({ ...p, likedByMe: likedSet.has(p.id), isOwnPost: p.userId === userId })));
+    const items = posts.map(p => ({ ...p, likedByMe: likedSet.has(p.id), isOwnPost: p.userId === userId }));
+    res.json({ items, nextCursor: nextFeedCursor(items, limit) });
   } catch (err) {
     console.error("feed error:", err);
     res.status(500).json({ error: "Errore interno" });
@@ -483,10 +531,50 @@ const voiceUpload = multer({ storage: voiceStorage, limits: { fileSize: 20 * 102
 router.post("/social/upload-voice", (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
-  voiceUpload.single("audio")(req, res, (err) => {
+  voiceUpload.single("audio")(req, res, async (err) => {
     if (err || !req.file) { res.status(400).json({ error: "Upload fallito" }); return; }
+    // Voice notes are private (DM voice messages, story voice-replies). Record
+    // who may later fetch this file — the uploader and the intended recipient
+    // (the DM peer, or the story owner) — so the authenticated GET /uploads/voice
+    // route below can gate on it. Recipient is required (audit 0.1).
+    const toUserId = typeof req.body?.toUserId === "string" ? req.body.toUserId.trim() : "";
+    if (!toUserId) { res.status(400).json({ error: "Destinatario mancante" }); return; }
+    try {
+      await db
+        .insert(chatFileAccessTable)
+        .values({ fileKey: req.file.filename, ownerUserId: userId, peerUserId: toUserId })
+        .onConflictDoNothing({ target: chatFileAccessTable.fileKey });
+    } catch {
+      res.status(500).json({ error: "Errore interno" }); return;
+    }
     res.json({ audioUrl: `/api/uploads/voice/${req.file.filename}` });
   });
+});
+
+// Serve a voice note only to the two participants (uploader + recipient recorded
+// at upload). No longer exposed by the public /api/uploads static handler (see
+// lib/security.ts). Not-found and not-a-participant both return 404.
+router.get("/uploads/voice/:filename", async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  try {
+    const filename = String(req.params.filename);
+    const [row] = await db
+      .select()
+      .from(chatFileAccessTable)
+      .where(eq(chatFileAccessTable.fileKey, filename))
+      .limit(1);
+    if (!row || (row.ownerUserId !== userId && row.peerUserId !== userId)) {
+      res.status(404).json({ error: "File non trovato" }); return;
+    }
+    const filePath = path.join(VOICE_DIR, filename);
+    if (!fs.existsSync(filePath)) { res.status(404).json({ error: "File non trovato" }); return; }
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.sendFile(filePath);
+  } catch {
+    res.status(500).json({ error: "Errore interno" });
+  }
 });
 
 // ─── Post Comments ────────────────────────────────────────────────────────────
@@ -583,13 +671,30 @@ router.post("/social/story-reply/:storyId", (req: Request, res: Response) => {
 // Stored in the DB so the sender and the polling recipient can be served by
 // different serverless instances and still exchange offers/answers/ICE.
 
+// WebRTC signaling allowlist + payload cap (audit 0.4): only these SDP/ICE
+// message types are relayed, and `data` is bounded so the channel can't be
+// abused as a covert bulk transport.
+const CALL_SIGNAL_TYPES = new Set(["offer", "answer", "ice", "hangup"]);
+const MAX_SIGNAL_DATA = 64 * 1024; // SDP/ICE payloads are a few KB at most
+
 router.post("/social/calls/signal", async (req: Request, res: Response) => {
   const from = req.user?.id;
   if (!from) { res.status(401).json({ error: "Non autorizzato" }); return; }
   const { to, type, data, callId } = req.body;
-  if (!to || !type) { res.status(400).json({ error: "Parametri mancanti" }); return; }
+  if (!to || typeof to !== "string" || !type) { res.status(400).json({ error: "Parametri mancanti" }); return; }
+  if (!CALL_SIGNAL_TYPES.has(type)) { res.status(400).json({ error: "Tipo segnale non valido" }); return; }
+  const payload = data ?? "";
+  if (typeof payload !== "string" || payload.length > MAX_SIGNAL_DATA) {
+    res.status(413).json({ error: "Payload segnale troppo grande" }); return;
+  }
+  // Only mutual followers may signal each other — the same gate DMs use — so
+  // calls can't spam arbitrary users or open a covert channel to a non-friend.
+  if (from === to || !(await areMutualFollowers(from, to))) {
+    res.status(403).json({ error: "Destinatario non consentito" }); return;
+  }
+  const safeCallId = typeof callId === "string" && callId.length <= 128 ? callId : `call-${Date.now()}`;
   try {
-    await pushSignal({ scope: "call", to, from, type, data: data ?? "", callId: callId ?? `call-${Date.now()}` });
+    await pushSignal({ scope: "call", to, from, type, data: payload, callId: safeCallId });
     res.json({ ok: true });
   } catch (err) {
     console.error("social/calls/signal error:", err);

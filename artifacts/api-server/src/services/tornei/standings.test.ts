@@ -37,10 +37,22 @@ function mk(
   assert.equal(out[0].trades, 0);
 }
 
-// ── trade non registrati a diario non contano ────────────────────────────────
+// ── cherry-picking bloccato: il legame col diario è mutabile dall'utente, quindi
+//    NON deve gattare i trade. Un trade non journaled conta comunque. ──────────
 {
   const out = computeStandings([mk("a", [10], 90, { journaled: false })], "r");
-  assert.equal(out[0].rCum, 0);
+  assert.equal(out[0].rCum, 10);
+  assert.equal(out[0].trades, 1);
+}
+
+// ── un perdente non può essere sottratto alla classifica/DQ cancellandone il
+//    diario (azzererebbe journalEntryId → journaled=false) ────────────────────
+{
+  const out = computeStandings([mk("a", [-4, -4, -4], 90, { journaled: false }), mk("b", [3], 80)], "r");
+  const a = out.find((r) => r.userId === "a");
+  assert.ok(a);
+  assert.equal(a.dq, true, "un-journaled losers still trigger the -10R DQ");
+  assert.equal(out.find((r) => r.userId === "b")?.rank, 1);
 }
 
 // ── drawdown oltre -10R squalifica ed esce dalla classifica ──────────────────

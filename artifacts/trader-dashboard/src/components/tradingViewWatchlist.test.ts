@@ -1,12 +1,33 @@
 import assert from "node:assert/strict";
 import {
   DEFAULT_WATCHLIST_PAIRS,
-  TRADING_VIEW_MINI_SYMBOL_SCRIPT,
   buildTradingViewDeepLink,
-  buildTradingViewMiniSymbolConfig,
+  formatWatchlistPrice,
   mapCatalogPairToTradingViewSymbol,
   resolveWatchlistPairs,
+  watchlistFreshness,
+  type WatchlistItem,
 } from "./tradingViewWatchlist";
+
+// Finding 2.4: the widget always showed a pulsing "Live" badge even when the D1 data
+// was hours/days stale. Freshness is derived from the newest bar time (unix seconds).
+const item = (time: number | null): WatchlistItem => ({ pair: "EURUSD", price: 1, changePct: 0, spark: [], time, supported: true });
+const NOW = 1_800_000_000_000; // fixed ms
+
+// No usable bar time → not live.
+assert.deepEqual(watchlistFreshness([], NOW), { latestBarMs: null, isLive: false });
+assert.deepEqual(watchlistFreshness([item(null)], NOW), { latestBarMs: null, isLive: false });
+
+// A bar within the max age is live; one well past it is not (but still surfaces its time).
+const oneHourAgo = NOW / 1000 - 3600;
+assert.equal(watchlistFreshness([item(oneHourAgo)], NOW).isLive, true);
+const thirtyHoursAgo = NOW / 1000 - 30 * 3600;
+const stale = watchlistFreshness([item(thirtyHoursAgo)], NOW);
+assert.equal(stale.isLive, false);
+assert.equal(stale.latestBarMs, thirtyHoursAgo * 1000);
+
+// Freshness uses the NEWEST bar across items.
+assert.equal(watchlistFreshness([item(thirtyHoursAgo), item(oneHourAgo)], NOW).isLive, true);
 
 // resolveWatchlistPairs: favorites when present, else fall back to defaults
 // (same convention as the rest of the dashboard via deriveEffectiveFilterItems).
@@ -52,16 +73,14 @@ assert.equal(
   "https://www.tradingview.com/chart/?symbol=OANDA%3AXAUUSD",
 );
 
-// Mini-symbol embed config unchanged behaviour
-const config = buildTradingViewMiniSymbolConfig("FX:EURUSD");
-assert.equal(config.symbol, "FX:EURUSD");
-assert.equal(config.colorTheme, "dark");
-assert.equal(config.locale, "it");
-assert.equal(config.isTransparent, true);
-assert.equal(config.width, "100%");
-assert.equal(config.dateRange, "1D");
-assert.equal(config.autosize, true);
-
-assert.match(TRADING_VIEW_MINI_SYMBOL_SCRIPT, /embed-widget-mini-symbol-overview\.js/);
+// Price formatting: decimals follow the pair-catalog category
+assert.equal(formatWatchlistPrice("EURUSD", 1.084234), "1.08423"); // FX → 5
+assert.equal(formatWatchlistPrice("USDJPY", 157.3312), "157.331"); // JPY-quoted → 3
+assert.equal(formatWatchlistPrice("EURJPY", 169.1), "169.100"); // JPY-quoted minor → 3
+assert.equal(formatWatchlistPrice("XAUUSD", 2329.4467), "2329.45"); // metal → 2
+assert.equal(formatWatchlistPrice("US30", 39112.31), "39112.3"); // index → 1
+assert.equal(formatWatchlistPrice("BTCUSD", 64123.55), "64124"); // crypto ≥1000 → 0
+assert.equal(formatWatchlistPrice("ETHUSD", 934.234), "934.23"); // crypto <1000 → 2
+assert.equal(formatWatchlistPrice("ZZZUSD", 1.23), "1.23000"); // unknown forex-shaped → 5
 
 console.log("tradingView watchlist helper checks passed");

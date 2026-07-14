@@ -73,13 +73,13 @@ export function Leaderboard({ board, total, metric, onMetric }: LeaderboardProps
                     <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontWeight: 600, fontSize: 14, color: "var(--tl-fg)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.displayName}</span>
                       {r.me && (
-                        <span style={{ fontFamily: "var(--tl-font-mono)", fontSize: 9, letterSpacing: "0.08em", padding: "1px 6px", borderRadius: 5, background: "hsl(142 71% 45% / 0.18)", color: "hsl(142 71% 60%)", flex: "none" }}>{t("tornei.you")}</span>
+                        <span style={{ fontFamily: "var(--tl-font-mono)", fontSize: 9, letterSpacing: "0.08em", padding: "1px 6px", borderRadius: 5, background: "hsl(var(--accent-jade) / 0.18)", color: "hsl(var(--accent-jade-soft))", flex: "none" }}>{t("tornei.you")}</span>
                       )}
                     </span>
                     <span className={`trn-divtag trn-d-${r.division}`} style={{ marginTop: 3 }}>{divisionLabel(r.division, t)}</span>
                   </span>
                 </span>
-                <span className="trn-hide-sm" style={{ textAlign: "right", fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 14, color: "hsl(142 71% 56%)" }}>{fmtR(r.rCum)}</span>
+                <span className="trn-hide-sm" style={{ textAlign: "right", fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 14, color: "hsl(var(--success))" }}>{fmtR(r.rCum)}</span>
                 <span className="trn-hide-sm" style={{ textAlign: "right", fontFamily: "var(--tl-font-mono)", fontSize: 13, color: "var(--tl-fg)" }}>{r.discIndex}%</span>
                 <span style={{ textAlign: "right", fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 15, color: "var(--tl-fg)" }}>{r.score.toFixed(1)}</span>
               </div>

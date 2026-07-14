@@ -27,7 +27,9 @@ export function createPgPoolConfig(env: DbEnv = process.env): PoolConfig {
 
   const config: PoolConfig = {
     connectionString,
-    max: parsePositiveInteger(env.PGPOOL_MAX, 10),
+    // Default of 20 connections per process; raise via PGPOOL_MAX. Keep the sum of
+    // (max × instances) under the managed-Postgres connection cap (Neon pooler).
+    max: parsePositiveInteger(env.PGPOOL_MAX, 20),
     idleTimeoutMillis: parsePositiveInteger(env.PG_IDLE_TIMEOUT_MS, 30_000),
     connectionTimeoutMillis: parsePositiveInteger(
       env.PG_CONNECTION_TIMEOUT_MS,

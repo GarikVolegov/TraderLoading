@@ -1,27 +1,42 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useRoute } from "wouter";
+import { Link, useRoute, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, BookOpen, MessageCircle, Brain, Settings, FlaskConical, Sunrise, Library, Archive, Rocket } from "lucide-react";
+import {
+  LayoutDashboard, BookOpen, FlaskConical, Archive, CalendarClock, Users,
+  ArrowLeft, MoreHorizontal,
+  Settings, Rocket,
+} from "lucide-react";
 import { getGetUnreadCountQueryKey, useGetProfile, useGetUnreadCount } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { matchHub, splitHubItems, TORNEI_ITEM } from "@/lib/navHubs";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
-const NAV_ITEMS = [
-  { href: "/",        icon: LayoutDashboard, labelKey: "nav.home",    isChat: false },
-  { href: "/journal", icon: BookOpen,         labelKey: "nav.journal", isChat: false },
-  { href: "/backtest", icon: FlaskConical,    labelKey: "nav.backtest", isChat: false },
-  { href: "/zen",     icon: Brain,            labelKey: "nav.zen",     isChat: false },
-  { href: "/chat",    icon: MessageCircle,    labelKey: "nav.chat",    isChat: true  },
+// Root hubs (level 0). Archivio is a direct hub; Community/Journal are hubs
+// that, once entered, swap the bar to their own sub-nav (see navHubs.ts).
+const ROOT_ITEMS = [
+  { href: "/",         icon: LayoutDashboard, labelKey: "nav.home",      isChat: false },
+  { href: "/journal",  icon: BookOpen,        labelKey: "nav.journal",   isChat: false },
+  { href: "/backtest", icon: FlaskConical,    labelKey: "nav.backtest",  isChat: false },
+  { href: "/routine",  icon: CalendarClock,   labelKey: "nav.routine",   isChat: false },
+  { href: "/wiki",     icon: Archive,         labelKey: "nav.wiki",      isChat: false },
+  { href: "/chat",     icon: Users,           labelKey: "nav.community", isChat: true  },
 ] as const;
 
+// Desktop-only secondary group (Archivio lives in the root group now).
 const SECONDARY_ITEMS = [
-  { href: "/library",  icon: Library,     labelKey: "nav.library"  },
-  { href: "/wiki",     icon: Archive,     labelKey: "nav.wiki"     },
-  { href: "/routine",  icon: Sunrise,     labelKey: "nav.routine"  },
-  { href: "/settings", icon: Settings,     labelKey: "nav.settings" },
+  { href: "/settings", icon: Settings,  labelKey: "nav.settings" },
 ] as const;
+
+// Mobile has no persistent sidebar, so these three would otherwise be
+// reachable only via the desktop-only Cmd+K palette. Settings stays out of
+// this list — it already has its own shortcut via the TopNav avatar on mobile.
+const ROOT_OVERFLOW_ITEMS = [] as const;
 
 function NavItem({
   href,
+  path,
+  matchTab,
+  defaultTab,
   icon: Icon,
   label,
   badge,
@@ -30,6 +45,12 @@ function NavItem({
   compact,
 }: {
   href: string;
+  /** Route path used for active matching (query stripped). Defaults to href. */
+  path?: string;
+  /** When set, active also requires the current ?t= to equal this value. */
+  matchTab?: string;
+  /** ?t= to assume when the URL has none — the hub's own default tab. */
+  defaultTab?: string;
   icon: React.ElementType;
   label: string;
   badge?: number;
@@ -37,11 +58,13 @@ function NavItem({
   small?: boolean;
   compact?: boolean;
 }) {
-  const [isActive] = useRoute(href);
+  const [pathActive] = useRoute(path ?? href);
+  const search = useSearch();
+  const currentTab = new URLSearchParams(search).get("t") ?? defaultTab ?? "social";
+  const isActive = pathActive && (matchTab == null || currentTab === matchTab);
 
   // The mobile tab label is hidden by default and only flashes briefly when the
-  // user taps the item, then fades away on its own. Declared unconditionally (hooks
-  // must run in the same order every render) even though only the mobile variant uses it.
+  // user taps the item, then fades away on its own. Declared unconditionally.
   const [flashLabel, setFlashLabel] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -108,7 +131,6 @@ function NavItem({
             : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
         }`}
       >
-        {/* Active left bar */}
         <AnimatePresence>
           {isActive && (
             <motion.div
@@ -210,13 +232,20 @@ function NavItem({
 
 export function BottomNav() {
   const { t } = useLanguage();
-  const { data: unreadData } = useGetUnreadCount({ query: { queryKey: getGetUnreadCountQueryKey(), refetchInterval: 5000 } });
+  const { data: unreadData } = useGetUnreadCount({ query: { queryKey: getGetUnreadCountQueryKey(), refetchInterval: 30_000 } });
   const { data: profile } = useGetProfile();
   const unreadCount = unreadData?.count ?? 0;
+  const [location] = useLocation();
+  const activeHub = matchHub(location);
+  const { primary, overflow } = activeHub
+    ? splitHubItems(activeHub.items)
+    : { primary: [], overflow: [] };
+  const [moreOpen, setMoreOpen] = useState(false);
+
   const avatarSrc =
     profile && profile.avatarUrl
       ? profile.avatarUrl
-      : `${import.meta.env.BASE_URL}images/avatar-default.png`;
+      : `${import.meta.env.BASE_URL}images/avatar-default.webp`;
   const profileName = profile?.name ?? "Trader";
 
   return (
@@ -229,19 +258,90 @@ export function BottomNav() {
         className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] left-0 right-0 z-50 px-3 sm:px-4 lg:hidden"
       >
         <div className="mx-auto max-w-lg overflow-hidden rounded-full border border-white/10 bg-card/70 shadow-[0_18px_60px_rgba(0,0,0,0.38),inset_0_1px_0_hsl(var(--foreground)/0.16),inset_0_-1px_0_hsl(var(--background)/0.38)] backdrop-blur-2xl supports-[backdrop-filter]:bg-card/55">
-          <div className="flex items-center px-1">
-            {NAV_ITEMS.map((item) => (
-              <NavItem
-                key={item.href}
-                href={item.href}
-                icon={item.icon}
-                label={t(item.labelKey)}
-                badge={item.isChat ? unreadCount : undefined}
-              />
-            ))}
-          </div>
+          {activeHub ? (
+            <div className="flex items-center px-1">
+              {/* Back to Home — exits the active hub */}
+              <Link
+                href="/"
+                aria-label={t("nav.home")}
+                title={t("nav.home")}
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-200 hover:text-foreground"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <div className="mx-0.5 h-6 w-px shrink-0 bg-border/50" />
+              {primary.map((item) => (
+                <NavItem
+                  key={item.href}
+                  href={item.href}
+                  path={item.path}
+                  matchTab={item.tab}
+                  defaultTab={activeHub.items[0]?.tab}
+                  icon={item.icon}
+                  label={t(item.labelKey)}
+                />
+              ))}
+              {overflow.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMoreOpen(true)}
+                  aria-label={t("nav.more")}
+                  title={t("nav.more")}
+                  className="relative flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2 text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                >
+                  <MoreHorizontal className="h-5 w-5 sm:h-[22px] sm:w-[22px]" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center px-1">
+              {ROOT_ITEMS.map((item) => (
+                <NavItem
+                  key={item.href}
+                  href={item.href}
+                  icon={item.icon}
+                  label={t(item.labelKey)}
+                  badge={item.isChat ? unreadCount : undefined}
+                />
+              ))}
+              {/* Mobile has no persistent sidebar: Library/Clock/News would
+                  otherwise be reachable only via the desktop-only Cmd+K palette. */}
+              <button
+                type="button"
+                onClick={() => setMoreOpen(true)}
+                aria-label={t("nav.more")}
+                title={t("nav.more")}
+                className="relative flex min-h-[64px] flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2 text-muted-foreground transition-colors duration-200 hover:text-foreground"
+              >
+                <MoreHorizontal className="h-5 w-5 sm:h-[22px] sm:w-[22px]" />
+              </button>
+            </div>
+          )}
         </div>
       </motion.nav>
+
+      {/* Overflow sheet — reached via "Più": a hub's extra sub-items, or (at
+          the root) the pages with no persistent nav slot on mobile. */}
+      {(!activeHub || overflow.length > 0) && (
+        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+          <SheetContent side="bottom" className="lg:hidden">
+            <SheetTitle>{t("nav.more")}</SheetTitle>
+            <div className="mt-2 flex flex-col gap-1">
+              {(activeHub ? overflow : ROOT_OVERFLOW_ITEMS).map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMoreOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-white/5"
+                >
+                  <item.icon className="h-[18px] w-[18px]" />
+                  {t(item.labelKey)}
+                </Link>
+              ))}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* ── Desktop sidebar ───────────────────────────────────────────── */}
       <motion.nav
@@ -264,25 +364,74 @@ export function BottomNav() {
           </motion.div>
         </div>
 
-        {/* Primary nav */}
+        {/* Primary nav: the active hub's sub-items, or the root hubs + Tornei */}
         <div className="flex-1 flex flex-col px-2 py-3 gap-1 overflow-y-auto">
-          {NAV_ITEMS.map((item, i) => (
-            <motion.div
-              key={item.href}
-              initial={{ opacity: 0, x: -14 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 + i * 0.05, type: "spring", stiffness: 400, damping: 28 }}
-            >
-              <NavItem
-                href={item.href}
-                icon={item.icon}
-                label={t(item.labelKey)}
-                badge={item.isChat ? unreadCount : undefined}
-                vertical
-                compact
-              />
-            </motion.div>
-          ))}
+          {activeHub ? (
+            <>
+              <motion.div
+                initial={{ opacity: 0, x: -14 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
+              >
+                <NavItem href="/" icon={ArrowLeft} label={t("nav.home")} vertical compact />
+              </motion.div>
+
+              {activeHub.items.map((item, i) => (
+                <motion.div
+                  key={item.href}
+                  initial={{ opacity: 0, x: -14 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.05 + i * 0.05, type: "spring", stiffness: 400, damping: 28 }}
+                >
+                  <NavItem
+                    href={item.href}
+                    path={item.path}
+                    matchTab={item.tab}
+                    defaultTab={activeHub.items[0]?.tab}
+                    icon={item.icon}
+                    label={t(item.labelKey)}
+                    vertical
+                    compact
+                  />
+                </motion.div>
+              ))}
+            </>
+          ) : (
+            <>
+              {ROOT_ITEMS.map((item, i) => (
+                <motion.div
+                  key={item.href}
+                  initial={{ opacity: 0, x: -14 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + i * 0.05, type: "spring", stiffness: 400, damping: 28 }}
+                >
+                  <NavItem
+                    href={item.href}
+                    icon={item.icon}
+                    label={t(item.labelKey)}
+                    badge={item.isChat ? unreadCount : undefined}
+                    vertical
+                    compact
+                  />
+                </motion.div>
+              ))}
+
+              <motion.div
+                initial={{ opacity: 0, x: -14 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4, type: "spring", stiffness: 400, damping: 28 }}
+              >
+                <NavItem
+                  href={TORNEI_ITEM.href}
+                  path={TORNEI_ITEM.path}
+                  icon={TORNEI_ITEM.icon}
+                  label={t(TORNEI_ITEM.labelKey)}
+                  vertical
+                  compact
+                />
+              </motion.div>
+            </>
+          )}
 
           {/* Divider */}
           <div className="mx-auto my-2 h-px w-9 bg-border/35" />
@@ -292,7 +441,7 @@ export function BottomNav() {
               key={item.href}
               initial={{ opacity: 0, x: -14 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.35 + i * 0.05, type: "spring", stiffness: 400, damping: 28 }}
+              transition={{ delay: 0.45 + i * 0.05, type: "spring", stiffness: 400, damping: 28 }}
             >
               <NavItem
                 href={item.href}

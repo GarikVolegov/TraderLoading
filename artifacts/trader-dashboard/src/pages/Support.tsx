@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useRoute } from "wouter";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Inbox } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetSupportTicketThreadQueryKey,
@@ -37,15 +37,17 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function formatWhen(value: string): string {
-  return new Date(value).toLocaleString();
+function formatWhen(value: string, language: string): string {
+  return new Date(value).toLocaleString(language);
 }
 
 function NewTicketForm() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const createTicket = useCreateSupportTicket();
+  // submit's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const createTicket = useCreateSupportTicket({ mutation: { meta: { suppressGlobalError: true } } });
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
@@ -104,7 +106,7 @@ function NewTicketForm() {
 }
 
 function TicketList() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { data: tickets, isLoading } = useGetSupportTickets();
 
   return (
@@ -116,7 +118,10 @@ function TicketList() {
             <Spinner />
           </div>
         ) : !tickets || tickets.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("support.list.empty")}</p>
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <Inbox className="h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">{t("support.list.empty")}</p>
+          </div>
         ) : (
           <ul className="space-y-2">
             {tickets.map((ticket) => (
@@ -130,7 +135,7 @@ function TicketList() {
                       {ticket.subject}
                     </span>
                     <span className="block text-xs text-muted-foreground">
-                      {formatWhen(ticket.updatedAt)}
+                      {formatWhen(ticket.updatedAt, language)}
                     </span>
                   </span>
                   <StatusBadge status={ticket.status} />
@@ -145,7 +150,7 @@ function TicketList() {
 }
 
 function MessageBubble({ message }: { message: SupportTicketMessage }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const isSupport = message.authorType === "support";
   return (
     <li
@@ -158,7 +163,7 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
           {isSupport ? t("support.author.support") : t("support.author.user")}
         </span>
         <span className="text-[11px] text-muted-foreground">
-          {formatWhen(message.createdAt)}
+          {formatWhen(message.createdAt, language)}
         </span>
       </div>
       <p className="whitespace-pre-wrap text-sm">{message.body}</p>
@@ -171,7 +176,9 @@ function TicketThread({ id }: { id: number }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data, isLoading } = useGetSupportTicketThread(id);
-  const sendMessage = useCreateSupportTicketMessage();
+  // The reply handler's own catch already shows its own toast below — opt
+  // out of App.tsx's global mutation-error toast to avoid a double toast.
+  const sendMessage = useCreateSupportTicketMessage({ mutation: { meta: { suppressGlobalError: true } } });
   const [reply, setReply] = useState("");
 
   const submit = async () => {

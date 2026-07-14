@@ -27,6 +27,12 @@ for (const removed of [
   assert.doesNotMatch(route, new RegExp(removed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 }
 
+// Wiki files are private and no longer served by the public /api/uploads
+// static handler: the archive route must serve them itself and MUST gate on
+// ownership. This assertion stops the ownership check from being dropped.
+assert.match(route, /router\.get\("\/uploads\/wiki\/:segment\/:filename"/);
+assert.match(route, /source\.userId !== userId/);
+
 assert.match(route, /getUserId\(req\)/);
 assert.match(route, /processWikiSourceJob/);
 assert.match(route, /validateWikiUploadContent/);

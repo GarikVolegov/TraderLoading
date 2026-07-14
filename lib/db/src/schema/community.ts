@@ -88,9 +88,35 @@ export const communityChannelsTable = pgTable("community_channels", {
   name: text("name").notNull(),
   type: text("type").notNull().default("text"),
   position: integer("position").notNull().default(0),
+  // Paid-channel pricing (marketplace, Stripe Connect direct charges): price in
+  // real-currency cents. NULL / <= 0 ⇒ free.
+  accessModel: text("access_model"), // 'one_time' | 'subscription' (only when priced)
+  priceCents: integer("price_cents"), // marketplace price in currency minor units
+  subInterval: text("sub_interval"), // 'month' | 'year' (subscription only)
+  currency: text("currency").notNull().default("eur"),
+  stripePriceId: text("stripe_price_id"), // lazily-created Connect Price for subscriptions
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [
   index("community_channels_community_idx").on(t.communityId),
+]);
+
+// Per-user access to a paid channel (sub-project C). One row per (channel,user);
+// renewals update `expiresAt` in place. NULL expiry ⇒ permanent (one-time unlock).
+export const communityChannelEntitlementsTable = pgTable("community_channel_entitlements", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  channelId: integer("channel_id").notNull(),
+  userId: text("user_id").notNull(),
+  source: text("source").notNull(), // 'purchase' | 'grant'
+  grantedAt: timestamp("granted_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  // Subscription channels: the Stripe subscription funding this entitlement, so its
+  // renew/cancel webhooks map back here to extend/revoke access.
+  stripeSubscriptionId: text("stripe_subscription_id"),
+}, (t) => [
+  uniqueIndex("community_channel_entitlements_pair_idx").on(t.channelId, t.userId),
+  index("community_channel_entitlements_user_idx").on(t.userId),
+  index("community_channel_entitlements_sub_idx").on(t.stripeSubscriptionId),
 ]);
 
 export const communityMessagesTable = pgTable("community_messages", {
@@ -169,6 +195,39 @@ export const communityReviewReportsTable = pgTable("community_review_reports", {
   index("community_review_reports_review_idx").on(t.reviewId),
 ]);
 
+// Member-submitted reports on chat messages (audit 3.6). One report per
+// (message, reporter); status flips pending → resolved when a moderator acts.
+export const communityMessageReportsTable = pgTable("community_message_reports", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  messageId: integer("message_id").notNull(),
+  reporterUserId: text("reporter_user_id").notNull(),
+  reason: text("reason"),
+  details: text("details"),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: text("resolved_by"),
+}, (t) => [
+  uniqueIndex("community_message_reports_pair_idx").on(t.messageId, t.reporterUserId),
+  index("community_message_reports_community_idx").on(t.communityId),
+  index("community_message_reports_status_idx").on(t.status),
+]);
+
+// Append-only moderation audit trail: who did what to whom, so ban/kick/mute/
+// role-change/message-delete actions are accountable. Never updated or deleted
+// except when the whole community is removed.
+export const communityModerationLogTable = pgTable("community_moderation_log", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  actorUserId: text("actor_user_id").notNull(),
+  action: text("action").notNull(),
+  targetUserId: text("target_user_id"),
+  targetId: integer("target_id"),
+  metadata: text("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [index("community_moderation_log_community_idx").on(t.communityId, t.createdAt)]);
+
 export type Community = typeof communitiesTable.$inferSelect;
 export type CommunityMember = typeof communityMembersTable.$inferSelect;
 export type CommunityRole = typeof communityRolesTable.$inferSelect;
@@ -177,6 +236,26 @@ export type CommunityMute = typeof communityMutesTable.$inferSelect;
 export type CommunityReview = typeof communityReviewsTable.$inferSelect;
 export type CommunityReviewReport = typeof communityReviewReportsTable.$inferSelect;
 export type CommunityChannel = typeof communityChannelsTable.$inferSelect;
+export type CommunityChannelEntitlement = typeof communityChannelEntitlementsTable.$inferSelect;
 export type CommunityMessage = typeof communityMessagesTable.$inferSelect;
 export type CommunityFile = typeof communityFilesTable.$inferSelect;
 export type VoicePresence = typeof voicePresenceTable.$inferSelect;
+
+// Join requests for private (isPublic=false) communities. One row per user per
+// community (unique pair); re-request updates it in place. Approved rows leave a
+// community_members row behind; the request row is the audit trail (audit 0.5b).
+export const communityJoinRequestsTable = pgTable("community_join_requests", {
+  id: serial("id").primaryKey(),
+  communityId: integer("community_id").notNull(),
+  userId: text("user_id").notNull(),
+  status: text("status").notNull().default("pending"), // pending | approved | rejected
+  message: text("message"),
+  decidedByUserId: text("decided_by_user_id"),
+  decidedAt: timestamp("decided_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("community_join_requests_pair_idx").on(t.communityId, t.userId),
+  index("community_join_requests_status_idx").on(t.communityId, t.status),
+]);
+
+export type CommunityJoinRequest = typeof communityJoinRequestsTable.$inferSelect;

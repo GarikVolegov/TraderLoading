@@ -15,7 +15,6 @@ import {
   Crown,
   FlaskConical,
   Globe,
-  Instagram,
   Link2,
   LineChart,
   Lock,
@@ -26,15 +25,12 @@ import {
   PlayCircle,
   Rocket,
   RotateCcw,
-  Send,
   Sparkles,
   Star,
   Target,
   Trophy,
-  Twitter,
   Users,
   X,
-  Youtube,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PAIR_CATALOG } from "@workspace/pair-catalog";
@@ -206,10 +202,10 @@ const FOOTER_COLS = [
   {
     titleKey: "landing.footer.col.resources",
     items: [
+      // "Blog" e "Status" rimossi finché non esistono le pagine reali: entrambe
+      // puntavano a /guide con etichette fuorvianti.
       { labelKey: "landing.footer.resources.guide", href: "/guide" },
-      { labelKey: "landing.footer.resources.blog", href: "/guide" },
       { labelKey: "landing.footer.resources.community", href: "/sign-up" },
-      { labelKey: "landing.footer.resources.status", href: "/guide" },
     ],
   },
   {
@@ -223,7 +219,6 @@ const FOOTER_COLS = [
   },
 ] as const;
 
-const SOCIALS = [Twitter, Instagram, Youtube, Send];
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
 
@@ -1034,7 +1029,7 @@ export default function LandingPage() {
             <div className="relative z-10 flex shrink-0 items-center gap-1.5 sm:gap-2.5">
               <button
                 onClick={() => setLocation("/sign-in")}
-                className="hidden rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground sm:block"
+                className="rounded-full px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground sm:px-3"
               >
                 {t("landing.nav.sign_in")}
               </button>
@@ -1471,11 +1466,6 @@ export default function LandingPage() {
             <a href="mailto:assistenza@traderloading.com" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
               {t("landing.footer.support")}
             </a>
-            {SOCIALS.map((Icon, i) => (
-              <span key={i} className="flex h-8 w-8 items-center justify-center rounded-md border border-border/50 text-muted-foreground">
-                <Icon className="h-[15px] w-[15px]" />
-              </span>
-            ))}
           </div>
         </div>
       </footer>

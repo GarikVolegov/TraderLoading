@@ -1,4 +1,5 @@
 import type { NewsArticle, NewsEvent, NewsProviderStatus, NewsRefreshRequest, NewsResponse } from "./types.js";
+import { reportJobError } from "../../lib/observability.js";
 
 type Listener = (event: NewsEvent) => void;
 type FetchSnapshot = (request: NewsRefreshRequest) => Promise<NewsResponse>;
@@ -6,6 +7,19 @@ type FetchSnapshot = (request: NewsRefreshRequest) => Promise<NewsResponse>;
 export interface NewsHubRuntimeOptions {
   fetchSnapshot: FetchSnapshot;
   refreshIntervalMs?: number;
+  /** The periodic tick rebuilds only when the last snapshot is older than this.
+   *  Defaults to NEWS_SNAPSHOT_FRESH_MS (~10 min). */
+  snapshotFreshMs?: number;
+}
+
+const DEFAULT_SNAPSHOT_FRESH_MS = Number(process.env.NEWS_SNAPSHOT_FRESH_MS ?? 10 * 60_000);
+
+/** Whether the periodic refresh should rebuild now: only if never built or the last
+ *  build is at/older than the fresh window. Keeps the expensive rebuild off the
+ *  60s tick so zero-user periods don't burn LLM/translate quota. */
+export function shouldRefreshSnapshot(lastRefreshAt: number | null, now: number, freshMs: number): boolean {
+  if (lastRefreshAt === null) return true;
+  return now - lastRefreshAt >= freshMs;
 }
 
 export interface NewsHubRuntime {
@@ -62,6 +76,8 @@ export function createNewsHubRuntime(options: NewsHubRuntimeOptions): NewsHubRun
   let snapshot: NewsResponse | null = null;
   let timer: NodeJS.Timeout | null = null;
   let lastRequest: NewsRefreshRequest = {};
+  let lastRefreshAt: number | null = null;
+  const snapshotFreshMs = options.snapshotFreshMs ?? DEFAULT_SNAPSHOT_FRESH_MS;
 
   for (const status of defaultStatuses()) providerStatuses.set(status.provider, status);
 
@@ -87,6 +103,7 @@ export function createNewsHubRuntime(options: NewsHubRuntimeOptions): NewsHubRun
       lastRequest = request;
       const data = withProviderStatuses(await options.fetchSnapshot(request));
       snapshot = data;
+      lastRefreshAt = Date.now();
       for (const article of data.articles) ingestArticle(article);
       emit({ type: "news_snapshot", snapshot: data });
       return data;
@@ -118,7 +135,11 @@ export function createNewsHubRuntime(options: NewsHubRuntimeOptions): NewsHubRun
       if (timer || options.refreshIntervalMs === 0) return;
       const interval = options.refreshIntervalMs ?? Number(process.env.NEWS_REFRESH_INTERVAL_MS ?? 60_000);
       timer = setInterval(() => {
-        void refresh({ ...request, force: true }).catch(() => undefined);
+        // Skip the expensive rebuild while the snapshot is still fresh (zero-user
+        // periods must not burn LLM/translate quota every tick), and surface
+        // failures instead of swallowing them.
+        if (!shouldRefreshSnapshot(lastRefreshAt, Date.now(), snapshotFreshMs)) return;
+        void refresh({ ...request, force: true }).catch((err) => reportJobError(err, { job: "news-refresh" }));
       }, Math.max(10_000, interval));
     },
     async stop(): Promise<void> {

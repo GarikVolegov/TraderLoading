@@ -1,0 +1,110 @@
+[
+  {
+    "id": "TEST-canary",
+    "source": "prd",
+    "title": "Canarino Nightshift: nota di collaudo",
+    "description": "Crea il file docs/nightshift-canary.md con una riga: '# Collaudo Nightshift' seguita dalla data odierna. Nessun'altra modifica.",
+    "acceptanceCriteria": [
+      "Esiste docs/nightshift-canary.md con titolo e data",
+      "Nessun altro file modificato",
+      "pnpm typecheck e pnpm test verdi"
+    ],
+    "priority": 0,
+    "status": "pending",
+    "attempts": 0,
+    "maxAttempts": 1,
+    "branch": null,
+    "prUrl": null,
+    "notes": ""
+  },
+  {
+    "id": "AUD-0.8-gdpr-delete",
+    "source": "audit",
+    "title": "Cancellazione account completa (GDPR)",
+    "description": "Implementa lo step 0.8 [C] «Cancellazione account completa (GDPR)» del piano docs/superpowers/plans/2026-07-05-audit-completo-piano-implementazione.md: leggi l'intera sezione 0.8 e attua tutti i suoi step.",
+    "acceptanceCriteria": [
+      "Tutti gli step della sezione 0.8 del piano audit implementati",
+      "Test scritti prima dell'implementazione (TDD) per ogni comportamento nuovo",
+      "pnpm typecheck e pnpm test verdi"
+    ],
+    "priority": 1,
+    "status": "pending",
+    "attempts": 0,
+    "maxAttempts": 2,
+    "branch": null,
+    "prUrl": null,
+    "notes": ""
+  },
+  {
+    "id": "AUD-0.6-xp-farming",
+    "source": "audit",
+    "title": "Chiudere il farming di XP",
+    "description": "Implementa lo step 0.6 [C/H] «Chiudere il farming di XP» del piano docs/superpowers/plans/2026-07-05-audit-completo-piano-implementazione.md: leggi l'intera sezione 0.6 e attua tutti i suoi step (reset-today senza guardia, clamp xpReward, TOCTOU/atomicità XP).",
+    "acceptanceCriteria": [
+      "Tutti gli step della sezione 0.6 del piano audit implementati",
+      "Test scritti prima dell'implementazione (TDD) per ogni comportamento nuovo",
+      "pnpm typecheck e pnpm test verdi"
+    ],
+    "priority": 2,
+    "status": "pending",
+    "attempts": 0,
+    "maxAttempts": 2,
+    "branch": null,
+    "prUrl": null,
+    "notes": ""
+  },
+  {
+    "id": "AUD-0.11-broker-profile",
+    "source": "audit",
+    "title": "BrokerHub: active profile per-utente",
+    "description": "Implementa lo step 0.11 [C] «BrokerHub: active profile per-utente (bug multi-tenant)» del piano docs/superpowers/plans/2026-07-05-audit-completo-piano-implementazione.md: leggi l'intera sezione 0.11 e attua tutti i suoi step.",
+    "acceptanceCriteria": [
+      "Tutti gli step della sezione 0.11 del piano audit implementati",
+      "Test scritti prima dell'implementazione (TDD) per ogni comportamento nuovo",
+      "pnpm typecheck e pnpm test verdi"
+    ],
+    "priority": 3,
+    "status": "pending",
+    "attempts": 0,
+    "maxAttempts": 2,
+    "branch": null,
+    "prUrl": null,
+    "notes": ""
+  },
+  {
+    "id": "AUD-0.5-community-roles",
+    "source": "audit",
+    "title": "Community: gerarchia ruoli + privacy reale",
+    "description": "Implementa lo step 0.5 [C/H] «Community: gerarchia ruoli + privacy reale» del piano docs/superpowers/plans/2026-07-05-audit-completo-piano-implementazione.md: leggi l'intera sezione 0.5 e attua tutti i suoi step (no auto-promozione a owner, privacy effettiva delle community private).",
+    "acceptanceCriteria": [
+      "Tutti gli step della sezione 0.5 del piano audit implementati",
+      "Test scritti prima dell'implementazione (TDD) per ogni comportamento nuovo",
+      "pnpm typecheck e pnpm test verdi"
+    ],
+    "priority": 4,
+    "status": "pending",
+    "attempts": 0,
+    "maxAttempts": 2,
+    "branch": null,
+    "prUrl": null,
+    "notes": ""
+  },
+  {
+    "id": "AUD-0.9-tornei-integrity",
+    "source": "audit",
+    "title": "Tornei: chiudere le manipolazioni della classifica",
+    "description": "Implementa lo step 0.9 [C/H] «Tornei: chiudere le manipolazioni della classifica» del piano docs/superpowers/plans/2026-07-05-audit-completo-piano-implementazione.md: leggi l'intera sezione 0.9 e attua tutti i suoi step (soglia attività minima per i premi, ecc.).",
+    "acceptanceCriteria": [
+      "Tutti gli step della sezione 0.9 del piano audit implementati",
+      "Test scritti prima dell'implementazione (TDD) per ogni comportamento nuovo",
+      "pnpm typecheck e pnpm test verdi"
+    ],
+    "priority": 5,
+    "status": "pending",
+    "attempts": 0,
+    "maxAttempts": 2,
+    "branch": null,
+    "prUrl": null,
+    "notes": ""
+  }
+]

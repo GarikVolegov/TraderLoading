@@ -4,7 +4,7 @@ import { readSettingsFeatureSource } from "../pages/settingsFeatureSource";
 
 const panel = readFileSync(new URL("./BillingSubscriptionPanel.tsx", import.meta.url), "utf8");
 const settings = readSettingsFeatureSource();
-const i18nDict = readFileSync(new URL("../lib/i18n.ts", import.meta.url), "utf8");
+const i18nDict = readFileSync(new URL("../lib/i18n/dict.it.ts", import.meta.url), "utf8");
 
 // La copy vive nel catalogo i18n: il componente deve referenziare la chiave e
 // il catalogo deve contenere la copy italiana attesa.
@@ -40,5 +40,13 @@ assertCopy(panel, "billing.panel.access_included", "Accesso incluso");
 
 assert.match(settings, /BillingSubscriptionPanel/);
 assert.match(settings, /id: "abbonamento"/);
+
+// Adversarial-review finding (2026-07-14): commit b9c4176's own message
+// claimed this panel was fixed to show an honest unavailable notice instead
+// of a dead-end "Passa a Pro" CTA, but no hunk in that (or any later) commit
+// actually touched this file — the upgrade button rendered unconditionally
+// regardless of checkoutAvailable.
+assert.match(panel, /!status\?\.pro && status\?\.checkoutAvailable &&/);
+assert.match(panel, /!status\?\.pro && !status\?\.checkoutAvailable &&/);
 
 console.log("billing subscription panel static checks passed");
