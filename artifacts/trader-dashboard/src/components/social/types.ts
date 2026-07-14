@@ -202,12 +202,16 @@ export interface CommunityBanRow {
 }
 
 export interface CommunityDetail extends CommunityType {
-  channels: ChannelType[];
-  myRole: string | null;
+  // channels/myRole/myRoleId/myPermissions/roles are all OMITTED by the
+  // server's cover-only payload for a private non-member (GET /community/:id,
+  // "never channels/roles/messages" — audit 0.5b) — optional here so every
+  // consumer is forced to guard instead of assuming full-detail shape.
+  channels?: ChannelType[];
+  myRole?: string | null;
   isOwner: boolean;
-  myRoleId: number | null;
-  myPermissions: string[];
-  roles: CommunityRole[];
+  myRoleId?: number | null;
+  myPermissions?: string[];
+  roles?: CommunityRole[];
   // Present only in the cover-only payload for a private non-member (audit 0.5b).
   joinRequestStatus?: "none" | "pending" | "rejected" | "approved";
 }

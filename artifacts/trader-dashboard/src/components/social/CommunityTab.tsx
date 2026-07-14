@@ -45,7 +45,7 @@ export function CommunityTab({
   >("communities");
 
   const selectedChannel =
-    communityDetail?.channels.find((c) => c.id === selectedChannelId) ?? null;
+    communityDetail?.channels?.find((c) => c.id === selectedChannelId) ?? null;
   const myPerms = communityDetail?.myPermissions ?? [];
   const isOwner = communityDetail?.isOwner ?? false;
   const can = (p: string) => isOwner || myPerms.includes(p);
@@ -282,7 +282,7 @@ export function CommunityTab({
 
         <div className="flex-1 overflow-y-auto py-2">
           {(["text", "voice"] as const).map((type) => {
-            const channels = communityDetail.channels.filter(
+            const channels = (communityDetail.channels ?? []).filter(
               (c) => c.type === type,
             );
             if (channels.length === 0 && !canManageChannels) return null;
@@ -561,7 +561,7 @@ export function CommunityTab({
         />
       )}
       {pricingChannelId != null && communityDetail && (() => {
-        const ch = communityDetail.channels.find((c) => c.id === pricingChannelId);
+        const ch = communityDetail.channels?.find((c) => c.id === pricingChannelId);
         return ch ? (
           <ChannelPricingModal channel={ch} onClose={() => setPricingChannelId(null)} />
         ) : null;
