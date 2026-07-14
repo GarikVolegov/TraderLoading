@@ -50,3 +50,24 @@ npx tsx src/ingest.ts seed --symbols=EURUSD --years=5
 - EURUSD: 2021-07 → oggi con alcuni mesi da riseminare (chunk Dukascopy
   falliti per errori di rete; vedi query sopra) ⚠️
 - Altri simboli: da seminare (fallback live attivo nel frattempo).
+
+## Riparazione buchi (heal DB-driven)
+
+Il seeding profondo via Dukascopy rate-limita: le corsie parallele fanno
+fallire molti chunk mensili, lasciando buchi interni anche quando `first_ts`/
+`last_ts` coprono l'intervallo. Per riempire **solo i mesi mancanti** (invece di
+ri-seedare interi simboli):
+
+```
+CANDLE_WAREHOUSE=1 DATABASE_URL=<neon> \
+  pnpm --filter @workspace/api-server exec tsx src/services/ingest/healGaps.ts 5
+```
+
+`healGaps.ts` interroga il DB per i mesi con dati di ogni simbolo, calcola i
+mesi mancanti negli ultimi N anni (default 5) e ri-seeda **solo quelli**,
+single-lane con pause di 4s (l'ingest ha retry+backoff per-chunk). Idempotente,
+riavviabile. A fine run stampa un riepilogo `healed/missing` per simbolo.
+
+**Nota rate-limit:** eseguire il heal **single-lane** (una sola istanza). Corsie
+parallele su Dukascopy saturano e rifanno fallire i chunk. Le crypto (BTC/ETH via
+Binance) non hanno questo problema e si seedano velocemente.
