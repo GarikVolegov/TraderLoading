@@ -23,12 +23,9 @@ import {
 } from "./tradingViewWatchlist";
 
 const PAIR_PREFERENCES_PATH = "/settings?section=pairs";
-// Reduce poll interval to near-realtime for the watchlist (graceful fallback
-// when a dedicated WS is not available). Keep a slightly faster warming poll
-// for initial null-price states.
-const WATCHLIST_POLL_MS = 5_000; // 5s
+const WATCHLIST_POLL_MS = 120_000;
 /** While the server cache is still warming (null prices) poll faster to pick it up. */
-const WATCHLIST_WARMING_POLL_MS = 1_000; // 1s
+const WATCHLIST_WARMING_POLL_MS = 15_000;
 
 function WatchlistRow({
   pair,
@@ -120,9 +117,7 @@ export function TradingViewWatchlistWidget() {
         ? WATCHLIST_WARMING_POLL_MS
         : WATCHLIST_POLL_MS;
     },
-    // Consider data stale shortly before the next refresh so UI shows up-to-date
-    // loading states when needed.
-    staleTime: Math.max(0, WATCHLIST_POLL_MS - 1_000),
+    staleTime: WATCHLIST_POLL_MS - 10_000,
   });
 
   const itemByPair = useMemo(
