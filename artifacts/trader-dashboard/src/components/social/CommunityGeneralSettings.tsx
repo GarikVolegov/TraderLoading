@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, ImagePlus, Lock, Save } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -27,6 +27,19 @@ export function CommunityGeneralSettings({ detail }: { detail: CommunityDetail }
 
   const avatarInput = useRef<HTMLInputElement>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
+
+  // isPublic is seeded once from the prop, like every other field here, but
+  // unlike a cosmetic field (name/rules/…) a stale value here has a real
+  // access-control consequence: an unrelated Save would silently PATCH back
+  // whatever privacy state this component mounted with, undoing a concurrent
+  // change (another admin, or the same owner in a different tab). Re-sync
+  // from the prop whenever it changes, but only if the user hasn't already
+  // touched the toggle in this session — don't clobber their own in-progress,
+  // not-yet-saved edit either.
+  const isPublicTouchedRef = useRef(false);
+  useEffect(() => {
+    if (!isPublicTouchedRef.current) setIsPublic(detail.isPublic);
+  }, [detail.isPublic]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["community", detail.id] });
@@ -158,7 +171,13 @@ export function CommunityGeneralSettings({ detail }: { detail: CommunityDetail }
             <p className="text-[10px] text-muted-foreground">{t("community.create.private_hint")}</p>
           </div>
         </div>
-        <Switch checked={!isPublic} onCheckedChange={(checked) => setIsPublic(!checked)} />
+        <Switch
+          checked={!isPublic}
+          onCheckedChange={(checked) => {
+            isPublicTouchedRef.current = true;
+            setIsPublic(!checked);
+          }}
+        />
       </div>
 
       {/* Description */}

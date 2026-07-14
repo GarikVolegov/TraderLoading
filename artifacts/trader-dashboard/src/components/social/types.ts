@@ -201,17 +201,24 @@ export interface CommunityBanRow {
   createdAt: string;
 }
 
-export interface CommunityDetail extends CommunityType {
-  // channels/myRole/myRoleId/myPermissions/roles are all OMITTED by the
-  // server's cover-only payload for a private non-member (GET /community/:id,
-  // "never channels/roles/messages" — audit 0.5b) — optional here so every
-  // consumer is forced to guard instead of assuming full-detail shape.
+export interface CommunityDetail extends Omit<CommunityType, "creatorId" | "createdAt"> {
+  // channels/myRole/myRoleId/myPermissions/roles/creatorId/createdAt are all
+  // OMITTED by the server's cover-only payload for a private non-member
+  // (GET /community/:id, "never channels/roles/messages" — audit 0.5b) —
+  // optional here so every consumer is forced to guard instead of assuming
+  // full-detail shape (the CommunityTab.tsx crash this fixed was exactly a
+  // consumer that assumed `channels` was always present). creatorId/createdAt
+  // are `string` (required) on the base CommunityType, so they're re-declared
+  // via Omit rather than a plain override (TS forbids narrowing a required
+  // field to optional through plain interface extension).
   channels?: ChannelType[];
   myRole?: string | null;
   isOwner: boolean;
   myRoleId?: number | null;
   myPermissions?: string[];
   roles?: CommunityRole[];
+  creatorId?: string;
+  createdAt?: string;
   // Present only in the cover-only payload for a private non-member (audit 0.5b).
   joinRequestStatus?: "none" | "pending" | "rejected" | "approved";
 }

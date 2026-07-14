@@ -183,10 +183,13 @@ export function BillingSubscriptionPanel() {
                   {status?.pro ? t("billing.panel.access_included") : t("billing.panel.upsell")}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {!status?.pro && (
+                  {!status?.pro && status?.checkoutAvailable && (
                     <Button type="button" onClick={() => navigate("/pro")}>
                       {t("billing.upgrade_cta")}
                     </Button>
+                  )}
+                  {!status?.pro && !status?.checkoutAvailable && (
+                    <p className="text-xs text-muted-foreground">{t("billing.checkout_unavailable")}</p>
                   )}
                   {status?.canCancel && (
                     <Button type="button" variant="outline" disabled={isBusy} onClick={() => cancel.mutate()}>

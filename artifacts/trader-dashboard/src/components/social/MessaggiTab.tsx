@@ -120,7 +120,10 @@ export function MessaggiTab({
       },
     },
   );
-  const sendMessageMutation = useSendChatMessage();
+  // handleSendText/handleDmAttachment/sendVoiceMessage each already catch and
+  // toast their own error via reportClientError — opt out of the global
+  // mutation-error toast to avoid double-toasting a failed DM send.
+  const sendMessageMutation = useSendChatMessage({ mutation: { meta: { suppressGlobalError: true } } });
 
   // Decrypt messages
   useEffect(() => {

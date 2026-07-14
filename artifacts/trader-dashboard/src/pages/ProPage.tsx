@@ -252,12 +252,17 @@ export default function ProPage() {
                       </li>
                     ))}
                   </ul>
-                  {!isPro && checkoutAvailable && (
+                  {/* Unlike the hero CTA above, this card isn't inside the
+                      billing.isLoading ternary — gate it directly so the button
+                      can't render active (and clickable) during the fetch
+                      window, where checkoutAvailable's fail-open default would
+                      otherwise show it regardless of real server config. */}
+                  {!billing.isLoading && !isPro && checkoutAvailable && (
                     <Button type="button" className="w-full" onClick={() => setCheckoutOpen(true)}>
                       {t("billing.upgrade_cta")}
                     </Button>
                   )}
-                  {!isPro && !checkoutAvailable && (
+                  {!billing.isLoading && !isPro && !checkoutAvailable && (
                     <p className="text-center text-xs text-muted-foreground">{t("billing.checkout_unavailable")}</p>
                   )}
                 </CardContent>

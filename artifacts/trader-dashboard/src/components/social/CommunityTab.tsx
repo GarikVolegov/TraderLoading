@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settings, Lock } from "lucide-react";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
+import { useToast } from "@/hooks/use-toast";
 import { useCommunities, useCommunityDetail } from "./hooks";
 import { CreateCommunityModal } from "./CreateCommunityModal";
 import { CreateChannelModal } from "./CreateChannelModal";
@@ -25,6 +26,7 @@ export function CommunityTab({
 }) {
   const qc = useQueryClient();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const { data: communities = [], isLoading: loadingCommunities } =
     useCommunities();
   const [selectedCommunityId, setSelectedCommunityId] = useState<number | null>(
@@ -63,7 +65,7 @@ export function CommunityTab({
       qc.invalidateQueries({ queryKey: ["communities"] });
       qc.invalidateQueries({ queryKey: ["community", id] });
     } catch (error) {
-      reportClientError(error, { context: "community join", notify: false });
+      reportClientError(error, { context: "community join", toast, fallbackMessage: t("errors.mutation.generic") });
     }
   };
 
@@ -75,7 +77,7 @@ export function CommunityTab({
       setSelectedChannelId(null);
       setMobilePanel("communities");
     } catch (error) {
-      reportClientError(error, { context: "community leave", notify: false });
+      reportClientError(error, { context: "community leave", toast, fallbackMessage: t("errors.mutation.generic") });
     }
   };
 
@@ -99,6 +101,12 @@ export function CommunityTab({
 
   useEffect(() => {
     // A locked private community returns a cover-only payload (no channels).
+    // Depend on channels.length too (not just the community id): a pending
+    // join request approved elsewhere lands via a same-id background refetch
+    // (refetchOnWindowFocus) that flips channels from absent to populated
+    // without the id ever changing — without this dependency the effect
+    // never re-fires and the content pane is stuck on the empty placeholder
+    // even though the now-unlocked sidebar is visible and clickable.
     if (communityDetail?.channels?.length && !selectedChannelId) {
       const chans = communityDetail.channels;
       // Prefer a channel the member can actually read (first unlocked text channel),
@@ -110,7 +118,7 @@ export function CommunityTab({
         chans[0];
       if (first) setSelectedChannelId(first.id);
     }
-  }, [communityDetail?.id]);
+  }, [communityDetail?.id, communityDetail?.channels?.length, selectedChannelId]);
 
   const myCommunities = communities.filter((c) => c.isMember);
   const discoverCommunities = communities.filter((c) => !c.isMember);

@@ -28,4 +28,26 @@ assert.match(
   "the auto-show effect must gate on the onboarding-done flag — never show while pair onboarding is still pending",
 );
 
+// Adversarial-review findings (2026-07-14): the dismiss-tracking flag must
+// survive an unmount/remount cycle (AuthenticatedShell fully unmounts this
+// modal, resetting a plain useRef, whenever the route swaps to /admin and
+// back), and every close affordance must route through dismiss() — the
+// "Dopo" (later) button previously called setShow(false) directly, leaving
+// dismissedRef false and letting the modal nag back open after a refetch.
+assert.match(
+  src,
+  /sessionStorage\.getItem\(DISMISSED_SESSION_KEY\)/,
+  "the dismissed flag must be read from sessionStorage so it survives a component remount within the same tab session",
+);
+assert.match(
+  src,
+  /sessionStorage\.setItem\(DISMISSED_SESSION_KEY/,
+  "dismiss() must persist the dismissal to sessionStorage, not just an in-memory ref",
+);
+assert.doesNotMatch(
+  src,
+  /onClick=\{\(\) => setShow\(false\)\}/,
+  "every close button must route through dismiss(), not call setShow(false) directly (bypasses the anti-reopen guard)",
+);
+
 console.log("ChecklistSetupModal static checks passed");

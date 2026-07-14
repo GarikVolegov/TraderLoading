@@ -41,4 +41,12 @@ assertCopy(panel, "billing.panel.access_included", "Accesso incluso");
 assert.match(settings, /BillingSubscriptionPanel/);
 assert.match(settings, /id: "abbonamento"/);
 
+// Adversarial-review finding (2026-07-14): commit b9c4176's own message
+// claimed this panel was fixed to show an honest unavailable notice instead
+// of a dead-end "Passa a Pro" CTA, but no hunk in that (or any later) commit
+// actually touched this file — the upgrade button rendered unconditionally
+// regardless of checkoutAvailable.
+assert.match(panel, /!status\?\.pro && status\?\.checkoutAvailable &&/);
+assert.match(panel, /!status\?\.pro && !status\?\.checkoutAvailable &&/);
+
 console.log("billing subscription panel static checks passed");

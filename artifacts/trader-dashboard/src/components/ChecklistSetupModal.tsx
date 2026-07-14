@@ -84,6 +84,26 @@ const CONFIRMATION_CATEGORIES: ConfirmationCategory[] = [
   },
 ];
 
+// Sticky for the browser tab session (not just the component's mount
+// lifetime): AuthenticatedShell fully unmounts this modal whenever the route
+// switches to /admin and back, which used to reset a plain useRef flag and
+// let the modal nag back open despite an earlier dismissal.
+const DISMISSED_SESSION_KEY = "tl_checklist_setup_dismissed_session_v1";
+function readDismissedThisSession(): boolean {
+  try {
+    return sessionStorage.getItem(DISMISSED_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function writeDismissedThisSession(): void {
+  try {
+    sessionStorage.setItem(DISMISSED_SESSION_KEY, "1");
+  } catch {
+    /* ignore (private-browsing storage restrictions) */
+  }
+}
+
 export function ChecklistSetupModal() {
   const { data: items } = useGetChecklist();
   const { selectedPairs, settingsLoaded } = useBackground();
@@ -95,7 +115,7 @@ export function ChecklistSetupModal() {
   const [saving, setSaving] = useState(false);
   const qc = useQueryClient();
   const createMutation = useCreateChecklistItem();
-  const dismissedRef = useRef(false);
+  const dismissedRef = useRef(readDismissedThisSession());
 
   // Both this modal and PairOnboardingScreen are full-screen `fixed inset-0`
   // overlays that can be open at once for a brand-new user (empty checklist +
@@ -114,6 +134,7 @@ export function ChecklistSetupModal() {
 
   const dismiss = () => {
     dismissedRef.current = true;
+    writeDismissedThisSession();
     setShow(false);
   };
 
@@ -238,7 +259,7 @@ export function ChecklistSetupModal() {
                     <Button onClick={() => setStep("pick")} className="flex-1">
                       {uiText("checklist_setup.choose_cta")}
                     </Button>
-                    <Button onClick={() => setShow(false)} variant="outline" className="flex-1">
+                    <Button onClick={dismiss} variant="outline" className="flex-1">
                       {uiText("checklist_setup.later")}
                     </Button>
                   </div>

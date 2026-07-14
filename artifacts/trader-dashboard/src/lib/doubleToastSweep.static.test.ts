@@ -20,6 +20,7 @@ const FILES = [
   "src/pages/Journal.tsx",
   "src/pages/Checklist.tsx",
   "src/pages/BacktestReplay.tsx",
+  "src/components/social/MessaggiTab.tsx",
 ];
 
 for (const file of FILES) {
