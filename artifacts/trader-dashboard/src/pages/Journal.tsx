@@ -270,7 +270,13 @@ function TradesTab() {
                         <Edit2 className="w-4 h-4 mr-2" />
                         {syncedTrade ? uiText("auto.ui.8459cac879") : t("journal.edit")}
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 text-destructive hover:bg-destructive/20" onClick={() => handleDelete(entry.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-destructive hover:bg-destructive/20"
+                        aria-label={uiText("common.delete")}
+                        onClick={() => handleDelete(entry.id)}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>

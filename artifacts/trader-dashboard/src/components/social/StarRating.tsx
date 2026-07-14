@@ -24,20 +24,34 @@ export function StarRating({
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((s) => {
         const filled = s <= Math.round(active);
+        const star = (
+          <Star
+            style={{ width: size, height: size }}
+            className={filled ? "text-amber-400 fill-amber-400" : "text-muted-foreground/40"}
+          />
+        );
+        // Read-only stars render as a plain span, not a disabled button: a
+        // display-only star has no interactive semantics, and StarRating
+        // readOnly is sometimes placed inside another clickable element
+        // (e.g. a community-list row button) — a button nested inside a
+        // button is invalid HTML and triggers a hydration warning.
+        if (!interactive) {
+          return (
+            <span key={s} className="cursor-default">
+              {star}
+            </span>
+          );
+        }
         return (
           <button
             key={s}
             type="button"
-            disabled={!interactive}
             onClick={() => onChange?.(s)}
-            onMouseEnter={() => interactive && setHover(s)}
-            onMouseLeave={() => interactive && setHover(0)}
-            className={interactive ? "cursor-pointer" : "cursor-default"}
+            onMouseEnter={() => setHover(s)}
+            onMouseLeave={() => setHover(0)}
+            className="cursor-pointer"
           >
-            <Star
-              style={{ width: size, height: size }}
-              className={filled ? "text-amber-400 fill-amber-400" : "text-muted-foreground/40"}
-            />
+            {star}
           </button>
         );
       })}
