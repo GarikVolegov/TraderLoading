@@ -2,13 +2,15 @@ import { useState, useRef, useMemo, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, addWeeks, isWithinInterval } from "date-fns";
-import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles } from "lucide-react";
+import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
 import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { StatTile } from "@/components/ui/StatTile";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { JournalEntryModal } from "@/components/JournalEntryModal";
@@ -945,48 +947,57 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
         ) : (
           <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard label={t("journal.total_trades")} value={stats.total} icon={<BarChart3 className="w-4 h-4" />} color="text-foreground" />
-            <StatCard label={t("journal.wins")} value={stats.wins} icon={<TrendingUp className="w-4 h-4" />} color="text-green-400" />
-            <StatCard label={t("journal.losses")} value={stats.losses} icon={<TrendingDown className="w-4 h-4" />} color="text-red-400" />
-            <StatCard label={t("journal.breakevens")} value={stats.breakevens} icon={<Minus className="w-4 h-4" />} color="text-yellow-400" />
+            <StatTile label={t("journal.total_trades")} value={String(stats.total)} size="lg" />
+            <StatTile label={t("journal.wins")} value={String(stats.wins)} tone="success" size="lg" />
+            <StatTile label={t("journal.losses")} value={String(stats.losses)} tone="destructive" size="lg" />
+            <StatTile label={t("journal.breakevens")} value={String(stats.breakevens)} size="lg" />
           </div>
 
-          <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 sm:p-6">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">{t("journal.win_rate")}</p>
-            <div className="flex items-end gap-3">
-              <span className={`text-4xl sm:text-5xl font-mono font-bold ${stats.winRate >= 50 ? "text-green-400" : "text-red-400"}`}>
-                {stats.winRate}%
-              </span>
-              <span className="text-sm text-muted-foreground mb-1.5">
-                ({stats.wins}W / {stats.losses}L / {stats.breakevens}BE)
-              </span>
-            </div>
-            <div className="mt-3 h-3 rounded-full bg-secondary/40 overflow-hidden flex">
-              {stats.wins > 0 && (
-                <div
-                  className="h-full bg-green-500 transition-all duration-500"
-                  style={{ width: `${(stats.wins / stats.total) * 100}%` }}
-                />
-              )}
-              {stats.breakevens > 0 && (
-                <div
-                  className="h-full bg-yellow-500 transition-all duration-500"
-                  style={{ width: `${(stats.breakevens / stats.total) * 100}%` }}
-                />
-              )}
-              {stats.losses > 0 && (
-                <div
-                  className="h-full bg-red-500 transition-all duration-500"
-                  style={{ width: `${(stats.losses / stats.total) * 100}%` }}
-                />
-              )}
-            </div>
-          </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">{t("journal.win_rate")}</p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-3">
+                <span className={`text-4xl sm:text-5xl font-mono font-bold ${stats.winRate >= 50 ? "text-success" : "text-destructive"}`}>
+                  {stats.winRate}%
+                </span>
+                <span className="text-sm text-muted-foreground mb-1.5">
+                  ({stats.wins}W / {stats.losses}L / {stats.breakevens}BE)
+                </span>
+              </div>
+              <div className="mt-3 h-3 rounded-full bg-secondary/40 overflow-hidden flex">
+                {stats.wins > 0 && (
+                  <div
+                    className="h-full bg-green-500 transition-all duration-500"
+                    style={{ width: `${(stats.wins / stats.total) * 100}%` }}
+                  />
+                )}
+                {stats.breakevens > 0 && (
+                  <div
+                    className="h-full bg-yellow-500 transition-all duration-500"
+                    style={{ width: `${(stats.breakevens / stats.total) * 100}%` }}
+                  />
+                )}
+                {stats.losses > 0 && (
+                  <div
+                    className="h-full bg-red-500 transition-all duration-500"
+                    style={{ width: `${(stats.losses / stats.total) * 100}%` }}
+                  />
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {stats.dailyBreakdown.length > 0 && (
-            <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 sm:p-6">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-4">{t("journal.daily_breakdown")}</p>
-              <div className="space-y-2.5">
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">{t("journal.daily_breakdown")}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2.5">
                 {stats.dailyBreakdown.map(([day, data]) => {
                   const dayTotal = data.wins + data.losses + data.breakevens;
                   return (
@@ -1022,41 +1033,50 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
                     </div>
                   );
                 })}
-              </div>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {stats.topTags.length > 0 && (
-            <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 sm:p-6">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">{t("journal.top_tags")}</p>
-              <div className="flex flex-wrap gap-2">
-                {stats.topTags.map(([tag, count]) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium border border-primary/20"
-                  >
-                    <Tag className="w-3 h-3" />
-                    {tag}
-                    <span className="bg-primary/20 px-1.5 py-0.5 rounded text-[10px] font-bold">{count}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <Tag className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">{t("journal.top_tags")}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {stats.topTags.map(([tag, count]) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium border border-primary/20"
+                    >
+                      <Tag className="w-3 h-3" />
+                      {tag}
+                      <span className="bg-primary/20 px-1.5 py-0.5 rounded text-[10px] font-bold">{count}</span>
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )}
           </>
         )}
 
-        <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 sm:p-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-5">
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t("journal.recap.title")}</p>
-              <h4 className="text-base font-bold">{periodInfo.label}</h4>
+        <Card>
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <div>
+                <p className="text-sm font-semibold">{t("journal.recap.title")}</p>
+                <p className="text-xs text-muted-foreground">{periodInfo.label}</p>
+              </div>
             </div>
-            <div className={`text-xs rounded-lg px-3 py-2 border ${recapEditable ? "border-primary/25 bg-primary/10 text-primary" : "border-white/10 bg-white/5 text-muted-foreground"}`}>
+            <Badge variant={recapEditable ? "secondary" : "outline"}>
               {recapEditable ? t("journal.recap.open") : t("journal.recap.window", { dates: recapWindowLabel })}
-            </div>
-          </div>
-
+            </Badge>
+          </CardHeader>
+          <CardContent>
           {!recapEditable && !recapQuery.data && (
             <p className="mb-4 text-sm text-muted-foreground">{t("journal.recap.locked")}</p>
           )}
@@ -1094,20 +1114,9 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
               </Button>
             </div>
           )}
-        </div>
+          </CardContent>
+        </Card>
       </>
-    </div>
-  );
-}
-
-function StatCard({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: string }) {
-  return (
-    <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-4 text-center">
-      <div className={`flex items-center justify-center gap-1.5 mb-1 ${color}`}>
-        {icon}
-        <span className="text-[11px] uppercase tracking-wider font-medium text-muted-foreground">{label}</span>
-      </div>
-      <p className={`text-2xl sm:text-3xl font-mono font-bold ${color}`}>{value}</p>
     </div>
   );
 }
