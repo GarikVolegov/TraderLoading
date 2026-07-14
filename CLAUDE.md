@@ -112,7 +112,7 @@ tools/metatrader-companion/   MT5 expert advisor
 
 ## 7. Active work / current focus
 
-**Usability audit — Phase 1 DONE, full driver sweep completed (2026-07-13/14, branch `feat/community-management`).**
+**Usability audit — DONE incl. adversarial re-review (2026-07-13/14, branch `feat/community-management`).**
 Full app usability pass (bugs, UX polish, dead-end/demo features) requested after the pre-launch page
 audit. Live-drove every planned flow with new Playwright drivers (`scripts/verify-usability/`, mirrors
 `verify-nav-hubs`): onboarding, Pro paywall, journal, tornei, missions/admin, misc (dashboard/settings/
@@ -155,12 +155,44 @@ defensive `dismiss()` before the "Crea community" click — then a Clerk-JS CDN 
 reproducing the original finding. **Known gaps, not silently dropped:** ~19 further pre-existing
 `mutateAsync`+local-toast call sites beyond the 14 fixed still risk a double toast; the
 AnimatePresence-exit-timing and cross-instance scroll-lock/focus-stack gaps in `useDialogA11y` are
-pre-existing, inherited from the original `modal.tsx`, not new regressions (architectural, out of scope);
-a React hydration warning (`<button>` nested in `<button>`, `StarRating` inside a clickable community-list
-row) surfaced in the community driver's console-error collection but wasn't fixed (cosmetic dev-console
-noise, not user-facing). Design-system consistency (Tornei's parallel `--tl-*` tokens, Settings' 14
-arbitrary accent colors) stays explicitly OUT per user decision — separate future pass. Gate: typecheck +
-375/375 tests all green.
+pre-existing, inherited from the original `modal.tsx`, not new regressions (architectural, out of scope).
+Design-system consistency (Tornei's parallel `--tl-*` tokens, Settings' 14 arbitrary accent colors) stays
+explicitly OUT per user decision — separate future pass.
+
+**Third round — resweep + 47-agent adversarial review of the full 14-commit diff (2026-07-14).** Re-ran
+every driver once more (found+fixed a `dismiss` import bug I'd introduced in the community driver, plus
+3 more real app bugs: the same isLoading-vs-empty race in `Wiki.tsx`/`Milestones.tsx`/
+`RewardsLibrarySection.tsx`/`CreatorPayoutSettings.tsx`, two Tornei empty-states rendering raw "—"
+placeholders instead of an honest label, and a `StarRating`-in-`CommunityTab`-row hydration warning fixed
+by rendering read-only stars as a `<span>` instead of a disabled `<button>`). Then ran a dedicated
+`Workflow` — 10 finder angles + 1-vote verify + sweep, 47 agents total — against a hand-assembled diff of
+just the audit's own 14 commits (excluding interleaved concurrent work on the same shared branch); it
+returned 36 confirmed/plausible findings. Fixed the concrete ones: `ChecklistSetupModal`'s "Dopo" button
+bypassed `dismiss()` (dismissedRef stayed false, modal could still nag back open) and `dismissedRef`
+itself was a plain `useRef` reset by the `/admin` route's full unmount/remount (now sessionStorage-backed);
+`ProPage.tsx`'s compare-plans-card CTA and `BillingSubscriptionPanel.tsx`'s upgrade button both rendered
+without checking `checkoutAvailable` at all (the latter despite commit `b9c4176`'s message claiming it
+was fixed — it never touched that file); `CommunityTab.tsx` silently swallowed join/leave errors (same
+gap already closed one file over) and its auto-select-first-channel effect depended only on
+`communityDetail?.id`, so a same-id background refetch after an out-of-band join approval never re-ran
+it; `MessaggiTab.tsx`'s `sendMessageMutation` double-toasted (missed by the earlier 14-file sweep);
+`CommunityGeneralSettings.tsx`'s `isPublic` toggle was seeded once via `useState` and never re-synced,
+so a concurrent privacy change could be silently reverted by an unrelated Save; `CommunityDetail.creatorId`/
+`.createdAt` were still typed as always-present despite the same cover-only payload omitting them (dormant,
+made optional for consistency with the other 5 fields already fixed). Also fixed a concrete driver bug the
+review surfaced: Tornei's enroll consent gate is a native `window.confirm()`, which Playwright auto-resolves
+to `false` when unhandled — `drive-tornei.mjs` never actually exercised the real enroll path until a
+`page.on("dialog")` handler was added. **Deferred, documented not dropped:** several DRY/duplication
+findings (no shared `suppressGlobalError` constant across ~18 call sites, the private-toggle JSX duplicated
+between `CreateCommunityModal`/`CommunityGeneralSettings`, the unavailable-CTA ternary duplicated 3×), perf
+findings the reviewers themselves rated low-impact (`focusableWithin()` recompute per Tab keypress,
+unmemoized `BackgroundContext` value, `getMintProvider()` re-allocated per request, `ZenZone`'s `MOODS`
+array rebuilt per render), and two architectural gaps: `useDialogA11y` only inerts the background for 1
+of 12 overlays (the ones rendered inline vs. portaled — explicitly tested/commented as a tradeoff, not an
+oversight) and the independently-mounted auto-show overlays (`SessionCheckinModal`, `LevelRewardModal`,
+`ReviewPromptModal`, `ScheduledCallOverlay`) have no shared coordinator, so the same click-stealing bug
+class fixed once for `ChecklistSetupModal` can still recur for the others. Gate: typecheck + 383/383 tests
++ full build (45/45 prerendered routes) all green.
 
 **Backtest Replay Terminal (2026-07-12, DONE — port fedele del mockup Claude Design).** The old in-page
 ChartReplay is retired: `/backtest/:id/replay` is a **full-screen TradingView-style terminal**
