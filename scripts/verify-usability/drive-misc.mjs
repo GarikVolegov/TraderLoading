@@ -177,15 +177,11 @@ async function main() {
       } else {
         console.log("  [routine] mood check-in recorded ✓");
       }
-      // MOODS labels ("Teso", "Neutro", "Calmo", "Carico", "Stanco") are hardcoded
-      // Italian string literals in ZenZone.tsx (not routed through uiText/t()) —
-      // won't translate for EN/ES/FR/DE users despite the i18n-enforced-new-UI policy.
-      note(
-        "routine-mood",
-        "ux",
-        'ZenZone mood check-in labels ("Teso"/"Neutro"/"Calmo"/"Carico"/"Stanco") are hardcoded Italian literals in the MOODS array (components/routine/ZenZone.tsx), not routed through uiText()/t() — they will show in Italian regardless of the user\'s selected language.',
-        "media",
-      );
+      // Mood labels were hardcoded Italian literals in ZenZone.tsx before the
+      // 2026-07-13 fix (commit 09f9f41) — now routed through MOOD_META.labelKey
+      // + uiText(), confirmed fixed. No live assertion here: the bug was in the
+      // component's source, not something this driver can usefully re-detect
+      // from the DOM (rendered text is always Italian for an it-locale test user).
     } else {
       note("routine-mood", "assertion", 'Mood check-in button "Calmo" not found on /routine', "media");
     }

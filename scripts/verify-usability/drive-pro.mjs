@@ -139,12 +139,25 @@ async function main() {
         continue;
       }
 
+      // checkoutAvailable is server-driven (Stripe env config) — a fresh dev
+      // server missing e.g. APP_BASE_URL correctly degrades to the honest
+      // "checkout_unavailable" text instead of a dead-end button (fail-safe,
+      // usability audit 3.3). Both are valid; only flag if NEITHER renders.
       const ctaVisible = await page
         .getByRole("button", { name: "Passa a Pro" })
         .first()
         .isVisible()
         .catch(() => false);
-      if (!ctaVisible) note(s.name, "assertion", `CTA 'Passa a Pro' non visibile nel paywall di ${s.path}`, "alta");
+      const unavailableTextVisible = await page
+        .getByText("Abbonamento non disponibile al momento")
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (!ctaVisible && !unavailableTextVisible) {
+        note(s.name, "assertion", `Né il CTA 'Passa a Pro' né il messaggio di indisponibilità sono visibili nel paywall di ${s.path}`, "alta");
+      } else if (!ctaVisible) {
+        note(s.name, "assertion", `checkoutAvailable=false lato server: paywall di ${s.path} mostra il messaggio onesto invece del CTA (verificare se atteso in questo ambiente)`, "info");
+      }
 
       const priceVisible = await page
         .getByText("7 EUR/mese")
@@ -200,7 +213,12 @@ async function main() {
             .first()
             .isVisible()
             .catch(() => false);
-          if (!ctaVisible) {
+          const unavailableTextVisible = await page
+            .getByText("Abbonamento non disponibile al momento")
+            .first()
+            .isVisible()
+            .catch(() => false);
+          if (!ctaVisible && !unavailableTextVisible) {
             note(`${s.name}-mobile`, "ux", `Su mobile il CTA 'Passa a Pro' di ${s.path} non è visibile senza scroll`, "media");
           }
         }
@@ -233,8 +251,15 @@ async function main() {
     } else {
       const upgradeBtn = page.getByRole("button", { name: "Passa a Pro" }).first();
       const upgradeVisible = await upgradeBtn.isVisible().catch(() => false);
-      if (!upgradeVisible) {
-        note("pro-page", "assertion", "CTA 'Passa a Pro' assente sull'hero di /pro per utente free", "alta");
+      const unavailableVisible = await page
+        .getByText("Abbonamento non disponibile al momento")
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (!upgradeVisible && !unavailableVisible) {
+        note("pro-page", "assertion", "Né il CTA 'Passa a Pro' né il messaggio di indisponibilità sono visibili sull'hero di /pro per utente free", "alta");
+      } else if (!upgradeVisible) {
+        note("pro-page", "assertion", "checkoutAvailable=false lato server: /pro mostra il messaggio onesto invece del CTA (verificare se atteso in questo ambiente)", "info");
       } else {
         const respPromise = page
           .waitForResponse((r) => r.url().includes("/api/billing/checkout-session"), { timeout: 20000 })

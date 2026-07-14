@@ -85,6 +85,11 @@ async function main() {
   const pool = new pg.Pool({ connectionString: DB_URL });
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  // The enroll consent gate is a native window.confirm() (Tornei.tsx). Playwright
+  // auto-dismisses any unhandled JS dialog, which for confirm() resolves it to
+  // false — without this handler the enroll click silently no-ops and the driver
+  // never actually exercises the real enroll/rejection path it's written to prove.
+  page.on("dialog", (dialog) => dialog.accept());
   await page.addInitScript(() => {
     try {
       localStorage.setItem("tl_language", "it");

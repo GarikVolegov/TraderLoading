@@ -30,6 +30,7 @@ import {
   outDirFor,
   makeShot,
   settle,
+  dismiss,
   attachErrorCollectors,
   reportFindings,
 } from "./lib/common.mjs";

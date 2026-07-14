@@ -168,16 +168,20 @@ async function main() {
     if (!kpiVisible) {
       note("panoramica-coach", "assertion", 'KPI tile "Totale Trade" not visible on Panoramica tab', "media");
     }
-    // The KPI number should reflect the edge data (— means no data).
+    // The KPI number should reflect the edge data (— means no data). Scope to
+    // exactly ONE ancestor div: StatTile renders <div><p>label</p><p>value</p></div>,
+    // so [1] is the single tile's own container — [2] (a prior version of this
+    // check) walked up to the shared 4-tile row and matched PROFIT FACTOR's
+    // legitimate "—" (undefined with 0 losing trades) as if it were this tile's.
     const kpiText = kpiVisible
       ? await page
           .getByText("Totale Trade")
           .first()
-          .locator("xpath=ancestor::*[self::div][2]")
+          .locator("xpath=ancestor::*[self::div][1]")
           .innerText()
           .catch(() => "")
       : "";
-    console.log(`  [panoramica] KPI tile text: ${JSON.stringify(kpiText.slice(0, 80))}`);
+    console.log(`  [panoramica] Totale Trade tile text: ${JSON.stringify(kpiText.slice(0, 80))}`);
     if (kpiVisible && /—/.test(kpiText) && closedAfter > 0) {
       note("panoramica-coach", "ux", `Panoramica "Totale Trade" tile shows "—" although edge reports ${closedAfter} closed trades`, "media");
     }
