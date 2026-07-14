@@ -3,9 +3,18 @@ import { getUnlockedRewards, getNextMilestone, getMilestoneProgress, MILESTONES,
 import { RewardCard } from "@/components/LevelRewardModal";
 import { uiText } from "@/contexts/LanguageContext";
 import { useGetProfile } from "@workspace/api-client-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function RewardsLibrarySection() {
-  const { data: profile } = useGetProfile();
+  const { data: profile, isLoading: profileLoading } = useGetProfile();
+  if (profileLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-16 w-full rounded-xl" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+      </div>
+    );
+  }
   const level = profile?.level ?? 0;
   const unlocked = getUnlockedRewards(level);
   const nextMilestone = getNextMilestone(level);

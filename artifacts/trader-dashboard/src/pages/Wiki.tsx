@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ArchiveRail } from "@/components/archive/ArchiveRail";
 import { ArchiveToolbar, type ArchiveDensity, type ArchiveView } from "@/components/archive/ArchiveToolbar";
 import { TypeChips } from "@/components/archive/TypeChips";
@@ -46,6 +47,7 @@ export default function Wiki() {
 
   const {
     data: sources = [],
+    isLoading: sourcesLoading,
     isError: sourcesError,
     refetch: refetchSources,
   } = useQuery({
@@ -219,6 +221,8 @@ export default function Wiki() {
 
               {sourcesError ? (
                 <QueryErrorState onRetry={() => void refetchSources()} />
+              ) : sourcesLoading ? (
+                <ArchiveGridSkeleton />
               ) : sources.length === 0 ? (
                 <EmptyState onAdd={() => setAddOpen(true)} />
               ) : filtered.length === 0 ? (
@@ -255,6 +259,16 @@ export default function Wiki() {
         />
       </ProUpgradeGate>
     </PageLayout>
+  );
+}
+
+function ArchiveGridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4" data-testid="archive-grid-skeleton">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <Skeleton key={i} className="h-40 w-full rounded-xl" />
+      ))}
+    </div>
   );
 }
 

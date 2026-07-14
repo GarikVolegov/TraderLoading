@@ -62,22 +62,26 @@ export function PercorsoView({ me, hall, enrolling, onEnroll, onCertClick }: Per
           )}
         </section>
 
-        {me && me.certificates.length > 0 && (
+        {me && (
           <section>
             <span className="tl-section-label" style={{ display: "block", marginBottom: 11 }}>{t("tornei.percorso.yourCerts")}</span>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "var(--trn-gap,16px)" }}>
-              {me.certificates.map((c) => (
-                <NftCertificate
-                  key={c.id}
-                  tier={c.tier as CertTier}
-                  title={c.tier.charAt(0).toUpperCase() + c.tier.slice(1)}
-                  edition={c.edition}
-                  rarity={c.rarity}
-                  seasonLabel={c.seasonLabel}
-                  onClick={() => onCertClick(c)}
-                />
-              ))}
-            </div>
+            {me.certificates.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "var(--trn-gap,16px)" }}>
+                {me.certificates.map((c) => (
+                  <NftCertificate
+                    key={c.id}
+                    tier={c.tier as CertTier}
+                    title={c.tier.charAt(0).toUpperCase() + c.tier.slice(1)}
+                    edition={c.edition}
+                    rarity={c.rarity}
+                    seasonLabel={c.seasonLabel}
+                    onClick={() => onCertClick(c)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p style={{ margin: 0, color: "var(--tl-fg-muted)", fontSize: 13 }}>{t("tornei.percorso.noCertsYet")}</p>
+            )}
           </section>
         )}
       </div>

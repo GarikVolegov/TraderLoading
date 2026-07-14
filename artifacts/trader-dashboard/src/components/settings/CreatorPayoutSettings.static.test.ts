@@ -12,4 +12,15 @@ assert.match(
   "the card must return null when the account payload marks Stripe Connect unavailable",
 );
 
+// Adversarial-review finding (2026-07-14): `account` defaults to undefined
+// while the query is in flight, so `account && !account.available` never
+// fires during the initial fetch — the onboard button rendered fully
+// clickable before the server had reported whether Connect is configured.
+assert.match(src, /data:\s*account,\s*isLoading/, "the query's isLoading must be read");
+assert.match(
+  src,
+  /if \(isLoading\) return <Skeleton/,
+  "must show a loading skeleton (not the onboard button) while the account query is in flight",
+);
+
 console.log("CreatorPayoutSettings static checks passed");

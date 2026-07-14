@@ -903,14 +903,14 @@ export default function Milestones() {
   const { data: profile } = useGetProfile();
   const currentLevel = profile?.level ?? 1;
 
-  const { data: certificates = [] } = useQuery<Certificate[]>({
+  const { data: certificates = [], isLoading: certificatesLoading } = useQuery<Certificate[]>({
     queryKey: ["my-certificates"],
     queryFn: () => apiJSON("milestones/certificates/me"),
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
 
-  const { data: adminStatus } = useQuery<{ isAdmin: boolean }>({
+  const { data: adminStatus, isLoading: adminStatusLoading } = useQuery<{ isAdmin: boolean }>({
     queryKey: ["admin-status"],
     queryFn: () => apiJSON("milestones/admin/status"),
     staleTime: 60_000,
@@ -989,7 +989,7 @@ export default function Milestones() {
           </div>
         )}
 
-        {certificates.length === 0 && !isAdmin && (
+        {certificates.length === 0 && !isAdmin && !certificatesLoading && !adminStatusLoading && (
           <div className="rounded-2xl border border-dashed border-border/50 p-6 text-center">
             <Medal className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
             <p className="text-sm font-semibold text-muted-foreground/60">

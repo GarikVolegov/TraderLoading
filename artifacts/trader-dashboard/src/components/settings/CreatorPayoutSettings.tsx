@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Banknote, Loader2, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   fetchPayoutAccount,
   startPayoutOnboarding,
@@ -16,7 +17,7 @@ export function CreatorPayoutSettings() {
   const { t } = useLanguage();
   const { toast } = useToast();
 
-  const { data: account } = useQuery({ queryKey: payoutAccountKey(), queryFn: fetchPayoutAccount, retry: false });
+  const { data: account, isLoading } = useQuery({ queryKey: payoutAccountKey(), queryFn: fetchPayoutAccount, retry: false });
 
   const onboard = useMutation({
     mutationFn: startPayoutOnboarding,
@@ -29,10 +30,12 @@ export function CreatorPayoutSettings() {
     onError: () => toast({ description: t("payout.error"), variant: "destructive" }),
   });
 
+  // Checked after all hooks (never before a hook call — hook count must stay
+  // constant across renders of the same instance).
+  if (isLoading) return <Skeleton className="h-40 w-full rounded-2xl" />;
+
   // Stripe Connect isn't configured at all: onboarding would always 402, so the
-  // card is hidden rather than offering a button that can only fail. Checked
-  // after all hooks (never before a hook call — hook count must stay constant
-  // across renders of the same instance).
+  // card is hidden rather than offering a button that can only fail.
   if (account && !account.available) return null;
 
   const ready = account?.onboarded && account?.payoutsEnabled;

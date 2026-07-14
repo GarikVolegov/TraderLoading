@@ -47,6 +47,11 @@ assert.match(addDialog, /useDropzone/);
 assert.match(addDialog, /noClick:\s*true/);
 assert.match(addDialog, /openPicker/);
 
+// Loading skeleton shown while the initial sources fetch is pending, so the
+// empty state doesn't flash before real data arrives (usability audit 2C).
+assert.match(page, /isLoading:\s*sourcesLoading/);
+assert.match(page, /sourcesLoading \? \(\s*<ArchiveGridSkeleton/);
+
 // i18n keys exist.
 assert.match(i18n, /"wiki\.title": "Archivio"/);
 assert.match(i18n, /"archive\.title": "Il tuo archivio"/);
