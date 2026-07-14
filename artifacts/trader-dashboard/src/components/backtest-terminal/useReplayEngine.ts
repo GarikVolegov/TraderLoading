@@ -212,6 +212,12 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const lots = computeLots({ riskAmount, slPips: ticket.slPips, symbol: normalizedSymbol });
   const rr = riskRewardRatio(ticket.slPips, ticket.tpPips);
 
+  // Execution costs read through a ref so closeAt stays referentially stable.
+  const costsRef = useRef({ spreadPips: settings.spreadPips, commissionPerLot: settings.commissionPerLot });
+  useEffect(() => {
+    costsRef.current = { spreadPips: settings.spreadPips, commissionPerLot: settings.commissionPerLot };
+  }, [settings.spreadPips, settings.commissionPerLot]);
+
   const closeAt = useCallback(
     (exitPrice: number, exitTime: number, exitReason: "sl" | "tp" | "manual") => {
       // Side effects live OUTSIDE the state updater (updaters may re-run under
@@ -227,6 +233,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
         exitReason,
         id: tradeIdRef.current,
         symbol: normalizedSymbol,
+        costs: costsRef.current,
       });
       setPosition(null);
       setTrades((old) => [closed, ...old]);

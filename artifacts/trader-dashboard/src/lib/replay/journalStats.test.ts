@@ -36,6 +36,7 @@ assert.deepEqual(empty, {
   totalProfit: 0,
   avgMaeR: null,
   avgMfeR: null,
+  totalCost: 0,
 });
 
 const stats = computeJournalStats([
@@ -124,4 +125,15 @@ console.log("journalStats checks passed");
   const reversal = byTag.find((s) => s.tag === "reversal");
   assert.deepEqual(reversal, { tag: "reversal", count: 2, netR: 0 }); // 1 − 1
   assert.equal(byTag.find((s) => s.tag === "london")?.count, 1);
+}
+
+// ── total execution cost aggregate ──────────────────────────────────────────
+{
+  const withCosts = computeJournalStats([
+    { ...trade({ pips: 40, profit: 191.5, r: 2, id: 1 }), cost: 8.5 },
+    { ...trade({ pips: -20, profit: -108.5, r: -1, id: 2 }), cost: 8.5 },
+    { ...trade({ pips: 10, profit: 50, r: null, id: 3 }) }, // no cost field
+  ] as never);
+  assert.equal(withCosts.totalCost, 17);
+  assert.equal(computeJournalStats([]).totalCost, 0);
 }

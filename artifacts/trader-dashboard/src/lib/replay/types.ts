@@ -65,6 +65,8 @@ export interface ClosedTrade {
   tags?: string[];
   /** Free-form note for the trade. */
   note?: string;
+  /** Execution cost (spread + commission) deducted from gross profit. */
+  cost?: number;
 }
 
 export type RiskMode = "percent" | "fixed";

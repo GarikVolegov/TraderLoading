@@ -450,6 +450,37 @@ export function TerminalSettingsDialog({
                 </button>
               </div>
 
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+                <div className="btm-field">
+                  <span className="btm-field-label">{uiText("backtest_terminal.spread_pips")}</span>
+                  <input
+                    type="number"
+                    className="btm-input"
+                    min={0}
+                    step={0.1}
+                    value={settings.spreadPips}
+                    onChange={(event) =>
+                      setSettings({ ...settings, spreadPips: Math.max(0, Number.parseFloat(event.target.value) || 0) })
+                    }
+                    aria-label={uiText("backtest_terminal.spread_pips")}
+                  />
+                </div>
+                <div className="btm-field">
+                  <span className="btm-field-label">{uiText("backtest_terminal.commission_per_lot")}</span>
+                  <input
+                    type="number"
+                    className="btm-input"
+                    min={0}
+                    step={0.5}
+                    value={settings.commissionPerLot}
+                    onChange={(event) =>
+                      setSettings({ ...settings, commissionPerLot: Math.max(0, Number.parseFloat(event.target.value) || 0) })
+                    }
+                    aria-label={uiText("backtest_terminal.commission_per_lot")}
+                  />
+                </div>
+              </div>
+
               <ChartTemplates engine={engine} />
 
               <div className="btm-field">

@@ -82,6 +82,21 @@ export function fillPendingOrder(
   });
 }
 
+export interface TradeCosts {
+  /** Spread paid on entry, in pips. */
+  spreadPips?: number;
+  /** Round-turn commission per lot, in account currency. */
+  commissionPerLot?: number;
+}
+
+/** Account-currency execution cost of a position of `lots` on `symbol`. */
+export function tradeCost(costs: TradeCosts | undefined, lots: number, symbol: string): number {
+  if (!costs) return 0;
+  const spread = (costs.spreadPips ?? 0) > 0 ? (costs.spreadPips as number) * pipValuePerLot(symbol) * lots : 0;
+  const commission = (costs.commissionPerLot ?? 0) > 0 ? (costs.commissionPerLot as number) * lots : 0;
+  return spread + commission;
+}
+
 export interface ManageRules {
   /** Move the stop to entry once favorable excursion reaches this many R (initial risk). */
   breakevenAtR?: number | null;
@@ -193,10 +208,20 @@ export function unrealizedProfit(position: OpenPosition, price: number, symbol: 
 
 export function closePosition(
   position: OpenPosition,
-  close: { exitPrice: number; exitTime: number; exitReason: ExitReason; id: number; symbol: string },
+  close: {
+    exitPrice: number;
+    exitTime: number;
+    exitReason: ExitReason;
+    id: number;
+    symbol: string;
+    /** Execution costs (spread in pips + round-turn commission per lot). */
+    costs?: TradeCosts;
+  },
 ): ClosedTrade {
   const pips = positionPips(position, close.exitPrice, close.symbol);
-  const profit = pips * pipValuePerLot(close.symbol) * position.lots;
+  const grossProfit = pips * pipValuePerLot(close.symbol) * position.lots;
+  const cost = tradeCost(close.costs, position.lots, close.symbol);
+  const profit = Math.round((grossProfit - cost) * 100) / 100;
   const initialRisk = position.initialSlPips ?? position.slPips;
   const round2 = (value: number) => Math.round(value * 100) / 100;
   return {
@@ -211,9 +236,11 @@ export function closePosition(
     lots: position.lots,
     pips,
     profit,
+    cost: round2(cost),
+    // Result follows NET profit: a tiny winner eaten by costs is a loss.
     rMultiple: initialRisk > 0 ? pips / initialRisk : null,
     exitReason: close.exitReason,
-    result: pips > 0 ? "win" : pips < 0 ? "loss" : "breakeven",
+    result: profit > 0 ? "win" : profit < 0 ? "loss" : "breakeven",
     maeR: initialRisk > 0 ? round2(Math.max(0, -(position.worstPips ?? 0)) / initialRisk) : null,
     mfeR: initialRisk > 0 ? round2(Math.max(0, position.bestPips ?? 0) / initialRisk) : null,
   };

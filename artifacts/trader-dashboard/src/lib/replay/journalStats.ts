@@ -17,6 +17,8 @@ export interface JournalStats {
   expectancy: number | null;
   totalPips: number;
   totalProfit: number;
+  /** Sum of execution costs (spread + commission) across trades. */
+  totalCost: number;
   /** Mean max adverse excursion in R over tracked trades, null when none. */
   avgMaeR: number | null;
   /** Mean max favorable excursion in R over tracked trades, null when none. */
@@ -31,6 +33,7 @@ export function computeJournalStats(trades: ClosedTrade[]): JournalStats {
   let sizedCount = 0;
   let totalPips = 0;
   let totalProfit = 0;
+  let totalCost = 0;
   let maeSum = 0;
   let mfeSum = 0;
   let excursionCount = 0;
@@ -50,6 +53,7 @@ export function computeJournalStats(trades: ClosedTrade[]): JournalStats {
     }
     totalPips += trade.pips;
     totalProfit += trade.profit;
+    totalCost += trade.cost ?? 0;
   }
 
   const total = trades.length;
@@ -63,6 +67,7 @@ export function computeJournalStats(trades: ClosedTrade[]): JournalStats {
     expectancy: sizedCount > 0 ? netR / sizedCount : null,
     totalPips: Math.round(totalPips * 10) / 10,
     totalProfit,
+    totalCost: Math.round(totalCost * 100) / 100,
     avgMaeR: excursionCount > 0 ? Math.round((maeSum / excursionCount) * 100) / 100 : null,
     avgMfeR: excursionCount > 0 ? Math.round((mfeSum / excursionCount) * 100) / 100 : null,
   };

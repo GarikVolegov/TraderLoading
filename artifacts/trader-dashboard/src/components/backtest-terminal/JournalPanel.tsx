@@ -89,7 +89,7 @@ function TradeTags({ tags, onChange }: { tags: string[]; onChange: (tags: string
 }
 
 function tradesToCsv(trades: ClosedTrade[], symbol: string): string {
-  const header = "id,symbol,direction,entryTime,exitTime,entryPrice,exitPrice,stopLoss,takeProfit,lots,pips,profit,rMultiple,maeR,mfeR,exitReason,result,tags";
+  const header = "id,symbol,direction,entryTime,exitTime,entryPrice,exitPrice,stopLoss,takeProfit,lots,pips,profit,rMultiple,maeR,mfeR,exitReason,result,cost,tags";
   const rows = [...trades]
     .sort((a, b) => a.exitTime - b.exitTime)
     .map((trade) =>
@@ -111,6 +111,7 @@ function tradesToCsv(trades: ClosedTrade[], symbol: string): string {
         trade.mfeR ?? "",
         trade.exitReason,
         trade.result,
+        trade.cost ?? 0,
         (trade.tags ?? []).join("|"),
       ].join(","),
     );
@@ -232,6 +233,11 @@ export function JournalPanel({ engine }: { engine: ReplayEngine }) {
           </div>
           <div style={{ fontFamily: "var(--btm-mono)", fontSize: 10.5, color: "var(--btm-mut)", marginBottom: 10 }}>
             {stats.wins}W / {stats.losses}L / {stats.breakevens}BE
+            {stats.totalCost > 0 && (
+              <span style={{ marginLeft: 8, color: "var(--btm-dn)" }}>
+                {uiText("backtest_terminal.total_cost")} {formatSignedMoney(-stats.totalCost, language)}
+              </span>
+            )}
           </div>
 
           {stats.avgMaeR != null && stats.avgMfeR != null && (

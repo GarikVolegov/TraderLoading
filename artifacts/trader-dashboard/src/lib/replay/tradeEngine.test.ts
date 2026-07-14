@@ -241,3 +241,59 @@ console.log("tradeEngine checks passed");
   assert.equal(filled.lots, 0.5);
   assert.equal(filled.initialSlPips, 20);
 }
+
+// ── execution costs: spread + commission ───────────────────────────────────
+{
+  const { tradeCost } = await import("./tradeEngine");
+  // spread: pips × pipValuePerLot(10 for FX) × lots
+  assert.equal(tradeCost({ spreadPips: 1 }, 0.5, "EURUSD"), 5); // 1×10×0.5
+  assert.equal(tradeCost({ commissionPerLot: 7 }, 0.5, "EURUSD"), 3.5); // 7×0.5
+  assert.equal(tradeCost({ spreadPips: 1, commissionPerLot: 7 }, 1, "EURUSD"), 17); // 10 + 7
+  assert.equal(tradeCost(undefined, 1, "EURUSD"), 0);
+  assert.equal(tradeCost({}, 1, "EURUSD"), 0);
+  // indices/crypto pipValuePerLot = 1
+  assert.equal(tradeCost({ spreadPips: 2 }, 3, "US30"), 6);
+
+  // costs deducted from a winning trade: 40 pips × 10 × 0.5 = 200 gross − 17 = 183
+  const withCost = closePosition(buy, {
+    exitPrice: buy.takeProfit,
+    exitTime: 5_000,
+    exitReason: "tp",
+    id: 20,
+    symbol: "EURUSD",
+    costs: { spreadPips: 1, commissionPerLot: 7 },
+  });
+  assert.equal(withCost.cost, 8.5); // buy.lots = 0.5 → 1×10×0.5 + 7×0.5
+  assert.equal(withCost.profit, 191.5); // 200 gross − 8.5
+  assert.equal(withCost.pips, 40, "gross pips unchanged");
+  assert.equal(withCost.rMultiple, 2, "R unchanged (price risk)");
+  assert.equal(withCost.result, "win");
+
+  // a marginal winner fully eaten by costs flips to a loss (result follows NET)
+  const marginal = openPosition({
+    direction: "buy",
+    entryPrice: 1.1,
+    entryTime: 0,
+    slPips: 20,
+    tpPips: 1,
+    lots: 0.1,
+    riskAmount: 20,
+    symbol: "EURUSD",
+  });
+  const eaten = closePosition(marginal, {
+    exitPrice: marginal.takeProfit,
+    exitTime: 10,
+    exitReason: "tp",
+    id: 21,
+    symbol: "EURUSD",
+    costs: { commissionPerLot: 20 },
+  });
+  assert.equal(eaten.pips, 1);
+  assert.ok(eaten.profit < 0, "net negative after commission");
+  assert.equal(eaten.result, "loss");
+
+  // no costs → identical to before
+  const free = closePosition(buy, { exitPrice: buy.takeProfit, exitTime: 5_000, exitReason: "tp", id: 22, symbol: "EURUSD" });
+  assert.equal(free.cost, 0);
+  assert.equal(free.profit, 200);
+}

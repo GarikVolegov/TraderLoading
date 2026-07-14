@@ -25,6 +25,10 @@ export interface TerminalSettings {
   toolWidth: number;
   /** Rail visibility per drawing tool id (missing = visible). */
   visibleTools: Record<string, boolean>;
+  /** Simulated spread paid on entry, in pips (0 = frictionless). */
+  spreadPips: number;
+  /** Round-turn commission per lot, in account currency. */
+  commissionPerLot: number;
 }
 
 export const DEFAULT_TICKET: TerminalTicket = {
@@ -43,6 +47,8 @@ export const DEFAULT_TERMINAL_SETTINGS: TerminalSettings = {
   toolColor: "#3b82f6",
   toolWidth: 2,
   visibleTools: {},
+  spreadPips: 0,
+  commissionPerLot: 0,
 };
 
 export interface TerminalStateDraft {
@@ -270,6 +276,9 @@ function parseSettings(value: unknown): TerminalSettings {
       ? Math.min(4, Math.max(1, settings.toolWidth))
       : DEFAULT_TERMINAL_SETTINGS.toolWidth,
     visibleTools,
+    spreadPips: isFiniteNumber(settings.spreadPips) && settings.spreadPips > 0 ? settings.spreadPips : 0,
+    commissionPerLot:
+      isFiniteNumber(settings.commissionPerLot) && settings.commissionPerLot > 0 ? settings.commissionPerLot : 0,
   };
 }
 
