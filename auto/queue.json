@@ -1,5 +1,23 @@
 [
   {
+    "id": "TEST-canary",
+    "source": "prd",
+    "title": "Canarino Nightshift: nota di collaudo",
+    "description": "Crea il file docs/nightshift-canary.md con una riga: '# Collaudo Nightshift' seguita dalla data odierna. Nessun'altra modifica.",
+    "acceptanceCriteria": [
+      "Esiste docs/nightshift-canary.md con titolo e data",
+      "Nessun altro file modificato",
+      "pnpm typecheck e pnpm test verdi"
+    ],
+    "priority": 0,
+    "status": "pending",
+    "attempts": 0,
+    "maxAttempts": 1,
+    "branch": null,
+    "prUrl": null,
+    "notes": ""
+  },
+  {
     "id": "AUD-0.8-gdpr-delete",
     "source": "audit",
     "title": "Cancellazione account completa (GDPR)",
