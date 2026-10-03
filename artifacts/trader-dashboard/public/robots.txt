@@ -24,6 +24,11 @@ Disallow: /settings
 Disallow: /tools
 Disallow: /pro
 Disallow: /admin
+Disallow: /wiki
+Disallow: /tornei
+Disallow: /support
+Disallow: /welcome
+Disallow: /styleguide
 Disallow: /api/
 
 # AI / generative-engine crawlers — explicitly welcomed so TraderLoading can be

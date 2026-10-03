@@ -59,7 +59,7 @@ assert.match(adminPage, /component=\{AdminSystemPage\}/);
 assert.match(adminPage, /component=\{AdminSubscriptionsPage\}/);
 assert.doesNotMatch(adminPage, /AdminComingSoon/);
 // Le label di navigazione sono passate all'i18n: chiavi nella shell, copy nel catalogo.
-const i18nDict = fs.readFileSync("src/lib/i18n.ts", "utf8");
+const i18nDict = fs.readFileSync("src/lib/i18n/dict.it.ts", "utf8");
 assert.match(shell, /labelKey: "admin\.nav\.dashboard"/);
 assert.match(shell, /labelKey: "admin\.nav\.users"/);
 assert.match(shell, /labelKey: "admin\.nav\.security"/);

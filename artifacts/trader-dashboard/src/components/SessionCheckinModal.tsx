@@ -7,6 +7,7 @@ import { ShieldAlert, Target, X } from "lucide-react";
 import { MOOD_EMOJIS } from "@/lib/zenEmojis";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getLocalClockHours, getLocalDateKey } from "@/lib/marketSessions";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 function todayKey() {
   return getLocalDateKey();
@@ -45,7 +46,9 @@ export function SessionCheckinModal() {
   const { tradingSessions } = useBackground();
   const { data: settings } = useGetUserSettings();
   const { data: ideas } = useGetIdeas();
-  const createCheckin = useCreateCheckin();
+  // handleSubmit's own catch already shows a "checkin.error" toast below —
+  // opt out of App.tsx's global mutation-error toast to avoid a double toast.
+  const createCheckin = useCreateCheckin({ mutation: { meta: { suppressGlobalError: true } } });
   const { toast } = useToast();
   const { t } = useLanguage();
 
@@ -110,11 +113,19 @@ export function SessionCheckinModal() {
     setVisible(false);
   };
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: visible, onClose: handleSkip, panelRef });
+
   if (!visible) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5 relative animate-in fade-in zoom-in-95 duration-200">
+      <div
+        ref={panelRef}
+        {...panelProps}
+        aria-labelledby={titleId}
+        className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5 relative animate-in fade-in zoom-in-95 duration-200 focus:outline-none"
+      >
         <button
           onClick={handleSkip}
           aria-label={t("common.close")}
@@ -125,7 +136,7 @@ export function SessionCheckinModal() {
         </button>
 
         <div>
-          <h2 className="text-xl font-bold">{t("checkin.title")}</h2>
+          <h2 id={titleId} className="text-xl font-bold">{t("checkin.title")}</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {t("checkin.subtitle", { session: currentSession })}
           </p>

@@ -1,9 +1,10 @@
 // ─── Candle data service ───────────────────────────────────────────────────────
 // Fetch logica condivisa fra la route HTTP (/api/backtest/candles) e il "cervello"
 // vision (analisi on-demand + scanner autonomo). Estratta da routes/candles.ts.
+import { PAIR_CATALOG } from "@workspace/pair-catalog";
 import { getJsonCache, setJsonCache } from "../lib/cache.js";
-import { aggregateInterval, mergeTail } from "./aggregate.js";
-import { INTERVAL_SECONDS, symbolId } from "./candleRegistry.js";
+import { aggregateInterval, bucketStart, mergeTail } from "./aggregate.js";
+import { INTERVAL_SECONDS, RES, symbolId } from "./candleRegistry.js";
 
 const YAHOO_SYMBOLS: Record<string, string> = {
   EURUSD: "EURUSD=X", GBPUSD: "GBPUSD=X", USDJPY: "USDJPY=X",
@@ -36,13 +37,20 @@ function dailyLookbackSeconds(interval: string): number {
   return days * 24 * 60 * 60;
 }
 
-const TWELVE_SYMBOLS: Record<string, string> = {
-  EURUSD: "EUR/USD", GBPUSD: "GBP/USD", USDJPY: "USD/JPY",
-  USDCHF: "USD/CHF", AUDUSD: "AUD/USD", NZDUSD: "NZD/USD",
-  USDCAD: "USD/CAD", EURGBP: "EUR/GBP", EURJPY: "EUR/JPY",
-  GBPJPY: "GBP/JPY", AUDJPY: "AUD/JPY", XAUUSD: "XAU/USD",
-  XAGUSD: "XAG/USD", USDMXN: "USD/MXN", USDZAR: "USD/ZAR",
-};
+// TwelveData serves every spot FX pair and metal as "BASE/QUOTE". Derive the map
+// from the catalog so new pairs get a live source automatically instead of showing
+// a mute "—" in the "Live" watchlist (only ~20 of ~44 pairs were mapped by hand).
+// Indices and crypto use other providers (Dukascopy/Binance), so they're excluded.
+const TWELVE_SYMBOLS: Record<string, string> = Object.fromEntries(
+  PAIR_CATALOG.filter((pair) => pair.category.startsWith("forex-") || pair.category === "metal").map(
+    (pair) => [pair.symbol, `${pair.currencies[0]}/${pair.currencies[1]}`],
+  ),
+);
+
+/** TwelveData symbol ("BASE/QUOTE") for a catalog pair, or undefined if unsupported. */
+export function twelveDataSymbol(symbol: string): string | undefined {
+  return TWELVE_SYMBOLS[symbol];
+}
 
 const COINGECKO_IDS: Record<string, string> = {
   BTCUSD: "bitcoin",
@@ -50,22 +58,23 @@ const COINGECKO_IDS: Record<string, string> = {
 };
 
 const YAHOO_INTERVAL: Record<string, string> = {
-  M5: "5m", M15: "15m", M30: "30m", H1: "1h", H4: "4h", D1: "1d", W1: "1wk",
+  M1: "1m", M5: "5m", M15: "15m", M30: "30m", H1: "1h", H4: "4h", D1: "1d", W1: "1wk",
 };
 
 const YAHOO_RANGE: Record<string, string> = {
-  M5: "60d", M15: "60d", M30: "60d", H1: "2y", H4: "2y", D1: "2y", W1: "2y",
+  M1: "5d", M5: "60d", M15: "60d", M30: "60d", H1: "2y", H4: "2y", D1: "2y", W1: "2y",
 };
 
 const TWELVE_INTERVAL: Record<string, string> = {
-  M5: "5min", M15: "15min", M30: "30min", H1: "1h", H4: "4h", D1: "1day", W1: "1week",
+  M1: "1min", M5: "5min", M15: "15min", M30: "30min", H1: "1h", H4: "4h", D1: "1day", W1: "1week",
 };
 
 const TWELVE_OUTPUTSIZE: Record<string, number> = {
-  M5: 5000, M15: 5000, M30: 5000, H1: 5000, H4: 5000, D1: 5000, W1: 5000,
+  M1: 5000, M5: 5000, M15: 5000, M30: 5000, H1: 5000, H4: 5000, D1: 5000, W1: 5000,
 };
 
 const MIN_REPLAY_CANDLES: Record<string, number> = {
+  M1: 120,
   M5: 120,
   M15: 120,
   M30: 120,
@@ -94,6 +103,12 @@ export type Candle = { time: number; open: number; high: number; low: number; cl
 
 export type CandlesRequestOptions = {
   startDate?: string;
+  /** Cursor paging (unix seconds, inclusive): continue a replay past the first page. */
+  from?: number;
+  /** Optional exclusive upper bound (unix seconds) for a paged window. */
+  to?: number;
+  /** Max bars per response (clamped to 1..WAREHOUSE_MAX_CANDLES). */
+  limit?: number;
 };
 
 export interface CandlesResult {
@@ -101,6 +116,8 @@ export interface CandlesResult {
   interval: string;
   source: string;
   candles: Candle[];
+  /** Cursor for the next page when this one is full (paged requests only). */
+  nextFrom?: number;
 }
 
 /** Lista dei simboli supportati (usata per la validazione delle route). */
@@ -127,16 +144,112 @@ function getMinReplayCandles(interval: string): number {
   return MIN_REPLAY_CANDLES[interval] ?? 120;
 }
 
-function hasEnoughReplayCandles(result: CandlesResult, interval: string): boolean {
-  return result.candles.length >= getMinReplayCandles(interval);
+/**
+ * Bars a response must carry to be servable: cursor pages may be arbitrarily
+ * short (even empty), an explicit small `limit` caps the requirement, and a
+ * plain initial load keeps the full minimum-candles guard.
+ */
+function requiredReplayCandles(interval: string, options: CandlesRequestOptions): number {
+  if (options.from != null) return 1;
+  const min = getMinReplayCandles(interval);
+  return options.limit != null ? Math.min(min, clampPageLimit(options.limit)) : min;
 }
 
 function insufficientCandlesMessage(symbol: string, interval: string, count: number): string {
   return `Servono almeno ${getMinReplayCandles(interval)} candele per avviare il replay ${symbol} ${interval}. Disponibili: ${count}. Prova una data piu recente, un timeframe piu alto o configura TwelveData per storico intraday piu profondo.`;
 }
 
-function candleCacheKey(symbol: string, interval: string, startDate: string | null): string {
-  return `candles:v2:${symbol}:${interval}:${startDate ?? "latest"}`;
+function candleCacheKey(symbol: string, interval: string, startDate: string | null, options: CandlesRequestOptions = {}): string {
+  return `candles:v2:${symbol}:${interval}:${startDate ?? "latest"}${pagingCacheSuffix(options)}`;
+}
+
+function pagingCacheSuffix(options: CandlesRequestOptions): string {
+  if (options.from == null && options.to == null && options.limit == null) return "";
+  return `:${options.from ?? ""}:${options.to ?? ""}:${options.limit ?? ""}`;
+}
+
+function clampPageLimit(limit: number | undefined): number {
+  if (limit == null || !Number.isFinite(limit)) return WAREHOUSE_MAX_CANDLES;
+  return Math.min(WAREHOUSE_MAX_CANDLES, Math.max(1, Math.floor(limit)));
+}
+
+/**
+ * Apply cursor paging to an ascending candle series: keep [from, to), cap at
+ * the clamped limit, and advertise the next cursor when the page is full.
+ * Pure — shared by the warehouse and live paths (and unit-tested directly).
+ */
+export function paginateCandles(
+  candles: Candle[],
+  options: CandlesRequestOptions,
+  intervalSeconds: number,
+): { candles: Candle[]; nextFrom?: number } {
+  const from = options.from;
+  const to = options.to;
+  let filtered = candles;
+  if (from != null || to != null) {
+    filtered = candles.filter(
+      (candle) => (from == null || candle.time >= from) && (to == null || candle.time < to),
+    );
+  }
+  const limit = clampPageLimit(options.limit);
+  const page = filtered.length > limit ? filtered.slice(0, limit) : filtered;
+  const last = page[page.length - 1];
+  const nextFrom = page.length === limit && last ? last.time + intervalSeconds : undefined;
+  return nextFrom == null ? { candles: page } : { candles: page, nextFrom };
+}
+
+/**
+ * Latest-window trim: keep the MOST RECENT bars (optionally bounded by `to`).
+ * Used when no forward cursor/startDate anchors the series — head-slicing here
+ * would serve the oldest bars of a deep fetch as if they were current.
+ */
+export function latestWindowCandles(candles: Candle[], options: CandlesRequestOptions): Candle[] {
+  const to = options.to;
+  const bounded = to != null ? candles.filter((candle) => candle.time < to) : candles;
+  const limit = clampPageLimit(options.limit);
+  return bounded.length > limit ? bounded.slice(-limit) : bounded;
+}
+
+/**
+ * Resolve the SQL scan window for a warehouse read. Pure so the window math
+ * (cursor paging, deep-history anchor, latest window) is unit-testable without
+ * a database.
+ */
+export function resolveWarehouseWindow(
+  options: CandlesRequestOptions,
+  intervalSeconds: number,
+  now: number,
+): { fromTs: number; toTs: number; limit: number; fromStart: boolean } {
+  const limit = clampPageLimit(options.limit);
+  // The scan window is bounded by the MAX page size (not the requested limit):
+  // the SQL LIMIT already stops the scan early, and a window derived from a
+  // small `limit` would starve the read below the minimum-candles guard.
+  const span = WAREHOUSE_MAX_CANDLES * intervalSeconds * WAREHOUSE_OVERFETCH;
+  // Bucket-align the bounds: a mid-bucket `from` would make SQL's LIMIT count
+  // a bucket the paginator then drops (silently ending pagination early), and
+  // a mid-bucket `to` would aggregate a truncated partial bar.
+  const alignUp = (ts: number) => {
+    const bucket = bucketStart(ts, intervalSeconds);
+    return bucket >= ts ? bucket : bucket + intervalSeconds;
+  };
+  const alignDown = (ts: number) => bucketStart(ts, intervalSeconds);
+
+  if (options.from != null) {
+    const fromTs = alignUp(options.from);
+    return {
+      fromTs,
+      toTs: Math.min(now, options.to != null ? alignDown(options.to) : fromTs + span),
+      limit,
+      fromStart: true,
+    };
+  }
+  const startDate = normalizeStartDate(options.startDate);
+  if (startDate) {
+    const fromTs = unixDayStart(startDate);
+    return { fromTs, toTs: Math.min(now, fromTs + span), limit, fromStart: true };
+  }
+  const toBound = options.to != null ? Math.min(now, alignDown(options.to)) : now;
+  return { fromTs: toBound - span, toTs: toBound, limit, fromStart: false };
 }
 
 function candleCacheTtlSeconds(interval: string, startDate: string | null): number {
@@ -147,7 +260,7 @@ function candleCacheTtlSeconds(interval: string, startDate: string | null): numb
 }
 
 function isIntradayReplayInterval(interval: string): boolean {
-  return interval === "M5" || interval === "M15" || interval === "M30";
+  return interval === "M1" || interval === "M5" || interval === "M15" || interval === "M30";
 }
 
 function unavailableIntradayHistoryMessage(symbol: string, interval: string, startDate: string): string {
@@ -394,20 +507,10 @@ async function readWarehouseSeries(
   // and out of unit tests that don't set DATABASE_URL.
   const { readAggregated } = await import("./ingest/candleStore.js");
   const now = Math.floor(Date.now() / 1000);
-  const span = WAREHOUSE_MAX_CANDLES * intervalSeconds * WAREHOUSE_OVERFETCH;
-  const startDate = normalizeStartDate(options.startDate);
-
-  if (startDate) {
-    const fromTs = unixDayStart(startDate);
-    const toTs = Math.min(now, fromTs + span);
-    return readAggregated(sid, intervalSeconds, fromTs, toTs, {
-      limit: WAREHOUSE_MAX_CANDLES,
-      fromStart: true,
-    });
-  }
-  return readAggregated(sid, intervalSeconds, now - span, now, {
-    limit: WAREHOUSE_MAX_CANDLES,
-    fromStart: false,
+  const window = resolveWarehouseWindow(options, intervalSeconds, now);
+  return readAggregated(sid, intervalSeconds, window.fromTs, window.toTs, {
+    limit: window.limit,
+    fromStart: window.fromStart,
   });
 }
 
@@ -428,17 +531,28 @@ export async function getCandles(
   if (!isCandleWarehouseEnabled()) return fetchLiveCandles(symbol, interval, options);
 
   const startDate = normalizeStartDate(options.startDate);
-  const warehouseCacheKey = `candles:wh:v1:${symbol}:${interval}:${startDate ?? "latest"}`;
+  const isPaged = options.from != null;
+  const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
+  const warehouseCacheKey = `candles:wh:v2:${symbol}:${interval}:${startDate ?? "latest"}${pagingCacheSuffix(options)}`;
   try {
     const cached = await getJsonCache<CandlesResult>(warehouseCacheKey);
-    if (cached && hasEnoughReplayCandles(cached, interval)) return cached;
+    if (cached && (isPaged || cached.candles.length >= requiredReplayCandles(interval, options))) return cached;
 
     const warehouse = await readWarehouseSeries(symbol, interval, options);
-    if (warehouse && warehouse.length >= getMinReplayCandles(interval)) {
+    const servable = warehouse
+      ? isPaged
+        ? warehouse.length > 0
+        : warehouse.length >= requiredReplayCandles(interval, options)
+      : false;
+    if (warehouse && servable) {
       let result: CandlesResult;
-      if (startDate) {
+      if (isPaged || startDate) {
         // Deep history is fully covered by the warehouse — no live call needed.
-        result = { symbol, interval, source: "warehouse", candles: warehouse };
+        const page = paginateCandles(warehouse, options, intervalSecs);
+        result = { symbol, interval, source: "warehouse", ...page };
+      } else if (options.to != null) {
+        // Bounded window ending at `to`: historical, no live tail, no cursor.
+        result = { symbol, interval, source: "warehouse", candles: latestWindowCandles(warehouse, options) };
       } else {
         // Latest window: best-effort splice of a fresh live tail.
         try {
@@ -453,7 +567,13 @@ export async function getCandles(
           result = { symbol, interval, source: "warehouse", candles: warehouse };
         }
       }
-      await setJsonCache(warehouseCacheKey, result, startDate ? 24 * 60 * 60 : 60);
+      // Full historical pages are immutable (24h); short/tail pages may grow
+      // (60s), and so does a page whose last bucket is still forming.
+      let ttl = isPaged ? (result.nextFrom != null ? 24 * 60 * 60 : 60) : startDate ? 24 * 60 * 60 : 60;
+      const lastBar = result.candles[result.candles.length - 1];
+      const now = Math.floor(Date.now() / 1000);
+      if (lastBar && lastBar.time + intervalSecs > now) ttl = Math.min(ttl, 60);
+      await setJsonCache(warehouseCacheKey, result, ttl);
       console.log(
         `[candles] warehouse OK: ${symbol} ${interval} → ${result.candles.length} candles (${result.source})`,
       );
@@ -470,6 +590,44 @@ export async function getCandles(
   return fetchLiveCandles(symbol, interval, options);
 }
 
+export type CandleWatermark = { firstTs: number | null; lastTs: number | null };
+
+export interface CandlesMetaResult {
+  symbol: string;
+  warehouseEnabled: boolean;
+  /** M1 ingestion bounds (they bound every derived timeframe), or null when unavailable. */
+  warehouse: CandleWatermark | null;
+}
+
+/**
+ * Availability metadata for the replay terminal: whether the warehouse is on
+ * and how far back its M1 history reaches for a symbol. The UI uses it to bound
+ * the date-jump control and to surface a "limited history" notice instead of a
+ * failed fetch. `loadWatermark` is injectable for unit tests (the real one
+ * needs a database).
+ */
+export async function getCandlesMeta(
+  symbol: string,
+  deps: { loadWatermark?: (symbolId: number, res: number) => Promise<CandleWatermark | null> } = {},
+): Promise<CandlesMetaResult> {
+  if (!isCandleWarehouseEnabled()) return { symbol, warehouseEnabled: false, warehouse: null };
+
+  const sid = symbolId(symbol);
+  if (sid === undefined) return { symbol, warehouseEnabled: true, warehouse: null };
+
+  try {
+    const load =
+      deps.loadWatermark ??
+      (await import("./ingest/candleStore.js")).readWatermark;
+    const watermark = await load(sid, RES.M1);
+    return { symbol, warehouseEnabled: true, warehouse: watermark ?? null };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[candles] watermark read failed for ${symbol}: ${msg}`);
+    return { symbol, warehouseEnabled: true, warehouse: null };
+  }
+}
+
 /**
  * fetchLiveCandles(symbol, interval)
  * ----------------------------------
@@ -482,16 +640,27 @@ async function fetchLiveCandles(
   interval: string,
   options: CandlesRequestOptions = {},
 ): Promise<CandlesResult> {
-  const startDate = normalizeStartDate(options.startDate);
+  const isPaged = options.from != null;
+  // A cursor page anchors the source fetch to the day of `from`; the exact
+  // [from, to) bound is applied to the fetched series afterwards.
+  const startDate =
+    normalizeStartDate(options.startDate) ??
+    (options.from != null ? new Date(options.from * 1000).toISOString().slice(0, 10) : null);
   const requestOptions = startDate ? { ...options, startDate } : options;
-  const cacheKey = candleCacheKey(symbol, interval, startDate);
+  const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
+  const cacheKey = candleCacheKey(symbol, interval, startDate, options);
+  const requiredCached = requiredReplayCandles(interval, options);
   const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL && hasEnoughReplayCandles(cached.data, interval)) {
+  if (
+    cached &&
+    Date.now() - cached.timestamp < CACHE_TTL &&
+    (isPaged || cached.data.candles.length >= requiredCached)
+  ) {
     return cached.data;
   }
 
   const distributedCached = await getJsonCache<CandlesResult>(cacheKey);
-  if (distributedCached && hasEnoughReplayCandles(distributedCached, interval)) {
+  if (distributedCached && (isPaged || distributedCached.candles.length >= requiredCached)) {
     cache.set(cacheKey, { data: distributedCached, timestamp: Date.now() });
     return distributedCached;
   }
@@ -504,14 +673,32 @@ async function fetchLiveCandles(
     try {
       const candles = await fn(symbol, interval, requestOptions);
       bestCandlesCount = Math.max(bestCandlesCount, candles.length);
-      const minCandles = getMinReplayCandles(interval);
+      // The depth guard checks the fetched series, not the sliced page. For a
+      // cursor page the source window is day-anchored to `from` and structurally
+      // cannot hold 120 bars near the live edge (e.g. H1 has ≤24 bars/day), so
+      // any non-empty window is accepted there — a short or empty page is a
+      // legitimate end-of-history answer.
+      const minCandles = isPaged ? 1 : getMinReplayCandles(interval);
       if (candles.length < minCandles) {
         throw new Error(`insufficient candles (${candles.length}/${minCandles})`);
       }
       console.log(`[candles] ${name} OK: ${symbol} ${interval} → ${candles.length} candles`);
-      const responseData: CandlesResult = { symbol, interval, source: name.toLowerCase(), candles };
+      // Latest window (no cursor, no startDate): keep the MOST RECENT bars —
+      // head-slicing a deep fetch would serve months-old data as current.
+      const page =
+        isPaged || startDate
+          ? paginateCandles(candles, options, intervalSecs)
+          : { candles: latestWindowCandles(candles, options) };
+      const responseData: CandlesResult = { symbol, interval, source: name.toLowerCase(), ...page };
       cache.set(cacheKey, { data: responseData, timestamp: Date.now() });
-      await setJsonCache(cacheKey, responseData, candleCacheTtlSeconds(interval, startDate));
+      // Cursor pages: full pages are immutable (24h), short/tail pages may
+      // still grow (60s) — mirrors the warehouse TTL rule.
+      const ttl = isPaged
+        ? responseData.nextFrom != null
+          ? 24 * 60 * 60
+          : 60
+        : candleCacheTtlSeconds(interval, normalizeStartDate(options.startDate));
+      await setJsonCache(cacheKey, responseData, ttl);
       return responseData;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -521,12 +708,12 @@ async function fetchLiveCandles(
   }
 
   const stale = cache.get(cacheKey);
-  if (stale && hasEnoughReplayCandles(stale.data, interval)) {
+  if (stale && (isPaged || stale.data.candles.length >= requiredCached)) {
     console.log(`[candles] Serving stale cache for ${symbol} ${interval}`);
     return stale.data;
   }
 
-  if (bestCandlesCount > 0 && bestCandlesCount < getMinReplayCandles(interval)) {
+  if (!isPaged && bestCandlesCount > 0 && bestCandlesCount < getMinReplayCandles(interval)) {
     throw new Error(insufficientCandlesMessage(symbol, interval, bestCandlesCount));
   }
 

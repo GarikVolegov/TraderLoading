@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { DICT, SUPPORTED_LANGUAGES } from "./i18n";
+import { SUPPORTED_LANGUAGES } from "./i18n";
+import { DICT } from "./i18n/all";
 
 // Garanzia "a 360 gradi": ogni chiave deve esistere in TUTTE le lingue
 // supportate, con valore non vuoto e gli stessi placeholder {var}.

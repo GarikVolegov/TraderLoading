@@ -2,9 +2,10 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { missionsTable, missionTemplatesTable, profileTable } from "@workspace/db";
 import { GetMissionsResponse, CompleteMissionParams, CompleteMissionResponse } from "@workspace/api-zod";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { getOrCreateProfile, computeLevel, getUserId, updateStreak, getLevelName } from "./profile.js";
 import { awardLevelCertificate } from "./milestones.js";
+import { MISSION_XP_MAX } from "../lib/missionXp.js";
 
 const router: IRouter = Router();
 
@@ -62,14 +63,10 @@ async function ensureTodayMissions(userId: string | null) {
   return existing;
 }
 
-router.delete("/missions/reset-today", async (req, res) => {
-  const today = new Date().toISOString().slice(0, 10);
-  const userId = getUserId(req);
-  const userFilter = userId ? eq(missionsTable.userId, userId) : isNull(missionsTable.userId);
-  
-  await db.delete(missionsTable).where(and(eq(missionsTable.missionDate, today), userFilter));
-  res.json({ success: true, message: "Today's missions cleared" });
-});
+// NOTE: DELETE /missions/reset-today was removed. It had no auth/dev guard and
+// no XP ledger, so the loop complete -> reset-today -> complete re-awarded XP
+// indefinitely (unbounded XP feeds the Pro leaderboard). It was never called by
+// the frontend. Daily missions already regenerate per calendar day.
 
 router.get("/missions", async (req, res) => {
   const userId = getUserId(req);
@@ -109,25 +106,43 @@ router.post("/missions/:id/complete", async (req, res) => {
     return;
   }
 
+  // Atomic claim: only the request that flips completed false->true awards XP.
+  // Without the completed=false guard two concurrent completes (double tap, two
+  // buttons) both pass the read check above and double-credit the reward.
   const [updatedMission] = await db
     .update(missionsTable)
     .set({ completed: true, completedAt: new Date() })
-    .where(eq(missionsTable.id, id))
+    .where(and(eq(missionsTable.id, id), eq(missionsTable.completed, false)))
     .returning();
+
+  if (!updatedMission) {
+    res.status(400).json({ error: "Mission already completed" });
+    return;
+  }
 
   const profile = await getOrCreateProfile(userId);
   const oldLevel = computeLevel(profile.xp).level;
 
+  // Defense in depth for missions seeded before the template clamp existed.
+  const awardXp = Math.min(Math.max(mission.xpReward, 0), MISSION_XP_MAX);
+
+  // Increment atomically (xp = xp + delta) rather than read-modify-write, so
+  // concurrent XP grants (e.g. mission + journal) don't clobber each other.
   const [updatedProfile] = await db
     .update(profileTable)
-    .set({ xp: profile.xp + mission.xpReward })
+    .set({ xp: sql`${profileTable.xp} + ${awardXp}` })
     .where(eq(profileTable.id, profile.id))
     .returning();
 
   const { newStreak, bonusXp } = await updateStreak(profile.id);
-  const finalXp = updatedProfile.xp + bonusXp;
+  let finalXp = updatedProfile.xp;
   if (bonusXp > 0) {
-    await db.update(profileTable).set({ xp: finalXp }).where(eq(profileTable.id, profile.id));
+    const [bonusProfile] = await db
+      .update(profileTable)
+      .set({ xp: sql`${profileTable.xp} + ${bonusXp}` })
+      .where(eq(profileTable.id, profile.id))
+      .returning();
+    finalXp = bonusProfile.xp;
   }
 
   const { level, xpToNextLevel } = computeLevel(finalXp);

@@ -9,6 +9,7 @@ import { planRollover, type SeasonRow } from "../services/tornei/rolloverPlan.js
 import type { SeasonWindow } from "../services/tornei/seasonWindows.js";
 import { getActiveSeason, materializeStandings } from "../services/tornei/store.js";
 import { settleSeason } from "../services/tornei/settle.js";
+import { reportJobError } from "../lib/observability.js";
 
 async function loadSeasonRows(): Promise<SeasonRow[]> {
   const rows = await db
@@ -69,17 +70,18 @@ export async function refreshActiveStandings(): Promise<void> {
 export function startTorneiScheduler(): { close(): Promise<void> } {
   // Refresh classifica ogni 5 minuti.
   const refreshTask: ScheduledTask = cron.schedule("*/5 * * * *", () => {
-    refreshActiveStandings().catch((err) => console.error("[tornei] refresh failed", err));
+    refreshActiveStandings().catch((err) => reportJobError(err, { job: "tornei-refresh" }));
   });
-  // Rollover giornaliero (00:10) — idempotente.
+  // Rollover giornaliero (00:10) — idempotente. Liquida la stagione scaduta
+  // (settleSeason: XP/Pro/mint), quindi un fallimento silenzioso è inaccettabile.
   const rolloverTask: ScheduledTask = cron.schedule("10 0 * * *", () => {
-    applyRollover().catch((err) => console.error("[tornei] rollover failed", err));
+    applyRollover().catch((err) => reportJobError(err, { job: "tornei-rollover" }));
   });
 
   // All'avvio: garantisce che esista una stagione e aggiorna subito le standings.
   applyRollover()
     .then(() => refreshActiveStandings())
-    .catch((err) => console.error("[tornei] boot rollover failed", err));
+    .catch((err) => reportJobError(err, { job: "tornei-boot-rollover" }));
 
   return {
     async close(): Promise<void> {

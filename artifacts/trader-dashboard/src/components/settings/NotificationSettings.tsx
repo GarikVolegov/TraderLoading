@@ -15,7 +15,9 @@ import { getNotificationCopy, NOTIFICATION_PREF_ORDER } from "@/lib/notification
 
 export function NotificationSettings() {
   const { data: settings, isLoading } = useGetUserSettings();
-  const updateMutation = useUpdateUserSettings();
+  // The save handler's own catch already shows its own toast below — opt out
+  // of App.tsx's global mutation-error toast to avoid a double toast.
+  const updateMutation = useUpdateUserSettings({ mutation: { meta: { suppressGlobalError: true } } });
   const qc = useQueryClient();
   const { toast } = useToast();
   const { language } = useLanguage();

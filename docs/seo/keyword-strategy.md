@@ -91,14 +91,40 @@ size della posizione", "cos'è l'R-multiple", "how to backtest a trading strateg
 
 ## Off-site / operational checklist (NOT in the repo — required for head terms)
 
+- [x] Confirm the production static server serves prerendered `<route>/index.html` directly
+      (no redirect hop) — done in the Phase 1 SEO/GEO technical hardening
+      (`docs/superpowers/specs/2026-07-10-seo-geo-technical-hardening-design.md`):
+      `artifacts/api-server/src/lib/staticSnapshot.ts` resolves the snapshot and
+      `serveFrontendApp` sends it directly, before `express.static`'s redirect-then-serve default.
 - [ ] Verify domain in **Google Search Console** + **Bing Webmaster Tools**; submit
       `https://traderloading.com/sitemap.xml`; request indexing for the landing + topic pages.
-- [ ] Confirm the production static server serves prerendered `<route>/index.html` (directory
-      index / `try_files`-style fallback) so crawlers receive the snapshots.
+      These are user-executed steps (require owning the Google/Bing accounts); nothing here can
+      be automated from the repo. Concrete runbook:
+      1. **Google Search Console**: at https://search.google.com/search-console, add property
+         `traderloading.com` (Domain property, or URL-prefix `https://traderloading.com/`). Verify
+         via the **HTML file** method: download the `google<code>.html` file GSC gives you and drop
+         it directly into `artifacts/trader-dashboard/public/` (it's served as a static file with no
+         code change) — commit and deploy, then click "Verify" in GSC. Once verified: Sitemaps →
+         submit `https://traderloading.com/sitemap.xml`; then URL Inspection → request indexing for
+         `/`, `/it`, `/trading-journal`, `/backtesting`, `/guide` (the highest-intent pages) so
+         Google crawls them proactively instead of waiting for organic discovery.
+      2. **Bing Webmaster Tools**: at https://www.bing.com/webmasters, same flow (Bing also serves
+         ChatGPT/Copilot's web search, so this feeds GEO too). Bing supports **importing verified
+         GSC sites directly** — use that instead of a second manual verification.
+      3. **Confirm crawlability post-deploy**: after the Phase 1 code changes ship,
+         `curl -sI https://traderloading.com/about` — expect `HTTP/1.1 200` with no redirect, and
+         `curl -s https://traderloading.com/about | grep -c '<h1'` — expect `1` (confirms the
+         prerendered snapshot, not the empty SPA shell, is what's served).
+- [ ] Set **GA4**: create a GA4 property, copy the Measurement ID (`G-XXXXXXX`), set it as
+      `VITE_GA_MEASUREMENT_ID` in the Railway service variables (it's a `[BUILD]`-time var — see
+      `.env.railway.example`), redeploy. Already wired to no-op safely without it
+      (`src/lib/analytics.ts`) and to respect cookie consent once set.
 - [ ] Create + consistently link official social profiles (X, Instagram, YouTube) and add them
       to the `Organization.sameAs` array in `index.html` once URLs are real.
 - [ ] Earn backlinks: Product Hunt launch, trading communities/forums, broker/affiliate
       directories, guest posts, comparison articles.
 - [ ] Add real `AggregateRating` JSON-LD only once backed by genuine, verifiable reviews.
 - [ ] Optional next pages to populate for more long-tail coverage: a real blog, a status page,
-      and per-broker / per-pair landing pages.
+      and per-broker / per-pair landing pages (Phase 2 — see
+      `docs/superpowers/specs/2026-07-10-seo-geo-technical-hardening-design.md` for the Phase 1
+      this builds on).

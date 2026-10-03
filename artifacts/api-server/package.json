@@ -7,6 +7,8 @@
     "dev": "tsx ./src/index.ts",
     "start": "node ./dist/index.cjs",
     "build": "tsx ./build.ts",
+    "ingest:seed:xau": "tsx ./src/ingest.ts seed --symbols=XAUUSD --years=5",
+    "ingest:tail:xau": "tsx ./src/ingest.ts tail --symbols=XAUUSD",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

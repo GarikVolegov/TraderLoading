@@ -4,6 +4,8 @@ import { WebSocket } from "ws";
 import type { NewsEvent, NewsRefreshRequest } from "./types.js";
 import type { NewsHubRuntime } from "./runtime.js";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
+import { rejectWebSocketUpgrade } from "../webSocketAuth.js";
+import { isAtConnectionCapacity } from "../webSocketCapacity.js";
 import {
   canSend,
   createControlWebSocketServer,
@@ -77,6 +79,10 @@ export function attachNewsHubWebSocket(server: Server, runtime: NewsHubRuntime):
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "", "http://localhost");
     if (url.pathname !== "/api/news/ws") return;
+    if (isAtConnectionCapacity(wss.clients.size)) {
+      rejectWebSocketUpgrade(socket, 503, "Server at capacity");
+      return;
+    }
     wss.handleUpgrade(request, socket, head, (client) => {
       wss.emit("connection", client, request);
     });

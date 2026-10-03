@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+// Session creation offers the full ladder; the replay terminal serves the
+// complete warehouse-backed set M1→W1 (every timeframe, aggregated from M1).
 const backtest = readFileSync(new URL("./Backtest.tsx", import.meta.url), "utf8");
-const chartReplay = readFileSync(new URL("../components/ChartReplay.tsx", import.meta.url), "utf8");
+const engine = readFileSync(
+  new URL("../components/backtest-terminal/useReplayEngine.ts", import.meta.url),
+  "utf8",
+);
 
-const expected = /const TIMEFRAMES = \["M5", "M15", "M30", "H1", "H4", "D1", "W1"\]/;
-
-assert.match(backtest, expected);
-assert.match(chartReplay, expected);
+assert.match(backtest, /const TIMEFRAMES = \["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"\]/);
+assert.match(engine, /REPLAY_TIMEFRAMES = \["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"\] as const/);
 
 console.log("backtest timeframe checks passed");

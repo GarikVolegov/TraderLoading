@@ -22,15 +22,27 @@ export function HallOfFame({ entries }: { entries: TorneiHallEntry[] }) {
                 <Crown size={16} strokeWidth={1.8} />
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--tl-fg)" }}>{e.champion ?? "—"}</p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    fontWeight: e.champion ? 600 : 400,
+                    fontStyle: e.champion ? "normal" : "italic",
+                    color: e.champion ? "var(--tl-fg)" : "var(--tl-fg-muted)",
+                  }}
+                >
+                  {e.champion ?? t("tornei.hall.no_champion")}
+                </p>
                 <p style={{ margin: "2px 0 0", fontFamily: "var(--tl-font-mono)", fontSize: 11, color: "hsl(215 20% 58%)" }}>
                   {e.seasonLabel} · {formatRangeDate(e.startsAt, language)} — {formatRangeDate(e.endsAt, language)}
                 </p>
               </div>
-              <div style={{ textAlign: "right", flex: "none" }}>
-                <p style={{ margin: 0, fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 14, color: "hsl(142 71% 56%)" }}>{fmtR(e.rCum)}</p>
-                <p style={{ margin: "2px 0 0", fontFamily: "var(--tl-font-mono)", fontSize: 10, color: "hsl(215 20% 58%)" }}>{t("tornei.metric.ts")} {e.discIndex ?? "—"}%</p>
-              </div>
+              {e.champion && (
+                <div style={{ textAlign: "right", flex: "none" }}>
+                  <p style={{ margin: 0, fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 14, color: "hsl(var(--success))" }}>{fmtR(e.rCum)}</p>
+                  <p style={{ margin: "2px 0 0", fontFamily: "var(--tl-font-mono)", fontSize: 10, color: "hsl(215 20% 58%)" }}>{t("tornei.metric.ts")} {e.discIndex ?? "—"}%</p>
+                </div>
+              )}
             </div>
           ))}
         </div>

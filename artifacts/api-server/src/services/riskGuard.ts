@@ -10,6 +10,7 @@
 //   - revenge     : a trade today opened within the revenge window after a loss.
 
 import { rMultiple, type EdgeTrade } from "./tradeAnalytics.js";
+import { tradingDay as romeDay } from "../lib/tradingTime.js";
 
 export interface RiskGuardConfig {
   maxConsecutiveLosses: number;
@@ -88,19 +89,6 @@ export interface RiskGuardReport {
   todayTrades: number;
   todayNetR: number | null;
   alerts: RiskGuardAlert[];
-}
-
-const GUARD_TZ = "Europe/Rome";
-const romeDateFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: GUARD_TZ,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function romeDay(date: Date): string | null {
-  if (Number.isNaN(date.getTime())) return null;
-  return romeDateFormatter.format(date);
 }
 
 function round(value: number): number {

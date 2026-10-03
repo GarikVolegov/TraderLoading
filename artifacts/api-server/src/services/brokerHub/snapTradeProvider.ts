@@ -11,6 +11,10 @@ import type { BrokerProviderRegistry, BrokerProviderVerification, BrokerAccountC
 
 type Fetch = typeof fetch;
 
+// A hung SnapTrade endpoint must not stall the sync cycle: every request is bounded
+// by an AbortSignal timeout (Node's default fetch has no request timeout).
+const BROKER_FETCH_TIMEOUT_MS = 15_000;
+
 interface SnapTradeProviderOptions {
   clientId?: string;
   consumerKey?: string;
@@ -186,6 +190,7 @@ export function createSnapTradeProvider(options: SnapTradeProviderOptions = {}) 
         Signature: sign(path, queryString, body),
       },
       body: body == null ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(BROKER_FETCH_TIMEOUT_MS),
     });
     const text = await response.text();
     const data = text ? (JSON.parse(text) as unknown) : {};

@@ -211,6 +211,11 @@ export const GetBillingStatusResponse = zod.object({
   canCancel: zod.boolean(),
   canResume: zod.boolean(),
   canViewInvoices: zod.boolean(),
+  checkoutAvailable: zod
+    .boolean()
+    .describe(
+      "Whether POST \/billing\/checkout-session can succeed (Stripe configured server-side).",
+    ),
 });
 
 /**
@@ -253,6 +258,11 @@ export const CancelBillingSubscriptionResponse = zod.object({
   canCancel: zod.boolean(),
   canResume: zod.boolean(),
   canViewInvoices: zod.boolean(),
+  checkoutAvailable: zod
+    .boolean()
+    .describe(
+      "Whether POST \/billing\/checkout-session can succeed (Stripe configured server-side).",
+    ),
 });
 
 /**
@@ -288,6 +298,11 @@ export const ResumeBillingSubscriptionResponse = zod.object({
   canCancel: zod.boolean(),
   canResume: zod.boolean(),
   canViewInvoices: zod.boolean(),
+  checkoutAvailable: zod
+    .boolean()
+    .describe(
+      "Whether POST \/billing\/checkout-session can succeed (Stripe configured server-side).",
+    ),
 });
 
 /**
@@ -739,6 +754,12 @@ export const CreateJournalEntryBody = zod.object({
   tradeDate: zod.string(),
   result: zod.enum(["win", "loss", "breakeven", "none"]),
   tags: zod.string().nullish(),
+  symbol: zod.string().nullish(),
+  direction: zod.enum(["buy", "sell"]).nullish(),
+  entryPrice: zod.number().nullish(),
+  exitPrice: zod.number().nullish(),
+  stopLoss: zod.number().nullish(),
+  profit: zod.number().nullish(),
 });
 
 /**
@@ -873,6 +894,43 @@ export const GetJournalEdgeResponse = zod.object({
       }),
     ),
   }),
+  stats: zod.object({
+    winRateCI: zod.union([
+      zod.object({
+        point: zod.number(),
+        lower: zod.number(),
+        upper: zod.number(),
+      }),
+      zod.null(),
+    ]),
+    kelly: zod.union([
+      zod.object({
+        full: zod.number(),
+        half: zod.number(),
+      }),
+      zod.null(),
+    ]),
+    rollingExpectancy: zod.array(
+      zod.object({
+        atTrade: zod.number(),
+        mean: zod.number(),
+      }),
+    ),
+    equityCurve: zod.array(
+      zod.object({
+        atTrade: zod.number(),
+        equity: zod.number(),
+      }),
+    ),
+    maxDrawdown: zod.number(),
+    rHistogram: zod.array(
+      zod.object({
+        from: zod.number(),
+        to: zod.number(),
+        count: zod.number(),
+      }),
+    ),
+  }),
 });
 
 /**
@@ -912,6 +970,12 @@ export const UpdateJournalEntryBody = zod.object({
   tradeDate: zod.string(),
   result: zod.enum(["win", "loss", "breakeven", "none"]),
   tags: zod.string().nullish(),
+  symbol: zod.string().nullish(),
+  direction: zod.enum(["buy", "sell"]).nullish(),
+  entryPrice: zod.number().nullish(),
+  exitPrice: zod.number().nullish(),
+  stopLoss: zod.number().nullish(),
+  profit: zod.number().nullish(),
 });
 
 export const UpdateJournalEntryResponse = zod.object({

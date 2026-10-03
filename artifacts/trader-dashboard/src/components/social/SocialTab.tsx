@@ -19,7 +19,8 @@ export function SocialTab({
   currentUserId: string;
   onStartChat: (u: SocialUser) => void;
 }) {
-  const { data: feed = [], isLoading: feedLoading } = useFeed();
+  const { data: feedData, isLoading: feedLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed();
+  const feed = feedData?.pages.flatMap((page) => page.items) ?? [];
   const { data: storyGroups = [] } = useStories();
   const [viewingStories, setViewingStories] = useState<{
     groups: StoryGroup[];
@@ -153,14 +154,14 @@ export function SocialTab({
                         if (relationshipStatus === "accepted") {
                           return (
                             <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-1">
-                              Già amico
+                              {uiText("auto.ui.7d6318448b")}
                             </span>
                           );
                         }
                         if (relationshipStatus === "pending_sent") {
                           return (
                             <span className="text-[10px] bg-secondary/60 text-muted-foreground border border-border rounded-full px-2 py-1">
-                              Richiesta inviata
+                              {uiText("auto.ui.f4fbb496bb")}
                             </span>
                           );
                         }
@@ -170,7 +171,7 @@ export function SocialTab({
                               onClick={() => setShowSearch(false)}
                               className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20 transition-colors"
                             >
-                              Rispondi
+                              {uiText("auto.ui.7298262b60")}
                             </button>
                           );
                         }
@@ -180,7 +181,7 @@ export function SocialTab({
                             disabled={sendFriendRequestMutation.isPending}
                             className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20 disabled:opacity-50 transition-colors"
                           >
-                            Aggiungi amico
+                            {uiText("auto.ui.7fd20b6519")}
                           </button>
                         );
                       })()}
@@ -205,7 +206,7 @@ export function SocialTab({
             )}
             {searchResults.length === 0 && searchQ.length >= 2 && (
               <p className="text-center text-muted-foreground text-sm py-8">
-                Nessun utente trovato
+                {uiText("auto.ui.f4b60ba9f9")}
               </p>
             )}
           </div>
@@ -214,7 +215,7 @@ export function SocialTab({
             {pendingFriendRequests.length > 0 && (
               <div className="p-4 border-b border-border">
                 <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                  Richieste amicizia
+                  {uiText("auto.ui.4555767847")}
                 </p>
                 <div className="space-y-2">
                   {pendingFriendRequests.map((request) => (
@@ -232,7 +233,7 @@ export function SocialTab({
                           {request.senderName ?? "Trader"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Vuole aggiungerti agli amici
+                          {uiText("auto.ui.a51a25e19b")}
                         </p>
                       </div>
                       <button
@@ -245,7 +246,7 @@ export function SocialTab({
                         disabled={respondToFriendRequestMutation.isPending}
                         className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 disabled:opacity-50 transition-colors"
                       >
-                        Accetta
+                        {uiText("auto.ui.ab8585e7c5")}
                       </button>
                       <button
                         onClick={() =>
@@ -257,7 +258,7 @@ export function SocialTab({
                         disabled={respondToFriendRequestMutation.isPending}
                         className="px-3 py-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-xs font-medium disabled:opacity-50 transition-colors"
                       >
-                        Rifiuta
+                        {uiText("auto.ui.68b880f2a6")}
                       </button>
                     </div>
                   ))}
@@ -276,7 +277,7 @@ export function SocialTab({
                       <Plus className="w-5 h-5 text-primary" />
                     </div>
                     <span className="text-[10px] text-muted-foreground">
-                      Aggiungi
+                      {uiText("auto.ui.83f510aa41")}
                     </span>
                   </div>
                   {storyGroups.map((group, i) => (
@@ -297,7 +298,7 @@ export function SocialTab({
                         />
                       </div>
                       <span className="text-[10px] text-muted-foreground truncate max-w-[56px]">
-                        {group.isOwn ? "Tu" : group.userName.split(" ")[0]}
+                        {group.isOwn ? uiText("auto.ui.b44892b7f8") : group.userName.split(" ")[0]}
                       </span>
                     </div>
                   ))}
@@ -317,7 +318,7 @@ export function SocialTab({
                   <div className="text-left">
                     <p className="text-sm font-medium">{uiText("chat.story.add")}</p>
                     <p className="text-xs">
-                      Condividi il tuo trading per 24 ore
+                      {uiText("auto.ui.cd1d67086a")}
                     </p>
                   </div>
                 </button>
@@ -334,24 +335,36 @@ export function SocialTab({
                   <Users className="w-12 h-12 mx-auto opacity-20" />
                   <p className="font-medium">{uiText("chat.feed.empty_title")}</p>
                   <p className="text-sm">
-                    Cerca e segui altri trader per vedere i loro post!
+                    {uiText("auto.ui.57199cef92")}
                   </p>
                   <button
                     onClick={() => setShowSearch(true)}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm hover:bg-primary/20 transition-colors"
                   >
-                    <Search className="w-4 h-4" /> Cerca trader
+                    <Search className="w-4 h-4" /> {uiText("auto.ui.d174e7aa6b")}
                   </button>
                 </div>
               ) : (
-                feed.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    currentUserId={currentUserId}
-                    onViewProfile={setViewingProfile}
-                  />
-                ))
+                <>
+                  {feed.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      currentUserId={currentUserId}
+                      onViewProfile={setViewingProfile}
+                    />
+                  ))}
+                  {hasNextPage && (
+                    <button
+                      type="button"
+                      onClick={() => fetchNextPage()}
+                      disabled={isFetchingNextPage}
+                      className="mx-auto mt-2 block rounded-lg border border-border/40 bg-background/35 px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+                    >
+                      {uiText("chat.feed.load_more")}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </>

@@ -7,7 +7,10 @@ import { useLanguage, LANGUAGES, type Language } from "@/contexts/LanguageContex
 export function LanguageSettings() {
   const { language, setLanguage } = useLanguage();
   const { toast } = useToast();
-  const updateMutation = useUpdateUserSettings();
+  // The empty catch below is deliberate (local switch still works, next save
+  // retries) — opt out of App.tsx's global mutation-error toast so a
+  // best-effort background sync doesn't surface as a user-facing failure.
+  const updateMutation = useUpdateUserSettings({ mutation: { meta: { suppressGlobalError: true } } });
   const qc = useQueryClient();
 
   const handleSelect = async (lang: Language) => {

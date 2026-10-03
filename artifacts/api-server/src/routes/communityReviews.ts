@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getMemberContext, requirePermission, hasPermission } from "../services/communityPermissions.js";
+import { recordModerationAction } from "../services/communityModerationLog.js";
 
 const router: IRouter = Router();
 
@@ -186,11 +187,13 @@ router.patch("/community/reviews/:reviewId/hide", async (req, res) => {
   try {
     const [review] = await db.select().from(communityReviewsTable).where(eq(communityReviewsTable.id, reviewId)).limit(1);
     if (!review) { res.status(404).json({ error: "Recensione non trovata" }); return; }
-    if (!(await requirePermission(req, res, review.communityId, "reviews.moderate"))) return;
+    const ctx = await requirePermission(req, res, review.communityId, "reviews.moderate");
+    if (!ctx) return;
 
     const hidden = req.body.hidden !== false;
     await db.update(communityReviewsTable).set({ hidden }).where(eq(communityReviewsTable.id, reviewId));
     await recomputeRating(review.communityId);
+    await recordModerationAction({ communityId: review.communityId, actorUserId: ctx.userId, action: hidden ? "review.hide" : "review.unhide", targetUserId: review.userId, targetId: reviewId });
     res.json({ ok: true, hidden });
   } catch (err) {
     console.error("PATCH /community/reviews/:reviewId/hide error:", err);

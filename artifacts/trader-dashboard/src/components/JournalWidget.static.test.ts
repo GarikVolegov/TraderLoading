@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 const widgetSource = readFileSync(new URL("./JournalWidget.tsx", import.meta.url), "utf8");
 const dashboardSource = readFileSync(new URL("../pages/Dashboard.tsx", import.meta.url), "utf8");
-const i18nDict = readFileSync(new URL("../lib/i18n.ts", import.meta.url), "utf8");
+const i18nDict = readFileSync(new URL("../lib/i18n/dict.it.ts", import.meta.url), "utf8");
 
 assert.match(widgetSource, /JournalEntryModal/);
 assert.match(widgetSource, /useGetJournalEntries/);

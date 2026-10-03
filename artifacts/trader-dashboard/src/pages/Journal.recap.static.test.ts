@@ -2,7 +2,7 @@ import fs from "node:fs";
 import assert from "node:assert/strict";
 
 const journal = fs.readFileSync("src/pages/Journal.tsx", "utf8");
-const i18n = fs.readFileSync("src/lib/i18n.ts", "utf8");
+const i18n = fs.readFileSync("src/lib/i18n/dict.it.ts", "utf8");
 
 for (const token of [
   "overallJudgment",

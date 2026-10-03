@@ -43,7 +43,7 @@ export function JournalWidget() {
   const dateLocale = useDateLocale();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { data: entries, isLoading, isError } = useGetJournalEntries({
-    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 10_000 },
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 60_000 },
   });
 
   const summary = useMemo(

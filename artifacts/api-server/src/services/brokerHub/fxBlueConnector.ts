@@ -428,8 +428,15 @@ type FxBlueFetchResult =
   | { kind: "private" }
   | { kind: "error"; error: string };
 
+// A hung external feed must not stall the sync cycle: every broker fetch is
+// bounded by an AbortSignal timeout (Node's default has no request timeout).
+const BROKER_FETCH_TIMEOUT_MS = 15_000;
+
 async function fetchFxBlueText(url: string): Promise<FxBlueFetchResult> {
-  const response = await fetch(url, { headers: { accept: "text/html,application/json" } });
+  const response = await fetch(url, {
+    headers: { accept: "text/html,application/json" },
+    signal: AbortSignal.timeout(BROKER_FETCH_TIMEOUT_MS),
+  });
   if (response.status === 404) return { kind: "waiting" };
   if (response.status === 401 || response.status === 403) return { kind: "private" };
   if (!response.ok) return { kind: "error", error: `FX Blue HTTP ${response.status}` };

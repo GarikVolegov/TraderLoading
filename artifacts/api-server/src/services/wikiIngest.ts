@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { extractWikiText, type WikiSourceKind } from "./wikiProcessor.js";
 import { createWikiStorageFromEnv } from "./wikiStorage.js";
+import { captureError } from "../lib/observability.js";
 
 async function updateJob(sourceId: number, patch: Partial<typeof wikiIngestJobsTable.$inferInsert>) {
   await db.update(wikiIngestJobsTable)
@@ -81,7 +82,10 @@ export async function processWikiSourceJob(sourceId: number, buffer?: Buffer): P
 export function enqueueWikiSourceProcessing(sourceId: number, buffer?: Buffer): void {
   setTimeout(() => {
     processWikiSourceJob(sourceId, buffer).catch((err) => {
+      // Detached background job: report so a user's upload silently failing to
+      // extract is visible in Sentry, not just the local console.
       console.error("[wiki] async ingest failed", err);
+      captureError(err, { surface: "background", job: "wiki-ingest", sourceId });
     });
   }, 0);
 }

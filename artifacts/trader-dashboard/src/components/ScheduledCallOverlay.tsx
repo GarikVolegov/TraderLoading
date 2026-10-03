@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BellOff, Building2, Phone, ShieldCheck, X } from "lucide-react";
 import { reportClientError } from "@/lib/clientErrorReporter";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import type { ScheduledCallConfig } from "@/lib/scheduledCalls";
 
 interface ScheduledCallOverlayProps {
@@ -78,15 +79,21 @@ export function ScheduledCallOverlay({ call, onDismiss, onSnooze }: ScheduledCal
   const fmt = (seconds: number) =>
     `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: !!call, onClose: close, panelRef });
+
   return (
     <AnimatePresence>
       {call && (
         <motion.div
+          ref={panelRef}
+          {...panelProps}
+          aria-labelledby={titleId}
           key="scheduled-bank-call"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-[radial-gradient(circle_at_50%_20%,rgba(201,162,39,0.16),rgba(2,6,23,0.98)_46%,rgba(0,0,0,1))] px-5 text-foreground backdrop-blur-xl"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-[radial-gradient(circle_at_50%_20%,rgba(201,162,39,0.16),rgba(2,6,23,0.98)_46%,rgba(0,0,0,1))] px-5 text-foreground backdrop-blur-xl focus:outline-none"
         >
           <div className="w-full max-w-sm select-none">
             <motion.div
@@ -120,7 +127,7 @@ export function ScheduledCallOverlay({ call, onDismiss, onSnooze }: ScheduledCal
                 <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em]" style={{ color: call.accentColor }}>
                   {call.department}
                 </p>
-                <h2 className="mt-2 text-2xl font-black leading-tight tracking-normal">{call.callerName || "Banca - Ufficio Risk"}</h2>
+                <h2 id={titleId} className="mt-2 text-2xl font-black leading-tight tracking-normal">{call.callerName || "Banca - Ufficio Risk"}</h2>
                 <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">{call.callMessage}</p>
               </div>
 

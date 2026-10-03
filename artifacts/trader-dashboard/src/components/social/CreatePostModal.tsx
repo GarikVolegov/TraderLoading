@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
 import { uiText } from "@/contexts/LanguageContext";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import {
   X,
   FileText,
@@ -96,23 +97,33 @@ export function CreatePostModal({
     });
   };
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Focus the textarea (its pre-existing autoFocus) instead of the hook's
+  // default "first focusable in DOM order" pick, which would land on the X
+  // close button rendered before it.
+  const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose, panelRef, initialFocusRef: textareaRef });
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4"
       onClick={onClose}
     >
       <motion.div
+        ref={panelRef}
+        {...panelProps}
+        aria-labelledby={titleId}
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-card rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md p-5 space-y-4"
+        className="bg-card rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md p-5 space-y-4 focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="font-bold text-lg">
+          <h2 id={titleId} className="font-bold text-lg">
             Nuovo {isStory ? "storia" : "post"}
           </h2>
           <button
             onClick={onClose}
+            aria-label={uiText("common.close")}
             className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground"
           >
             <X className="w-5 h-5" />

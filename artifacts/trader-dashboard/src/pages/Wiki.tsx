@@ -5,7 +5,9 @@ import { Plus } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
+import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ArchiveRail } from "@/components/archive/ArchiveRail";
 import { ArchiveToolbar, type ArchiveDensity, type ArchiveView } from "@/components/archive/ArchiveToolbar";
 import { TypeChips } from "@/components/archive/TypeChips";
@@ -43,7 +45,12 @@ export default function Wiki() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
-  const { data: sources = [] } = useQuery({
+  const {
+    data: sources = [],
+    isLoading: sourcesLoading,
+    isError: sourcesError,
+    refetch: refetchSources,
+  } = useQuery({
     queryKey: ["wiki", "sources"],
     queryFn: () => apiFetch<WikiSource[]>(`${API}/wiki/sources`),
     refetchInterval: (query) =>
@@ -212,7 +219,11 @@ export default function Wiki() {
               />
               <TypeChips value={typeFilter} onChange={setTypeFilter} />
 
-              {sources.length === 0 ? (
+              {sourcesError ? (
+                <QueryErrorState onRetry={() => void refetchSources()} />
+              ) : sourcesLoading ? (
+                <ArchiveGridSkeleton />
+              ) : sources.length === 0 ? (
                 <EmptyState onAdd={() => setAddOpen(true)} />
               ) : filtered.length === 0 ? (
                 <NoResults onClear={clearFilters} />
@@ -248,6 +259,16 @@ export default function Wiki() {
         />
       </ProUpgradeGate>
     </PageLayout>
+  );
+}
+
+function ArchiveGridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4" data-testid="archive-grid-skeleton">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <Skeleton key={i} className="h-40 w-full rounded-xl" />
+      ))}
+    </div>
   );
 }
 

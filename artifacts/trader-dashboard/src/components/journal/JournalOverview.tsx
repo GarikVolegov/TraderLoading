@@ -19,6 +19,9 @@ import { fetchJournalRecap, journalRecapQueryKey } from "@/lib/journalRecapsApi"
 import { parseTradeContent, tradeRMultiple } from "@/lib/parseTradeContent";
 import { cumulativeR, monteCarloBands } from "@/lib/equityProjection";
 import { EquityCurveChart } from "./EquityCurveChart";
+import { RiskOfRuinCard } from "./RiskOfRuinCard";
+import { CorrelationCard } from "./CorrelationCard";
+import { EdgeQualityCard } from "./EdgeQualityCard";
 
 const PROJECTION_STEPS = 20;
 
@@ -175,6 +178,15 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
           </CardContent>
         </Card>
       </div>
+
+      {/* Edge quality: Wilson CI, Kelly, max drawdown, R distribution */}
+      <EdgeQualityCard stats={edge?.stats} />
+
+      {/* Risk of ruin (bootstrapped from real R) */}
+      <RiskOfRuinCard />
+
+      {/* Portfolio correlation / concentration risk (open positions) */}
+      <CorrelationCard />
 
       {/* 4-week recap */}
       <Card>

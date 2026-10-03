@@ -8,7 +8,7 @@ import type { BrokerEvent } from "./types.js";
 
 const runtime: BrokerHubRuntime = {
   async listProfiles() {
-    return { profiles: [], activeProfileId: null };
+    return { profiles: [], activeProfileId: null, activeByUser: {} };
   },
   async saveProfile() {
     throw new Error("not used");
@@ -136,6 +136,7 @@ await new Promise<void>((resolve) => server.close(() => resolve()));
     async listProfiles() {
       return {
         activeProfileId: null,
+        activeByUser: {},
         profiles: [
           {
             id: "profile-one",

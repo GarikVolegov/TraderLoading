@@ -53,7 +53,7 @@ const SHORTCUT_ITEMS = [
     keys: ["Tools", "→", "Backtest"],
     action: "Allenamento su grafici storici",
   },
-  { keys: ["Zen"], action: "Mood tracking e meditazione" },
+  { keys: ["Routine", "→", "Zona Zen"], action: "Respirazione guidata e check-in emotivo" },
 ];
 
 const HELP_FAQS = [
@@ -71,7 +71,7 @@ const HELP_FAQS = [
   },
   {
     q: "Come esporto i miei trade?",
-    a: "Dal Diario puoi esportare le sessioni in formato ICS (calendario). L'export CSV completo è in arrivo nei prossimi aggiornamenti.",
+    a: "Dal Diario puoi esportare le sessioni in formato ICS (calendario), da importare in qualsiasi app di calendario.",
   },
   {
     q: "Come funziona il calcolo del lot size?",

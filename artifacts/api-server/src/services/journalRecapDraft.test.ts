@@ -3,8 +3,10 @@ import { computeEdgeReport, type EdgeTrade } from "./tradeAnalytics.js";
 import { computeDisciplineReport } from "./tradeDiscipline.js";
 import {
   buildRecapBrief,
+  buildRecapMessages,
   filterTradesByPeriod,
   parseRecapDraft,
+  recapSystemPrompt,
   RECAP_DRAFT_KEYS,
 } from "./journalRecapDraft.js";
 
@@ -84,6 +86,25 @@ function trade(overrides: Partial<EdgeTrade>): EdgeTrade {
   const draft = parseRecapDraft("Il modello ha risposto in prosa senza JSON.");
   assert.equal(draft.overallJudgment, "Il modello ha risposto in prosa senza JSON.");
   assert.equal(draft.wentWell, "");
+}
+
+// The recap must be produced in the user's language (like the risk-guard push),
+// not always Italian.
+assert.match(recapSystemPrompt("it"), /italiano/);
+assert.match(recapSystemPrompt("en"), /English/);
+assert.match(recapSystemPrompt("fr"), /français/);
+assert.match(recapSystemPrompt("de"), /Deutsch/);
+assert.match(recapSystemPrompt("es"), /español/);
+// Unknown/undefined language falls back to Italian.
+assert.match(recapSystemPrompt("xx"), /italiano/);
+
+// buildRecapMessages threads the language into the system prompt.
+{
+  const edge = computeEdgeReport([]);
+  const discipline = computeDisciplineReport([]);
+  const ctx = { kind: "weekly", periodStart: "2026-06-01", periodEnd: "2026-06-07" };
+  assert.match(buildRecapMessages(edge, discipline, ctx, "en").system, /English/);
+  assert.match(buildRecapMessages(edge, discipline, ctx, "it").system, /italiano/);
 }
 
 console.log("journalRecapDraft.test.ts: all assertions passed");

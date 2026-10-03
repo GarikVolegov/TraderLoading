@@ -36,7 +36,9 @@ const FONT_OPTIONS = [
 
 export function FontSettings() {
   const { fontChoice, setFontChoice } = useBackground();
-  const updateMutation = useUpdateUserSettings();
+  // handleSelect's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const updateMutation = useUpdateUserSettings({ mutation: { meta: { suppressGlobalError: true } } });
   const qc = useQueryClient();
   const { toast } = useToast();
 

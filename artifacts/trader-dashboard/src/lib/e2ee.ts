@@ -163,12 +163,17 @@ export async function getOrCreateAccountKeyPair(
   const saveLocal = accountBackup.saveLocal ?? storeKeyPairBestEffort;
 
   const localPair = await loadLocal(userId);
-  let accountPair: E2EEKeyPair | null = null;
 
+  let accountPair: E2EEKeyPair | null;
   try {
-    accountPair = await accountBackup.load();
-  } catch {
-    accountPair = null;
+    accountPair = await accountBackup.load(); // null = definitively no backup exists
+  } catch (err) {
+    // Couldn't determine whether a backup exists (network/server error). Fail
+    // closed: never regenerate + overwrite, which would destroy the only key
+    // copy and make every past message undecryptable. Use the local key if we
+    // have one, otherwise surface the error rather than silently start fresh.
+    if (localPair) return localPair;
+    throw err;
   }
 
   if (accountPair) {
@@ -185,6 +190,7 @@ export async function getOrCreateAccountKeyPair(
     return localPair;
   }
 
+  // No backup exists (load resolved to null) and no local key: genuine first use.
   const generated = await generateKeyPair(userId);
   try {
     await accountBackup.save(generated);
@@ -194,6 +200,9 @@ export async function getOrCreateAccountKeyPair(
   return generated;
 }
 
+// NOTE: at-rest encryption, NOT end-to-end. The private key is backed up to the
+// server (see PUT /chat/key-backup) for cross-device recovery, so the server can
+// technically derive this shared key. UI copy must not claim E2EE.
 async function deriveSharedKey(privateKeyJwk: JsonWebKey, publicKeyJwk: JsonWebKey): Promise<CryptoKey> {
   const privateKey = await crypto.subtle.importKey(
     "jwk",

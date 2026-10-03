@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { DICT, SUPPORTED_LANGUAGES } from "@/lib/i18n";
+import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
+import { DICT } from "@/lib/i18n/all";
 import { readSettingsFeatureSource } from "../pages/settingsFeatureSource";
 
 const appSource = fs.readFileSync("src/App.tsx", "utf8");

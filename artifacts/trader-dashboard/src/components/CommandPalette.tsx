@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import {
-  LayoutDashboard, BookOpen, FlaskConical, Brain, MessageCircle, Library,
+  LayoutDashboard, BookOpen, FlaskConical, MessageCircle, Library,
   Sunrise, Settings, Newspaper, Landmark, CalendarDays, Trophy,
   Clock, Target, ClipboardCheck, Plus, Archive,
 } from "lucide-react";
@@ -15,10 +15,9 @@ const PAGES = [
   { href: "/",           labelKey: "dashboard.title",   icon: LayoutDashboard, keywords: "home command center" },
   { href: "/journal",    labelKey: "journal.title",     icon: BookOpen,        keywords: "journal trade" },
   { href: "/backtest",   labelKey: "nav.backtest",      icon: FlaskConical,    keywords: "replay strategia" },
-  { href: "/zen",        labelKey: "zen.title",         icon: Brain,           keywords: "respirazione meditazione umore insight" },
   { href: "/chat",       labelKey: "nav.chat",          icon: MessageCircle,   keywords: "chat social messaggi" },
   { href: "/news",       labelKey: "news.title",        icon: Newspaper,       keywords: "news macro" },
-  { href: "/routine",    labelKey: "nav.routine",       icon: Sunrise,         keywords: "programma mattutino serale" },
+  { href: "/routine",    labelKey: "nav.routine",       icon: Sunrise,         keywords: "programma mattutino serale respirazione meditazione umore" },
   { href: "/broker",     labelKey: "page.broker.title", icon: Landmark,        keywords: "conto fx blue account" },
   { href: "/calendar",   labelKey: "page.calendar.title", icon: CalendarDays,  keywords: "agenda eventi planner" },
   { href: "/milestones", labelKey: "nav.milestones",    icon: Trophy,          keywords: "livelli xp certificati" },

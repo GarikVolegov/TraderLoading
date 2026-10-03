@@ -1,9 +1,11 @@
+import { useRef } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, UserPlus, UserMinus, UserCheck, Heart, Lock, Loader2, User } from "lucide-react";
 import { apiJSON } from "@/lib/apiFetch";
 import { formatCompactItalianRelativeTime } from "@/lib/relativeTime";
 import { uiText } from "@/contexts/LanguageContext";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface SocialUser {
   userId: string;
@@ -78,6 +80,13 @@ export function UserProfileModal({
     },
   });
 
+  // isOpen tracks !isLoading (not a hardcoded true): the loading branch below
+  // renders a different subtree with no panelRef attached, and the hook's
+  // focus-capture effect only re-runs when isOpen changes — so it must flip
+  // false→true once the real panel (with the ref) actually mounts.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: !isLoading, onClose, panelRef });
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
@@ -96,9 +105,12 @@ export function UserProfileModal({
       onClick={onClose}
     >
       <motion.div
+        ref={panelRef}
+        {...panelProps}
+        aria-labelledby={titleId}
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-card rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-card rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 space-y-4">
@@ -106,7 +118,7 @@ export function UserProfileModal({
             <div className="flex items-center gap-3">
               <Avatar name={profile?.name ?? "?"} avatarUrl={profile?.avatarUrl} size="lg" />
               <div>
-                <p className="font-bold text-lg leading-tight">{profile?.name ?? "Trader"}</p>
+                <p id={titleId} className="font-bold text-lg leading-tight">{profile?.name ?? "Trader"}</p>
                 <p className="text-xs text-muted-foreground">
                   Livello {profile?.level ?? 1} · {(profile?.xp ?? 0).toLocaleString()} XP
                 </p>

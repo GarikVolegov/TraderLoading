@@ -8,11 +8,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGetProfile } from "@workspace/api-client-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
+import { reportClientError } from "@/lib/clientErrorReporter";
 import { MindMapEditor, MindMapView, isMindMapData, type MindMapData } from "@/components/MindMapEditor";
 import { uiText } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type ContentType = "document" | "mindmap" | "video";
@@ -36,10 +39,10 @@ interface Content {
   published: boolean;
 }
 
-const TYPE_META: Record<ContentType, { label: string; icon: typeof FileText; color: string }> = {
-  document: { label: "Documento", icon: FileText, color: "#38bdf8" },
-  mindmap:  { label: "Mappa mentale", icon: Network, color: "#a855f7" },
-  video:    { label: "Video", icon: Video, color: "#f43f5e" },
+const TYPE_META: Record<ContentType, { labelKey: string; icon: typeof FileText; color: string }> = {
+  document: { labelKey: "auto.ui.8ae11c9993", icon: FileText, color: "#38bdf8" },
+  mindmap:  { labelKey: "auto.ui.9c6b681271", icon: Network, color: "#a855f7" },
+  video:    { labelKey: "auto.ui.bc17c1f017", icon: Video, color: "#f43f5e" },
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -79,7 +82,7 @@ function ContentViewer({ content, onClose }: { content: Content; onClose: () => 
         <DialogHeader>
           <div className="flex items-center gap-2">
             <meta.icon className="w-4 h-4" style={{ color: meta.color }} />
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: meta.color }}>{meta.label}</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: meta.color }}>{uiText(meta.labelKey)}</span>
           </div>
           <DialogTitle className="text-xl leading-snug pt-1">{content.title}</DialogTitle>
         </DialogHeader>
@@ -104,7 +107,7 @@ function ContentViewer({ content, onClose }: { content: Content; onClose: () => 
           ) : (
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-6 text-center text-sm text-muted-foreground">
               <Network className="w-8 h-8 mx-auto mb-2 text-primary/60" />
-              Mappa mentale vuota.
+              {uiText("auto.ui.ef6e5420c5")}
             </div>
           )
         )}
@@ -121,7 +124,7 @@ function ContentViewer({ content, onClose }: { content: Content; onClose: () => 
             {content.fileUrl && (
               <a href={content.fileUrl} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-                <Download className="w-4 h-4" /> {content.fileName ?? "Apri documento"}
+                <Download className="w-4 h-4" /> {content.fileName ?? uiText("auto.ui.1251c8dd8b")}
               </a>
             )}
             {content.bodyMarkdown && (
@@ -140,6 +143,7 @@ function ContentViewer({ content, onClose }: { content: Content; onClose: () => 
 // ─── Admin: content form ────────────────────────────────────────────────────
 function ContentForm({ initial, onClose }: { initial: Content | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [form, setForm] = useState({
     type: (initial?.type ?? "document") as ContentType,
     title: initial?.title ?? "", description: initial?.description ?? "",
@@ -167,14 +171,30 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
       const fd = new FormData(); fd.append("file", file);
       const r = await apiFetch("library/upload", { method: "POST", body: fd });
       const d = await r.json();
-      if (d.fileUrl) setForm((f) => ({ ...f, fileUrl: d.fileUrl, fileName: d.fileName, fileSize: d.fileSize, mimeType: d.mimeType }));
-    } finally { setUploading(false); }
+      if (d.fileUrl) {
+        setForm((f) => ({ ...f, fileUrl: d.fileUrl, fileName: d.fileName, fileSize: d.fileSize, mimeType: d.mimeType }));
+      } else {
+        reportClientError(new Error("upload response missing fileUrl"), {
+          context: "library content upload",
+          fallbackMessage: uiText("auto.ui.657c9641cf"),
+          toast,
+        });
+      }
+    } catch (error) {
+      reportClientError(error, {
+        context: "library content upload",
+        fallbackMessage: uiText("auto.ui.657c9641cf"),
+        toast,
+      });
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-[600px] max-h-[88vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-border">
-        <DialogHeader><DialogTitle>{initial ? "Modifica contenuto" : "Nuovo contenuto"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{initial ? uiText("auto.ui.4d0e8cb842") : uiText("auto.ui.a34a52a309")}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="flex gap-2">
             {(Object.keys(TYPE_META) as ContentType[]).map((t) => {
@@ -182,7 +202,7 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
               return (
                 <button key={t} onClick={() => setForm({ ...form, type: t })}
                   className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-colors ${form.type === t ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
-                  <M.icon className="w-3.5 h-3.5" /> {M.label}
+                  <M.icon className="w-3.5 h-3.5" /> {uiText(M.labelKey)}
                 </button>
               );
             })}
@@ -191,7 +211,7 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
           <textarea className="tl-input min-h-16" placeholder={uiText("auto.ui.07dfa30eec")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
 
           {form.type === "video" && (
-            <input className="tl-input" placeholder="Link YouTube / Vimeo" value={form.embedUrl} onChange={(e) => setForm({ ...form, embedUrl: e.target.value })} />
+            <input className="tl-input" placeholder={uiText("auto.ui.75b906a28d")} value={form.embedUrl} onChange={(e) => setForm({ ...form, embedUrl: e.target.value })} />
           )}
           {form.type === "mindmap" && (
             <MindMapEditor initial={form.mindmap} onChange={(d) => setForm((f) => ({ ...f, mindmap: d }))} />
@@ -200,31 +220,31 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
             <>
               <div className="flex items-center gap-2">
                 <label className="inline-flex items-center gap-2 cursor-pointer text-sm rounded-md border border-border px-3 py-2 hover:bg-secondary/40">
-                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} Carica file
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} {uiText("auto.ui.6cdd9c8c78")}
                   <input type="file" hidden onChange={(e) => e.target.files?.[0] && uploadDoc(e.target.files[0])} />
                 </label>
                 {form.fileName && <span className="text-xs text-muted-foreground truncate max-w-[16rem]">{form.fileName}</span>}
               </div>
-              <textarea className="tl-input min-h-24" placeholder="Testo / note (opzionale)" value={form.bodyMarkdown} onChange={(e) => setForm({ ...form, bodyMarkdown: e.target.value })} />
+              <textarea className="tl-input min-h-24" placeholder={uiText("auto.ui.3e48d3a8aa")} value={form.bodyMarkdown} onChange={(e) => setForm({ ...form, bodyMarkdown: e.target.value })} />
             </>
           )}
 
-          <input className="tl-input" placeholder="Tag separati da virgola" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
+          <input className="tl-input" placeholder={uiText("auto.ui.e8e8d9200a")} value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
           <div className="grid grid-cols-2 gap-3">
-            <label className="text-xs text-muted-foreground">Livello di sblocco (0 = sempre)
+            <label className="text-xs text-muted-foreground">{uiText("auto.ui.afe3ce5295")}
               <input type="number" min={0} className="tl-input mt-1" value={form.requiredLevel} onChange={(e) => setForm({ ...form, requiredLevel: Number(e.target.value) })} />
             </label>
-            <label className="text-xs text-muted-foreground">Ordine
+            <label className="text-xs text-muted-foreground">{uiText("auto.ui.301882d2af")}
               <input type="number" className="tl-input mt-1" value={form.orderIndex} onChange={(e) => setForm({ ...form, orderIndex: Number(e.target.value) })} />
             </label>
           </div>
           <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} /> Pubblicato
+            <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} /> {uiText("auto.ui.2acfcfec5b")}
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" size="sm" onClick={onClose}>{uiText("auto.ui.6c3de5381b")}</Button>
             <Button size="sm" disabled={!form.title.trim() || save.isPending} onClick={() => save.mutate()}>
-              {save.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} Salva
+              {save.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} {uiText("common.save")}
             </Button>
           </div>
         </div>
@@ -244,7 +264,7 @@ function ContentCard({ item, locked, isAdmin, onOpen, onEdit, onDelete }: {
       className="tl-panel p-4 flex flex-col gap-2 border-border/40">
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: M.color }}>
-          <M.icon className="w-3.5 h-3.5" /> {M.label}
+          <M.icon className="w-3.5 h-3.5" /> {uiText(M.labelKey)}
         </span>
         <div className="flex items-center gap-1">
           {!item.published && <span className="text-[9px] text-amber-400 font-bold">{uiText("auto.ui.227e03417c")}</span>}
@@ -259,7 +279,7 @@ function ContentCard({ item, locked, isAdmin, onOpen, onEdit, onDelete }: {
       <h3 className="font-bold text-sm leading-snug">{item.title}</h3>
       {item.description && <p className="text-xs text-muted-foreground line-clamp-2 flex-1">{item.description}</p>}
       <Button variant={locked ? "outline" : "default"} size="sm" disabled={locked} onClick={onOpen} className="mt-auto">
-        {locked ? <><Lock className="w-3.5 h-3.5 mr-1" /> Livello {item.requiredLevel}</> : "Apri"}
+        {locked ? <><Lock className="w-3.5 h-3.5 mr-1" /> {uiText("auto.ui.93067f5be8", { level: item.requiredLevel })}</> : uiText("auto.ui.fbb92fee8f")}
       </Button>
     </motion.div>
   );
@@ -274,7 +294,11 @@ export default function Library() {
   const { data: admin } = useQuery<{ isAdmin: boolean }>({ queryKey: ["library", "admin"], queryFn: () => apiJSON("library/admin/status") });
   const isAdmin = admin?.isAdmin ?? false;
 
-  const { data: contents = [] } = useQuery<Content[]>({ queryKey: ["library", "contents"], queryFn: () => apiJSON("library/contents") });
+  const {
+    data: contents = [],
+    isError: contentsError,
+    refetch: refetchContents,
+  } = useQuery<Content[]>({ queryKey: ["library", "contents"], queryFn: () => apiJSON("library/contents") });
 
   const [viewing, setViewing] = useState<Content | null>(null);
   const [editContent, setEditContent] = useState<Content | null | "new">(null);
@@ -311,7 +335,7 @@ export default function Library() {
       {contents.length > 0 && (
         <div className="tl-panel p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="inline-flex items-center gap-2 text-sm font-semibold"><Star className="w-4 h-4 text-primary" /> Livello {userLevel}</span>
+            <span className="inline-flex items-center gap-2 text-sm font-semibold"><Star className="w-4 h-4 text-primary" /> {uiText("auto.ui.93067f5be8", { level: userLevel })}</span>
             {nextLevel
               ? <span className="text-xs text-muted-foreground">{uiText("auto.ui.9d3783b578")}<span className="text-primary font-bold">{nextLevel}</span></span>
               : <span className="text-xs text-primary font-semibold">{uiText("auto.ui.195e8d38db")}</span>}
@@ -322,7 +346,7 @@ export default function Library() {
                 <div className="h-full bg-gradient-to-r from-primary/70 to-primary rounded-full transition-all duration-700" style={{ width: `${progress}%` }} />
               </div>
               <p className="text-[11px] text-muted-foreground mt-1.5">
-                Ancora {nextLevel - userLevel} livell{nextLevel - userLevel !== 1 ? "i" : "o"} per sbloccare nuovi contenuti
+                {uiText("auto.ui.7ff7f26cd2", { n: nextLevel - userLevel })}
               </p>
             </>
           )}
@@ -335,7 +359,7 @@ export default function Library() {
           <div className="flex items-center gap-2">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/15 border border-primary/30 rounded-full">
               <Zap className="w-3 h-3 text-primary" />
-              <span className="text-xs font-bold text-primary">{level === 0 ? "Sempre disponibile" : `Livello ${level}`}</span>
+              <span className="text-xs font-bold text-primary">{level === 0 ? uiText("auto.ui.b6e4a0074f") : uiText("auto.ui.93067f5be8", { level })}</span>
             </div>
             {isAdmin && level > userLevel && <span className="text-[10px] text-amber-400 font-semibold">{uiText("auto.ui.c75425620c")}</span>}
             <div className="h-px flex-1 bg-border/50" />
@@ -362,8 +386,8 @@ export default function Library() {
                   <Lock className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">{count} contenut{count !== 1 ? "i" : "o"} al livello {level}</p>
-                  <p className="text-xs text-muted-foreground">Raggiungi il livello {level} per sbloccarli</p>
+                  <p className="text-sm font-semibold">{uiText("auto.ui.c0f9e59d52", { count, level })}</p>
+                  <p className="text-xs text-muted-foreground">{uiText("auto.ui.84b0d94af1", { level })}</p>
                 </div>
                 <span className="ml-auto text-[11px] text-muted-foreground/70 font-mono">Lvl {level}</span>
               </div>
@@ -372,13 +396,15 @@ export default function Library() {
         </div>
       )}
 
+      {contentsError && <QueryErrorState onRetry={() => void refetchContents()} />}
+
       {/* Empty state */}
-      {contents.length === 0 && (
+      {!contentsError && contents.length === 0 && (
         <div className="tl-panel p-10 sm:p-16 text-center">
           <LibraryIcon className="w-14 h-14 mx-auto mb-4 opacity-15" />
           <h3 className="text-xl font-bold mb-2">{uiText("auto.ui.d6bf322405")}</h3>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            {isAdmin ? "Aggiungi il primo contenuto e assegnagli un livello di sblocco." : "Presto qui troverai contenuti formativi sbloccabili salendo di livello."}
+            {isAdmin ? uiText("auto.ui.c70f951f9d") : uiText("auto.ui.56cdb42dfa")}
           </p>
           <div className="mt-8 grid max-w-md mx-auto grid-cols-3 gap-3">
             {(Object.keys(TYPE_META) as ContentType[]).map((type) => {
@@ -386,14 +412,14 @@ export default function Library() {
               return (
                 <div key={type} className="rounded-xl border border-border/40 bg-secondary/20 px-3 py-4">
                   <M.icon className="mx-auto h-6 w-6" style={{ color: M.color }} />
-                  <p className="mt-2 text-xs font-semibold text-muted-foreground">{M.label}</p>
+                  <p className="mt-2 text-xs font-semibold text-muted-foreground">{uiText(M.labelKey)}</p>
                 </div>
               );
             })}
           </div>
           {!isAdmin && (
             <p className="mt-4 text-xs text-muted-foreground/70">
-              Nel frattempo accumula XP completando missioni e routine: i contenuti si sbloccano per livello.
+              {uiText("auto.ui.4ddb5bd6d0")}
             </p>
           )}
         </div>

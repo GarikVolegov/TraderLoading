@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { inflateRawSync } from "node:zlib";
 import { extractTextFromPdf } from "./knowledgeProcessor.js";
+import { assertPublicHost } from "./ssrfGuard.js";
 
 export type WikiSourceKind = "text" | "pdf" | "image" | "office" | "audio" | "video" | "url" | "unknown";
 
@@ -254,16 +255,34 @@ export function extractOfficeText(buffer: Buffer, filename: string): string {
 }
 
 export async function fetchUrlText(url: string): Promise<{ title: string; text: string }> {
-  const parsed = new URL(url);
-  if (!["http:", "https:"].includes(parsed.protocol)) {
-    throw new Error("URL non valido: usa http o https.");
+  // SSRF guard (0.3): resolve + block internal addresses on the initial URL AND on
+  // every redirect target (redirect:manual), so a public URL can't 302 to an
+  // internal one. Bounded hop count to avoid redirect loops.
+  const MAX_HOPS = 5;
+  let parsed = new URL(url);
+  let response: Response | undefined;
+  for (let hop = 0; hop <= MAX_HOPS; hop += 1) {
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new Error("URL non valido: usa http o https.");
+    }
+    await assertPublicHost(parsed.hostname);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    const res = await fetch(parsed.toString(), {
+      headers: { "user-agent": "TraderLoading-Wiki/1.0" },
+      signal: controller.signal,
+      redirect: "manual",
+    }).finally(() => clearTimeout(timeout));
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (!location) throw new Error("URL non scaricabile (redirect senza destinazione).");
+      parsed = new URL(location, parsed); // resolve relative redirects; re-validated next loop
+      continue;
+    }
+    response = res;
+    break;
   }
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
-  const response = await fetch(parsed.toString(), {
-    headers: { "user-agent": "TraderLoading-Wiki/1.0" },
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timeout));
+  if (!response) throw new Error("URL non scaricabile: troppi redirect.");
   if (!response.ok) throw new Error(`URL non scaricabile (${response.status})`);
   const length = Number(response.headers.get("content-length") ?? "0");
   if (length > MAX_URL_BYTES) throw new Error("URL troppo grande per l'import wiki.");

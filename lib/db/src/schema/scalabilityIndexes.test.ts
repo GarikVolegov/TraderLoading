@@ -21,6 +21,13 @@ const journalSource = readSchema("./journal.ts");
 assert.match(journalSource, /index\("journal_entries_user_created_idx"\)\.on\(table\.userId, table\.createdAt\)/);
 assert.match(journalSource, /index\("journal_images_entry_idx"\)\.on\(table\.entryId\)/);
 
+// Closed-trade reads (profile win-rate, edge/trading-coach, exports) filter
+// account_trades by (user_id) and (user_id, status='closed'); the unique index
+// leads with `source`, so it cannot serve them. The composite covers both the
+// userId-only and (userId, status) shapes via its leftmost prefix.
+const accountSource = readSchema("./account.ts");
+assert.match(accountSource, /index\("account_trades_user_status_idx"\)\.on\(table\.userId, table\.status\)/);
+
 const signalsSource = readSchema("./signals.ts");
 assert.match(signalsSource, /index\("signals_created_idx"\)\.on\(t\.createdAt\)/);
 

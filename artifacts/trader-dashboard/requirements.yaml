@@ -5,7 +5,7 @@ packages:
   "framer-motion": "For page transitions and list animations"
 
 images:
-  - path: "artifacts/trader-dashboard/public/images/journal-empty.png"
+  - path: "artifacts/trader-dashboard/public/images/journal-empty.webp"
     description: "A dark, sleek illustration of a futuristic digital ledger or notebook with glowing neon green accents, minimalist 3d isometric style, suitable for a trading dashboard empty state"
     aspect_ratio: "16:9"
 

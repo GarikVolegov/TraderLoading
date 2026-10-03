@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   computeEdgeReport,
   minSliceTradesFor,
+  netProfit,
   normalizeDirection,
   rMultiple,
   sessionForTrade,
@@ -67,6 +68,31 @@ function trade(overrides: Partial<EdgeTrade>): EdgeTrade {
   assert.equal(o.netProfit, 50);
   assert.equal(o.avgWin, 100);
   assert.equal(o.avgLoss, -50);
+
+  // Quant edge stats wired in (Phase 5B): win-rate CI, Kelly, rolling expectancy.
+  assert.equal(report.stats.winRateCI?.point, 0.5);
+  // W=0.5, payoff R = 2/0.5 = 4 → f* = 0.5 − 0.5/4 = 0.375.
+  assert.ok(Math.abs((report.stats.kelly?.full ?? -1) - 0.375) < 0.001, "kelly from 50% WR, 4:1 payoff");
+  assert.deepEqual(report.stats.rollingExpectancy, [], "too few trades for a rolling window");
+}
+
+// ── maxDrawdown must count decline from the account's real 0 starting equity,
+// not just from its first trade's own P&L (adversarial review finding, 2026-07) ──
+{
+  // Chronological profits: -1000, then +50 three times → never recovers above
+  // -850. equityCurve (cumulative) = [-1000, -950, -900, -850]. True drawdown from
+  // the account's actual starting equity (0) is 1000, not 0.
+  const report = computeEdgeReport([
+    trade({ profit: -1000, exitPrice: 1.05, openTime: "2026-06-01T09:00:00Z", closeTime: "2026-06-01T09:00:00Z" }),
+    trade({ profit: 50, openTime: "2026-06-02T09:00:00Z", closeTime: "2026-06-02T09:00:00Z" }),
+    trade({ profit: 50, openTime: "2026-06-03T09:00:00Z", closeTime: "2026-06-03T09:00:00Z" }),
+    trade({ profit: 50, openTime: "2026-06-04T09:00:00Z", closeTime: "2026-06-04T09:00:00Z" }),
+  ]);
+  assert.equal(
+    report.stats.maxDrawdown,
+    1000,
+    "drawdown must be measured from the implicit 0 starting equity, not from the first trade's own P&L",
+  );
 }
 
 // ── R coverage: trades without a stop still count for win rate, not for R ─────
@@ -143,5 +169,24 @@ function trade(overrides: Partial<EdgeTrade>): EdgeTrade {
   assert.equal(report.highlights.postLoss, null);
   assert.deepEqual(report.breakdowns.bySymbol, []);
 }
+
+// A stop of 0 means "no stop set" (MT4/MT5 report 0 when absent), not a real
+// price at 0. Without guarding it, riskDistance = |entry - 0| = |entry| produces
+// a fake ~0 R that pollutes expectancy. Treat it as no-R (null), like the client.
+assert.equal(rMultiple(trade({ stopLoss: 0 })), null);
+assert.equal(rMultiple(trade({ stopLoss: -1 })), null);
+// A real stop still yields a real R.
+assert.ok(typeof rMultiple(trade({ entryPrice: 1.1, stopLoss: 1.05, exitPrice: 1.2, profit: 100 })) === "number");
+
+// netProfit: the coach must classify on NET P&L (gross + commission + swap) so a
+// trade that grosses +10 but pays -12 in commission is the loss (-2) the diario
+// already shows, and the cash guard sees the real loss.
+assert.equal(netProfit(10, -12, 0), -2);
+assert.equal(netProfit(100, -3, -5), 92);
+// Missing costs count as zero, not as discarding the trade.
+assert.equal(netProfit(10, null, null), 10);
+assert.equal(netProfit(10, -2, null), 8);
+// Unknown gross stays unknown.
+assert.equal(netProfit(null, -1, -1), null);
 
 console.log("tradeAnalytics.test.ts: all assertions passed");

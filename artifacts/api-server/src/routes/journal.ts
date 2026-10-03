@@ -3,7 +3,9 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db } from "@workspace/db";
-import { journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable } from "@workspace/db";
+import { journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable, accountTradesTable } from "@workspace/db";
+import { buildManualTradeRow, buildTradeRow, hasTradeIntent, type ManualTradeInput } from "../services/manualTrade.js";
+import { parseTradesCsv } from "../services/tradesCsv.js";
 import {
   CreateJournalEntryBody,
   UpdateJournalEntryBody,
@@ -13,7 +15,7 @@ import {
   UploadJournalImageParams,
   DeleteJournalImageParams,
 } from "@workspace/api-zod";
-import { eq, desc, and, isNull, inArray } from "drizzle-orm";
+import { eq, desc, and, isNull, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getUserId, getOrCreateProfile } from "./profile.js";
 import {
@@ -22,14 +24,24 @@ import {
   validateJournalRecapPeriod,
   type JournalRecapKind,
 } from "../services/journalRecapPeriods.js";
-import { computeEdgeReport } from "../services/tradeAnalytics.js";
+import { computeEdgeReport, rMultiple } from "../services/tradeAnalytics.js";
 import { computeDisciplineReport } from "../services/tradeDiscipline.js";
 import { composeEdgeReport } from "../services/edgeReport.js";
-import { loadClosedEdgeTrades, loadGuardOverrides } from "../services/edgeData.js";
+import { bootstrapRiskOfRuin } from "../services/edgeStats.js";
+import { parseRiskOfRuinParams } from "../services/riskOfRuinParams.js";
+import {
+  alignSeriesByTime,
+  correlationMatrix,
+  concentrationSignals,
+} from "../services/correlationMatrix.js";
+import { getCandles } from "../services/candles.js";
+import { loadClosedEdgeTrades, loadGuardOverrides, loadOpenPositions } from "../services/edgeData.js";
 import { buildRecapMessages, filterTradesByPeriod, parseRecapDraft } from "../services/journalRecapDraft.js";
+import { getUserNotificationLanguage } from "./push.js";
 import { getTextClient } from "../services/llmClient.js";
 import logger from "../lib/logger.js";
 import { getUploadsDir } from "../lib/uploads.js";
+import { consumeQuota } from "../lib/userQuota.js";
 
 const router: IRouter = Router();
 const JOURNAL_XP_REWARD = 75;
@@ -200,18 +212,21 @@ async function saveJournalTags(userId: string | null, tags: string | null | unde
     .onConflictDoNothing();
 }
 
-async function getEntryWithImages(id: number, userId: string | null) {
-  const [entry] = await db
-    .select()
-    .from(journalEntriesTable)
-    .where(and(eq(journalEntriesTable.id, id), entryUserFilter(userId)));
-  if (!entry) return null;
+type JournalEntrySerializable = Pick<
+  typeof journalEntriesTable.$inferSelect,
+  "id" | "title" | "content" | "tradeDate" | "result" | "tags" | "createdAt" | "updatedAt"
+>;
+type JournalImageSerializable = Pick<typeof journalImagesTable.$inferSelect, "id" | "filePath">;
 
-  const images = await db
-    .select()
-    .from(journalImagesTable)
-    .where(eq(journalImagesTable.entryId, id));
-
+/**
+ * Map a journal entry row plus its already-loaded images to the API response
+ * shape. Kept pure so the list endpoint can batch-load images in one query and
+ * the single-entry endpoints can pass a one-row image set — both share one shape.
+ */
+export function serializeJournalEntry(
+  entry: JournalEntrySerializable,
+  images: JournalImageSerializable[],
+) {
   return {
     id: entry.id,
     title: entry.title,
@@ -226,6 +241,21 @@ async function getEntryWithImages(id: number, userId: string | null) {
     createdAt: entry.createdAt!.toISOString(),
     updatedAt: entry.updatedAt!.toISOString(),
   };
+}
+
+async function getEntryWithImages(id: number, userId: string | null) {
+  const [entry] = await db
+    .select()
+    .from(journalEntriesTable)
+    .where(and(eq(journalEntriesTable.id, id), entryUserFilter(userId)));
+  if (!entry) return null;
+
+  const images = await db
+    .select()
+    .from(journalImagesTable)
+    .where(eq(journalImagesTable.entryId, id));
+
+  return serializeJournalEntry(entry, images);
 }
 
 async function ensureTodayMissionsExist(userId: string | null) {
@@ -271,9 +301,54 @@ router.get("/journal", async (req, res) => {
     .where(entryUserFilter(userId))
     .orderBy(desc(journalEntriesTable.createdAt));
 
-  const results = await Promise.all(entries.map((e) => getEntryWithImages(e.id, userId)));
-  res.json(results.filter(Boolean));
+  if (entries.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  // Load every entry's images in a single query and group them by entry id,
+  // instead of re-fetching each entry + its images one row at a time (the old
+  // 2N+1 pattern that scaled linearly with a user's journal size).
+  const images = await db
+    .select()
+    .from(journalImagesTable)
+    .where(inArray(journalImagesTable.entryId, entries.map((entry) => entry.id)));
+
+  const imagesByEntry = new Map<number, typeof images>();
+  for (const image of images) {
+    const bucket = imagesByEntry.get(image.entryId);
+    if (bucket) bucket.push(image);
+    else imagesByEntry.set(image.entryId, [image]);
+  }
+
+  res.json(entries.map((entry) => serializeJournalEntry(entry, imagesByEntry.get(entry.id) ?? [])));
 });
+
+/** Keep a manual entry's structured trade (off-contract fields on the body) in sync
+ *  with accountTrades so the coach/edge/equity see it (finding 3.5). Upserts on the
+ *  entry-keyed ticket, or removes the row when the fields are cleared/insufficient. */
+async function syncManualTrade(userId: string | null, entryId: number, tradeDate: string, rawBody: unknown): Promise<void> {
+  if (!userId) return;
+  // A body without any trade fields (a plain-text edit) leaves the linked trade
+  // untouched — never let editing a note silently delete its coach trade.
+  if (!hasTradeIntent(rawBody)) return;
+  const ticket = `manual-${entryId}`;
+  const row = buildManualTradeRow((rawBody ?? {}) as ManualTradeInput, { userId, journalEntryId: entryId, tradeDate });
+  if (!row) {
+    await db.delete(accountTradesTable).where(
+      and(eq(accountTradesTable.source, "manual"), eq(accountTradesTable.ticket, ticket), eq(accountTradesTable.userId, userId)),
+    );
+    return;
+  }
+  const values = { ...row, journalEntryId: entryId, updatedAt: new Date() };
+  await db
+    .insert(accountTradesTable)
+    .values(values)
+    .onConflictDoUpdate({
+      target: [accountTradesTable.source, accountTradesTable.ticket, accountTradesTable.userId],
+      set: values,
+    });
+}
 
 router.post("/journal", async (req, res) => {
   const userId = getUserId(req);
@@ -293,9 +368,71 @@ router.post("/journal", async (req, res) => {
 
   await saveJournalTags(userId, body.tags);
   await awardJournalXP(userId);
+  await syncManualTrade(userId, entry.id, body.tradeDate, req.body);
 
   const data = await getEntryWithImages(entry.id, userId);
   res.status(201).json(data);
+});
+
+// Adversarial-review finding: unbounded rows + one sequential awaited DB round-trip
+// per row let a single large CSV drive tens of thousands of blocking queries against
+// the shared Postgres pool. Reject oversized imports outright and batch the rest.
+const MAX_IMPORT_ROWS = 2000;
+const IMPORT_UPSERT_CHUNK = 500;
+
+// Import a broker statement CSV → closed trades that feed the coach (idea 5D).
+// Persisted as source="manual" (user-provided → excluded from tornei) with a
+// csv-<ticket> key so re-importing the same statement updates instead of duplicating.
+router.post("/journal/import-csv", async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  const csv = typeof req.body?.csv === "string" ? req.body.csv : "";
+  if (!csv.trim()) { res.status(400).json({ error: "CSV vuoto" }); return; }
+
+  const { trades, skipped } = parseTradesCsv(csv);
+  if (trades.length > MAX_IMPORT_ROWS) {
+    res.status(413).json({ error: `CSV troppo grande: massimo ${MAX_IMPORT_ROWS} righe per import` });
+    return;
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  let invalid = 0;
+  const rows: (typeof accountTradesTable.$inferInsert)[] = [];
+  for (let i = 0; i < trades.length; i += 1) {
+    const t = trades[i];
+    const ticket = `csv-${t.ticket && t.ticket.trim() ? t.ticket.trim() : String(i + 1)}`;
+    const tradeDate = t.closeTime || t.openTime || today;
+    const row = buildTradeRow(t, { userId, source: "manual", ticket, tradeDate });
+    if (!row) { invalid += 1; continue; }
+    rows.push({ ...row, updatedAt: new Date() });
+  }
+
+  let imported = 0;
+  for (let i = 0; i < rows.length; i += IMPORT_UPSERT_CHUNK) {
+    const slice = rows.slice(i, i + IMPORT_UPSERT_CHUNK);
+    await db
+      .insert(accountTradesTable)
+      .values(slice)
+      .onConflictDoUpdate({
+        target: [accountTradesTable.source, accountTradesTable.ticket, accountTradesTable.userId],
+        set: {
+          direction: sql`excluded.direction`,
+          volume: sql`excluded.volume`,
+          openTime: sql`excluded.open_time`,
+          closeTime: sql`excluded.close_time`,
+          entryPrice: sql`excluded.entry_price`,
+          exitPrice: sql`excluded.exit_price`,
+          stopLoss: sql`excluded.stop_loss`,
+          takeProfit: sql`excluded.take_profit`,
+          profit: sql`excluded.profit`,
+          commission: sql`excluded.commission`,
+          swap: sql`excluded.swap`,
+          status: sql`excluded.status`,
+          updatedAt: sql`excluded.updated_at`,
+        },
+      });
+    imported += slice.length;
+  }
+  res.json({ imported, skipped: skipped + invalid });
 });
 
 router.get("/journal/tags", async (req, res) => {
@@ -406,6 +543,51 @@ router.get("/journal/edge", async (req, res) => {
   res.json(composeEdgeReport(trades, new Date(), guardOverrides));
 });
 
+// Monte Carlo risk-of-ruin bootstrapped from the user's OWN closed-trade R-multiples
+// (idea 5B). Off-contract (direct apiJSON, like the recap endpoints). Params are
+// clamped (parseRiskOfRuinParams) so the simulation can't be driven into a DoS.
+router.post("/journal/risk-of-ruin", async (req, res) => {
+  const userId = getUserId(req);
+  const params = parseRiskOfRuinParams(req.body);
+  const trades = await loadClosedEdgeTrades(userId);
+  const rValues = trades
+    .map((trade) => rMultiple(trade))
+    .filter((r): r is number => r !== null);
+  const result = bootstrapRiskOfRuin(rValues, params);
+  if (!result) {
+    res.status(422).json({ error: "Servono trade chiusi con R calcolabile (entry, stop ed exit)." });
+    return;
+  }
+  res.json({ ...result, tradesWithR: rValues.length, params });
+});
+
+// Portfolio correlation & concentration risk over the user's OPEN positions (idea
+// 5B). Off-contract. Pulls each symbol's D1 closes (SWR/cached via getCandles),
+// aligns them by shared timestamp, then flags position pairs that compound into one
+// bigger bet. Degrades gracefully: <2 symbols or missing candles → empty result.
+router.get("/journal/correlation", async (req, res) => {
+  const userId = getUserId(req);
+  const positions = await loadOpenPositions(userId);
+  const symbols = positions.map((p) => p.symbol).slice(0, 12); // cap the candle fan-out
+  if (symbols.length < 2) {
+    res.json({ symbols: [], matrix: [], window: 0, concentration: [], positions });
+    return;
+  }
+  const series = await Promise.all(
+    symbols.map(async (symbol) => {
+      try {
+        const result = await getCandles(symbol, "D1");
+        return { symbol, bars: result.candles.map((c) => ({ time: c.time, close: c.close })) };
+      } catch {
+        return { symbol, bars: [] };
+      }
+    }),
+  );
+  const matrix = correlationMatrix(alignSeriesByTime(series));
+  const active = positions.filter((p) => symbols.includes(p.symbol));
+  res.json({ ...matrix, concentration: concentrationSignals(active, matrix), positions: active });
+});
+
 // Generates an AI recap draft from the period's edge + discipline stats. Returns
 // the eight recap fields for the user to review/edit before saving via PUT.
 // Degrades gracefully: 503 when no LLM provider is configured.
@@ -431,10 +613,24 @@ router.post("/journal/recaps/generate", async (req, res) => {
     return;
   }
 
+  // Per-user daily cap on the (paid, billable) LLM call so a single user cannot
+  // run up unbounded provider cost by looping the endpoint. Consumed only once we
+  // are about to actually call the model. RECAP_DAILY_LIMIT overrides the default.
+  const recapLimit = Number(process.env.RECAP_DAILY_LIMIT) || 10;
+  const quota = await consumeQuota(`quota:recap:${userId ?? "guest"}`, recapLimit, 86_400);
+  if (!quota.allowed) {
+    res.status(429).json({
+      error: `Limite giornaliero di recap AI raggiunto (${quota.limit}). Riprova domani.`,
+    });
+    return;
+  }
+
+  const recapLanguage = await getUserNotificationLanguage(userId);
   const { system, user } = buildRecapMessages(
     computeEdgeReport(trades),
     computeDisciplineReport(trades),
     { kind: body.kind, periodStart: body.periodStart, periodEnd: body.periodEnd },
+    recapLanguage,
   );
 
   try {
@@ -487,6 +683,7 @@ router.put("/journal/:id", async (req, res) => {
 
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   await saveJournalTags(userId, body.tags);
+  await syncManualTrade(userId, id, body.tradeDate, req.body);
   const data = await getEntryWithImages(id, userId);
   res.json(data);
 });
@@ -510,6 +707,12 @@ router.delete("/journal/:id", async (req, res) => {
   }
 
   await db.delete(journalEntriesTable).where(eq(journalEntriesTable.id, id));
+  // Drop the linked manual trade too, so the coach doesn't keep a deleted entry's trade.
+  if (userId) {
+    await db.delete(accountTradesTable).where(
+      and(eq(accountTradesTable.source, "manual"), eq(accountTradesTable.ticket, `manual-${id}`), eq(accountTradesTable.userId, userId)),
+    );
+  }
   res.json({ success: true });
 });
 

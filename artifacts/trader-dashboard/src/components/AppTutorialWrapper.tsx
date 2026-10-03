@@ -6,6 +6,7 @@ import {
   useUpdateUserSettings,
 } from "@workspace/api-client-react";
 import { useBackground } from "@/contexts/BackgroundContext";
+import { trackEvent } from "@/lib/analytics";
 import { AppTutorialWizard } from "@/components/AppTutorialWizard";
 
 export function AppTutorialWrapper() {
@@ -40,9 +41,11 @@ export function AppTutorialWrapper() {
     <AppTutorialWizard
       open={shouldShow}
       onSkip={() => {
+        trackEvent("tutorial_skipped");
         void completeTutorial();
       }}
       onFinish={() => {
+        trackEvent("tutorial_completed");
         void completeTutorial();
       }}
     />

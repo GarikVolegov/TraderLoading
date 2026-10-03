@@ -1,4 +1,4 @@
-import { integer, numeric, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, integer, numeric, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { journalEntriesTable } from "./journal";
 
 export const accountTradesTable = pgTable(
@@ -35,6 +35,11 @@ export const accountTradesTable = pgTable(
       table.ticket,
       table.userId,
     ),
+    // Per-user closed-trade reads (profile win-rate, edge/trading-coach, exports)
+    // filter by (user_id) and (user_id, status). The unique index above leads with
+    // `source`, so it cannot serve these; this composite does, and its leftmost
+    // prefix also covers the userId-only filters.
+    accountTradeUserStatus: index("account_trades_user_status_idx").on(table.userId, table.status),
   }),
 );
 

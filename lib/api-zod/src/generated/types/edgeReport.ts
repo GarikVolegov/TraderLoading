@@ -9,6 +9,7 @@ import type { DisciplineReport } from "./disciplineReport";
 import type { EdgeOverall } from "./edgeOverall";
 import type { EdgeReportBreakdowns } from "./edgeReportBreakdowns";
 import type { EdgeReportHighlights } from "./edgeReportHighlights";
+import type { EdgeStats } from "./edgeStats";
 import type { RiskGuardReport } from "./riskGuardReport";
 
 export interface EdgeReport {
@@ -18,4 +19,5 @@ export interface EdgeReport {
   highlights: EdgeReportHighlights;
   discipline: DisciplineReport;
   guard: RiskGuardReport;
+  stats: EdgeStats;
 }

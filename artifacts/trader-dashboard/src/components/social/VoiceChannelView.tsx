@@ -135,7 +135,7 @@ export function VoiceChannelView({
         }
       }, 2_000);
     } catch (err) {
-      console.error("Voice join error:", err);
+      reportClientError(err, { context: "community voice join", notify: false });
     } finally {
       setConnecting(false);
     }

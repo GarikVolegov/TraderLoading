@@ -2,8 +2,11 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, communityRolesTable, communityBansTable, communityMutesTable, voicePresenceTable, profileTable } from "@workspace/db";
+import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, communityRolesTable, communityBansTable, communityMutesTable, voicePresenceTable, profileTable, communityJoinRequestsTable, communityChannelEntitlementsTable } from "@workspace/db";
 import { eq, and, desc, asc, sql, lt, type SQL } from "drizzle-orm";
+import { canSeeFullCommunity, decideJoin, canRequestJoin } from "../services/community/joinPolicy.js";
+import { canAccessChannel } from "../services/community/channelAccess.js";
+import { isChannelFree } from "../services/community/channelPricing.js";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
 import {
@@ -15,9 +18,19 @@ import {
   DEFAULT_MEMBER_PERMISSIONS,
   ADMIN_ROLE_PERMISSIONS,
 } from "../services/communityPermissions.js";
+import { emitSocialEvent } from "../services/socialHub/socialEvents.js";
+import { deleteCommunityDeep, deleteChannelDeep } from "../services/communityDeletion.js";
+import { recordModerationAction } from "../services/communityModerationLog.js";
 
 const COMMUNITY_FILES_DIR = resolveUploadPath("community-files");
 if (!fs.existsSync(COMMUNITY_FILES_DIR)) fs.mkdirSync(COMMUNITY_FILES_DIR, { recursive: true });
+
+/** Best-effort disk cleanup for deleted community files (DB rows already gone). */
+function unlinkCommunityFiles(fileUrls: string[]): void {
+  for (const fileUrl of fileUrls) {
+    fs.unlink(path.join(COMMUNITY_FILES_DIR, path.basename(fileUrl)), () => {});
+  }
+}
 
 const communityFileStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, COMMUNITY_FILES_DIR),
@@ -56,6 +69,65 @@ function requireAuth(req: Request, res: Response): string | null {
   return userId;
 }
 
+// Paid-channel choke point (sub-project C). Called AFTER the membership check in every
+// channel-content handler. Free channels pass instantly; for a paid channel the owner
+// and channels.manage holders preview it, everyone else needs an active entitlement.
+// Sends a 402 (with the price, so the UI can offer to unlock) and returns false on deny.
+async function assertChannelAccess(
+  userId: string,
+  channel: typeof communityChannelsTable.$inferSelect,
+  res: Response,
+): Promise<boolean> {
+  if (isChannelFree(channel)) return true;
+  const ctx = await getMemberContext(channel.communityId, userId);
+  const [entitlement] = await db
+    .select({ expiresAt: communityChannelEntitlementsTable.expiresAt })
+    .from(communityChannelEntitlementsTable)
+    .where(and(
+      eq(communityChannelEntitlementsTable.channelId, channel.id),
+      eq(communityChannelEntitlementsTable.userId, userId),
+    ))
+    .limit(1);
+  const allowed = canAccessChannel({
+    isFree: false,
+    isOwner: ctx.isOwner,
+    canManage: hasPermission(ctx, "channels.manage"),
+    entitlement: entitlement ?? null,
+    now: new Date(),
+  });
+  if (!allowed) {
+    res.status(402).json({
+      error: "Canale a pagamento",
+      code: "channel_locked",
+      priceCents: channel.priceCents ?? null,
+      accessModel: channel.accessModel ?? null,
+      subInterval: channel.subInterval ?? null,
+      currency: channel.currency,
+    });
+    return false;
+  }
+  return true;
+}
+
+// Resolve + authorize a voice channel for the presence/signalling endpoints in one
+// place: 404 if gone, 403 if not a member, 402 if it's a locked paid channel.
+async function resolveVoiceChannelOrDeny(
+  userId: string,
+  channelId: number,
+  res: Response,
+): Promise<typeof communityChannelsTable.$inferSelect | null> {
+  const [channel] = await db.select().from(communityChannelsTable).where(eq(communityChannelsTable.id, channelId)).limit(1);
+  if (!channel) { res.status(404).json({ error: "Canale non trovato" }); return null; }
+  const [membership] = await db
+    .select({ id: communityMembersTable.id })
+    .from(communityMembersTable)
+    .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
+    .limit(1);
+  if (!membership) { res.status(403).json({ error: "Non sei membro" }); return null; }
+  if (!(await assertChannelAccess(userId, channel, res))) return null;
+  return channel;
+}
+
 // ─── List communities ──────────────────────────────────────────────────────────
 router.get("/community", async (req, res) => {
   const userId = requireAuth(req, res);
@@ -64,7 +136,6 @@ router.get("/community", async (req, res) => {
     const communities = await db
       .select()
       .from(communitiesTable)
-      .where(eq(communitiesTable.isPublic, true))
       .orderBy(desc(communitiesTable.memberCount), desc(communitiesTable.createdAt))
       .limit(50);
 
@@ -78,6 +149,9 @@ router.get("/community", async (req, res) => {
     res.json(communities.map(c => ({
       ...c,
       isMember: myIds.has(c.id),
+      // Private + non-member: the client shows a cover with "Request to join" and
+      // hides content. (Channels/messages are never in this list payload anyway.)
+      locked: !c.isPublic && !myIds.has(c.id),
       ratingAvg: c.ratingCount > 0 ? c.ratingSum / c.ratingCount : 0,
     })));
   } catch (err) {
@@ -91,7 +165,7 @@ router.post("/community", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const { name, description, iconEmoji } = req.body;
+    const { name, description, iconEmoji, isPublic } = req.body;
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       res.status(400).json({ error: "Nome richiesto" });
       return;
@@ -108,6 +182,9 @@ router.post("/community", async (req, res) => {
         description: (description ?? "").slice(0, 200),
         iconEmoji: iconEmoji ?? "🏛️",
         creatorId: userId,
+        // Defaults to true (public) via the schema when omitted — private
+        // communities are owner-approved-join, discoverable-but-locked.
+        ...(typeof isPublic === "boolean" ? { isPublic } : {}),
       })
       .returning();
 
@@ -188,14 +265,69 @@ router.get("/community/:id", async (req, res) => {
       .limit(1);
 
     const isOwner = community.creatorId === userId;
+
+    // Private + non-member: return the public cover only (never channels/roles/
+    // messages) plus the viewer's own request status (audit 0.5b).
+    if (!canSeeFullCommunity({ isPublic: community.isPublic, isMember: !!membership, isOwner })) {
+      const [myReq] = await db
+        .select({ status: communityJoinRequestsTable.status })
+        .from(communityJoinRequestsTable)
+        .where(and(
+          eq(communityJoinRequestsTable.communityId, id),
+          eq(communityJoinRequestsTable.userId, userId),
+        ))
+        .limit(1);
+      res.json({
+        id: community.id,
+        name: community.name,
+        description: community.description,
+        iconEmoji: community.iconEmoji,
+        avatarUrl: community.avatarUrl,
+        bannerUrl: community.bannerUrl,
+        rules: community.rules,
+        accentColor: community.accentColor,
+        memberCount: community.memberCount,
+        isPublic: community.isPublic,
+        isMember: false,
+        isOwner: false,
+        locked: true,
+        joinRequestStatus: myReq?.status ?? "none",
+        ratingAvg: community.ratingCount > 0 ? community.ratingSum / community.ratingCount : 0,
+      });
+      return;
+    }
+
     const myRoleObj = membership?.roleId != null ? roles.find((r) => r.id === membership.roleId) : undefined;
     const myPermissions = isOwner
       ? [...ADMIN_ROLE_PERMISSIONS]
       : sanitizePermissions(myRoleObj?.permissions);
 
+    // Per-viewer paid-channel lock flags (sub-project C): the sidebar renders a lock
+    // on channels this member can't yet read. Owner/channels.manage see everything.
+    const canManageChannels = isOwner || myPermissions.includes("channels.manage");
+    const myEntitlements = await db
+      .select({ channelId: communityChannelEntitlementsTable.channelId, expiresAt: communityChannelEntitlementsTable.expiresAt })
+      .from(communityChannelEntitlementsTable)
+      .where(and(
+        eq(communityChannelEntitlementsTable.communityId, id),
+        eq(communityChannelEntitlementsTable.userId, userId),
+      ));
+    const entByChannel = new Map(myEntitlements.map((e) => [e.channelId, { expiresAt: e.expiresAt }]));
+    const now = new Date();
+    const channelsWithLock = channels.map((ch) => ({
+      ...ch,
+      locked: !canAccessChannel({
+        isFree: isChannelFree(ch),
+        isOwner,
+        canManage: canManageChannels,
+        entitlement: entByChannel.get(ch.id) ?? null,
+        now,
+      }),
+    }));
+
     res.json({
       ...community,
-      channels,
+      channels: channelsWithLock,
       roles,
       isMember: !!membership || isOwner,
       isOwner,
@@ -216,21 +348,52 @@ router.post("/community/:id/join", async (req, res) => {
   if (!userId) return;
   try {
     const id = parseInt(req.params.id);
+    const [community] = await db
+      .select({ isPublic: communitiesTable.isPublic })
+      .from(communitiesTable)
+      .where(eq(communitiesTable.id, id))
+      .limit(1);
+    if (!community) { res.status(404).json({ error: "Community non trovata" }); return; }
+
     const [existing] = await db
-      .select()
+      .select({ id: communityMembersTable.id })
       .from(communityMembersTable)
       .where(and(eq(communityMembersTable.communityId, id), eq(communityMembersTable.userId, userId)))
       .limit(1);
-    if (existing) { res.json({ ok: true, alreadyMember: true }); return; }
-
-    // Banned users cannot rejoin.
     const [ban] = await db
       .select({ id: communityBansTable.id })
       .from(communityBansTable)
       .where(and(eq(communityBansTable.communityId, id), eq(communityBansTable.userId, userId)))
       .limit(1);
-    if (ban) { res.status(403).json({ error: "Sei stato bannato da questa community" }); return; }
 
+    const outcome = decideJoin({ isPublic: community.isPublic, isMember: !!existing, isBanned: !!ban });
+    if (outcome === "blocked") { res.status(403).json({ error: "Sei stato bannato da questa community" }); return; }
+    if (outcome === "already-member") { res.json({ ok: true, alreadyMember: true }); return; }
+
+    // Private community: create/refresh an approval request instead of joining.
+    if (outcome === "request") {
+      const [existingReq] = await db
+        .select({ status: communityJoinRequestsTable.status })
+        .from(communityJoinRequestsTable)
+        .where(and(
+          eq(communityJoinRequestsTable.communityId, id),
+          eq(communityJoinRequestsTable.userId, userId),
+        ))
+        .limit(1);
+      if (!canRequestJoin(existingReq ?? null)) { res.json({ status: "pending" }); return; }
+      const message = typeof req.body?.message === "string" ? req.body.message.slice(0, 500) : null;
+      await db
+        .insert(communityJoinRequestsTable)
+        .values({ communityId: id, userId, status: "pending", message })
+        .onConflictDoUpdate({
+          target: [communityJoinRequestsTable.communityId, communityJoinRequestsTable.userId],
+          set: { status: "pending", message, decidedByUserId: null, decidedAt: null, createdAt: new Date() },
+        });
+      res.json({ status: "pending" });
+      return;
+    }
+
+    // Public community: immediate join.
     const [defaultRole] = await db
       .select({ id: communityRolesTable.id })
       .from(communityRolesTable)
@@ -316,7 +479,9 @@ router.delete("/community/channels/:channelId", async (req, res) => {
 
     if (!(await requirePermission(req, res, channel.communityId, "channels.manage"))) return;
 
-    await db.delete(communityChannelsTable).where(eq(communityChannelsTable.id, channelId));
+    const orphanFiles = await deleteChannelDeep(channelId);
+    unlinkCommunityFiles(orphanFiles);
+    await recordModerationAction({ communityId: channel.communityId, actorUserId: userId, action: "channel.delete", targetId: channelId, metadata: { name: channel.name } });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
@@ -342,6 +507,7 @@ router.get("/community/channels/:channelId/messages", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
       .limit(1);
     if (!membership) { res.status(403).json({ error: "Non sei membro di questa community" }); return; }
+    if (!(await assertChannelAccess(userId, channel, res))) return;
 
     const conditions: SQL[] = [eq(communityMessagesTable.channelId, channelId)];
     if (cursor && !isNaN(cursor)) conditions.push(lt(communityMessagesTable.id, cursor));
@@ -379,6 +545,7 @@ router.post("/community/channels/:channelId/messages", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
       .limit(1);
     if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
+    if (!(await assertChannelAccess(userId, channel, res))) return;
 
     // Muted members cannot post.
     const [mute] = await db
@@ -409,6 +576,14 @@ router.post("/community/channels/:channelId/messages", async (req, res) => {
       })
       .returning();
 
+    // Push to subscribed channel members so their UI refreshes without polling.
+    // Best-effort: a bus failure must never fail the write that already happened.
+    try {
+      emitSocialEvent({ type: "community:message", channelId });
+    } catch (emitErr) {
+      console.warn("[community] social emit failed:", emitErr);
+    }
+
     res.status(201).json(message);
   } catch (err) {
     console.error("POST /community/channels/:channelId/messages error:", err);
@@ -432,6 +607,7 @@ router.post("/community/voice/:channelId/join", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
       .limit(1);
     if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
+    if (!(await assertChannelAccess(userId, channel, res))) return;
 
     const [profile] = await db
       .select({ name: profileTable.name, avatarUrl: profileTable.avatarUrl })
@@ -496,6 +672,7 @@ router.get("/community/voice/:channelId/presence", async (req, res) => {
   if (!userId) return;
   try {
     const channelId = parseInt(req.params.channelId);
+    if (!(await resolveVoiceChannelOrDeny(userId, channelId, res))) return;
     const cutoff = new Date(Date.now() - 15_000);
     const participants = await db
       .select()
@@ -522,6 +699,7 @@ router.post("/community/voice/:channelId/signal", async (req, res) => {
   try {
     const { to, type, data } = req.body;
     if (!to || !type) { res.status(400).json({ error: "Parametri mancanti" }); return; }
+    if (!(await resolveVoiceChannelOrDeny(userId, parseInt(req.params.channelId), res))) return;
     await pushSignal({ scope: `voice:${req.params.channelId}`, to, from: userId, type, data: data ?? "" });
     res.json({ ok: true });
   } catch (err) {
@@ -533,6 +711,7 @@ router.get("/community/voice/:channelId/signals", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
+    if (!(await resolveVoiceChannelOrDeny(userId, parseInt(req.params.channelId), res))) return;
     const signals = await consumeSignals(`voice:${req.params.channelId}`, userId);
     res.json({ signals });
   } catch (err) {
@@ -558,6 +737,7 @@ router.post("/community/channels/:channelId/files", (req: Request, res: Response
         .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
         .limit(1);
       if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
+      if (!(await assertChannelAccess(userId, channel, res))) return;
 
       const ctx = await getMemberContext(channel.communityId, userId);
       const canManageFiles = hasPermission(ctx, "files.manage");
@@ -602,6 +782,7 @@ router.get("/community/channels/:channelId/files", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, userId)))
       .limit(1);
     if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
+    if (!(await assertChannelAccess(userId, channel, res))) return;
 
     const files = await db
       .select()
@@ -655,6 +836,11 @@ router.delete("/community/files/:fileId", async (req, res) => {
     const filePath = path.join(COMMUNITY_FILES_DIR, path.basename(file.fileUrl));
     fs.unlink(filePath, () => {});
     await db.delete(communityFilesTable).where(eq(communityFilesTable.id, fileId));
+    // Deleting your own file isn't moderation; deleting another member's (via
+    // files.manage) is, and gets audited.
+    if (file.userId !== userId) {
+      await recordModerationAction({ communityId: file.communityId, actorUserId: userId, action: "file.delete", targetUserId: file.userId, targetId: fileId, metadata: { channelId: file.channelId } });
+    }
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
@@ -677,6 +863,10 @@ router.get("/uploads/community-files/:filename", async (req, res) => {
 
     const ctx = await getMemberContext(file.communityId, userId);
     if (!ctx.isMember && !ctx.isOwner) { res.status(403).json({ error: "Non sei membro della community" }); return; }
+
+    // Paid-channel gate (sub-project C): a file in a locked channel needs an entitlement.
+    const [fileChannel] = await db.select().from(communityChannelsTable).where(eq(communityChannelsTable.id, file.channelId)).limit(1);
+    if (fileChannel && !(await assertChannelAccess(userId, fileChannel, res))) return;
 
     const filePath = path.join(COMMUNITY_FILES_DIR, filename);
     if (!fs.existsSync(filePath)) { res.status(404).json({ error: "File non trovato sul server" }); return; }
@@ -704,12 +894,8 @@ router.delete("/community/:id", async (req, res) => {
     if (!community) { res.status(404).json({ error: "Non trovata" }); return; }
     if (community.creatorId !== userId) { res.status(403).json({ error: "Solo il creatore può eliminare la community" }); return; }
 
-    await db.delete(communityMembersTable).where(eq(communityMembersTable.communityId, id));
-    await db.delete(communityChannelsTable).where(eq(communityChannelsTable.communityId, id));
-    await db.delete(communityRolesTable).where(eq(communityRolesTable.communityId, id));
-    await db.delete(communityBansTable).where(eq(communityBansTable.communityId, id));
-    await db.delete(communityMutesTable).where(eq(communityMutesTable.communityId, id));
-    await db.delete(communitiesTable).where(eq(communitiesTable.id, id));
+    const orphanFiles = await deleteCommunityDeep(id);
+    unlinkCommunityFiles(orphanFiles);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });

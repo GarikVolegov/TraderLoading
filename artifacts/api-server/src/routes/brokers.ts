@@ -793,11 +793,10 @@ export function createBrokersRouter(
       const userId = requireBrokerUser(req, res);
       if (!userId) return;
       const profiles = await runtime.listProfiles();
+      // Per-user active pointer: activeByUser is already integrity-checked in the
+      // store (entry exists only if the profile exists and this user owns it).
       res.json({
-        activeProfileId:
-          profiles.profiles.some((profile) => profile.id === profiles.activeProfileId && profile.ownerUserId === userId)
-            ? profiles.activeProfileId
-            : null,
+        activeProfileId: profiles.activeByUser[userId] ?? null,
         profiles: profiles.profiles.filter((profile) => profile.ownerUserId === userId),
       });
     } catch (error) {

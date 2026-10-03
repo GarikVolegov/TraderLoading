@@ -5,6 +5,7 @@ import { Search, X, Check, ChevronDown, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PAIR_CATALOG, CATEGORY_LABELS, type PairEntry } from "@workspace/pair-catalog";
 import { uiText } from "@/contexts/LanguageContext";
+import { trackEvent } from "@/lib/analytics";
 
 interface PairSelectionModalProps {
   open: boolean;
@@ -107,7 +108,10 @@ export function PairSelectionModal({
   };
 
   const handleConfirm = () => {
-    if (selected.length > 0) onConfirm(selected);
+    if (selected.length > 0) {
+      trackEvent("pair_selected", { count: selected.length });
+      onConfirm(selected);
+    }
   };
 
   const modal = (

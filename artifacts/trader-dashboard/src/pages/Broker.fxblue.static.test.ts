@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const brokerPage = await readFile(new URL("./Broker.tsx", import.meta.url), "utf8");
 const cloudConnect = await readFile(new URL("../components/broker-hub/CloudAccountConnect.tsx", import.meta.url), "utf8");
-const i18nDict = await readFile(new URL("../lib/i18n.ts", import.meta.url), "utf8");
+const i18nDict = await readFile(new URL("../lib/i18n/dict.it.ts", import.meta.url), "utf8");
 
 assert.match(brokerPage, /BrokerHubWorkspace/);
 // Il sottotitolo "solo FX Blue Account Sync" è passato all'i18n.

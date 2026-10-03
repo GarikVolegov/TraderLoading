@@ -14,6 +14,10 @@ import type { BrokerAccountCredentials, BrokerProviderVerification } from "./pro
 
 type Fetch = typeof fetch;
 
+// A hung MetaApi endpoint must not stall the sync/verify cycle: every request is
+// bounded by an AbortSignal timeout (Node's default fetch has no request timeout).
+const BROKER_FETCH_TIMEOUT_MS = 15_000;
+
 interface MetaApiProviderOptions {
   token?: string;
   apiUrl?: string;
@@ -269,6 +273,7 @@ export function createMetaApiProvider(options: MetaApiProviderOptions = {}) {
     const response = await doFetch(url, {
       ...init,
       headers: { ...jsonHeaders(token), ...(init.headers as Record<string, string> | undefined) },
+      signal: init.signal ?? AbortSignal.timeout(BROKER_FETCH_TIMEOUT_MS),
     });
     return assertOk(response);
   }
@@ -282,6 +287,7 @@ export function createMetaApiProvider(options: MetaApiProviderOptions = {}) {
         method: "POST",
         headers: { ...jsonHeaders(token), "transaction-id": transactionId },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(BROKER_FETCH_TIMEOUT_MS),
       });
       const data = (await assertOk(response)) as { id?: string; state?: string; message?: string };
       if (response.status !== 202) return data;

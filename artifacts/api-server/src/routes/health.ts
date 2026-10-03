@@ -12,6 +12,8 @@ export interface DependencyCheckResult {
 
 export interface HealthRouterOptions {
   checkDatabase?: () => Promise<DependencyCheckResult>;
+  /** Returns null when Redis isn't part of readiness (unconfigured single instance). */
+  checkRedis?: () => Promise<DependencyCheckResult | null>;
   version?: string;
 }
 
@@ -24,6 +26,7 @@ interface StatusResponse {
   checks: {
     server: { status: "ok" };
     database: DependencyCheckResult;
+    redis?: DependencyCheckResult;
   };
 }
 
@@ -46,13 +49,40 @@ async function defaultCheckDatabase(): Promise<DependencyCheckResult> {
   }
 }
 
-function sanitizeDependencyCheck(result: DependencyCheckResult): DependencyCheckResult {
+// Never leak upstream error strings (which can carry host/credentials) to an
+// unauthenticated probe: collapse any failure to a fixed, generic code.
+function sanitizeDependencyCheck(result: DependencyCheckResult, errorCode: string): DependencyCheckResult {
   if (result.status === "ok") return result;
   return {
     status: "error",
     latencyMs: result.latencyMs,
-    error: "database_unavailable",
+    error: errorCode,
   };
+}
+
+/**
+ * Redis readiness. Redis is optional on a single instance (rate-limit falls back
+ * to in-memory — see redisClient.assertRedisConfigured), so when REDIS_URL is
+ * unset this returns null (not part of readiness) rather than failing the probe.
+ * When configured, PINGs with a short timeout so a hung Redis can't hang /readyz.
+ */
+async function defaultCheckRedis(): Promise<DependencyCheckResult | null> {
+  if (!process.env.REDIS_URL) return null;
+  const started = Date.now();
+  try {
+    const { getSharedRedisClient } = await import("../lib/redisClient.js");
+    const clientPromise = getSharedRedisClient();
+    if (!clientPromise) return null;
+    const client = await clientPromise;
+    await Promise.race([
+      client.ping(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("redis_ping_timeout")), 2_000)),
+    ]);
+    return { status: "ok", latencyMs: Date.now() - started };
+  } catch (err) {
+    logger.error({ err }, "Redis readiness check failed");
+    return { status: "error", latencyMs: Date.now() - started, error: "redis_unavailable" };
+  }
 }
 
 function getVersion(version: string | undefined): string {
@@ -67,9 +97,12 @@ function getVersion(version: string | undefined): string {
 }
 
 async function createStatusResponse(options: Required<HealthRouterOptions>): Promise<StatusResponse> {
-  const database = sanitizeDependencyCheck(await options.checkDatabase());
+  const database = sanitizeDependencyCheck(await options.checkDatabase(), "database_unavailable");
+  const redisRaw = await options.checkRedis();
+  const redis = redisRaw ? sanitizeDependencyCheck(redisRaw, "redis_unavailable") : null;
+  const healthy = database.status === "ok" && (redis === null || redis.status === "ok");
   return {
-    status: database.status === "ok" ? "ok" : "degraded",
+    status: healthy ? "ok" : "degraded",
     service: "api",
     timestamp: new Date().toISOString(),
     uptimeSeconds: Math.round(process.uptime()),
@@ -77,6 +110,7 @@ async function createStatusResponse(options: Required<HealthRouterOptions>): Pro
     checks: {
       server: { status: "ok" },
       database,
+      ...(redis ? { redis } : {}),
     },
   };
 }
@@ -85,6 +119,7 @@ export function createHealthRouter(options: HealthRouterOptions = {}): IRouter {
   const router: IRouter = Router();
   const resolvedOptions: Required<HealthRouterOptions> = {
     checkDatabase: options.checkDatabase ?? defaultCheckDatabase,
+    checkRedis: options.checkRedis ?? defaultCheckRedis,
     version: getVersion(options.version),
   };
 

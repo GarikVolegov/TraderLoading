@@ -3,10 +3,15 @@ import { db, communitiesTable, communityMembersTable, communityRolesTable, profi
 import { eq, and, asc, desc, sql } from "drizzle-orm";
 import {
   getMemberContext,
+  getMemberRank,
   requirePermission,
   sanitizePermissions,
+  memberRank,
+  outranks,
+  canGrantPermissions,
   COMMUNITY_PERMISSIONS,
 } from "../services/communityPermissions.js";
+import { recordModerationAction } from "../services/communityModerationLog.js";
 
 const router: IRouter = Router();
 
@@ -52,11 +57,18 @@ router.get("/community/:id/roles", async (req, res) => {
 // ─── Create role ────────────────────────────────────────────────────────────────
 router.post("/community/:id/roles", async (req, res) => {
   const communityId = parseInt(req.params.id);
-  if (!(await requirePermission(req, res, communityId, "roles.manage"))) return;
+  const ctx = await requirePermission(req, res, communityId, "roles.manage");
+  if (!ctx) return;
   try {
     const { name, color, permissions } = req.body;
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       res.status(400).json({ error: "Nome ruolo richiesto" });
+      return;
+    }
+    const desiredPermissions = sanitizePermissions(permissions);
+    // Can't create a role granting permissions you don't hold yourself.
+    if (!canGrantPermissions(ctx, desiredPermissions)) {
+      res.status(403).json({ error: "Non puoi concedere permessi che non possiedi" });
       return;
     }
     const [last] = await db
@@ -71,11 +83,12 @@ router.post("/community/:id/roles", async (req, res) => {
         communityId,
         name: name.trim().slice(0, 40),
         color: sanitizeColor(color),
-        permissions: sanitizePermissions(permissions),
+        permissions: desiredPermissions,
         position: last ? last.position + 1 : 0,
         isDefault: false,
       })
       .returning();
+    await recordModerationAction({ communityId, actorUserId: ctx.userId, action: "role.create", targetId: role.id, metadata: { name: role.name, permissions: desiredPermissions } });
     res.status(201).json(role);
   } catch (err) {
     console.error("POST /community/:id/roles error:", err);
@@ -89,14 +102,29 @@ router.patch("/community/roles/:roleId", async (req, res) => {
   try {
     const [role] = await db.select().from(communityRolesTable).where(eq(communityRolesTable.id, roleId)).limit(1);
     if (!role) { res.status(404).json({ error: "Ruolo non trovato" }); return; }
-    if (!(await requirePermission(req, res, role.communityId, "roles.manage"))) return;
+    const ctx = await requirePermission(req, res, role.communityId, "roles.manage");
+    if (!ctx) return;
+    // Can only edit roles strictly below your own rank (blocks editing the Admin
+    // role or your own role to escalate).
+    if (!outranks(memberRank(ctx), role.position)) {
+      res.status(403).json({ error: "Non puoi modificare un ruolo di livello pari o superiore al tuo" });
+      return;
+    }
 
     const update: Partial<{ name: string; color: string | null; permissions: string[] }> = {};
     if (typeof req.body.name === "string" && req.body.name.trim().length > 0) {
       update.name = req.body.name.trim().slice(0, 40);
     }
     if ("color" in req.body) update.color = sanitizeColor(req.body.color);
-    if ("permissions" in req.body) update.permissions = sanitizePermissions(req.body.permissions);
+    if ("permissions" in req.body) {
+      const desired = sanitizePermissions(req.body.permissions);
+      // Can't add permissions to a role that you don't hold yourself.
+      if (!canGrantPermissions(ctx, desired)) {
+        res.status(403).json({ error: "Non puoi concedere permessi che non possiedi" });
+        return;
+      }
+      update.permissions = desired;
+    }
     if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nessuna modifica" }); return; }
 
     const [updated] = await db
@@ -104,6 +132,7 @@ router.patch("/community/roles/:roleId", async (req, res) => {
       .set(update)
       .where(eq(communityRolesTable.id, roleId))
       .returning();
+    await recordModerationAction({ communityId: role.communityId, actorUserId: ctx.userId, action: "role.update", targetId: roleId, metadata: update });
     res.json(updated);
   } catch (err) {
     console.error("PATCH /community/roles/:roleId error:", err);
@@ -117,7 +146,12 @@ router.delete("/community/roles/:roleId", async (req, res) => {
   try {
     const [role] = await db.select().from(communityRolesTable).where(eq(communityRolesTable.id, roleId)).limit(1);
     if (!role) { res.status(404).json({ error: "Ruolo non trovato" }); return; }
-    if (!(await requirePermission(req, res, role.communityId, "roles.manage"))) return;
+    const ctx = await requirePermission(req, res, role.communityId, "roles.manage");
+    if (!ctx) return;
+    if (!outranks(memberRank(ctx), role.position)) {
+      res.status(403).json({ error: "Non puoi eliminare un ruolo di livello pari o superiore al tuo" });
+      return;
+    }
     if (role.isDefault) { res.status(400).json({ error: "Il ruolo predefinito non può essere eliminato" }); return; }
 
     const [defaultRole] = await db
@@ -131,6 +165,7 @@ router.delete("/community/roles/:roleId", async (req, res) => {
       .set({ roleId: defaultRole?.id ?? null })
       .where(eq(communityMembersTable.roleId, roleId));
     await db.delete(communityRolesTable).where(eq(communityRolesTable.id, roleId));
+    await recordModerationAction({ communityId: role.communityId, actorUserId: ctx.userId, action: "role.delete", targetId: roleId, metadata: { name: role.name } });
     res.json({ ok: true });
   } catch (err) {
     console.error("DELETE /community/roles/:roleId error:", err);
@@ -187,19 +222,36 @@ router.get("/community/:id/members", async (req, res) => {
 // ─── Assign a role to a member ───────────────────────────────────────────────────
 router.patch("/community/:id/members/:userId/role", async (req, res) => {
   const communityId = parseInt(req.params.id);
-  if (!(await requirePermission(req, res, communityId, "roles.manage"))) return;
+  const ctx = await requirePermission(req, res, communityId, "roles.manage");
+  if (!ctx) return;
   try {
     const targetUserId = req.params.userId;
+    const actorRank = memberRank(ctx);
+
+    // Can't change the role of someone who ranks at or above you (e.g. another
+    // admin or the owner).
+    const currentTargetRank = await getMemberRank(communityId, targetUserId);
+    if (!outranks(actorRank, currentTargetRank)) {
+      res.status(403).json({ error: "Non puoi modificare il ruolo di un membro di livello pari o superiore al tuo" });
+      return;
+    }
+
     const roleIdRaw = req.body.roleId;
     let roleId: number | null = null;
     if (roleIdRaw !== null && roleIdRaw !== undefined) {
       roleId = parseInt(String(roleIdRaw));
       const [role] = await db
-        .select({ id: communityRolesTable.id })
+        .select({ id: communityRolesTable.id, position: communityRolesTable.position })
         .from(communityRolesTable)
         .where(and(eq(communityRolesTable.id, roleId), eq(communityRolesTable.communityId, communityId)))
         .limit(1);
       if (!role) { res.status(400).json({ error: "Ruolo non valido per questa community" }); return; }
+      // Can't assign a role at or above your own rank (blocks self-promotion to
+      // Admin and handing out roles more senior than yours).
+      if (!outranks(actorRank, role.position)) {
+        res.status(403).json({ error: "Non puoi assegnare un ruolo di livello pari o superiore al tuo" });
+        return;
+      }
     }
 
     const [updated] = await db
@@ -208,6 +260,7 @@ router.patch("/community/:id/members/:userId/role", async (req, res) => {
       .where(and(eq(communityMembersTable.communityId, communityId), eq(communityMembersTable.userId, targetUserId)))
       .returning();
     if (!updated) { res.status(404).json({ error: "Membro non trovato" }); return; }
+    await recordModerationAction({ communityId, actorUserId: ctx.userId, action: "member.role_change", targetUserId, targetId: roleId, metadata: { roleId } });
     res.json({ ok: true, userId: targetUserId, roleId });
   } catch (err) {
     console.error("PATCH /community/:id/members/:userId/role error:", err);
@@ -218,16 +271,13 @@ router.patch("/community/:id/members/:userId/role", async (req, res) => {
 // ─── Kick a member ───────────────────────────────────────────────────────────────
 router.delete("/community/:id/members/:userId", async (req, res) => {
   const communityId = parseInt(req.params.id);
-  if (!(await requirePermission(req, res, communityId, "members.kick"))) return;
+  const ctx = await requirePermission(req, res, communityId, "members.kick");
+  if (!ctx) return;
   try {
     const targetUserId = req.params.userId;
-    const [community] = await db
-      .select({ creatorId: communitiesTable.creatorId })
-      .from(communitiesTable)
-      .where(eq(communitiesTable.id, communityId))
-      .limit(1);
-    if (community?.creatorId === targetUserId) {
-      res.status(400).json({ error: "Non puoi espellere il proprietario" });
+    // Can't kick a member who ranks at or above you (owner included).
+    if (!outranks(memberRank(ctx), await getMemberRank(communityId, targetUserId))) {
+      res.status(403).json({ error: "Non puoi espellere un membro di livello pari o superiore al tuo" });
       return;
     }
 
@@ -241,6 +291,7 @@ router.delete("/community/:id/members/:userId", async (req, res) => {
       .update(communitiesTable)
       .set({ memberCount: sql`GREATEST(${communitiesTable.memberCount} - 1, 0)` })
       .where(eq(communitiesTable.id, communityId));
+    await recordModerationAction({ communityId, actorUserId: ctx.userId, action: "member.kick", targetUserId });
     res.json({ ok: true });
   } catch (err) {
     console.error("DELETE /community/:id/members/:userId error:", err);

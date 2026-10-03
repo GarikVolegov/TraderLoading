@@ -23,4 +23,6 @@ export interface BillingStatus {
   canCancel: boolean;
   canResume: boolean;
   canViewInvoices: boolean;
+  /** Whether POST /billing/checkout-session can succeed (Stripe configured server-side). */
+  checkoutAvailable: boolean;
 }

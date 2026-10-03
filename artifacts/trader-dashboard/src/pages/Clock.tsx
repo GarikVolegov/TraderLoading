@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useBackground, type TradingSessionConfig } from "@/contexts/BackgroundContext";
 import { getLocalClockHours, getLocalTimeZoneLabel, isMarketClosedSession, isTradingSession, normalizeLocalSessionTime, type MarketSessionConfig } from "@/lib/marketSessions";
+import { sessionBadgeClasses, toneForSessionColor, type SessionTone } from "@/lib/sessionBadge";
 import { uiText } from "@/contexts/LanguageContext";
 
 // ─── helpers (stessa logica di ClockWidget, qui estesa) ──────────────────────────
@@ -88,10 +89,10 @@ export default function Clock() {
           </div>
         }
         title={uiText("auto.ui.87a7806fa2")}
-        subtitle={`Sessioni operative, countdown apertura/chiusura e orari solo locali (${localTimeZoneLabel})`}
+        subtitle={uiText("auto.ui.60bd9cc0be", { tz: localTimeZoneLabel })}
         badge={
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-             <Radio className="h-3 w-3" /> {closedActive ? "Mercato chiuso" : `${activeCount} attive`}
+             <Radio className="h-3 w-3" /> {closedActive ? uiText("auto.ui.aafe59a8f3") : uiText("auto.ui.7c72ea46ea", { count: activeCount })}
           </span>
         }
       />
@@ -102,19 +103,25 @@ export default function Clock() {
       {/* Sessioni di mercato */}
       <div>
         <h3 className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-          <Hourglass className="h-3.5 w-3.5" /> Sessioni di mercato
+          <Hourglass className="h-3.5 w-3.5" /> {uiText("auto.ui.45e809db60")}
         </h3>
 
         {sessions.length === 0 ? (
           <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              Nessuna sessione attivata. Configura le sessioni dalle impostazioni dello sfondo.
+            <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
+              <Hourglass className="h-8 w-8 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">{uiText("auto.ui.3d94117b41")}</p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {rows.map(({ s, active, untilClose, untilOpen, progress }) => {
               const closed = isMarketClosedSession(s as MarketSessionConfig);
+              // Claude Design session pill: active → session colour (destructive when
+              // closed), inactive → spent muted pill.
+              const sessionColorTone = toneForSessionColor(s.color);
+              const statusTone: SessionTone = active ? sessionColorTone : "muted";
+              const statusBadge = sessionBadgeClasses(statusTone);
               return (
               <Card
                 key={s.name}
@@ -126,16 +133,16 @@ export default function Clock() {
                 <CardContent className="space-y-3 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", SESSION_DOT[s.color] ?? "bg-primary", active && "animate-pulse")} />
+                      <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", active ? sessionBadgeClasses(sessionColorTone).dot : (SESSION_DOT[s.color] ?? "bg-primary"), active && "animate-pulse")} />
                       <span className="truncate font-bold">{s.name}</span>
                     </div>
-                    {active && closed ? (
-                      <span className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-400">{uiText("clock.market_closed_badge")}</span>
-                    ) : active ? (
-                      <span className="shrink-0 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-bold text-green-400">{uiText("clock.active_badge")}</span>
-                    ) : (
-                      <span className="shrink-0 rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">{uiText("auto.ui.df95f7d698")}</span>
-                    )}
+                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", statusBadge.container)}>
+                      {active && closed
+                        ? uiText("clock.market_closed_badge")
+                        : active
+                        ? uiText("clock.active_badge")
+                        : uiText("auto.ui.df95f7d698")}
+                    </span>
                   </div>
 
                   <div className="rounded-lg bg-secondary/30 p-2 text-center">
@@ -146,9 +153,9 @@ export default function Clock() {
                   {active ? (
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-muted-foreground">{closed ? "Periodo di chiusura" : "Avanzamento"}</span>
+                        <span className="text-muted-foreground">{closed ? uiText("auto.ui.b3de9ecf4f") : uiText("auto.ui.8f2b8b4ced")}</span>
                         <span className={cn("font-mono font-bold", closed ? "text-red-400" : "text-primary")}>
-                          termina tra {formatCountdown(untilClose)}
+                          {uiText("auto.ui.37ef226c4c", { time: formatCountdown(untilClose) })}
                         </span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-secondary/50">

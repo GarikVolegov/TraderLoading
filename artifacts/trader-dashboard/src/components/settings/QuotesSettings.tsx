@@ -12,9 +12,12 @@ export function QuotesSettings() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: quotes, isLoading } = useGetQuotes();
-  const createMutation = useCreateQuote();
-  const updateMutation = useUpdateQuote();
-  const deleteMutation = useDeleteQuote();
+  // Each handler's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const suppress = { mutation: { meta: { suppressGlobalError: true } } };
+  const createMutation = useCreateQuote(suppress);
+  const updateMutation = useUpdateQuote(suppress);
+  const deleteMutation = useDeleteQuote(suppress);
   const [newText, setNewText] = useState("");
   const [newAuthor, setNewAuthor] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);

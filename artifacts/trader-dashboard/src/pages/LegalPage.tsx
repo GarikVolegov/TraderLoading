@@ -1,12 +1,14 @@
 import { Link } from "wouter";
 import { FileText, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
-import { uiText } from "@/contexts/LanguageContext";
+import { uiText, useLanguage } from "@/contexts/LanguageContext";
+import { Seo } from "@/components/Seo";
+import { absoluteUrl } from "@/lib/seo";
 
 type LegalPageProps = {
   kind: "privacy" | "terms";
 };
 
-const UPDATED_AT = "10 giugno 2026";
+const UPDATED_AT_ISO = "2026-06-10";
 
 function LegalBlock({
   title,
@@ -29,51 +31,26 @@ function LegalBlock({
 }
 
 function PrivacyContent() {
+  const { t } = useLanguage();
   return (
     <>
       <LegalBlock title={uiText("auto.ui.d030bfc02f")}>
-        <p>
-          TraderLoading tratta dati di account, email, profilo, preferenze,
-          sessioni di accesso, notifiche push, diario di trading, immagini
-          caricate volontariamente, routine, backtest, dati community e
-          connessioni broker configurate dall'utente.
-        </p>
-        <p>
-          Le integrazioni broker sono usate per sincronizzare dati operativi e
-          storico trade. Non vendiamo dati personali e non usiamo i dati per
-          pubblicita comportamentale.
-        </p>
+        <p>{t("legal.privacy.data1")}</p>
+        <p>{t("legal.privacy.data2")}</p>
       </LegalBlock>
 
       <LegalBlock title={uiText("auto.ui.8047f34324")}>
-        <p>
-          Usiamo i dati per erogare il servizio, proteggere l'account,
-          sincronizzare dispositivi, inviare notifiche richieste, fornire
-          supporto e rispettare obblighi legali o di sicurezza.
-        </p>
-        <p>
-          I consensi facoltativi, come notifiche e comunicazioni prodotto,
-          possono essere revocati in qualsiasi momento dalle impostazioni
-          dell'app o contattando il supporto.
-        </p>
+        <p>{t("legal.privacy.use1")}</p>
+        <p>{t("legal.privacy.use2")}</p>
       </LegalBlock>
 
       <LegalBlock title={uiText("auto.ui.3b9ea39a32")}>
-        <p>
-          Puoi richiedere accesso, rettifica, esportazione o cancellazione dei
-          dati. Se hai creato un account, puoi eliminarlo direttamente da
-          Impostazioni - Account - Elimina account.
-        </p>
-        <p>
-          Alcuni log tecnici minimi possono essere conservati per sicurezza,
-          antifrode o obblighi legali, nella misura necessaria.
-        </p>
+        <p>{t("legal.privacy.rights1")}</p>
+        <p>{t("legal.privacy.rights2")}</p>
       </LegalBlock>
 
-        <LegalBlock title={uiText("legal.privacy_contacts")}>
-        <p>
-          Per richieste GDPR, privacy o cancellazione dati puoi scrivere a:
-        </p>
+      <LegalBlock title={uiText("legal.privacy_contacts")}>
+        <p>{t("legal.privacy.contact_intro")}</p>
         <a
           href="mailto:assistenza@traderloading.com?subject=Privacy%20TraderLoading"
           className="inline-flex items-center gap-2 font-semibold text-primary hover:text-primary/80"
@@ -87,39 +64,23 @@ function PrivacyContent() {
 }
 
 function TermsContent() {
+  const { t } = useLanguage();
   return (
     <>
       <LegalBlock title={uiText("auto.ui.8133c4c74f")}>
-        <p>
-          TraderLoading e uno strumento di produttivita per trader: journal,
-          routine, backtest, news macro, notifiche operative e gestione della
-          disciplina. Non fornisce consulenza finanziaria, segnali di trading o
-          raccomandazioni di investimento.
-        </p>
+        <p>{t("legal.terms.service1")}</p>
       </LegalBlock>
 
       <LegalBlock title={uiText("auto.ui.2f936a4626")}>
-        <p>
-          Il trading comporta rischio elevato di perdita del capitale. Ogni
-          decisione di investimento resta esclusiva responsabilita dell'utente.
-          I dati mostrati dall'app sono strumenti informativi e organizzativi.
-        </p>
+        <p>{t("legal.terms.risk1")}</p>
       </LegalBlock>
 
       <LegalBlock title={uiText("auto.ui.c39cf6613d")}>
-        <p>
-          L'utente e responsabile della sicurezza delle proprie credenziali e
-          dell'accuratezza dei dati inseriti. E vietato usare l'app per attivita
-          illecite, abusive o che danneggino altri utenti.
-        </p>
+        <p>{t("legal.terms.resp1")}</p>
       </LegalBlock>
 
       <LegalBlock title={uiText("auto.ui.fc7746fb89")}>
-        <p>
-          Possiamo aggiornare funzionalita e termini per ragioni operative,
-          legali o di sicurezza. Le modifiche rilevanti saranno comunicate in
-          app o tramite i canali disponibili.
-        </p>
+        <p>{t("legal.terms.changes1")}</p>
         <a
           href="mailto:assistenza@traderloading.com?subject=Supporto%20TraderLoading"
           className="inline-flex items-center gap-2 font-semibold text-primary hover:text-primary/80"
@@ -134,9 +95,22 @@ function TermsContent() {
 
 export default function LegalPage({ kind }: LegalPageProps) {
   const isPrivacy = kind === "privacy";
+  const { t, language } = useLanguage();
+
+  const updatedAt = new Date(UPDATED_AT_ISO).toLocaleDateString(language, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <main className="min-h-[100dvh] bg-background px-4 py-8 text-foreground sm:px-6">
+      <Seo
+        title={t(isPrivacy ? "legal.meta.privacy_title" : "legal.meta.terms_title")}
+        description={t(isPrivacy ? "legal.meta.privacy_desc" : "legal.meta.terms_desc")}
+        lang={language}
+        canonical={absoluteUrl(isPrivacy ? "/privacy" : "/terms")}
+      />
       <div className="mx-auto max-w-3xl space-y-6">
         <Link
           href="/"
@@ -156,13 +130,12 @@ export default function LegalPage({ kind }: LegalPageProps) {
                 TraderLoading
               </p>
               <h1 className="font-mono text-3xl font-extrabold">
-                {isPrivacy ? "Privacy Policy" : "Termini di Servizio"}
+                {t(isPrivacy ? "legal.title.privacy" : "legal.title.terms")}
               </h1>
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            Ultimo aggiornamento: {UPDATED_AT}. Questa pagina e accessibile
-            pubblicamente per review store, utenti e richieste privacy.
+            {t("legal.updated", { date: updatedAt })}
           </p>
         </header>
 
@@ -172,10 +145,10 @@ export default function LegalPage({ kind }: LegalPageProps) {
           <span>{uiText("auto.ui.1afd756360")}</span>
           <div className="flex gap-4">
             <Link href="/privacy" className="hover:text-foreground">
-              Privacy
+              {t("legal.footer.privacy")}
             </Link>
             <Link href="/terms" className="hover:text-foreground">
-              Termini
+              {t("legal.footer.terms")}
             </Link>
           </div>
         </footer>

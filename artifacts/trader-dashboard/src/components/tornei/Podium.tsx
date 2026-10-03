@@ -43,7 +43,7 @@ export function Podium({ board }: { board: TorneiStanding[] }) {
               <span className={`trn-divtag trn-d-${p.division}`}>{divisionLabel(p.division, t)}</span>
             </div>
             <div style={{ marginTop: 4 }}>
-              <p style={{ margin: 0, fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 22, color: "hsl(142 71% 56%)" }}>{fmtR(p.rCum)}</p>
+              <p style={{ margin: 0, fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 22, color: "hsl(var(--success))" }}>{fmtR(p.rCum)}</p>
               <p style={{ margin: "2px 0 0", fontFamily: "var(--tl-font-mono)", fontSize: "10.5px", color: "hsl(215 20% 58%)" }}>{t("tornei.metric.ts")} {p.discIndex}%</p>
             </div>
           </button>

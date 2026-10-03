@@ -24,6 +24,9 @@ export const MAX_RISK_PCT = 2; // trade con rischio > 2% non conteggiati
 export const DRAWDOWN_DQ_R = -10; // -10R cumulati => squalifica
 export const DISC_QUALIFY = 80; // Indice Disciplina minimo per il tier "disc"
 export const FINISH_DISC_MIN = 60; // Disciplina minima per il tier "finish"
+// Attività minima per QUALSIASI premio: iscriversi a vuoto (0 trade) dava
+// Disciplina 100 e quindi finish/disc/top10 gratis. Nessun premio sotto questa soglia.
+export const MIN_PRIZE_TRADES = 5;
 
 // Tier dei premi (XP / mesi Pro / certificato). `cap` limita i vincitori del tier.
 export const PRIZE_TIERS: {

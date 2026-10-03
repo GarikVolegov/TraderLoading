@@ -7,10 +7,11 @@
  * a headless Chromium over every public route × language, and snapshot the
  * settled DOM to <route>/index.html.
  *
- * Best-effort by design: if a build is missing, or puppeteer/sirv aren't
- * installed, or the browser can't launch, it logs a warning and exits 0 so it
- * NEVER breaks a deploy. The SPA still ships its static head meta + JS-rendered
- * content; prerendering is a progressive enhancement for crawlers.
+ * Hard-fail by design: puppeteer/sirv are required dependencies, and every
+ * captured snapshot is validated (see ./seoSnapshot.ts) before being written.
+ * A missing dependency, a browser launch failure, or ANY route failing
+ * validation exits the process with a non-zero code so a broken deploy never
+ * silently ships bad content to crawlers.
  *
  * Run via tsx as part of `pnpm build` (after `vite build` + sitemap).
  */
@@ -20,18 +21,19 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AddressInfo } from "node:net";
 import { allMarketingPaths } from "../src/lib/seo.ts";
+import { isValidSnapshot } from "./seoSnapshot.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const distDir = resolve(here, "../dist/public");
 
-function warn(message: string) {
-  console.warn(`prerender: skipped — ${message}`);
+function fail(message: string): never {
+  console.error(`prerender: FAILED — ${message}`);
+  process.exit(1);
 }
 
 async function main() {
   if (!existsSync(resolve(distDir, "index.html"))) {
-    warn(`no build at ${distDir} (run vite build first)`);
-    return;
+    fail(`no build at ${distDir} (run vite build first)`);
   }
 
   let sirv: typeof import("sirv").default;
@@ -39,9 +41,8 @@ async function main() {
   try {
     sirv = (await import("sirv")).default;
     puppeteer = (await import("puppeteer")).default;
-  } catch {
-    warn("puppeteer/sirv not installed");
-    return;
+  } catch (err) {
+    fail(`puppeteer/sirv failed to import — ${(err as Error).message}`);
   }
 
   const serveStatic = sirv(distDir, { single: true, dev: false });
@@ -56,11 +57,16 @@ async function main() {
   const origin = `http://127.0.0.1:${port}`;
 
   let browser: Awaited<ReturnType<typeof puppeteer.launch>> | undefined;
+  const failures: string[] = [];
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+    } catch (err) {
+      fail(`Chromium failed to launch — ${(err as Error).message}`);
+    }
 
     // allMarketingPaths() already includes "/" (English x-default) + every
     // /{lang} landing and localized keyword page.
@@ -86,6 +92,10 @@ async function main() {
         // Let the <Seo> effect populate canonical/hreflang/JSON-LD.
         await new Promise((r) => setTimeout(r, 300));
         const html = await page.content();
+        if (!isValidSnapshot(html)) {
+          failures.push(`${path} — captured HTML failed content validation`);
+          continue;
+        }
         const outFile =
           path === "/"
             ? resolve(distDir, "index.html")
@@ -94,12 +104,17 @@ async function main() {
         writeFileSync(outFile, `<!DOCTYPE html>\n${html}`, "utf8");
         done += 1;
       } catch (err) {
-        console.warn(`prerender: failed ${path} — ${(err as Error).message}`);
+        failures.push(`${path} — ${(err as Error).message}`);
       } finally {
         await page.close();
       }
     }
     console.log(`prerender: wrote ${done}/${paths.length} routes`);
+    if (failures.length > 0) {
+      console.error(`prerender: ${failures.length} route(s) failed:`);
+      for (const f of failures) console.error(`  - ${f}`);
+      process.exitCode = 1;
+    }
   } finally {
     if (browser) await browser.close();
     server.close();
@@ -107,6 +122,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  warn((err as Error).message);
-  process.exit(0);
+  console.error(`prerender: FAILED — ${(err as Error).message}`);
+  process.exit(1);
 });

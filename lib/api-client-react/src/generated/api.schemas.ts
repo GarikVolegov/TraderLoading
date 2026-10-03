@@ -110,6 +110,8 @@ export interface BillingStatus {
   canCancel: boolean;
   canResume: boolean;
   canViewInvoices: boolean;
+  /** Whether POST /billing/checkout-session can succeed (Stripe configured server-side). */
+  checkoutAvailable: boolean;
 }
 
 export interface BillingCheckoutSession {
@@ -380,12 +382,27 @@ export const CreateJournalEntryRequestResult = {
   none: "none",
 } as const;
 
+export type CreateJournalEntryRequestDirection =
+  | (typeof CreateJournalEntryRequestDirection)[keyof typeof CreateJournalEntryRequestDirection]
+  | null;
+
+export const CreateJournalEntryRequestDirection = {
+  buy: "buy",
+  sell: "sell",
+} as const;
+
 export interface CreateJournalEntryRequest {
   title: string;
   content: string;
   tradeDate: string;
   result: CreateJournalEntryRequestResult;
   tags?: string | null;
+  symbol?: string | null;
+  direction?: CreateJournalEntryRequestDirection;
+  entryPrice?: number | null;
+  exitPrice?: number | null;
+  stopLoss?: number | null;
+  profit?: number | null;
 }
 
 export type UpdateJournalEntryRequestResult =
@@ -398,12 +415,27 @@ export const UpdateJournalEntryRequestResult = {
   none: "none",
 } as const;
 
+export type UpdateJournalEntryRequestDirection =
+  | (typeof UpdateJournalEntryRequestDirection)[keyof typeof UpdateJournalEntryRequestDirection]
+  | null;
+
+export const UpdateJournalEntryRequestDirection = {
+  buy: "buy",
+  sell: "sell",
+} as const;
+
 export interface UpdateJournalEntryRequest {
   title: string;
   content: string;
   tradeDate: string;
   result: UpdateJournalEntryRequestResult;
   tags?: string | null;
+  symbol?: string | null;
+  direction?: UpdateJournalEntryRequestDirection;
+  entryPrice?: number | null;
+  exitPrice?: number | null;
+  stopLoss?: number | null;
+  profit?: number | null;
 }
 
 export interface EdgeSlice {
@@ -527,6 +559,42 @@ export type EdgeReportHighlights = {
   postLoss: EdgePostLoss | null;
 };
 
+export interface ConfidenceInterval {
+  point: number;
+  lower: number;
+  upper: number;
+}
+
+export interface KellyResult {
+  full: number;
+  half: number;
+}
+
+export interface RollingPoint {
+  atTrade: number;
+  mean: number;
+}
+
+export interface EquityPoint {
+  atTrade: number;
+  equity: number;
+}
+
+export interface RBucket {
+  from: number;
+  to: number;
+  count: number;
+}
+
+export interface EdgeStats {
+  winRateCI: ConfidenceInterval | null;
+  kelly: KellyResult | null;
+  rollingExpectancy: RollingPoint[];
+  equityCurve: EquityPoint[];
+  maxDrawdown: number;
+  rHistogram: RBucket[];
+}
+
 export interface EdgeReport {
   generatedAt: string;
   overall: EdgeOverall;
@@ -534,6 +602,7 @@ export interface EdgeReport {
   highlights: EdgeReportHighlights;
   discipline: DisciplineReport;
   guard: RiskGuardReport;
+  stats: EdgeStats;
 }
 
 export interface DeleteResponse {

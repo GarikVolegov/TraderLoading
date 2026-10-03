@@ -142,12 +142,35 @@ assert.match(appSource, /store:\s*rateLimitStore/);
 
 assert.equal(isAllowedUploadPath("/post-images/post-1.png"), true);
 assert.equal(isAllowedUploadPath("/bg-1.png"), true);
-assert.equal(isAllowedUploadPath("/voice/voice-1.webm"), true);
 assert.equal(isAllowedUploadPath("/community-files/cfile-1.pdf"), true);
-assert.equal(isAllowedUploadPath("/chat-files/chat-1.pdf"), true);
+// DM file attachments AND voice notes are private: served only via an
+// authenticated, participant-scoped route (routes/social.ts, gated on
+// chat_file_access), never the public static handler (audit 0.1).
+assert.equal(isAllowedUploadPath("/chat-files/chat-1.pdf"), false);
+assert.equal(isAllowedUploadPath("/voice/voice-1.webm"), false);
 assert.equal(isAllowedUploadPath("/../.env"), false);
 assert.equal(isAllowedUploadPath("/post-images/.secret"), false);
 assert.equal(isAllowedUploadPath("/post-images/malware.exe"), false);
+// The wiki archive is a private, Pro-gated personal store: its files must NOT
+// be served by the unauthenticated public static handler. They are served only
+// through an ownership-checked route (see routes/wiki.ts). Enumerable URLs
+// (userId segment + Date.now slug) made the public path an IDOR.
+assert.equal(isAllowedUploadPath("/wiki/user_123/1699999999999-notes.pdf"), false);
+{
+  let statusCode = 0;
+  publicUploadGuard(
+    { path: "/wiki/user_123/1699999999999-notes.pdf" },
+    {
+      setHeader: () => undefined,
+      status: (code) => {
+        statusCode = code;
+        return { json: () => undefined };
+      },
+    },
+    () => undefined,
+  );
+  assert.equal(statusCode, 404);
+}
 
 {
   let nextCalled = false;

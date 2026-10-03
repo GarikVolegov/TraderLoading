@@ -5,7 +5,7 @@ const page = readFileSync(new URL("./Wiki.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
 const bottomNav = readFileSync(new URL("../components/BottomNav.tsx", import.meta.url), "utf8");
 const commandPalette = readFileSync(new URL("../components/CommandPalette.tsx", import.meta.url), "utf8");
-const i18n = readFileSync(new URL("../lib/i18n.ts", import.meta.url), "utf8");
+const i18n = readFileSync(new URL("../lib/i18n/dict.it.ts", import.meta.url), "utf8");
 const addDialog = readFileSync(new URL("../components/archive/ArchiveAddDialog.tsx", import.meta.url), "utf8");
 
 // Route + nav wiring unchanged.
@@ -46,6 +46,11 @@ assert.match(page, /noClick:\s*true/);
 assert.match(addDialog, /useDropzone/);
 assert.match(addDialog, /noClick:\s*true/);
 assert.match(addDialog, /openPicker/);
+
+// Loading skeleton shown while the initial sources fetch is pending, so the
+// empty state doesn't flash before real data arrives (usability audit 2C).
+assert.match(page, /isLoading:\s*sourcesLoading/);
+assert.match(page, /sourcesLoading \? \(\s*<ArchiveGridSkeleton/);
 
 // i18n keys exist.
 assert.match(i18n, /"wiki\.title": "Archivio"/);

@@ -815,6 +815,43 @@ router.get(
   },
 );
 
+// Admin-triggerable ingest seed for a symbol (useful to run a one-off seed
+// from the deployed API when a CLI run is not available). Requires an admin
+// with `admin.access` permission. Body: { symbol?: string, years?: number }
+router.post(
+  "/admin/ingest/seed",
+  requireAdmin("admin.access"),
+  async (req, res) => {
+    const symbol = String(req.body?.symbol ?? "XAUUSD").trim().toUpperCase();
+    const years = Number(req.body?.years ?? 5);
+    if (!symbol) {
+      res.status(400).json({ error: "symbol_required" });
+      return;
+    }
+    if (!Number.isFinite(years) || years <= 0 || years > 20) {
+      res.status(400).json({ error: "invalid_years" });
+      return;
+    }
+
+    try {
+      const { sourceForSymbol } = await import("../services/ingest/sources.js");
+      const source = sourceForSymbol(symbol);
+      if (!source) {
+        res.status(400).json({ error: "no_data_source_for_symbol" });
+        return;
+      }
+      const { seedSymbol } = await import("../services/ingest/seed.js");
+      const now = Math.floor(Date.now() / 1000);
+      const fromTs = now - Math.floor(years * 365 * 24 * 60 * 60);
+      const result = await seedSymbol(symbol, fromTs, now, source);
+      res.json({ success: true, written: result.written, symbol, years });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: "seed_failed", message: msg });
+    }
+  },
+);
+
 router.get(
   "/admin/support/tickets/:id",
   requireAdmin("support.write"),

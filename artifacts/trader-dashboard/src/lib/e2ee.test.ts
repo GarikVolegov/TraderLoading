@@ -76,4 +76,44 @@ const restoredWhenBackupUnavailable = await getOrCreateAccountKeyPair("account-2
 
 assert.deepEqual(restoredWhenBackupUnavailable, fallbackLocalPair);
 
+// A transient backup LOAD failure must never overwrite the remote backup: doing
+// so (by regenerating a fresh key) makes every past message undecryptable. With
+// a local key present, use it and leave the backup untouched.
+{
+  const localPair = await createExportedEcdhPair();
+  const saveCalls: unknown[] = [];
+  const result = await getOrCreateAccountKeyPair("account-no-overwrite", {
+    load: async () => {
+      throw new Error("backup endpoint 500");
+    },
+    save: async (keyPair) => {
+      saveCalls.push(keyPair);
+    },
+    loadLocal: async () => localPair,
+    saveLocal: async () => {},
+  });
+  assert.deepEqual(result, localPair);
+  assert.equal(saveCalls.length, 0, "load failure must not overwrite the backup");
+}
+
+// With NO local key, a load failure must fail closed (surface the load error),
+// NOT regenerate a new key (which would overwrite the only backup).
+{
+  let caught: Error | null = null;
+  try {
+    await getOrCreateAccountKeyPair("account-fail-closed", {
+      load: async () => {
+        throw new Error("BACKUP_DOWN");
+      },
+      save: async () => {},
+      loadLocal: async () => null,
+      saveLocal: async () => {},
+    });
+  } catch (err) {
+    caught = err as Error;
+  }
+  assert.ok(caught, "must reject rather than regenerate");
+  assert.match(caught.message, /BACKUP_DOWN/, "surfaces the load error, not a regenerate/persist error");
+}
+
 console.log("e2ee account key restore checks passed");

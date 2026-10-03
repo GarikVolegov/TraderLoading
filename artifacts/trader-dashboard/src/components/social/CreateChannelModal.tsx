@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { uiText } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { X, Hash, Volume2 } from "lucide-react";
 import { apiJSON } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
+import { useToast } from "@/hooks/use-toast";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 export function CreateChannelModal({
   communityId,
@@ -14,6 +16,7 @@ export function CreateChannelModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [name, setName] = useState("");
   const [type, setType] = useState<"text" | "voice">("text");
   const [loading, setLoading] = useState(false);
@@ -32,24 +35,32 @@ export function CreateChannelModal({
     } catch (error) {
       reportClientError(error, {
         context: "community channel create",
-        notify: false,
+        toast,
+        fallbackMessage: uiText("errors.mutation.generic"),
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose, panelRef });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <motion.div
+        ref={panelRef}
+        {...panelProps}
+        aria-labelledby={titleId}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl"
+        className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl focus:outline-none"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-bold text-base">{uiText("auto.ui.0a38396995")}</h2>
+          <h2 id={titleId} className="font-bold text-base">{uiText("auto.ui.0a38396995")}</h2>
           <button
             onClick={onClose}
+            aria-label={uiText("common.close")}
             className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground"
           >
             <X className="w-4 h-4" />

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, Plus, Trash2, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Plus, Trash2, Circle } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -22,8 +22,11 @@ export default function Checklist() {
   const qc = useQueryClient();
   const [newText, setNewText] = useState("");
   const { data: items, isLoading } = useGetChecklist();
-  const createMutation = useCreateChecklistItem();
-  const deleteMutation = useDeleteChecklistItem();
+  // Each handler's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const suppress = { mutation: { meta: { suppressGlobalError: true } } };
+  const createMutation = useCreateChecklistItem(suppress);
+  const deleteMutation = useDeleteChecklistItem(suppress);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getGetChecklistQueryKey() });
 
@@ -39,8 +42,12 @@ export default function Checklist() {
   };
 
   const handleDelete = async (id: number) => {
-    await deleteMutation.mutateAsync({ id });
-    invalidate();
+    try {
+      await deleteMutation.mutateAsync({ id });
+      invalidate();
+    } catch {
+      toast({ description: t("checklist.error_delete"), variant: "destructive" });
+    }
   };
 
   const total = items?.length ?? 0;
@@ -100,7 +107,10 @@ export default function Checklist() {
                     transition={{ delay: idx * 0.04 }}
                     className="flex items-center gap-4 p-4 group hover:bg-secondary/20 transition-colors"
                   >
-                    <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                    {/* Decorative bullet, not a toggle: this page manages the
+                        criteria list itself — checking items off happens on
+                        the Dashboard's checklist widget or during a trade. */}
+                    <Circle className="w-5 h-5 text-muted-foreground/40 shrink-0" />
 
                     <span className="flex-1 text-sm font-medium text-foreground">
                       {item.text}

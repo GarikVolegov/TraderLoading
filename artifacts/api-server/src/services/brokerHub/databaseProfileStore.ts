@@ -11,7 +11,7 @@ type DbClient = {
   transaction?<T>(run: (tx: DbClient) => Promise<T>): Promise<T>;
 };
 
-const EMPTY_PROFILE_LIST: BrokerProfileList = { activeProfileId: null, profiles: [] };
+const EMPTY_PROFILE_LIST: BrokerProfileList = { activeProfileId: null, activeByUser: {}, profiles: [] };
 
 function rowsFrom(result: unknown): Array<Record<string, unknown>> {
   if (Array.isArray(result)) return result as Array<Record<string, unknown>>;

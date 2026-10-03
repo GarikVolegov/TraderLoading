@@ -43,6 +43,23 @@ function resolveProvider(): Provider {
   return "openrouter";
 }
 
+/**
+ * Bound how long an LLM call may take. The OpenAI SDK defaults to a 600s
+ * per-attempt timeout with 2 retries — far past the platform's ~100s request
+ * cutoff — so a slow or stuck provider would hang the request and tie up a worker.
+ * Defaults (30s, 1 retry) keep timeout*(1+retries) under that cutoff; override via
+ * BRAIN_LLM_TIMEOUT_MS / BRAIN_LLM_MAX_RETRIES.
+ */
+export function resolveLlmTimeoutConfig(
+  env: { BRAIN_LLM_TIMEOUT_MS?: string | undefined; BRAIN_LLM_MAX_RETRIES?: string | undefined } = process.env,
+): { timeout: number; maxRetries: number } {
+  const rawTimeout = Number(env.BRAIN_LLM_TIMEOUT_MS);
+  const timeout = Number.isFinite(rawTimeout) && rawTimeout > 0 ? rawTimeout : 30_000;
+  const rawRetries = Number(env.BRAIN_LLM_MAX_RETRIES);
+  const maxRetries = Number.isInteger(rawRetries) && rawRetries >= 0 ? rawRetries : 1;
+  return { timeout, maxRetries };
+}
+
 export interface VisionClient {
   client: OpenAI;
   model: string;
@@ -63,7 +80,8 @@ function ensureClient(): OpenAI | null {
 
   const baseURL = process.env.BRAIN_LLM_BASE_URL || cfg.baseURL;
   _visionModel = process.env.BRAIN_VISION_MODEL || cfg.defaultModel;
-  _client = new OpenAI({ baseURL, apiKey });
+  const { timeout, maxRetries } = resolveLlmTimeoutConfig();
+  _client = new OpenAI({ baseURL, apiKey, timeout, maxRetries });
   console.log(`[brain] LLM client pronto (provider=${provider}, vision=${_visionModel})`);
   return _client;
 }

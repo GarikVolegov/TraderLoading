@@ -42,7 +42,7 @@ router.patch("/community/:id", async (req, res) => {
   const communityId = parseInt(req.params.id);
   if (!(await requirePermission(req, res, communityId, "community.manage"))) return;
   try {
-    const { name, description, iconEmoji, accentColor, rules, welcomeMessage } = req.body;
+    const { name, description, iconEmoji, accentColor, rules, welcomeMessage, isPublic } = req.body;
     const update: Record<string, unknown> = { updatedAt: new Date() };
     if (typeof name === "string" && name.trim().length > 0) update.name = name.trim().slice(0, 50);
     if (typeof description === "string") update.description = description.slice(0, 200);
@@ -50,6 +50,7 @@ router.patch("/community/:id", async (req, res) => {
     if ("accentColor" in req.body) update.accentColor = sanitizeColor(accentColor);
     if (typeof rules === "string") update.rules = rules.slice(0, 4000);
     if (typeof welcomeMessage === "string") update.welcomeMessage = welcomeMessage.slice(0, 1000);
+    if (typeof isPublic === "boolean") update.isPublic = isPublic;
 
     const [updated] = await db
       .update(communitiesTable)

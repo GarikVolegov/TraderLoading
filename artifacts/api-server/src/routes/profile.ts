@@ -89,7 +89,7 @@ function computeStreakBonus(streak: number): number {
 }
 
 async function updateStreak(profileId: number): Promise<{ newStreak: number; bonusXp: number }> {
-  const [current] = await db.select({ streak: profileTable.streak, lastActiveDate: profileTable.lastActiveDate, xp: profileTable.xp })
+  const [current] = await db.select({ streak: profileTable.streak, lastActiveDate: profileTable.lastActiveDate })
     .from(profileTable).where(eq(profileTable.id, profileId)).limit(1);
   if (!current) return { newStreak: 0, bonusXp: 0 };
 
@@ -101,11 +101,13 @@ async function updateStreak(profileId: number): Promise<{ newStreak: number; bon
   const newStreak = current.lastActiveDate === yesterday ? (current.streak || 0) + 1 : 1;
   const bonusXp = computeStreakBonus(newStreak);
 
+  // Only advance the streak state here — XP is NOT applied. The caller applies
+  // `bonusXp` exactly once, atomically (sql`xp + bonusXp`, see missions.ts). Writing
+  // xp here too caused a double credit of the streak bonus (audit 0.6).
   await db.update(profileTable)
     .set({
       streak: newStreak,
       lastActiveDate: today,
-      xp: current.xp + bonusXp,
     })
     .where(eq(profileTable.id, profileId));
 

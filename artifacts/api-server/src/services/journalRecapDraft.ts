@@ -115,20 +115,36 @@ export function buildRecapBrief(edge: EdgeReport, discipline: DisciplineReport, 
   return lines.join("\n");
 }
 
-export const RECAP_SYSTEM_PROMPT =
-  "Sei un trading coach esperto, diretto e onesto. Ricevi le statistiche oggettive di un periodo di trading " +
-  "e produci un recap operativo per il trader. Basati SOLO sui numeri forniti, sii concreto e specifico, " +
-  "niente disclaimer né premesse. Rispondi ESCLUSIVAMENTE con un oggetto JSON valido con esattamente queste " +
-  "chiavi (valori stringa in italiano): overallJudgment, wentWell, wentWrong, improvements, patterns, " +
-  "focusAreas, nextPeriodExpectations, nextPeriodGoals. Ogni campo max 2-3 frasi.";
+// Output language name per app language, so the recap is written in the user's
+// language (like the risk-guard push) instead of always Italian.
+const RECAP_OUTPUT_LANGUAGE: Record<string, string> = {
+  it: "italiano",
+  en: "English",
+  es: "español",
+  fr: "français",
+  de: "Deutsch",
+};
+
+/** System prompt instructing the model to return the recap fields in `language`. */
+export function recapSystemPrompt(language: string): string {
+  const langName = RECAP_OUTPUT_LANGUAGE[language] ?? RECAP_OUTPUT_LANGUAGE.it;
+  return (
+    "Sei un trading coach esperto, diretto e onesto. Ricevi le statistiche oggettive di un periodo di trading " +
+    "e produci un recap operativo per il trader. Basati SOLO sui numeri forniti, sii concreto e specifico, " +
+    "niente disclaimer né premesse. Rispondi ESCLUSIVAMENTE con un oggetto JSON valido con esattamente queste " +
+    `chiavi (valori stringa in ${langName}): overallJudgment, wentWell, wentWrong, improvements, patterns, ` +
+    "focusAreas, nextPeriodExpectations, nextPeriodGoals. Ogni campo max 2-3 frasi."
+  );
+}
 
 export function buildRecapMessages(
   edge: EdgeReport,
   discipline: DisciplineReport,
   ctx: RecapContext,
+  language: string,
 ): { system: string; user: string } {
   return {
-    system: RECAP_SYSTEM_PROMPT,
+    system: recapSystemPrompt(language),
     user: `Statistiche del periodo:\n\n${buildRecapBrief(edge, discipline, ctx)}\n\nProduci il recap in JSON.`,
   };
 }

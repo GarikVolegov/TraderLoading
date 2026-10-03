@@ -3,11 +3,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  DICT,
   detectLanguageFromLocales,
   normalizeLocaleToLanguage,
   SUPPORTED_LANGUAGES,
 } from "./i18n";
+import { DICT } from "./i18n/all";
 
 assert.equal(normalizeLocaleToLanguage("it-IT"), "it");
 assert.equal(normalizeLocaleToLanguage("en_US"), "en");

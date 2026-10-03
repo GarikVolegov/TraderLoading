@@ -13,8 +13,11 @@ export function ChecklistSettings() {
   const [newText, setNewText] = useState("");
   const { toast } = useToast();
   const qc = useQueryClient();
-  const createMutation = useCreateChecklistItem();
-  const deleteMutation = useDeleteChecklistItem();
+  // Each handler's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const suppress = { mutation: { meta: { suppressGlobalError: true } } };
+  const createMutation = useCreateChecklistItem(suppress);
+  const deleteMutation = useDeleteChecklistItem(suppress);
 
   const handleAdd = async () => {
     if (!newText.trim()) return;

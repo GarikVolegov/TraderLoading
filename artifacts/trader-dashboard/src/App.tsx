@@ -1,7 +1,12 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from "wouter";
 import { motion } from "framer-motion";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { shouldRetryQuery } from "./lib/queryRetry";
+import { shouldNotifyGlobally } from "./lib/mutationErrorPolicy";
+import { toast } from "./hooks/use-toast";
+import { reportClientError } from "./lib/clientErrorReporter";
+import { uiText } from "./contexts/LanguageContext";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
 import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -36,7 +41,7 @@ import { PairOnboardingWrapper } from "./components/PairOnboardingWrapper";
 import { AppTutorialWrapper } from "./components/AppTutorialWrapper";
 import { TopNav } from "./components/TopNav";
 import { BottomNav } from "./components/BottomNav";
-import { useLanguage } from "./contexts/LanguageContext";
+import { hasStoredLanguagePreference, LANGUAGES, useLanguage } from "./contexts/LanguageContext";
 import type { Language } from "./lib/i18n";
 import {
   SEO_PAGE_KEYS,
@@ -44,7 +49,8 @@ import {
   seoPagePath,
   type SeoPageKey,
 } from "./lib/seo";
-import { getGetUserSettingsQueryKey, useUpdateUserSettings } from "@workspace/api-client-react";
+import { getGetUserSettingsQueryKey, useGetUserSettings, useUpdateUserSettings } from "@workspace/api-client-react";
+import { decideLanguageSync } from "./lib/languageSync";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Journal = lazy(() => import("./pages/Journal"));
@@ -54,8 +60,8 @@ const Checklist = lazy(() => import("./pages/Checklist"));
 const News = lazy(() => import("./pages/News"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Backtest = lazy(() => import("./pages/Backtest"));
+const BacktestReplay = lazy(() => import("./pages/BacktestReplay"));
 const Wiki = lazy(() => import("./pages/Wiki"));
-const Zen = lazy(() => import("./pages/Zen"));
 const Milestones = lazy(() => import("./pages/Milestones"));
 const Library = lazy(() => import("./pages/Library"));
 const Routine = lazy(() => import("./pages/Routine"));
@@ -78,10 +84,30 @@ const SeoArticlePage = lazy(() => import("./pages/seo/SeoArticlePage"));
 const LOCALIZED_LANGS: Language[] = ["it", "es", "fr", "de"];
 
 const queryClient = new QueryClient({
+  // A failed mutation with no local onError handler used to fail silently (no
+  // toast, no console) — e.g. every Wiki upload/rename/move mutation. This is
+  // the single fallback net; call sites that already show their own feedback
+  // opt out via meta.suppressGlobalError to avoid a double toast.
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      if (!shouldNotifyGlobally(mutation)) return;
+      reportClientError(error, {
+        context: "mutation",
+        fallbackMessage: uiText("errors.mutation.generic"),
+        toast,
+      });
+    },
+  }),
   defaultOptions: {
     queries: {
-      retry: false,
-      refetchOnWindowFocus: false,
+      // Retry transient server/network blips (so a momentary failure doesn't leave a
+      // widget broken until reload) but never a 4xx — see shouldRetryQuery.
+      retry: shouldRetryQuery,
+      // Refetch stale queries when the tab regains focus, so widgets recover after
+      // the laptop wakes from sleep (or a cookie refresh) instead of staying broken
+      // until a manual reload. Bounded by staleTime below, so it only refetches what
+      // is actually stale — not a refetch storm on every focus.
+      refetchOnWindowFocus: true,
       // Serve cached data instantly on navigation instead of refetching on every
       // remount (default staleTime 0). Real-time market/chat queries override this
       // with their own staleTime/refetchInterval, so freshness there is unaffected.
@@ -127,7 +153,7 @@ const clerkAppearance = {
     socialButtonsVariant: "blockButton" as const,
   },
   variables: {
-    colorPrimary: "#22c55e",
+    colorPrimary: "#51a488",
     colorForeground: "#f8fafc",
     colorMutedForeground: "#94a3b8",
     colorDanger: "#ef4444",
@@ -148,21 +174,21 @@ const clerkAppearance = {
     headerSubtitle: "text-[#94a3b8]",
     socialButtonsBlockButtonText: "text-[#f8fafc] font-semibold",
     formFieldLabel: "text-[#f8fafc] font-semibold",
-    footerActionLink: "text-[#22c55e] hover:text-[#4ade80] font-semibold",
+    footerActionLink: "text-[#51a488] hover:text-[#7cb6a3] font-semibold",
     footerActionText: "text-[#94a3b8]",
     dividerText: "text-[#94a3b8]",
-    identityPreviewEditButton: "text-[#22c55e]",
-    formFieldSuccessText: "text-[#22c55e]",
+    identityPreviewEditButton: "text-[#51a488]",
+    formFieldSuccessText: "text-[#51a488]",
     alertText: "text-[#f8fafc]",
     logoBox: "!hidden",
     logoImage: "h-11 w-11 rounded-lg",
-    socialButtonsBlockButton: "!border-[#334155] hover:!border-[#22c55e]/50 !bg-[#0d1527]/70 !rounded-xl backdrop-blur",
-    formButtonPrimary: "!bg-[#22c55e] !text-[#031a0d] hover:!bg-[#4ade80] font-bold !rounded-xl !shadow-[0_10px_22px_rgba(34,197,94,0.18)]",
-    formFieldInput: "!bg-[#0d1527]/70 !border-[#334155] !text-[#f8fafc] focus:!border-[#22c55e] focus:!ring-1 focus:!ring-[#22c55e]/40 !rounded-xl",
+    socialButtonsBlockButton: "!border-[#334155] hover:!border-[#51a488]/50 !bg-[#0d1527]/70 !rounded-xl backdrop-blur",
+    formButtonPrimary: "!bg-[#51a488] !text-[#031a0d] hover:!bg-[#7cb6a3] font-bold !rounded-xl !shadow-[0_10px_22px_rgba(81,164,136,0.18)]",
+    formFieldInput: "!bg-[#0d1527]/70 !border-[#334155] !text-[#f8fafc] focus:!border-[#51a488] focus:!ring-1 focus:!ring-[#51a488]/40 !rounded-xl",
     footerAction: "!bg-[#06101d]",
     dividerLine: "!bg-[#334155]/70",
     alert: "!bg-[#1f0d12] !border-[#ef4444]/35 !rounded-xl",
-    otpCodeFieldInput: "!bg-[#0d1527]/70 !border-[#334155] !text-[#f8fafc] focus:!border-[#22c55e] !rounded-xl",
+    otpCodeFieldInput: "!bg-[#0d1527]/70 !border-[#334155] !text-[#f8fafc] focus:!border-[#51a488] !rounded-xl",
     formFieldRow: "",
     main: "",
   },
@@ -257,19 +283,44 @@ function PageFallback() {
 }
 
 function LanguageServerSync() {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const updateSettings = useUpdateUserSettings();
   const qc = useQueryClient();
+  const settings = useGetUserSettings();
+  const decidedRef = useRef(false);
   const lastSyncedRef = useRef<string | null>(null);
 
   useEffect(() => {
+    // Aspetta l'esito della lettura: scrivere prima di aver letto è ciò che
+    // sovrascriveva la preferenza salvata su un device nuovo.
+    if (!settings.isSuccess && !settings.isError) return;
+
+    if (!decidedRef.current) {
+      decidedRef.current = true;
+      const decision = decideLanguageSync<Language>({
+        serverLanguage: settings.data?.language ?? null,
+        clientLanguage: language,
+        hasExplicitLocalChoice: hasStoredLanguagePreference(),
+        supported: Object.keys(LANGUAGES),
+      });
+      if (decision.action === "adopt") {
+        lastSyncedRef.current = decision.language;
+        setLanguage(decision.language);
+        return;
+      }
+      if (decision.action === "none") {
+        lastSyncedRef.current = language;
+        return;
+      }
+    }
+
     if (lastSyncedRef.current === language) return;
     lastSyncedRef.current = language;
     updateSettings.mutate(
       { data: { language } },
       { onSuccess: () => qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() }) },
     );
-  }, [language, qc, updateSettings]);
+  }, [settings.isSuccess, settings.isError, settings.data, language, qc, updateSettings, setLanguage]);
 
   return null;
 }
@@ -292,10 +343,10 @@ function AppRouter() {
           <Route path="/checklist" component={Checklist} />
           <Route path="/news" component={News} />
           <Route path="/chat" component={Chat} />
+          <Route path="/backtest/:id/replay" component={BacktestReplay} />
           <Route path="/backtest" component={Backtest} />
           <Route path="/tools" component={Backtest} />
           <Route path="/wiki" component={Wiki} />
-          <Route path="/zen" component={Zen} />
           <Route path="/milestones" component={Milestones} />
           <Route path="/library" component={Library} />
           <Route path="/routine" component={Routine} />
@@ -393,7 +444,7 @@ function AuthTimeoutScreen() {
           padding: "0.75rem 1.5rem",
           fontWeight: 700,
           fontSize: "1rem",
-          background: "#22c55e",
+          background: "#51a488",
           color: "#031a0d",
         }}
       >
@@ -549,11 +600,16 @@ function ClerkProviderWithRoutes() {
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/terms" component={TermsPage} />
-          <Route path="/styleguide" component={Styleguide} />
+          {/* Internal design-system reference: dev-only, never reachable in a
+              production build (finding: was publicly reachable at /styleguide). */}
+          {import.meta.env.DEV && <Route path="/styleguide" component={Styleguide} />}
           <Route path="/welcome" component={WelcomePage} />
           {marketingRoutes}
           <Route path="/*?" component={AppShell} />
         </Switch>
+        {/* Inside ClerkProvider: CookieConsentPopup calls useUser() to fire the
+            sign_up conversion with the user's createdAt on consent. */}
+        <CookieConsentPopup />
       </QueryClientProvider>
     </ClerkProvider>
   );
@@ -583,7 +639,6 @@ function App() {
                   <ScrollToTop />
                   <ClerkProviderWithRoutes />
                 </WouterRouter>
-                <CookieConsentPopup />
                 <Toaster />
               </AudioProvider>
             </LoadingProvider>

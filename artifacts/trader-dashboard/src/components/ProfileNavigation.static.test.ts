@@ -16,7 +16,7 @@ assert.match(topNav, /href="\/settings"/);
 assert.match(bottomNav, /href="\/settings"/);
 assert.match(topNav, /profile\.avatarUrl/);
 assert.match(bottomNav, /profile\.avatarUrl/);
-assert.match(topNav, /images\/avatar-default\.png/);
-assert.match(bottomNav, /images\/avatar-default\.png/);
+assert.match(topNav, /images\/avatar-default\.webp/);
+assert.match(bottomNav, /images\/avatar-default\.webp/);
 
 console.log("profile navigation static checks passed");

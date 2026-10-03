@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { qualifyPrizes } from "./prizes.js";
+import { MIN_PRIZE_TRADES } from "./constants.js";
 import type { ComputedStanding } from "./standings.js";
 
 function s(userId: string, rank: number, discIndex: number, dq = false): ComputedStanding {
@@ -45,6 +46,20 @@ function s(userId: string, rank: number, discIndex: number, dq = false): Compute
 // ── gli squalificati non ricevono nulla ──────────────────────────────────────
 {
   assert.equal(qualifyPrizes([s("a", 0, 95, true)]).length, 0);
+}
+
+// ── attività zero/insufficiente non riceve premi, nemmeno a rank 1 con
+//    Disciplina perfetta (blocca il free-XP/Pro/NFT iscrivendosi a vuoto) ──────
+{
+  const noActivity = { ...s("a", 1, 100), trades: 0, rCum: 0, score: 0 };
+  assert.equal(qualifyPrizes([noActivity]).length, 0);
+}
+{
+  // Soglia: sotto MIN_PRIZE_TRADES niente premi; a MIN_PRIZE_TRADES sì.
+  const below = { ...s("a", 1, 100), trades: MIN_PRIZE_TRADES - 1 };
+  const at = { ...s("b", 1, 100), trades: MIN_PRIZE_TRADES };
+  assert.equal(qualifyPrizes([below]).length, 0);
+  assert.ok(qualifyPrizes([at]).length > 0);
 }
 
 // ── il tier disc è limitato a 50 ─────────────────────────────────────────────

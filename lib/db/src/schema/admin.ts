@@ -105,6 +105,15 @@ export const adminAuditLogsTable = pgTable("admin_audit_logs", {
     index("admin_audit_logs_created_idx").on(table.createdAt),
 ]);
 
+// Idempotency ledger for Stripe webhook deliveries. The event id is the primary
+// key, so inserting it is an atomic "claim": a retried delivery (Stripe retries on
+// any non-2xx/timeout) conflicts and is skipped instead of re-applying effects.
+export const stripeWebhookEventsTable = pgTable("stripe_webhook_events", {
+    eventId: text("event_id").primaryKey(),
+    type: text("type").notNull(),
+    receivedAt: timestamp("received_at").notNull().defaultNow(),
+});
+
 export const insertAdminUserSchema = createInsertSchema(adminUsersTable).omit({
   id: true,
   createdAt: true,

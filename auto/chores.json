@@ -1,0 +1,33 @@
+[
+  {
+    "id": "CHORE-verify-base",
+    "recurrence": "nightly",
+    "template": {
+      "title": "Verifica salute del branch base",
+      "description": "Esegui pnpm typecheck e pnpm test. Se tutto è verde termina SENZA fare alcuna modifica (nessun commit). Se qualcosa è rosso, applica systematic debugging: trova la causa, scrivi il test che la fissa, correggi, e ferma il lavoro quando il gate è verde.",
+      "acceptanceCriteria": [
+        "pnpm typecheck verde",
+        "pnpm test verde",
+        "nessuna modifica se era già tutto verde"
+      ],
+      "priority": 50,
+      "model": "sonnet"
+    }
+  },
+  {
+    "id": "CHORE-deps-audit",
+    "recurrence": "weekly",
+    "weekday": 1,
+    "template": {
+      "title": "Audit settimanale dipendenze",
+      "description": "Esegui pnpm outdated -r e pnpm audit. Applica SOLO bump patch/minor chiaramente sicuri (max 5 pacchetti; in dubbio, salta e annota in AUTONOTES.md). Dopo ogni bump pnpm typecheck e pnpm test devono restare verdi. Niente major, niente pacchetti nuovi.",
+      "acceptanceCriteria": [
+        "solo bump patch/minor",
+        "pnpm typecheck e pnpm test verdi dopo ogni bump",
+        "pnpm-lock.yaml aggiornato e coerente"
+      ],
+      "priority": 60,
+      "model": "sonnet"
+    }
+  }
+]

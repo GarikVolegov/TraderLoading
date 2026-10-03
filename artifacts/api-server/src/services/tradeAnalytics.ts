@@ -8,6 +8,21 @@
 // trade reads the same R everywhere:
 //   R = (|exit - entry| / |entry - stop|) * sign(profit)
 
+import { tradingHour, tradingDayOfWeek } from "../lib/tradingTime.js";
+import {
+  wilsonInterval,
+  kellyFraction,
+  rollingExpectancy,
+  equityCurve,
+  rHistogram,
+  maxDrawdown,
+  type ConfidenceInterval,
+  type KellyResult,
+  type RollingPoint,
+  type EquityPoint,
+  type RBucket,
+} from "./edgeStats.js";
+
 export interface EdgeTrade {
   symbol: string;
   /** Raw broker direction: "buy"/"sell" or "long"/"short". */
@@ -20,6 +35,21 @@ export interface EdgeTrade {
   exitPrice: number | null;
   stopLoss: number | null;
   profit: number | null;
+}
+
+/**
+ * Net P&L = gross profit + commission + swap (costs, usually negative). Returns
+ * null when gross is unknown; missing costs count as zero. The coach classifies
+ * wins/losses, R sign, net profit and the cash guard on this net figure so it
+ * matches the client diario (which already nets costs) instead of gross profit.
+ */
+export function netProfit(
+  gross: number | null,
+  commission: number | null,
+  swap: number | null,
+): number | null {
+  if (gross === null) return null;
+  return gross + (commission ?? 0) + (swap ?? 0);
 }
 
 export interface EdgeSlice {
@@ -62,6 +92,21 @@ export interface EdgeOverall {
   avgLoss: number | null;
 }
 
+export interface EdgeStats {
+  /** Wilson 95% CI on the win rate — is the edge statistically real? */
+  winRateCI: ConfidenceInterval | null;
+  /** Kelly-optimal risk fraction from this edge (full + half). */
+  kelly: KellyResult | null;
+  /** Rolling expectancy over the trailing window — edge decay. */
+  rollingExpectancy: RollingPoint[];
+  /** Cumulative net-P&L equity curve, chronological. */
+  equityCurve: EquityPoint[];
+  /** Largest peak-to-trough decline of the equity curve (account currency). */
+  maxDrawdown: number;
+  /** R-multiple distribution histogram. */
+  rHistogram: RBucket[];
+}
+
 export interface EdgeReport {
   generatedAt: string;
   overall: EdgeOverall;
@@ -76,6 +121,7 @@ export interface EdgeReport {
     worstSlice: EdgeSliceRef | null;
     postLoss: EdgePostLoss | null;
   };
+  stats: EdgeStats;
 }
 
 const REVENGE_WINDOW_MIN = 120;
@@ -112,6 +158,10 @@ export function rMultiple(trade: EdgeTrade): number | null {
   ) {
     return null;
   }
+  // A stop of 0 (or negative) is "no stop set" — brokers report 0 when absent —
+  // not a real price. Without this, riskDistance = |entry - 0| = |entry| yields a
+  // fake tiny R. Matches the client, which discards a 0 price as no stop.
+  if (!(stopLoss > 0)) return null;
   const riskDistance = Math.abs(entryPrice - stopLoss);
   const moveDistance = Math.abs(exitPrice - entryPrice);
   if (!(riskDistance > 0) || !(moveDistance > 0)) return null;
@@ -126,11 +176,10 @@ export function normalizeDirection(direction: string): "long" | "short" | null {
   return null;
 }
 
-/** UTC open hour → trading session bucket. */
+/** Open hour (Europe/Rome) → trading session bucket. */
 export function sessionForTrade(openTime: string): string | null {
-  const date = new Date(openTime);
-  if (Number.isNaN(date.getTime())) return null;
-  const hour = date.getUTCHours();
+  const hour = tradingHour(new Date(openTime));
+  if (hour === null) return null;
   if (hour < 7) return "Asia";
   if (hour < 12) return "Londra";
   if (hour < 17) return "Londra–NY";
@@ -138,9 +187,8 @@ export function sessionForTrade(openTime: string): string | null {
 }
 
 function dayOfWeekForTrade(openTime: string): string | null {
-  const date = new Date(openTime);
-  if (Number.isNaN(date.getTime())) return null;
-  return DAY_LABELS[date.getUTCDay()];
+  const dow = tradingDayOfWeek(new Date(openTime));
+  return dow === null ? null : DAY_LABELS[dow];
 }
 
 function buildSlice(label: string, trades: EdgeTrade[]): EdgeSlice {
@@ -272,10 +320,31 @@ export function computeEdgeReport(trades: EdgeTrade[], now: Date = new Date()): 
   const breakdowns = { bySymbol, byDirection, bySession, byDayOfWeek };
   const { bestSlice, worstSlice } = pickHighlights(breakdowns, minSliceTradesFor(trades.length));
 
+  const scored = withProfit.length;
+  const winRateFraction = scored > 0 ? winnings.length / scored : null;
+  const rollingWindow = Math.max(5, Math.min(20, Math.round(rValues.length / 4)));
+  const orderedProfits = withProfit
+    .slice()
+    .sort((a, b) => new Date(a.closeTime ?? a.openTime).getTime() - new Date(b.closeTime ?? b.openTime).getTime())
+    .map((t) => t.profit as number);
+  const equity = equityCurve(orderedProfits);
+  const stats: EdgeStats = {
+    winRateCI: wilsonInterval(winnings.length, scored),
+    kelly: kellyFraction(winRateFraction, overall.avgWinR, overall.avgLossR),
+    rollingExpectancy: rollingExpectancy(rValues, rollingWindow),
+    equityCurve: equity,
+    // equityCurve's first point is cumulative P&L AFTER trade 1 — it never
+    // includes the account's implicit starting equity of 0. Prepend it so a big
+    // first-trade loss that's never recovered above isn't invisible to drawdown.
+    maxDrawdown: maxDrawdown([0, ...equity.map((p) => p.equity)]),
+    rHistogram: rHistogram(rValues),
+  };
+
   return {
     generatedAt: now.toISOString(),
     overall,
     breakdowns,
     highlights: { bestSlice, worstSlice, postLoss: postLossSignal(trades) },
+    stats,
   };
 }

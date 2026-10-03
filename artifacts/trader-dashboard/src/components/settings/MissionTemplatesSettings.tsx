@@ -12,9 +12,12 @@ export function MissionTemplatesSettings() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: templates, isLoading } = useGetMissionTemplates();
-  const createMutation = useCreateMissionTemplate();
-  const updateMutation = useUpdateMissionTemplate();
-  const deleteMutation = useDeleteMissionTemplate();
+  // Each handler's own catch already shows its own toast below — opt out of
+  // App.tsx's global mutation-error toast to avoid a double toast.
+  const suppress = { mutation: { meta: { suppressGlobalError: true } } };
+  const createMutation = useCreateMissionTemplate(suppress);
+  const updateMutation = useUpdateMissionTemplate(suppress);
+  const deleteMutation = useDeleteMissionTemplate(suppress);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newXp, setNewXp] = useState("50");

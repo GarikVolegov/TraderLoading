@@ -10,7 +10,10 @@ import { PairSelectionModal } from "@/components/PairSelectionModal";
 
 export function PairPreferencesSettings() {
   const { selectedPairs, setSelectedPairs } = useBackground();
-  const updateMutation = useUpdateUserSettings();
+  // Both handlers using this mutation (remove/update pairs) already show
+  // their own toast on catch — opt out of App.tsx's global mutation-error
+  // toast to avoid a double toast.
+  const updateMutation = useUpdateUserSettings({ mutation: { meta: { suppressGlobalError: true } } });
   const qc = useQueryClient();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);

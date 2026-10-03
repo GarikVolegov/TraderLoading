@@ -1933,6 +1933,7 @@ components:
         - canCancel
         - canResume
         - canViewInvoices
+        - checkoutAvailable
       properties:
         plan:
           type: string
@@ -1976,6 +1977,9 @@ components:
           type: boolean
         canViewInvoices:
           type: boolean
+        checkoutAvailable:
+          type: boolean
+          description: Whether POST /billing/checkout-session can succeed (Stripe configured server-side).
 
     BillingCheckoutSession:
       type: object
@@ -2456,6 +2460,25 @@ components:
         tags:
           type: string
           nullable: true
+        symbol:
+          type: string
+          nullable: true
+        direction:
+          type: string
+          enum: [buy, sell]
+          nullable: true
+        entryPrice:
+          type: number
+          nullable: true
+        exitPrice:
+          type: number
+          nullable: true
+        stopLoss:
+          type: number
+          nullable: true
+        profit:
+          type: number
+          nullable: true
       required:
         - title
         - content
@@ -2476,6 +2499,25 @@ components:
           enum: [win, loss, breakeven, none]
         tags:
           type: string
+          nullable: true
+        symbol:
+          type: string
+          nullable: true
+        direction:
+          type: string
+          enum: [buy, sell]
+          nullable: true
+        entryPrice:
+          type: number
+          nullable: true
+        exitPrice:
+          type: number
+          nullable: true
+        stopLoss:
+          type: number
+          nullable: true
+        profit:
+          type: number
           nullable: true
       required:
         - title
@@ -2760,6 +2802,8 @@ components:
           $ref: "#/components/schemas/DisciplineReport"
         guard:
           $ref: "#/components/schemas/RiskGuardReport"
+        stats:
+          $ref: "#/components/schemas/EdgeStats"
       required:
         - generatedAt
         - overall
@@ -2767,6 +2811,101 @@ components:
         - highlights
         - discipline
         - guard
+        - stats
+
+    ConfidenceInterval:
+      type: object
+      properties:
+        point:
+          type: number
+        lower:
+          type: number
+        upper:
+          type: number
+      required:
+        - point
+        - lower
+        - upper
+
+    KellyResult:
+      type: object
+      properties:
+        full:
+          type: number
+        half:
+          type: number
+      required:
+        - full
+        - half
+
+    RollingPoint:
+      type: object
+      properties:
+        atTrade:
+          type: integer
+        mean:
+          type: number
+      required:
+        - atTrade
+        - mean
+
+    EquityPoint:
+      type: object
+      properties:
+        atTrade:
+          type: integer
+        equity:
+          type: number
+      required:
+        - atTrade
+        - equity
+
+    RBucket:
+      type: object
+      properties:
+        from:
+          type: number
+        to:
+          type: number
+        count:
+          type: integer
+      required:
+        - from
+        - to
+        - count
+
+    EdgeStats:
+      type: object
+      properties:
+        winRateCI:
+          oneOf:
+            - $ref: "#/components/schemas/ConfidenceInterval"
+            - type: "null"
+        kelly:
+          oneOf:
+            - $ref: "#/components/schemas/KellyResult"
+            - type: "null"
+        rollingExpectancy:
+          type: array
+          items:
+            $ref: "#/components/schemas/RollingPoint"
+        equityCurve:
+          type: array
+          items:
+            $ref: "#/components/schemas/EquityPoint"
+        maxDrawdown:
+          type: number
+        rHistogram:
+          type: array
+          items:
+            $ref: "#/components/schemas/RBucket"
+      required:
+        - winRateCI
+        - kelly
+        - rollingExpectancy
+        - equityCurve
+        - maxDrawdown
+        - rHistogram
 
     DeleteResponse:
       type: object

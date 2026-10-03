@@ -10,11 +10,15 @@ const component = fs.readFileSync(
 );
 const app = fs.readFileSync(path.join(currentDir, "..", "App.tsx"), "utf8");
 
-assert.match(component, /hasAcceptedCookieConsent/);
+// GDPR: il banner deve offrire un rifiuto esplicito quando GA è configurato,
+// ricordare la risposta (accept O decline) e avere copy localizzata via t().
+assert.match(component, /hasRespondedToCookieConsent/);
 assert.match(component, /acceptCookieConsent/);
-assert.match(component, /Accetta/);
-assert.match(component, /sessione/);
-assert.match(component, /preferenze essenziali/);
+assert.match(component, /declineCookieConsent/);
+assert.match(component, /t\("cookie\.banner\.analytics"\)/);
+assert.match(component, /t\("cookie\.banner\.technical"\)/);
+assert.match(component, /t\("cookie\.banner\.decline"\)/);
+assert.doesNotMatch(component, />Accetta</);
 assert.match(app, /CookieConsentPopup/);
 assert.match(app, /<CookieConsentPopup \/>/);
 

@@ -12,7 +12,7 @@ interface ForexFactoryEvent {
   previous: string;
 }
 
-interface CalendarEvent {
+export interface CalendarEvent {
   title: string;
   country: string;
   date: string;
@@ -85,25 +85,26 @@ function buildFallback(): CalendarEvent[] {
   return [];
 }
 
-router.get("/calendar", async (_req, res) => {
-  const noCache = _req.query.nocache === "1";
-
+/** Cached-or-fetch economic calendar (shared, not per-user) — reused by the
+ *  route and by the macro-event push scheduler (see routes/push.ts). */
+export async function getCalendarEvents(noCache = false): Promise<CalendarEvent[]> {
   const cached = noCache ? null : await getJsonCache<CalendarEvent[]>(CACHE_KEY);
-  if (cached) {
-    res.json(cached);
-    return;
-  }
+  if (cached) return cached;
 
   try {
     const events = await fetchCalendarEvents();
     await setJsonCache(CACHE_KEY, events, CACHE_TTL_SECONDS);
-    res.json(events);
+    return events;
   } catch (err) {
     console.error("[calendar] fetch error:", err instanceof Error ? err.message : err);
-
-    const fallback = buildFallback();
-    res.json(fallback);
+    return buildFallback();
   }
+}
+
+router.get("/calendar", async (_req, res) => {
+  const noCache = _req.query.nocache === "1";
+  const events = await getCalendarEvents(noCache);
+  res.json(events);
 });
 
 export default router;

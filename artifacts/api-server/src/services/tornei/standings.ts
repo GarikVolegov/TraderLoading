@@ -35,10 +35,12 @@ export type ComputedStanding = {
 
 const DQ_REASON = "Drawdown −10R superato";
 
-// Trade validi: registrati a diario, con R noto e rischio entro il limite.
+// Trade validi: con R noto e rischio entro il limite. NON si filtra su
+// `journaled`: quel legame (journalEntryId) è cancellabile dall'utente, quindi
+// gattare su di esso permetteva di far sparire i perdenti da rCum e dalla DQ.
 function validRValues(input: StandingInput): number[] {
   return input.trades
-    .filter((t) => t.journaled && t.rMultiple !== null && (t.riskPct ?? 0) <= MAX_RISK_PCT)
+    .filter((t) => t.rMultiple !== null && (t.riskPct ?? 0) <= MAX_RISK_PCT)
     .map((t) => t.rMultiple as number);
 }
 
