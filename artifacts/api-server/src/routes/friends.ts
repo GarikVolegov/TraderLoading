@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, friendshipsTable, profileTable } from "@workspace/db";
 import { eq, or, and, sql, ilike, inArray } from "drizzle-orm";
+import { tradingDay } from "../lib/tradingTime.js";
 
 const router: IRouter = Router();
 
@@ -14,7 +15,13 @@ function requireAuth(req: Request, res: Response): string | null {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return tradingDay(new Date()) ?? "";
+}
+
+export function parseFriendshipId(value: string): number | null {
+  if (!/^[0-9]+$/.test(value)) return null;
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 && id <= 2147483647 ? id : null;
 }
 
 export function isFriendActiveToday(lastActiveDate: string | null | undefined, referenceDate = todayKey()): boolean {
@@ -107,34 +114,39 @@ router.post("/friends/request", async (req, res) => {
   if (!userId) return;
 
   try {
-    const { friendUserId } = req.body;
-    if (!friendUserId || typeof friendUserId !== "string" || friendUserId === userId) {
+    const friendUserId = req.body?.friendUserId;
+    if (typeof friendUserId !== "string" || !friendUserId.trim() || friendUserId === userId) {
       res.status(400).json({ error: "ID amico non valido" });
       return;
     }
 
-    const existing = await db
-      .select()
-      .from(friendshipsTable)
-      .where(
-        or(
+    const result = await db.transaction(async (tx) => {
+      // The existing unique index is directional. A pair lock covers both
+      // directions and every API process without changing the database schema.
+      const pairKey = JSON.stringify([userId, friendUserId].sort());
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`friendship:${pairKey}`}, 0))`);
+      const [target] = await tx.select({ id: profileTable.id }).from(profileTable)
+        .where(eq(profileTable.userId, friendUserId)).limit(1);
+      if (!target) return { kind: "missing" } as const;
+      const [existing] = await tx.select({ id: friendshipsTable.id }).from(friendshipsTable)
+        .where(or(
           and(eq(friendshipsTable.userId, userId), eq(friendshipsTable.friendId, friendUserId)),
-          and(eq(friendshipsTable.userId, friendUserId), eq(friendshipsTable.friendId, userId))
-        )
-      )
-      .limit(1);
-
-    if (existing.length > 0) {
+          and(eq(friendshipsTable.userId, friendUserId), eq(friendshipsTable.friendId, userId)),
+        )).limit(1);
+      if (existing) return { kind: "duplicate" } as const;
+      const [friendship] = await tx.insert(friendshipsTable)
+        .values({ userId, friendId: friendUserId, status: "pending" }).returning();
+      return { kind: "created", friendship } as const;
+    });
+    if (result.kind === "missing") {
+      res.status(404).json({ error: "Utente non trovato" });
+      return;
+    }
+    if (result.kind === "duplicate") {
       res.status(409).json({ error: "Richiesta già esistente" });
       return;
     }
-
-    const [friendship] = await db
-      .insert(friendshipsTable)
-      .values({ userId, friendId: friendUserId, status: "pending" })
-      .returning();
-
-    res.status(201).json(friendship);
+    res.status(201).json(result.friendship);
   } catch (err) {
     console.error("friends/request error:", err);
     res.status(500).json({ error: "Errore interno" });
@@ -177,42 +189,38 @@ router.patch("/friends/requests/:id", async (req, res) => {
   if (!userId) return;
 
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
+    const id = parseFriendshipId(req.params.id);
+    if (id === null) {
       res.status(400).json({ error: "ID non valido" });
       return;
     }
 
-    const { action } = req.body;
+    const action = req.body?.action;
     if (!["accept", "reject"].includes(action)) {
       res.status(400).json({ error: "Azione non valida" });
       return;
     }
 
-    const [request] = await db
-      .select()
-      .from(friendshipsTable)
-      .where(and(eq(friendshipsTable.id, id), eq(friendshipsTable.friendId, userId)))
-      .limit(1);
-
-    if (!request) {
+    const result = await db.transaction(async (tx) => {
+      // Serialize accept/reject with another recipient update or a deletion.
+      // The recipient predicate is applied before any mutation, including retry.
+      const [request] = await tx.select().from(friendshipsTable)
+        .where(and(eq(friendshipsTable.id, id), eq(friendshipsTable.friendId, userId)))
+        .limit(1).for("update");
+      if (!request) return null;
+      if (action === "reject") {
+        await tx.delete(friendshipsTable).where(eq(friendshipsTable.id, id));
+        return { success: true };
+      }
+      const [updated] = await tx.update(friendshipsTable).set({ status: "accepted" })
+        .where(eq(friendshipsTable.id, id)).returning();
+      return updated;
+    });
+    if (!result) {
       res.status(404).json({ error: "Richiesta non trovata" });
       return;
     }
-
-    if (action === "reject") {
-      await db.delete(friendshipsTable).where(eq(friendshipsTable.id, id));
-      res.json({ success: true });
-      return;
-    }
-
-    const [updated] = await db
-      .update(friendshipsTable)
-      .set({ status: "accepted" })
-      .where(eq(friendshipsTable.id, id))
-      .returning();
-
-    res.json(updated);
+    res.json(result);
   } catch (err) {
     console.error("friends/requests/:id error:", err);
     res.status(500).json({ error: "Errore interno" });
@@ -287,8 +295,8 @@ router.delete("/friends/:id", async (req, res) => {
   if (!userId) return;
 
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
+    const id = parseFriendshipId(req.params.id);
+    if (id === null) {
       res.status(400).json({ error: "ID non valido" });
       return;
     }

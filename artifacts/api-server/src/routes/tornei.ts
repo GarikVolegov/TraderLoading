@@ -28,6 +28,7 @@ import {
 } from "../services/tornei/store.js";
 import { checkEligibility } from "../services/tornei/eligibility.js";
 import { getMintProvider } from "../services/tornei/mint/provider.js";
+import { certificateIdFromParam, renderCertificateImage } from "../services/tornei/certificateImage.js";
 
 const router: IRouter = Router();
 
@@ -283,8 +284,8 @@ router.post("/tornei/certificates/:id/claim", async (req: Request, res: Response
     res.status(401).json({ error: "Autenticazione richiesta." });
     return;
   }
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) {
+  const id = certificateIdFromParam(req.params.id);
+  if (id === null) {
     res.status(400).json({ error: "bad_id" });
     return;
   }
@@ -377,8 +378,8 @@ router.post("/tornei/certificates/:id/claim", async (req: Request, res: Response
 
 // ── GET /tornei/certificates/:id/metadata (ERC-721, pubblico per i wallet) ───
 router.get("/tornei/certificates/:id/metadata", async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) {
+  const id = certificateIdFromParam(req.params.id);
+  if (id === null) {
     res.status(400).json({ error: "bad_id" });
     return;
   }
@@ -402,6 +403,26 @@ router.get("/tornei/certificates/:id/metadata", async (req: Request, res: Respon
       { trait_type: "Season", value: cert.seasonLabel },
     ],
   });
+});
+
+router.get("/tornei/certificates/:id/image.svg", async (req: Request, res: Response) => {
+  const id = certificateIdFromParam(req.params.id);
+  if (id === null) {
+    res.status(400).json({ error: "bad_id" });
+    return;
+  }
+  const [cert] = await db.select().from(tournamentCertificatesTable)
+    .where(eq(tournamentCertificatesTable.id, id)).limit(1);
+  if (!cert) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  res.set({
+    "Content-Type": "image/svg+xml; charset=utf-8",
+    "Content-Security-Policy": "default-src 'none'; sandbox",
+    "X-Content-Type-Options": "nosniff",
+    "Cache-Control": "public, max-age=300",
+  }).send(renderCertificateImage(cert));
 });
 
 export default router;

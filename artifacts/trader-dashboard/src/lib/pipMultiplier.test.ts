@@ -7,6 +7,7 @@ assert.equal(getPipMultiplier("EURUSD"), 10000);
 assert.equal(getPipMultiplier("USD/JPY"), 100);
 assert.equal(getPipMultiplier("EURJPY"), 100);
 assert.equal(getPipMultiplier("XAU/USD"), 10);
+assert.equal(getPipMultiplier("USOIL"), 100);
 assert.equal(getPipMultiplier("US30"), 1);
 assert.equal(getPipMultiplier("NAS100"), 1);
 assert.equal(getPipMultiplier("SPX500"), 1);

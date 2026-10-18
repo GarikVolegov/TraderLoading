@@ -76,14 +76,17 @@ router.post("/support/tickets", createTicketLimiter, async (req, res) => {
   }
   const category = parsed.data.category?.trim() || null;
 
-  const [ticket] = await db
-    .insert(supportTicketsTable)
-    .values({ userId, subject, status: "open", category })
-    .returning();
-  const [message] = await db
-    .insert(supportTicketMessagesTable)
-    .values({ ticketId: ticket.id, authorType: "user", authorId: userId, body })
-    .returning();
+  const { ticket, message } = await db.transaction(async (tx) => {
+    const [ticket] = await tx
+      .insert(supportTicketsTable)
+      .values({ userId, subject, status: "open", category })
+      .returning();
+    const [message] = await tx
+      .insert(supportTicketMessagesTable)
+      .values({ ticketId: ticket.id, authorType: "user", authorId: userId, body })
+      .returning();
+    return { ticket, message };
+  });
 
   // Best-effort confirmation email — never blocks the response.
   void sendTicketCreatedEmail({ id: ticket.id, userId, subject }).catch((err) =>
@@ -156,15 +159,18 @@ router.post("/support/tickets/:id/messages", async (req, res) => {
     return;
   }
 
-  const [message] = await db
-    .insert(supportTicketMessagesTable)
-    .values({ ticketId: id, authorType: "user", authorId: userId, body })
-    .returning();
-  // A user reply re-opens the ticket and bumps its recency.
-  await db
-    .update(supportTicketsTable)
-    .set({ status: "open", updatedAt: new Date() })
-    .where(eq(supportTicketsTable.id, id));
+  const message = await db.transaction(async (tx) => {
+    const [message] = await tx
+      .insert(supportTicketMessagesTable)
+      .values({ ticketId: id, authorType: "user", authorId: userId, body })
+      .returning();
+    // Message and reopened status must either both persist or both roll back.
+    await tx
+      .update(supportTicketsTable)
+      .set({ status: "open", updatedAt: new Date() })
+      .where(eq(supportTicketsTable.id, id));
+    return message;
+  });
 
   res.status(201).json(serializeMessage(message));
 });

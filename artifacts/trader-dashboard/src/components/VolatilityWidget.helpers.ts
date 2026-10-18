@@ -5,10 +5,10 @@ export type AdrTone = "destructive" | "warning" | "success";
 /**
  * Percent of the 1-year average daily range (ADR) consumed by today's range.
  * `y1` is the 1-year ADR baseline (avg daily pips); `todayPips` is today's range.
- * Clamped to [0, 100]; returns 0 for non-finite inputs or `y1 <= 0`.
+ * Clamped to [0, 100]; returns null for invalid or missing measurements.
  */
-export function adrPercentUsed(todayPips: number, y1: number): number {
-  if (!Number.isFinite(todayPips) || !Number.isFinite(y1) || y1 <= 0) return 0;
+export function adrPercentUsed(todayPips: number, y1: number): number | null {
+  if (!Number.isFinite(todayPips) || todayPips < 0 || !Number.isFinite(y1) || y1 <= 0) return null;
   const pct = (todayPips / y1) * 100;
   return Math.round(Math.max(0, Math.min(100, pct)));
 }

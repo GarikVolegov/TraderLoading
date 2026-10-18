@@ -33,8 +33,8 @@ assert.equal(watchlistFreshness([item(thirtyHoursAgo), item(oneHourAgo)], NOW).i
 // (same convention as the rest of the dashboard via deriveEffectiveFilterItems).
 assert.deepEqual(resolveWatchlistPairs(["EURUSD", "USDJPY"]), ["EURUSD", "USDJPY"]);
 assert.deepEqual(resolveWatchlistPairs([]), DEFAULT_WATCHLIST_PAIRS);
-// Unsupported-only selection also falls back to defaults
-assert.deepEqual(resolveWatchlistPairs(["NOTAPAIR"]), DEFAULT_WATCHLIST_PAIRS);
+// Unsupported-only selection must not show unrelated defaults
+assert.deepEqual(resolveWatchlistPairs(["NOTAPAIR"]), []);
 // Mixed: keep the supported ones, drop the unsupported
 assert.deepEqual(resolveWatchlistPairs(["XAUUSD", "NOTAPAIR"]), ["XAUUSD"]);
 // Defaults are real catalog symbols

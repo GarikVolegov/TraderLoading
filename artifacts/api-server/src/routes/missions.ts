@@ -5,6 +5,7 @@ import { GetMissionsResponse, CompleteMissionParams, CompleteMissionResponse } f
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { getOrCreateProfile, computeLevel, getUserId, updateStreak, getLevelName } from "./profile.js";
 import { awardLevelCertificate } from "./milestones.js";
+import { tradingDay } from "../lib/tradingTime.js";
 import { MISSION_XP_MAX } from "../lib/missionXp.js";
 
 const router: IRouter = Router();
@@ -35,20 +36,22 @@ const DEFAULT_MISSIONS: MissionSeed[] = [
 ];
 
 async function ensureTodayMissions(userId: string | null) {
-  const today = new Date().toISOString().slice(0, 10);
+  return db.transaction(async tx => {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext('traderloading.missions.create'), hashtext(${userId ?? "anonymous"}))`);
+  const today = tradingDay(new Date())!;
   const userFilter = userId ? eq(missionsTable.userId, userId) : isNull(missionsTable.userId);
-  const existing = await db.select().from(missionsTable).where(and(eq(missionsTable.missionDate, today), userFilter));
+  const existing = await tx.select().from(missionsTable).where(and(eq(missionsTable.missionDate, today), userFilter));
 
   if (existing.length === 0) {
     const templateFilter = userId ? eq(missionTemplatesTable.userId, userId) : isNull(missionTemplatesTable.userId);
-    const userTemplates = await db.select().from(missionTemplatesTable).where(templateFilter);
+    const userTemplates = await tx.select().from(missionTemplatesTable).where(templateFilter);
 
     const missionsToCreate = userTemplates.length > 0
       ? userTemplates.map((t) => ({ title: t.title, description: t.description, xpReward: t.xpReward }))
       : DEFAULT_MISSIONS;
 
     if (missionsToCreate.length > 0) {
-      await db.insert(missionsTable).values(
+      await tx.insert(missionsTable).values(
         missionsToCreate.map((m) => ({
           ...m,
           completed: false,
@@ -57,10 +60,11 @@ async function ensureTodayMissions(userId: string | null) {
         }))
       );
     }
-    return await db.select().from(missionsTable).where(and(eq(missionsTable.missionDate, today), userFilter));
+    return await tx.select().from(missionsTable).where(and(eq(missionsTable.missionDate, today), userFilter));
   }
 
   return existing;
+  });
 }
 
 // NOTE: DELETE /missions/reset-today was removed. It had no auth/dev guard and
@@ -89,7 +93,7 @@ router.post("/missions/:id/complete", async (req, res) => {
   const userId = getUserId(req);
   const { id } = CompleteMissionParams.parse({ id: Number(req.params.id) });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = tradingDay(new Date())!;
   const userFilter = userId ? eq(missionsTable.userId, userId) : isNull(missionsTable.userId);
   const [mission] = await db
     .select()
@@ -106,44 +110,25 @@ router.post("/missions/:id/complete", async (req, res) => {
     return;
   }
 
-  // Atomic claim: only the request that flips completed false->true awards XP.
-  // Without the completed=false guard two concurrent completes (double tap, two
-  // buttons) both pass the read check above and double-credit the reward.
-  const [updatedMission] = await db
-    .update(missionsTable)
-    .set({ completed: true, completedAt: new Date() })
-    .where(and(eq(missionsTable.id, id), eq(missionsTable.completed, false)))
-    .returning();
-
-  if (!updatedMission) {
-    res.status(400).json({ error: "Mission already completed" });
-    return;
-  }
-
   const profile = await getOrCreateProfile(userId);
   const oldLevel = computeLevel(profile.xp).level;
-
-  // Defense in depth for missions seeded before the template clamp existed.
   const awardXp = Math.min(Math.max(mission.xpReward, 0), MISSION_XP_MAX);
-
-  // Increment atomically (xp = xp + delta) rather than read-modify-write, so
-  // concurrent XP grants (e.g. mission + journal) don't clobber each other.
-  const [updatedProfile] = await db
-    .update(profileTable)
-    .set({ xp: sql`${profileTable.xp} + ${awardXp}` })
-    .where(eq(profileTable.id, profile.id))
-    .returning();
-
-  const { newStreak, bonusXp } = await updateStreak(profile.id);
-  let finalXp = updatedProfile.xp;
-  if (bonusXp > 0) {
-    const [bonusProfile] = await db
-      .update(profileTable)
-      .set({ xp: sql`${profileTable.xp} + ${bonusXp}` })
-      .where(eq(profileTable.id, profile.id))
+  const completion = await db.transaction(async tx => {
+    const [updatedMission] = await tx.update(missionsTable)
+      .set({ completed: true, completedAt: new Date() })
+      .where(and(eq(missionsTable.id, id), eq(missionsTable.completed, false)))
       .returning();
-    finalXp = bonusProfile.xp;
-  }
+    if (!updatedMission) return null;
+    // Serialize streak changes on the profile row; completion, daily bonus and
+    // reward are committed together, including on two simultaneous missions.
+    const { newStreak, bonusXp } = await updateStreak(profile.id, tx);
+    const [updatedProfile] = await tx.update(profileTable)
+      .set({ xp: sql`${profileTable.xp} + ${awardXp + bonusXp}` })
+      .where(eq(profileTable.id, profile.id)).returning();
+    return { updatedMission, newStreak, finalXp: updatedProfile.xp };
+  });
+  if (!completion) { res.status(400).json({ error: "Mission already completed" }); return; }
+  const { updatedMission, newStreak, finalXp } = completion;
 
   const { level, xpToNextLevel } = computeLevel(finalXp);
   const levelUp = level > oldLevel;

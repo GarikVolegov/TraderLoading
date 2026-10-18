@@ -215,7 +215,7 @@ try {
   const connectedSnapshotRes = await fetch(`${base}/profiles/${started.profile.id}/snapshot`, {
     headers: { "x-test-user": "user-one" },
   });
-  const connectedSnapshot = (await connectedSnapshotRes.json()) as { status: string; accounts: Array<{ id: string }>; metrics: { equity: number } };
+  const connectedSnapshot = (await connectedSnapshotRes.json()) as { status: string; accounts: Array<{ id: string }>; positions: unknown[]; metrics: { equity: number } };
   assert.equal(connectedSnapshot.status, "connected");
   assert.equal(connectedSnapshot.accounts[0]?.id, "123456");
   assert.equal(connectedSnapshot.metrics.equity, 1008);
@@ -235,6 +235,23 @@ try {
   assert.equal(closeOrder?.order.side, "sell");
   assert.equal(closeOrder?.order.volume, 0.2);
   assert.equal(closeOrder?.order.closePositionId, "ticket-buy-1");
+
+  // A real terminal cannot open a position when the process cannot be authorized.
+  const blockedReal = await fetch(`${base}/profiles/${started.profile.id}/orders`, {
+    method: "POST", headers: { "content-type": "application/json", "x-test-user": "user-one" },
+    body: JSON.stringify({ symbol: "EURUSD", side: "buy", type: "market", volume: 0.1, clientRequestId: "blocked-real-order" }),
+  });
+  assert.equal((await blockedReal.json() as { accepted: boolean }).accepted, false);
+  // Continue transport/receipt regression checks with an explicitly simulated account.
+  const simulatedSnapshot = await fetch(`${base}/companion/snapshot`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ profileId: started.profile.id, token: issuedSmartLinkToken,
+      account: { id: "123456", label: "Synthetic demo", brokerName: "Audit", currency: "USD", environment: "demo" },
+      metrics: { balance: 1000, equity: 1000, margin: 0, freeMargin: 1000, currency: "USD", dailyProfit: 0 },
+      positions: connectedSnapshot.positions ?? [], orders: [], capabilities: { placeOrders: true, closePositions: true },
+    }),
+  });
+  assert.equal(simulatedSnapshot.status, 200);
 
   const orderRes = await fetch(`${base}/profiles/${started.profile.id}/orders`, {
     method: "POST",

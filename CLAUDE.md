@@ -57,7 +57,9 @@ tools/metatrader-companion/   MT5 expert advisor
   and cron. Config in [railway.json](railway.json) (`preDeployCommand` runs `db:migrate`); env template
   [.env.railway.example](.env.railway.example). ⚠️ Railway disk is **ephemeral** → uploads need a mounted Volume
   (`UPLOADS_DIR=/data/uploads`) or S3/R2. Redis is optional on a single instance (rate-limit falls back to in-memory).
-  Candle-warehouse nightly tail runs as a scheduled GitHub Action ([.github/workflows/candle-tail.yml](.github/workflows/candle-tail.yml)).
+  Candle-warehouse nightly tail runs as a scheduled GitHub Action ([.github/workflows/candle-tail.yml](.github/workflows/candle-tail.yml));
+  locally `start:local` starts a separate resumable history worker when `CANDLE_WAREHOUSE=1`
+  unless `BACKTEST_HISTORY_SYNC=0`. The launcher never applies migrations.
 - **API server → AWS / Oracle** (alternative, dormant) — ECS Fargate (`Dockerfile.aws`, [infra/](infra/)) or a
   self-hosted VM (`Dockerfile.oracle`, [deploy/oracle/](deploy/oracle/)). Kept as fallback; not the active target.
 - **Frontend → Vercel** — `artifacts/trader-dashboard` (React/Vite). ⚠️ Vercel deploys are **BLOCKED** if the
@@ -111,6 +113,70 @@ tools/metatrader-companion/   MT5 expert advisor
   - **Candle warehouse** — see §7.
 
 ## 7. Active work / current focus
+
+**Guided trader process (2026-10-13):** Oggi/Metodo/Diario are the primary roots; secondary tools live in Altro and the searchable catalog. Server-owned guidance, simulation/real/unknown evidence, recurring immutable reviews and process authorization of new real broker orders supersede the earlier checklist-first bootstrap. See `docs/architecture/trader-process.md` and `docs/architecture/workspace-reorganization.md` for current behavior, limits and local verification. Additive migrations 0042/0043; no production deploy implied.
+
+**Macro intelligence, FX majors + gold / 4h (2026-10-11, local):** immutable
+news documents, corpus coverage, canonical Dukascopy bid observations, context
+snapshots, evaluated outcomes and owner-scoped trade/wait decisions link the
+operating center to Journal review. Seven-feature price-only and optional
+ten-feature price/macro offline research candidates must pass historical report
+hash checks and same-version prospective gates before any probabilities appear.
+CLI and schemas: `tools/directional-model/README.md`; architecture and rollout:
+`docs/architecture/macro-intelligence.md`. Migration 0036 was applied only to a
+disposable database; no personal/production migration or deploy. Collector stays
+off unless `MACRO_INTELLIGENCE_COLLECTOR=1`; reviewed calendar/model hashes and
+sufficient evidence remain required. Runtime: 51 isolated PostgreSQL checks;
+Python: 10 tests; synthetic Python/TS parity <1e-12; UI: seven intercepted-API
+checks at 375/1100 px. Lint: 0 errors / 35 warnings. Final `pnpm verify` passed:
+434 test files, production build and prerender 45/45. No real predictive accuracy
+or trading profitability has been established. Runtime model identity includes the
+artifact hash so changed coefficients/reports cannot reuse a prospective cohort.
+
+**Authenticated workspace reorganization (2026-10-09, local implementation):** five
+stable roots, four Journal spaces and three Social spaces; Library resources join
+Archive by source references, and the operating center owns NewsHub news and tools.
+Legacy links use replace redirects, including server-authorized resolution of old
+channel checkout returns. Account-scoped agenda retains explicit legacy import.
+Official Fed/ECB evidence and content/analysis/source metadata extend the news contract.
+Gate updated 2026-10-10: 424 test files and production build/prerender 45/45 passed; lint 0 errors,
+35 warnings. Desktop center/journal/social and exact 375 CSS px layouts checked
+in a same-origin single-iframe preview; 14 isolated API permission checks passed.
+Mobile archive collections collapse, widget editing preserves URL context, news
+previews disclose snippet/full-text basis and exclude speculative rate questions
+even on cache hits. Shared theme contrast covers 31 pairs (minimum text 4.647:1);
+opaque focus, accessible mobile headings and reduced motion are implemented.
+Archive toolbar visual checks resumed after native browser access recovered:
+375/1100 px layouts and keyboard controls passed; clearing filters now restores
+search focus. Real devices, external broker/payment flows and two-device
+calls still require dedicated end-to-end checks. Details and verification limits:
+`docs/architecture/workspace-reorganization.md`.
+
+
+**Full application audit (2026-10-10, in progress):** isolated production API +
+Clerk Development tests, database ownership/revocation fixes, atomic journal,
+missions and support writes, scoped routine persistence, large-journal pagination,
+and dependency updates. `scripts/verify-real-runtime/full/` contains reproducible
+runners; `init.mjs` creates a fresh schema-only synthetic DB and refuses an active
+audit API. `seed.mjs` refuses populated databases. No personal schema migrations.
+Latest stable gate: 425 test files; lint 35 warnings (limit 39). Social boundary fixes restrict public profile fields, validate channel-context IDs against PostgreSQL int32, preserve unsent drafts while peer keys are unavailable, and serve new DM images through participant ACLs. Nine API and four browser scenarios passed; historical DM images in public post storage require separate reconciliation. See `docs/audit/social-boundaries-2026-10-10.md`. Chat send lifecycle now preserves edited drafts, coalesces repeated Enter, and keeps failed/paused file metadata for the original account/peer during the SPA lifetime. Four new browser checks and four Social regressions passed; reload/durable-send recovery remains open (`docs/audit/chat-sends-2026-10-10.md`). The audit API serves a private immutable frontend snapshot so concurrent builds cannot mix browser assets. Broker order receipts now
+reserve repeated requests durably in the existing JSON store; only the local DEMO
+connector was exercised, including API restart and failed completion. News and
+library editor retries/persistence and chat-key atomicity have runtime evidence.
+Milestone upload validation, failed-delete preservation, typed flags and editor
+request/error handling are corrected; see the 2026-10-09 milestone report.
+Login-access logging now caches only confirmed records and coalesces concurrent
+writes; database-failure recovery has actual runtime evidence. Browser replay uses explicit
+synthetic candles with real test persistence. Tournament certificate SVG/validation and community voice fixes have 7 API, 11 voice API and 8 browser scenarios; audio is synthetic and host-only. Dependency advisories are down from 11 to 3 (1 production); compression abort cleanup is reproduced and fixed. Replay saves now use durable owner/session-scoped receipts in the existing JSON store; lost success replies do not duplicate trades. Current replay: 13 browser, 9 save API, 5 candle API and 1 actual restart check passed; candles are synthetic SQL fixtures, mobile controls work, help focus corrected. Coverage is incomplete: see
+`docs/audit/full-audit-2026-10-03.md` and its matrix; prior “DONE” notes below refer
+to older, narrower audits and do not certify the current whole-app plan.
+
+**Operating center reliability (2026-10-01, local changes):** branded compact dashboard,
+real-only COT and explicit market-data freshness, avatar fallback; experimental pair
+context documented in `docs/audit/pair-context-v2.md`. Real Clerk + isolated PostgreSQL
+audit found and fixed concurrent first-access profile creation. Local support tables
+restored from existing DDL 0013 (no personal rows changed); startup never applies schema.
+Runtime evidence and limits: `docs/audit/local-runtime-2026-10-01.md`.
 
 **Usability audit — DONE incl. adversarial re-review (2026-07-13/14, branch `feat/community-management`).**
 Full app usability pass (bugs, UX polish, dead-end/demo features) requested after the pre-launch page
@@ -197,28 +263,44 @@ class fixed once for `ChecklistSetupModal` can still recur for the others. Gate:
 **Backtest Replay Terminal (2026-07-12, DONE — port fedele del mockup Claude Design).** The old in-page
 ChartReplay is retired: `/backtest/:id/replay` is a **full-screen TradingView-style terminal**
 (`pages/BacktestReplay.tsx` + `components/backtest-terminal/*`, ~15 files + scoped `terminal.css`) on
-**lightweight-charts v5** — timeframe tabs M1→D1 with close-time anchoring, chart types candles/heikin/line,
+**lightweight-charts v5** — timeframe tabs M1→W1 with exact UTC replay anchoring, chart types candles/heikin/line,
 volume, watermark, indicator system (EMA/SMA/WMA/BB/VWAP price-pane + RSI/MACD/ATR/Stoch sub-panes +
 **custom-formula indicator** via a safe recursive-descent parser, NO eval — `lib/replay/formulaParser.ts`),
 drawing tools (trend/hline/rect/fib/ruler/long/short/text, magnet, persistence), order ticket with
 **risk %/€ → lot sizing**, draggable SL/TP/entry with R:R zones, account panel (equity curve, max DD),
 journal (Win Rate/Net R/Expectancy), transport bar 0.25×–4× + scrubber + date jump, full hotkeys. Pure
 logic TDD in `lib/replay/` (10 modules); trades auto-persist to the on-contract endpoints (dedupe per
-session); terminal state in localStorage v2. Both sides adversarially reviewed (backend 8 finding, frontend
+session); terminal state in localStorage v3 (v2 migrated). Both sides adversarially reviewed (backend 8 finding, frontend
 16 — all real ones fixed). E2E driver: `scripts/verify-backtest-replay/drive.mjs` (Clerk test user), run
 green on warehouse data. Spec: `docs/superpowers/specs/2026-07-11-backtest-replay-terminal-design.md`.
 
-**Candle warehouse — ACTIVE locally (M1 Postgres-first, live fallback).** `getCandles` is DB-first behind
-`CANDLE_WAREHOUSE=1` (now set in `.env.local`); serving supports **M1**, cursor **paging**
-(`from`/`to`/`limit` + `nextFrom`, bucket-aligned) and `GET /api/backtest/candles/meta` (watermark for the
-terminal's date-jump bounds). Seeded locally: **BTCUSD 5y** (Binance, ~2.6M rows) + **EURUSD ~4.7y**
-(Dukascopy, 16/61 monthly chunks failed on transient fetches — re-run seed to heal; upserts are idempotent).
-Runbook: [docs/candle-warehouse-seeding.md](docs/candle-warehouse-seeding.md). **Prod pending (user):** seed
-remaining symbols + flip `CANDLE_WAREHOUSE=1` on Railway. Files:
+**Backtest history and terminal (2026-10-10, local implementation).** Replay requests use
+`mode=replay`: one persistent M1 quote feed, SQL-derived M1→W1, no live fallback,
+warm-up and bidirectional paging around an exact UTC clock. Persistence v3 migrates
+v2, preserves date/time across timeframe changes and reload, and executes trades
+on M1 independently of the visible timeframe. Forming candles exclude future M1;
+the last partial bucket stops at the archive's actual end. Start/go-to date includes
+time; grouped drawing tools, searchable indicator settings and coverage status use
+a neutral TradingView-style terminal. USOIL is Dukascopy WTI CFD `lightcmdusd` bid,
+simulated tick 0.01 / contract 1,000 barrels. Other market views retain their fallback.
 
-- Spec: [docs/superpowers/specs/2026-06-14-candle-warehouse-design.md](docs/superpowers/specs/2026-06-14-candle-warehouse-design.md)
-- Schema: [lib/db/src/schema/candles.ts](lib/db/src/schema/candles.ts) · migration `lib/db/drizzle/0006_candle_warehouse.sql`
-- Services: `artifacts/api-server/src/services/aggregate.ts`, `candleRegistry.ts`, `ingest/` (dukascopy, candleStore, seed, types)
+`pnpm backtest:sync`, `backtest:tail`, `backtest:import` use the local launcher's
+database resolution. Monthly imports resume via `candle_import_chunks` (migration
+0035); actual row counts and missing weekdays prevent false completeness. CSV import
+requires declared Dukascopy M1 bid provenance and UTC timestamps. Local rows were
+audited: EURUSD through 2026-07-13, XAUUSD through 2025-06-30, USOIL empty. Five-year
+coverage is **not complete**. User preference: free data / CSV only. Dukascopy public
+feed currently returns HTTP 429; its advertised S3 bulk uses Requester Pays and was
+not activated. Only the new ledger table was added locally, no personal data changed.
+Free HistData downloads were inspected; USOIL 2024–2025 were unavailable and
+September 2026 has conflicting duplicate timestamps, so no feed substitution was made.
+Gate: 423 test files, typecheck, build and 45/45 prerender passed; lint 0 errors /
+35 existing warnings; ten isolated PostgreSQL checks passed. Desktop fixture QA
+verified exact UTC date/time across timeframe changes and reload, plus RSI settings.
+Runbook and reproducible isolated PostgreSQL verification:
+[docs/candle-warehouse-seeding.md](docs/candle-warehouse-seeding.md),
+`scripts/verify-backtest/history-runtime.mjs`. Production migration, seed and
+publication remain pending.
 
 **Design-system foundation (liquid glass / neutral jade) — Phase 0 done, surface rollout pending.**
 A uniform design backbone in [artifacts/trader-dashboard/src/index.css](artifacts/trader-dashboard/src/index.css): neutral

@@ -1,7 +1,8 @@
 // ─── Hotkeys cheatsheet ──────────────────────────────────────────────────────
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 /** Close on Esc, consuming the event so the page-level Esc (exit) stays idle. */
 export function useEscapeToClose(onClose: () => void): void {
@@ -33,11 +34,11 @@ const HOTKEYS: Array<{ keys: string; labelKey: string }> = [
 
 export function HotkeysHelp({ onClose }: { onClose: () => void }) {
   useEscapeToClose(onClose);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose, panelRef });
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={uiText("backtest_terminal.hotkeys")}
+      role="presentation"
       style={{
         position: "absolute",
         inset: 0,
@@ -50,6 +51,8 @@ export function HotkeysHelp({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
+        ref={panelRef}
+        {...panelProps}
         onClick={(event) => event.stopPropagation()}
         style={{
           width: 340,
@@ -61,7 +64,7 @@ export function HotkeysHelp({ onClose }: { onClose: () => void }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <span style={{ fontWeight: 700, fontSize: 14 }}>{uiText("backtest_terminal.hotkeys")}</span>
+          <span id={titleId} style={{ fontWeight: 700, fontSize: 14 }}>{uiText("backtest_terminal.hotkeys")}</span>
           <button type="button" className="btm-iconbtn" onClick={onClose} aria-label={uiText("backtest_terminal.close")}>
             <X size={15} />
           </button>

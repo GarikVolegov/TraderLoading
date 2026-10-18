@@ -1,0 +1,20 @@
+import assert from "node:assert/strict";
+import { parseNewsFeed, readBoundedNewsResponse } from "./feedParser.js";
+
+const rss = parseNewsFeed(`<rss><channel><item><title><![CDATA[CPI &amp; rates]]></title><description><![CDATA[<p>Published economic evidence.</p>]]></description><link>https://www.bls.gov/news.release/cpi.nr0.htm</link><pubDate>Fri, 09 Oct 2026 12:30:00 GMT</pubDate></item></channel></rss>`, "BLS");
+assert.equal(rss[0].title, "CPI & rates");
+assert.equal(rss[0].sourceType, "official");
+assert.equal(rss[0].publishedAt, "2026-10-09T12:30:00.000Z");
+const rdf = parseNewsFeed(`<rdf:RDF><item rdf:about="https://www.bankofcanada.ca/2026/10/decision/"><title>Bank of Canada policy decision</title><description>Policy statement</description><dc:date>2026-10-09T10:00:00-04:00</dc:date></item></rdf:RDF>`, "Bank of Canada");
+assert.equal(rdf[0].url, "https://www.bankofcanada.ca/2026/10/decision/");
+assert.equal(rdf[0].publishedAt, "2026-10-09T14:00:00.000Z");
+const atom = parseNewsFeed(`<feed><entry><title>Economic release in Atom</title><link rel="self" href="https://example.test/self"/><link rel="alternate" href="/release"/><summary>Official summary</summary><published>2026-10-09T12:00:00Z</published><updated>2026-10-10T13:00:00Z</updated></entry><entry><title>Undated revision only</title><link href="https://example.test/undated"/><updated>2026-10-10T13:00:00Z</updated></entry></feed>`, "Test", "https://example.test/feed");
+assert.equal(atom[0].url, "https://example.test/release");
+assert.equal(atom[0].publishedAt, "2026-10-09T12:00:00.000Z");
+assert.equal(atom[1].publishedAt, null, "updated does not manufacture a publication time");
+assert.throws(() => parseNewsFeed("<html>Provider blocked</html>", "Test"));
+assert.equal(parseNewsFeed(`<rss><item><title>BOJ policy statement</title><link>http://www.boj.or.jp/en/mopo/test.htm</link></item></rss>`, "Bank of Japan")[0].sourceType, "official");
+assert.equal(await readBoundedNewsResponse(new Response("valid body"), 20), "valid body");
+await assert.rejects(readBoundedNewsResponse(new Response("x".repeat(21)), 20), /size limit/);
+await assert.rejects(readBoundedNewsResponse(new Response("short", { headers:{"content-length":"999"} }), 20), /size limit/);
+console.log("news RSS, RDF, Atom and bounded download checks passed");

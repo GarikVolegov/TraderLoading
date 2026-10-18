@@ -1,3 +1,5 @@
+import { useRef } from "react";
+import { uiText } from "@/contexts/LanguageContext";
 import { motion } from "framer-motion";
 import { Type } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,7 +13,7 @@ import {
 } from "@workspace/api-client-react";
 
 const FONT_OPTIONS = [
-  { value: "inter", label: "Inter", sample: "font-['Inter']" },
+  { value: "inter", label: "Fira Sans", sample: "font-['Fira_Sans']" },
   {
     value: "jetbrains",
     label: "JetBrains Mono",
@@ -42,24 +44,27 @@ export function FontSettings() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
+  const sending = useRef(false);
   const handleFontChange = async (
     value: UpdateUserSettingsRequestFontChoice,
   ) => {
-    setFontChoice(value);
+    if (sending.current || value === fontChoice) return;
+    sending.current = true;
     try {
-      await updateMutation.mutateAsync({ data: { fontChoice: value } });
-      qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
+      const saved = await updateMutation.mutateAsync({ data: { fontChoice: value } });
+      qc.setQueryData(getGetUserSettingsQueryKey(), saved);
+      setFontChoice(value);
       toast({ description: "Font aggiornato." });
     } catch {
       toast({
-        description: "Errore nell'aggiornamento del font.",
+        description: uiText("settings.preference_failed"),
         variant: "destructive",
       });
-    }
+    } finally { sending.current = false; }
   };
 
   return (
-    <Card>
+    <Card aria-busy={updateMutation.isPending}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Type className="w-5 h-5 text-primary" />
@@ -72,7 +77,8 @@ export function FontSettings() {
             key={opt.value}
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
-            onClick={() => handleFontChange(opt.value)}
+            onClick={() => void handleFontChange(opt.value)}
+            disabled={updateMutation.isPending}
             className={`w-full px-4 py-3 rounded-lg text-left transition-all flex items-center justify-between ${
               fontChoice === opt.value
                 ? "bg-primary/15 border border-primary/40 text-primary"

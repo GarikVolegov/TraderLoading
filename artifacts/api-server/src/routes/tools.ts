@@ -1,19 +1,21 @@
+import { getCotOutlook } from "../services/cot.js";
 import { Router } from "express";
 import cron from "node-cron";
-import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
+import { getCurrenciesFromPairs, getPairEntry } from "@workspace/pair-catalog";
+import { getCalendarEvents } from "./calendar.js";
+import { createMarketContextService } from "../services/marketContextService.js";
 import { getNewsData } from "./news.js";
 import { cleanNewsText } from "../services/newsHub/contentQuality.js";
 import { buildMacroTickerSummary, ensureMacroDeepDive, macroArticleToNewsLike, macroNewsFromNewsHub, pairsFromMacroCurrencies } from "../services/newsHub/macroNewsAdapter.js";
 import type { NewsDeepDive } from "../services/newsHub/types.js";
 import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
-import { fetchMyfxbookOutlook, type MyfxbookSymbol } from "../services/myfxbook.js";
+import { createSentimentOutlookService } from "../services/sentimentOutlook.js";
+import { attachIntelligence } from "../services/marketIntelligence.js";
+import { newsSubscriptionKey } from "../services/newsHub/providerCorpus.js";
+import { buildVolatilitySnapshot, volatilityResponse, type VolatilitySnapshot } from "../services/volatilitySnapshot.js";
 import { parseMonteCarloParams } from "../services/monteCarloParams.js";
 import {
-  calculateVolatilityMetrics,
-  candlesToVolatilityInput,
-  trimToRecentDays,
   YAHOO_VOLATILITY_PAIRS,
-  type VolatilityMetricResponse,
 } from "../services/volatility.js";
 import { getCandles, isSupportedSymbol } from "../services/candles.js";
 import {
@@ -128,6 +130,10 @@ router.post("/tools/montecarlo", (req, res) => {
       }
 
       balance += tradeResult;
+      if (!Number.isFinite(balance)) {
+        res.status(422).json({ error: "I parametri producono saldi oltre il limite numerico; riduci rischio, R o numero di operazioni" });
+        return;
+      }
       curve.push(Math.max(0, balance));
 
       if (balance <= 0) {
@@ -147,6 +153,10 @@ router.post("/tools/montecarlo", (req, res) => {
   const p90 = finalValues[Math.floor(finalValues.length * 0.9)];
   const avgReturn =
     ((finalValues.reduce((a, b) => a + b, 0) / finalValues.length - initialBalance) / initialBalance) * 100;
+  if (!Number.isFinite(avgReturn)) {
+    res.status(422).json({ error: "I parametri producono rendimenti oltre il limite numerico; riduci rischio, R o numero di operazioni" });
+    return;
+  }
 
   res.json({
     simulations,
@@ -163,42 +173,25 @@ router.post("/tools/montecarlo", (req, res) => {
 
 // ─── 2. MYFXBOOK SENTIMENT ────────────────────────────────────────────────────
 
-const FALLBACK_SYMBOLS: MyfxbookSymbol[] = [
-  { name: "EURUSD", longPercentage: 58, shortPercentage: 42, longPositions: 58000, shortPositions: 42000, longVolume: 58, shortVolume: 42 },
-  { name: "GBPUSD", longPercentage: 45, shortPercentage: 55, longPositions: 45000, shortPositions: 55000, longVolume: 45, shortVolume: 55 },
-  { name: "USDJPY", longPercentage: 62, shortPercentage: 38, longPositions: 62000, shortPositions: 38000, longVolume: 62, shortVolume: 38 },
-  { name: "USDCHF", longPercentage: 51, shortPercentage: 49, longPositions: 51000, shortPositions: 49000, longVolume: 51, shortVolume: 49 },
-  { name: "AUDUSD", longPercentage: 39, shortPercentage: 61, longPositions: 39000, shortPositions: 61000, longVolume: 39, shortVolume: 61 },
-  { name: "USDCAD", longPercentage: 54, shortPercentage: 46, longPositions: 54000, shortPositions: 46000, longVolume: 54, shortVolume: 46 },
-  { name: "NZDUSD", longPercentage: 47, shortPercentage: 53, longPositions: 47000, shortPositions: 53000, longVolume: 47, shortVolume: 53 },
-  { name: "EURGBP", longPercentage: 55, shortPercentage: 45, longPositions: 55000, shortPositions: 45000, longVolume: 55, shortVolume: 45 },
-  { name: "EURJPY", longPercentage: 61, shortPercentage: 39, longPositions: 61000, shortPositions: 39000, longVolume: 61, shortVolume: 39 },
-  { name: "GBPJPY", longPercentage: 43, shortPercentage: 57, longPositions: 43000, shortPositions: 57000, longVolume: 43, shortVolume: 57 },
-  { name: "XAUUSD", longPercentage: 71, shortPercentage: 29, longPositions: 71000, shortPositions: 29000, longVolume: 71, shortVolume: 29 },
-  { name: "XAGUSD", longPercentage: 66, shortPercentage: 34, longPositions: 66000, shortPositions: 34000, longVolume: 66, shortVolume: 34 },
-  { name: "BTCUSD", longPercentage: 68, shortPercentage: 32, longPositions: 68000, shortPositions: 32000, longVolume: 68, shortVolume: 32 },
-];
-
-// Last successful live outlook, kept in memory so a transient Myfxbook failure
-// degrades to the most recent real data instead of dropping straight to the
-// static demo set (only relevant when MYFXBOOK_* credentials are configured).
-let lastGoodSentiment: MyfxbookSymbol[] | null = null;
-
-router.get("/tools/sentiment", async (req, res) => {
-  const hasCredentials = !!(process.env.MYFXBOOK_EMAIL && process.env.MYFXBOOK_PASSWORD);
-  try {
-    const symbols = await fetchMyfxbookOutlook();
-    lastGoodSentiment = symbols;
-    res.json({ symbols, live: true, cached: false, hasCredentials });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[tools/sentiment]", msg);
-    if (lastGoodSentiment) {
-      res.json({ symbols: lastGoodSentiment, live: false, cached: true, hasCredentials, error: msg });
-      return;
-    }
-    res.json({ symbols: FALLBACK_SYMBOLS, live: false, fallback: true, hasCredentials, error: msg });
+const getSentimentOutlook = createSentimentOutlookService();
+const getMarketContext = createMarketContextService({
+  candles: pair => getCandles(pair, "D1", { maxAgeMs: 5 * 60_000 }),
+  news: pair => getNewsData({ pairs: pair, lang: "en", awaitRefresh: true }),
+  sentiment: () => getSentimentOutlook(),
+  calendar: () => getCalendarEvents(false, true),
+  cot: () => getCotOutlook(),
+});
+router.get("/tools/market-context", async (req, res) => {
+  const pair = typeof req.query.pair === "string" ? req.query.pair.trim().toUpperCase() : "";
+  if (!getPairEntry(pair) || !isSupportedSymbol(pair)) {
+    res.status(400).json({ error: "Dati non disponibili per questo strumento" });
+    return;
   }
+  if(req.query.horizon && req.query.horizon!=="4h") {res.status(400).json({error:"Unsupported horizon"});return;}
+  res.json(await attachIntelligence(getMarketContext(pair)));
+});
+router.get("/tools/sentiment", async (_req, res) => {
+  res.json(await getSentimentOutlook());
 });
 
 // ─── 3. VOLATILITY (Mataf-methodology daily ranges) ──────────────────────────
@@ -210,16 +203,15 @@ router.get("/tools/sentiment", async (req, res) => {
 
 const VOLATILITY_FRESH_TTL_SECONDS = 30 * 60;
 const VOLATILITY_STALE_TTL_SECONDS = 7 * 24 * 60 * 60;
-const VOLATILITY_LOOKBACK_DAYS = 366;
 const VOLATILITY_WARM_MAX = 3;
 
-const volatilityLastGood = new Map<string, VolatilityMetricResponse>();
+const volatilityLastGood = new Map<string, VolatilitySnapshot>();
 const volatilityInFlight = new Map<string, Promise<void>>();
 let volatilityWarmActive = 0;
 const volatilityWarmWaiters: Array<() => void> = [];
 
-const volatilityFreshKey = (pair: string) => `volatility:v2:${pair}`;
-const volatilityStaleKey = (pair: string) => `volatility:stale:v1:${pair}`;
+const volatilityFreshKey = (pair: string) => `volatility:v4:${pair}`;
+const volatilityStaleKey = (pair: string) => `volatility:stale:v4:${pair}`;
 
 function acquireVolatilityWarmSlot(): Promise<void> {
   if (volatilityWarmActive < VOLATILITY_WARM_MAX) {
@@ -241,10 +233,9 @@ function releaseVolatilityWarmSlot(): void {
 
 async function refreshVolatility(pair: string): Promise<void> {
   // Pair keys are canonical symbols (EURUSD, USDJPY, XAUUSD, XAGUSD, …).
-  const { candles } = await getCandles(pair, "D1");
-  const recent = trimToRecentDays(candles, VOLATILITY_LOOKBACK_DAYS);
-  const series = recent.length >= 5 ? recent : candles;
-  const metrics = calculateVolatilityMetrics(pair, candlesToVolatilityInput(series));
+  const { candles, source, fetchedAt, stale } = await getCandles(pair, "D1", { maxAgeMs: 30 * 60_000 });
+  if (stale || !fetchedAt || !Number.isFinite(Date.parse(fetchedAt))) throw new Error("Candle provider refresh unavailable");
+  const metrics = buildVolatilitySnapshot(pair, candles, source, new Date(fetchedAt));
   volatilityLastGood.set(pair, metrics);
   await setJsonCache(volatilityFreshKey(pair), metrics, VOLATILITY_FRESH_TTL_SECONDS);
   await setJsonCache(volatilityStaleKey(pair), metrics, VOLATILITY_STALE_TTL_SECONDS);
@@ -277,21 +268,21 @@ router.get("/tools/volatility", async (req, res) => {
     return;
   }
 
-  const fresh = await getJsonCache<VolatilityMetricResponse>(volatilityFreshKey(pair));
+  const fresh = await getJsonCache<VolatilitySnapshot>(volatilityFreshKey(pair));
   if (fresh) {
-    res.json(fresh);
+    res.json(volatilityResponse(fresh, false));
     return;
   }
 
   // Cache miss: kick off a background refresh and serve the best we have now.
   void ensureVolatilityWarm(pair);
   const stale =
-    volatilityLastGood.get(pair) ?? (await getJsonCache<VolatilityMetricResponse>(volatilityStaleKey(pair)));
+    volatilityLastGood.get(pair) ?? (await getJsonCache<VolatilitySnapshot>(volatilityStaleKey(pair)));
   if (stale) {
-    res.json(stale);
+    res.json(volatilityResponse(stale, true));
     return;
   }
-  res.status(503).json({ error: "Dati di volatilita in aggiornamento" });
+  res.status(503).json({ error: "Dati di volatilita in aggiornamento", status: "unavailable", source: null, fetchedAt: null, observedAt: null, observationStart: null, timeframe: "D1" });
 });
 
 // ─── 3b. WATCHLIST (dashboard sparkline rows over the D1 candle chain) ───────
@@ -330,20 +321,12 @@ function releaseWatchlistWarmSlot(): void {
   watchlistWarmWaiters.shift()?.();
 }
 
-import { emitWatchlistUpdate } from "../services/watchlist/watchlistHub.js";
-
 async function refreshWatchlistPair(pair: string): Promise<void> {
   const { candles } = await getCandles(pair, "D1");
   const item = buildWatchlistItem(pair, candles, true);
   watchlistLastGood.set(pair, item);
   await setJsonCache(watchlistFreshKey(pair), item, WATCHLIST_FRESH_TTL_SECONDS);
   await setJsonCache(watchlistStaleKey(pair), item, WATCHLIST_STALE_TTL_SECONDS);
-  // Broadcast to any in-process WS subscribers
-  try {
-    emitWatchlistUpdate(pair, item);
-  } catch {
-    // ignore emitter errors
-  }
 }
 
 function ensureWatchlistWarm(pair: string): Promise<void> {
@@ -387,571 +370,12 @@ router.get("/tools/watchlist", async (req, res) => {
   res.json({ items });
 });
 
-// ─── 4. COT REPORT (CFTC, aggiornamento ogni venerdì) ────────────────────────
-
-const COT_MARKET_MAP: Record<string, string> = {
-  "EURO FX": "EUR",
-  "BRITISH POUND": "GBP",
-  "JAPANESE YEN": "JPY",
-  "SWISS FRANC": "CHF",
-  "CANADIAN DOLLAR": "CAD",
-  "AUSTRALIAN DOLLAR": "AUD",
-  "NZ DOLLAR": "NZD",        // rinominato dal CFTC nel 2022 (ex "NEW ZEALAND DOLLAR")
-  "GOLD": "XAU",
-  "USD INDEX": "USD",        // rinominato dal CFTC nel 2022 (ex "U.S. DOLLAR INDEX")
-};
-
-const COT_ORDER = ["EUR","GBP","JPY","CHF","CAD","AUD","NZD","XAU","USD"];
-const COT_HISTORY_WEEKS = 12; // settimane di storico da mostrare
-
-// Risolve un nome-mercato CFTC nella sua valuta. Accetta solo il contratto base
-// ("<KEY> - EXCHANGE"): esclude i cross-rate ("EURO FX/BRITISH POUND XRATE") e le
-// varianti ("MICRO GOLD", "GOLD -1 TROY OUNCE") che un semplice includes()
-// attribuirebbe alla valuta sbagliata.
-function matchCotCurrency(rawMarket: string): string | null {
-  const market = (rawMarket ?? "").toUpperCase().trim();
-  if (!market) return null;
-  // Nome ICE legacy pre-2022 ("U.S. DOLLAR INDEX"); i dati correnti usano "USD INDEX".
-  if (market.startsWith("U.S. DOLLAR INDEX")) return "USD";
-  for (const key of Object.keys(COT_MARKET_MAP)) {
-    if (market === key || market.startsWith(`${key} - `)) return COT_MARKET_MAP[key];
-  }
-  return null;
-}
-
-interface CotWeek {
-  date: string;
-  nonCommLong: number;
-  nonCommShort: number;
-  commLong: number;
-  commShort: number;
-  retailLong: number;
-  retailShort: number;
-  nonCommNet: number;
-  commNet: number;
-  retailNet: number;
-}
-interface CotEntry extends CotWeek {
-  market: string;
-  currency: string;
-  history: { date: string; nonCommNet: number; commNet: number }[];
-}
-
-function parseCotCsv(text: string): CotEntry[] {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return [];
-
-  const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
-  const col = (name: string) => headers.findIndex((h) => h.includes(name.toLowerCase()));
-
-  const marketCol  = col("market_and_exchange_names");
-  const dateCol    = col("report_date_as_yyyy");
-  const ncLongCol  = col("noncomm_positions_long_all");
-  const ncShortCol = col("noncomm_positions_short_all");
-  const commLCol   = col("comm_positions_long_all");
-  const commSCol   = col("comm_positions_short_all");
-  const nrLCol     = col("nonrept_positions_long_all");
-  const nrSCol     = col("nonrept_positions_short_all");
-
-  const historyByMarket: Record<string, CotWeek[]> = {};
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim()) continue;
-    const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-    const market = cols[marketCol]?.toUpperCase() ?? "";
-    const matchedKey = Object.keys(COT_MARKET_MAP).find((k) => market.includes(k));
-    if (!matchedKey) continue;
-
-    const currency = COT_MARKET_MAP[matchedKey];
-    const date = cols[dateCol] ?? "";
-    const ncLong  = parseInt(cols[ncLongCol])  || 0;
-    const ncShort = parseInt(cols[ncShortCol]) || 0;
-    const commL   = parseInt(cols[commLCol])   || 0;
-    const commS   = parseInt(cols[commSCol])   || 0;
-    const nrL     = parseInt(cols[nrLCol])     || 0;
-    const nrS     = parseInt(cols[nrSCol])     || 0;
-
-    if (!historyByMarket[currency]) historyByMarket[currency] = [];
-    // Avoid duplicate dates
-    if (!historyByMarket[currency].some((w) => w.date === date)) {
-      historyByMarket[currency].push({
-        date, nonCommLong: ncLong, nonCommShort: ncShort,
-        commLong: commL, commShort: commS,
-        retailLong: nrL, retailShort: nrS,
-        nonCommNet: ncLong - ncShort,
-        commNet: commL - commS,
-        retailNet: nrL - nrS,
-      });
-    }
-  }
-
-  return Object.entries(historyByMarket)
-    .map(([currency, weeks]) => {
-      // Sort by date desc, take latest as "current"
-      weeks.sort((a, b) => b.date.localeCompare(a.date));
-      const latest = weeks[0];
-      const history = weeks.slice(0, COT_HISTORY_WEEKS).reverse().map((w) => ({
-        date: w.date, nonCommNet: w.nonCommNet, commNet: w.commNet,
-      }));
-      const matchedKey = Object.keys(COT_MARKET_MAP).find((k) => COT_MARKET_MAP[k] === currency) ?? "";
-      return { ...latest, market: matchedKey, currency, history };
-    })
-    .sort((a, b) => COT_ORDER.indexOf(a.currency) - COT_ORDER.indexOf(b.currency));
-}
-
-// ─── Parser per FinFutWk.txt (Traders in Financial Futures, no header row) ────
-// Colonne confermate (0-indexed) dal file CFTC live:
-//   0  = Market name
-//   2  = Date YYYY-MM-DD
-//   7  = Open Interest All
-//   8  = Dealer/Intermediary Long All   (commercials/market makers)
-//   9  = Dealer Short All
-//  10  = Dealer Spread All
-//  11  = Asset Manager Long All         (commercials/institutional)
-//  12  = Asset Manager Short All
-//  13  = Asset Manager Spread All
-//  14  = Leveraged Money Long All       (non-commercial / speculatori)
-//  15  = Leveraged Money Short All
-//  16  = Leveraged Money Spread All
-//  17  = Other Reportables Long All
-//  18  = Other Reportables Short All
-//  19  = Other Reportables Spread All
-//  20  = Total Reportable Longs (derived)
-//  21  = Total Reportable Shorts (derived)
-//  22  = Non-Reportable Long All
-//  23  = Non-Reportable Short All
-function parseCotTxt(text: string): CotEntry[] {
-  const lines = text.trim().split("\n");
-  if (lines.length < 1) return [];
-
-  const historyByMarket: Record<string, CotWeek[]> = {};
-
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-    if (cols.length < 24) continue;
-
-    const currency = matchCotCurrency(cols[0] ?? "");
-    if (!currency) continue;
-    const date = cols[2] ?? "";
-    if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
-
-    const n = (i: number) => parseInt(cols[i]) || 0;
-
-    // Leveraged Money = speculators (equiv. "Non-Commercial")
-    const levLong  = n(14);
-    const levShort = n(15);
-    // Dealer + Asset Manager = hedgers (equiv. "Commercial")
-    const commL = n(8)  + n(11);
-    const commS = n(9)  + n(12);
-    // Non-Reportable
-    const nrL = n(22);
-    const nrS = n(23);
-
-    if (!historyByMarket[currency]) historyByMarket[currency] = [];
-    if (!historyByMarket[currency].some((w) => w.date === date)) {
-      historyByMarket[currency].push({
-        date,
-        nonCommLong: levLong, nonCommShort: levShort,
-        commLong: commL,      commShort: commS,
-        retailLong: nrL,      retailShort: nrS,
-        nonCommNet: levLong - levShort,
-        commNet:    commL - commS,
-        retailNet:  nrL - nrS,
-      });
-    }
-  }
-
-  return Object.entries(historyByMarket)
-    .map(([currency, weeks]) => {
-      weeks.sort((a, b) => b.date.localeCompare(a.date));
-      const latest = weeks[0];
-      const history = weeks.slice(0, COT_HISTORY_WEEKS).reverse().map((w) => ({
-        date: w.date, nonCommNet: w.nonCommNet, commNet: w.commNet,
-      }));
-      const matchedKey = Object.keys(COT_MARKET_MAP).find((k) => COT_MARKET_MAP[k] === currency) ?? "";
-      return { ...latest, market: matchedKey, currency, history };
-    })
-    .sort((a, b) => COT_ORDER.indexOf(a.currency) - COT_ORDER.indexOf(b.currency));
-}
-
-// 14-week realistic synthetic history (2026-01-26 → 2026-04-28)
-// Based on known CFTC values (2026-03-11 confirmed, 2026-04-28 live)
-const COT_FALLBACK: CotEntry[] = [
-  { market:"EURO FX",          currency:"EUR", date:"2026-04-28", nonCommLong:174050, nonCommShort:162456, commLong:136200, commShort:211400, retailLong:42100, retailShort:42040, nonCommNet:11594,  commNet:-75200, retailNet:60,
-    history:[{date:"2026-01-26",nonCommNet:92000,commNet:-90000},{date:"2026-02-02",nonCommNet:86000,commNet:-84000},{date:"2026-02-09",nonCommNet:82000,commNet:-80000},{date:"2026-02-16",nonCommNet:78000,commNet:-76000},{date:"2026-02-23",nonCommNet:76000,commNet:-74000},{date:"2026-03-02",nonCommNet:74000,commNet:-72000},{date:"2026-03-09",nonCommNet:76140,commNet:-75200},{date:"2026-03-16",nonCommNet:68000,commNet:-66000},{date:"2026-03-23",nonCommNet:52000,commNet:-50000},{date:"2026-03-30",nonCommNet:38000,commNet:-36000},{date:"2026-04-06",nonCommNet:29000,commNet:-27000},{date:"2026-04-13",nonCommNet:21000,commNet:-19000},{date:"2026-04-20",nonCommNet:16000,commNet:-14000},{date:"2026-04-28",nonCommNet:11594,commNet:-75200}] },
-  { market:"BRITISH POUND",    currency:"GBP", date:"2026-04-28", nonCommLong:143700, nonCommShort:114818, commLong:124800, commShort:78900,  retailLong:18200, retailShort:20010, nonCommNet:28882,  commNet:45900,  retailNet:-1810,
-    history:[{date:"2026-01-26",nonCommNet:-55000,commNet:56000},{date:"2026-02-02",nonCommNet:-52000,commNet:53000},{date:"2026-02-09",nonCommNet:-50000,commNet:51000},{date:"2026-02-16",nonCommNet:-48000,commNet:49000},{date:"2026-02-23",nonCommNet:-46000,commNet:47000},{date:"2026-03-02",nonCommNet:-44000,commNet:45000},{date:"2026-03-09",nonCommNet:-44090,commNet:45900},{date:"2026-03-16",nonCommNet:-30000,commNet:31000},{date:"2026-03-23",nonCommNet:-15000,commNet:16000},{date:"2026-03-30",nonCommNet:2000,commNet:-1000},{date:"2026-04-06",nonCommNet:12000,commNet:-11000},{date:"2026-04-13",nonCommNet:20000,commNet:-19000},{date:"2026-04-20",nonCommNet:25000,commNet:-24000},{date:"2026-04-28",nonCommNet:28882,commNet:45900}] },
-  { market:"JAPANESE YEN",     currency:"JPY", date:"2026-04-28", nonCommLong:42100,  nonCommShort:117902, commLong:62100,  commShort:107500, retailLong:13400, retailShort:12900, nonCommNet:-75802, commNet:-45400, retailNet:500,
-    history:[{date:"2026-01-26",nonCommNet:48000,commNet:-48000},{date:"2026-02-02",nonCommNet:46000,commNet:-46000},{date:"2026-02-09",nonCommNet:44000,commNet:-44000},{date:"2026-02-16",nonCommNet:44000,commNet:-44000},{date:"2026-02-23",nonCommNet:45000,commNet:-45000},{date:"2026-03-02",nonCommNet:44000,commNet:-44000},{date:"2026-03-09",nonCommNet:43900,commNet:-45400},{date:"2026-03-16",nonCommNet:22000,commNet:-22000},{date:"2026-03-23",nonCommNet:-5000,commNet:5000},{date:"2026-03-30",nonCommNet:-30000,commNet:30000},{date:"2026-04-06",nonCommNet:-52000,commNet:52000},{date:"2026-04-13",nonCommNet:-65000,commNet:65000},{date:"2026-04-20",nonCommNet:-72000,commNet:72000},{date:"2026-04-28",nonCommNet:-75802,commNet:-45400}] },
-  { market:"SWISS FRANC",      currency:"CHF", date:"2026-04-28", nonCommLong:28200,  nonCommShort:36400,  commLong:41200,  commShort:24900,  retailLong:6800,  retailShort:6700,  nonCommNet:-8200,  commNet:16300,  retailNet:100,
-    history:[{date:"2026-01-26",nonCommNet:-22000,commNet:22000},{date:"2026-02-02",nonCommNet:-21000,commNet:21000},{date:"2026-02-09",nonCommNet:-19000,commNet:19000},{date:"2026-02-16",nonCommNet:-18000,commNet:18000},{date:"2026-02-23",nonCommNet:-17000,commNet:17000},{date:"2026-03-02",nonCommNet:-16000,commNet:16000},{date:"2026-03-09",nonCommNet:-16400,commNet:16300},{date:"2026-03-16",nonCommNet:-15000,commNet:15000},{date:"2026-03-23",nonCommNet:-13000,commNet:13000},{date:"2026-03-30",nonCommNet:-12000,commNet:12000},{date:"2026-04-06",nonCommNet:-10000,commNet:10000},{date:"2026-04-13",nonCommNet:-9000,commNet:9000},{date:"2026-04-20",nonCommNet:-8500,commNet:8500},{date:"2026-04-28",nonCommNet:-8200,commNet:16300}] },
-  { market:"CANADIAN DOLLAR",  currency:"CAD", date:"2026-04-28", nonCommLong:55800,  nonCommShort:110800, commLong:118700, commShort:51200,  retailLong:11400, retailShort:10600, nonCommNet:-55000, commNet:67500,  retailNet:800,
-    history:[{date:"2026-01-26",nonCommNet:-75000,commNet:74000},{date:"2026-02-02",nonCommNet:-74000,commNet:73000},{date:"2026-02-09",nonCommNet:-73000,commNet:72000},{date:"2026-02-16",nonCommNet:-72000,commNet:71000},{date:"2026-02-23",nonCommNet:-70000,commNet:69000},{date:"2026-03-02",nonCommNet:-69000,commNet:68000},{date:"2026-03-09",nonCommNet:-68300,commNet:67500},{date:"2026-03-16",nonCommNet:-67000,commNet:66000},{date:"2026-03-23",nonCommNet:-65000,commNet:64000},{date:"2026-03-30",nonCommNet:-63000,commNet:62000},{date:"2026-04-06",nonCommNet:-61000,commNet:60000},{date:"2026-04-13",nonCommNet:-59000,commNet:58000},{date:"2026-04-20",nonCommNet:-57000,commNet:56000},{date:"2026-04-28",nonCommNet:-55000,commNet:67500}] },
-  { market:"AUSTRALIAN DOLLAR",currency:"AUD", date:"2026-04-28", nonCommLong:58300,  nonCommShort:91300,  commLong:94800,  commShort:57100,  retailLong:12300, retailShort:12100, nonCommNet:-33000, commNet:37700,  retailNet:200,
-    history:[{date:"2026-01-26",nonCommNet:-45000,commNet:44000},{date:"2026-02-02",nonCommNet:-43000,commNet:42000},{date:"2026-02-09",nonCommNet:-41000,commNet:40000},{date:"2026-02-16",nonCommNet:-40000,commNet:39000},{date:"2026-02-23",nonCommNet:-38000,commNet:37000},{date:"2026-03-02",nonCommNet:-38000,commNet:37000},{date:"2026-03-09",nonCommNet:-37900,commNet:37700},{date:"2026-03-16",nonCommNet:-37000,commNet:36000},{date:"2026-03-23",nonCommNet:-36000,commNet:35000},{date:"2026-03-30",nonCommNet:-35000,commNet:34000},{date:"2026-04-06",nonCommNet:-35000,commNet:34000},{date:"2026-04-13",nonCommNet:-35000,commNet:34000},{date:"2026-04-20",nonCommNet:-34000,commNet:33000},{date:"2026-04-28",nonCommNet:-33000,commNet:37700}] },
-  { market:"NEW ZEALAND DOLLAR",currency:"NZD",date:"2026-04-28", nonCommLong:17500,  nonCommShort:30300,  commLong:34100,  commShort:19900,  retailLong:4500,  retailShort:4500,  nonCommNet:-12800, commNet:14200,  retailNet:0,
-    history:[{date:"2026-01-26",nonCommNet:-13000,commNet:13200},{date:"2026-02-02",nonCommNet:-13500,commNet:13700},{date:"2026-02-09",nonCommNet:-14000,commNet:14200},{date:"2026-02-16",nonCommNet:-14200,commNet:14400},{date:"2026-02-23",nonCommNet:-14500,commNet:14700},{date:"2026-03-02",nonCommNet:-14200,commNet:14400},{date:"2026-03-09",nonCommNet:-14200,commNet:14200},{date:"2026-03-16",nonCommNet:-14000,commNet:14200},{date:"2026-03-23",nonCommNet:-14000,commNet:14200},{date:"2026-03-30",nonCommNet:-13800,commNet:14000},{date:"2026-04-06",nonCommNet:-14000,commNet:14200},{date:"2026-04-13",nonCommNet:-13500,commNet:13700},{date:"2026-04-20",nonCommNet:-13000,commNet:13200},{date:"2026-04-28",nonCommNet:-12800,commNet:14200}] },
-  { market:"GOLD",             currency:"XAU", date:"2026-04-28", nonCommLong:340800, nonCommShort:39800,  commLong:48200,  commShort:320700, retailLong:18400, retailShort:16600, nonCommNet:301000, commNet:-272500,retailNet:1800,
-    history:[{date:"2026-01-26",nonCommNet:240000,commNet:-241000},{date:"2026-02-02",nonCommNet:245000,commNet:-246000},{date:"2026-02-09",nonCommNet:250000,commNet:-251000},{date:"2026-02-16",nonCommNet:255000,commNet:-256000},{date:"2026-02-23",nonCommNet:262000,commNet:-263000},{date:"2026-03-02",nonCommNet:268000,commNet:-269000},{date:"2026-03-09",nonCommNet:270700,commNet:-272500},{date:"2026-03-16",nonCommNet:275000,commNet:-276000},{date:"2026-03-23",nonCommNet:280000,commNet:-281000},{date:"2026-03-30",nonCommNet:285000,commNet:-286000},{date:"2026-04-06",nonCommNet:290000,commNet:-291000},{date:"2026-04-13",nonCommNet:295000,commNet:-296000},{date:"2026-04-20",nonCommNet:298000,commNet:-299000},{date:"2026-04-28",nonCommNet:301000,commNet:-272500}] },
-  { market:"US DOLLAR INDEX",  currency:"USD", date:"2026-04-28", nonCommLong:21100,  nonCommShort:56100,  commLong:51400,  commShort:31200,  retailLong:6400,  retailShort:6500,  nonCommNet:-35000, commNet:20200,  retailNet:-100,
-    history:[{date:"2026-01-26",nonCommNet:-5000,commNet:5000},{date:"2026-02-02",nonCommNet:-8000,commNet:8000},{date:"2026-02-09",nonCommNet:-12000,commNet:12000},{date:"2026-02-16",nonCommNet:-15000,commNet:15000},{date:"2026-02-23",nonCommNet:-18000,commNet:18000},{date:"2026-03-02",nonCommNet:-20000,commNet:20000},{date:"2026-03-09",nonCommNet:-20100,commNet:20200},{date:"2026-03-16",nonCommNet:-22000,commNet:22000},{date:"2026-03-23",nonCommNet:-25000,commNet:25000},{date:"2026-03-30",nonCommNet:-27000,commNet:27000},{date:"2026-04-06",nonCommNet:-29000,commNet:29000},{date:"2026-04-13",nonCommNet:-31000,commNet:31000},{date:"2026-04-20",nonCommNet:-33000,commNet:33000},{date:"2026-04-28",nonCommNet:-35000,commNet:20200}] },
-];
-
-// Merge live 1-week data with synthetic fallback history for a rich chart
-function mergeWithFallbackHistory(liveReports: CotEntry[]): CotEntry[] {
-  return liveReports.map((live) => {
-    const fallback = COT_FALLBACK.find((f) => f.currency === live.currency);
-    if (!fallback?.history || fallback.history.length <= 1) return live;
-    // Keep all fallback history entries older than the live date, then add live
-    const olderWeeks = fallback.history.filter((h) => h.date < live.date);
-    const mergedHistory = [
-      ...olderWeeks,
-      { date: live.date, nonCommNet: live.nonCommNet, commNet: live.commNet },
-    ].slice(-COT_HISTORY_WEEKS);
-    return { ...live, history: mergedHistory };
-  });
-}
-
-const CFTC_URLS = [
-  "https://www.cftc.gov/dea/newcot/FinFutWk.txt",   // Settimanale (solo ultima settimana)
-  "https://www.cftc.gov/dea/newcot/FinComWk.txt",   // Combined fallback
-];
-
-// Smart cache — porta la data del prossimo venerdì CFTC come scadenza
-function nextCftcPublishMs(): number {
-  const now = new Date();
-  const day = now.getUTCDay(); // 0=dom, 5=ven
-  const hour = now.getUTCHours() * 60 + now.getUTCMinutes();
-  // CFTC pubblica ogni venerdì alle 15:30 EST = 20:30 UTC = 1230 minuti
-  const daysToFriday = (5 - day + 7) % 7;
-  const todayIsFridayAfterPublish = day === 5 && hour >= 1230;
-  const daysUntilNext = todayIsFridayAfterPublish ? 7 : daysToFriday === 0 ? 7 : daysToFriday;
-  const next = new Date(now);
-  next.setUTCDate(next.getUTCDate() + daysUntilNext);
-  next.setUTCHours(20, 35, 0, 0);
-  return next.getTime();
-}
-
-interface CotCache {
-  data: CotEntry[];
-  fetchedAt: number;
-  expiresAt: number;
-  fallback: boolean;
-}
-let cotCache: CotCache | null = null;
-
-// ─── Socrata API (CFTC Public Reporting Portal) ───────────────────────────────
-// Dataset: "Commitments of Traders - Legacy - Futures Only" (6dca-aqww).
-// Endpoint pubblico, no auth. Espone le colonne legacy noncomm_/comm_/nonrept_ e
-// include l'oro. A differenza dei file .txt settimanali (solo ultima settimana),
-// restituisce storico reale multi-settimana per mercato in un'unica chiamata.
-const SOCRATA_COT_URL = "https://publicreporting.cftc.gov/resource/6dca-aqww.json";
-
-async function fetchCotFromSocrata(): Promise<CotEntry[] | null> {
-  try {
-    // Filtro server-side sui soli contratti base. starts_with('<KEY> - ') esclude i
-    // cross-rate ("EURO FX/BRITISH POUND XRATE") e le varianti ("MICRO GOLD",
-    // "GOLD -1 TROY OUNCE"), evitando sia l'attribuzione errata sia un payload enorme.
-    const where = Object.keys(COT_MARKET_MAP)
-      .map((k) => `starts_with(market_and_exchange_names, '${k} - ')`)
-      .join(" OR ");
-
-    const socrataUrl = new URL(SOCRATA_COT_URL);
-    socrataUrl.searchParams.set("$where", where);
-    socrataUrl.searchParams.set("$order", "report_date_as_yyyy_mm_dd DESC");
-    socrataUrl.searchParams.set("$limit", "400");
-    socrataUrl.searchParams.set("$select", [
-      "market_and_exchange_names",
-      "report_date_as_yyyy_mm_dd",
-      "noncomm_positions_long_all",
-      "noncomm_positions_short_all",
-      "comm_positions_long_all",
-      "comm_positions_short_all",
-      "nonrept_positions_long_all",
-      "nonrept_positions_short_all",
-    ].join(","));
-
-    const res = await fetch(socrataUrl.toString(), {
-      headers: {
-        "User-Agent": "TraderLoading/1.0",
-        "Accept": "application/json",
-      },
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!res.ok) {
-      console.warn(`[tools/cot] Socrata HTTP ${res.status}`);
-      return null;
-    }
-
-    type SocrataRow = {
-      market_and_exchange_names: string;
-      report_date_as_yyyy_mm_dd: string;
-      noncomm_positions_long_all?: string;
-      noncomm_positions_short_all?: string;
-      comm_positions_long_all?: string;
-      comm_positions_short_all?: string;
-      nonrept_positions_long_all?: string;
-      nonrept_positions_short_all?: string;
-    };
-
-    const rows: SocrataRow[] = await res.json() as SocrataRow[];
-    if (!Array.isArray(rows) || rows.length === 0) return null;
-
-    const historyByMarket: Record<string, CotWeek[]> = {};
-
-    for (const row of rows) {
-      const currency = matchCotCurrency(row.market_and_exchange_names ?? "");
-      if (!currency) continue;
-
-      const date = row.report_date_as_yyyy_mm_dd?.slice(0, 10) ?? "";
-      const ncLong  = parseInt(row.noncomm_positions_long_all  ?? "0") || 0;
-      const ncShort = parseInt(row.noncomm_positions_short_all ?? "0") || 0;
-      const commL   = parseInt(row.comm_positions_long_all     ?? "0") || 0;
-      const commS   = parseInt(row.comm_positions_short_all    ?? "0") || 0;
-      const nrL     = parseInt(row.nonrept_positions_long_all  ?? "0") || 0;
-      const nrS     = parseInt(row.nonrept_positions_short_all ?? "0") || 0;
-
-      if (!historyByMarket[currency]) historyByMarket[currency] = [];
-      if (!historyByMarket[currency].some((w) => w.date === date)) {
-        historyByMarket[currency].push({
-          date, nonCommLong: ncLong, nonCommShort: ncShort,
-          commLong: commL, commShort: commS,
-          retailLong: nrL, retailShort: nrS,
-          nonCommNet: ncLong - ncShort,
-          commNet: commL - commS,
-          retailNet: nrL - nrS,
-        });
-      }
-    }
-
-    if (Object.keys(historyByMarket).length === 0) return null;
-
-    const results: CotEntry[] = Object.entries(historyByMarket).map(([currency, weeks]) => {
-      weeks.sort((a, b) => b.date.localeCompare(a.date));
-      const latest = weeks[0];
-      const history = weeks.slice(0, COT_HISTORY_WEEKS).reverse().map((w) => ({
-        date: w.date, nonCommNet: w.nonCommNet, commNet: w.commNet,
-      }));
-      const matchedKey = Object.keys(COT_MARKET_MAP).find((k) => COT_MARKET_MAP[k] === currency) ?? "";
-      return { ...latest, market: matchedKey, currency, history };
-    }).sort((a, b) => COT_ORDER.indexOf(a.currency) - COT_ORDER.indexOf(b.currency));
-
-    console.info(`[tools/cot] Socrata OK — ${results.length} markets, ${results[0]?.history?.length ?? 0}wk history`);
-    return results;
-  } catch (err) {
-    console.warn("[tools/cot] Socrata error:", err instanceof Error ? err.message : err);
-    return null;
-  }
-}
-
-// ─── Parser Legacy COT (deafut.txt) ──────────────────────────────────────────
-// Formato Legacy senza header. Colonne confermate (0-indexed):
-//   0  = Market name
-//   2  = Date YYYY-MM-DD
-//   7  = Open Interest All
-//   8  = NonComm Long All    (Large Speculators)
-//   9  = NonComm Short All
-//  10  = NonComm Spread All
-//  11  = Comm Long All       (Commercial Hedgers)
-//  12  = Comm Short All
-//  13  = Total Reportable Longs (derived)
-//  14  = Total Reportable Shorts (derived)
-//  15  = NonRept Long All
-//  16  = NonRept Short All
-function parseCotLegacyTxt(text: string, onlyCurrencies?: Set<string>): CotEntry[] {
-  const lines = text.trim().split("\n");
-  if (lines.length < 1) return [];
-
-  const historyByMarket: Record<string, CotWeek[]> = {};
-
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-    if (cols.length < 17) continue;
-
-    const currency = matchCotCurrency(cols[0] ?? "");
-    if (!currency) continue;
-    if (onlyCurrencies && !onlyCurrencies.has(currency)) continue;
-
-    const date = cols[2] ?? "";
-    if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
-
-    const n = (i: number) => parseInt(cols[i]) || 0;
-    const ncLong  = n(8);
-    const ncShort = n(9);
-    const commL   = n(11);
-    const commS   = n(12);
-    const nrL     = n(15);
-    const nrS     = n(16);
-
-    if (!historyByMarket[currency]) historyByMarket[currency] = [];
-    if (!historyByMarket[currency].some((w) => w.date === date)) {
-      historyByMarket[currency].push({
-        date, nonCommLong: ncLong, nonCommShort: ncShort,
-        commLong: commL, commShort: commS,
-        retailLong: nrL, retailShort: nrS,
-        nonCommNet: ncLong - ncShort,
-        commNet: commL - commS,
-        retailNet: nrL - nrS,
-      });
-    }
-  }
-
-  return Object.entries(historyByMarket)
-    .map(([currency, weeks]) => {
-      weeks.sort((a, b) => b.date.localeCompare(a.date));
-      const latest = weeks[0];
-      const history = weeks.slice(0, COT_HISTORY_WEEKS).reverse().map((w) => ({
-        date: w.date, nonCommNet: w.nonCommNet, commNet: w.commNet,
-      }));
-      const matchedKey = Object.keys(COT_MARKET_MAP).find((k) => COT_MARKET_MAP[k] === currency) ?? "";
-      return { ...latest, market: matchedKey, currency, history };
-    })
-    .sort((a, b) => COT_ORDER.indexOf(a.currency) - COT_ORDER.indexOf(b.currency));
-}
-
-const LEGACY_COT_URLS = [
-  "https://www.cftc.gov/dea/newcot/deafut.txt",
-];
-
-// Recupera dai file .txt settimanali (solo l'ultima settimana) le sole valute
-// passate in `onlyCurrencies`. deafut.txt = Legacy futures-only (FX + metalli);
-// FinFutWk.txt = Financial Futures. Usato per coprire ciò che Socrata non espone.
-async function fetchCotFromTxt(onlyCurrencies: Set<string>): Promise<CotEntry[]> {
-  const out: CotEntry[] = [];
-  const stillMissing = () =>
-    new Set([...onlyCurrencies].filter((c) => !out.some((r) => r.currency === c)));
-
-  for (const url of LEGACY_COT_URLS) {
-    if (stillMissing().size === 0) break;
-    try {
-      const response = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; TraderLoading/1.0)" },
-        signal: AbortSignal.timeout(20000),
-      });
-      if (!response.ok) { console.warn(`[tools/cot] ${url} → HTTP ${response.status}`); continue; }
-      const text = await response.text();
-      if (text.trim().startsWith("<!")) { console.warn(`[tools/cot] ${url} → HTML (blocked)`); continue; }
-      for (const r of parseCotLegacyTxt(text, stillMissing())) {
-        if (!out.some((x) => x.currency === r.currency)) out.push(r);
-      }
-    } catch (err) {
-      console.warn(`[tools/cot] ${url} →`, err instanceof Error ? err.message : err);
-    }
-  }
-
-  for (const url of CFTC_URLS) {
-    if (stillMissing().size === 0) break;
-    try {
-      const response = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; TraderLoading/1.0)" },
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!response.ok) { console.warn(`[tools/cot] ${url} → HTTP ${response.status}`); continue; }
-      const text = await response.text();
-      if (text.trim().startsWith("<!")) continue;
-      const need = stillMissing();
-      for (const r of parseCotTxt(text)) {
-        if (need.has(r.currency) && !out.some((x) => x.currency === r.currency)) out.push(r);
-      }
-    } catch (err) {
-      console.warn(`[tools/cot] ${url} →`, err instanceof Error ? err.message : err);
-    }
-  }
-
-  return out;
-}
-
-async function fetchCotData(): Promise<void> {
-  const now = Date.now();
-  console.info("[tools/cot] Fetching CFTC data...");
-
-  // 1. Sorgente primaria: Socrata Legacy Futures-Only — storico reale multi-settimana
-  //    (12+ settimane) per EUR/GBP/JPY/CHF/CAD/AUD/XAU.
-  const reports: CotEntry[] = (await fetchCotFromSocrata()) ?? [];
-
-  // 2. Riempi le valute non coperte da Socrata (es. NZD, USD index) coi .txt settimanali.
-  const covered = new Set(reports.map((r) => r.currency));
-  const missing = new Set(COT_ORDER.filter((c) => !covered.has(c)));
-  if (missing.size > 0) {
-    for (const r of await fetchCotFromTxt(missing)) {
-      if (!covered.has(r.currency)) { reports.push(r); covered.add(r.currency); }
-    }
-  }
-
-  if (reports.length > 0) {
-    // 3. Le voci con una sola settimana (dai .txt) ricevono storico sintetico; le
-    //    valute prive di qualsiasi sorgente live usano il fallback statico.
-    const enriched = reports.map((r) =>
-      r.history.length > 1 ? r : (mergeWithFallbackHistory([r])[0] ?? r),
-    );
-    const present = new Set(enriched.map((r) => r.currency));
-    const fallbackFill = COT_FALLBACK.filter((f) => !present.has(f.currency));
-    const final = [...enriched, ...fallbackFill]
-      .sort((a, b) => COT_ORDER.indexOf(a.currency) - COT_ORDER.indexOf(b.currency));
-    const liveWithHistory = enriched.filter((r) => r.history.length > 1).length;
-    cotCache = { data: final, fetchedAt: now, expiresAt: nextCftcPublishMs(), fallback: false };
-    console.info(`[tools/cot] OK — ${enriched.length} live (${liveWithHistory} con storico reale) + ${fallbackFill.length} fallback, total ${final.length}`);
-    return;
-  }
-
-  // 4. Tutte le sorgenti fallite — fallback statico hardcoded.
-  console.info("[tools/cot] All sources failed — using static fallback");
-  if (!cotCache) {
-    cotCache = { data: COT_FALLBACK, fetchedAt: now, expiresAt: nextCftcPublishMs(), fallback: true };
-  }
-}
-
-let activeCotFetch: Promise<void> | null = null;
-
-function runCotFetch(): Promise<void> {
-  activeCotFetch = fetchCotData().finally(() => {
-    activeCotFetch = null;
-  });
-  return activeCotFetch;
-}
-
-// Cron: ogni venerdì alle 21:00 UTC (30 min dopo pubblicazione CFTC)
-const cotTask = cron.schedule("0 21 * * 5", () => {
-  console.info("[tools/cot] Cron triggered — fetching new COT data");
-  runCotFetch().catch(onCotFetchError);
-}, { timezone: "UTC" });
-
-export const cotScheduler = {
-  async close(): Promise<void> {
-    cotTask.stop();
-    cotTask.destroy();
-    await activeCotFetch;
-  },
-};
-
-// Fetch iniziale al boot del server
-runCotFetch().catch(onCotFetchError);
-
-router.get("/tools/cot", async (req, res) => {
-  const now = Date.now();
-  const isStale = cotCache ? now >= cotCache.expiresAt : true;
-
-  if (!cotCache || isStale) {
-    await runCotFetch();
-  }
-
-  const cache = cotCache!;
-  const nextUpdate = new Date(cache.expiresAt).toLocaleDateString("it-IT", {
-    weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
-  });
-
-  res.json({
-    reports: cache.data,
-    cached: !isStale,
-    fallback: cache.fallback,
-    fetchedAt: new Date(cache.fetchedAt).toISOString(),
-    nextUpdate,
-  });
-});
+// CFTC polling follows the data rather than a hardcoded EST/UTC release hour.
+const cotTask = cron.schedule("5 * * * *", () => { void getCotOutlook().catch(onCotFetchError); }, { timezone: "UTC" });
+let cotSchedulerClosed = false;
+export const cotScheduler = { async close() { if(cotSchedulerClosed)return;cotSchedulerClosed=true;cotTask.stop(); cotTask.destroy(); } };
+void getCotOutlook().catch(onCotFetchError);
+router.get("/tools/cot", async (_req, res) => { res.json(await getCotOutlook()); });
 
 // ─── 5. MACRO NEWS AI ─────────────────────────────────────────────────────────
 interface MacroNewsResult {
@@ -985,7 +409,7 @@ interface MacroNewsResult {
 
 const macroNewsCache = new Map<string, { data: MacroNewsResult; expiresAt: number }>();
 const MACRO_NEWS_TTL = 2 * 60 * 1000;
-const MACRO_NEWS_ASSET_CACHE_VERSION = "asset-impact-v2";
+const MACRO_NEWS_ASSET_CACHE_VERSION = "shared-pair-evidence-v4";
 const VALID_CURRENCIES = new Set(["EUR", "USD", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "XAU"]);
 
 function normalizeCurrencies(raw: string): { key: string; label: string } {
@@ -1539,34 +963,21 @@ async function fetchMacroRSSFallback(currenciesInput: string, lang = "it"): Prom
   };
 }
 
-async function fetchMacroNews(
-  currencyLabel: string,
+/** Compatibility shape over the same corpus used by /news, including ALL/no parameters. */
+export async function fetchMacroNews(
+  _currencyLabel: string,
   currenciesRaw = "",
   lang = "it",
-  options: { forceRefresh?: boolean } = {},
+  options: { forceRefresh?: boolean; pairs?: string } = {},
 ): Promise<MacroNewsResult> {
-  const pairs = pairsFromMacroCurrencies(currenciesRaw);
+  const pairs = options.pairs || pairsFromMacroCurrencies(currenciesRaw);
   const forceRefresh = options.forceRefresh === true;
-  if (pairs) {
-    try {
-      const news = await withTimeout(
-        getNewsData({ noCache: forceRefresh === true, pairs, lang }),
-        NEWS_HUB_MACRO_TIMEOUT_MS,
-        "NewsHub",
-      );
-      return macroNewsFromNewsHub(news, { pairs, lang }) as MacroNewsResult;
-    } catch (err) {
-      console.warn("[tools/macro-news] NewsHub timed out, falling back to RSS:", err instanceof Error ? err.message : String(err));
-      return fetchMacroRSSFallback(currenciesRaw, lang);
-    }
-  }
-
-  try {
-    return await fetchMacroNewsGroq(currencyLabel, currenciesRaw, lang);
-  } catch (err) {
-    console.warn("[tools/macro-news] Groq failed, falling back to RSS:", err instanceof Error ? err.message : String(err));
-    return fetchMacroRSSFallback(currenciesRaw, lang);
-  }
+  const news = await withTimeout(
+    getNewsData({ noCache: forceRefresh === true, pairs, lang }),
+    NEWS_HUB_MACRO_TIMEOUT_MS,
+    "NewsHub",
+  );
+  return macroNewsFromNewsHub(news, { pairs, lang }) as MacroNewsResult;
 }
 
 const VALID_LANGS = new Set(["it", "en", "es", "fr", "de"]);
@@ -1601,7 +1012,7 @@ router.get("/tools/macro-news", async (req, res) => {
     currenciesInput = derived.join(",");
   }
   const { key: baseKey, label } = normalizeCurrencies(currenciesInput);
-  const key = `${MACRO_NEWS_ASSET_CACHE_VERSION}:${baseKey}:${lang}`;
+  const key = `${MACRO_NEWS_ASSET_CACHE_VERSION}:${baseKey}:${newsSubscriptionKey({pairs:pairsInput,lang})}`;
   const forceRefresh = req.query.force === "1";
 
   const cached = macroNewsCache.get(key);
@@ -1611,7 +1022,7 @@ router.get("/tools/macro-news", async (req, res) => {
   }
 
   try {
-    const result = ensureMacroDeepDive(await fetchMacroNews(label, currenciesInput, lang, { forceRefresh }), lang) as MacroNewsResult;
+    const result = ensureMacroDeepDive(await fetchMacroNews(label, currenciesInput, lang, { forceRefresh, pairs: pairsInput }), lang) as MacroNewsResult;
     macroNewsCache.set(key, { data: result, expiresAt: Date.now() + MACRO_NEWS_TTL });
     res.json(result);
   } catch (err) {
@@ -1634,7 +1045,7 @@ router.post("/tools/macro-news", async (req, res) => {
     }
   }
   const { key: baseKey, label } = normalizeCurrencies(currencyInput);
-  const key = `${MACRO_NEWS_ASSET_CACHE_VERSION}:${baseKey}:${lang}`;
+  const key = `${MACRO_NEWS_ASSET_CACHE_VERSION}:${baseKey}:${newsSubscriptionKey({pairs,lang})}`;
 
   const cached = macroNewsCache.get(key);
   if (cached && Date.now() < cached.expiresAt) {
@@ -1643,7 +1054,7 @@ router.post("/tools/macro-news", async (req, res) => {
   }
 
   try {
-    const result = ensureMacroDeepDive(await fetchMacroNews(label, currencyInput, lang), lang) as MacroNewsResult;
+    const result = ensureMacroDeepDive(await fetchMacroNews(label, currencyInput, lang, { pairs }), lang) as MacroNewsResult;
     macroNewsCache.set(key, { data: result, expiresAt: Date.now() + MACRO_NEWS_TTL });
     res.json(result);
   } catch (err) {

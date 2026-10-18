@@ -81,6 +81,7 @@ export function attachSocialHubWebSocket(server: Server, security: SocialHubSecu
   const wss = createControlWebSocketServer();
   const stopHeartbeat = startHeartbeat(wss);
   const canAccessChannel = security.canAccessChannel ?? defaultCanAccessChannel;
+  const clientUsers = new WeakMap<WebSocket, string>();
   const clientChannels = new WeakMap<WebSocket, Set<number>>();
 
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
@@ -104,12 +105,18 @@ export function attachSocialHubWebSocket(server: Server, security: SocialHubSecu
   const unsubscribe = onSocialEvent((event: SocialEvent) => {
     for (const client of wss.clients) {
       if (canSend(client) && shouldDeliverToChannelSubscriber(clientChannels.get(client), event)) {
-        client.send(JSON.stringify(event));
+        const userId = clientUsers.get(client);
+        if (!userId) continue;
+        void canAccessChannel(userId, event.channelId).then(allowed => {
+          if (!allowed) { clientChannels.get(client)?.delete(event.channelId); return; }
+          if (canSend(client) && shouldDeliverToChannelSubscriber(clientChannels.get(client), event)) client.send(JSON.stringify(event));
+        }).catch(() => {});
       }
     }
   });
 
   wss.on("connection", (client: WebSocket, _request: IncomingMessage, auth: WebSocketAuthContext) => {
+    clientUsers.set(client, auth.userId);
     clientChannels.set(client, new Set<number>());
 
     client.on("message", (raw: WebSocket.RawData) => {

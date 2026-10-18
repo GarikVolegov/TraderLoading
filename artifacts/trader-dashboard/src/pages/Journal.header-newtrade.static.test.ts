@@ -9,8 +9,10 @@ const src = fs.readFileSync("src/pages/Journal.tsx", "utf8");
 
 // The header exposes the "Nuovo Trade" action that deep-links into the Trades tab.
 assert.match(src, /action=\{/, "PageHeader must receive an action slot");
-assert.match(src, /navigate\(\s*["'`]\/journal\?t=trades&new=1["'`]/,
-  'the header action must navigate to /journal?t=trades&new=1');
+assert.match(src, /setTab\("trades", \{ new: "1" \}\)/,
+  "the header action opens a new trade using the URL");
+assert.equal((src.match(/t\("journal\.new_trade"\)/g) ?? []).length, 1,
+  "the page contains one primary new-trade action");
 
 // The modal open is URL-driven, not a mount-only window.location read.
 assert.doesNotMatch(src, /window\.location/,

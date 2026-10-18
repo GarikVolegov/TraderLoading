@@ -13,7 +13,7 @@ export default function NotFound() {
             <AlertCircle className="w-10 h-10 text-destructive" />
           </div>
         </div>
-        <h1 className="text-4xl font-bold font-mono">404</h1>
+        <h1 className="text-4xl font-bold font-sans">404</h1>
         <p className="text-muted-foreground text-lg">
           {t("notfound.message")}
         </p>

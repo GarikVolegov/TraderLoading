@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from "react";
-import { useLocation } from "wouter";
+import { Fragment, useState, useCallback, useEffect, useMemo, lazy, Suspense } from "react";
+import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DndContext,
@@ -12,20 +12,28 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  rectSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
+import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  GripVertical, Check, RotateCcw,
-  BookOpen, Sunrise, Target, ClipboardCheck,
-  CalendarDays, BarChart2, TrendingUp, BookMarked,
-  Eye, EyeOff, Wallet, ArrowUpRight, Activity,
+  GripVertical,
+  Check,
+  RotateCcw,
+  BookOpen,
+  Sunrise,
+  Target,
+  ClipboardCheck,
+  CalendarDays,
+  BarChart2,
+  TrendingUp,
+  BookMarked,
+  Eye,
+  EyeOff,
+  Wallet,
+  ArrowUpRight,
+  Activity,
 } from "lucide-react";
 
+import { RiskGuardPanel } from "@/components/RiskGuardPanel";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { ClockWidget } from "@/components/ClockWidget";
@@ -44,6 +52,8 @@ import { TradingViewWatchlistWidget } from "@/components/TradingViewWatchlistWid
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { columnsForWidth, distributeColumns, visibleWidgetOrder } from "./Dashboard.layout";
 import { useIsDesktop } from "@/hooks/use-media-query";
+import { widgetDestination } from "@/lib/workspaceTools";
+import { updateWorkspaceQuery } from "@/lib/workspaceNavigation";
 
 // ─── Lazy-loaded CotWidget ────────────────────────────────────────────────────
 
@@ -53,10 +63,10 @@ const CotWidgetInner = lazy(() =>
   import("@/components/CotWidget").then((m) => ({ default: m.CotWidget })),
 );
 
-function CotWidget() {
+function CotWidget({ pair }: { pair?: string } = {}) {
   return (
     <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-      <CotWidgetInner />
+      <CotWidgetInner pair={pair} />
     </Suspense>
   );
 }
@@ -77,18 +87,65 @@ interface WidgetDef {
 }
 
 const WIDGET_DEFS: WidgetDef[] = [
-  { id: "account",    labelKey: "auto.ui.56c86a8f0d", icon: Wallet,         route: "/broker",                 component: BrokerHubWidget },
-  { id: "tradingview-watchlist", labelKey: "auto.ui.b97144823c", icon: Activity, component: TradingViewWatchlistWidget },
-  { id: "quote",      labelKey: "auto.ui.070b588c21", icon: BookOpen,                                         component: QuoteWidget },
-  { id: "routine",    labelKey: "auto.ui.d19a336199", icon: Sunrise,        route: "/routine",                component: RoutineWidget },
-  { id: "missions",   labelKey: "auto.ui.0a38d7a6de", icon: Target,         route: "/missions",               component: MissionsWidget },
-  { id: "checklist",  labelKey: "auto.ui.291e9f4b97", icon: ClipboardCheck, route: "/checklist",              component: ChecklistDashboardWidget },
-  { id: "lot",        labelKey: "auto.ui.4200011b72", icon: BarChart2,                                      component: LotCalculatorWidget },
-  { id: "journal",    labelKey: "auto.ui.aeecb365d3", icon: BookOpen,       route: "/journal",                component: JournalWidget },
-  { id: "calendar",   labelKey: "auto.ui.67a969a120", icon: CalendarDays,   route: "/calendar",               component: CalendarWidget, bodyHandlesOwnClicks: true },
-  { id: "sentiment",  labelKey: "auto.ui.dc850cabd8", icon: BarChart2,                                      component: SentimentWidget },
-  { id: "volatility", labelKey: "auto.ui.92ef7e46bf", icon: TrendingUp,                                     component: VolatilityWidget },
-  { id: "cot",        labelKey: "cot.report_title",   icon: BookMarked,                                     component: CotWidget },
+  {
+    id: "account",
+    labelKey: "auto.ui.56c86a8f0d",
+    icon: Wallet,
+    route: "/journal?t=trades&panel=conti",
+    component: BrokerHubWidget,
+  },
+  {
+    id: "tradingview-watchlist",
+    labelKey: "auto.ui.b97144823c",
+    icon: Activity,
+    component: TradingViewWatchlistWidget,
+  },
+  { id: "quote", labelKey: "auto.ui.070b588c21", icon: BookOpen, component: QuoteWidget },
+  {
+    id: "routine",
+    labelKey: "auto.ui.d19a336199",
+    icon: Sunrise,
+    route: "/journal?t=piano&vista=oggi&panel=routine",
+    component: RoutineWidget,
+  },
+  {
+    id: "missions",
+    labelKey: "auto.ui.0a38d7a6de",
+    icon: Target,
+    route: "/journal?t=piano&vista=oggi&focus=missioni",
+    component: MissionsWidget,
+  },
+  {
+    id: "checklist",
+    labelKey: "auto.ui.291e9f4b97",
+    icon: ClipboardCheck,
+    route: "/journal?t=piano&vista=oggi&panel=checklist",
+    component: ChecklistDashboardWidget,
+  },
+  { id: "lot", labelKey: "auto.ui.4200011b72", icon: BarChart2, component: LotCalculatorWidget },
+  {
+    id: "journal",
+    labelKey: "auto.ui.aeecb365d3",
+    icon: BookOpen,
+    route: "/journal",
+    component: JournalWidget,
+  },
+  {
+    id: "calendar",
+    labelKey: "auto.ui.67a969a120",
+    icon: CalendarDays,
+    route: "/journal?t=piano&vista=agenda",
+    component: CalendarWidget,
+    bodyHandlesOwnClicks: true,
+  },
+  { id: "sentiment", labelKey: "auto.ui.dc850cabd8", icon: BarChart2, component: SentimentWidget },
+  {
+    id: "volatility",
+    labelKey: "auto.ui.92ef7e46bf",
+    icon: TrendingUp,
+    component: VolatilityWidget,
+  },
+  { id: "cot", labelKey: "cot.report_title", icon: BookMarked, component: CotWidget },
 ];
 
 const DEFAULT_ORDER = [
@@ -105,8 +162,8 @@ const DEFAULT_ORDER = [
   "cot",
   "calendar",
 ];
-const STORAGE_KEY      = "tl_dashboard_order_command_center_v1";
-const VISIBILITY_KEY   = "tl_dashboard_visibility_command_center_v1";
+const STORAGE_KEY = "tl_dashboard_order_command_center_v1";
+const VISIBILITY_KEY = "tl_dashboard_visibility_command_center_v1";
 
 function loadOrder(): string[] {
   try {
@@ -172,8 +229,10 @@ function SortableWidget({
   onToggleHide: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: def.id, disabled: !isEditing || isHidden });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: def.id,
+    disabled: !isEditing || isHidden,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -202,7 +261,9 @@ function SortableWidget({
       {isHidden && isEditing ? (
         <div className="flex h-full w-full items-center justify-center gap-3 rounded-[0.625rem] border-2 border-dashed border-border/40 bg-background/20 opacity-50">
           <Icon className="w-4 h-4 text-muted-foreground/50" />
-          <span className="text-xs font-bold text-muted-foreground/50 font-mono">{uiText(def.labelKey)}</span>
+          <span className="text-xs font-bold text-muted-foreground/50 font-mono">
+            {uiText(def.labelKey)}
+          </span>
         </div>
       ) : (
         <motion.div
@@ -259,8 +320,12 @@ function SortableWidget({
             {...(!isHidden ? { ...listeners, ...attributes } : {})}
           >
             <div className="flex items-center gap-2">
-              <Icon className={`w-3.5 h-3.5 ${isHidden ? "text-muted-foreground/40" : "text-primary/60"}`} />
-              <span className={`text-xs font-bold font-mono ${isHidden ? "text-muted-foreground/40 line-through" : "text-primary/70"}`}>
+              <Icon
+                className={`w-3.5 h-3.5 ${isHidden ? "text-muted-foreground/40" : "text-primary/60"}`}
+              />
+              <span
+                className={`text-xs font-bold font-mono ${isHidden ? "text-muted-foreground/40 line-through" : "text-primary/70"}`}
+              >
                 {uiText(def.labelKey)}
               </span>
             </div>
@@ -268,7 +333,10 @@ function SortableWidget({
               {/* Eye toggle */}
               <button
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); onToggleHide(def.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleHide(def.id);
+                }}
                 className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
                   isHidden
                     ? "bg-border/30 text-muted-foreground/50 hover:bg-primary/20 hover:text-primary"
@@ -276,10 +344,7 @@ function SortableWidget({
                 }`}
                 title={isHidden ? uiText("auto.ui.071e9cf53d") : uiText("auto.ui.8ffeb1a351")}
               >
-                {isHidden
-                  ? <EyeOff className="w-3.5 h-3.5" />
-                  : <Eye className="w-3.5 h-3.5" />
-                }
+                {isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
               {!isHidden && <GripVertical className="w-4 h-4 text-primary/50" />}
             </div>
@@ -314,14 +379,18 @@ function WidgetGhost({ def }: { def: WidgetDef }) {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-export default function Dashboard() {
+export default function Dashboard({
+  embedded = false,
+  focusWidget,
+}: { embedded?: boolean; focusWidget?: string } = {}) {
+  const Layout = embedded ? Fragment : PageLayout;
   const { t } = useLanguage();
-  const [, navigate]                = useLocation();
-  const [order, setOrder]           = useState<string[]>(loadOrder);
-  const [hidden, setHidden]         = useState<Record<string, boolean>>(loadVisibility);
-  const [isEditing, setIsEditing]   = useState(shouldStartLayoutEditing);
-  const [activeId, setActiveId]     = useState<string | null>(null);
-  const prevOrderRef = useRef<string[]>(order);
+  const [, navigate] = useLocation();
+  const search = useSearch();
+  const [order, setOrder] = useState<string[]>(loadOrder);
+  const [hidden, setHidden] = useState<Record<string, boolean>>(loadVisibility);
+  const [isEditing, setIsEditing] = useState(shouldStartLayoutEditing);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const cols = useColumns();
   const isDesktop = useIsDesktop();
 
@@ -330,29 +399,23 @@ export default function Dashboard() {
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
   );
 
-  const defMap = useMemo(
-    () => Object.fromEntries(WIDGET_DEFS.map((d) => [d.id, d])),
-    [],
-  );
+  const defMap = useMemo(() => Object.fromEntries(WIDGET_DEFS.map((d) => [d.id, d])), []);
 
   const handleDragStart = useCallback(({ active }: DragStartEvent) => {
     setActiveId(active.id as string);
   }, []);
 
-  const handleDragEnd = useCallback(
-    ({ active, over }: DragEndEvent) => {
-      setActiveId(null);
-      if (!over || active.id === over.id) return;
-      setOrder((prev) => {
-        const oldIdx = prev.indexOf(active.id as string);
-        const newIdx = prev.indexOf(over.id as string);
-        const next = arrayMove(prev, oldIdx, newIdx);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        return next;
-      });
-    },
-    [],
-  );
+  const handleDragEnd = useCallback(({ active, over }: DragEndEvent) => {
+    setActiveId(null);
+    if (!over || active.id === over.id) return;
+    setOrder((prev) => {
+      const oldIdx = prev.indexOf(active.id as string);
+      const newIdx = prev.indexOf(over.id as string);
+      const next = arrayMove(prev, oldIdx, newIdx);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const handleToggleHide = useCallback((id: string) => {
     setHidden((prev) => {
@@ -362,13 +425,19 @@ export default function Dashboard() {
     });
   }, []);
 
-  const handleOpenWidget = useCallback((id: string) => {
-    const route = defMap[id]?.route;
-    if (route) navigate(route);
-  }, [defMap, navigate]);
+  const handleOpenWidget = useCallback(
+    (id: string) => {
+      const route = widgetDestination(id) ?? defMap[id]?.route;
+      if (route) navigate(route);
+    },
+    [defMap, navigate],
+  );
 
   const handleFinishEditing = () => {
     setIsEditing(false);
+    navigate(`/${updateWorkspaceQuery(search, { vista: "strumenti", layout: null })}`, {
+      replace: true,
+    });
   };
 
   const handleReset = () => {
@@ -384,7 +453,7 @@ export default function Dashboard() {
       const custom = event as CustomEvent<{ workspaceId?: string; accountTab?: string }>;
       if (custom.detail?.workspaceId !== "account") return;
       const tab = custom.detail.accountTab;
-      navigate(tab ? `/broker?tab=${tab}` : "/broker");
+      navigate(tab ? `/journal?t=trades&panel=conti&tab=${tab}` : "/journal?t=trades&panel=conti");
     };
 
     window.addEventListener("tl-open-dashboard-workspace", handleOpenWorkspace);
@@ -392,11 +461,8 @@ export default function Dashboard() {
   }, [navigate]);
 
   useEffect(() => {
-    if (!shouldStartLayoutEditing()) return;
-    prevOrderRef.current = order;
-    setIsEditing(true);
-    window.history.replaceState(null, "", window.location.pathname || "/");
-  }, [order]);
+    setIsEditing(new URLSearchParams(search).get("layout") === "edit");
+  }, [search]);
 
   const activeWidget = activeId ? defMap[activeId] : null;
 
@@ -442,8 +508,30 @@ export default function Dashboard() {
     );
   };
 
+  if (focusWidget) {
+    const selected = defMap[focusWidget];
+    return (
+      <div data-focused-widget={focusWidget} className="mx-auto w-full max-w-3xl py-6">
+        {selected ? (
+          (() => {
+            const pair = new URLSearchParams(search).get("pair") || undefined;
+            if (focusWidget === "sentiment") return <SentimentWidget pair={pair} />;
+            if (focusWidget === "volatility") return <VolatilityWidget pair={pair} />;
+            if (focusWidget === "cot") return <CotWidget pair={pair} />;
+            if (focusWidget === "calendar") return <CalendarWidget pair={pair} />;
+            if (focusWidget === "tradingview-watchlist")
+              return <TradingViewWatchlistWidget pair={pair} />;
+            return <selected.component />;
+          })()
+        ) : (
+          <p role="alert">{t("catalog.empty")}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <PageLayout>
+    <Layout>
       <PageHeader
         title={t("dashboard.title")}
         subtitle={t("dashboard.subtitle")}
@@ -453,32 +541,48 @@ export default function Dashboard() {
             Command Center
           </span>
         }
-        action={isEditing ? (
-          <div className="flex items-center gap-2">
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              onClick={handleReset}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border/40 text-xs text-muted-foreground/60 hover:text-muted-foreground/90 hover:border-border/70 transition-all"
+        action={
+          isEditing ? (
+            <div className="flex items-center gap-2">
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={handleReset}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border/40 text-xs text-muted-foreground/60 hover:text-muted-foreground/90 hover:border-border/70 transition-all"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleFinishEditing}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold shadow-lg shadow-primary/25 transition-all duration-200"
+              >
+                <Check className="w-4 h-4" strokeWidth={3} />
+                {t("dashboard.done")}
+              </motion.button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="min-h-11 rounded-lg border border-border px-3 text-sm text-primary hover:bg-secondary"
+              onClick={() =>
+                navigate(`/${updateWorkspaceQuery(search, { vista: "strumenti", layout: "edit" })}`)
+              }
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reset
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={handleFinishEditing}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold shadow-lg shadow-primary/25 transition-all duration-200"
-            >
-              <Check className="w-4 h-4" strokeWidth={3} />
-              {t("dashboard.done")}
-            </motion.button>
-          </div>
-        ) : undefined}
+              {t("auto.ui.4432b3c245")}
+            </button>
+          )
+        }
       />
 
       {/* Clock — pinned full-width banner (kit-faithful), outside the reorderable set */}
       <div className="mb-4">
         <ClockWidget />
+      </div>
+
+      <div className="mb-4">
+        <RiskGuardPanel />
       </div>
 
       {/* Edit-mode banner */}
@@ -512,9 +616,7 @@ export default function Dashboard() {
       >
         <SortableContext items={displayOrder} strategy={rectSortingStrategy}>
           {isEditing ? (
-            <div className={containerClass}>
-              {displayOrder.map((id, i) => renderCell(id, i))}
-            </div>
+            <div className={containerClass}>{displayOrder.map((id, i) => renderCell(id, i))}</div>
           ) : (
             <div className="flex items-start gap-4">
               {distributeColumns(displayOrder, cols).map((colIds, ci) => (
@@ -531,6 +633,6 @@ export default function Dashboard() {
           {activeWidget ? <WidgetGhost def={activeWidget} /> : null}
         </DragOverlay>
       </DndContext>
-    </PageLayout>
+    </Layout>
   );
 }

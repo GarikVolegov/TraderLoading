@@ -1,0 +1,18 @@
+import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
+import {spawnSync} from 'node:child_process';
+import {writeFileSync,readFileSync} from 'node:fs';
+const root=fileURLToPath(new URL('../../',import.meta.url));
+const req=createRequire(root+'scripts/package.json');
+const {Client}=req('pg');
+const c=new Client({host:'127.0.0.1',port:55432,user:'trader',password:'trader',database:'traderloadings'});await c.connect();
+const name='tl_audit_'+Date.now();await c.query(`CREATE DATABASE ${name}`);await c.end();
+const bin=process.env.AUDIT_PG_BIN ? process.env.AUDIT_PG_BIN.replace(/\/?$/, '/') : '';
+const env={...process.env,PGPASSWORD:'trader'};
+const dump=spawnSync(bin+'pg_dump',['-h','127.0.0.1','-p','55432','-U','trader','-d','traderloadings','--schema-only','--no-owner','--no-privileges'],{env,encoding:'utf8'});
+if(dump.error||dump.status!==0)throw new Error(dump.error?.message||dump.stderr);
+const restore=spawnSync(bin+'psql',['-h','127.0.0.1','-p','55432','-U','trader','-d',name,'-v','ON_ERROR_STOP=1'],{env,input:dump.stdout,encoding:'utf8'});
+if(restore.error||restore.status!==0)throw new Error(restore.error?.message||restore.stderr);
+const audit=new Client({host:'127.0.0.1',port:55432,user:'trader',password:'trader',database:name});await audit.connect();
+await audit.query(readFileSync(root+'lib/db/drizzle/0013_support_tickets.sql','utf8'));await audit.end();
+writeFileSync(root+'.local-logs/runtime-db.json',JSON.stringify({name}));console.log('Isolated schema-only database created:',name);

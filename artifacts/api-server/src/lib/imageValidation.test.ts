@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import { imageMatchesType } from "./imageValidation.js";
+const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ioAAAAASUVORK5CYII=", "base64");
+assert.ok(imageMatchesType(png, "image/png", "chart.PNG"));
+assert.equal(imageMatchesType(Buffer.from("<html><script>alert(1)</script>"), "image/png", "chart.png"), false);
+assert.equal(imageMatchesType(Buffer.from('<svg onload="alert(1)"/>'), "image/svg+xml", "chart.svg"), false);
+assert.equal(imageMatchesType(png, "image/png", "chart.html"), false);
+assert.equal(imageMatchesType(png, "image/jpeg", "chart.jpg"), false);
+assert.equal(imageMatchesType(png.subarray(0, 8), "image/png", "chart.png"), false);
+console.log("Raster upload validation passed");

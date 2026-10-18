@@ -1,3 +1,4 @@
+import { canMergeNewsEvents, mergeNewsAttribution } from "./curation.js";
 import type { NewsArticle } from "./types.js";
 
 export interface NewsRankingOptions {
@@ -133,8 +134,13 @@ export function rankNewsForDisplay(articles: NewsArticle[], options: NewsRanking
 
   const selected: NewsArticle[] = [];
   for (const article of scored) {
-    const titleKey = normalizeTitle(article.title);
-    if (!titleKey || seenTitles.has(titleKey)) continue;
+    const titleKey = `${normalizeTitle(article.title)}:${article.release && article.eventId ? article.eventId : ""}`;
+    if (!titleKey) continue;
+    if (seenTitles.has(titleKey)) {
+      const index = selected.findIndex(lead => `${normalizeTitle(lead.title)}:${lead.release && lead.eventId ? lead.eventId : ""}` === titleKey && canMergeNewsEvents(lead, article));
+      if (index >= 0) selected[index] = mergeNewsAttribution(selected[index], article);
+      if (index >= 0) continue;
+    }
 
     const sourceKey = sourceRoot(article.source);
     const sourceCount = sourceCounts.get(sourceKey) ?? 0;

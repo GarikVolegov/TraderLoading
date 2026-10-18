@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { disposeVoiceResources, keepCurrentVoiceStream } from "./voiceResources";
+
+let stopped = 0, closed = 0, paused = 0;
+const stream = { getTracks: () => [{ stop: () => ++stopped }] } as unknown as MediaStream;
+const audio = { pause: () => ++paused, srcObject: stream };
+disposeVoiceResources({ stream, peers: { a: { close: () => ++closed }, b: { close: () => ++closed } }, audio: { a: audio } });
+assert.equal(stopped, 1);
+assert.equal(closed, 2);
+assert.equal(paused, 1);
+assert.equal(audio.srcObject, null);
+assert.equal(keepCurrentVoiceStream(stream, false), false, "late microphone permission must be discarded");
+assert.equal(stopped, 2);
+assert.equal(keepCurrentVoiceStream(stream, true), true);
+assert.equal(stopped, 2, "current microphone remains usable");
+disposeVoiceResources({ stream: null, peers: {}, audio: {} });
+
+const source = readFileSync(new URL("./VoiceChannelView.tsx", import.meta.url), "utf8");
+assert.match(source, /mountedRef\.current = false; void leaveChannel\(\)/);
+assert.doesNotMatch(source, /if \(inChannel\) leaveChannel/, "unmount cleanup cannot capture the initial false state");
+assert.match(source, /keepCurrentVoiceStream\(stream, mountedRef\.current && joinEpochRef\.current === epoch\)/);
+assert.match(source, /clearInterval\(pingIntervalRef\.current\)/);
+assert.match(source, /clearInterval\(pollIntervalRef\.current\)/);
+const direct = readFileSync(new URL("./MessaggiTab.tsx", import.meta.url), "utf8");
+assert.match(direct, /mountedRef\.current = false/);
+assert.match(direct, /\+\+recordingEpochRef\.current/);
+assert.equal((direct.match(/keepCurrentVoiceStream\(stream, mountedRef\.current && callEpochRef\.current === epoch\)/g) ?? []).length, 2, "both incoming and outgoing calls discard late microphone grants");
+assert.match(direct, /keepCurrentVoiceStream\(stream, mountedRef\.current && recordingEpochRef\.current === epoch\)/);
+console.log("voice resource lifecycle checks passed");

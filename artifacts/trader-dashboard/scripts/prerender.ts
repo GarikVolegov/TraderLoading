@@ -58,10 +58,12 @@ async function main() {
 
   let browser: Awaited<ReturnType<typeof puppeteer.launch>> | undefined;
   const failures: string[] = [];
+  const snapshots = new Map<string, string>();
   try {
     try {
       browser = await puppeteer.launch({
         headless: true,
+        protocolTimeout: 30000,
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
     } catch (err) {
@@ -74,7 +76,11 @@ async function main() {
     let done = 0;
 
     for (const path of paths) {
+      console.log(`prerender: capturing ${path}`);
       const page = await browser.newPage();
+      page.on("pageerror", (error) =>
+        console.error(`prerender: ${path} client error — ${String(error)}`),
+      );
       await page.setExtraHTTPHeaders({ "Accept-Language": "en-US,en;q=0.9" });
       // Abort cross-origin requests (Google Fonts, etc.) so rendering is fast and
       // deterministic and never stalls on third-party network.
@@ -93,6 +99,7 @@ async function main() {
         await new Promise((r) => setTimeout(r, 300));
         const html = await page.content();
         if (!isValidSnapshot(html)) {
+          console.error(`prerender: ${path} — captured HTML failed content validation`);
           failures.push(`${path} — captured HTML failed content validation`);
           continue;
         }
@@ -100,21 +107,29 @@ async function main() {
           path === "/"
             ? resolve(distDir, "index.html")
             : resolve(distDir, `${path.replace(/^\//, "")}/index.html`);
-        mkdirSync(dirname(outFile), { recursive: true });
-        writeFileSync(outFile, `<!DOCTYPE html>\n${html}`, "utf8");
+        // Keep the SPA fallback immutable during capture. sirv caches its
+        // original Content-Length; overwriting index.html mid-run truncates
+        // later responses before #root and causes React error #299.
+        snapshots.set(outFile, `<!DOCTYPE html>\n${html}`);
         done += 1;
       } catch (err) {
+        console.error(`prerender: ${path} — ${(err as Error).message}`);
         failures.push(`${path} — ${(err as Error).message}`);
       } finally {
         await page.close();
       }
     }
-    console.log(`prerender: wrote ${done}/${paths.length} routes`);
     if (failures.length > 0) {
       console.error(`prerender: ${failures.length} route(s) failed:`);
       for (const f of failures) console.error(`  - ${f}`);
       process.exitCode = 1;
+      return;
     }
+    for (const [outFile, html] of snapshots) {
+      mkdirSync(dirname(outFile), { recursive: true });
+      writeFileSync(outFile, html, "utf8");
+    }
+    console.log(`prerender: wrote ${done}/${paths.length} routes`);
   } finally {
     if (browser) await browser.close();
     server.close();

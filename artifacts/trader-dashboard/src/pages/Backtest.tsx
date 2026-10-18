@@ -25,16 +25,18 @@ import {
   getGetBacktestTradesQueryKey,
   type BacktestSession,
 } from "@workspace/api-client-react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { calculateBacktestStats } from "@/lib/backtestStats";
 import { uiText, useDateLocale } from "@/contexts/LanguageContext";
 import { calculateManualBacktestTradeResult } from "@/lib/backtestTradeResult";
+import { parseUtcDateTimeInput, utcDateTimeInput } from "@/components/backtest-terminal/dateTime";
+import { fetchReplayCandlesMeta, type ReplayCandlesMeta } from "@/lib/replayCandlesApi";
 
 const ALL_BT_PAIRS = [
   "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "NZD/USD", "USD/CAD",
-  "EUR/GBP", "EUR/JPY", "GBP/JPY", "AUD/JPY", "XAU/USD", "US30", "NAS100", "SPX500",
+  "EUR/GBP", "EUR/JPY", "GBP/JPY", "AUD/JPY", "XAU/USD", "USOIL", "US30", "NAS100", "SPX500",
   "BTC/USD", "ETH/USD",
 ];
 
@@ -70,13 +72,38 @@ function NewSessionForm({ onClose }: { onClose: () => void }) {
 
   const [timeframe, setTimeframe] = useState("H1");
   const [strategy, setStrategy] = useState("");
+  const [startDateTime, setStartDateTime] = useState("");
+  const [historyMeta, setHistoryMeta] = useState<ReplayCandlesMeta | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    setHistoryMeta(null);
+    fetchReplayCandlesMeta(pair, { signal: controller.signal })
+      .then((meta) => { if (!controller.signal.aborted) setHistoryMeta(meta); })
+      .catch(() => { /* Coverage stays unavailable when metadata cannot be fetched. */ });
+    return () => controller.abort();
+  }, [pair]);
+  const selectedStartTime = parseUtcDateTimeInput(startDateTime);
+  const firstOpen = historyMeta?.warehouse?.firstTs;
+  const lastOpen = historyMeta?.warehouse?.lastTs;
+  const firstTime = firstOpen != null ? firstOpen + 60 : null;
+  const lastTime = lastOpen != null ? lastOpen + 60 : null;
+  const startOutsideHistory = selectedStartTime != null && ((firstTime != null && selectedStartTime < firstTime) || (lastTime != null && selectedStartTime > lastTime));
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
     try {
-      await createMutation.mutateAsync({
+      const session = await createMutation.mutateAsync({
         data: { name: name.trim(), pair, timeframe, strategy: strategy.trim() || undefined },
       });
+      const startTime = parseUtcDateTimeInput(startDateTime);
+      if (startTime != null) {
+        try {
+          // Persist before the first replay is opened, including browser restarts.
+          window.localStorage.setItem(`traderloading:backtest-start:${session.id}`, String(startTime));
+        } catch {
+          // Go to date remains available when browser storage is unavailable.
+        }
+      }
       qc.invalidateQueries({ queryKey: getGetBacktestSessionsQueryKey() });
       toast({ description: uiText("auto.ui.77da81d703") });
       onClose();
@@ -135,10 +162,25 @@ function NewSessionForm({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <label htmlFor="backtest-session-start" className="text-xs text-muted-foreground uppercase tracking-wider">
+              {uiText("backtest_terminal.start_datetime")} · {uiText("backtest_terminal.timezone_utc")}
+            </label>
+            <Input id="backtest-session-start" type="datetime-local" step={60}
+              value={startDateTime} onChange={(event) => setStartDateTime(event.target.value)}
+              min={utcDateTimeInput(firstTime) || undefined} max={utcDateTimeInput(lastTime) || undefined}
+              aria-invalid={startOutsideHistory}
+              className="max-w-sm" />
+            <p className="text-xs text-muted-foreground">{uiText("backtest_terminal.start_optional")}</p>
+            {firstTime != null && lastTime != null && <p className="text-xs text-muted-foreground">
+              {uiText("backtest_terminal.history_available")}: {utcDateTimeInput(firstTime).replace("T", " ")} → {utcDateTimeInput(lastTime).replace("T", " ")} {uiText("backtest_terminal.timezone_utc")}
+            </p>}
+            {startOutsideHistory && <p className="text-xs text-destructive" role="alert">{uiText("backtest_terminal.date_outside_history")}</p>}
+          </div>
         </div>
         <div className="flex gap-3 justify-end">
           <Button variant="ghost" onClick={onClose}>{uiText("auto.ui.6c3de5381b")}</Button>
-          <Button onClick={handleSubmit} disabled={!name.trim() || createMutation.isPending}>
+          <Button onClick={handleSubmit} disabled={!name.trim() || createMutation.isPending || startOutsideHistory || (startDateTime !== "" && selectedStartTime == null)}>
             <Plus className="w-4 h-4 mr-2" />
             {uiText("auto.ui.1a33586f3b")}
           </Button>
@@ -158,6 +200,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
   const createTrade = useCreateBacktestTrade({ mutation: { meta: { suppressGlobalError: true } } });
   const deleteTrade = useDeleteBacktestTrade();
   const [mode, setMode] = useState<"chart" | "manual">("chart");
+  const methodVersionId = new URLSearchParams(useSearch()).get("methodVersionId");
   const [, navigate] = useLocation();
 
   const [direction, setDirection] = useState<"buy" | "sell">("buy");
@@ -254,7 +297,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
             <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
               {uiText("backtest_terminal.launch_subtitle")}
             </p>
-            <Button className="mt-2" onClick={() => navigate(`/backtest/${session.id}/replay`)}>
+            <Button className="mt-2" onClick={() => navigate(`/backtest/${session.id}/replay${methodVersionId ? `?methodVersionId=${encodeURIComponent(methodVersionId)}` : ""}`)}>
               <Play className="w-4 h-4 mr-2" />
               {uiText("backtest_terminal.launch_cta")}
             </Button>
@@ -507,7 +550,7 @@ export default function Backtest() {
             <p className="text-muted-foreground max-w-md mx-auto mb-6">
               {uiText("auto.ui.1c5e4ae4f3")}
             </p>
-            <Button onClick={() => setShowNew(true)}>
+            <Button variant="outline" onClick={() => setShowNew(true)}>
               <Plus className="w-4 h-4 mr-2" />
               {uiText("auto.ui.20fe4cdc4d")}
             </Button>

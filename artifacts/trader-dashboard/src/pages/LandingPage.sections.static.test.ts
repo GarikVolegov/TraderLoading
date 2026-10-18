@@ -1,57 +1,58 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { DICT } from "../lib/i18n/all";
 
-// The landing page is a faithful port of the Claude Design marketing kit:
-// hero + live product mock, animated stats, bento features, how-it-works,
-// product showcase, testimonials, pricing, FAQ, final CTA and footer sitemap.
-// This guards against silently regressing back to the old hero-only layout.
+const page = readFileSync(new URL("./LandingPage.tsx", import.meta.url), "utf8");
+const sections = readFileSync(
+  new URL("../components/landing/LandingSections.tsx", import.meta.url),
+  "utf8",
+);
+const process = readFileSync(
+  new URL("../components/landing/LandingProcess.tsx", import.meta.url),
+  "utf8",
+);
+const shared = readFileSync(new URL("../components/landing/shared.tsx", import.meta.url), "utf8");
+const navigation = readFileSync(
+  new URL("../components/landing/LandingNavigation.tsx", import.meta.url),
+  "utf8",
+);
+const source = page + sections + process + shared + navigation;
 
-const src = readFileSync(new URL("./LandingPage.tsx", import.meta.url), "utf8");
-
-// In-page anchor navigation must target real sections (functional smooth-scroll).
-for (const id of ['id="features"', 'id="how"', 'id="pricing"', 'id="faq"']) {
-  assert.ok(src.includes(id), `landing must keep the ${id} section anchor`);
+// Existing public anchors survive the component split and remain navigable.
+for (const name of ["features", "how", "pricing", "faq"]) {
+  assert.ok(source.includes(`id="${name}"`));
+  assert.ok(navigation.includes(`"#${name}"`));
 }
-for (const hash of ['"#features"', '"#how"', '"#pricing"', '"#faq"']) {
-  assert.ok(src.includes(hash), `landing nav must link to ${hash}`);
+assert.match(sections, /\/api\/public\/stats/);
+assert.match(sections, /\/api\/public\/testimonials/);
+assert.match(sections, /item\.value > 0/);
+assert.match(
+  sections,
+  /if \(!counters\.length && !hasRating && !testimonials\.length\) return null/,
+);
+assert.match(process, /role="tablist"/);
+assert.match(process, /aria-selected/);
+assert.match(process, /role="tabpanel"/);
+assert.match(process, /landing\.process\.example/);
+assert.doesNotMatch(
+  source,
+  /setInterval|setTimeout|MockSpark|64%|\+24\.6R|landing\.pricing\.popular/,
+);
+assert.match(shared, /href="\/sign-up"/);
+assert.match(shared, /destination: "free_signup"/);
+assert.match(page, /landing_demo_start/);
+assert.match(page, /landing_demo_complete/);
+assert.match(sections, /https:\/\/tradersync\.com\/pricing\//);
+assert.match(sections, /https:\/\/edgewonk\.com\/pricing/);
+
+// Literal copy references resolve in every locale, never expose raw i18n keys.
+for (const [, key] of source.matchAll(
+  /(?:t\(|(?:eyebrowKey|titleKey|bodyKey)=)["'](landing\.[\w.]+)["']/g,
+)) {
+  for (const [lang, dict] of Object.entries(DICT)) assert.ok(dict[key], `${lang}: missing ${key}`);
 }
-
-// Animated count-up stats bar (now fed by real public stats).
-assert.match(src, /usePublicStats/);
-assert.match(src, /function CountUp/);
-assert.match(src, /IntersectionObserver/);
-
-// Real, live data: stats + testimonials from public endpoints, live macro news.
-assert.match(src, /\/api\/public\/stats/);
-assert.match(src, /\/api\/public\/testimonials/);
-assert.match(src, /\/api\/tools\/macro-news/);
-assert.match(src, /usePublicTestimonials/);
-assert.match(src, /useLandingNews/);
-
-// Live, real product preview: ticking clock + actual market session (not a dead mock).
-assert.match(src, /function ProductPreview/);
-assert.match(src, /function getActiveSession/);
-assert.match(src, /format\(now, "HH:mm:ss"\)/);
-assert.match(src, /setInterval/);
-
-// Bento features (with the 2x2 big card) + how-it-works + showcase rows.
-assert.match(src, /\bFEATURES\b/);
-assert.match(src, /\bSTEPS\b/);
-const showcaseRows = [...src.matchAll(/<ShowcaseRow/g)].length;
-assert.ok(showcaseRows >= 3, `expected 3 showcase rows, found ${showcaseRows}`);
-
-// Testimonials (real, hidden when none), final CTA and footer sitemap.
-assert.match(src, /testimonials\.length > 0/);
-assert.match(src, /landing\.cta\.title/);
-assert.match(src, /\bFOOTER_COLS\b/);
-
-// Every showcase/section string is routed through i18n.
-assert.match(src, /landing\.stats\./);
-assert.match(src, /landing\.showcase\./);
-assert.match(src, /landing\.testimonials\./);
-
-// The hero keeps both translated CTAs wired to real routes.
-assert.match(src, /setLocation\("\/sign-up"\)/);
-assert.match(src, /setLocation\("\/sign-in"\)/);
-
-console.log("landing sections static checks passed");
+for (const dict of Object.values(DICT)) {
+  assert.doesNotMatch(dict["landing.cta.subtitle"], /migliaia|thousands|miles|milliers|Tausend/i);
+  assert.ok(!Object.keys(dict).some((key) => /^landing\.testimonials\.t[123]\./.test(key)));
+}
+console.log("Landing content, evidence, routes and translations passed");

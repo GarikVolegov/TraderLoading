@@ -25,6 +25,28 @@ export function timeToMinutes(time: string): number {
   return (Number.isFinite(hours) ? hours : 0) * 60 + (Number.isFinite(minutes) ? minutes : 0);
 }
 
+export function isMarketSessionActive(session: MarketSessionConfig, date = new Date()): boolean {
+  if (!session.enabled) return false;
+  const open = timeToMinutes(session.openUTC);
+  const close = timeToMinutes(session.closeUTC);
+  const current = date.getHours() * 60 + date.getMinutes();
+  const anchor = new Date(date);
+  if (open > close && current < close) anchor.setDate(anchor.getDate() - 1);
+  if (!isSessionEnabledForDate(session, anchor)) return false;
+  return open === close || (open < close ? current >= open && current < close : current >= open || current < close);
+}
+
+export function minutesUntilSessionOpen(session: MarketSessionConfig, date = new Date()): number {
+  const open = timeToMinutes(session.openUTC);
+  for (let day = 0; day <= 7; day++) {
+    const candidate = new Date(date);
+    candidate.setDate(candidate.getDate() + day);
+    candidate.setHours(Math.floor(open / 60), open % 60, 0, 0);
+    if (candidate > date && isSessionEnabledForDate(session, candidate)) return Math.ceil((candidate.getTime() - date.getTime()) / 60_000);
+  }
+  return 0;
+}
+
 function formatTime(hours: number, minutes: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }

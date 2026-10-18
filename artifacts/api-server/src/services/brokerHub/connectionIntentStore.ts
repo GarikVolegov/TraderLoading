@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
+import { brokerLocalPath } from "./localStoragePath.js";
 import type { BrokerConnectionIntent, BrokerConnectionRequiredAction, BrokerKind, BrokerProviderKind, ConnectorRoute } from "./types.js";
 
 export interface ConnectionIntentStore {
@@ -14,7 +15,7 @@ type IntentFile = { intents: BrokerConnectionIntent[] };
 const DEFAULT_FILE: IntentFile = { intents: [] };
 
 function defaultPath(): string {
-  return join(process.cwd(), ".local", "broker-connect-intents.json");
+  return brokerLocalPath("broker-connect-intents.json");
 }
 
 function id(): string {

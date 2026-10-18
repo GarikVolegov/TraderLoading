@@ -1,7 +1,7 @@
 import { PAIR_CATALOG, getPairEntry } from "@workspace/pair-catalog";
 import { deriveEffectiveFilterItems } from "../lib/toolPairFilters";
 
-/** Pairs shown when the user has no (supported) favorites — same idea as the rest of the dashboard. */
+/** Pairs shown when the user has no favorites — same idea as the rest of the dashboard. */
 export const DEFAULT_WATCHLIST_PAIRS = ["EURUSD", "GBPUSD", "XAUUSD"];
 
 const WATCHLIST_SUPPORTED_PAIRS = PAIR_CATALOG.map((entry) => entry.symbol);
@@ -9,7 +9,7 @@ const WATCHLIST_SUPPORTED_PAIRS = PAIR_CATALOG.map((entry) => entry.symbol);
 /**
  * Resolve which pairs the watchlist renders: the user's selected favorites when present,
  * otherwise a default set. Mirrors `deriveEffectiveFilterItems` usage across the dashboard
- * (VolatilityWidget, SentimentWidget, …) so the widget is never empty.
+ * (VolatilityWidget, SentimentWidget, …); unsupported selections stay empty.
  */
 export function resolveWatchlistPairs(selectedPairs: string[]): string[] {
   return deriveEffectiveFilterItems({

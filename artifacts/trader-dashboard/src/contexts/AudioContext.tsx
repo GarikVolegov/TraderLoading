@@ -58,13 +58,12 @@ function buildSilentWavUrl(): string {
 }
 
 export function AudioProvider({ children }: { children: ReactNode }) {
-  const { setCurrentStep, completeLoading } = useLoading();
+  const { completeLoading } = useLoading();
   const [mode, setModeState] = useState<AudioMode>("off");
   const [volume, setVolumeState] = useState(40);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const oscillatorsRef = useRef<OscillatorNode[] | null>(null);
   const gainRef = useRef<GainNode | null>(null);
-  const hasAutoStarted = useRef(false);
   const startIdRef = useRef(0);
 
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -176,59 +175,9 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const setModeRef = useRef(setMode);
-  setModeRef.current = setMode;
-
-  useEffect(() => {
-    if (hasAutoStarted.current) return;
-
-    const safetyTimeout = setTimeout(() => {
-      completeLoading();
-    }, 2000);
-
-    const tryAutoStart = () => {
-      if (hasAutoStarted.current) return;
-      hasAutoStarted.current = true;
-
-      document.removeEventListener("pointerdown", tryAutoStart, true);
-      document.removeEventListener("click", tryAutoStart, true);
-      document.removeEventListener("keydown", tryAutoStart, true);
-      document.removeEventListener("touchstart", tryAutoStart, true);
-
-      try {
-        if (!audioCtxRef.current) {
-          audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-        }
-        audioCtxRef.current.resume();
-      } catch (e) {
-        console.warn("AudioContext early unlock failed:", e);
-      }
-
-      setCurrentStep("audio");
-
-      const lastMode = localStorage.getItem("lastAudioMode") as AudioMode | null;
-      const modeToStart = (lastMode && lastMode !== "off") ? lastMode : "alpha";
-      setModeRef.current(modeToStart);
-
-      setTimeout(() => {
-        clearTimeout(safetyTimeout);
-        completeLoading();
-      }, 800);
-    };
-
-    document.addEventListener("pointerdown", tryAutoStart, true);
-    document.addEventListener("click", tryAutoStart, true);
-    document.addEventListener("keydown", tryAutoStart, true);
-    document.addEventListener("touchstart", tryAutoStart, true);
-
-    return () => {
-      clearTimeout(safetyTimeout);
-      document.removeEventListener("pointerdown", tryAutoStart, true);
-      document.removeEventListener("click", tryAutoStart, true);
-      document.removeEventListener("keydown", tryAutoStart, true);
-      document.removeEventListener("touchstart", tryAutoStart, true);
-    };
-  }, [setCurrentStep, completeLoading]);
+  // Audio is an optional support, activated only with its dedicated control.
+  // An unrelated click never starts audio or delays access to the trading process.
+  useEffect(() => { completeLoading(); }, [completeLoading]);
 
   return (
     <AudioCtx.Provider value={{ mode, setMode, volume, setVolume }}>

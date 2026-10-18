@@ -1,3 +1,5 @@
+import { readRoutineDraft } from "@/lib/routineDraft";
+import { useRoutineStorage } from "@/hooks/useRoutineStorage";
 import { useState, useEffect, type ElementType } from "react";
 import { motion } from "framer-motion";
 import { uiText } from "@/contexts/LanguageContext";
@@ -30,13 +32,16 @@ export function ProgramCard({
   delay: number;
   onStart: () => void;
 }) {
-  const [completed, setCompleted] = useState(() => loadCompletion(program));
+  const storage = useRoutineStorage();
+  const [completed, setCompleted] = useState(() => loadCompletion(program, storage));
 
   useEffect(() => {
-    const handler = () => setCompleted(loadCompletion(program));
+    const handler = () => setCompleted(loadCompletion(program, storage));
+    handler();
+    const timer = window.setInterval(handler, 30_000);
     window.addEventListener(`tl_routine_${program}_done`, handler);
-    return () => window.removeEventListener(`tl_routine_${program}_done`, handler);
-  }, [program]);
+    return () => { clearInterval(timer); window.removeEventListener(`tl_routine_${program}_done`, handler); };
+  }, [program, storage]);
 
   return (
     <motion.div
@@ -76,8 +81,9 @@ export function ProgramCard({
             </span>
             <button
               onClick={() => {
-                localStorage.removeItem(`tl_session_${program}_v2`);
+                storage?.removeItem(`tl_session_${program}_v2`);
                 setCompleted(false);
+                window.dispatchEvent(new Event(`tl_routine_${program}_done`));
               }}
               className="flex items-center gap-1 text-[11px] text-muted-foreground/35 transition-colors hover:text-muted-foreground/60"
             >
@@ -92,7 +98,7 @@ export function ProgramCard({
             style={{ backgroundColor: accentColor }}
           >
             <Play className="h-3.5 w-3.5" />
-            Inizia
+            {readRoutineDraft(storage, program, totalSteps) ? uiText("routine.save.resume") : "Inizia"}
           </button>
         )}
       </div>

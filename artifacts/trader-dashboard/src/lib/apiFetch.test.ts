@@ -86,9 +86,38 @@ try {
   }
 
   {
+    const calls = mockFetch(() => Response.json({ saved: true }));
+    await apiJSON("library/contents", { method: "POST", body: JSON.stringify({ title: "Note" }), headers: { Authorization: "synthetic-token" } }, { basePath: "/" });
+    const headers = new Headers(calls[0]?.init?.headers);
+    assert.equal(headers.get("Content-Type"), "application/json");
+    assert.equal(headers.get("Authorization"), "synthetic-token");
+    assert.equal(calls[0]?.init?.body, '{"title":"Note"}');
+    assert.equal(calls[0]?.init?.credentials, "include");
+  }
+
+  {
+    const calls = mockFetch(() => Response.json({ saved: true }));
+    await apiJSON("custom", { method: "POST", body: "text", headers: [["content-type", "text/plain"]] }, { basePath: "/" });
+    assert.equal(new Headers(calls[0]?.init?.headers).get("Content-Type"), "text/plain");
+    const form = new FormData();
+    await apiJSON("upload", { method: "POST", body: form }, { basePath: "/" });
+    assert.equal(new Headers(calls[1]?.init?.headers).has("Content-Type"), false);
+    assert.equal(calls[1]?.init?.body, form);
+    await apiJSON("read", undefined, { basePath: "/" });
+    assert.equal(new Headers(calls[2]?.init?.headers).has("Content-Type"), false);
+  }
+
+  {
     mockFetch(() => new Response("", { status: 404 }));
 
     await assert.rejects(apiJSON("missing", undefined, { basePath: "/" }), /404/);
+  }
+
+  {
+    for (const status of [204, 205]) {
+      mockFetch(() => new Response(null, { status }));
+      assert.equal(await apiJSON<void>("process/method-draft", { method: "PUT" }), undefined);
+    }
   }
 
   // Finding 2.8: apiJSON discarded the {error} body and threw just the status code,

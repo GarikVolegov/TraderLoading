@@ -1,50 +1,37 @@
-export const TOUR_SCENE_COUNT = 4;
-
-export type TourStatus = "playing" | "paused" | "ended";
+export const TOUR_STEPS = ["prepare", "test", "plan", "review"] as const;
+export const TOUR_SCENE_COUNT = TOUR_STEPS.length;
+export type TourStep = (typeof TOUR_STEPS)[number];
 
 export interface TourState {
   index: number;
-  status: TourStatus;
+  visited: readonly number[];
+  started: boolean;
 }
 
 export type TourAction =
-  | { type: "tick" }
+  | { type: "start" }
   | { type: "next" }
   | { type: "prev" }
-  | { type: "pause" }
-  | { type: "resume" }
   | { type: "replay" }
   | { type: "goto"; index: number };
 
-export const initialTourState: TourState = { index: 0, status: "playing" };
+// No timers: the visitor chooses when to advance, including with a keyboard.
+export const initialTourState: TourState = { index: 0, visited: [0], started: false };
 
-const LAST = TOUR_SCENE_COUNT - 1;
-const clamp = (i: number): number => Math.max(0, Math.min(LAST, i));
+export function isTourComplete(state: TourState): boolean {
+  return state.started && TOUR_STEPS.every((_, index) => state.visited.includes(index));
+}
 
 export function tourReducer(state: TourState, action: TourAction): TourState {
-  switch (action.type) {
-    case "tick":
-      if (state.status !== "playing") return state;
-      return state.index >= LAST
-        ? { index: LAST, status: "ended" }
-        : { index: state.index + 1, status: "playing" };
-    case "next":
-      return state.index >= LAST
-        ? { index: LAST, status: "ended" }
-        : { index: state.index + 1, status: "playing" };
-    case "prev":
-      return state.status === "ended"
-        ? { index: LAST, status: "playing" }
-        : { index: clamp(state.index - 1), status: "playing" };
-    case "pause":
-      return state.status === "playing" ? { ...state, status: "paused" } : state;
-    case "resume":
-      return state.status === "paused" ? { ...state, status: "playing" } : state;
-    case "replay":
-      return { index: 0, status: "playing" };
-    case "goto":
-      return { index: clamp(action.index), status: "playing" };
-    default:
-      return state;
-  }
+  if (action.type === "start") return { ...state, started: true };
+  if (action.type === "replay") return { ...initialTourState, started: true };
+  const requested =
+    action.type === "goto" ? action.index : state.index + (action.type === "next" ? 1 : -1);
+  if (!Number.isFinite(requested)) return state;
+  const index = Math.max(0, Math.min(TOUR_SCENE_COUNT - 1, Math.trunc(requested)));
+  return {
+    index,
+    started: true,
+    visited: state.visited.includes(index) ? state.visited : [...state.visited, index],
+  };
 }

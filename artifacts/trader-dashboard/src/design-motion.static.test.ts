@@ -12,7 +12,8 @@ for (const cls of [
 }
 // motion tokens are actually referenced (not hardcoded everywhere)
 assert.match(css, /var\(--ease-glass\)/, "animations should use --ease-glass");
-assert.match(css, /var\(--ease-spring\)/, "card-hover should use --ease-spring");
+assert.match(css, /\.card-hover\s*\{[^}]*border-color var\(--dur-base\) var\(--ease-out\)/, "interactive cards use a restrained border transition");
+assert.doesNotMatch(css, /animation:\s*(?:float|glow-pulse|border-spin)[^;]*infinite/, "decorative motion must not loop");
 // reduced-motion guard still present
 assert.match(css, /prefers-reduced-motion:\s*reduce/, "reduced-motion guard required");
 

@@ -46,7 +46,7 @@ export function applyNewsFreshness(articles: NewsArticle[], options: FreshnessOp
     const published = parseDate(article.publishedAt);
     const ageMinutes = published === null ? undefined : Math.max(0, Math.round((now - published) / 60_000));
     const freshnessTier: NonNullable<NewsArticle["freshnessTier"]> =
-      published === null
+      published === null || published > now + 5 * 60_000
         ? "stale"
         : now - published <= freshnessWindowMs
           ? "fresh"

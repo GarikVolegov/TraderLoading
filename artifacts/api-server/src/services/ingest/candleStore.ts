@@ -4,9 +4,10 @@
 // never ship millions of M1 rows to Node. See
 // docs/superpowers/specs/2026-06-14-candle-warehouse-design.md.
 import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
-import { candleIngestionStateTable, candleTable, db } from "@workspace/db";
+import { candleImportChunksTable, candleIngestionStateTable, candleTable, db } from "@workspace/db";
 import type { Candle } from "../candles.js";
-import { RES } from "../candleRegistry.js";
+import { REPLAY_INSTRUMENTS, RES, SOURCE_ID, symbolId } from "../candleRegistry.js";
+import { coverageStatus, importFailureReason, mergeVerifiedRanges, missingWeekdays, rangeIsVerified, type ImportFailureReason, type VerifiedRange } from "./coverage.js";
 
 const WEEK_SECONDS = 604800;
 const FIRST_MONDAY = 345600; // 1970-01-05 00:00 UTC, anchor for Monday-aligned weeks
@@ -117,12 +118,22 @@ export async function readWatermark(
   return rows[0] ?? null;
 }
 
+/** Actual persisted bounds, scoped to the canonical quote feed. Unlike the
+ * ingestion watermark these also follow partition deletion/restoration. */
+export async function readSourceBounds(sid: number, source: number, to: number): Promise<{ firstTs: number; lastTs: number } | null> {
+  const rows = await db.execute(sql`SELECT min(ts) AS first, max(ts) AS last FROM ${candleTable}
+    WHERE symbol = ${sid} AND res = ${RES.M1} AND source = ${source} AND ts < ${to}`);
+  const row = rows.rows[0];
+  return row?.first == null || row?.last == null ? null : { firstTs: Number(row.first), lastTs: Number(row.last) };
+}
+
 /** Raw base-resolution candles in [fromTs, toTs). */
 export async function readBaseRange(
   symbolId: number,
   res: number,
   fromTs: number,
   toTs: number,
+  sourceId?: number,
 ): Promise<Candle[]> {
   const rows = await db
     .select()
@@ -133,6 +144,7 @@ export async function readBaseRange(
         eq(candleTable.res, res),
         gte(candleTable.ts, fromTs),
         lt(candleTable.ts, toTs),
+        sourceId == null ? undefined : eq(candleTable.source, sourceId),
       ),
     )
     .orderBy(asc(candleTable.ts));
@@ -156,7 +168,7 @@ export async function readAggregated(
   intervalSeconds: number,
   fromTs: number,
   toTs: number,
-  opts: { limit?: number; fromStart?: boolean } = {},
+  opts: { limit?: number; fromStart?: boolean; sourceId?: number } = {},
 ): Promise<Candle[]> {
   const offset = intervalSeconds === WEEK_SECONDS ? FIRST_MONDAY : 0;
   // When a limit is given without fromStart, take the most recent N buckets
@@ -174,6 +186,7 @@ export async function readAggregated(
       sum(volume)                            AS volume
     FROM ${candleTable}
     WHERE symbol = ${symbolId} AND res = ${RES.M1} AND ts >= ${fromTs} AND ts < ${toTs}
+      ${opts.sourceId == null ? sql`` : sql`AND source = ${opts.sourceId}`}
     GROUP BY bucket
     ORDER BY bucket ${direction}
     ${limit}
@@ -187,4 +200,91 @@ export async function readAggregated(
     volume: Number(r.volume),
   }));
   return takeLast ? rows.reverse() : rows;
+}
+
+export async function importLedgerAvailable(): Promise<boolean> {
+  const result = await db.execute(sql`SELECT to_regclass('public.candle_import_chunks') IS NOT NULL AS present`);
+  return result.rows[0]?.present === true;
+}
+
+export async function readVerifiedRanges(sid: number, source: number): Promise<VerifiedRange[]> {
+  if (!await importLedgerAvailable()) return [];
+  const rows = await db.select({ from: candleImportChunksTable.fromTs, to: candleImportChunksTable.toTs })
+    .from(candleImportChunksTable).where(and(eq(candleImportChunksTable.symbol, sid),
+      eq(candleImportChunksTable.res, RES.M1), eq(candleImportChunksTable.source, source), eq(candleImportChunksTable.status, "verified")));
+  return mergeVerifiedRanges(rows);
+}
+
+export async function isRangeVerified(symbol: string, from: number, to: number, source?: number): Promise<boolean> {
+  const sid = symbolId(symbol);
+  const sourceId = source ?? SOURCE_ID[REPLAY_INSTRUMENTS[symbol]?.source ?? "dukascopy"];
+  if (sid === undefined || !rangeIsVerified(await readVerifiedRanges(sid, sourceId), from, to)) return false;
+  // A ledger row survives a deleted partition; check the data before skipping.
+  const broken = await db.execute(sql`
+    SELECT 1 FROM ${candleImportChunksTable} imported
+    WHERE imported.symbol = ${sid} AND imported.res = ${RES.M1} AND imported.source = ${sourceId}
+      AND imported.status = 'verified' AND imported.from_ts < ${to} AND imported.to_ts > ${from}
+      AND imported.candle_count <> (SELECT count(*) FROM ${candleTable} c WHERE c.symbol = imported.symbol
+        AND c.res = imported.res AND c.source = imported.source AND c.ts >= imported.from_ts AND c.ts < imported.to_ts)
+    LIMIT 1
+  `);
+  if (broken.rows.length > 0) return false;
+  const days = await db.execute(sql`SELECT DISTINCT to_char(to_timestamp(ts) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day
+    FROM ${candleTable} WHERE symbol = ${sid} AND res = ${RES.M1} AND source = ${sourceId} AND ts >= ${from} AND ts < ${to}`);
+  return missingWeekdays(from, to, new Set(days.rows.map(row => String(row.day)))).length === 0;
+}
+
+export async function recordImportChunk(input: {
+  symbol: number; source: number; fromTs: number; toTs: number;
+  status: "running" | "verified" | "failed"; candleCount?: number;
+  firstTs?: number; lastTs?: number; lastError?: string;
+}): Promise<void> {
+  const values = { ...input, res: RES.M1, candleCount: input.candleCount ?? 0, updatedAt: new Date() };
+  await db.insert(candleImportChunksTable).values(values).onConflictDoUpdate({
+    target: [candleImportChunksTable.symbol, candleImportChunksTable.res, candleImportChunksTable.source, candleImportChunksTable.fromTs, candleImportChunksTable.toTs],
+    set: { status: values.status, candleCount: values.candleCount, firstTs: input.firstTs ?? null,
+      lastTs: input.lastTs ?? null, lastError: input.lastError?.slice(0, 500) ?? null, updatedAt: values.updatedAt },
+  });
+}
+
+export type WarehouseCoverage = {
+  status: "verified" | "partial" | "unavailable";
+  candleCount: number; targetFrom: number; targetTo: number;
+  verifiedRanges: VerifiedRange[]; missingDays: string[]; missingDayCount: number;
+  lastImportedAt: string | null;
+  lastImportStatus: "idle" | "running" | "verified" | "failed";
+  lastImportReason: ImportFailureReason | null;
+};
+
+export async function readCoverage(sid: number, source: number, from: number, to: number): Promise<{
+  firstTs: number | null; lastTs: number | null; coverage: WarehouseCoverage;
+}> {
+  const result = await db.execute(sql`
+    SELECT count(*) AS count, min(ts) AS first, max(ts) AS last,
+      array_agg(DISTINCT to_char(to_timestamp(ts) AT TIME ZONE 'UTC', 'YYYY-MM-DD')) AS days
+    FROM ${candleTable} WHERE symbol = ${sid} AND res = ${RES.M1} AND source = ${source} AND ts >= ${from} AND ts < ${to}
+  `);
+  const row = result.rows[0];
+  const count = Number(row?.count ?? 0);
+  // Coverage is measured over the requested five-year target; date controls
+  // must still expose every stored bar, including older history and today's tail.
+  const bounds = await readSourceBounds(sid, source, Math.floor(Date.now() / 1000));
+  const verifiedRanges = await readVerifiedRanges(sid, source);
+  const missingDays = missingWeekdays(from, to, new Set((row?.days ?? []) as string[]));
+  let lastImportedAt: string | null = null;
+  let lastImportStatus: WarehouseCoverage["lastImportStatus"] = "idle";
+  let lastImportReason: ImportFailureReason | null = null;
+  if (await importLedgerAvailable()) {
+    const last = await db.execute(sql`SELECT max(updated_at) AS updated FROM ${candleImportChunksTable}
+      WHERE symbol = ${sid} AND res = ${RES.M1} AND source = ${source} AND status = 'verified'`);
+    if (last.rows[0]?.updated) lastImportedAt = new Date(String(last.rows[0].updated)).toISOString();
+    const attempt = await db.execute(sql`SELECT status, last_error FROM ${candleImportChunksTable}
+      WHERE symbol = ${sid} AND res = ${RES.M1} AND source = ${source} ORDER BY updated_at DESC LIMIT 1`);
+    const status = attempt.rows[0]?.status;
+    if (status === "running" || status === "verified" || status === "failed") lastImportStatus = status;
+    if (status === "failed") lastImportReason = importFailureReason(attempt.rows[0]?.last_error == null ? null : String(attempt.rows[0].last_error));
+  }
+  return { firstTs: bounds?.firstTs ?? null, lastTs: bounds?.lastTs ?? null,
+    coverage: { status: coverageStatus(count, verifiedRanges, from, to, missingDays),
+      candleCount: count, targetFrom: from, targetTo: to, verifiedRanges, missingDays, missingDayCount: missingDays.length, lastImportedAt, lastImportStatus, lastImportReason } };
 }

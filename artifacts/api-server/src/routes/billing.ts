@@ -13,6 +13,7 @@ import {
   type StripeBillingConfig,
 } from "../lib/billing.js";
 import logger from "../lib/logger.js";
+import { handleAcademyStripeEvent, isAcademySubscription } from "../services/academyBilling.js";
 import { syncConnectAccount } from "../services/payout/payoutService.js";
 import { grantOneTimeEntitlement, grantSubscriptionEntitlement, syncSubscriptionEntitlement, revokeChannelEntitlement } from "../services/community/channelEntitlements.js";
 
@@ -159,6 +160,8 @@ async function upsertStripeSubscriptionForUser(
   subscription: Stripe.Subscription,
   options: { preserveManualOverride?: boolean } = {},
 ): Promise<void> {
+  // Academy and marketplace subscriptions never grant the platform Pro plan, including confirm-session.
+  if (isAcademySubscription(subscription) || subscription.metadata?.type === "channel_sub") return;
   if (options.preserveManualOverride) {
     const existing = await getUserSubscription(userId);
     if (shouldPreserveManualSubscriptionOverride(existing)) {
@@ -483,7 +486,8 @@ export async function processStripeEventOnce(
   return { processed: true, duplicate: false };
 }
 
-async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<void> {
+export async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<void> {
+  if (await handleAcademyStripeEvent(event, stripe)) return;
   // Creator payout (sub-project D): Connect account capability changes (onboarding
   // finished, payouts enabled/restricted) so /payout/account reflects Stripe's truth.
   if (event.type === "account.updated") {
@@ -638,26 +642,20 @@ export function createStripeWebhookRouter(): IRouter {
       }
       const payload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(String(req.body ?? ""));
       const event = stripe.webhooks.constructEvent(payload, signature, config.webhookSecret);
-      const { duplicate } = await processStripeEventOnce(event, {
-        // Atomic claim: inserting the event id conflicts (returns no row) when the
-        // event was already processed, so a Stripe retry is acked without re-running.
-        claim: async (eventId, type) => {
-          const inserted = await db
-            .insert(stripeWebhookEventsTable)
-            .values({ eventId, type })
-            .onConflictDoNothing()
-            .returning({ eventId: stripeWebhookEventsTable.eventId });
-          return inserted.length > 0;
-        },
-        release: async (eventId) => {
-          await db.delete(stripeWebhookEventsTable).where(eq(stripeWebhookEventsTable.eventId, eventId));
-        },
-        handle: () => handleStripeEvent(event, stripe),
-      });
+      // Completion is recorded AFTER idempotent effects. A precommitted claim can
+      // permanently lose a payment on crash. Invoice uniqueness and transfer row
+      // locks enforce money idempotency even if concurrent deliveries both proceed.
+      const [done] = await db.select().from(stripeWebhookEventsTable).where(eq(stripeWebhookEventsTable.eventId, event.id)).limit(1);
+      const duplicate = !!done;
+      if (!duplicate) {
+        await handleStripeEvent(event, stripe);
+        await db.insert(stripeWebhookEventsTable).values({ eventId: event.id, type: event.type }).onConflictDoNothing();
+      }
       res.json({ received: true, duplicate });
     } catch (error) {
       logger.warn({ err: error }, "Stripe webhook rejected");
-      res.status(400).json({ error: "stripe_webhook_invalid" });
+      const invalidSignature = (error as { type?: string }).type === "StripeSignatureVerificationError";
+      res.status(invalidSignature ? 400 : 500).json({ error: invalidSignature ? "stripe_webhook_invalid" : "stripe_webhook_processing_failed" });
     }
   });
 

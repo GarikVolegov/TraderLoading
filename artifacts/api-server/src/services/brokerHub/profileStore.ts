@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
+import { brokerLocalPath } from "./localStoragePath.js";
 import type {
   BrokerAccountProfile,
   BrokerCapabilities,
@@ -39,8 +40,12 @@ export interface BrokerProfileStoreBackend {
 const DEFAULT_STORE: BrokerProfileList = { activeProfileId: null, activeByUser: {}, profiles: [] };
 const backendLocks = new WeakMap<BrokerProfileStoreBackend, Promise<void>>();
 
+export class BrokerProfileOwnershipError extends Error {
+  constructor() { super("Broker profile not found"); }
+}
+
 function defaultPath(): string {
-  return join(process.cwd(), ".local", "broker-profiles.json");
+  return brokerLocalPath("broker-profiles.json");
 }
 
 function id(): string {
@@ -332,7 +337,23 @@ export function createBrokerProfileStoreFromBackend(backend: BrokerProfileStoreB
         const incoming = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
         const existing =
           typeof incoming.id === "string" ? data.profiles.find((profile) => profile.id === incoming.id) : undefined;
+        // This check runs under the backend's atomic update lock. Route-level
+        // lookups alone would leave a check/write race and allow ownership theft.
+        if (existing && incoming.ownerUserId !== undefined && existing.ownerUserId !== incoming.ownerUserId) {
+          throw new BrokerProfileOwnershipError();
+        }
+        for (const field of ["kind", "providerKind"] as const) {
+          if (incoming[field] !== undefined && readKind(incoming[field]) !== incoming[field]) {
+            throw new Error("Unsupported broker connector kind");
+          }
+        }
+        if (incoming.environment !== undefined && incoming.environment !== "demo" && incoming.environment !== "live") {
+          throw new Error("Unsupported broker environment");
+        }
         const profile = sanitize(raw, existing);
+        if ((profile.kind === "demo" || profile.providerKind === "demo") && profile.environment !== "demo") {
+          throw new Error("A simulated broker profile must use the demo environment");
+        }
         const profiles = existing
           ? data.profiles.map((item) => (item.id === profile.id ? profile : item))
           : [...data.profiles, profile];

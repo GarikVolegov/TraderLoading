@@ -7,8 +7,8 @@ import { readSettingsFeatureSource } from "../pages/settingsFeatureSource";
 const appSource = fs.readFileSync("src/App.tsx", "utf8");
 const settingsSource = readSettingsFeatureSource();
 
-assert.match(appSource, /import \{ AppTutorialWrapper \} from "\.\/components\/AppTutorialWrapper"/);
-assert.match(appSource, /<PairOnboardingWrapper \/>\s*<AppTutorialWrapper \/>/);
+assert.doesNotMatch(appSource, /<AppTutorialWrapper|<PairOnboardingWrapper|<SessionCheckinModal|<ChecklistSetupModal/);
+assert.match(appSource, /pages\/Method/);
 
 assert.equal(fs.existsSync("src/components/AppTutorialWrapper.tsx"), true);
 assert.equal(fs.existsSync("src/components/AppTutorialWizard.tsx"), true);
@@ -45,8 +45,10 @@ const requiredKeys = [
   "app_tutorial.slide_journal_body",
   "app_tutorial.slide_tools_title",
   "app_tutorial.slide_tools_body",
-  "app_tutorial.slide_zen_community_title",
-  "app_tutorial.slide_zen_community_body",
+  "app_tutorial.slide_archive_title",
+  "app_tutorial.slide_archive_body",
+  "app_tutorial.slide_social_title",
+  "app_tutorial.slide_social_body",
   "settings.help.review_tutorial",
   "settings.help.review_tutorial_desc",
 ] as const;

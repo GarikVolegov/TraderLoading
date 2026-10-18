@@ -1,6 +1,7 @@
 import {
   bigint,
   doublePrecision,
+  integer,
   pgTable,
   primaryKey,
   smallint,
@@ -53,3 +54,19 @@ export const candleIngestionStateTable = pgTable(
 
 export type CandleRow = typeof candleTable.$inferSelect;
 export type CandleIngestionStateRow = typeof candleIngestionStateTable.$inferSelect;
+
+// Successful fetch/upsert of an exact source range. Bounds alone cannot prove
+// that internal months were fetched, so resumable jobs use this separate ledger.
+export const candleImportChunksTable = pgTable("candle_import_chunks", {
+  symbol: smallint("symbol").notNull(),
+  res: smallint("res").notNull(),
+  source: smallint("source").notNull(),
+  fromTs: bigint("from_ts", { mode: "number" }).notNull(),
+  toTs: bigint("to_ts", { mode: "number" }).notNull(),
+  status: text("status").notNull(),
+  candleCount: integer("candle_count").notNull().default(0),
+  firstTs: bigint("first_ts", { mode: "number" }),
+  lastTs: bigint("last_ts", { mode: "number" }),
+  lastError: text("last_error"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({ pk: primaryKey({ columns: [t.symbol, t.res, t.source, t.fromTs, t.toTs] }) }));

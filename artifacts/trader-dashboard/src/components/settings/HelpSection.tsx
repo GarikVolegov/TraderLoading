@@ -14,46 +14,46 @@ const QUICK_STEPS = [
   {
     n: "2",
     title: "Configura le sessioni",
-    desc: "Vai in Trading → Sessioni e imposta gli orari nel tuo fuso locale per le sessioni che segui (Londra, New York, Asia…).",
+    descKey: "workspace.help.sessions",
   },
   {
     n: "3",
     title: "Apri il tuo primo check-in",
-    desc: "Prima di fare trading usa il pulsante sessione nel dashboard per registrare il tuo stato mentale.",
+    descKey: "workspace.help.checkin",
   },
   {
     n: "4",
     title: "Compila il diario",
-    desc: "Dopo ogni trade vai in Diario → Nuovo Trade. Tieni traccia di setup, risultato e riflessioni.",
+    descKey: "workspace.help.trade",
   },
   {
     n: "5",
     title: "Completa le missioni",
-    desc: "Ogni giorno hai missioni disponibili. Completarle ti dà XP per salire di livello.",
+    descKey: "workspace.help.missions",
   },
   {
     n: "6",
     title: "Attiva le notifiche",
-    desc: "In Notifiche abilita le push per ricevere avvisi all'apertura delle sessioni di trading.",
+    descKey: "workspace.help.notifications",
   },
 ];
 
-const SHORTCUT_ITEMS = [
+const SHORTCUT_ITEMS = (t: (key: string) => string) => [
   {
-    keys: ["Impostazioni", "→", "Sicurezza"],
+    keys: [t("workspace.settings.profile"), "→", t("settings.tile.security")],
     action: "Imposta PIN di protezione",
   },
-  { keys: ["Impostazioni", "→", "Aspetto"], action: "Cambia sfondo e font" },
+  { keys: [t("workspace.settings.experience"), "→", t("settings.tile.appearance")], action: "Cambia sfondo e font" },
   {
-    keys: ["Impostazioni", "→", "Pairs"],
+    keys: [t("workspace.settings.trading"), "→", t("settings.tile.pairs")],
     action: "Seleziona i tuoi pair preferiti",
   },
-  { keys: ["Diario", "→", "Recap"], action: "Analisi settimanale / mensile" },
+  { keys: [t("nav.journal"), "→", t("journal.workspace.review")], action: t("workspace.help.review") },
   {
-    keys: ["Tools", "→", "Backtest"],
+    keys: [t("nav.backtest")],
     action: "Allenamento su grafici storici",
   },
-  { keys: ["Routine", "→", "Zona Zen"], action: "Respirazione guidata e check-in emotivo" },
+  { keys: [t("nav.journal"), "→", t("journal.workspace.plan"), "→", t("journal.workspace.routine")], action: "Respirazione guidata e check-in emotivo" },
 ];
 
 const HELP_FAQS = [
@@ -63,7 +63,7 @@ const HELP_FAQS = [
   },
   {
     q: "Come faccio a cambiare la lingua?",
-    a: "Vai in Impostazioni → Lingua e seleziona la lingua desiderata. Il cambio è immediato e si applica a tutta l'interfaccia.",
+    answerKey: "workspace.help.language",
   },
   {
     q: "Posso usare l'app su più dispositivi?",
@@ -71,11 +71,11 @@ const HELP_FAQS = [
   },
   {
     q: "Come esporto i miei trade?",
-    a: "Dal Diario puoi esportare le sessioni in formato ICS (calendario), da importare in qualsiasi app di calendario.",
+    answerKey: "workspace.help.export",
   },
   {
     q: "Come funziona il calcolo del lot size?",
-    a: "In Tools → Calcolatore imposti il tuo capitale, il rischio percentuale e lo stop loss in pips. Il sistema calcola automaticamente il lot size corretto per il pair selezionato.",
+    answerKey: "workspace.help.calculator",
   },
   {
     q: "Cosa succede se cambio il PIN e lo dimentico?",
@@ -140,7 +140,7 @@ export function HelpSection() {
               <div>
                 <p className="text-sm font-semibold">{s.title}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  {s.desc}
+                  {s.descKey ? t(s.descKey) : s.desc}
                 </p>
               </div>
             </div>
@@ -154,7 +154,7 @@ export function HelpSection() {
           Percorsi rapidi
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {SHORTCUT_ITEMS.map((item, i) => (
+          {SHORTCUT_ITEMS(t).map((item, i) => (
             <div
               key={i}
               className="flex items-center gap-2 p-3 rounded-xl border border-border/30 bg-secondary/10"
@@ -209,7 +209,7 @@ export function HelpSection() {
                     className="overflow-hidden"
                   >
                     <div className="px-4 pb-4 pt-1 text-sm text-muted-foreground leading-relaxed border-t border-border/30 bg-secondary/10">
-                      {item.a}
+                      {item.answerKey ? t(item.answerKey) : item.a}
                     </div>
                   </motion.div>
                 )}

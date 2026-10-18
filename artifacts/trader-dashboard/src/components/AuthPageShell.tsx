@@ -103,7 +103,7 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
             <span className="mb-3 inline-block text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
               {eyebrow}
             </span>
-            <h1 className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text font-mono text-4xl font-extrabold leading-[1.1] tracking-tight text-transparent lg:text-5xl">
+            <h1 className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text font-sans text-4xl font-extrabold leading-[1.1] tracking-tight text-transparent lg:text-5xl">
               {title}
             </h1>
             <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground">{body}</p>

@@ -1,4 +1,5 @@
 import { WebSocket } from "ws";
+import { executionEnvironmentFromSource } from "./executionEnvironment.js";
 import type {
   BrokerCapabilities,
   BrokerDeal,
@@ -434,6 +435,8 @@ export function createCTraderProvider(options: CTraderProviderOptions = {}) {
             brokerName: input.brokerName,
             currency: "USD",
             environment: accountEnvironment(input.environment),
+            // Authentication succeeded against the separate demo/live endpoint.
+            executionEnvironment: executionEnvironmentFromSource(session.environment),
           },
         ],
         metrics: makeMetrics(trader, session.moneyDigits),

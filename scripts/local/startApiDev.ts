@@ -6,6 +6,7 @@ import { loadEnvLocal } from "./lib/env.js";
 import { buildApiDevEnv } from "./startEnv.js";
 import { resolveDatabaseTarget } from "./startDatabase.js";
 import { checkTcp } from "./lib/health.js";
+import { fileURLToPath } from "node:url";
 
 (async () => {
   loadEnvLocal();
@@ -16,6 +17,9 @@ import { checkTcp } from "./lib/health.js";
     managedPort: Number(process.env.LOCAL_POSTGRES_PORT ?? "55432"),
   });
   Object.assign(process.env, buildApiDevEnv(process.env, database.url));
+  // Match pnpm --filter @workspace/api-server: uploads and frontend paths are
+  // relative to the API package, not the scripts package used by this launcher.
+  process.chdir(fileURLToPath(new URL("../../artifacts/api-server/", import.meta.url)));
   const apiEntryUrl = new URL("../../artifacts/api-server/src/index.ts", import.meta.url);
   await import(apiEntryUrl.href);
 })().catch((error) => {

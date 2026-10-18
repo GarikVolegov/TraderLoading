@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Check } from "lucide-react";
 import { useUpdateUserSettings, getGetUserSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -5,27 +6,28 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage, LANGUAGES, type Language } from "@/contexts/LanguageContext";
 
 export function LanguageSettings() {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
-  // The empty catch below is deliberate (local switch still works, next save
-  // retries) — opt out of App.tsx's global mutation-error toast so a
-  // best-effort background sync doesn't surface as a user-facing failure.
+  // This handler owns the error message and preserves the previous preference.
   const updateMutation = useUpdateUserSettings({ mutation: { meta: { suppressGlobalError: true } } });
   const qc = useQueryClient();
 
+  const sending = useRef(false);
   const handleSelect = async (lang: Language) => {
-    setLanguage(lang);
+    if (sending.current || lang === language) return;
+    sending.current = true;
     try {
-      await updateMutation.mutateAsync({ data: { language: lang } });
-      qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
+      const saved = await updateMutation.mutateAsync({ data: { language: lang } });
+      qc.setQueryData(getGetUserSettingsQueryKey(), saved);
+      setLanguage(lang);
+      toast({ title: LANGUAGES[lang].name });
     } catch {
-      // The local language switch still works; the next settings save can retry server sync.
-    }
-    toast({ title: `Lingua impostata: ${LANGUAGES[lang].name}` });
+      toast({ title: t("settings.preference_failed"), variant: "destructive" });
+    } finally { sending.current = false; }
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" aria-busy={updateMutation.isPending}>
       <p className="text-sm text-muted-foreground">
         Seleziona la lingua dell'interfaccia
       </p>
@@ -38,7 +40,8 @@ export function LanguageSettings() {
         ).map(([code, lang]) => (
           <button
             key={code}
-            onClick={() => handleSelect(code)}
+            onClick={() => void handleSelect(code)}
+            disabled={updateMutation.isPending}
             className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
               language === code
                 ? "border-primary bg-primary/10 text-primary"

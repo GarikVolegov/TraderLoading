@@ -13,6 +13,7 @@ export function pipValuePerLot(symbol: string): number {
   const s = symbol.replace("/", "").toUpperCase();
   if (["US30", "NAS100", "SPX500"].includes(s)) return 1;
   if (s.includes("BTC") || s.includes("ETH")) return 1;
+  if (s === "USOIL") return 10; // Simulated standard lot: 1000 barrels × $0.01.
   return 10;
 }
 

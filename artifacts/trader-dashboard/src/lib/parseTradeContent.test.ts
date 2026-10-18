@@ -96,3 +96,6 @@ assert.equal(
 );
 
 console.log("parse trade content checks passed");
+
+assert.equal(tradeRMultiple({ entryPrice: 1.1, exitPrice: 1.1, stopLoss: 1.09, profit: 0 }), 0, "A measured breakeven is zero R, not missing");
+assert.equal(tradeRMultiple({ entryPrice: Infinity, exitPrice: 1.1, stopLoss: 1.09, profit: 10 }), null);

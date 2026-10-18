@@ -88,7 +88,14 @@ assert.match(backtestRoute, /async function userOwnsSession/);
 const tradesGet = backtestRoute.match(/router\.get\("\/backtest\/sessions\/:id\/trades"[\s\S]*?\n\}\);/)?.[0] ?? "";
 assert.match(tradesGet, /userOwnsSession\(userId, sessionId\)/, "GET trades must verify session ownership");
 const tradesPost = backtestRoute.match(/router\.post\("\/backtest\/sessions\/:id\/trades"[\s\S]*?\n\}\);/)?.[0] ?? "";
-assert.match(tradesPost, /userOwnsSession\(userId, sessionId\)/, "POST trades must verify session ownership");
+// Writes now check and lock the owner row inside the save transaction, keeping
+// the session alive until the trade and its retry receipt have committed.
+assert.match(tradesPost, /db\.transaction\(async tx =>/, "POST trades must check ownership in its transaction");
+assert.match(tradesPost, /where\(and\(eq\(backtestSessionsTable\.id, sessionId\), userWhere\(userId\)\)\)\.for\("key share"\)/, "POST trades must lock the caller's session");
+const missingOwner = tradesPost.indexOf('if (!owner) return { status: "missing" }');
+const insertTrade = tradesPost.indexOf("tx.insert(backtestTradesTable)");
+assert.ok(missingOwner >= 0 && insertTrade > missingOwner, "POST trades must reject a missing owner before inserting");
+assert.match(tradesPost, /if \(saved\.status === "missing"\) \{ res\.status\(404\)/, "POST trades must not reveal or write another owner's session");
 const tradeDelete = backtestRoute.match(/router\.delete\("\/backtest\/trades\/:id"[\s\S]*?\n\}\);/)?.[0] ?? "";
 assert.match(tradeDelete, /tradeUserWhere\(userId\)/, "DELETE trade must be scoped to the caller");
 

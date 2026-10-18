@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import { checklistDay, checklistStorageKey, readDailyChecklist } from "./dailyChecklist";
+assert.equal(checklistDay(new Date("2026-10-02T22:01:00Z")), "2026-10-03");
+assert.equal(checklistDay(new Date("2026-01-02T23:01:00Z")), "2026-01-03");
+assert.notEqual(checklistStorageKey("a"), checklistStorageKey("b"));
+const raw = JSON.stringify({ date: "2026-10-02", checked: [1, 2, 99, "3"] });
+assert.deepEqual([...readDailyChecklist(raw, [1, 2, 3], new Date("2026-10-02T21:59:00Z"))], [1, 2]);
+assert.equal(readDailyChecklist(raw, [1, 2], new Date("2026-10-02T22:00:00Z")).size, 0);
+assert.equal(readDailyChecklist('{"date":true}', [1]).size, 0);
+assert.equal(readDailyChecklist('corrupt', [1]).size, 0);
+console.log("Rome daily confirmations, account isolation and expiry passed");

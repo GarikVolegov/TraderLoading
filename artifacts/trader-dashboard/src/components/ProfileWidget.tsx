@@ -206,9 +206,9 @@ export function ProfileWidget() {
               </div>
 
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-foreground font-mono flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground font-sans flex items-center gap-2">
                   {profile.name}
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={handleOpenEdit}>
+                  <Button variant="ghost" size="icon" aria-label={uiText("common.edit")} className="h-11 w-11 shrink-0 text-muted-foreground hover:text-primary" onClick={handleOpenEdit}>
                     <Edit2 className="w-4 h-4" />
                   </Button>
                 </h2>

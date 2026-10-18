@@ -1,5 +1,5 @@
 import { db, signalsTable } from "@workspace/db";
-import { and, eq, inArray, lt } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 
 // WebRTC signals are short-lived; anything older than this is dropped.
 const SIGNAL_TTL_MS = 30_000;
@@ -33,19 +33,13 @@ export async function pushSignal(input: PushSignalInput): Promise<void> {
   });
 }
 
-// Read and consume (delete) the pending signals for a recipient within a scope,
-// mirroring the previous in-memory "drain on read" semantics. Only rows that are
-// still within the TTL are returned; consumed rows are deleted by id so signals
-// that arrive mid-request are not lost. Stale rows are swept opportunistically.
+// Claim and consume in one statement: concurrent polls cannot deliver the same
+// offer twice. Signals committed after this statement remain for the next poll.
 export async function consumeSignals(scope: string, recipientId: string): Promise<WireSignal[]> {
   const rows = await db
-    .select()
-    .from(signalsTable)
-    .where(and(eq(signalsTable.scope, scope), eq(signalsTable.recipientId, recipientId)));
-
-  if (rows.length > 0) {
-    await db.delete(signalsTable).where(inArray(signalsTable.id, rows.map((r) => r.id)));
-  }
+    .delete(signalsTable)
+    .where(and(eq(signalsTable.scope, scope), eq(signalsTable.recipientId, recipientId)))
+    .returning();
 
   // Opportunistic cleanup so the table never accumulates abandoned signals.
   await db.delete(signalsTable).where(lt(signalsTable.createdAt, new Date(Date.now() - SIGNAL_TTL_MS)));
@@ -53,6 +47,7 @@ export async function consumeSignals(scope: string, recipientId: string): Promis
   const cutoff = Date.now() - SIGNAL_TTL_MS;
   return rows
     .filter((r) => r.createdAt.getTime() > cutoff)
+    .sort((a, b) => a.id - b.id)
     .map((r) => ({
       callId: r.callId,
       from: r.fromId,

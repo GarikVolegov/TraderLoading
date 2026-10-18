@@ -11,9 +11,10 @@ import { brokerHubRuntime } from "./services/brokerHub/runtime.js";
 import { newsHubRuntime } from "./services/newsHub/runtimeSingleton.js";
 import { attachNewsHubWebSocket } from "./services/newsHub/socketServer.js";
 import { attachNewsProviderSockets } from "./services/newsHub/providerSockets.js";
+import { startMarketIntelligenceScheduler } from "./services/marketIntelligence.js";
 import { attachSocialHubWebSocket } from "./services/socialHub/socketServer.js";
-import { attachWatchlistWebSocket } from "./services/watchlist/socketServer.js";
 import logger from "./lib/logger";
+import { backgroundTasksEnabled } from "./lib/localBackgroundTasks.js";
 import { assertRedisConfigured, closeSharedRedisClient } from "./lib/redisClient.js";
 import { uploadsPersistenceWarning } from "./lib/uploads.js";
 import { captureError, flushObservability, initObservability } from "./lib/observability";
@@ -23,9 +24,7 @@ initObservability();
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+  throw new Error("PORT environment variable is required but was not provided.");
 }
 
 const port = Number(rawPort);
@@ -47,8 +46,8 @@ const accountBridgeSocket = attachAccountBridgeWebSocket(server);
 const brokerHubSocket = attachBrokerHubWebSocket(server);
 const newsHubSocket = attachNewsHubWebSocket(server, newsHubRuntime);
 const socialHubSocket = attachSocialHubWebSocket(server);
-  const watchlistSocket = attachWatchlistWebSocket(server);
 let newsProviderSockets: ReturnType<typeof attachNewsProviderSockets> | null = null;
+let intelligenceScheduler: ReturnType<typeof startMarketIntelligenceScheduler> | null = null;
 
 type CloseHandle = {
   close(): void | Promise<void>;
@@ -105,8 +104,8 @@ async function shutdown(reason: string, exitCode = 0): Promise<void> {
     brokerHubSocket.close(),
     newsHubSocket.close(),
     socialHubSocket.close(),
-    watchlistSocket.close(),
     newsProviderSockets?.close(),
+    intelligenceScheduler?.close(),
     sessionScheduler.close(),
     torneiScheduler.close(),
     lifecycleScheduler.close(),
@@ -162,10 +161,18 @@ process.on("uncaughtException", (err) => {
 
 server.listen(port, () => {
   logger.info({ port }, "Server listening");
+  if (!backgroundTasksEnabled(process.env)) {
+    void cotScheduler
+      .close()
+      .catch((err) => logger.warn({ err }, "Local COT scheduler shutdown failed"));
+    logger.info("Background jobs disabled for this local development session");
+    return;
+  }
   sessionScheduler = startSessionScheduler();
   torneiScheduler = startTorneiScheduler();
   lifecycleScheduler = startLifecycleScheduler();
   newsProviderSockets = attachNewsProviderSockets(newsHubRuntime);
+  intelligenceScheduler = startMarketIntelligenceScheduler();
   void newsHubRuntime.refresh({ force: true }).catch((error) => {
     logger.warn({ err: error }, "Initial news refresh failed");
   });

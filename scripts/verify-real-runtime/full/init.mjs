@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {createConnection} from 'node:net';
+import {mkdirSync,writeFileSync,readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../../../',import.meta.url));
+const listening=await new Promise(resolve=>{
+ const socket=createConnection({host:'127.0.0.1',port:3002});
+ socket.once('connect',()=>{socket.destroy();resolve(true);});
+ socket.once('error',()=>{socket.destroy();resolve(false);});
+ socket.setTimeout(2000,()=>{socket.destroy();resolve(true);});
+});
+assert.equal(listening,false,'Stop the previous audit API on 3002 before creating another run; personal 3001/5173 may remain active');
+const runId=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+const output=root+'artifacts.local/full-audit/'+runId;
+mkdirSync(root+'.local-logs',{recursive:true,mode:0o700});
+mkdirSync(root+'artifacts.local/full-audit',{recursive:true,mode:0o700});
+mkdirSync(output,{recursive:false,mode:0o700});
+const git=(args)=>execFileSync('git',args,{cwd:root,maxBuffer:64*1024*1024});
+writeFileSync(output+'/baseline.patch',git(['diff','HEAD','--binary']),{mode:0o600});
+const untracked=git(['ls-files','--others','--exclude-standard','-z']);
+writeFileSync(output+'/baseline-untracked.paths',untracked,{mode:0o600});
+if(untracked.length)execFileSync('tar',['-czf',output+'/baseline-untracked.tar.gz','--null','-T','-'],{cwd:root,input:untracked,maxBuffer:64*1024*1024});
+writeFileSync(output+'/environment.json',JSON.stringify({runId,startedAt:new Date().toISOString(),node:process.version,pnpm:execFileSync('pnpm',['--version'],{cwd:root,encoding:'utf8'}).trim(),platform:process.platform,arch:process.arch,gitHead:git(['rev-parse','HEAD']).toString().trim(),timezone:'Europe/Rome',ports:{audit:3002,personalApi:3001,personalFrontend:5173},databasePolicy:'Schema only from local database; synthetic rows; isolated uploads; no production integration keys'},null,2),{mode:0o600});
+// prepare does not start the personal launcher or apply schema to personal data.
+execFileSync(process.execPath,[root+'scripts/verify-real-runtime/prepare.mjs'],{cwd:root,stdio:'inherit'});
+const {name}=JSON.parse(readFileSync(root+'.local-logs/runtime-db.json'));
+assert.match(name,/^tl_audit_\d+$/);
+writeFileSync(root+'.local-logs/full-audit-run.json',JSON.stringify({runId,output,database:name}),{mode:0o600});
+execFileSync(process.execPath,[root+'scripts/verify-real-runtime/full/seed.mjs'],{cwd:root,stdio:'inherit'});
+console.log('Prepared isolated audit:',runId,name);

@@ -1,7 +1,7 @@
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo } from "react";
 import { Activity, RefreshCw, Settings } from "lucide-react";
 import { Link } from "wouter";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
 import { Sparkline } from "./ui/Sparkline";
@@ -23,9 +23,12 @@ import {
 } from "./tradingViewWatchlist";
 
 const PAIR_PREFERENCES_PATH = "/settings?section=pairs";
-const WATCHLIST_POLL_MS = 120_000;
+// Reduce poll interval to near-realtime for the watchlist (graceful fallback
+// when a dedicated WS is not available). Keep a slightly faster warming poll
+// for initial null-price states.
+const WATCHLIST_POLL_MS = 5_000; // 5s
 /** While the server cache is still warming (null prices) poll faster to pick it up. */
-const WATCHLIST_WARMING_POLL_MS = 15_000;
+const WATCHLIST_WARMING_POLL_MS = 1_000; // 1s
 
 function WatchlistRow({
   pair,
@@ -62,7 +65,13 @@ function WatchlistRow({
       </div>
 
       {hasData && item.spark.length >= 2 ? (
-        <Sparkline data={item.spark} tone={tone} width={96} height={28} className="h-7 min-w-0 flex-1" />
+        <Sparkline
+          data={item.spark}
+          tone={tone}
+          width={96}
+          height={28}
+          className="h-7 min-w-0 flex-1"
+        />
       ) : pending ? (
         <Skeleton className="h-7 min-w-0 flex-1 rounded-sm" />
       ) : (
@@ -99,17 +108,19 @@ function WatchlistRow({
   );
 }
 
-export function TradingViewWatchlistWidget() {
-  const { selectedPairs } = useBackground();
+export function TradingViewWatchlistWidget({ pair }: { pair?: string } = {}) {
+  const { selectedPairs, settingsLoaded } = useBackground();
   const isMobile = useIsMobile();
 
   // Favorites when set, otherwise a default set — same fallback as the rest of the
-  // dashboard (deriveEffectiveFilterItems), so the watchlist is never empty.
-  const pairs = useMemo(() => resolveWatchlistPairs(selectedPairs), [selectedPairs]);
+  // dashboard (deriveEffectiveFilterItems). Unsupported favorites stay empty.
+  const requestedPairs = useMemo(() => (pair ? [pair] : selectedPairs), [pair, selectedPairs]);
+  const pairs = useMemo(() => resolveWatchlistPairs(requestedPairs), [requestedPairs]);
   const pairsKey = pairs.join(",");
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["tools-watchlist", pairsKey],
+    enabled: settingsLoaded && pairs.length > 0,
     queryFn: () => apiFetch<WatchlistResponse>(`/api/tools/watchlist?pairs=${pairsKey}`),
     refetchInterval: (query) => {
       const items = query.state.data?.items;
@@ -117,7 +128,9 @@ export function TradingViewWatchlistWidget() {
         ? WATCHLIST_WARMING_POLL_MS
         : WATCHLIST_POLL_MS;
     },
-    staleTime: WATCHLIST_POLL_MS - 10_000,
+    // Consider data stale shortly before the next refresh so UI shows up-to-date
+    // loading states when needed.
+    staleTime: Math.max(0, WATCHLIST_POLL_MS - 1_000),
   });
 
   const itemByPair = useMemo(
@@ -125,52 +138,11 @@ export function TradingViewWatchlistWidget() {
     [data],
   );
 
-  const queryClient = useQueryClient();
-  const wsRef = useRef<WebSocket | null>(null);
-
-  useEffect(() => {
-    // connect websocket and subscribe to pairs
-    try {
-      const url = (import.meta.env.VITE_API_BASE ? new URL(import.meta.env.VITE_API_BASE) : new URL(window.location.origin));
-      url.pathname = "/api/tools/watchlist/ws";
-      const ws = new WebSocket(url.toString().replace(/^http/, "ws"));
-      wsRef.current = ws;
-      ws.addEventListener("open", () => {
-        ws.send(JSON.stringify({ type: "subscribe", pairs }));
-      });
-      ws.addEventListener("message", (ev) => {
-        try {
-          const msg = JSON.parse(ev.data);
-          if (msg && msg.type === "update" && typeof msg.pair === "string") {
-            // update react-query cache for the current pairsKey
-            queryClient.setQueryData(["tools-watchlist", pairsKey], (old: any) => {
-              const items = (old?.items ?? []).slice();
-              const idx = items.findIndex((it: any) => it.pair === msg.pair);
-              if (idx >= 0) {
-                items[idx] = msg.item;
-              } else {
-                items.push(msg.item);
-              }
-              return { items };
-            });
-          }
-        } catch {
-          // ignore
-        }
-      });
-      return () => {
-        try { ws.close(); } catch {}
-        wsRef.current = null;
-      };
-    } catch {
-      return;
-    }
-  }, [pairsKey, pairs.join(",")]);
-
   // Only claim "Live" when the newest D1 bar is actually recent; otherwise the feed
   // is delayed (e.g. Dukascopy lags ~1 day) and a pulsing badge would be dishonest.
   const freshness = useMemo(() => watchlistFreshness(data?.items ?? [], Date.now()), [data]);
-  const lastUpdated = freshness.latestBarMs !== null ? new Date(freshness.latestBarMs).toLocaleString() : undefined;
+  const lastUpdated =
+    freshness.latestBarMs !== null ? new Date(freshness.latestBarMs).toLocaleString() : undefined;
 
   return (
     <Card className="relative overflow-hidden">
@@ -212,6 +184,13 @@ export function TradingViewWatchlistWidget() {
       />
 
       <CardContent className="space-y-2 p-2">
+        {requestedPairs.some((pair) => !pairs.includes(pair)) && (
+          <p className="text-xs text-muted-foreground p-2">
+            {uiText("market.unsupported", {
+              symbols: requestedPairs.filter((pair) => !pairs.includes(pair)).join(", "),
+            })}
+          </p>
+        )}
         <div className="space-y-1.5 overflow-x-hidden">
           {pairs.map((pair) => (
             <WatchlistRow

@@ -1,0 +1,40 @@
+# Profili Social, allegati e collegamenti ai canali — 10 ottobre 2026
+
+Prove su API di produzione isolata, PostgreSQL sintetico e browser con Clerk Development. L'app personale resta separata su 5173/3001. Nessun messaggio a persone reali, nessun pagamento, ordine broker o migrazione personale.
+
+| ID | Funzione, gravità e tipo | Riproduzione / risultato osservato | Atteso / causa / intervento |
+|---|---|---|---|
+| SOCIAL-PRIV-01 | Profilo Social / alta / bug privacy | A salva un wallet sintetico; B legge `/social/profile/:A`. La risposta contiene `walletAddress`, `lastActiveDate` e `updatedAt` | La scheda Social deve mostrare soltanto i dati pubblici. La query selezionava l'intera riga; ora usa una proiezione esplicita. Wallet e metadati interni restano memorizzati, ma non vengono restituiti da questa route, neppure per la propria scheda Social |
+| SOCIAL-CTX-01 | Ritorno a canale / media / bug input | `/community/channels/2147483648/context` e ID massimo JavaScript sicuro provocano 500 | 400 prima della query. Gli ID sono integer PostgreSQL a 32 bit; aggiunto il limite 2147483647 anche in OpenAPI e rigenerati i client. Proprietario/membro, ban e accesso a pagamento restano controllati separatamente |
+| SOCIAL-PRIV-02 | Immagine in messaggio privato / alta / bug privacy | Dal compositore DM si invia un PNG. L'URL `/api/uploads/post-images/...` restituisce 200 anche a una richiesta senza cookie | Le nuove immagini DM usano `/social/upload-file` con destinatario e ACL dei due partecipanti. MIME, estensione e firma delle immagini vengono confrontati; solo raster validi possono essere serviti inline. Gli altri file restano allegati da scaricare |
+| SOCIAL-SEND-01 | Chat senza chiave del contatto / alta / bug perdita bozza | La chiave del destinatario è assente: il primo allegato viene caricato ma non è seguito dal POST del messaggio. Con la risposta 404 controllata, Enter cancella il testo e non scrive alcun messaggio | L'invio non può essere considerato riuscito. `sendE2EE` ora segnala il prerequisito mancante; la bozza resta, invio/allegati sono disabilitati, un avviso permette di recuperare la chiave con Riprova. Questa correzione non introduce idempotenza generale dei messaggi |
+
+## Evidenze e attribuzione
+
+Run: `artifacts.local/full-audit/20261002T103216Z/`. Ogni rapporto è vincolato al run e alla propria execution; i browser registrano hash della build immutabile e provenienza delle risposte. Gli errori dei provider mercato sono simulati ed esclusi dalla copertura API.
+
+- `social-boundary-baseline-current.json`: **6/8**. I due fallimenti sono la diffusione dei campi privati e gli ID di canale fuori intervallo. Le prime due bozze del runner interpretavano erroneamente le risposte del follow: il primo POST restituisce 201 e il duplicato 409; i fallimenti dipendenti sugli allegati non vengono attribuiti a bug dell'app.
+- `social-boundary-after.json`: **8/8**, prima dell'estensione alle immagini. Include due partecipanti, terzo utente, anonimo, file mancante, traversal codificato, estensioni attive, destinatario assente/estraneo, guasto nell'inserimento ACL e retry, canale privato/ban/rimozione/pagamento e logout mobile con revoca della sola sessione sintetica.
+- `browser-social-boundary-baseline-ready/report.json`: nome/XP/post e focus della scheda Social, file ricevuto dopo reload e download dei byte riusciti; **l'immagine privata è leggibile senza login**. È la riproduzione del difetto dell'immagine.
+- `browser-social-boundary-baseline/report.json`: nel primo contatto la chiave di B restituisce realmente 404; l'upload di A ha successo ma non segue un POST del messaggio. La seconda versione prepara entrambe le chat per separare questa condizione dal download dei file.
+- `browser-social-boundary-baseline-key/report.json`: risposta 404 della chiave controllata; testo cancellato, **zero messaggi scritti**. Il caso immagine di questa esecuzione è bloccato dalla chiave assente, non costituisce una seconda prova dell'accesso pubblico.
+- `social-boundary-after-private.json`: **9/9**, aggiunta verifica MIME/firma, immagine inline per i due partecipanti, anonimo/terzo utente rifiutati e contenuto HTML rinominato PNG mantenuto come download.
+- `browser-social-boundary-after/report.json`: bozza preservata e zero messaggi scritti, ma selettore ambiguo fra avviso inline e toast. Il wrapper della provenance registra un handler diverso dall'originale: il vecchio `unroute(pattern, handler)` lasciava attiva la risposta sintetica anche nel caso successivo. Questi due problemi del runner sono corretti e non vengono attribuiti all'app.
+- `browser-social-boundary-reviewed/report.json`: **4/4**, zero errori JavaScript. Scheda Social e focus; file reale ricevuto dopo reload e download dei byte; recupero della chiave reale e invio senza reload; immagine privata non accessibile anonimamente, decodificata a 390×844 senza overflow. Il testo/metadata sono assenti dal ciphertext salvato.
+- Riverifica definitiva: `browser-social-boundary-complete/report.json`, **4/4**, zero errori JavaScript; frontend stabile `cc5862fc2025bfebc6249972fd47e091d76ec9cf696ebecb6e2d8465ef25eb54`, generato dal gate finale e servito dopo riavvio dell'API audit. Immagine anonima401 e bozza preservata senza scritture durante l'indisponibilità; retry con vera chiave e messaggio201. I quattro handler aggiuntivi portano la matrice a **283 osservati su 328**, **45 senza prova attribuita**; non è una percentuale di audit completato.
+
+Gli upload e gli utenti API temporanei sono ripuliti per identificativi esatti; il guasto DB usa un trigger limitato al mittente sintetico e viene rimosso in `finally`. Le identità Clerk dedicate e la configurazione chat sintetica vengono conservate per ripetere il test. Tracce ZIP redatte dal runner; questa redazione non certifica ogni log o screenshot come condivisibile.
+
+Controllo successivo: `social-boundary-trace-redaction.json`, integrità di **12 archivi / 6.469 membri**, nessuna ulteriore modifica richiesta dai pattern testuali/JWK riconosciuti dal redattore. Nessuna certificazione dei contenuti binari, delle immagini o degli altri log. Pulizia finale: zero profili API temporanei e zero trigger di guasto; entrambe le API e il frontend rispondono200.
+
+## Limiti e lavoro residuo
+
+**Immagini storiche:** il difetto è corretto per i nuovi upload. Le immagini DM già presenti in `post-images` condividono il deposito con i post pubblici; il contenuto dei messaggi è cifrato. Non esiste un'attribuzione server sicura per spostarle tutte automaticamente. La riconciliazione di questi allegati resta aperta e richiede una procedura dedicata, senza modificare o cancellare immagini pubbliche legittime. Le fixture pubbliche create da questi runner vengono rimosse.
+
+**Cifratura:** queste prove verificano la cifratura del payload del messaggio e i permessi HTTP sugli allegati. I byte dei file non sono cifrati dal client; non viene dichiarata cifratura end-to-end degli allegati né una verifica complessiva del protocollo crittografico.
+
+Restano da provare la risposta persa dopo commit dei messaggi, upload riuscito seguito da errore d'invio, cambio contatto durante un upload, immagini/video su dispositivi reali e tutti i percorsi legacy. Il logout mobile qui usa una sessione locale sintetica, non un vero flusso OIDC mobile. Il limite degli ID è stato corretto sulla route context; non certifica la validazione di tutte le route community.
+
+Gate finale stabile `verify-7b95e91a-f2c7-4186-b279-b7fd625cfd81.json`: **424 file di test passati**, TypeScript/build e prerender 45/45; lint **zero errori, 35 avvisi**. Hash della copia attuale coincidente al termine. Il gate intermedio `verify-ae9d97d8-edb6-4c0d-86e7-8f1d5508a37e.json` è respinto perché il runner browser è cambiato durante l'esecuzione, anche se `pnpm verify` aveva terminato con zero errori.
+
+API personale riavviata senza schema; `local-smoke.json` verifica API200 e pagina login desktop/mobile senza errori JavaScript o overflow, **in sola lettura e senza login personale**. La prova non certifica il login dell'account personale.

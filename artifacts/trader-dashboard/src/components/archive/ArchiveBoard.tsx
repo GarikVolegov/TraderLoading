@@ -1,5 +1,6 @@
 import { uiText } from "@/contexts/LanguageContext";
 import { ArchiveMiniCard } from "./ArchiveMiniCard";
+import { archiveSourceKey } from "@/lib/archive";
 import type { Collection, WikiSource } from "@/lib/archive";
 
 export interface BoardColumn {
@@ -7,7 +8,7 @@ export interface BoardColumn {
   items: WikiSource[];
 }
 
-export function ArchiveBoard({ columns, onOpen }: { columns: BoardColumn[]; onOpen: (id: number) => void }) {
+export function ArchiveBoard({ columns, onOpen }: { columns: BoardColumn[]; onOpen: (id: string) => void }) {
   return (
     <div className="grid auto-cols-[minmax(244px,1fr)] grid-flow-col gap-3.5 overflow-x-auto pb-2">
       {columns.map((col, i) => {
@@ -26,7 +27,7 @@ export function ArchiveBoard({ columns, onOpen }: { columns: BoardColumn[]; onOp
               </span>
             </div>
             {col.items.map((s) => (
-              <ArchiveMiniCard key={s.id} source={s} onOpen={onOpen} />
+              <ArchiveMiniCard key={archiveSourceKey(s)} source={s} onOpen={onOpen} />
             ))}
           </div>
         );

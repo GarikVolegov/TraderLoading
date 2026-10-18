@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Files, FolderPlus, Inbox } from "lucide-react";
+import { useId, useState } from "react";
+import { ChevronDown, Files, FolderPlus, Inbox } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
 import type { Collection, TagCount } from "@/lib/archive";
 import { ARCHIVE_DND_TYPE } from "./typeMeta";
 
 interface Props {
+  readOnly?: boolean;
   collections: Collection[];
   collectionFilter: "all" | "root" | number;
   onCollectionChange: (value: "all" | "root" | number) => void;
@@ -18,6 +19,13 @@ interface Props {
 }
 
 export function ArchiveRail(props: Props) {
+  const [expanded, setExpanded] = useState(false);
+  const filtersId = useId();
+  const currentCollection = props.collectionFilter === "all"
+    ? uiText("archive.collections.all")
+    : props.collectionFilter === "root"
+      ? uiText("archive.collections.unfiled")
+      : props.collections.find(c => c.id === props.collectionFilter)?.name;
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [dropTarget, setDropTarget] = useState<"root" | number | null>(null);
@@ -26,6 +34,7 @@ export function ArchiveRail(props: Props) {
     e.preventDefault();
     setDropTarget(null);
     const raw = e.dataTransfer.getData(ARCHIVE_DND_TYPE);
+    if (props.readOnly || (folderId !== null && folderId < 0)) return;
     const sourceId = Number(raw);
     if (raw && !Number.isNaN(sourceId)) props.onMoveSource(sourceId, folderId);
   };
@@ -39,6 +48,13 @@ export function ArchiveRail(props: Props) {
 
   return (
     <aside className="w-full space-y-3.5 xl:w-[248px] xl:shrink-0">
+      <button type="button" aria-expanded={expanded} aria-controls={filtersId}
+        onClick={() => setExpanded(value => !value)}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-border px-3 text-sm xl:hidden">
+        <span className="min-w-0 truncate">{uiText("archive.collections")}: {currentCollection}{props.tagFilter ? ` · #${props.tagFilter}` : ""}</span>
+        <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      <div id={filtersId} className={`${expanded ? "block" : "hidden"} space-y-3.5 xl:block`}>
       <div className="tl-panel space-y-1 p-3.5">
         <span className="px-1.5 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {uiText("archive.collections")}
@@ -91,7 +107,7 @@ export function ArchiveRail(props: Props) {
           </button>
         ))}
 
-        {creating ? (
+        {!props.readOnly && (creating ? (
           <input
             autoFocus
             value={name}
@@ -123,7 +139,7 @@ export function ArchiveRail(props: Props) {
             <FolderPlus className="h-3.5 w-3.5" />
             {uiText("archive.collections.new")}
           </button>
-        )}
+        ))}
       </div>
 
       {props.tagCloud.length > 0 && (
@@ -149,6 +165,7 @@ export function ArchiveRail(props: Props) {
           </div>
         </div>
       )}
+      </div>
     </aside>
   );
 }

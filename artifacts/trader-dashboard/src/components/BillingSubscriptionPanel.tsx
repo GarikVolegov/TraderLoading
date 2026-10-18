@@ -234,6 +234,13 @@ export function BillingSubscriptionPanel() {
             </div>
           ) : invoices.isLoading ? (
             <div className="h-24 rounded-lg bg-secondary/30 animate-pulse" />
+          ) : invoices.isError ? (
+            <div role="alert" className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+              <p className="text-sm">{t("common.load_error")}</p>
+              <Button variant="outline" disabled={invoices.isFetching} onClick={() => { void invoices.refetch(); }}>
+                {t("common.retry")}
+              </Button>
+            </div>
           ) : (invoices.data?.invoices ?? []).length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/70 bg-secondary/10 p-4">
               <p className="text-sm font-semibold">{t("billing.panel.invoices_none")}</p>

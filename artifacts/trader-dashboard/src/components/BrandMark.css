@@ -1,0 +1,42 @@
+.tl-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+}
+.tl-brand-symbol {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--secondary));
+  color: hsl(var(--primary));
+}
+.tl-brand-wordmark {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.55px;
+  line-height: 1.25;
+}
+.tl-brand-wordmark small {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 1.6px;
+  color: hsl(var(--muted-foreground));
+}
+@media (max-width: 400px) {
+  .tl-brand-wordmark {
+    font-size: 16px;
+  }
+  .tl-brand {
+    gap: 8px;
+  }
+}

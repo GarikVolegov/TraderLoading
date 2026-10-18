@@ -1,11 +1,14 @@
+import { ProcessReturn } from "@/components/process/ProcessReturn";
 import { type ReactNode } from "react";
 import { motion } from "framer-motion";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useBackground } from "@/contexts/BackgroundContext";
 
 interface PageLayoutProps {
   children: ReactNode;
   /** Optional: removes the max-width constraint for full-bleed pages */
   fullWidth?: boolean;
+  quiet?: boolean;
 }
 
 const pageVariants = {
@@ -20,13 +23,14 @@ const pageVariants = {
   },
 };
 
-export function PageLayout({ children, fullWidth }: PageLayoutProps) {
+export function PageLayout({ children, fullWidth, quiet = false }: PageLayoutProps) {
   const { activeBackgroundUrl, darkness } = useBackground();
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background pb-[var(--bottom-nav-clearance)] pl-[var(--app-inset-left)]">
       {/* ── Fixed background layer ─────────────────────────────────────── */}
-      <div className="fixed inset-0 z-0 pointer-events-none select-none">
+      <div className={`fixed inset-0 z-0 pointer-events-none select-none ${quiet ? "opacity-[0.15]" : ""}`}>
         {activeBackgroundUrl ? (
           <>
             <img
@@ -40,13 +44,7 @@ export function PageLayout({ children, fullWidth }: PageLayoutProps) {
               style={{ opacity: darkness / 100 }}
             />
           </>
-        ) : (
-          <img
-            src={`${import.meta.env.BASE_URL}images/dashboard-bg.webp`}
-            alt=""
-            className="h-full w-full object-cover opacity-[0.1] mix-blend-screen"
-          />
-        )}
+        ) : null}
       </div>
 
       {/* ── Main content ──────────────────────────────────────────────── */}
@@ -54,10 +52,11 @@ export function PageLayout({ children, fullWidth }: PageLayoutProps) {
         className={`relative z-10 ${
           fullWidth ? "w-full" : "mx-auto max-w-[1760px]"
         } space-y-3 px-3 pt-[calc(var(--safe-top)+3.85rem)] sm:space-y-4 sm:px-5 lg:px-5 lg:pt-[calc(var(--safe-top)+3.65rem)] xl:px-7`}
-        variants={pageVariants}
-        initial="hidden"
+        variants={reduceMotion ? { visible: { opacity: 1, y: 0 } } : pageVariants}
+        initial={reduceMotion ? false : "hidden"}
         animate="visible"
       >
+        <ProcessReturn />
         {children}
       </motion.div>
     </div>

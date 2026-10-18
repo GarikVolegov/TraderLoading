@@ -6,6 +6,7 @@ assert.equal(pairsFromMacroCurrencies("USD,XAU"), "XAUUSD");
 assert.equal(pairsFromMacroCurrencies("EUR,USD"), "EURUSD");
 assert.equal(pairsFromMacroCurrencies("XAU,USD,EUR"), "XAUUSD,EURUSD");
 assert.equal(pairsFromMacroCurrencies(""), "");
+assert.equal(pairsFromMacroCurrencies("USD,JPY,CHF,CAD"), "USDJPY,USDCHF,USDCAD");
 
 const news: NewsResponse = {
   articles: [
@@ -25,6 +26,7 @@ const news: NewsResponse = {
       primaryAssets: ["XAU", "USD"],
       freshnessTier: "fresh",
       qualityScore: 0.91,
+      contentBasis: "full_text",
       deepDive: {
         whatHappened: "Spot gold rises while the dollar softens.",
         whyItMatters: "I rendimenti e il dollaro influenzano direttamente XAU/USD.",
@@ -68,6 +70,7 @@ const missingImageMacro = macroNewsFromNewsHub({
     {
       ...news.articles[0]!,
       title: "Trump says US reaches gold purchase agreement as dollar weakens",
+      url: "https://example.com/Trump%20says%20US%20reaches%20gold%20purchase%20agreement%20as%20dollar%20weakens",
       summary: "The White House deal boosts bullion demand while Treasury yields retreat.",
       imageUrl: null,
       primaryAssets: ["XAU", "USD"],
@@ -86,6 +89,7 @@ const duplicateImageMacro = macroNewsFromNewsHub({
     {
       ...news.articles[0]!,
       title: "US CPI surprise pushes Treasury yields higher",
+      url: "https://example.com/US%20CPI%20surprise%20pushes%20Treasury%20yields%20higher",
       summary: "Inflation data shifts Fed expectations and pressures gold.",
       originalTitle: "US CPI surprise pushes Treasury yields higher",
       originalSummary: "Inflation data shifts Fed expectations and pressures gold.",
@@ -96,6 +100,7 @@ const duplicateImageMacro = macroNewsFromNewsHub({
     {
       ...news.articles[0]!,
       title: "Fed officials signal caution before rate decision",
+      url: "https://example.com/Fed%20officials%20signal%20caution%20before%20rate%20decision",
       summary: "Policy makers discuss inflation risk before the next FOMC meeting.",
       originalTitle: "Fed officials signal caution before rate decision",
       originalSummary: "Policy makers discuss inflation risk before the next FOMC meeting.",
@@ -106,6 +111,7 @@ const duplicateImageMacro = macroNewsFromNewsHub({
     {
       ...news.articles[0]!,
       title: "Gold traders brace for jobs report volatility",
+      url: "https://example.com/Gold%20traders%20brace%20for%20jobs%20report%20volatility",
       summary: "Payrolls could shift dollar and yield expectations for XAU/USD.",
       originalTitle: "Gold traders brace for jobs report volatility",
       originalSummary: "Payrolls could shift dollar and yield expectations for XAU/USD.",
@@ -116,6 +122,7 @@ const duplicateImageMacro = macroNewsFromNewsHub({
     {
       ...news.articles[0]!,
       title: "Gold traders watch Fed minutes after payrolls",
+      url: "https://example.com/Gold%20traders%20watch%20Fed%20minutes%20after%20payrolls",
       summary: "FOMC minutes could shift dollar and yield expectations for XAU/USD.",
       originalTitle: "Gold traders watch Fed minutes after payrolls",
       originalSummary: "FOMC minutes could shift dollar and yield expectations for XAU/USD.",
@@ -138,6 +145,7 @@ const staleSnapshot: NewsResponse = {
     {
       ...news.articles[0]!,
       title: "NZD/USD nears 0.5830 as weaker dollar supports the kiwi",
+      url: "https://example.com/NZD%2FUSD%20nears%200.5830%20as%20weaker%20dollar%20supports%20the%20kiwi",
       summary: "The RBNZ-Fed policy split helps New Zealand dollar buyers while USD softens.",
       imageUrl: null,
       affectedPairs: ["XAU/USD"],
@@ -156,6 +164,7 @@ const dominantNzdSnapshot: NewsResponse = {
     {
       ...news.articles[0]!,
       title: "New Zealand Dollar rises on easing geopolitical risk, RBNZ rate-hike expectations",
+      url: "https://example.com/New%20Zealand%20Dollar%20rises%20on%20easing%20geopolitical%20risk%2C%20RBNZ%20rate-hike%20expectations",
       summary: "The kiwi advances as traders reassess the RBNZ path and broader risk appetite.",
       originalTitle: "New Zealand Dollar rises on easing geopolitical risk, RBNZ rate-hike expectations",
       originalSummary: "The kiwi advances as traders reassess the RBNZ path and broader risk appetite.",
@@ -176,6 +185,7 @@ const tradingGradeSnapshot: NewsResponse = {
     {
       ...news.articles[0]!,
       title: "Gold price update as traders wait for direction",
+      url: "https://example.com/Gold%20price%20update%20as%20traders%20wait%20for%20direction",
       summary: "Spot gold moves sideways in quiet trade.",
       originalTitle: "Gold price update as traders wait for direction",
       originalSummary: "Spot gold moves sideways in quiet trade.",
@@ -186,6 +196,7 @@ const tradingGradeSnapshot: NewsResponse = {
     {
       ...news.articles[0]!,
       title: "US CPI preview lifts Treasury yields before Fed decision",
+      url: "https://example.com/US%20CPI%20preview%20lifts%20Treasury%20yields%20before%20Fed%20decision",
       summary: "Inflation expectations shift as traders price the next rate decision.",
       originalTitle: "US CPI preview lifts Treasury yields before Fed decision",
       originalSummary: "Inflation expectations shift as traders price the next rate decision.",
@@ -196,6 +207,7 @@ const tradingGradeSnapshot: NewsResponse = {
     {
       ...news.articles[0]!,
       title: "Central bank emergency decision shocks markets",
+      url: "https://example.com/Central%20bank%20emergency%20decision%20shocks%20markets",
       summary: "Policy makers announce an unexpected rate change.",
       originalTitle: "Central bank emergency decision shocks markets",
       originalSummary: "Policy makers announce an unexpected rate change.",
@@ -218,6 +230,7 @@ const unclearAgentSummaryMacro = macroNewsFromNewsHub({
     {
       ...news.articles[0]!,
       title: "Anteprima CPI USA di maggio: inflazione sopra attese",
+      url: "https://example.com/Anteprima%20CPI%20USA%20di%20maggio%3A%20inflazione%20sopra%20attese",
       summary: "Il dato puo' spingere rendimenti Treasury e dollaro piu' in alto, mettendo pressione su oro e azioni.",
       originalTitle: "US May CPI preview: hotter inflation may lift yields",
       originalSummary: "Markets are watching CPI for a Fed repricing.",
@@ -246,6 +259,7 @@ const usdDriverMacro = macroNewsFromNewsHub({
     {
       ...news.articles[0]!,
       title: "Fed officials warn inflation remains sticky",
+      url: "https://example.com/Fed%20officials%20warn%20inflation%20remains%20sticky",
       summary: "The dollar climbs while Treasury yields rise before the next policy decision.",
       originalTitle: "Fed officials warn inflation remains sticky",
       originalSummary: "The dollar climbs while Treasury yields rise before the next policy decision.",
@@ -266,6 +280,7 @@ const curatedSelectionSnapshot: NewsResponse = {
     {
       ...news.articles[0]!,
       title: "Gold price update as traders wait for direction",
+      url: "https://example.com/Gold%20price%20update%20as%20traders%20wait%20for%20direction",
       summary: "Spot gold moves sideways in quiet trade.",
       originalTitle: "Gold price update as traders wait for direction",
       originalSummary: "Spot gold moves sideways in quiet trade.",
@@ -277,6 +292,7 @@ const curatedSelectionSnapshot: NewsResponse = {
     {
       ...news.articles[0]!,
       title: "US CPI surprise sends Treasury yields higher",
+      url: "https://example.com/US%20CPI%20surprise%20sends%20Treasury%20yields%20higher",
       summary: "Inflation data reprices Fed expectations and pressures XAU/USD.",
       originalTitle: "US CPI surprise sends Treasury yields higher",
       originalSummary: "Inflation data reprices Fed expectations and pressures XAU/USD.",
@@ -288,6 +304,7 @@ const curatedSelectionSnapshot: NewsResponse = {
     {
       ...news.articles[0]!,
       title: "Fed minutes show inflation concern",
+      url: "https://example.com/Fed%20minutes%20show%20inflation%20concern",
       summary: "FOMC minutes move dollar and Treasury yield expectations.",
       originalTitle: "Fed minutes show inflation concern",
       originalSummary: "FOMC minutes move dollar and Treasury yield expectations.",
@@ -298,6 +315,7 @@ const curatedSelectionSnapshot: NewsResponse = {
     {
       ...news.articles[0]!,
       title: "Payrolls surprise drives dollar volatility",
+      url: "https://example.com/Payrolls%20surprise%20drives%20dollar%20volatility",
       summary: "NFP changes rate expectations and moves XAU/USD risk.",
       originalTitle: "Payrolls surprise drives dollar volatility",
       originalSummary: "NFP changes rate expectations and moves XAU/USD risk.",
@@ -308,6 +326,7 @@ const curatedSelectionSnapshot: NewsResponse = {
     {
       ...news.articles[0]!,
       title: "Powell warns inflation remains sticky",
+      url: "https://example.com/Powell%20warns%20inflation%20remains%20sticky",
       summary: "Fed comments lift Treasury yields before the next rate decision.",
       originalTitle: "Powell warns inflation remains sticky",
       originalSummary: "Fed comments lift Treasury yields before the next rate decision.",
@@ -318,18 +337,22 @@ const curatedSelectionSnapshot: NewsResponse = {
   ],
 };
 const curatedMacro = macroNewsFromNewsHub(curatedSelectionSnapshot, { pairs: "XAUUSD" });
-assert.equal(curatedMacro.articles.length, 3);
+assert.equal(curatedMacro.articles.length, 4);
+assert.deepEqual(new Set(curatedMacro.articles.map(article => article.title)), new Set([
+  "US CPI surprise sends Treasury yields higher", "Fed minutes show inflation concern",
+  "Payrolls surprise drives dollar volatility", "Powell warns inflation remains sticky",
+]));
 assert.equal(curatedMacro.articles.some((article) => /Gold price update/i.test(article.title)), false);
 assert.equal(curatedMacro.articles[0]?.title, "US CPI surprise sends Treasury yields higher");
 
-// When the source article has no deepDive and its summary merely echoes the title, the
-// adapter now builds an enriched deepDive (so the dialog no longer shows the same line 3×).
+// The adapter must not manufacture an analysis when the source has none.
 const banalSnapshot: NewsResponse = {
   ...news,
   articles: [
     {
       ...news.articles[0]!,
       title: "US CPI surprise sends Treasury yields higher",
+      url: "https://example.com/US%20CPI%20surprise%20sends%20Treasury%20yields%20higher",
       summary: "US CPI surprise sends Treasury yields higher",
       originalTitle: "US CPI surprise sends Treasury yields higher",
       originalSummary: "US CPI surprise sends Treasury yields higher",
@@ -345,15 +368,12 @@ const banalSnapshot: NewsResponse = {
 };
 const banalMacro = macroNewsFromNewsHub(banalSnapshot, { pairs: "XAUUSD" });
 assert.equal(banalMacro.articles.length, 1);
-const builtDeepDive = banalMacro.articles[0]?.deepDive;
-assert.ok(builtDeepDive, "deepDive should be built when the source article lacks one");
-assert.ok((builtDeepDive?.whatHappened.length ?? 0) > 0);
-assert.ok((builtDeepDive?.whyItMatters.length ?? 0) > 0);
-assert.ok((builtDeepDive?.possibleImpact.length ?? 0) > 0);
-assert.notEqual(builtDeepDive?.whatHappened, banalMacro.articles[0]?.title);
+assert.equal(banalMacro.articles[0]?.deepDive, undefined);
+const headlineOnly = macroNewsFromNewsHub({ ...news, articles: [{ ...news.articles[0]!, contentBasis: "headline" }] });
+assert.equal(headlineOnly.articles[0]?.deepDive, undefined, "A preexisting analysis must be hidden without full-text evidence");
 
-// ensureMacroDeepDive fills any missing deepDive (covers the Groq/RSS/Perplexity fallback
-// paths, whose articles only have the MacroNewsArticle shape) and preserves existing ones.
+// Evidence filtering leaves missing analysis absent and preserves an existing
+// analysis only when the source is explicitly based on full text.
 const ensured = ensureMacroDeepDive(
   {
     articles: [
@@ -371,6 +391,7 @@ const ensured = ensureMacroDeepDive(
       {
         title: "Gold steadies",
         summary: "Spot gold holds gains.",
+        contentBasis: "full_text",
         impact: "medio",
         currency: "XAU",
         direction: "neutrale",
@@ -388,8 +409,7 @@ const ensured = ensureMacroDeepDive(
   },
   "it",
 );
-assert.ok(ensured.articles[0]?.deepDive, "missing deepDive should be filled by ensureMacroDeepDive");
-assert.ok((ensured.articles[0]?.deepDive?.whatHappened.length ?? 0) > 0);
+assert.equal(ensured.articles[0]?.deepDive, undefined);
 assert.equal(ensured.articles[1]?.deepDive?.whatHappened, "kept-what");
 assert.equal(ensured.articles[1]?.deepDive?.whyItMatters, "kept-why");
 

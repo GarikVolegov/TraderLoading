@@ -12,6 +12,7 @@ import {
   type TradingSessionConfig,
 } from "@workspace/api-client-react";
 import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
+import { getFavoriteFilterCurrencies } from "@/lib/favoritePairFilters";
 import { normalizeLocalSessionTime } from "@/lib/marketSessions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -42,7 +43,7 @@ const CALENDAR_CURRENCY_LIST = [
 ];
 
 const FONT_MAP: Record<string, string> = {
-  inter: "'Inter', sans-serif",
+  inter: "'Fira Sans', sans-serif",
   jetbrains: "'JetBrains Mono', monospace",
   roboto: "'Roboto', sans-serif",
   "space-grotesk": "'Space Grotesk', monospace",
@@ -191,7 +192,7 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
   const { data: settings } = useGetUserSettings();
 
   const selectedCurrencies = useMemo(
-    () => getCurrenciesFromPairs(selectedPairs),
+    () => getFavoriteFilterCurrencies(selectedPairs),
     [selectedPairs],
   );
 

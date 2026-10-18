@@ -143,7 +143,9 @@ export function tradeRMultiple(parsed: ParsedTradeContent): number | null {
 
   const riskDistance = Math.abs(entryPrice - stopLoss);
   const moveDistance = Math.abs(exitPrice - entryPrice);
-  if (riskDistance <= 0 || moveDistance <= 0) return null;
+  if (![profit, entryPrice, stopLoss, exitPrice, riskDistance, moveDistance].every(Number.isFinite) || riskDistance <= 0) return null;
+  if (profit === 0) return 0;
+  if (moveDistance <= 0) return null;
 
   const r = (moveDistance / riskDistance) * Math.sign(profit);
   return Number.isFinite(r) ? Number(r.toFixed(2)) : null;

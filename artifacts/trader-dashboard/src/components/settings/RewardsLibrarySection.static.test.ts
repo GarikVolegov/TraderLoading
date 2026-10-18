@@ -7,6 +7,6 @@ const src = readFileSync(new URL("./RewardsLibrarySection.tsx", import.meta.url)
 // in flight, so every user briefly saw the "unlocks at level 5" empty state and
 // every milestone rendered as locked before the real level arrived.
 assert.match(src, /isLoading:\s*profileLoading/);
-assert.match(src, /if \(profileLoading\)/);
+assert.match(src, /if \(profileLoading/);
 
 console.log("rewards library loading-state checks passed");

@@ -5,9 +5,9 @@ import {
   format,
   isWithinInterval,
   parseISO,
-  startOfDay,
   startOfWeek,
 } from "date-fns";
+import { processDay } from "../../../../contracts/trader-process";
 
 export type JournalRecapKind = "weekly" | "four_week";
 
@@ -26,7 +26,7 @@ function iso(date: Date): string {
 }
 
 function localDay(date: Date): Date {
-  return startOfDay(date);
+  return parseISO(processDay(date));
 }
 
 export function getJournalRecapPeriod(kind: JournalRecapKind, baseDate = new Date()): JournalRecapPeriod {

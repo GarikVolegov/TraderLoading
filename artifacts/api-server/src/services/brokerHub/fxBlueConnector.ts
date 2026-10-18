@@ -10,6 +10,7 @@ import type {
   BrokerSnapshot,
   NormalizedBrokerOrderRequest,
 } from "./types.js";
+import { executionEnvironmentFromSource } from "./executionEnvironment.js";
 
 type RawSide = "buy" | "sell" | "BUY" | "SELL";
 
@@ -163,7 +164,6 @@ export function parseFxBlueRss(xml: string, username: string): FxBlueFetchPayloa
       label: `FX Blue ${username}`,
       brokerName: "FX Blue",
       currency,
-      environment: "live",
     },
     metrics: {
       balance: num(readTag(summary, "account:balance")),
@@ -271,7 +271,6 @@ export function parseFxBlueOrderList(value: string, username: string): FxBlueFet
       id: username,
       label: `FX Blue ${username}`,
       brokerName: "FX Blue",
-      environment: "live",
     },
     orders: [],
     deals: [],
@@ -328,6 +327,7 @@ function accountFrom(profile: BrokerAccountProfile, payload: FxBlueFetchPayload)
     brokerName: str(account.brokerName, profile.brokerName),
     currency: str(account.currency, "USD"),
     environment: account.environment === "demo" ? "demo" : "live",
+    executionEnvironment: executionEnvironmentFromSource(account.environment),
   };
 }
 

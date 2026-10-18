@@ -6,6 +6,7 @@ import { db, communitiesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { resolveUploadPath } from "../lib/uploads.js";
 import { requirePermission } from "../services/communityPermissions.js";
+import { imageMatchesType } from "../lib/imageValidation.js";
 
 const COMMUNITY_ASSETS_DIR = resolveUploadPath("community-assets");
 if (!fs.existsSync(COMMUNITY_ASSETS_DIR)) fs.mkdirSync(COMMUNITY_ASSETS_DIR, { recursive: true });
@@ -79,6 +80,11 @@ function uploadHandler(column: "bannerUrl" | "avatarUrl", responseKey: string) {
         return;
       }
       try {
+        if (!imageMatchesType(await fs.promises.readFile(req.file.path), req.file.mimetype, req.file.originalname)) {
+          await fs.promises.unlink(req.file.path).catch(() => {});
+          res.status(415).json({ error: "Contenuto immagine non valido" });
+          return;
+        }
         const url = `/api/uploads/community-assets/${req.file.filename}`;
         await db
           .update(communitiesTable)
@@ -86,6 +92,7 @@ function uploadHandler(column: "bannerUrl" | "avatarUrl", responseKey: string) {
           .where(eq(communitiesTable.id, communityId));
         res.json({ [responseKey]: url });
       } catch (e) {
+        await fs.promises.unlink(req.file.path).catch(() => {});
         console.error(`POST /community/:id/${responseKey} error:`, e);
         res.status(500).json({ error: "Errore interno" });
       }

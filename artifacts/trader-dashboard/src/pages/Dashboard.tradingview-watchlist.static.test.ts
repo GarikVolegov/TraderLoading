@@ -6,7 +6,7 @@ const source = readFileSync(new URL("./Dashboard.tsx", import.meta.url), "utf8")
 assert.match(source, /import \{ TradingViewWatchlistWidget \} from "@\/components\/TradingViewWatchlistWidget";/);
 assert.match(
   source,
-  /\{\s*id: "tradingview-watchlist",\s*labelKey: "auto\.ui\.b97144823c",\s*icon: Activity,\s*component: TradingViewWatchlistWidget\s*\}/s,
+  /\{\s*id: "tradingview-watchlist",\s*labelKey: "auto\.ui\.b97144823c",\s*icon: Activity,\s*component: TradingViewWatchlistWidget,?\s*\}/s,
 );
 assert.match(
   readFileSync(new URL("../lib/i18n/dict.it.ts", import.meta.url), "utf8"),

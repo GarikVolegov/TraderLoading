@@ -52,7 +52,7 @@
       "name": "Frontend: Vite dev server",
       "type": "node-terminal",
       "request": "launch",
-      "command": "pnpm --filter @workspace/trader-dashboard run dev",
+      "command": "pnpm --filter ./scripts exec tsx local/startFrontendDev.ts",
       "cwd": "${workspaceFolder}",
       "env": {
         "BASE_PATH": "/",

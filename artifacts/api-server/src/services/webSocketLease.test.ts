@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import { PassThrough } from "node:stream";
+import { watchWebSocketAuthorization } from "./webSocketLease.js";
+const socket = new PassThrough();let allowed = true;
+const stop = watchWebSocketAuthorization(socket, async () => allowed, 10);
+await new Promise(resolve => setTimeout(resolve, 30));assert.equal(socket.destroyed, false);
+allowed = false;await new Promise(resolve => setTimeout(resolve, 30));assert.equal(socket.destroyed, true);stop();
+const failed = new PassThrough();watchWebSocketAuthorization(failed, async () => { throw new Error("auth unavailable"); }, 10);
+await new Promise(resolve => setTimeout(resolve, 30));assert.equal(failed.destroyed, true);
+console.log("WebSocket revocation and authorization outage close the connection");

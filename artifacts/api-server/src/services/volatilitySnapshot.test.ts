@@ -1,0 +1,27 @@
+import assert from "node:assert/strict";
+import { buildVolatilitySnapshot, volatilityResponse } from "./volatilitySnapshot.js";
+
+const now = new Date("2026-09-18T12:00:00Z");
+const end = Date.parse("2026-09-18T00:00:00Z") / 1000;
+const candles = Array.from({ length: 8 }, (_, i) => ({ time: end - (7 - i) * 86400, high: 1.2, low: 1.1, close: 1.15 }));
+const snapshot = buildVolatilitySnapshot("EURUSD", candles, "test-provider", now);
+assert.equal(snapshot.source, "test-provider");
+assert.equal(snapshot.fetchedAt, now.toISOString());
+assert.equal(snapshot.observedAt, "2026-09-18T00:00:00.000Z");
+assert.equal(snapshot.observationStart, "2026-09-11T00:00:00.000Z");
+assert.equal(volatilityResponse(snapshot, false, now).status, "available");
+const stale = volatilityResponse(snapshot, true, now);
+assert.equal(stale.status, "stale");
+assert.equal(stale.fetchedAt, snapshot.fetchedAt);
+assert.equal(stale.todayPips, snapshot.todayPips);
+assert.equal(volatilityResponse(snapshot, false, new Date(now.getTime() + 31 * 60_000)).status, "stale", "a fresh outer cache cannot renew an old provider retrieval");
+const old = buildVolatilitySnapshot("EURUSD", candles.slice(0, -1), "test-provider", now);
+assert.equal(volatilityResponse(old, false, now).status, "stale");
+assert.equal(volatilityResponse(snapshot, false, new Date("2026-09-19T00:01:00Z")).status, "stale");
+const zero = buildVolatilitySnapshot("EURUSD", [...candles.slice(0, -1), { ...candles[7], high: 1.1, low: 1.1, close: 1.1 }], "test-provider", now);
+assert.equal(zero.todayPips, 0);
+assert.ok(zero.y1 > 0);
+assert.throws(() => buildVolatilitySnapshot("EURUSD", candles.slice(0, 4), "test-provider", now), /insufficiente/);
+const invalidTail = [...candles, { time: end + 1, high: NaN, low: 1, close: 1 }];
+assert.equal(buildVolatilitySnapshot("EURUSD", invalidTail, "test-provider", now).observedAt, snapshot.observedAt);
+console.log("volatility provenance and stale-data checks passed");

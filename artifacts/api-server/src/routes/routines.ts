@@ -1,3 +1,4 @@
+import { tradingDay } from "../lib/tradingTime.js";
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
 import { and, eq, gte, or, sql } from "drizzle-orm";
@@ -39,7 +40,7 @@ export type RoutineCompetitionRow = {
 };
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return tradingDay(new Date())!;
 }
 
 function countMeaningfulAnswers(value: unknown): number {
@@ -142,7 +143,7 @@ router.post("/routines/completions", async (req, res) => {
 
   const body = RoutineCompletionBody.parse(req.body);
   const completedAt = new Date();
-  const completionDate = completedAt.toISOString().slice(0, 10);
+  const completionDate = tradingDay(completedAt)!;
   const qualityScore = calculateRoutineQualityScore(body.answers);
 
   const [record] = await db
@@ -200,7 +201,7 @@ router.get("/routines/competition", async (req, res) => {
     .from(profileTable)
     .where(sql`${profileTable.userId} IN (${sql.join(participantIds.map((id) => sql`${id}`), sql`, `)}) AND ${profileTable.userId} IS NOT NULL`);
 
-  const since = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10);
+  const since = tradingDay(new Date(Date.now() - 29 * 86_400_000))!;
   const completions = await db
     .select({
       userId: routineCompletionsTable.userId,

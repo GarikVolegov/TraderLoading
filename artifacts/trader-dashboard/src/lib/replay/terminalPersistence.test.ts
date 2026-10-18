@@ -12,6 +12,7 @@ import type { ClosedTrade, OpenPosition, ReplayDrawing } from "./types";
 
 const trade: ClosedTrade = {
   id: 3,
+  syncId: "b9f78dab-1e8f-4d30-9411-b24a6ce81a45",
   direction: "sell",
   entryPrice: 1.2,
   exitPrice: 1.19,
@@ -67,9 +68,19 @@ assert.equal(createTerminalStorageKey("42"), "traderloading:backtest-terminal:42
 // round-trip
 const parsed = parseTerminalState(serializeTerminalState(draft), "EURUSD");
 assert.ok(parsed);
-assert.equal(parsed?.version, 2);
+assert.equal(parsed?.version, 3);
 assert.equal(parsed?.interval, "H1");
 assert.equal(parsed?.cursorTime, 1_700_000_000);
+assert.equal(parsed?.replayTime, 1_700_003_600, "v2-style cursor input migrates from bar open to observation cutoff");
+const exactDraft = { ...draft, replayTime: 1_700_001_200, startTime: 1_600_000_000 };
+const exact = parseTerminalState(serializeTerminalState(exactDraft), "EURUSD");
+assert.equal(exact?.replayTime, 1_700_001_200, "v3 exact clock must never add the current timeframe");
+assert.equal(exact?.startTime, 1_600_000_000);
+const legacyV2 = JSON.parse(serializeTerminalState(draft));
+legacyV2.version = 2;
+delete legacyV2.replayTime;
+delete legacyV2.startTime;
+assert.equal(parseTerminalState(JSON.stringify(legacyV2), "EURUSD")?.replayTime, 1_700_003_600);
 assert.deepEqual(parsed?.trades, [trade]);
 assert.deepEqual(parsed?.openPosition, position);
 assert.deepEqual(parsed?.drawings, drawings);

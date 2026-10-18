@@ -1,0 +1,35 @@
+import assert from "node:assert/strict";
+import { createMarketContextService } from "./marketContextService.js";
+
+let now = Date.parse("2026-09-24T12:00:00Z");
+let calls = 0;
+const reject = async () => { calls++; throw new Error("unavailable"); };
+const read = createMarketContextService({ candles: reject, news: reject, sentiment: reject, calendar: reject, cot: reject }, () => now);
+assert.equal(read("EURUSD").status, "warming");
+assert.equal(read("EURUSD").refreshing, true);
+read("EURUSD");
+await new Promise(resolve => setTimeout(resolve, 5));
+assert.equal(calls, 5, "one fan-in shared by concurrent requests");
+assert.equal(read("EURUSD").status, "insufficient");
+assert.equal(read("EURUSD").refreshing, false, "settled failures end rapid polling");
+assert.equal(read("EURUSD").score, null);
+now += 60_001;
+read("EURUSD");
+await new Promise(resolve => setTimeout(resolve, 5));
+assert.equal(calls, 10, "retry after cache window");
+const hung = createMarketContextService({ candles: () => new Promise(() => {}), news: reject, sentiment: reject, calendar: reject, cot: reject }, () => now, 10);
+assert.equal(hung("EURUSD").status, "warming");
+await new Promise(resolve => setTimeout(resolve, 20));
+assert.equal(hung("EURUSD").status, "insufficient", "timeout never keeps the dashboard loading forever");
+assert.equal(hung("EURUSD").refreshing, false);
+
+let completeCalendar!: (value: []) => void;
+const staged = createMarketContextService({ candles: reject, news: reject, sentiment: reject, calendar: () => new Promise(resolve => { completeCalendar = resolve; }), cot: reject }, () => now);
+assert.equal(staged("GBPUSD").refreshing, true);
+await new Promise(resolve => setTimeout(resolve, 5));
+assert.equal(staged("GBPUSD").refreshing, true, "readers keep polling while even one source is pending");
+completeCalendar([]);
+await new Promise(resolve => setTimeout(resolve, 5));
+assert.equal(staged("GBPUSD").refreshing, false);
+assert.equal(staged("GBPUSD").calendarStatus, "available", "empty calendar is a valid result");
+console.log("market context service: deduplication, failure, retry and deadline checks passed");

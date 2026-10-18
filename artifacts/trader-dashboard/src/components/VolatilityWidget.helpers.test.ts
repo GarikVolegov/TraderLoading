@@ -8,10 +8,10 @@ assert.equal(adrPercentUsed(0, 100), 0);
 assert.equal(adrPercentUsed(33, 100), 33);
 
 // adrPercentUsed: guards bad inputs
-assert.equal(adrPercentUsed(50, 0), 0);
-assert.equal(adrPercentUsed(50, -10), 0);
-assert.equal(adrPercentUsed(Number.NaN, 100), 0);
-assert.equal(adrPercentUsed(50, Number.NaN), 0);
+assert.equal(adrPercentUsed(50, 0), null);
+assert.equal(adrPercentUsed(50, -10), null);
+assert.equal(adrPercentUsed(Number.NaN, 100), null);
+assert.equal(adrPercentUsed(50, Number.NaN), null);
 
 // adrLevel: thresholds → key + tone
 assert.deepEqual(adrLevel(85), { key: "exhausted", tone: "destructive" });
@@ -22,3 +22,6 @@ assert.deepEqual(adrLevel(40), { key: "room", tone: "success" });
 assert.deepEqual(adrLevel(0), { key: "room", tone: "success" });
 
 console.log("volatility helper checks passed");
+
+assert.equal(adrPercentUsed(-1, 100), null);
+assert.equal(adrPercentUsed(Infinity, 100), null);

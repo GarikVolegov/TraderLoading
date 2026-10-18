@@ -1,10 +1,18 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocation, useSearch } from "wouter";
+import { useGetProfile } from "@workspace/api-client-react";
 import { Plus } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
-import { ProUpgradeGate } from "@/components/ProUpgradeGate";
+import { SectionTabs } from "@/components/SectionTabs";
+import { useBillingStatus } from "@/lib/billingApi";
+import { useArchiveCatalog } from "@/lib/useArchiveCatalog";
+import { buildArchiveResources, filterArchiveResources, canUsePersonalArchive, catalogMilestones, CATALOG_COLLECTION, REWARD_COLLECTION } from "@/lib/archiveResources";
+import { ContentViewer, ContentForm } from "./Library";
+import { RewardCard } from "@/components/LevelRewardModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,13 +26,13 @@ import { ArchiveDetailModal } from "@/components/archive/ArchiveDetailModal";
 import { ArchiveAddDialog } from "@/components/archive/ArchiveAddDialog";
 import {
   collectionsFromFolders,
-  filterSources,
   tagCloud,
   type ArchiveFolder,
   type ArchiveType,
   type WikiSource,
 } from "@/lib/archive";
-import { API_BASE as API, apiFetch, apiUpload } from "@/lib/apiFetch";
+import { API_BASE as API, apiFetch, apiUpload, apiJSON } from "@/lib/apiFetch";
+import { updateWorkspaceQuery } from "@/lib/workspaceNavigation";
 import { uiText } from "@/contexts/LanguageContext";
 
 function mutationMessage(error: unknown): string | null {
@@ -36,14 +44,31 @@ function mutationMessage(error: unknown): string | null {
 
 export default function Wiki() {
   const qc = useQueryClient();
+  const routeSearch = useSearch();
+  const [, navigate] = useLocation();
+  const params = new URLSearchParams(routeSearch);
+  const tab = params.get("t") === "unlocked" ? "unlocked" : "all";
+  const billing = useBillingStatus();
+  const pro = canUsePersonalArchive(billing.data?.pro);
+  const { data: profile, isLoading: profileLoading } = useGetProfile();
+  const level = profile?.level ?? 0;
+  const catalog = useArchiveCatalog();
+  const contents = useMemo(() => catalog.data ?? [], [catalog.data]);
+  const admin = useQuery<{ isAdmin: boolean }>({ queryKey: ["library", "admin"], queryFn: () => apiJSON("library/admin/status") });
+  const [editContent, setEditContent] = useState<import("@/lib/archiveResources").LibraryContent | "new" | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ArchiveType | "all">("all");
   const [collectionFilter, setCollectionFilter] = useState<"all" | "root" | number>("all");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [view, setView] = useState<ArchiveView>("grid");
   const [density, setDensity] = useState<ArchiveDensity>("comoda");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(params.get("resource"));
+  useEffect(() => { setSelectedId(new URLSearchParams(routeSearch).get("resource")); }, [routeSearch]);
   const [addOpen, setAddOpen] = useState(false);
+  const openResource = (resource: string | null) => {
+    setSelectedId(resource);
+    navigate(`/wiki${updateWorkspaceQuery(routeSearch, { resource })}`);
+  };
 
   const {
     data: sources = [],
@@ -52,6 +77,7 @@ export default function Wiki() {
     refetch: refetchSources,
   } = useQuery({
     queryKey: ["wiki", "sources"],
+    enabled: pro,
     queryFn: () => apiFetch<WikiSource[]>(`${API}/wiki/sources`),
     refetchInterval: (query) =>
       (query.state.data as WikiSource[] | undefined)?.some((s) => ["queued", "processing"].includes(s.status))
@@ -60,6 +86,7 @@ export default function Wiki() {
   });
   const { data: folders = [] } = useQuery({
     queryKey: ["wiki", "folders"],
+    enabled: pro,
     queryFn: () => apiFetch<ArchiveFolder[]>(`${API}/wiki/folders`),
   });
 
@@ -92,7 +119,7 @@ export default function Wiki() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiFetch(`${API}/wiki/sources/${id}`, { method: "DELETE" }),
     onSuccess: () => {
-      setSelectedId(null);
+      openResource(null);
       invalidate();
     },
   });
@@ -114,29 +141,30 @@ export default function Wiki() {
     onSuccess: invalidate,
   });
 
-  const collections = useMemo(() => collectionsFromFolders(folders, sources), [folders, sources]);
-  const tags = useMemo(() => tagCloud(sources), [sources]);
-  const filtered = useMemo(
-    () => filterSources(sources, { search, type: typeFilter, collection: collectionFilter, tag: tagFilter }),
-    [sources, search, typeFilter, collectionFilter, tagFilter],
-  );
-  const unfiledCount = useMemo(() => sources.filter((s) => s.folderId == null).length, [sources]);
-
-  const boardColumns = useMemo<BoardColumn[]>(() => {
-    const cols: BoardColumn[] = collections.map((c) => ({
-      collection: c,
-      items: filtered.filter((s) => s.folderId === c.id),
-    }));
-    const unfiled = filtered.filter((s) => s.folderId == null);
-    if (unfiled.length) cols.push({ collection: null, items: unfiled });
-    return cols.filter((c) => c.items.length > 0);
-  }, [collections, filtered]);
-
-  const selected = useMemo(() => sources.find((s) => s.id === selectedId) ?? null, [sources, selectedId]);
-  const selectedCollection = useMemo(
-    () => (selected ? collections.find((c) => c.id === selected.folderId) ?? null : null),
-    [selected, collections],
-  );
+  const resources = useMemo(() => buildArchiveResources({ personal: sources, contents, level, pro }), [sources, contents, level, pro]);
+  const visibleResources = useMemo(() => resources.filter(r => tab === "all" || r.origin !== "personal"), [resources, tab]);
+  const collections = useMemo(() => [
+    ...(pro && tab === "all" ? collectionsFromFolders(folders, sources) : []),
+    { id: CATALOG_COLLECTION, name: uiText("reorg.archive.catalog_folder"), count: resources.filter(r => r.origin === "library").length, accent: "hsl(var(--primary))" },
+    { id: REWARD_COLLECTION, name: uiText("reorg.archive.reward_folder"), count: resources.filter(r => r.origin === "reward").length, accent: "hsl(38 92% 52%)" },
+  ], [folders, sources, resources, pro, tab]);
+  const tags = useMemo(() => tagCloud(visibleResources.map(r => r.source)), [visibleResources]);
+  const filteredResources = useMemo(() => filterArchiveResources(resources, { search, type: typeFilter, collection: collectionFilter, tag: tagFilter }, tab),
+    [resources, search, typeFilter, collectionFilter, tagFilter, tab]);
+  const filtered = filteredResources.map(r => r.source);
+  const unfiledCount = pro && tab === "all" ? sources.filter(s => s.folderId == null).length : 0;
+  const boardColumns: BoardColumn[] = collections.map(collection => ({ collection, items: filtered.filter(s => s.folderId === collection.id) }));
+  const unfiled = filtered.filter(s => s.folderId == null);
+  if (unfiled.length) boardColumns.push({ collection: null, items: unfiled });
+  const selected = resources.find(r => r.ref === selectedId) ?? null;
+  const selectedCollection = selected ? collections.find(c => c.id === selected.source.folderId) ?? null : null;
+  const nextLevel = catalogMilestones(contents).find(m => m > level);
+  const changeTab = (value: string) => {
+    clearFilters(); setSelectedId(null);
+    navigate(`/wiki?t=${value === "unlocked" ? "unlocked" : "all"}`);
+  };
+  const deleteCatalog = useMutation({ mutationFn: (id: number) => apiJSON(`library/contents/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["library", "contents"] }) });
 
   const isFiltered =
     search.trim() !== "" || typeFilter !== "all" || collectionFilter !== "all" || tagFilter !== null;
@@ -150,17 +178,17 @@ export default function Wiki() {
   // Page-level drop target: dropping files anywhere uploads them.
   const onDrop = useCallback(
     (files: File[]) => {
-      for (const f of files) uploadMutation.mutate(f);
+      if (pro) for (const f of files) uploadMutation.mutate(f);
     },
-    [uploadMutation],
+    [uploadMutation, pro],
   );
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: true, noClick: true });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: true, noClick: true, disabled: !pro });
 
   const addError = mutationMessage(uploadMutation.error || textMutation.error || urlMutation.error);
 
   return (
-    <PageLayout>
-      <ProUpgradeGate feature="wiki" fillViewport>
+    <PageLayout quiet>
+
         <div
           {...getRootProps()}
           style={
@@ -182,27 +210,35 @@ export default function Wiki() {
 
           <PageHeader
             title={uiText("archive.title")}
-            subtitle={uiText("archive.subtitle")}
-            action={
+            subtitle={uiText("reorg.archive.subtitle")}
+            action={pro ?
               <Button onClick={() => setAddOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 {uiText("archive.add")}
-              </Button>
+              </Button> : undefined
             }
           />
 
-          <div className="mt-2 flex flex-col gap-5 xl:flex-row xl:items-start">
+          <SectionTabs value={tab} onValueChange={changeTab} ariaLabel={uiText("reorg.archive.tabs")}
+            items={[{ value: "all", label: uiText("reorg.archive.all") }, { value: "unlocked", label: uiText("reorg.archive.unlocked") }]} />
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>{uiText("reorg.archive.level", { level })}</span>
+            {nextLevel && <span>{uiText("reorg.archive.next", { level: nextLevel })}</span>}
+          </div>
+          {!billing.isPending && !pro && <p className="mt-3 text-sm text-muted-foreground">{uiText("reorg.archive.free")}</p>}
+          <div className="mt-4 flex flex-col gap-5 xl:flex-row xl:items-start">
             <ArchiveRail
               collections={collections}
               collectionFilter={collectionFilter}
               onCollectionChange={setCollectionFilter}
-              allCount={sources.length}
+              allCount={visibleResources.length}
+              readOnly={!pro || tab === "unlocked"}
               unfiledCount={unfiledCount}
               tagCloud={tags}
               tagFilter={tagFilter}
               onTagChange={setTagFilter}
-              onMoveSource={(id, folderId) => moveMutation.mutate({ id, folderId })}
-              onCreateCollection={(name) => createCollectionMutation.mutate(name)}
+              onMoveSource={(id, folderId) => { if (pro && sources.some(s => s.id === id) && (folderId === null || folderId > 0)) moveMutation.mutate({ id, folderId }); }}
+              onCreateCollection={(name) => { if (pro) createCollectionMutation.mutate(name); }}
             />
 
             <div className="min-w-0 flex-1 space-y-4">
@@ -219,45 +255,63 @@ export default function Wiki() {
               />
               <TypeChips value={typeFilter} onChange={setTypeFilter} />
 
-              {sourcesError ? (
-                <QueryErrorState onRetry={() => void refetchSources()} />
-              ) : sourcesLoading ? (
+              {catalog.isError && <QueryErrorState onRetry={() => void catalog.refetch()} />}
+              {pro && sourcesError && <QueryErrorState onRetry={() => void refetchSources()} />}
+              {profileLoading || catalog.isLoading || (pro && sourcesLoading) ? (
                 <ArchiveGridSkeleton />
-              ) : sources.length === 0 ? (
-                <EmptyState onAdd={() => setAddOpen(true)} />
+              ) : visibleResources.length === 0 ? (
+                <EmptyState onAdd={pro ? () => setAddOpen(true) : undefined} />
               ) : filtered.length === 0 ? (
                 <NoResults onClear={clearFilters} />
               ) : view === "grid" ? (
-                <ArchiveGrid items={filtered} onOpen={setSelectedId} />
+                <ArchiveGrid items={filtered} onOpen={openResource} />
               ) : view === "list" ? (
-                <ArchiveList items={filtered} onOpen={setSelectedId} />
+                <ArchiveList items={filtered} onOpen={openResource} />
               ) : (
-                <ArchiveBoard columns={boardColumns} onOpen={setSelectedId} />
+                <ArchiveBoard columns={boardColumns} onOpen={openResource} />
               )}
             </div>
           </div>
         </div>
 
-        {selected && (
+        {selected?.origin === "personal" && pro && (
           <ArchiveDetailModal
-            source={selected}
+            key={selected.ref}
+            source={selected.personal}
             collection={selectedCollection}
-            onClose={() => setSelectedId(null)}
+            onClose={() => openResource(null)}
             onDelete={(id) => deleteMutation.mutate(id)}
             onSaveTags={(id, t) => tagsMutation.mutate({ id, tags: t })}
           />
         )}
 
-        <ArchiveAddDialog
+        {selected?.origin === "library" && <ContentViewer content={selected.content} onClose={() => openResource(null)} />}
+        {selected?.origin === "reward" && <Dialog open onOpenChange={open => { if (!open) openResource(null); }}>
+          <DialogContent><DialogHeader><DialogTitle>{selected.reward.title}</DialogTitle></DialogHeader>
+            <RewardCard reward={selected.reward} />
+          </DialogContent>
+        </Dialog>}
+        {admin.data?.isAdmin && <details className="mt-5 rounded-lg border border-border/50 p-3">
+          <summary className="cursor-pointer text-sm text-muted-foreground">{uiText("reorg.archive.manage")}</summary>
+          <Button size="sm" className="mt-3" onClick={() => setEditContent("new")}>{uiText("auto.ui.fd19042867")}</Button>
+          {contents.map(c => <div key={c.id} className="mt-2 flex items-center gap-2 text-sm">
+            <span className="flex-1 truncate">{c.title}</span>
+            <Button variant="ghost" size="sm" onClick={() => setEditContent(c)}>{uiText("common.edit")}</Button>
+            <Button variant="ghost" size="sm" disabled={deleteCatalog.isPending} onClick={() => { if (window.confirm(uiText("archive.delete_confirm", { title: c.title }))) deleteCatalog.mutate(c.id); }}>{uiText("common.delete")}</Button>
+          </div>)}
+          {deleteCatalog.isError && <p role="alert" className="text-sm text-destructive">{mutationMessage(deleteCatalog.error)}</p>}
+        </details>}
+        {editContent !== null && admin.data?.isAdmin && <ContentForm initial={editContent === "new" ? null : editContent} onClose={() => setEditContent(null)} />}
+        {pro && <ArchiveAddDialog
           open={addOpen}
           onClose={() => setAddOpen(false)}
           onUploadFiles={(files) => files.forEach((f) => uploadMutation.mutate(f))}
-          onAddNote={(title, content) => textMutation.mutate({ title, content })}
-          onAddUrl={(url) => urlMutation.mutate(url)}
-          pending={uploadMutation.isPending}
+          onAddNote={(title, content) => textMutation.mutateAsync({ title, content })}
+          onAddUrl={(url) => urlMutation.mutateAsync(url)}
+          pending={uploadMutation.isPending || textMutation.isPending || urlMutation.isPending}
           error={addError}
-        />
-      </ProUpgradeGate>
+        />}
+
     </PageLayout>
   );
 }
@@ -272,15 +326,15 @@ function ArchiveGridSkeleton() {
   );
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({ onAdd }: { onAdd?: () => void }) {
   return (
     <div className="mx-auto flex max-w-[580px] flex-col items-center gap-5 py-10 text-center">
-      <h2 className="text-2xl font-semibold text-foreground">{uiText("archive.empty.title")}</h2>
-      <p className="text-sm leading-relaxed text-muted-foreground">{uiText("archive.empty.body")}</p>
-      <Button onClick={onAdd}>
+      <h2 className="text-2xl font-semibold text-foreground">{uiText("reorg.archive.empty")}</h2>
+      <p className="text-sm leading-relaxed text-muted-foreground">{uiText("reorg.archive.empty_body")}</p>
+      {onAdd && <Button variant="outline" onClick={onAdd}>
         <Plus className="mr-2 h-4 w-4" />
         {uiText("archive.empty.cta")}
-      </Button>
+      </Button>}
     </div>
   );
 }

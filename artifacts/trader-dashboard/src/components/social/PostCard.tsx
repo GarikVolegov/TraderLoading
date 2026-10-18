@@ -193,8 +193,10 @@ export function PostCard({
                       </span>
                       {c.userId === currentUserId && (
                         <button
+                          type="button"
                           onClick={() => deleteComment(c.id)}
-                          className="opacity-0 group-hover:opacity-100 ml-auto p-0.5 text-muted-foreground hover:text-destructive transition-all"
+                          aria-label={uiText("common.delete")}
+                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 ml-auto p-0.5 text-muted-foreground hover:text-destructive transition-all"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>

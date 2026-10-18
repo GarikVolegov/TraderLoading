@@ -1,3 +1,4 @@
+import { isClerkSessionRevoked } from "../services/sessionRevocation.js";
 import { getAuth } from "@clerk/express";
 import { type Request, type Response, type NextFunction } from "express";
 import type { AuthUser } from "@workspace/api-zod";
@@ -5,6 +6,7 @@ import { adminUserStatusTable, db, loginAccessTable } from "@workspace/db";
 import { and, eq, gte } from "drizzle-orm";
 import logger, { requestContext, type RequestContext } from "../lib/logger";
 import { getSession, getSessionId, type SessionData } from "../lib/auth";
+import { createLoginAccessRecorder } from "../services/loginAccessRecorder.js";
 
 declare global {
   namespace Express {
@@ -21,16 +23,6 @@ declare global {
   }
 }
 
-// In-memory dedup cache: "userId:ip" → last-logged timestamp (ms)
-const recentAccess = new Map<string, number>();
-const DEDUP_TTL = 60 * 60 * 1000; // 1 hour
-
-function pruneExpiredAccess(now: number) {
-  for (const [key, loggedAt] of recentAccess) {
-    if (now - loggedAt >= DEDUP_TTL) recentAccess.delete(key);
-  }
-}
-
 function getClientIp(req: Request): string {
   return req.ip || req.socket?.remoteAddress || "unknown";
 }
@@ -41,45 +33,20 @@ export function isAccountAllowedByAdminStatus(
   return !status || status.status === "active";
 }
 
-async function recordAccess(
-  userId: string,
-  ip: string,
-  userAgent: string | undefined,
-) {
-  const key = `${userId}:${ip}`;
-  const now = Date.now();
-  const last = recentAccess.get(key);
-  if (last && now - last < DEDUP_TTL) return; // already logged recently
-
-  pruneExpiredAccess(now);
-  recentAccess.set(key, now);
-
-  // Also check DB — avoid duplicates surviving a server restart (within 1 h)
-  const since = new Date(now - DEDUP_TTL);
-  const [existing] = await db
-    .select({ id: loginAccessTable.id })
-    .from(loginAccessTable)
-    .where(
-      and(
-        eq(loginAccessTable.userId, userId),
-        eq(loginAccessTable.ipAddress, ip),
-        gte(loginAccessTable.createdAt, since),
-      ),
-    )
-    .limit(1);
-
-  if (!existing) {
-    await db.insert(loginAccessTable).values({
-      userId,
-      ipAddress: ip,
-      userAgent: userAgent ?? null,
-    });
-  }
-}
+const recordAccess = createLoginAccessRecorder({
+  async findRecent(userId, ip, since) {
+    const [existing] = await db.select({ id: loginAccessTable.id }).from(loginAccessTable)
+      .where(and(eq(loginAccessTable.userId, userId), eq(loginAccessTable.ipAddress, ip), gte(loginAccessTable.createdAt, since))).limit(1);
+    return Boolean(existing);
+  },
+  async insert(access) { await db.insert(loginAccessTable).values(access); },
+});
 
 // ── Inietta userId nel contesto AsyncLocalStorage per il logging distribuito ──
 type AuthMiddlewareDeps = {
   getClerkUserId?: (req: Request) => string | null | undefined;
+  getClerkSessionId?: (req: Request) => string | null;
+  isSessionRevoked?: (userId: string, sessionId: string) => Promise<boolean>;
   getStoredSession?: (sid: string) => Promise<SessionData | null>;
   getAdminStatus?: (userId: string) => Promise<{ status: string } | null>;
   recordAccess?: (
@@ -112,6 +79,8 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
 
       return getAuth(req).userId;
     });
+  const getClerkSessionId = deps.getClerkSessionId ?? (deps.getClerkUserId ? () => null : (req: Request) => getAuth(req).sessionId);
+  const isSessionRevoked = deps.isSessionRevoked ?? isClerkSessionRevoked;
   const getStoredSession = deps.getStoredSession ?? getSession;
   const getAdminStatus =
     deps.getAdminStatus ??
@@ -148,6 +117,14 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
     }
 
     if (clerkUserId) {
+      try {
+        const sessionId = getClerkSessionId(req);
+        if (sessionId && await isSessionRevoked(clerkUserId, sessionId)) { next(); return; }
+      } catch (error) {
+        warn(error, "Session revocation lookup failed");
+        _res.status(503).json({ error: "Verifica accesso temporaneamente non disponibile" });
+        return;
+      }
       setAuthenticatedUser(req, {
         id: clerkUserId,
         email: null,
@@ -175,6 +152,9 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
         adminStatus = await getAdminStatus(req.user.id);
       } catch (error) {
         warn(error, "Admin status lookup failed");
+        req.user = undefined;
+        _res.status(503).json({ error: "Verifica accesso temporaneamente non disponibile" });
+        return;
       }
 
       if (!isAccountAllowedByAdminStatus(adminStatus ?? null)) {

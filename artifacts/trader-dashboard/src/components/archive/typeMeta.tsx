@@ -1,4 +1,4 @@
-import { FileText, Globe2, Image as ImageIcon, StickyNote, Video, Volume2, type LucideIcon } from "lucide-react";
+import { FileText, Network, Globe2, Image as ImageIcon, StickyNote, Video, Volume2, type LucideIcon } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
 import { TYPE_LABEL_KEY, type ArchiveType } from "@/lib/archive";
 
@@ -13,6 +13,7 @@ const ICONS: Record<ArchiveType, LucideIcon> = {
   audio: Volume2,
   link: Globe2,
   note: StickyNote,
+  mindmap: Network,
 };
 
 export function typeIcon(type: ArchiveType): LucideIcon {
@@ -24,5 +25,6 @@ export function typeLabel(type: ArchiveType): string {
 }
 
 export function formatDate(iso: string): string {
+  if (!iso || !Number.isFinite(Date.parse(iso))) return "";
   return new Date(iso).toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
 }

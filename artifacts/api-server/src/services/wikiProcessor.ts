@@ -13,6 +13,7 @@ const OFFICE_EXTS = new Set([".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx"])
 const AUDIO_EXTS = new Set([".mp3", ".wav", ".m4a", ".ogg", ".webm"]);
 const VIDEO_EXTS = new Set([".mp4", ".mov", ".mkv", ".webm"]);
 const MAX_URL_BYTES = 4 * 1024 * 1024;
+const MAX_OFFICE_EXPANDED_BYTES = 20 * 1024 * 1024;
 
 // Uploads are buffered in memory (multer.memoryStorage) before being copied to
 // storage, so the per-file cap directly bounds peak RAM per request. At a few
@@ -126,7 +127,9 @@ export function createArchivedFileText(filename: string, mimeType: string): stri
 
 export function validateWikiUploadContent(input: { kind: WikiSourceKind; filename: string; buffer: Buffer }): string | null {
   if (input.kind !== "pdf") return null;
-  if (!looksLikeHtml(input.buffer)) return null;
+  if (!looksLikeHtml(input.buffer)) {
+    return bufferHead(input.buffer).startsWith("%PDF-") ? null : "File PDF non valido: carica il documento originale.";
+  }
   const html = input.buffer.toString("utf8");
   if (isGoogleLoginHtml(html) || isGoogleLoginHtml(stripHtmlToText(html))) {
     return `${input.filename} non è il PDF originale: è una pagina di login Google. Scarica/esporta il documento reale e caricalo dalla memoria locale.`;
@@ -213,6 +216,7 @@ async function extractPdfTextForWiki(buffer: Buffer, filename: string): Promise<
 function readZipEntries(buffer: Buffer): Array<{ name: string; content: Buffer }> {
   const entries: Array<{ name: string; content: Buffer }> = [];
   let offset = 0;
+  let expandedBytes = 0;
   while (offset + 30 <= buffer.length) {
     const signature = buffer.readUInt32LE(offset);
     if (signature !== 0x04034b50) break;
@@ -228,9 +232,19 @@ function readZipEntries(buffer: Buffer): Array<{ name: string; content: Buffer }
     if ((flags & 0x08) !== 0 || dataEnd > buffer.length) break;
     const name = buffer.subarray(nameStart, nameStart + nameLength).toString("utf8");
     const compressed = buffer.subarray(dataStart, dataEnd);
+    const remainingBytes = MAX_OFFICE_EXPANDED_BYTES - expandedBytes;
+    if (remainingBytes <= 0 || uncompressedSize > remainingBytes) {
+      throw new Error("Documento Office troppo grande dopo la decompressione (limite 20 MB).");
+    }
     let content: Buffer | null = null;
     if (method === 0) content = compressed;
-    if (method === 8) content = inflateRawSync(compressed, { finishFlush: 2 });
+    // Do not trust the ZIP's claimed size: maxOutputLength bounds allocation
+    // even when a compressed member lies about its expanded byte count.
+    if (method === 8) content = inflateRawSync(compressed, { finishFlush: 2, maxOutputLength: remainingBytes });
+    if (content && content.length > remainingBytes) {
+      throw new Error("Documento Office troppo grande dopo la decompressione (limite 20 MB).");
+    }
+    expandedBytes += content?.length ?? 0;
     if (content && (!uncompressedSize || content.length === uncompressedSize)) entries.push({ name, content });
     offset = dataEnd;
   }
@@ -305,7 +319,7 @@ export async function extractWikiText(input: {
   text?: string;
 }): Promise<{ text: string; status: "ready" | "pending_transcription" | "error"; error?: string }> {
   if (input.kind === "text" || input.kind === "url") {
-    return { text: (input.text ?? input.buffer?.toString("utf8") ?? "").trim(), status: "ready" };
+    return { text: (input.text || input.buffer?.toString("utf8") || "").trim(), status: "ready" };
   }
   if (input.kind === "pdf" && input.buffer) {
     if (looksLikeHtml(input.buffer)) return extractHtmlDisguisedAsPdf(input.buffer, input.filename);

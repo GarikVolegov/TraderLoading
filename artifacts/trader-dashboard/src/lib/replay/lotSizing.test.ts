@@ -15,6 +15,7 @@ assert.equal(pipValuePerLot("US30"), 1);
 assert.equal(pipValuePerLot("NAS100"), 1);
 assert.equal(pipValuePerLot("BTC/USD"), 1);
 assert.equal(pipValuePerLot("ETHUSD"), 1);
+assert.equal(pipValuePerLot("USOIL"), 10);
 
 // pipSize is the price increment of one pip (inverse of the pip multiplier)
 assert.equal(pipSize("EURUSD"), 1 / 10000);
@@ -22,6 +23,8 @@ assert.equal(pipSize("USDJPY"), 1 / 100);
 assert.equal(pipSize("XAUUSD"), 1 / 10);
 assert.equal(pipSize("US30"), 1);
 assert.equal(pipSize("BTCUSD"), 1);
+assert.equal(pipSize("USOIL"), 0.01);
+assert.equal(computeLots({ riskAmount: 100, slPips: 20, symbol: "USOIL" }), 0.5);
 
 // mockup formula: lots = riskAmount / (slPips · pipValuePerLot), floored to 0.01
 assert.equal(computeLots({ riskAmount: 100, slPips: 20, symbol: "EURUSD" }), 0.5);

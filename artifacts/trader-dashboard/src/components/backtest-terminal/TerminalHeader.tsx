@@ -4,6 +4,7 @@
 import { ArrowLeft, Camera, Keyboard, PanelRight, Settings2 } from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { formatMoney, formatPercent, formatSignedMoney } from "./format";
+import { CoverageStatus } from "./CoverageStatus";
 import { REPLAY_TIMEFRAMES, type ReplayEngine } from "./useReplayEngine";
 
 export function TerminalHeader({
@@ -49,12 +50,10 @@ export function TerminalHeader({
       >
         <ArrowLeft size={16} />
       </button>
-      <div className="btm-logo">
-        <span>{sessionName}</span>
+      <div className="btm-symbol" title={sessionName}>
+        <span>{engine.symbol}</span>
         <span className="btm-badge">{uiText("backtest_terminal.badge")}</span>
       </div>
-
-      <div className="btm-symbol">{engine.symbol}</div>
 
       <div className="btm-tfgroup" role="tablist" aria-label={uiText("backtest_terminal.timeframe")}>
         {REPLAY_TIMEFRAMES.map((timeframe) => (
@@ -67,10 +66,12 @@ export function TerminalHeader({
             data-active={engine.interval === timeframe}
             onClick={() => engine.changeInterval(timeframe)}
           >
-            {timeframe}
+            {({ M1: "1m", M5: "5m", M15: "15m", M30: "30m", H1: "1h", H4: "4h", D1: "1D", W1: "1W" } as Record<string, string>)[timeframe]}
           </button>
         ))}
       </div>
+
+      <CoverageStatus engine={engine} />
 
       <div className="btm-chips">
         {chip(uiText("backtest_terminal.balance"), formatMoney(account.balance, language))}

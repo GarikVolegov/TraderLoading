@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Loader2, Mic, MicOff, PhoneOff, Volume2, Headphones } from "lucide-react";
-import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
-import { reportClientError } from "@/lib/clientErrorReporter";
+import { apiJSON } from "@/lib/apiFetch";
+import { getClientErrorMessage, reportClientError } from "@/lib/clientErrorReporter";
 import { ICE_SERVERS } from "./constants";
 import { useVoicePresence } from "./hooks";
 import type { VoiceSignal, ChannelType } from "./types";
+import { disposeVoiceResources, keepCurrentVoiceStream } from "./voiceResources";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { socialText } from "@/lib/i18n/reorganizationSocial";
 
 export function VoiceChannelView({
   channel,
@@ -15,39 +18,52 @@ export function VoiceChannelView({
   currentUserId: string;
   currentUserName: string;
 }) {
+  const { language } = useLanguage();
   const [inChannel, setInChannel] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [connecting, setConnecting] = useState(false);
-  const { data: participants = [] } = useVoicePresence(channel.id, true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { data: participants = [], refetch: refreshPresence } = useVoicePresence(channel.id, true);
   const streamRef = useRef<MediaStream | null>(null);
   const peerConnsRef = useRef<Record<string, RTCPeerConnection>>({});
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
+  const mountedRef = useRef(true);
+  const activeRef = useRef(false);
+  const joinEpochRef = useRef(0);
+  const pendingIceRef = useRef<Record<string, (RTCIceCandidateInit & { voiceSession?: string })[]>>({});
+  const negotiationRef = useRef<Record<string, string>>({});
+  const peerEpochRef = useRef<Record<string, string | undefined>>({});
 
   const createPeer = useCallback(
     (peerId: string, isInitiator: boolean): RTCPeerConnection => {
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
       peerConnsRef.current[peerId] = pc;
+      if (isInitiator) negotiationRef.current[peerId] = crypto.randomUUID();
       if (streamRef.current) {
         streamRef.current
           .getTracks()
           .forEach((t) => pc.addTrack(t, streamRef.current!));
       }
       pc.onicecandidate = async (e) => {
-        if (e.candidate) {
-          await apiFetch(`community/voice/${channel.id}/signal`, {
+        if (e.candidate && activeRef.current) {
+          try { await apiJSON(`community/voice/${channel.id}/signal`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               to: peerId,
               type: "ice",
-              data: JSON.stringify(e.candidate),
+              data: JSON.stringify({ ...e.candidate.toJSON(), voiceSession: negotiationRef.current[peerId] }),
             }),
-          });
+          }); } catch (error) {
+            reportClientError(error, { context: "community voice ICE send", notify: false });
+            if (activeRef.current && peerConnsRef.current[peerId] === pc) setErrorMessage(getClientErrorMessage(error));
+          }
         }
       };
       pc.ontrack = (e) => {
+        if (!activeRef.current) return;
         let audio = audioRefs.current[peerId];
         if (!audio) {
           audio = new Audio();
@@ -57,17 +73,22 @@ export function VoiceChannelView({
         audio.srcObject = e.streams[0];
       };
       if (isInitiator) {
-        pc.createOffer().then((offer) => {
-          pc.setLocalDescription(offer);
-          apiFetch(`community/voice/${channel.id}/signal`, {
+        pc.createOffer().then(async (offer) => {
+          if (!activeRef.current || peerConnsRef.current[peerId] !== pc) return;
+          await pc.setLocalDescription(offer);
+          if (!activeRef.current || peerConnsRef.current[peerId] !== pc) return;
+          await apiJSON(`community/voice/${channel.id}/signal`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               to: peerId,
               type: "offer",
-              data: JSON.stringify(offer),
+              data: JSON.stringify({ ...offer, voiceSession: negotiationRef.current[peerId] }),
             }),
           });
+        }).catch(error => {
+          reportClientError(error, { context: "community voice offer", notify: false });
+          if (activeRef.current && peerConnsRef.current[peerId] === pc) setErrorMessage(getClientErrorMessage(error));
         });
       }
       return pc;
@@ -76,49 +97,91 @@ export function VoiceChannelView({
   );
 
   const joinChannel = async () => {
+    const epoch = ++joinEpochRef.current;
+    setErrorMessage(null);
     setConnecting(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!keepCurrentVoiceStream(stream, mountedRef.current && joinEpochRef.current === epoch)) return;
       streamRef.current = stream;
       await apiJSON(`community/voice/${channel.id}/join`, { method: "POST" });
+      await refreshPresence({ throwOnError: true });
+      if (!mountedRef.current || joinEpochRef.current !== epoch) {
+        stream.getTracks().forEach(track => track.stop());
+        await apiJSON(`community/voice/${channel.id}/leave`, { method: "DELETE" });
+        return;
+      }
+      activeRef.current = true;
       setInChannel(true);
       pingIntervalRef.current = setInterval(async () => {
-        await apiFetch(`community/voice/${channel.id}/ping`, {
+        try { await apiJSON(`community/voice/${channel.id}/ping`, {
           method: "POST",
-        });
+        }); } catch (error) {
+          if (!activeRef.current || joinEpochRef.current !== epoch) return;
+          setErrorMessage(getClientErrorMessage(error));
+          reportClientError(error, { context: "community voice keepalive", notify: false });
+          if ([401, 402, 403, 404].includes((error as { status?: number }).status ?? 0)) void leaveChannel();
+        }
       }, 8_000);
       pollIntervalRef.current = setInterval(async () => {
         try {
           const { signals } = await apiJSON<{ signals: VoiceSignal[] }>(
             `community/voice/${channel.id}/signals`,
           );
+          if (!activeRef.current || joinEpochRef.current !== epoch) return;
           for (const sig of signals ?? []) {
-            let pc = peerConnsRef.current[sig.from];
+            if (!activeRef.current || joinEpochRef.current !== epoch) return;
+            let pc: RTCPeerConnection | undefined = peerConnsRef.current[sig.from];
             if (sig.type === "offer") {
+              if (currentUserId < sig.from) continue;
+              const offer = JSON.parse(sig.data) as RTCSessionDescriptionInit & { voiceSession?: string };
+              if (pc && offer.voiceSession && negotiationRef.current[sig.from] && offer.voiceSession !== negotiationRef.current[sig.from]) {
+                pc.close();
+                const audio = audioRefs.current[sig.from];
+                if (audio) { audio.pause(); audio.srcObject = null; }
+                delete audioRefs.current[sig.from];
+                delete peerConnsRef.current[sig.from];
+                pc = undefined;
+              }
               if (!pc) pc = createPeer(sig.from, false);
+              if (typeof offer.voiceSession === "string") negotiationRef.current[sig.from] = offer.voiceSession;
               await pc.setRemoteDescription(
-                new RTCSessionDescription(JSON.parse(sig.data)),
+                new RTCSessionDescription(offer),
               );
+              for (const candidate of pendingIceRef.current[sig.from] ?? []) {
+                if (!candidate.voiceSession || candidate.voiceSession === negotiationRef.current[sig.from]) await pc.addIceCandidate(candidate);
+              }
+              delete pendingIceRef.current[sig.from];
               const answer = await pc.createAnswer();
+              if (!activeRef.current || joinEpochRef.current !== epoch) return;
               await pc.setLocalDescription(answer);
-              await apiFetch(`community/voice/${channel.id}/signal`, {
+              await apiJSON(`community/voice/${channel.id}/signal`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   to: sig.from,
                   type: "answer",
-                  data: JSON.stringify(answer),
+                  data: JSON.stringify({ ...answer, voiceSession: negotiationRef.current[sig.from] }),
                 }),
               });
             } else if (sig.type === "answer" && pc) {
+              const answer = JSON.parse(sig.data) as RTCSessionDescriptionInit & { voiceSession?: string };
+              if (pc.signalingState !== "have-local-offer" || answer.voiceSession && answer.voiceSession !== negotiationRef.current[sig.from]) continue;
               await pc.setRemoteDescription(
-                new RTCSessionDescription(JSON.parse(sig.data)),
+                new RTCSessionDescription(answer),
               );
-            } else if (sig.type === "ice" && pc) {
+              for (const candidate of pendingIceRef.current[sig.from] ?? []) {
+                if (!candidate.voiceSession || candidate.voiceSession === negotiationRef.current[sig.from]) await pc.addIceCandidate(candidate);
+              }
+              delete pendingIceRef.current[sig.from];
+            } else if (sig.type === "ice") {
               try {
-                await pc.addIceCandidate(
-                  new RTCIceCandidate(JSON.parse(sig.data)),
-                );
+                const candidate = JSON.parse(sig.data) as RTCIceCandidateInit & { voiceSession?: string };
+                if (pc?.remoteDescription) {
+                  if (!candidate.voiceSession || candidate.voiceSession === negotiationRef.current[sig.from]) await pc.addIceCandidate(candidate);
+                  else pendingIceRef.current[sig.from] = [...(pendingIceRef.current[sig.from] ?? []), candidate].slice(-64);
+                }
+                else pendingIceRef.current[sig.from] = [...(pendingIceRef.current[sig.from] ?? []), candidate].slice(-64);
               } catch (error) {
                 reportClientError(error, {
                   context: "community voice ICE candidate",
@@ -128,43 +191,57 @@ export function VoiceChannelView({
             }
           }
         } catch (error) {
+          if (!activeRef.current || joinEpochRef.current !== epoch) return;
+          setErrorMessage(getClientErrorMessage(error));
           reportClientError(error, {
             context: "community voice signal polling",
             notify: false,
           });
+          if ([401, 402, 403, 404].includes((error as { status?: number }).status ?? 0)) void leaveChannel();
         }
       }, 2_000);
     } catch (err) {
+      disposeVoiceResources({ stream: streamRef.current, peers: peerConnsRef.current, audio: audioRefs.current });
+      streamRef.current = null;
+      if (mountedRef.current && joinEpochRef.current === epoch) setErrorMessage(getClientErrorMessage(err));
       reportClientError(err, { context: "community voice join", notify: false });
     } finally {
-      setConnecting(false);
+      if (mountedRef.current && joinEpochRef.current === epoch) setConnecting(false);
     }
   };
 
   const leaveChannel = useCallback(async () => {
+    ++joinEpochRef.current;
+    const wasActive = activeRef.current;
+    activeRef.current = false;
     if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    Object.values(peerConnsRef.current).forEach((pc) => pc.close());
+    pingIntervalRef.current = null;
+    pollIntervalRef.current = null;
+    disposeVoiceResources({ stream: streamRef.current, peers: peerConnsRef.current, audio: audioRefs.current });
     peerConnsRef.current = {};
-    Object.values(audioRefs.current).forEach((a) => {
-      a.pause();
-      a.srcObject = null;
-    });
     audioRefs.current = {};
-    streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    pendingIceRef.current = {};
+    negotiationRef.current = {};
+    peerEpochRef.current = {};
+    if (mountedRef.current) {
+      setInChannel(false);
+      setIsMuted(false);
+      setConnecting(false);
+    }
     try {
-      await apiFetch(`community/voice/${channel.id}/leave`, {
+      if (wasActive) await apiJSON(`community/voice/${channel.id}/leave`, {
         method: "DELETE",
+        keepalive: true,
       });
     } catch (error) {
+      if (mountedRef.current) setErrorMessage(getClientErrorMessage(error));
       reportClientError(error, {
         context: "community voice leave",
         notify: false,
       });
     }
-    setInChannel(false);
-    setIsMuted(false);
   }, [channel.id]);
 
   useEffect(() => {
@@ -172,21 +249,42 @@ export function VoiceChannelView({
     const prevParticipants = participants.filter(
       (p) => p.userId !== currentUserId,
     );
+    const present = new Set(prevParticipants.map(p => p.userId));
+    for (const [peerId, pc] of Object.entries(peerConnsRef.current)) {
+      if (present.has(peerId)) continue;
+      pc.close();
+      const audio = audioRefs.current[peerId];
+      if (audio) { audio.pause(); audio.srcObject = null; }
+      delete peerConnsRef.current[peerId];
+      delete audioRefs.current[peerId];
+      delete pendingIceRef.current[peerId];
+      delete negotiationRef.current[peerId];
+      delete peerEpochRef.current[peerId];
+    }
     prevParticipants.forEach((p) => {
-      if (!peerConnsRef.current[p.userId]) createPeer(p.userId, true);
+      const pc = peerConnsRef.current[p.userId];
+      if (pc && peerEpochRef.current[p.userId] && p.joinedAt && peerEpochRef.current[p.userId] !== p.joinedAt) {
+        pc.close();
+        const audio = audioRefs.current[p.userId];
+        if (audio) { audio.pause(); audio.srcObject = null; }
+        delete peerConnsRef.current[p.userId];
+        delete audioRefs.current[p.userId];
+        delete negotiationRef.current[p.userId];
+      }
+      peerEpochRef.current[p.userId] = p.joinedAt;
+      // Both browsers discover each other: only one may initiate the offer.
+      if (!peerConnsRef.current[p.userId]) createPeer(p.userId, currentUserId < p.userId);
     });
   }, [participants, inChannel, currentUserId, createPeer]);
 
-  useEffect(
-    () => () => {
-      if (inChannel) leaveChannel();
-    },
-    [],
-  );
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; void leaveChannel(); };
+  }, [leaveChannel]);
 
   const toggleMute = () => {
     if (!streamRef.current) return;
-    const enabled = !isMuted;
+    const enabled = isMuted;
     streamRef.current.getAudioTracks().forEach((t) => {
       t.enabled = enabled;
     });
@@ -209,6 +307,7 @@ export function VoiceChannelView({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {errorMessage && <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{errorMessage}</p>}
         <div className="flex flex-col items-center justify-center min-h-[200px] gap-6">
           <div
             className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${inChannel ? "bg-primary/20 border-2 border-primary shadow-lg shadow-primary/20" : "bg-secondary/40 border-2 border-border"}`}
@@ -252,6 +351,8 @@ export function VoiceChannelView({
               <div className="flex items-center gap-3">
                 <button
                   onClick={toggleMute}
+                  aria-label={socialText(language, isMuted ? "voiceUnmute" : "voiceMute")}
+                  aria-pressed={isMuted}
                   className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors border ${isMuted ? "bg-red-500/20 border-red-500/50 text-red-400" : "bg-secondary/60 border-border text-foreground hover:bg-secondary"}`}
                 >
                   {isMuted ? (
@@ -262,6 +363,7 @@ export function VoiceChannelView({
                 </button>
                 <button
                   onClick={leaveChannel}
+                  aria-label={socialText(language, "voiceLeave")}
                   className="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-400 transition-colors shadow-lg shadow-red-500/20"
                 >
                   <PhoneOff className="w-5 h-5 text-white" />

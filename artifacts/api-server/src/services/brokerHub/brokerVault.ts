@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
+import { brokerLocalPath } from "./localStoragePath.js";
 
 interface BrokerVaultOptions {
   path?: string;
@@ -23,7 +24,7 @@ export interface BrokerVault {
 }
 
 function vaultPath(): string {
-  return join(process.cwd(), ".local", "broker-vault.json");
+  return brokerLocalPath("broker-vault.json");
 }
 
 function keyMaterial(raw?: string): Buffer {

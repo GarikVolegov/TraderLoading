@@ -1,9 +1,9 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type RequestHandler } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db } from "@workspace/db";
-import { journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable, accountTradesTable } from "@workspace/db";
+import { journalEntriesTable, journalImagesTable, journalRecapsTable, journalTagsTable, missionsTable, profileTable, accountTradesTable, marketDecisionsTable } from "@workspace/db";
 import { buildManualTradeRow, buildTradeRow, hasTradeIntent, type ManualTradeInput } from "../services/manualTrade.js";
 import { parseTradesCsv } from "../services/tradesCsv.js";
 import {
@@ -15,7 +15,7 @@ import {
   UploadJournalImageParams,
   DeleteJournalImageParams,
 } from "@workspace/api-zod";
-import { eq, desc, and, isNull, inArray, sql } from "drizzle-orm";
+import { eq, desc, and, or, isNull, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getUserId, getOrCreateProfile } from "./profile.js";
 import {
@@ -41,6 +41,8 @@ import { getUserNotificationLanguage } from "./push.js";
 import { getTextClient } from "../services/llmClient.js";
 import logger from "../lib/logger.js";
 import { getUploadsDir } from "../lib/uploads.js";
+import { imageMatchesType } from "../lib/imageValidation.js";
+import { tradingDay } from "../lib/tradingTime.js";
 import { consumeQuota } from "../lib/userQuota.js";
 
 const router: IRouter = Router();
@@ -53,13 +55,18 @@ type DailyMissionSeed = {
 };
 
 const DAILY_MISSIONS: DailyMissionSeed[] = [];
+type JournalConnection = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 const recapKinds = ["weekly", "four_week"] as const;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const recapDate = z.string().regex(ISO_DATE_RE).refine(value => {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}, "Invalid calendar date");
 
 const JournalRecapQuery = z.object({
   kind: z.enum(recapKinds),
-  periodStart: z.string().regex(ISO_DATE_RE),
-  periodEnd: z.string().regex(ISO_DATE_RE),
+  periodStart: recapDate,
+  periodEnd: recapDate,
 });
 
 const JournalRecapBody = JournalRecapQuery.extend({
@@ -95,8 +102,8 @@ const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) cb(null, true);
-    else cb(new Error("Only image files are allowed"));
+    if (["image/png", "image/jpeg", "image/gif", "image/webp"].includes(file.mimetype)) cb(null, true);
+    else cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", "image"));
   },
 });
 
@@ -188,12 +195,12 @@ export function summarizeJournalEntryTags(tagsList: Array<string | null | undefi
   });
 }
 
-async function saveJournalTags(userId: string | null, tags: string | null | undefined) {
+async function saveJournalTags(userId: string | null, tags: string | null | undefined, conn: JournalConnection = db) {
   const normalizedTags = normalizeJournalTags(tags);
   if (normalizedTags.length === 0) return;
 
   const tagKeys = normalizedTags.map(journalTagKey);
-  const existing = await db
+  const existing = await conn
     .select({ tagKey: journalTagsTable.tagKey })
     .from(journalTagsTable)
     .where(and(journalTagUserFilter(userId), inArray(journalTagsTable.tagKey, tagKeys)));
@@ -202,7 +209,7 @@ async function saveJournalTags(userId: string | null, tags: string | null | unde
   const missingTags = normalizedTags.filter((tag) => !existingKeys.has(journalTagKey(tag)));
   if (missingTags.length === 0) return;
 
-  await db
+  await conn
     .insert(journalTagsTable)
     .values(missingTags.map((tag) => ({
       tag,
@@ -226,8 +233,16 @@ type JournalImageSerializable = Pick<typeof journalImagesTable.$inferSelect, "id
 export function serializeJournalEntry(
   entry: JournalEntrySerializable,
   images: JournalImageSerializable[],
+  manualTrade?: typeof accountTradesTable.$inferSelect,
 ) {
   return {
+    ...(manualTrade ? { manualTrade: {
+      accountTradeId: manualTrade.id,
+      executionEnvironment: manualTrade.executionEnvironment,
+      symbol: manualTrade.symbol, direction: manualTrade.direction,
+      entryPrice: Number(manualTrade.entryPrice), exitPrice: Number(manualTrade.exitPrice),
+      stopLoss: manualTrade.stopLoss === null ? null : Number(manualTrade.stopLoss), profit: Number(manualTrade.profit),
+    }} : {}),
     id: entry.id,
     title: entry.title,
     content: entry.content,
@@ -255,28 +270,31 @@ async function getEntryWithImages(id: number, userId: string | null) {
     .from(journalImagesTable)
     .where(eq(journalImagesTable.entryId, id));
 
-  return serializeJournalEntry(entry, images);
+  const [trade] = userId ? await db.select().from(accountTradesTable).where(and(
+    eq(accountTradesTable.userId, userId), eq(accountTradesTable.ticket, `manual-${id}`), eq(accountTradesTable.source, "manual"),
+  )).limit(1) : [];
+  const [decision] = userId ? await db.select({id:marketDecisionsTable.id}).from(marketDecisionsTable).where(and(eq(marketDecisionsTable.userId,userId),eq(marketDecisionsTable.journalEntryId,id))).limit(1) : [];
+  return {...serializeJournalEntry(entry, images, trade),marketDecisionId:decision?.id??null};
 }
 
-async function ensureTodayMissionsExist(userId: string | null) {
-  const today = new Date().toISOString().slice(0, 10);
-  const existing = await db.select().from(missionsTable).where(and(eq(missionsTable.missionDate, today), missionUserFilter(userId)));
+async function ensureTodayMissionsExist(userId: string | null, conn: JournalConnection) {
+  if (DAILY_MISSIONS.length === 0) return;
+  const today = tradingDay(new Date())!;
+  const existing = await conn.select().from(missionsTable).where(and(eq(missionsTable.missionDate, today), missionUserFilter(userId)));
   if (existing.length === 0) {
-    await db.insert(missionsTable).values(
+    await conn.insert(missionsTable).values(
       DAILY_MISSIONS.map((m) => ({ ...m, completed: false, missionDate: today, userId }))
     );
   }
 }
 
-async function awardJournalXP(userId: string | null) {
-  const profile = await getOrCreateProfile(userId);
-  const newXp = profile.xp + JOURNAL_XP_REWARD;
-  await db.update(profileTable).set({ xp: newXp }).where(eq(profileTable.id, profile.id));
+async function awardJournalXP(userId: string | null, profileId: number, conn: JournalConnection) {
+  await conn.update(profileTable).set({ xp: sql`${profileTable.xp} + ${JOURNAL_XP_REWARD}` }).where(eq(profileTable.id, profileId));
 
-  await ensureTodayMissionsExist(userId);
+  await ensureTodayMissionsExist(userId, conn);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const [journalingMission] = await db
+  const today = tradingDay(new Date())!;
+  const [journalingMission] = await conn
     .select()
     .from(missionsTable)
     .where(and(
@@ -287,7 +305,7 @@ async function awardJournalXP(userId: string | null) {
     ));
 
   if (journalingMission) {
-    await db.update(missionsTable)
+    await conn.update(missionsTable)
       .set({ completed: true, completedAt: new Date() })
       .where(eq(missionsTable.id, journalingMission.id));
   }
@@ -321,13 +339,18 @@ router.get("/journal", async (req, res) => {
     else imagesByEntry.set(image.entryId, [image]);
   }
 
-  res.json(entries.map((entry) => serializeJournalEntry(entry, imagesByEntry.get(entry.id) ?? [])));
+  const trades = userId ? await db.select().from(accountTradesTable).where(and(
+    eq(accountTradesTable.userId, userId), eq(accountTradesTable.source, "manual"),
+    inArray(accountTradesTable.journalEntryId, entries.map(entry => entry.id)),
+  )) : [];
+  const tradesByEntry = new Map(trades.filter(trade => trade.ticket === `manual-${trade.journalEntryId}`).map(trade => [trade.journalEntryId, trade]));
+  res.json(entries.map((entry) => serializeJournalEntry(entry, imagesByEntry.get(entry.id) ?? [], tradesByEntry.get(entry.id))));
 });
 
 /** Keep a manual entry's structured trade (off-contract fields on the body) in sync
  *  with accountTrades so the coach/edge/equity see it (finding 3.5). Upserts on the
  *  entry-keyed ticket, or removes the row when the fields are cleared/insufficient. */
-async function syncManualTrade(userId: string | null, entryId: number, tradeDate: string, rawBody: unknown): Promise<void> {
+async function syncManualTrade(userId: string | null, entryId: number, tradeDate: string, rawBody: unknown, conn: JournalConnection = db): Promise<void> {
   if (!userId) return;
   // A body without any trade fields (a plain-text edit) leaves the linked trade
   // untouched — never let editing a note silently delete its coach trade.
@@ -335,43 +358,98 @@ async function syncManualTrade(userId: string | null, entryId: number, tradeDate
   const ticket = `manual-${entryId}`;
   const row = buildManualTradeRow((rawBody ?? {}) as ManualTradeInput, { userId, journalEntryId: entryId, tradeDate });
   if (!row) {
-    await db.delete(accountTradesTable).where(
+    await conn.delete(accountTradesTable).where(
       and(eq(accountTradesTable.source, "manual"), eq(accountTradesTable.ticket, ticket), eq(accountTradesTable.userId, userId)),
     );
     return;
   }
+  const [existing] = await conn.select().from(accountTradesTable).where(and(
+    eq(accountTradesTable.source, "manual"), eq(accountTradesTable.ticket, ticket), eq(accountTradesTable.userId, userId),
+  )).limit(1);
   const values = { ...row, journalEntryId: entryId, updatedAt: new Date() };
-  await db
+  const raw = rawBody as Record<string, unknown>;
+  if (!existing) {
+    // Older clients can still record facts; an omitted declaration cannot
+    // become qualifying simulation or live evidence.
+    values.executionEnvironment = z.enum(["simulation", "real", "unknown"]).default("unknown").parse(raw.executionEnvironment);
+  }
+  if (existing) {
+    if (existing.executionEnvironment !== "unknown" || !("executionEnvironment" in raw)) {
+      values.executionEnvironment = existing.executionEnvironment;
+    }
+    // The edit form exposes price/risk/P&L, not fees, volume or exact timestamps.
+    // Preserve those fields unless this request explicitly supplied them.
+    if (!("volume" in raw)) values.volume = existing.volume ?? row.volume;
+    for (const key of ["commission", "swap", "takeProfit"] as const) {
+      if (!(key in raw)) values[key] = existing[key];
+    }
+    for (const key of ["openTime", "closeTime"] as const) {
+      if (!(key in raw) && existing[key] && !/^\d{4}-\d{2}-\d{2}$/.test(existing[key]!)) values[key] = existing[key]!;
+    }
+  }
+  await conn
     .insert(accountTradesTable)
     .values(values)
     .onConflictDoUpdate({
       target: [accountTradesTable.source, accountTradesTable.ticket, accountTradesTable.userId],
-      set: values,
+      set: {
+        ...values,
+        executionEnvironment: sql`CASE WHEN ${accountTradesTable.executionEnvironment} = 'unknown' THEN excluded.execution_environment ELSE ${accountTradesTable.executionEnvironment} END`,
+      },
     });
+}
+
+const JournalCoreInput = z.object({
+  title: z.string().trim().min(1).max(200),
+  tradeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  }),
+});
+const ManualJournalInput = z.object({
+  executionEnvironment: z.enum(["simulation", "real", "unknown"]).optional(),
+  symbol: z.string().trim().min(1).max(32),
+  direction: z.enum(["buy", "sell"]).optional(),
+  entryPrice: z.number().finite().positive().lt(1e9),
+  exitPrice: z.number().finite().positive().lt(1e9),
+  profit: z.number().finite().gt(-1e12).lt(1e12),
+  stopLoss: z.number().finite().positive().lt(1e9).nullable().optional(),
+});
+function validateJournalWrite(raw: unknown) {
+  JournalCoreInput.parse(raw);
+  if (hasTradeIntent(raw)) ManualJournalInput.parse(raw);
+}
+
+export async function linkMarketDecision(conn: JournalConnection, userId: string | null, entryId: number, raw: unknown) {
+  const value = raw && typeof raw === "object" ? (raw as Record<string, unknown>).marketDecisionId : undefined;
+  if(value===undefined || value===null) return;
+  const id=z.string().uuid().parse(value);
+  if(!userId) throw Object.assign(new Error("Not found"),{status:404});
+  const [entry]=await conn.select({id:journalEntriesTable.id}).from(journalEntriesTable).where(and(eq(journalEntriesTable.id,entryId),eq(journalEntriesTable.userId,userId))).limit(1);
+  if(!entry)throw Object.assign(new Error("Not found"),{status:404});
+  const [linked]=await conn.update(marketDecisionsTable).set({journalEntryId:entryId})
+    .where(and(eq(marketDecisionsTable.id,id),eq(marketDecisionsTable.userId,userId),
+      or(isNull(marketDecisionsTable.journalEntryId),eq(marketDecisionsTable.journalEntryId,entryId)))).returning();
+  if(!linked) throw Object.assign(new Error("Not found"),{status:404});
 }
 
 router.post("/journal", async (req, res) => {
   const userId = getUserId(req);
   const body = CreateJournalEntryBody.parse(req.body);
-
-  const [entry] = await db
-    .insert(journalEntriesTable)
-    .values({
-      title: body.title,
-      content: body.content,
-      tradeDate: body.tradeDate,
-      result: body.result,
-      tags: serializeJournalTags(body.tags),
-      userId,
-    })
-    .returning();
-
-  await saveJournalTags(userId, body.tags);
-  await awardJournalXP(userId);
-  await syncManualTrade(userId, entry.id, body.tradeDate, req.body);
-
-  const data = await getEntryWithImages(entry.id, userId);
-  res.status(201).json(data);
+  validateJournalWrite(req.body);
+  const profile = await getOrCreateProfile(userId);
+  const entry = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(journalEntriesTable).values({
+      title: body.title, content: body.content, tradeDate: body.tradeDate,
+      result: body.result, tags: serializeJournalTags(body.tags), userId,
+    }).returning();
+    await saveJournalTags(userId, body.tags, tx);
+    await syncManualTrade(userId, created.id, body.tradeDate, req.body, tx);
+    await linkMarketDecision(tx,userId,created.id,req.body);
+    await awardJournalXP(userId, profile.id, tx);
+    return created;
+  });
+  res.status(201).json(await getEntryWithImages(entry.id, userId));
 });
 
 // Adversarial-review finding: unbounded rows + one sequential awaited DB round-trip
@@ -388,33 +466,38 @@ router.post("/journal/import-csv", async (req, res) => {
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
   const csv = typeof req.body?.csv === "string" ? req.body.csv : "";
   if (!csv.trim()) { res.status(400).json({ error: "CSV vuoto" }); return; }
+  const executionEnvironment = z.enum(["simulation", "real", "unknown"]).default("unknown").parse(req.body?.executionEnvironment);
 
   const { trades, skipped } = parseTradesCsv(csv);
   if (trades.length > MAX_IMPORT_ROWS) {
     res.status(413).json({ error: `CSV troppo grande: massimo ${MAX_IMPORT_ROWS} righe per import` });
     return;
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = tradingDay(new Date())!;
   let invalid = 0;
   const rows: (typeof accountTradesTable.$inferInsert)[] = [];
   for (let i = 0; i < trades.length; i += 1) {
     const t = trades[i];
     const ticket = `csv-${t.ticket && t.ticket.trim() ? t.ticket.trim() : String(i + 1)}`;
     const tradeDate = t.closeTime || t.openTime || today;
-    const row = buildTradeRow(t, { userId, source: "manual", ticket, tradeDate });
+    const row = buildTradeRow({ ...t, executionEnvironment }, { userId, source: "manual", ticket, tradeDate });
     if (!row) { invalid += 1; continue; }
     rows.push({ ...row, updatedAt: new Date() });
   }
 
+  // A statement may repeat a ticket; keep its last row, as a later re-import would.
+  const uniqueRows = [...new Map(rows.map(row => [row.ticket, row])).values()];
   let imported = 0;
-  for (let i = 0; i < rows.length; i += IMPORT_UPSERT_CHUNK) {
-    const slice = rows.slice(i, i + IMPORT_UPSERT_CHUNK);
-    await db
+  await db.transaction(async tx => {
+  for (let i = 0; i < uniqueRows.length; i += IMPORT_UPSERT_CHUNK) {
+    const slice = uniqueRows.slice(i, i + IMPORT_UPSERT_CHUNK);
+    await tx
       .insert(accountTradesTable)
       .values(slice)
       .onConflictDoUpdate({
         target: [accountTradesTable.source, accountTradesTable.ticket, accountTradesTable.userId],
         set: {
+          symbol: sql`excluded.symbol`,
           direction: sql`excluded.direction`,
           volume: sql`excluded.volume`,
           openTime: sql`excluded.open_time`,
@@ -427,11 +510,13 @@ router.post("/journal/import-csv", async (req, res) => {
           commission: sql`excluded.commission`,
           swap: sql`excluded.swap`,
           status: sql`excluded.status`,
+          executionEnvironment: sql`CASE WHEN ${accountTradesTable.executionEnvironment} = 'unknown' THEN excluded.execution_environment ELSE ${accountTradesTable.executionEnvironment} END`,
           updatedAt: sql`excluded.updated_at`,
         },
       });
     imported += slice.length;
   }
+  });
   res.json({ imported, skipped: skipped + invalid });
 });
 
@@ -513,19 +598,13 @@ router.put("/journal/recaps", async (req, res) => {
     updatedAt: new Date(),
   };
 
-  const [existing] = await db
-    .select({ id: journalRecapsTable.id })
-    .from(journalRecapsTable)
-    .where(and(
-      eq(journalRecapsTable.kind, body.kind),
-      eq(journalRecapsTable.periodStart, body.periodStart),
-      eq(journalRecapsTable.periodEnd, body.periodEnd),
-      recapUserFilter(userId),
-    ));
-
-  const [saved] = existing
-    ? await db.update(journalRecapsTable).set(values).where(eq(journalRecapsTable.id, existing.id)).returning()
-    : await db.insert(journalRecapsTable).values(values).returning();
+  // The unique period key also arbitrates concurrent first saves. A preceding
+  // SELECT cannot prevent two requests from both attempting the initial INSERT.
+  const [saved] = await db.insert(journalRecapsTable).values(values)
+    .onConflictDoUpdate({
+      target: [journalRecapsTable.userId, journalRecapsTable.kind, journalRecapsTable.periodStart, journalRecapsTable.periodEnd],
+      set: values,
+    }).returning();
 
   res.json(saved);
 });
@@ -668,7 +747,9 @@ router.put("/journal/:id", async (req, res) => {
   const { id } = UpdateJournalEntryParams.parse({ id: Number(req.params.id) });
   const body = UpdateJournalEntryBody.parse(req.body);
 
-  const [updated] = await db
+  validateJournalWrite(req.body);
+  const updated = await db.transaction(async (tx) => {
+  const [row] = await tx
     .update(journalEntriesTable)
     .set({
       title: body.title,
@@ -681,9 +762,13 @@ router.put("/journal/:id", async (req, res) => {
     .where(and(eq(journalEntriesTable.id, id), entryUserFilter(userId)))
     .returning();
 
+  if (!row) return null;
+  await saveJournalTags(userId, body.tags, tx);
+  await syncManualTrade(userId, id, body.tradeDate, req.body, tx);
+  await linkMarketDecision(tx,userId,id,req.body);
+  return row;
+  });
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-  await saveJournalTags(userId, body.tags);
-  await syncManualTrade(userId, id, body.tradeDate, req.body);
   const data = await getEntryWithImages(id, userId);
   res.json(data);
 });
@@ -701,23 +786,31 @@ router.delete("/journal/:id", async (req, res) => {
     .from(journalImagesTable)
     .where(eq(journalImagesTable.entryId, id));
 
+  await db.transaction(async tx => {
+    if (userId) {
+      await tx.delete(accountTradesTable).where(and(
+        eq(accountTradesTable.source, "manual"), eq(accountTradesTable.ticket, `manual-${id}`), eq(accountTradesTable.userId, userId),
+      ));
+    }
+    await tx.delete(journalEntriesTable).where(and(eq(journalEntriesTable.id, id), entryUserFilter(userId)));
+  });
   for (const img of images) {
-    const filePath = path.join(UPLOADS_DIR, img.filePath);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  }
-
-  await db.delete(journalEntriesTable).where(eq(journalEntriesTable.id, id));
-  // Drop the linked manual trade too, so the coach doesn't keep a deleted entry's trade.
-  if (userId) {
-    await db.delete(accountTradesTable).where(
-      and(eq(accountTradesTable.source, "manual"), eq(accountTradesTable.ticket, `manual-${id}`), eq(accountTradesTable.userId, userId)),
-    );
+    await fs.promises.unlink(path.join(UPLOADS_DIR, img.filePath)).catch(error => {
+      if (error.code !== "ENOENT") logger.warn({ error }, "Journal file cleanup failed");
+    });
   }
   res.json({ success: true });
 });
 
 router.post(
   "/journal/:id/images",
+  async (req, res, next) => {
+    const { id } = UploadJournalImageParams.parse({ id: Number(req.params.id) });
+    const [owned] = await db.select({ id: journalEntriesTable.id }).from(journalEntriesTable)
+      .where(and(eq(journalEntriesTable.id, id), entryUserFilter(getUserId(req))));
+    if (!owned) { res.status(404).json({ error: "Entry not found" }); return; }
+    next();
+  },
   upload.single("image"),
   async (req, res) => {
     const userId = getUserId(req);
@@ -727,10 +820,18 @@ router.post(
       .select()
       .from(journalEntriesTable)
       .where(and(eq(journalEntriesTable.id, id), entryUserFilter(userId)));
-    if (!entry) { res.status(404).json({ error: "Entry not found" }); return; }
+    if (!entry) {
+      if (req.file) await fs.promises.unlink(req.file.path);
+      res.status(404).json({ error: "Entry not found" }); return;
+    }
 
     if (!req.file) { res.status(400).json({ error: "No file uploaded" }); return; }
 
+    const bytes = await fs.promises.readFile(req.file.path);
+    if (!imageMatchesType(bytes, req.file.mimetype, req.file.originalname)) {
+      await fs.promises.unlink(req.file.path);
+      res.status(415).json({ error: "Upload a PNG, JPEG, GIF or WebP image" }); return;
+    }
     const [img] = await db
       .insert(journalImagesTable)
       .values({ entryId: id, filePath: req.file.filename })
@@ -768,10 +869,28 @@ router.delete("/journal/:id/images/:imageId", async (req, res) => {
   res.json({ success: true });
 });
 
-router.get("/journal/image/:filename", (req, res) => {
-  const filePath = path.join(UPLOADS_DIR, req.params.filename);
-  if (!fs.existsSync(filePath)) { res.status(404).json({ error: "Not found" }); return; }
-  res.sendFile(filePath);
-});
+const serveJournalImage: RequestHandler = async (req, res, next) => {
+  const filename = String(req.params.filename);
+  if (filename !== path.basename(filename) || filename.startsWith(".")) {
+    res.status(404).json({ error: "Not found" }); return;
+  }
+  const [image] = await db.select({ userId: journalEntriesTable.userId })
+    .from(journalImagesTable).innerJoin(journalEntriesTable, eq(journalImagesTable.entryId, journalEntriesTable.id))
+    .where(eq(journalImagesTable.filePath, filename)).limit(1);
+  if (!image && req.path.startsWith("/uploads/")) { next(); return; }
+  if (!image || !getUserId(req) || image.userId !== getUserId(req)) {
+    res.status(404).json({ error: "Not found" }); return;
+  }
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cache-Control", "private, no-store");
+  // Older uploads may contain active formats: never execute them inline.
+  if (!/\.(png|jpe?g|gif|webp)$/i.test(filename)) res.attachment(filename);
+  res.sendFile(filename, { root: UPLOADS_DIR }, error => {
+    if (error) next(error);
+  });
+};
+router.get("/journal/image/:filename", serveJournalImage);
+// Guard the legacy static alias too; knowing the filename grants no access.
+router.get("/uploads/:filename", serveJournalImage);
 
 export default router;

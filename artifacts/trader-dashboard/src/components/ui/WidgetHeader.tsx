@@ -41,7 +41,7 @@ export function WidgetHeader({
           {icon}
         </span>
         <div className="min-w-0">
-          <h3 className="truncate text-base font-mono font-semibold leading-tight text-foreground">
+          <h3 className="truncate text-base font-sans font-semibold leading-tight text-foreground">
             {title}
           </h3>
           {subtitle ? (

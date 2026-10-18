@@ -1,0 +1,56 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {chromium} from 'playwright';
+import {root,run,base,database,connect,auditExecutionId,setAuditScenario} from './env.mjs';
+import {installResponseProvenance,responseProvenance} from './response-provenance.mjs';
+process.env.VERIFY_BASE_URL=base;process.env.VERIFY_DATABASE_URL=`postgres://trader:trader@127.0.0.1:55432/${database}`;
+const {ensureTestUser,signIn,completeOnboarding,dismiss}=await import('../../verify-usability/lib/common.mjs');
+const label=process.argv[2]||'after';assert.match(label,/^[a-z0-9-]+$/);
+const out=run.output+'/browser-milestone-editor-'+label;mkdirSync(out,{recursive:true});
+const db=await connect(),email='verify.milestone.editor+clerk_test@example.com',admin=await ensureTestUser(email),tag='audit_reward_ui_'+Date.now(),level=20;
+await db.query("INSERT INTO admin_users(user_id,role,status) VALUES($1,'content_manager','active') ON CONFLICT(user_id) DO UPDATE SET role='content_manager',status='active'",[admin]);
+const original=(await db.query('SELECT * FROM level_milestones WHERE level=$1',[level])).rows[0];
+const req=createRequire(root+'artifacts/trader-dashboard/package.json'),browser=await chromium.launch({headless:true,executablePath:req('puppeteer').executablePath()});
+const ctx=await browser.newContext({viewport:{width:1440,height:1000},locale:'it-IT',timezoneId:'Europe/Rome',serviceWorkers:'block'});
+await ctx.addInitScript(()=>{localStorage.setItem('tl_language','it');localStorage.setItem('tl_cookie_consent_v1','declined');sessionStorage.setItem('tl_review_prompt_shown','1');sessionStorage.setItem('tl_checklist_setup_dismissed_session_v1','1');});
+await ctx.tracing.start({screenshots:true,snapshots:false,sources:false});const page=await ctx.newPage();page.setDefaultTimeout(10000);installResponseProvenance(page);let scenario;
+const report={runId:run.runId,executionId:auditExecutionId,label,mode:'Real Clerk Development, production UI/API/database; intentionally delayed and failed responses explicitly simulated',checks:[],requests:[],errors:[]};
+page.on('pageerror',e=>report.errors.push(e.message));page.on('response',r=>{if(r.url().startsWith(base+'/api/'))report.requests.push({scenario,path:new URL(r.url()).pathname,method:r.request().method(),status:r.status(),provenance:responseProvenance(r)});});
+const editor=()=>page.getByText('Modifica Traguardo Livello '+level,{exact:true}).locator('..').locator('..');
+const title=()=>editor().getByPlaceholder('es. Padronanza del Risk Management'),save=()=>editor().getByRole('button',{name:'Salva Traguardo',exact:true}),close=()=>editor().locator('button').first();
+const rows=()=>db.query('SELECT * FROM level_milestone_files WHERE file_name LIKE $1 ORDER BY id',[tag+'%']).then(r=>r.rows);
+const saved=()=>db.query('SELECT * FROM level_milestones WHERE level=$1',[level]).then(r=>r.rows[0]);
+async function go(){await page.goto(base+'/milestones',{waitUntil:'domcontentloaded'});await page.getByTitle('Modifica traguardo',{exact:true}).nth(level-1).waitFor();await page.waitForTimeout(700);await dismiss(page);await page.getByTitle('Modifica traguardo',{exact:true}).nth(level-1).click();await title().waitFor();}
+async function hold(path,method,fn){let entered,release,count=0;const seen=new Promise(resolve=>entered=resolve),waiting=new Promise(resolve=>release=resolve);await page.route('**/api'+path,async route=>{if(route.request().method()!==method)return route.continue();count++;entered();await waiting;await route.fulfill({response:await route.fetch()});});try{await fn({seen,release,count:()=>count});}finally{release();await page.waitForTimeout(600);await page.unroute('**/api'+path);}}
+async function fail(path,method,fn){await page.route('**/api'+path,route=>route.request().method()===method?route.fulfill({status:503,json:{error:'Synthetic reward outage'}}):route.continue());try{await fn();}finally{await page.unroute('**/api'+path);}}
+async function upload(name=tag+'.txt'){await editor().locator('input[type="file"]').setInputFiles({name,mimeType:'text/plain',buffer:Buffer.from('Synthetic reward file')});}
+async function check(name,fn){if(process.env.AUDIT_REWARD_SCENARIO&&!name.startsWith(process.env.AUDIT_REWARD_SCENARIO))return;scenario=name;setAuditScenario(name);try{await go();await fn();report.checks.push({name,status:'passed'});console.log('PASS',name);}catch(error){report.checks.push({name,status:'failed',error:error.message});console.log('FAIL',name,error.message.slice(0,250));await page.screenshot({path:out+'/failed-'+report.checks.length+'.png'}).catch(()=>{});}writeFileSync(out+'/report.json',JSON.stringify(report,null,2));}
+try{
+ await signIn(page,email);await completeOnboarding(page,['EURUSD']);
+ await check('Reward metadata saves through the editor and reload recovers its title description and skills',async()=>{await title().fill(tag);await editor().getByPlaceholder(/^Descrivi cosa/).fill('Synthetic achievement');await editor().getByPlaceholder('es. Gestione del rischio').fill('Discipline');await editor().getByPlaceholder('es. Gestione del rischio').press('Enter');await save().click();await editor().waitFor({state:'detached'});assert.equal((await saved()).title,tag);assert.ok(JSON.parse((await saved()).skills).includes('Discipline'));await go();assert.equal(await title().inputValue(),tag);});
+ await check('Pending reward metadata save freezes fields and closure and dispatches one request',async()=>{await title().fill(tag+'_pending');await hold('/milestones/'+level,'PUT',async({seen,release,count})=>{await save().evaluate(el=>{el.click();el.click();});await seen;assert.equal(await title().isDisabled(),true);assert.equal(await close().isDisabled(),true);release();await editor().waitFor({state:'detached'});assert.equal(count(),1);});assert.equal((await saved()).title,tag+'_pending');});
+ await check('Failed reward metadata save shows an error keeps the draft and retries without losing the prior value',async()=>{const before=(await saved()).title;await title().fill(tag+'_retry');await fail('/milestones/'+level,'PUT',async()=>{await save().click();await editor().getByRole('alert').waitFor();assert.equal((await saved()).title,before);assert.equal(await title().inputValue(),tag+'_retry');});await save().click();await editor().waitFor({state:'detached'});assert.equal((await saved()).title,tag+'_retry');});
+ await check('Pending reward upload blocks saving and closing and restores the persisted file after reload',async()=>{await hold('/milestones/'+level+'/files','POST',async({seen,release,count})=>{await upload();await seen;assert.equal(await save().isDisabled(),true);assert.equal(await close().isDisabled(),true);release();await editor().getByText(tag+'.txt',{exact:true}).waitFor();assert.equal(count(),1);});assert.ok((await rows()).some(f=>f.file_name===tag+'.txt'));await go();await editor().getByText(tag+'.txt',{exact:true}).waitFor();});
+ await check('Failed reward upload displays a retryable error and does not create a phantom file',async()=>{const before=(await rows()).length;await fail('/milestones/'+level+'/files','POST',async()=>{await upload(tag+'_retry.txt');await editor().getByRole('alert').waitFor();assert.equal((await rows()).length,before);});await upload(tag+'_retry.txt');await editor().getByText(tag+'_retry.txt',{exact:true}).waitFor();assert.equal((await rows()).length,before+1);});
+ await check('Reward file toggle and deletion errors preserve the file and successful retries persist',async()=>{const file=(await rows())[0];assert.ok(file,'Prior upload must persist');const row=()=>editor().getByText(file.file_name,{exact:true}).locator('..').locator('..');await fail('/milestones/files/'+file.id+'/downloadable','PATCH',async()=>{await row().getByRole('button',{name:'DL',exact:true}).click();await editor().getByRole('alert').waitFor();assert.equal((await rows()).find(f=>f.id===file.id).downloadable,true);});await row().getByRole('button',{name:'DL',exact:true}).click();await row().getByRole('button',{name:'NO',exact:true}).waitFor();assert.equal((await rows()).find(f=>f.id===file.id).downloadable,false);await fail('/milestones/files/'+file.id,'DELETE',async()=>{await row().getByRole('button',{name:'Elimina',exact:true}).click();await editor().getByRole('alert').waitFor();assert.ok((await rows()).some(f=>f.id===file.id));});await row().getByRole('button',{name:'Elimina',exact:true}).click();await editor().getByText(file.file_name,{exact:true}).waitFor({state:'detached'});assert.ok(!(await rows()).some(f=>f.id===file.id));});
+ await check('Unavailable reward metadata cannot be edited as an empty milestone and recovers after retry',async()=>{
+  await title().fill(tag+'_prior');await save().click();await editor().waitFor({state:'detached'});await go();
+  const before=(await saved()).title;report.readFailurePriorValuePresent=true;
+  await fail('/milestones/'+level,'GET',async()=>{
+   await page.reload({waitUntil:'domcontentloaded'});await page.getByTitle('Modifica traguardo',{exact:true}).nth(level-1).waitFor();await page.waitForTimeout(700);await dismiss(page);await page.getByTitle('Modifica traguardo',{exact:true}).nth(level-1).click();
+   await page.getByRole('alert').waitFor({timeout:20000});assert.equal(await title().count(),0);assert.equal((await saved())?.title,before);
+  });
+  await page.getByRole('button',{name:'Riprova',exact:true}).click();await title().waitFor();assert.equal(await title().inputValue(),before??'');
+ });
+ await check('Reward editor labels and keyboard save remain usable on mobile without horizontal overflow',async()=>{
+  await page.setViewportSize({width:390,height:844});await go();await editor().getByLabel('Titolo traguardo',{exact:true}).fill(tag+'_mobile');await editor().getByLabel('Descrizione',{exact:true}).fill('Synthetic mobile');await save().focus();await save().press('Enter');await editor().waitFor({state:'detached'});assert.equal((await saved()).title,tag+'_mobile');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);await page.screenshot({path:out+'/mobile-milestones.png'});
+ });
+ assert.deepEqual(report.errors,[]);
+}finally{
+ for(const file of await rows())await page.evaluate(async id=>{const token=await window.Clerk.session.getToken();await fetch('/api/milestones/files/'+id,{method:'DELETE',headers:{Authorization:'Bearer '+token}});},file.id).catch(()=>{});
+ if(original)await db.query('UPDATE level_milestones SET title=$2,description=$3,skills=$4,badge_emoji=$5,badge_color=$6,updated_at=$7 WHERE level=$1',[level,original.title,original.description,original.skills,original.badge_emoji,original.badge_color,original.updated_at]);else await db.query('DELETE FROM level_milestones WHERE level=$1 AND title LIKE $2',[level,tag+'%']);
+ writeFileSync(out+'/report.json',JSON.stringify(report,null,2));await ctx.tracing.stop({path:out+'/actions.zip'});execFileSync('python3',[root+'scripts/verify-real-runtime/full/redact-traces.py',out+'/actions.zip']);await browser.close();await db.end();
+}
+if(report.checks.some(c=>c.status==='failed')||report.errors.length)process.exitCode=1;

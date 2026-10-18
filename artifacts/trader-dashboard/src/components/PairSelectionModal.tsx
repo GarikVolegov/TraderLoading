@@ -5,12 +5,15 @@ import { Search, X, Check, ChevronDown, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PAIR_CATALOG, CATEGORY_LABELS, type PairEntry } from "@workspace/pair-catalog";
 import { uiText } from "@/contexts/LanguageContext";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { trackEvent } from "@/lib/analytics";
 
 interface PairSelectionModalProps {
   open: boolean;
   onConfirm: (pairs: string[]) => void;
   initialPairs?: string[];
+  saving?: boolean;
+  failed?: boolean;
   dismissible?: boolean;
   onClose?: () => void;
 }
@@ -30,6 +33,8 @@ export function PairSelectionModal({
   open,
   onConfirm,
   initialPairs = [],
+  saving = false,
+  failed = false,
   dismissible = false,
   onClose,
 }: PairSelectionModalProps) {
@@ -45,6 +50,8 @@ export function PairSelectionModal({
   });
   const searchRef = useRef<HTMLInputElement>(null);
   const chipsRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: open, panelRef, initialFocusRef: searchRef, onClose: () => { if (dismissible && !saving) onClose?.(); } });
 
   useEffect(() => {
     if (open) {
@@ -125,12 +132,14 @@ export function PairSelectionModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm"
-            onClick={() => { if (dismissible) onClose?.(); }}
+            onClick={() => { if (dismissible && !saving) onClose?.(); }}
           />
 
           {/* Panel */}
           <motion.div
             key="panel"
+            ref={panelRef}
+            {...panelProps}
             initial={{ opacity: 0, y: 80 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 80 }}
@@ -148,6 +157,7 @@ export function PairSelectionModal({
             ].join(" ")}
             onClick={(e) => e.stopPropagation()}
           >
+        <fieldset disabled={saving} className="contents">
         {/* Drag handle (mobile only) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0" aria-hidden>
           <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
@@ -160,7 +170,7 @@ export function PairSelectionModal({
               <div className="p-1.5 rounded-lg bg-indigo-500/15">
                 <BarChart2 className="w-4 h-4 text-indigo-400" />
               </div>
-              <h2 className="text-base sm:text-lg font-bold">{uiText("auto.ui.8452dc94d6")}</h2>
+              <h2 id={titleId} className="text-base sm:text-lg font-bold">{uiText("auto.ui.8452dc94d6")}</h2>
             </div>
             {dismissible && (
               <button
@@ -351,7 +361,7 @@ export function PairSelectionModal({
 
         {/* ── Footer ── */}
         <div
-          className="shrink-0 px-4 sm:px-5 pt-3 pb-4 border-t border-border/40 flex items-center justify-between gap-3 bg-card"
+          className="shrink-0 px-4 sm:px-5 pt-3 pb-4 border-t border-border/40 flex flex-wrap items-center justify-between gap-3 bg-card"
           style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -362,14 +372,16 @@ export function PairSelectionModal({
               {selected.length === 1 ? "pair selezionato" : "pair selezionati"}
             </span>
           </div>
+          {failed && <p role="alert" className="basis-full order-first text-sm text-destructive">{uiText("pairs.save_error")}</p>}
           <Button
             onClick={handleConfirm}
-            disabled={selected.length === 0}
+            disabled={saving || selected.length === 0}
             className="shrink-0 h-11 px-6 text-sm font-semibold"
           >
-            {selected.length === 0 ? "Seleziona un pair" : "Conferma →"}
+            {saving ? uiText("pairs.saving") : selected.length === 0 ? "Seleziona un pair" : "Conferma →"}
           </Button>
         </div>
+        </fieldset>
           </motion.div>
         </>
       )}

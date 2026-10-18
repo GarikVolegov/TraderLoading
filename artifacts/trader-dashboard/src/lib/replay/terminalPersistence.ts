@@ -1,9 +1,11 @@
-// ─── Terminal state persistence (localStorage, v2) ───────────────────────────
+// ─── Terminal state persistence (localStorage, v3; reads v2) ──────────────────
 // Per-session replay state: cursor, indicators, drawings, order-ticket inputs,
 // tool settings, account and trades. Versioned and symbol-guarded like the v1
 // chartReplayPersistence it supersedes; malformed entries degrade field-by-field
 // instead of discarding the whole state.
 import type { IndicatorConfig } from "./indicatorCatalog";
+import { getReplayIntervalSeconds } from "../../components/chartReplayWindow";
+import { migrateReplayTime } from "./replayClock";
 import type { ChartType, ClosedTrade, OpenPosition, PendingOrder, ReplayDrawing, RiskMode } from "./types";
 
 export interface TerminalTicket {
@@ -56,6 +58,9 @@ export interface TerminalStateDraft {
   interval: string;
   /** Unix seconds of the bar the cursor is on (null = start fresh). */
   cursorTime: number | null;
+  /** Exact exclusive cutoff, independent of the selected chart interval. */
+  replayTime?: number | null;
+  startTime?: number | null;
   indicators: IndicatorConfig[];
   drawings: ReplayDrawing[];
   trades: ClosedTrade[];
@@ -67,7 +72,7 @@ export interface TerminalStateDraft {
 }
 
 export interface PersistedTerminalState extends TerminalStateDraft {
-  version: 2;
+  version: 3;
   savedAt: string;
 }
 
@@ -297,7 +302,9 @@ export function serializeTerminalState(draft: TerminalStateDraft): string {
     indicators: draft.indicators.filter(isIndicator),
     openPosition: draft.openPosition && isOpenPosition(draft.openPosition) ? draft.openPosition : null,
     pendingOrder: draft.pendingOrder && isPendingOrder(draft.pendingOrder) ? draft.pendingOrder : null,
-    version: 2,
+    replayTime: draft.replayTime ?? migrateReplayTime(draft.cursorTime, getReplayIntervalSeconds(draft.interval)),
+    startTime: draft.startTime ?? null,
+    version: 3,
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(state);
@@ -306,15 +313,19 @@ export function serializeTerminalState(draft: TerminalStateDraft): string {
 export function parseTerminalState(raw: string | null, symbol: string): PersistedTerminalState | null {
   if (!raw) return null;
   try {
-    const data = JSON.parse(raw) as Partial<PersistedTerminalState>;
-    if (data.version !== 2) return null;
+    const data = JSON.parse(raw) as Partial<Omit<PersistedTerminalState, "version">> & { version?: number };
+    if (data.version !== 3 && data.version !== 2) return null;
     if (data.symbol !== symbol) return null;
     if (typeof data.interval !== "string") return null;
     return {
-      version: 2,
+      version: 3,
       symbol: data.symbol,
       interval: data.interval,
       cursorTime: isFiniteNumber(data.cursorTime) ? data.cursorTime : null,
+      replayTime: data.version === 3 && isFiniteNumber(data.replayTime)
+        ? data.replayTime
+        : migrateReplayTime(isFiniteNumber(data.cursorTime) ? data.cursorTime : null, getReplayIntervalSeconds(data.interval)),
+      startTime: isFiniteNumber(data.startTime) ? data.startTime : null,
       indicators: Array.isArray(data.indicators) ? data.indicators.filter(isIndicator) : [],
       drawings: Array.isArray(data.drawings) ? data.drawings.filter(isDrawing) : [],
       trades: Array.isArray(data.trades) ? data.trades.filter(isClosedTrade) : [],

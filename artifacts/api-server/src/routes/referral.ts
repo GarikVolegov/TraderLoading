@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, referralCodesTable, referralsTable, profileTable } from "@workspace/db";
 import { eq, sql, and, gte } from "drizzle-orm";
-import { getUserId } from "./profile.js";
+import { getUserId, getOrCreateProfile } from "./profile.js";
 import {
   generateReferralCode,
   canAttributeReferral,
@@ -31,13 +31,22 @@ async function ensureReferralCode(userId: string): Promise<string> {
 
 router.get("/referral", async (req, res) => {
   const userId = getUserId(req);
-  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  if (!userId) {
+    res.status(401).json({ error: "Autenticazione richiesta" });
+    return;
+  }
+  await getOrCreateProfile(userId);
   const code = await ensureReferralCode(userId);
   const [count] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(referralsTable)
     .where(eq(referralsTable.referrerUserId, userId));
-  res.json({ code, link: `/sign-up?ref=${code}`, referrals: count?.n ?? 0, rewardXp: REFERRAL_REWARD_XP });
+  res.json({
+    code,
+    link: `/sign-up?ref=${code}`,
+    referrals: count?.n ?? 0,
+    rewardXp: REFERRAL_REWARD_XP,
+  });
 });
 
 // Attribute the current user (the invitee) to a referral code — called once at
@@ -45,9 +54,15 @@ router.get("/referral", async (req, res) => {
 // XP reward.
 router.post("/referral/attribute", async (req, res) => {
   const userId = getUserId(req);
-  if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
+  if (!userId) {
+    res.status(401).json({ error: "Autenticazione richiesta" });
+    return;
+  }
   const code = typeof req.body?.code === "string" ? req.body.code.trim().toUpperCase() : "";
-  if (!code) { res.status(400).json({ error: "Codice mancante" }); return; }
+  if (!code) {
+    res.status(400).json({ error: "Codice mancante" });
+    return;
+  }
 
   const [codeRow] = await db
     .select({ userId: referralCodesTable.userId })
@@ -59,35 +74,54 @@ router.post("/referral/attribute", async (req, res) => {
     return;
   }
   const referrerUserId = codeRow.userId;
+  await getOrCreateProfile(referrerUserId);
 
-  const [inserted] = await db
-    .insert(referralsTable)
-    .values({ referrerUserId, referredUserId: userId })
-    .onConflictDoNothing({ target: referralsTable.referredUserId })
-    .returning({ id: referralsTable.id, rewardedAt: referralsTable.rewardedAt });
-  if (!inserted) {
-    res.json({ attributed: false }); // invitee already referred by someone
-    return;
-  }
+  const result = await db.transaction(async (tx) => {
+    // Serialize attribution to this referrer before counting the rolling cap.
+    // The row already exists and also protects against concurrent API processes.
+    const [lockedCode] = await tx
+      .select({ userId: referralCodesTable.userId })
+      .from(referralCodesTable)
+      .where(eq(referralCodesTable.code, code))
+      .for("update");
+    if (!lockedCode || lockedCode.userId !== referrerUserId) return { attributed: false };
+    const [inserted] = await tx
+      .insert(referralsTable)
+      .values({ referrerUserId, referredUserId: userId })
+      .onConflictDoNothing({ target: referralsTable.referredUserId })
+      .returning({ id: referralsTable.id, rewardedAt: referralsTable.rewardedAt });
+    if (!inserted) {
+      return { attributed: false }; // invitee already referred by someone
+    }
 
-  // Daily cap bounds farming via disposable sign-ups: self-referral guard + the
-  // per-invitee unique index only stop the SAME invitee being credited twice, not
-  // how many distinct invitees one referrer can accumulate in a day.
-  const [{ n: rewardedRecently }] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(referralsTable)
-    .where(and(
-      eq(referralsTable.referrerUserId, referrerUserId),
-      gte(referralsTable.rewardedAt, new Date(Date.now() - 24 * 60 * 60 * 1000)),
-    ));
-  if (canGrantReferralReward({ rewardedAt: inserted.rewardedAt }, rewardedRecently ?? 0)) {
-    await db
-      .update(profileTable)
-      .set({ xp: sql`${profileTable.xp} + ${REFERRAL_REWARD_XP}` })
-      .where(eq(profileTable.userId, referrerUserId));
-    await db.update(referralsTable).set({ rewardedAt: new Date() }).where(eq(referralsTable.id, inserted.id));
-  }
-  res.json({ attributed: true, rewardXp: REFERRAL_REWARD_XP });
+    // Daily cap bounds farming via disposable sign-ups: self-referral guard + the
+    // per-invitee unique index only stop the SAME invitee being credited twice, not
+    // how many distinct invitees one referrer can accumulate in a day.
+    const [{ n: rewardedRecently }] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(referralsTable)
+      .where(
+        and(
+          eq(referralsTable.referrerUserId, referrerUserId),
+          gte(referralsTable.rewardedAt, new Date(Date.now() - 24 * 60 * 60 * 1000)),
+        ),
+      );
+    if (canGrantReferralReward({ rewardedAt: inserted.rewardedAt }, rewardedRecently ?? 0)) {
+      const credited = await tx
+        .update(profileTable)
+        .set({ xp: sql`${profileTable.xp} + ${REFERRAL_REWARD_XP}` })
+        .where(eq(profileTable.userId, referrerUserId))
+        .returning({ id: profileTable.id });
+      if (credited.length === 0) throw new Error("Referral reward profile unavailable");
+      await tx
+        .update(referralsTable)
+        .set({ rewardedAt: new Date() })
+        .where(eq(referralsTable.id, inserted.id));
+      return { attributed: true, rewardXp: REFERRAL_REWARD_XP };
+    }
+    return { attributed: true, rewardXp: 0 };
+  });
+  res.json(result);
 });
 
 export default router;

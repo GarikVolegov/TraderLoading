@@ -1,3 +1,5 @@
+import { checklistDay } from "../lib/dailyChecklist";
+import type { AccountStorage } from "../lib/accountStorage";
 export const ROUTINE_HISTORY_KEY = "tl_routine_completion_history_v1";
 export const ROUTINE_CUSTOM_KEY = "tl_custom_routines_v1";
 export const ZEN_MOOD_KEY = "tl_zen_mood_v1";
@@ -49,17 +51,15 @@ export interface RoutineMetrics {
   byRoutine: RoutineSummaryMetric[];
 }
 
-function getStorage(storage?: Storage): Storage | null {
-  if (storage) return storage;
-  if (typeof localStorage === "undefined") return null;
-  return localStorage;
+function getStorage(storage?: AccountStorage): AccountStorage | null {
+  return storage ?? null;
 }
 
 function dateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return checklistDay(date);
 }
 
-function readArray<T>(key: string, storage?: Storage): T[] {
+function readArray<T>(key: string, storage?: AccountStorage): T[] {
   const target = getStorage(storage);
   if (!target) return [];
 
@@ -73,7 +73,7 @@ function readArray<T>(key: string, storage?: Storage): T[] {
   }
 }
 
-function writeArray<T>(key: string, value: T[], storage?: Storage): void {
+function writeArray<T>(key: string, value: T[], storage?: AccountStorage): void {
   const target = getStorage(storage);
   if (!target) return;
   target.setItem(key, JSON.stringify(value));
@@ -88,7 +88,7 @@ function slugify(input: string): string {
     .slice(0, 32);
 }
 
-export function readMoodForDate(date: Date, storage?: Storage): string | null {
+export function readMoodForDate(date: Date, storage?: AccountStorage): string | null {
   const key = dateKey(date);
   const record = readArray<ZenMoodRecord>(ZEN_MOOD_KEY, storage).find(
     (item) => item.date === key && typeof item.mood === "string",
@@ -96,7 +96,7 @@ export function readMoodForDate(date: Date, storage?: Storage): string | null {
   return record?.mood ?? null;
 }
 
-export function saveMoodForDate(mood: string, date: Date, storage?: Storage): void {
+export function saveMoodForDate(mood: string, date: Date, storage?: AccountStorage): void {
   const key = dateKey(date);
   const others = readArray<ZenMoodRecord>(ZEN_MOOD_KEY, storage).filter(
     (item) => item.date !== key,
@@ -105,7 +105,7 @@ export function saveMoodForDate(mood: string, date: Date, storage?: Storage): vo
   writeArray(ZEN_MOOD_KEY, next.slice(-ZEN_MOOD_MAX_RECORDS), storage);
 }
 
-export function loadCustomRoutines(storage?: Storage): CustomRoutine[] {
+export function loadCustomRoutines(storage?: AccountStorage): CustomRoutine[] {
   return readArray<CustomRoutine>(ROUTINE_CUSTOM_KEY, storage).filter(
     (routine) =>
       typeof routine.id === "string" &&
@@ -114,7 +114,7 @@ export function loadCustomRoutines(storage?: Storage): CustomRoutine[] {
   );
 }
 
-export function loadRoutineCompletions(storage?: Storage): RoutineCompletionRecord[] {
+export function loadRoutineCompletions(storage?: AccountStorage): RoutineCompletionRecord[] {
   return readArray<RoutineCompletionRecord>(ROUTINE_HISTORY_KEY, storage).filter(
     (record) =>
       typeof record.id === "string" &&
@@ -128,7 +128,7 @@ export function loadRoutineCompletions(storage?: Storage): RoutineCompletionReco
 
 export function createCustomRoutine(
   input: Pick<CustomRoutine, "title" | "description" | "template" | "timeLabel">,
-  storage?: Storage,
+  storage?: AccountStorage,
   now = new Date(),
 ): CustomRoutine {
   const routines = loadCustomRoutines(storage);
@@ -149,7 +149,7 @@ export function createCustomRoutine(
 
 export function appendRoutineCompletion(
   input: Omit<RoutineCompletionRecord, "id" | "completedAt" | "date">,
-  storage?: Storage,
+  storage?: AccountStorage,
   now = new Date(),
 ): RoutineCompletionRecord {
   const completions = loadRoutineCompletions(storage);
@@ -174,6 +174,7 @@ function daysBetween(a: string, b: string): number {
 export function getRoutineMetrics(
   completions: RoutineCompletionRecord[],
   customRoutines: CustomRoutine[],
+  now = new Date(),
 ): RoutineMetrics {
   const sorted = [...completions].sort((a, b) => a.completedAt.localeCompare(b.completedAt));
   const byRoutineMap = new Map<string, RoutineSummaryMetric>();
@@ -209,6 +210,7 @@ export function getRoutineMetrics(
   let previous: string | null = null;
 
   for (const date of uniqueDates) {
+    if (!previous && (daysBetween(dateKey(now), date) > 1 || daysBetween(dateKey(now), date) < 0)) break;
     if (!previous || daysBetween(previous, date) === 1) {
       currentStreakDays += 1;
       previous = date;

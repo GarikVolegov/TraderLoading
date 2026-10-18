@@ -1,5 +1,6 @@
 import type { BrokerAccountProfile, BrokerDeal, BrokerSnapshot } from "./types.js";
 import { accountTradeChanged, toComparableTrade } from "./accountTradeDiff.js";
+import { snapshotExecutionEnvironment } from "./executionEnvironment.js";
 
 export interface BrokerAccountDataSyncInput {
   profile: BrokerAccountProfile;
@@ -148,6 +149,7 @@ export async function importBrokerAccountData(input: BrokerAccountDataSyncInput)
     const values = {
       ticket: deal.id,
       source: deal.source,
+      executionEnvironment: snapshotExecutionEnvironment(input.profile, input.snapshot),
       symbol: deal.symbol,
       direction: deal.side,
       volume: String(deal.volume),
@@ -190,6 +192,9 @@ export async function importBrokerAccountData(input: BrokerAccountDataSyncInput)
         .limit(1);
 
       if (!current) continue;
+      // A later snapshot/profile change is not evidence of the environment in
+      // which an existing trade executed. Preserve even legacy unknown values.
+      values.executionEnvironment = current.executionEnvironment;
       accountTradeId = current.id;
       journalEntryId = current.journalEntryId;
       // A closed deal re-imports identically every cycle; skip the no-op UPDATE

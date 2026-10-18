@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useBackground } from "@/contexts/BackgroundContext";
-import { useUpdateUserSettings, getGetUserSettingsQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useSavePairs } from "@/hooks/useSavePairs";
 import { PairOnboardingScreen } from "./PairOnboardingScreen";
 import { PairSelectionModal } from "./PairSelectionModal";
 
@@ -17,11 +16,10 @@ export function PairOnboardingWrapper({
   settingsModeOpen = false,
   onSettingsModeClose,
 }: PairOnboardingWrapperProps = {}) {
-  const { selectedPairs, setSelectedPairs, settingsLoaded } = useBackground();
+  const { selectedPairs, settingsLoaded } = useBackground();
   const [show, setShow] = useState(false);
   const confirmedRef = useRef(false);
-  const updateMutation = useUpdateUserSettings();
-  const qc = useQueryClient();
+  const { save, saving, failed } = useSavePairs();
 
   useEffect(() => {
     if (settingsLoaded && selectedPairs.length === 0 && !confirmedRef.current) {
@@ -32,17 +30,10 @@ export function PairOnboardingWrapper({
   }, [settingsLoaded, selectedPairs.length]);
 
   const handleConfirm = async (pairs: string[]) => {
-    if (pairs.length === 0) return;
+    if (!(await save(pairs))) return;
     confirmedRef.current = true;
-    setSelectedPairs(pairs);
     setShow(false);
     onSettingsModeClose?.();
-    try {
-      await updateMutation.mutateAsync({ data: { selectedPairs: pairs } });
-      qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
-    } catch (err) {
-      console.error("Failed to save selected pairs:", err);
-    }
   };
 
   // Settings mode: re-open as a dismissible modal from Settings page
@@ -52,6 +43,8 @@ export function PairOnboardingWrapper({
         open={settingsModeOpen}
         onConfirm={handleConfirm}
         initialPairs={selectedPairs}
+        saving={saving}
+        failed={failed}
         dismissible
         onClose={onSettingsModeClose}
       />
@@ -64,6 +57,8 @@ export function PairOnboardingWrapper({
   return (
     <PairOnboardingScreen
       initialPairs={selectedPairs}
+      saving={saving}
+      failed={failed}
       onConfirm={handleConfirm}
     />
   );

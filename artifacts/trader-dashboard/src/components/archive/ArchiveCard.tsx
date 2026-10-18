@@ -1,10 +1,11 @@
-import { archiveTypeOf, parseTags, TYPE_ACCENT, type WikiSource } from "@/lib/archive";
+import { uiText } from "@/contexts/LanguageContext";
+import { archiveSourceKey, archiveTypeOf, parseTags, TYPE_ACCENT, type WikiSource } from "@/lib/archive";
 import { ARCHIVE_DND_TYPE, formatDate, typeIcon, typeLabel } from "./typeMeta";
 import { ArchiveStatusPill } from "./ArchiveStatusPill";
 
 interface Props {
   source: WikiSource;
-  onOpen: (id: number) => void;
+  onOpen: (id: string) => void;
 }
 
 export function ArchiveCard({ source, onOpen }: Props) {
@@ -15,13 +16,15 @@ export function ArchiveCard({ source, onOpen }: Props) {
   return (
     <button
       type="button"
-      draggable
+      draggable={!source.readOnly}
+      disabled={source.unavailable}
       onDragStart={(e) => {
+        if (source.readOnly) { e.preventDefault(); return; }
         e.dataTransfer.setData(ARCHIVE_DND_TYPE, String(source.id));
         e.dataTransfer.effectAllowed = "move";
       }}
-      onClick={() => onOpen(source.id)}
-      className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border/50 bg-card/65 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
+      onClick={() => onOpen(archiveSourceKey(source))}
+      className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border/50 bg-card/65 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 disabled:opacity-60 disabled:cursor-default"
     >
       <div
         className="relative flex h-[var(--arc-cover,150px)] flex-col items-center justify-center gap-2 border-b border-border/35"
@@ -46,6 +49,8 @@ export function ArchiveCard({ source, onOpen }: Props) {
       </div>
       <div className="flex flex-1 flex-col gap-2 p-[var(--arc-pad,13px)]">
         <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-foreground">{source.title}</p>
+        {source.originLabelKey && <span className="text-[10px] text-muted-foreground">{uiText(source.originLabelKey)}</span>}
+        {source.unavailable && <span className="text-[11px] text-muted-foreground">{uiText("reorg.archive.unavailable")}</span>}
         <div className="mt-auto flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="font-mono">{formatDate(source.createdAt)}</span>
         </div>

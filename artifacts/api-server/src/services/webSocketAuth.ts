@@ -1,3 +1,4 @@
+import { watchWebSocketAuthorization } from "./webSocketLease.js";
 import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import { authenticateRequest, clerkClient } from "@clerk/express";
@@ -59,7 +60,9 @@ async function getClerkUserId(request: IncomingMessage): Promise<string | null> 
     });
     const auth = state.toAuth();
     if (!auth) return null;
-    return auth.userId ?? null;
+    const { isClerkSessionRevoked } = await import("./sessionRevocation.js");
+    if (!auth.userId || !auth.sessionId || await isClerkSessionRevoked(auth.userId, auth.sessionId)) return null;
+    return auth.userId;
   } catch (err) {
     logger.warn({ err }, "Clerk websocket authentication failed");
     return null;
@@ -69,14 +72,15 @@ async function getClerkUserId(request: IncomingMessage): Promise<string | null> 
 export async function authenticateWebSocketUpgrade(
   request: IncomingMessage,
 ): Promise<WebSocketAuthContext | null> {
+  const { isSocketAccountActive } = await import("./sessionRevocation.js");
   const clerkUserId = await getClerkUserId(request);
-  if (clerkUserId) return { userId: clerkUserId, source: "clerk" };
+  if (clerkUserId) return await isSocketAccountActive(clerkUserId) ? { userId: clerkUserId, source: "clerk" } : null;
 
   const sid = sessionIdFromUpgrade(request);
   if (!sid) return null;
   const { getSession } = await import("../lib/auth.js");
   const session = await getSession(sid);
-  return session?.user.id ? { userId: session.user.id, source: "session" } : null;
+  return session?.user.id && await isSocketAccountActive(session.user.id) ? { userId: session.user.id, source: "session" } : null;
 }
 
 export async function authorizeWebSocketUpgrade(
@@ -101,6 +105,11 @@ export async function authorizeWebSocketUpgrade(
     rejectWebSocketUpgrade(socket, 402, "Payment Required");
     return null;
   }
+  watchWebSocketAuthorization(socket, async () => {
+    const current = await authenticate(request);
+    return Boolean(current && current.userId === context.userId &&
+      (!security.requireProAccess || await security.requireProAccess(current, request)));
+  });
   return context;
 }
 

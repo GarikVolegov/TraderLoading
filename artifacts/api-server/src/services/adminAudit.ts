@@ -44,8 +44,9 @@ export interface WriteAdminAuditInput {
 
 export async function writeAdminAudit(
   input: WriteAdminAuditInput,
+  executor: Pick<typeof db, "insert"> = db,
 ): Promise<void> {
-  await db.insert(adminAuditLogsTable).values({
+  await executor.insert(adminAuditLogsTable).values({
     actorUserId: input.admin.userId,
     actorRole: input.admin.role,
     action: input.action,

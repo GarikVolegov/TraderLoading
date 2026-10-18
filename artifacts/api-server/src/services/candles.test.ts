@@ -70,6 +70,20 @@ try {
   assert.match(calls[0] ?? "", /twelvedata\.com/);
   assert.match(calls[1] ?? "", /query1\.finance\.yahoo\.com/);
 
+  const retrievedAt = result.fetchedAt;
+  assert.ok(retrievedAt);
+  calls.length = 0;
+  assert.equal((await getCandles("EURUSD", "M15", { maxAgeMs: 60_000 })).fetchedAt, retrievedAt);
+  assert.equal(calls.length, 0, "fresh cached response retains original provider timestamp");
+  const successfulFetch = globalThis.fetch;
+  globalThis.fetch = (async () => { throw new Error("simulated provider outage"); }) as typeof fetch;
+  const stale = await getCandles("EURUSD", "M15", { maxAgeMs: -1 });
+  assert.equal(stale.stale, true);
+  assert.equal(stale.fetchedAt, retrievedAt, "failed refresh never relabels the old data as new");
+  globalThis.fetch = successfulFetch;
+  const recovered = await getCandles("EURUSD", "M15", { maxAgeMs: -1 });
+  assert.equal(recovered.stale, false, "successful refresh recovers availability");
+
   calls.length = 0;
   const m5Result = await getCandles("GBPUSD", "M5");
   assert.equal(m5Result.source, "yahoo");

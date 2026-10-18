@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Library as LibraryIcon, FileText, Video, Network, Lock, Plus, Pencil, Trash2,
@@ -12,32 +12,15 @@ import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
-import { reportClientError } from "@/lib/clientErrorReporter";
 import { MindMapEditor, MindMapView, isMindMapData, type MindMapData } from "@/components/MindMapEditor";
 import { uiText } from "@/contexts/LanguageContext";
-import { useToast } from "@/hooks/use-toast";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
+import type { LibraryContent } from "@/lib/archiveResources";
+
 type ContentType = "document" | "mindmap" | "video";
 
-interface Content {
-  id: number;
-  collectionId: number | null;
-  type: ContentType;
-  title: string;
-  description: string;
-  bodyMarkdown: string;
-  fileUrl: string | null;
-  fileName: string | null;
-  fileSize: number;
-  mimeType: string | null;
-  embedUrl: string | null;
-  mindmap?: MindMapData | null;
-  tags: string;
-  requiredLevel: number;
-  orderIndex: number;
-  published: boolean;
-}
+type Content = LibraryContent;
 
 const TYPE_META: Record<ContentType, { labelKey: string; icon: typeof FileText; color: string }> = {
   document: { labelKey: "auto.ui.8ae11c9993", icon: FileText, color: "#38bdf8" },
@@ -70,7 +53,7 @@ function parseTags(raw: string): string[] {
 }
 
 // ─── Content viewer ───────────────────────────────────────────────────────────
-function ContentViewer({ content, onClose }: { content: Content; onClose: () => void }) {
+export function ContentViewer({ content, onClose }: { content: Content; onClose: () => void }) {
   const meta = TYPE_META[content.type];
   const embed = toEmbedUrl(content.embedUrl);
   const isPdf = content.mimeType === "application/pdf";
@@ -141,9 +124,8 @@ function ContentViewer({ content, onClose }: { content: Content; onClose: () => 
 }
 
 // ─── Admin: content form ────────────────────────────────────────────────────
-function ContentForm({ initial, onClose }: { initial: Content | null; onClose: () => void }) {
+export function ContentForm({ initial, onClose }: { initial: Content | null; onClose: () => void }) {
   const qc = useQueryClient();
-  const { toast } = useToast();
   const [form, setForm] = useState({
     type: (initial?.type ?? "document") as ContentType,
     title: initial?.title ?? "", description: initial?.description ?? "",
@@ -154,48 +136,66 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
     requiredLevel: initial?.requiredLevel ?? 0, orderIndex: initial?.orderIndex ?? 0, published: initial?.published ?? false,
   });
   const [uploading, setUploading] = useState(false);
+  const uploadingRef = useRef(false);
+  const savingRef = useRef(false);
+  const [error, setError] = useState<string | null>(null);
+  const restoreFocus = useRef(document.activeElement as HTMLElement | null);
+  const payload = () => ({ ...form, collectionId: initial?.collectionId ?? null, tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean) });
 
   const save = useMutation({
-    mutationFn: () => {
-      const payload = { ...form, collectionId: initial?.collectionId ?? null, tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean) };
+    mutationFn: (submitted: ReturnType<typeof payload>) => {
       return initial
-        ? apiJSON(`library/contents/${initial.id}`, { method: "PUT", body: JSON.stringify(payload) })
-        : apiJSON("library/contents", { method: "POST", body: JSON.stringify(payload) });
+        ? apiJSON(`library/contents/${initial.id}`, { method: "PUT", body: JSON.stringify(submitted) })
+        : apiJSON("library/contents", { method: "POST", body: JSON.stringify(submitted) });
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["library", "contents"] }); onClose(); },
+    onError: (cause) => setError(cause instanceof Error ? cause.message : uiText("library.saveFailed")),
+    onSettled: () => { savingRef.current = false; },
   });
+  const busy = uploading || save.isPending;
+  function submit() {
+    if (savingRef.current || uploadingRef.current || !form.title.trim()) return;
+    savingRef.current = true;
+    setError(null);
+    save.mutate(payload());
+  }
+  function close() {
+    if (!savingRef.current && !uploadingRef.current) onClose();
+  }
 
   async function uploadDoc(file: File) {
+    if (uploadingRef.current || savingRef.current) return;
+    uploadingRef.current = true;
+    setError(null);
     setUploading(true);
     try {
       const fd = new FormData(); fd.append("file", file);
       const r = await apiFetch("library/upload", { method: "POST", body: fd });
-      const d = await r.json();
-      if (d.fileUrl) {
+      const d = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(typeof d?.error === "string" ? d.error : uiText("auto.ui.657c9641cf"));
+      if (typeof d?.fileUrl === "string" && d.fileUrl) {
         setForm((f) => ({ ...f, fileUrl: d.fileUrl, fileName: d.fileName, fileSize: d.fileSize, mimeType: d.mimeType }));
       } else {
-        reportClientError(new Error("upload response missing fileUrl"), {
-          context: "library content upload",
-          fallbackMessage: uiText("auto.ui.657c9641cf"),
-          toast,
-        });
+        setError(uiText("auto.ui.657c9641cf"));
       }
-    } catch (error) {
-      reportClientError(error, {
-        context: "library content upload",
-        fallbackMessage: uiText("auto.ui.657c9641cf"),
-        toast,
-      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : uiText("auto.ui.657c9641cf"));
     } finally {
+      uploadingRef.current = false;
       setUploading(false);
     }
   }
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-[600px] max-h-[88vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-border">
+    <Dialog open onOpenChange={(o) => !o && close()}>
+      <DialogContent className="sm:max-w-[600px] max-h-[88vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-border"
+        aria-busy={busy}
+        onEscapeKeyDown={(event) => { if (savingRef.current || uploadingRef.current) event.preventDefault(); }}
+        onPointerDownOutside={(event) => { if (savingRef.current || uploadingRef.current) event.preventDefault(); }}
+        onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus.current?.focus(); }}>
         <DialogHeader><DialogTitle>{initial ? uiText("auto.ui.4d0e8cb842") : uiText("auto.ui.a34a52a309")}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        <fieldset disabled={busy} className={`space-y-3 min-w-0 ${busy ? "pointer-events-none" : ""}`}>
           <div className="flex gap-2">
             {(Object.keys(TYPE_META) as ContentType[]).map((t) => {
               const M = TYPE_META[t];
@@ -207,11 +207,11 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
               );
             })}
           </div>
-          <input className="tl-input" placeholder={uiText("auto.ui.b2f23da948")} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <textarea className="tl-input min-h-16" placeholder={uiText("auto.ui.07dfa30eec")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <input className="tl-input" aria-label={uiText("auto.ui.b2f23da948")} placeholder={uiText("auto.ui.b2f23da948")} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <textarea className="tl-input min-h-16" aria-label={uiText("auto.ui.07dfa30eec")} placeholder={uiText("auto.ui.07dfa30eec")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
 
           {form.type === "video" && (
-            <input className="tl-input" placeholder={uiText("auto.ui.75b906a28d")} value={form.embedUrl} onChange={(e) => setForm({ ...form, embedUrl: e.target.value })} />
+            <input className="tl-input" aria-label={uiText("auto.ui.75b906a28d")} placeholder={uiText("auto.ui.75b906a28d")} value={form.embedUrl} onChange={(e) => setForm({ ...form, embedUrl: e.target.value })} />
           )}
           {form.type === "mindmap" && (
             <MindMapEditor initial={form.mindmap} onChange={(d) => setForm((f) => ({ ...f, mindmap: d }))} />
@@ -225,11 +225,11 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
                 </label>
                 {form.fileName && <span className="text-xs text-muted-foreground truncate max-w-[16rem]">{form.fileName}</span>}
               </div>
-              <textarea className="tl-input min-h-24" placeholder={uiText("auto.ui.3e48d3a8aa")} value={form.bodyMarkdown} onChange={(e) => setForm({ ...form, bodyMarkdown: e.target.value })} />
+              <textarea className="tl-input min-h-24" aria-label={uiText("auto.ui.3e48d3a8aa")} placeholder={uiText("auto.ui.3e48d3a8aa")} value={form.bodyMarkdown} onChange={(e) => setForm({ ...form, bodyMarkdown: e.target.value })} />
             </>
           )}
 
-          <input className="tl-input" placeholder={uiText("auto.ui.e8e8d9200a")} value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
+          <input className="tl-input" aria-label={uiText("auto.ui.e8e8d9200a")} placeholder={uiText("auto.ui.e8e8d9200a")} value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
           <div className="grid grid-cols-2 gap-3">
             <label className="text-xs text-muted-foreground">{uiText("auto.ui.afe3ce5295")}
               <input type="number" min={0} className="tl-input mt-1" value={form.requiredLevel} onChange={(e) => setForm({ ...form, requiredLevel: Number(e.target.value) })} />
@@ -242,12 +242,12 @@ function ContentForm({ initial, onClose }: { initial: Content | null; onClose: (
             <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} /> {uiText("auto.ui.2acfcfec5b")}
           </label>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={onClose}>{uiText("auto.ui.6c3de5381b")}</Button>
-            <Button size="sm" disabled={!form.title.trim() || save.isPending} onClick={() => save.mutate()}>
+            <Button variant="outline" size="sm" disabled={busy} onClick={close}>{uiText("auto.ui.6c3de5381b")}</Button>
+            <Button size="sm" disabled={!form.title.trim() || busy} onClick={submit}>
               {save.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} {uiText("common.save")}
             </Button>
           </div>
-        </div>
+        </fieldset>
       </DialogContent>
     </Dialog>
   );

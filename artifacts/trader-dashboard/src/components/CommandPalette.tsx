@@ -1,34 +1,25 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { BookOpen, FlaskConical, Newspaper, Plus, Heart } from "lucide-react";
 import {
-  LayoutDashboard, BookOpen, FlaskConical, MessageCircle, Library,
-  Sunrise, Settings, Newspaper, Landmark, CalendarDays, Trophy,
-  Clock, Target, ClipboardCheck, Plus, Archive,
-} from "lucide-react";
-import {
-  CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem,
-  CommandList, CommandSeparator,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
 } from "@/components/ui/command";
+import { ROOT_ITEMS } from "@/lib/navHubs";
+import { TOOL_GROUPS, WORKSPACE_TOOLS } from "@/lib/workspaceTools";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const PAGES = [
-  { href: "/",           labelKey: "dashboard.title",   icon: LayoutDashboard, keywords: "home command center" },
-  { href: "/journal",    labelKey: "journal.title",     icon: BookOpen,        keywords: "journal trade" },
-  { href: "/backtest",   labelKey: "nav.backtest",      icon: FlaskConical,    keywords: "replay strategia" },
-  { href: "/chat",       labelKey: "nav.chat",          icon: MessageCircle,   keywords: "chat social messaggi" },
-  { href: "/news",       labelKey: "news.title",        icon: Newspaper,       keywords: "news macro" },
-  { href: "/routine",    labelKey: "nav.routine",       icon: Sunrise,         keywords: "programma mattutino serale respirazione meditazione umore" },
-  { href: "/broker",     labelKey: "page.broker.title", icon: Landmark,        keywords: "conto fx blue account" },
-  { href: "/calendar",   labelKey: "page.calendar.title", icon: CalendarDays,  keywords: "agenda eventi planner" },
-  { href: "/milestones", labelKey: "nav.milestones",    icon: Trophy,          keywords: "livelli xp certificati" },
-  { href: "/clock",      labelKey: "nav.clock",         icon: Clock,           keywords: "sessioni mercato orari" },
-  { href: "/missions",   labelKey: "missions.title",    icon: Target,          keywords: "missioni xp" },
-  { href: "/tornei",     labelKey: "tornei.nav",        icon: Trophy,          keywords: "tornei classifica gara competizione leaderboard nft" },
-  { href: "/checklist",  labelKey: "checklist.title",   icon: ClipboardCheck,  keywords: "conferme criteri" },
-  { href: "/library",    labelKey: "nav.library",       icon: Library,         keywords: "contenuti formativi" },
-  { href: "/wiki",       labelKey: "nav.wiki",          icon: Archive,         keywords: "archivio appunti note documenti wiki" },
-  { href: "/settings",   labelKey: "settings.title",    icon: Settings,        keywords: "profilo aspetto audio pair" },
-] as const;
+const rootKeywords: Record<(typeof ROOT_ITEMS)[number]["id"], string> = {
+  today: "home oggi today processo preparazione sessione",
+  method: "metodo method strategia protocollo verifica percorso",
+  journal: "journal diario trade",
+};
+const PAGES = ROOT_ITEMS.map((item) => ({ ...item, keywords: rootKeywords[item.id] }));
 
 /**
  * Palette comandi globale (Ctrl+K / Cmd+K): navigazione rapida e azioni.
@@ -61,7 +52,10 @@ export function CommandPalette() {
       <CommandList>
         <CommandEmpty>{t("command.no_results")}</CommandEmpty>
         <CommandGroup heading={t("command.actions")}>
-          <CommandItem keywords={["nuovo", "trade", "diario"]} onSelect={() => go("/journal?new=1")}>
+          <CommandItem
+            keywords={["nuovo", "trade", "diario"]}
+            onSelect={() => go("/journal?new=1")}
+          >
             <Plus className="mr-2" />
             {t("command.new_trade")}
           </CommandItem>
@@ -75,6 +69,31 @@ export function CommandPalette() {
             </CommandItem>
           ))}
         </CommandGroup>
+        {TOOL_GROUPS.map((group) => (
+          <CommandGroup key={group} heading={t(`catalog.group.${group}`)}>
+            {WORKSPACE_TOOLS.filter((tool) => tool.group === group).map((tool) => {
+              const Icon =
+                group === "context"
+                  ? Newspaper
+                  : group === "verification"
+                    ? FlaskConical
+                    : group === "materials"
+                      ? BookOpen
+                      : Heart;
+              return (
+                <CommandItem
+                  key={tool.id}
+                  value={`${t(tool.labelKey)} ${t(`catalog.hint.${tool.id}`)}`}
+                  keywords={tool.keywords.split(" ")}
+                  onSelect={() => go(tool.href)}
+                >
+                  <Icon className="mr-2" />
+                  <span>{t(tool.labelKey)}</span>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        ))}
       </CommandList>
     </CommandDialog>
   );

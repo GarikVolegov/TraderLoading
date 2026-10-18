@@ -19,7 +19,7 @@ function LegalBlock({
 }) {
   return (
     <section className="space-y-3 rounded-lg border border-border/55 bg-card/65 p-5">
-      <h2 className="flex items-center gap-2 font-mono text-lg font-bold text-foreground">
+      <h2 className="flex items-center gap-2 font-sans text-lg font-bold text-foreground">
         <ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
         {title}
       </h2>
@@ -129,7 +129,7 @@ export default function LegalPage({ kind }: LegalPageProps) {
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
                 TraderLoading
               </p>
-              <h1 className="font-mono text-3xl font-extrabold">
+              <h1 className="font-sans text-3xl font-extrabold">
                 {t(isPrivacy ? "legal.title.privacy" : "legal.title.terms")}
               </h1>
             </div>

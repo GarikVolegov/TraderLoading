@@ -1,7 +1,7 @@
 export interface PairEntry {
   symbol: string;
   label: string;
-  category: "forex-major" | "forex-minor" | "forex-exotic" | "metal" | "index" | "crypto";
+  category: "forex-major" | "forex-minor" | "forex-exotic" | "metal" | "energy" | "index" | "crypto";
   currencies: string[];
 }
 
@@ -46,6 +46,7 @@ export const PAIR_CATALOG: PairEntry[] = [
 
   { symbol: "XAUUSD", label: "XAU/USD", category: "metal", currencies: ["XAU", "USD"] },
   { symbol: "XAGUSD", label: "XAG/USD", category: "metal", currencies: ["XAG", "USD"] },
+  { symbol: "USOIL", label: "US Oil (WTI)", category: "energy", currencies: ["USD"] },
 
   { symbol: "US30", label: "US30", category: "index", currencies: ["USD"] },
   { symbol: "NAS100", label: "NAS100", category: "index", currencies: ["USD"] },
@@ -60,6 +61,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   "forex-minor": "Forex Minors",
   "forex-exotic": "Forex Exotici",
   "metal": "Metalli",
+  "energy": "Energia",
   "index": "Indici",
   "crypto": "Crypto",
 };

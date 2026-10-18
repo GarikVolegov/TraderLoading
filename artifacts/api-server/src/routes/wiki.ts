@@ -19,8 +19,23 @@ import { createWikiStorageFromEnv } from "../services/wikiStorage.js";
 import { enqueueWikiSourceProcessing, processWikiSourceJob } from "../services/wikiIngest.js";
 import { buildSourceUpdate, parseTags } from "../services/wikiSourceUpdate.js";
 import { requireProFeature } from "../lib/billing.js";
+import { z } from "zod";
+import { imageMatchesType } from "../lib/imageValidation.js";
 
 const router: IRouter = Router();
+const resourceId = z.coerce.number().int().positive().max(2_147_483_647);
+const bodyId = z.number().int().positive().max(2_147_483_647).nullable().optional();
+const titleInput = z.string().trim().max(500).optional();
+const tagsInput = z.union([z.string().max(4000), z.array(z.string().max(200)).max(200)]).optional();
+const sourcePatchInput = z.object({ folderId: bodyId, tags: tagsInput })
+  .refine(value => Object.keys(value).length > 0, "Nessun campo da aggiornare");
+const folderCreateInput = z.object({
+  name: z.string().trim().min(1).max(120), parentId: bodyId,
+  color: z.string().trim().max(64).nullable().optional(),
+});
+const folderPatchInput = folderCreateInput.partial().extend({
+  position: z.number().int().min(-1_000_000).max(1_000_000).optional(),
+}).refine(value => Object.keys(value).length > 0, "Nessun campo da aggiornare");
 
 const WIKI_UPLOAD_LIMIT_BYTES = getWikiUploadLimitBytes();
 
@@ -73,13 +88,19 @@ router.get("/uploads/wiki/:segment/:filename", async (req, res) => {
     return;
   }
 
-  res.setHeader("Content-Type", source.mimeType || "application/octet-stream");
+  // Unknown/archive formats include HTML and SVG. They must never execute on
+  // the application origin, including files stored before upload validation.
+  const inlineImage = imageMatchesType(buffer, source.mimeType || "", source.fileName || "");
+  const inlinePdf = source.mimeType === "application/pdf" && buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+  const inline = inlineImage || inlinePdf;
+  res.setHeader("Content-Type", inline ? source.mimeType! : "application/octet-stream");
+  res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Cache-Control", "private, max-age=0, no-store");
   if (source.fileName) {
     res.setHeader(
       "Content-Disposition",
-      `inline; filename="${encodeURIComponent(source.fileName)}"`,
+      `${inline ? "inline" : "attachment"}; filename="${encodeURIComponent(source.fileName)}"`,
     );
   }
   res.send(buffer);
@@ -97,7 +118,9 @@ router.get("/wiki/sources", async (req, res) => {
 router.post("/wiki/sources/text", async (req, res) => {
   const userId = await requireWikiUser(req, res);
   if (!userId) return;
-  const { title, content, tags } = req.body as { title?: string; content?: string; tags?: unknown };
+  const { title, content, tags } = z.object({
+    title: titleInput, content: z.string().trim().min(1).max(500_000), tags: tagsInput,
+  }).parse(req.body);
   if (!content?.trim()) {
     res.status(400).json({ error: "content obbligatorio" });
     return;
@@ -173,7 +196,9 @@ router.post("/wiki/sources/upload", async (req, res) => {
 router.post("/wiki/sources/url", async (req, res) => {
   const userId = await requireWikiUser(req, res);
   if (!userId) return;
-  const { url, title, tags } = req.body as { url?: string; title?: string; tags?: unknown };
+  const { url, title, tags } = z.object({
+    url: z.string().trim().min(1).max(4096), title: titleInput, tags: tagsInput,
+  }).parse(req.body);
   if (!url?.trim()) {
     res.status(400).json({ error: "url obbligatorio" });
     return;
@@ -201,7 +226,7 @@ router.post("/wiki/sources/url", async (req, res) => {
 router.delete("/wiki/sources/:id", async (req, res) => {
   const userId = await requireWikiUser(req, res);
   if (!userId) return;
-  const id = Number(req.params.id);
+  const id = resourceId.parse(req.params.id);
   const [source] = await db.select().from(wikiSourcesTable)
     .where(and(eq(wikiSourcesTable.id, id), eq(wikiSourcesTable.userId, userId)))
     .limit(1);
@@ -220,7 +245,7 @@ router.delete("/wiki/sources/:id", async (req, res) => {
 router.patch("/wiki/sources/:id", async (req, res) => {
   const userId = await requireWikiUser(req, res);
   if (!userId) return;
-  const id = Number(req.params.id);
+  const id = resourceId.parse(req.params.id);
   const [source] = await db
     .select({ id: wikiSourcesTable.id })
     .from(wikiSourcesTable)
@@ -230,7 +255,7 @@ router.patch("/wiki/sources/:id", async (req, res) => {
     res.status(404).json({ error: "Sorgente non trovata" });
     return;
   }
-  const { folderId, tags } = req.body as { folderId?: number | null; tags?: unknown };
+  const { folderId, tags } = sourcePatchInput.parse(req.body);
   let folderValid = true;
   if (folderId != null) {
     const [folder] = await db
@@ -287,11 +312,7 @@ router.get("/wiki/folders", async (req, res) => {
 router.post("/wiki/folders", async (req, res) => {
   const userId = await requireWikiUser(req, res);
   if (!userId) return;
-  const { name, parentId, color } = req.body as {
-    name?: string;
-    parentId?: number | null;
-    color?: string;
-  };
+  const { name, parentId, color } = folderCreateInput.parse(req.body);
   if (!name?.trim()) {
     res.status(400).json({ error: "name obbligatorio" });
     return;
@@ -322,19 +343,14 @@ router.post("/wiki/folders", async (req, res) => {
 router.patch("/wiki/folders/:id", async (req, res) => {
   const userId = await requireWikiUser(req, res);
   if (!userId) return;
-  const id = Number(req.params.id);
+  const id = resourceId.parse(req.params.id);
   const folders = await loadUserFolders(userId);
   const folder = folders.find((f) => f.id === id);
   if (!folder) {
     res.status(404).json({ error: "Cartella non trovata" });
     return;
   }
-  const { name, parentId, color, position } = req.body as {
-    name?: string;
-    parentId?: number | null;
-    color?: string | null;
-    position?: number;
-  };
+  const { name, parentId, color, position } = folderPatchInput.parse(req.body);
   const patch: Partial<typeof wikiFoldersTable.$inferInsert> = { updatedAt: new Date() };
   if (typeof name === "string" && name.trim()) patch.name = name.trim().slice(0, 120);
   if (color !== undefined) patch.color = color?.trim() || null;
@@ -368,7 +384,7 @@ router.patch("/wiki/folders/:id", async (req, res) => {
 router.delete("/wiki/folders/:id", async (req, res) => {
   const userId = await requireWikiUser(req, res);
   if (!userId) return;
-  const id = Number(req.params.id);
+  const id = resourceId.parse(req.params.id);
   const deleted = await db
     .delete(wikiFoldersTable)
     .where(and(eq(wikiFoldersTable.id, id), eq(wikiFoldersTable.userId, userId)))

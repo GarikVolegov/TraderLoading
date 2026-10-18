@@ -1,6 +1,7 @@
+import { useRoutineStorage } from "@/hooks/useRoutineStorage";
 import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { uiText } from "@/contexts/LanguageContext";
@@ -21,15 +22,17 @@ export { SessionModal };
 export type { Program, Answers };
 export { saveRoutineCompletion };
 
-export default function Routine() {
+export function RoutineWorkspace({ embedded = false }: { embedded?: boolean }) {
+  const storage = useRoutineStorage();
   const [activeSession, setActiveSession] = useState<ActiveRoutineSession | null>(null);
   const [now, setNow] = useState(new Date());
   const [location, setLocation] = useLocation();
-  const [completionHistory, setCompletionHistory] = useState(() => loadRoutineCompletions());
+  const search = useSearch();
+  const [completionHistory, setCompletionHistory] = useState(() => loadRoutineCompletions(storage));
 
   const refreshRoutineData = useCallback(() => {
-    setCompletionHistory(loadRoutineCompletions());
-  }, []);
+    setCompletionHistory(loadRoutineCompletions(storage));
+  }, [storage]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
@@ -47,7 +50,7 @@ export default function Routine() {
   }, [refreshRoutineData]);
 
   useEffect(() => {
-    const requested = getRoutineStartProgram(location) ?? getRoutineStartProgram(window.location.search);
+    const requested = getRoutineStartProgram(search);
     if (!requested) return;
 
     setActiveSession({
@@ -56,8 +59,10 @@ export default function Routine() {
       routineTitle: requested === "morning" ? uiText("auto.ui.17f5f49624") : uiText("auto.ui.f706ef5c94"),
       markDailyProgram: true,
     });
-    setLocation("/routine", { replace: true });
-  }, [location, setLocation]);
+    const params = new URLSearchParams(search);
+    params.delete("start");
+    setLocation(`${location}${params.size ? `?${params.toString()}` : ""}`, { replace: true });
+  }, [search, location, setLocation]);
 
   const hour = now.getHours();
   const isMorningActive = hour >= 4 && hour < 13;
@@ -76,18 +81,19 @@ export default function Routine() {
     });
   };
 
-  const handleComplete = (session: ActiveRoutineSession, answers: Answers) => {
-    saveRoutineCompletion(session.program, answers, {
-      routineId: session.routineId,
-      routineTitle: session.routineTitle,
-      markDailyProgram: session.markDailyProgram,
-    });
-    void recordRoutineCompletion({
+  const handleComplete = async (session: ActiveRoutineSession, answers: Answers) => {
+    await recordRoutineCompletion({
       routineId: session.routineId,
       routineTitle: session.routineTitle,
       template: session.program,
       answers,
-    }).catch(() => {});
+    });
+    saveRoutineCompletion(session.program, answers, {
+      routineId: session.routineId,
+      routineTitle: session.routineTitle,
+      markDailyProgram: session.markDailyProgram,
+      storage,
+    });
     window.dispatchEvent(new Event("tl_routine_history_updated"));
     if (session.markDailyProgram) {
       window.dispatchEvent(new Event(`tl_routine_${session.program}_done`));
@@ -98,8 +104,8 @@ export default function Routine() {
 
   return (
     <>
-      <PageLayout>
-        <PageHeader
+      <div className="space-y-4">
+        {embedded ? <div><h2 className="text-base font-semibold">{uiText("routine.title")}</h2><p className="mt-1 text-sm text-muted-foreground">{uiText("routine.subtitle")}</p></div> : <PageHeader
           title={uiText("routine.title")}
           subtitle={uiText("routine.subtitle")}
           badge={
@@ -107,7 +113,7 @@ export default function Routine() {
               {uiText("common.interactive")}
             </span>
           }
-        />
+        />}
 
         <div className="flex items-baseline justify-between">
           <h2 className="text-base font-bold">{uiText("routine.section.guided_programs")}</h2>
@@ -155,7 +161,7 @@ export default function Routine() {
         <p className="text-center text-sm italic text-muted-foreground/30">
           &ldquo;{uiText("auto.ui.b48f2e2158")}&rdquo;
         </p>
-      </PageLayout>
+      </div>
 
       <AnimatePresence>
         {activeSession && (
@@ -168,4 +174,8 @@ export default function Routine() {
       </AnimatePresence>
     </>
   );
+}
+
+export default function Routine() {
+  return <PageLayout><RoutineWorkspace /></PageLayout>;
 }

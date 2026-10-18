@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { timingSafeEqual, webcrypto } from "node:crypto";
 import { db, chatMessagesTable, userPublicKeysTable, userE2eeKeyBackupsTable, friendshipsTable, globalChatMessagesTable, profileTable, followsTable } from "@workspace/db";
 import { eq, or, and, desc, sql, lt } from "drizzle-orm";
 import { getUserNotificationLanguage, sendPushToUser } from "./push.js";
@@ -43,12 +44,79 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+function isP256Coordinate(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{43}$/.test(value)
+    && Buffer.from(value, "base64url").length === 32
+    && Buffer.from(value, "base64url").toString("base64url") === value;
+}
+
+function isValidChatJwk(value: unknown, privateKey: boolean): value is Record<string, unknown> {
+  if (!isJsonObject(value) || value.kty !== "EC" || value.crv !== "P-256"
+    || !isP256Coordinate(value.x) || !isP256Coordinate(value.y)) return false;
+  if (privateKey ? !isP256Coordinate(value.d) : "d" in value) return false;
+  if (value.ext !== undefined && typeof value.ext !== "boolean") return false;
+  if (value.alg !== undefined && typeof value.alg !== "string") return false;
+  if (value.key_ops !== undefined) {
+    if (!Array.isArray(value.key_ops) || new Set(value.key_ops).size !== value.key_ops.length) return false;
+    if (privateKey) {
+      if (!value.key_ops.includes("deriveBits") || !value.key_ops.every(op => op === "deriveBits" || op === "deriveKey")) return false;
+    } else if (value.key_ops.length !== 0) return false;
+  }
+  return true;
+}
+
+function samePublicKey(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  return ["kty", "crv", "x", "y"].every(field => a[field] === b[field]);
+}
+
 export function isValidAccountKeyBackupBody(body: unknown): body is {
   publicKeyJwk: Record<string, unknown>;
   privateKeyJwk: Record<string, unknown>;
 } {
-  if (!isJsonObject(body)) return false;
-  return isJsonObject(body.publicKeyJwk) && isJsonObject(body.privateKeyJwk);
+  return isJsonObject(body) && isValidChatJwk(body.publicKeyJwk, false)
+    && isValidChatJwk(body.privateKeyJwk, true)
+    && samePublicKey(body.publicKeyJwk, body.privateKeyJwk);
+}
+
+let validationPair: Promise<webcrypto.CryptoKeyPair> | undefined;
+function getValidationPair() {
+  validationPair ??= webcrypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]);
+  return validationPair;
+}
+
+export async function validateChatPublicKey(value: unknown): Promise<boolean> {
+  if (!isValidChatJwk(value, false)) return false;
+  try {
+    const publicKey = await webcrypto.subtle.importKey("jwk", value, { name: "ECDH", namedCurve: "P-256" }, false, []);
+    const probe = await getValidationPair();
+    await webcrypto.subtle.deriveBits({ name: "ECDH", public: publicKey }, probe.privateKey, 256);
+    return true;
+  } catch { return false; }
+}
+
+export async function validateAccountKeyBackup(body: unknown): Promise<boolean> {
+  if (!isValidAccountKeyBackupBody(body)) return false;
+  try {
+    const [publicKey, privateKey, probe] = await Promise.all([
+      webcrypto.subtle.importKey("jwk", body.publicKeyJwk, { name: "ECDH", namedCurve: "P-256" }, false, []),
+      webcrypto.subtle.importKey("jwk", body.privateKeyJwk, { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]),
+      getValidationPair(),
+    ]);
+    // Importing a JWK alone is not a proof that its public coordinates belong
+    // to d. Both sides must derive the same secret against an independent key.
+    const [privateSecret, publicSecret] = await Promise.all([
+      webcrypto.subtle.deriveBits({ name: "ECDH", public: probe.publicKey }, privateKey, 256),
+      webcrypto.subtle.deriveBits({ name: "ECDH", public: publicKey }, probe.privateKey, 256),
+    ]);
+    return timingSafeEqual(Buffer.from(privateSecret), Buffer.from(publicSecret));
+  } catch { return false; }
+}
+
+export function parseChatCursor(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !/^[0-9]+$/.test(value)) return null;
+  const cursor = Number(value);
+  return Number.isSafeInteger(cursor) && cursor > 0 && cursor <= 2_147_483_647 ? cursor : null;
 }
 
 export function serializeAccountKeyBackup(
@@ -72,24 +140,17 @@ export function serializeAccountKeyBackup(
   };
 }
 
-async function upsertPublicKey(userId: string, publicKeyJwk: Record<string, unknown>) {
-  const existing = await db
-    .select()
-    .from(userPublicKeysTable)
-    .where(eq(userPublicKeysTable.userId, userId))
-    .limit(1);
+type ChatKeyTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-  if (existing.length > 0) {
-    return db
-      .update(userPublicKeysTable)
-      .set({ publicKeyJwk: JSON.stringify(publicKeyJwk) })
-      .where(eq(userPublicKeysTable.userId, userId))
-      .returning();
-  }
+async function lockAccountKeys(tx: ChatKeyTransaction, userId: string) {
+  // The same lock also covers first use, when neither table has a row to lock.
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`chat-account-keys:${userId}`}, 0))`);
+}
 
-  return db
-    .insert(userPublicKeysTable)
+async function upsertPublicKey(tx: ChatKeyTransaction, userId: string, publicKeyJwk: Record<string, unknown>) {
+  return tx.insert(userPublicKeysTable)
     .values({ userId, publicKeyJwk: JSON.stringify(publicKeyJwk) })
+    .onConflictDoUpdate({ target: userPublicKeysTable.userId, set: { publicKeyJwk: JSON.stringify(publicKeyJwk) } })
     .returning();
 }
 
@@ -108,8 +169,8 @@ router.get("/chat/key-backup", async (req, res) => {
       .limit(1);
 
     res.json(serializeAccountKeyBackup(userId, backup ?? null));
-  } catch (err) {
-    console.error("chat/key-backup GET error:", err);
+  } catch {
+    console.error("chat/key-backup GET failed");
     res.status(500).json({ error: "Errore interno" });
   }
 });
@@ -123,50 +184,26 @@ router.put("/chat/key-backup", async (req, res) => {
   if (!userId) return;
 
   try {
-    if (!isValidAccountKeyBackupBody(req.body)) {
-      res.status(400).json({ error: "publicKeyJwk e privateKeyJwk richiesti" });
+    if (!isValidAccountKeyBackupBody(req.body) || !(await validateAccountKeyBackup(req.body))) {
+      res.status(400).json({ error: "Coppia di chiavi chat non valida" });
       return;
     }
-
-    const publicKeyJwk = JSON.stringify(req.body.publicKeyJwk);
-    const privateKeyJwk = JSON.stringify(req.body.privateKeyJwk);
-
-    const existing = await db
-      .select()
-      .from(userE2eeKeyBackupsTable)
-      .where(eq(userE2eeKeyBackupsTable.userId, userId))
-      .limit(1);
-
-    let saved: { publicKeyJwk: string; privateKeyJwk: string };
-    if (existing.length > 0) {
-      const [updated] = await db
-        .update(userE2eeKeyBackupsTable)
-        .set({
-          publicKeyJwk,
-          privateKeyJwk,
-          updatedAt: new Date(),
-        })
-        .where(eq(userE2eeKeyBackupsTable.userId, userId))
-        .returning({
-          publicKeyJwk: userE2eeKeyBackupsTable.publicKeyJwk,
-          privateKeyJwk: userE2eeKeyBackupsTable.privateKeyJwk,
-        });
-      saved = updated;
-    } else {
-      const [created] = await db
-        .insert(userE2eeKeyBackupsTable)
+    const { publicKeyJwk: publicJwk, privateKeyJwk: privateJwk } = req.body;
+    const publicKeyJwk = JSON.stringify(publicJwk);
+    const privateKeyJwk = JSON.stringify(privateJwk);
+    const saved = await db.transaction(async tx => {
+      await lockAccountKeys(tx, userId);
+      const [backup] = await tx.insert(userE2eeKeyBackupsTable)
         .values({ userId, publicKeyJwk, privateKeyJwk })
-        .returning({
-          publicKeyJwk: userE2eeKeyBackupsTable.publicKeyJwk,
-          privateKeyJwk: userE2eeKeyBackupsTable.privateKeyJwk,
-        });
-      saved = created;
-    }
-
-    await upsertPublicKey(userId, req.body.publicKeyJwk);
+        .onConflictDoUpdate({ target: userE2eeKeyBackupsTable.userId, set: { publicKeyJwk, privateKeyJwk, updatedAt: new Date() } })
+        .returning({ publicKeyJwk: userE2eeKeyBackupsTable.publicKeyJwk, privateKeyJwk: userE2eeKeyBackupsTable.privateKeyJwk });
+      await upsertPublicKey(tx, userId, publicJwk);
+      return backup;
+    });
     res.json(serializeAccountKeyBackup(userId, saved));
-  } catch (err) {
-    console.error("chat/key-backup PUT error:", err);
+  } catch {
+    // Drizzle errors include query parameters; never log the escrowed key.
+    console.error("chat/key-backup PUT failed");
     res.status(500).json({ error: "Errore interno" });
   }
 });
@@ -176,34 +213,26 @@ router.post("/chat/keys", async (req, res) => {
   if (!userId) return;
 
   try {
-    const { publicKeyJwk } = req.body;
-    if (!publicKeyJwk || typeof publicKeyJwk !== "object") {
-      res.status(400).json({ error: "publicKeyJwk richiesto" });
+    const publicKeyJwk: unknown = req.body?.publicKeyJwk;
+    if (!isValidChatJwk(publicKeyJwk, false) || !(await validateChatPublicKey(publicKeyJwk))) {
+      res.status(400).json({ error: "Chiave pubblica chat non valida" });
       return;
     }
-
-    const existing = await db
-      .select()
-      .from(userPublicKeysTable)
-      .where(eq(userPublicKeysTable.userId, userId))
-      .limit(1);
-
-    if (existing.length > 0) {
-      const [updated] = await db
-        .update(userPublicKeysTable)
-        .set({ publicKeyJwk: JSON.stringify(publicKeyJwk) })
-        .where(eq(userPublicKeysTable.userId, userId))
-        .returning();
-      res.json(updated);
-    } else {
-      const [created] = await db
-        .insert(userPublicKeysTable)
-        .values({ userId, publicKeyJwk: JSON.stringify(publicKeyJwk) })
-        .returning();
-      res.json(created);
+    const saved = await db.transaction(async tx => {
+      await lockAccountKeys(tx, userId);
+      const [backup] = await tx.select({ publicKeyJwk: userE2eeKeyBackupsTable.publicKeyJwk })
+        .from(userE2eeKeyBackupsTable).where(eq(userE2eeKeyBackupsTable.userId, userId)).limit(1);
+      if (backup && !samePublicKey(JSON.parse(backup.publicKeyJwk), publicKeyJwk)) return null;
+      const [key] = await upsertPublicKey(tx, userId, publicKeyJwk);
+      return key;
+    });
+    if (!saved) {
+      res.status(409).json({ error: "Chiavi chat non sincronizzate; riapri i messaggi" });
+      return;
     }
-  } catch (err) {
-    console.error("chat/keys POST error:", err);
+    res.json(saved);
+  } catch {
+    console.error("chat/keys POST failed");
     res.status(500).json({ error: "Errore interno" });
   }
 });
@@ -233,8 +262,8 @@ router.get("/chat/keys/:userId", async (req, res) => {
     }
 
     res.json({ userId: key.userId, publicKeyJwk: JSON.parse(key.publicKeyJwk) });
-  } catch (err) {
-    console.error("chat/keys GET error:", err);
+  } catch {
+    console.error("chat/keys GET failed");
     res.status(500).json({ error: "Errore interno" });
   }
 });
@@ -244,7 +273,7 @@ router.post("/chat/messages", async (req, res) => {
   if (!userId) return;
 
   try {
-    const { receiverId, ciphertext, iv } = req.body;
+    const { receiverId, ciphertext, iv } = req.body ?? {};
     if (!receiverId || typeof receiverId !== "string" || !ciphertext || typeof ciphertext !== "string" || !iv || typeof iv !== "string") {
       res.status(400).json({ error: "Campi mancanti" });
       return;
@@ -263,22 +292,21 @@ router.post("/chat/messages", async (req, res) => {
 
     res.status(201).json(message);
 
-    const [senderProfile] = await db.select({ name: profileTable.name })
-      .from(profileTable).where(eq(profileTable.userId, userId)).limit(1);
-    const senderName = senderProfile?.name ?? "Qualcuno";
-    const language = await getUserNotificationLanguage(receiverId);
-    const copy = getServerNotificationCopy(language);
-
-    sendPushToUser(
-      receiverId,
-      {
-        title: senderName,
+    // The message is already persisted and its 201 response committed. Keep
+    // every notification lookup inside an independent best-effort task so a
+    // later DB/push failure cannot try to send a second HTTP response.
+    void (async () => {
+      const [senderProfile] = await db.select({ name: profileTable.name })
+        .from(profileTable).where(eq(profileTable.userId, userId)).limit(1);
+      const language = await getUserNotificationLanguage(receiverId);
+      const copy = getServerNotificationCopy(language);
+      await sendPushToUser(receiverId, {
+        title: senderProfile?.name ?? "Qualcuno",
         body: copy.chatBody,
         tag: `chat-${userId}`,
-        data: { url: `${process.env.REPLIT_DEV_DOMAIN || ""}/chat` },
-      },
-      "messages"
-    ).catch(() => {});
+        data: { url: `/chat?t=conversazioni&peer=${encodeURIComponent(userId)}` },
+      }, "messages");
+    })().catch(() => { console.error("chat/messages notification failed after message persistence"); });
   } catch (err) {
     console.error("chat/messages POST error:", err);
     res.status(500).json({ error: "Errore interno" });
@@ -291,8 +319,11 @@ router.get("/chat/messages/:friendId", async (req, res) => {
 
   try {
     const friendId = req.params.friendId;
-    const cursorParam = req.query.cursor as string | undefined;
-    const cursor = cursorParam ? parseInt(cursorParam) : undefined;
+    const cursor = parseChatCursor(req.query.cursor);
+    if (cursor === null) {
+      res.status(400).json({ error: "Cursore non valido" });
+      return;
+    }
     const limit = 50;
 
     const conditions = [
@@ -302,7 +333,7 @@ router.get("/chat/messages/:friendId", async (req, res) => {
       ),
     ];
 
-    if (cursor && !isNaN(cursor)) {
+    if (cursor !== undefined) {
       conditions.push(lt(chatMessagesTable.id, cursor));
     }
 
@@ -361,12 +392,15 @@ router.get("/chat/global", async (req, res) => {
   if (!userId) return;
 
   try {
-    const cursorParam = req.query.cursor as string | undefined;
-    const cursor = cursorParam ? parseInt(cursorParam) : undefined;
+    const cursor = parseChatCursor(req.query.cursor);
+    if (cursor === null) {
+      res.status(400).json({ error: "Cursore non valido" });
+      return;
+    }
     const limit = 60;
 
     const conditions = [];
-    if (cursor && !isNaN(cursor)) {
+    if (cursor !== undefined) {
       conditions.push(lt(globalChatMessagesTable.id, cursor));
     }
 
@@ -392,7 +426,7 @@ router.post("/chat/global", async (req, res) => {
   if (!userId) return;
 
   try {
-    const { message } = req.body;
+    const message: unknown = req.body?.message;
     if (!message || typeof message !== "string" || message.trim().length === 0) {
       res.status(400).json({ error: "Messaggio vuoto" });
       return;

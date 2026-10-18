@@ -17,6 +17,8 @@ tags:
     description: User profile operations
   - name: missions
     description: Daily missions operations
+  - name: process
+    description: Authenticated personal methods, evidence, sessions and advancement prerequisites.
   - name: journal
     description: Trading journal operations
   - name: ideas
@@ -44,6 +46,171 @@ tags:
   - name: support
     description: Support tickets and assistance threads
 paths:
+  /community/channels/{channelId}/context:
+    get:
+      operationId: getCommunityChannelContext
+      tags: [chat]
+      summary: Resolve a legacy checkout destination for a current community member
+      parameters:
+        - name: channelId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2147483647
+      responses:
+        "200":
+          description: Navigation context only; channel content still checks paid access
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [communityId, channelId]
+                properties:
+                  communityId:
+                    type: integer
+                  channelId:
+                    type: integer
+        "400":
+          description: Invalid identifier
+        "401":
+          description: Authentication required
+        "404":
+          description: Channel absent or unavailable to this user
+  /market-decisions/{id}:
+    get:
+      operationId: getMarketDecision
+      tags: [market-decisions]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Owned decision with original snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketDecision"
+        "401":
+          description: Authentication required
+        "404":
+          description: Owned decision not found
+  /market-decisions:
+    get:
+      operationId: getMarketDecisions
+      tags: [journal]
+      summary: Own immutable market decisions and their observed outcomes
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Own decisions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/MarketDecision" }
+                  nextCursor: { type: [string, "null"] }
+        "401": { description: Authentication required }
+        "400": { description: Invalid pagination }
+    post:
+      operationId: createMarketDecision
+      tags: [journal]
+      summary: Record trade or wait against a server-issued immutable snapshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMarketDecisionRequest"
+      responses:
+        "201":
+          description: Saved decision, safe to retry
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MarketDecision" }
+        "401": { description: Authentication required }
+        "400": { description: Invalid decision }
+        "404": { description: Snapshot or owned journal entry unavailable }
+        "409": { description: Refresh an expired context }
+  /tools/macro-news:
+    get:
+      operationId: getToolsMacroNews
+      tags: [news]
+      summary: Compatibility brief over the same curated news corpus
+      parameters:
+        - name: pairs
+          in: query
+          schema: { type: string }
+        - name: currencies
+          in: query
+          schema: { type: string }
+        - name: lang
+          in: query
+          schema: { type: string, enum: [it, en, es, fr, de], default: it }
+        - name: force
+          in: query
+          schema: { type: string, enum: ["1"] }
+      responses:
+        "200":
+          description: At most five relevant events; no mandatory minimum
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MacroNewsResponse" }
+        "500": { description: News unavailable }
+    post:
+      operationId: queryToolsMacroNews
+      tags: [news]
+      summary: Legacy brief request with currency and pair filters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QueryMacroNewsRequest" }
+      responses:
+        "200":
+          description: Shared corpus in the legacy brief shape
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MacroNewsResponse" }
+        "500": { description: News unavailable }
+  /tools/market-context:
+    get:
+      operationId: getMarketContext
+      tags: [news]
+      summary: Descriptive context and independently validated four-hour outlook
+      parameters:
+        - name: pair
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: horizon
+          in: query
+          schema: { type: string, enum: [4h], default: 4h }
+      responses:
+        "200":
+          description: Available contributions, provenance and coverage; score may be null
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketContext"
+        "400":
+          description: Unsupported or absent pair
   /wiki/sources:
     get:
       operationId: listWikiSources
@@ -417,15 +584,15 @@ paths:
       operationId: getCurrentAuthUser
       summary: Get the currently authenticated user
       parameters:
-        - $ref: '#/components/parameters/AuthorizationSessionHeader'
-        - $ref: '#/components/parameters/SessionCookie'
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
       responses:
-        '200':
+        "200":
           description: Auth status resolved successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthUserEnvelope'
+                $ref: "#/components/schemas/AuthUserEnvelope"
   /login:
     get:
       tags: [Auth]
@@ -438,7 +605,7 @@ paths:
           schema:
             type: string
       responses:
-        '302':
+        "302":
           description: Redirect to the OIDC authorization endpoint.
   /callback:
     get:
@@ -463,7 +630,7 @@ paths:
             type: string
             format: uri
       responses:
-        '302':
+        "302":
           description: Redirect after login.
   /logout:
     get:
@@ -471,10 +638,10 @@ paths:
       operationId: logoutBrowserSession
       summary: Clear the session and begin OIDC logout
       parameters:
-        - $ref: '#/components/parameters/AuthorizationSessionHeader'
-        - $ref: '#/components/parameters/SessionCookie'
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
       responses:
-        '302':
+        "302":
           description: Redirect to the OIDC provider logout URL.
   /mobile-auth/token-exchange:
     post:
@@ -486,46 +653,46 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+              $ref: "#/components/schemas/MobileTokenExchangeRequest"
       responses:
-        '200':
+        "200":
           description: Session created successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
-        '400':
+                $ref: "#/components/schemas/MobileTokenExchangeSuccess"
+        "400":
           description: Missing or invalid required fields.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '401':
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
           description: Token did not contain usable claims.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '500':
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
           description: Token exchange failed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+                $ref: "#/components/schemas/ErrorEnvelope"
   /mobile-auth/logout:
     post:
       tags: [Auth]
       operationId: logoutMobileSession
       summary: Delete a mobile session token
       parameters:
-        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
       responses:
-        '200':
+        "200":
           description: Logout processed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LogoutSuccess'
+                $ref: "#/components/schemas/LogoutSuccess"
 
   /profile:
     get:
@@ -868,8 +1035,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Checkin"
                 nullable: true
+                allOf:
+                  - $ref: "#/components/schemas/Checkin"
 
   /checkins:
     get:
@@ -1261,6 +1429,91 @@ paths:
               schema:
                 $ref: "#/components/schemas/NewsResponse"
 
+  /news/preferences:
+    get:
+      operationId: getNewsPreferences
+      tags: [news]
+      summary: Read the authenticated user's saved news preferences
+      responses:
+        "200":
+          description: Saved preferences; these do not change the chronological feed ordering
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsSavedPreferences"
+        "401":
+          description: Authentication required
+        "503":
+          description: Preferences unavailable; not an empty preference set
+    put:
+      operationId: saveNewsPreferences
+      tags: [news]
+      summary: Save news topics and strategy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsSavedPreferences"
+      responses:
+        "200":
+          description: Confirmed saved preferences with normalized limits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsSavedPreferences"
+        "400":
+          description: Invalid preference fields
+        "401":
+          description: Authentication required
+  /news/feedback:
+    get:
+      operationId: getNewsFeedback
+      tags: [news]
+      summary: Read only the authenticated user's saved article votes
+      responses:
+        "200":
+          description: Saved feedback, including cleared votes equal to zero
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feedback]
+                properties:
+                  feedback:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NewsSavedFeedback"
+        "401":
+          description: Authentication required
+        "503":
+          description: Feedback unavailable; not an empty vote set
+    post:
+      operationId: saveNewsFeedback
+      tags: [news]
+      summary: Set or clear an article vote; negative votes hide that article on feed refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsSavedFeedback"
+      responses:
+        "200":
+          description: Vote saved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: Invalid article key or vote
+        "401":
+          description: Authentication required
+
   /calendar:
     get:
       operationId: getEconomicCalendar
@@ -1405,6 +1658,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BacktestTrade"
+        "409":
+          description: Replay save identity already used with different content, or its trade has been deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "402":
           description: Pro subscription required
           content:
@@ -1617,7 +1876,7 @@ paths:
     post:
       operationId: savePublicKey
       tags: [chat]
-      summary: Save user public key for E2EE
+      summary: Save the public key used for encrypted chat payloads
       requestBody:
         required: true
         content:
@@ -1625,6 +1884,18 @@ paths:
             schema:
               $ref: "#/components/schemas/SavePublicKeyBody"
       responses:
+        "400":
+          description: Invalid P-256 public JWK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Public key conflicts with the saved account key pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "200":
           description: Key saved
           content:
@@ -1636,7 +1907,7 @@ paths:
     get:
       operationId: getAccountKeyBackup
       tags: [chat]
-      summary: Get the authenticated user's account-backed E2EE key pair
+      summary: Get the authenticated user's server-stored chat key pair
       responses:
         "200":
           description: Account key backup status
@@ -1647,7 +1918,7 @@ paths:
     put:
       operationId: saveAccountKeyBackup
       tags: [chat]
-      summary: Save the authenticated user's account-backed E2EE key pair
+      summary: Save the authenticated user's server-stored chat key pair
       requestBody:
         required: true
         content:
@@ -1655,6 +1926,12 @@ paths:
             schema:
               $ref: "#/components/schemas/SaveAccountKeyBackupBody"
       responses:
+        "400":
+          description: Invalid P-256 key pair or private key does not match its public key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "200":
           description: Account key backup saved
           content:
@@ -1726,9 +2003,18 @@ paths:
         - name: cursor
           in: query
           required: false
+          description: Exclusive message ID cursor; malformed or repeated values are rejected
           schema:
             type: integer
+            minimum: 1
+            maximum: 2147483647
       responses:
+        "400":
+          description: Invalid message cursor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "200":
           description: Messages
           content:
@@ -1774,6 +2060,373 @@ paths:
               schema:
                 $ref: "#/components/schemas/UploadBackgroundResponse"
 
+  /process:
+    get:
+      tags:
+        - process
+      operationId: getTraderProcess
+      summary: get Trader Process
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessState"
+        "400":
+          description: Invalid process data
+        "401":
+          description: Authentication required
+        "403":
+          description: Feature entitlement required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Prerequisites or current state do not allow this transition
+  /process/history:
+    get:
+      tags:
+        - process
+      operationId: getProcessHistory
+      summary: get Process History
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessHistory"
+        "400":
+          description: Invalid process data
+        "401":
+          description: Authentication required
+        "403":
+          description: Feature entitlement required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Prerequisites or current state do not allow this transition
+  /process/method-draft:
+    put:
+      tags:
+        - process
+      operationId: saveProcessMethodDraft
+      summary: save Process Method Draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveProcessMethodDraftRequest"
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessMethodDraft"
+        "400":
+          description: Invalid process data
+        "401":
+          description: Authentication required
+        "403":
+          description: Feature entitlement required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Prerequisites or current state do not allow this transition
+  /process/guided-start:
+    post:
+      tags: [process]
+      operationId: startGuidedProcess
+      summary: Confirm first preparation, create personal rules and plan atomically
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartGuidedProcessRequest"
+      responses:
+        "201":
+          description: First session confirmed or identical retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessSession"
+        "400":
+          description: Invalid or incomplete preparation
+        "401":
+          description: Authentication required
+        "404":
+          description: Owned draft or decision not found
+        "409":
+          description: Resume existing method, session or current draft revision
+  /process/methods:
+    post:
+      tags:
+        - process
+      operationId: createProcessMethod
+      summary: create Process Method
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProcessMethodRequest"
+      responses:
+        "201":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessMethod"
+        "400":
+          description: Invalid process data
+        "401":
+          description: Authentication required
+        "403":
+          description: Feature entitlement required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Prerequisites or current state do not allow this transition
+  /process/methods/{id}/activate:
+    post:
+      tags:
+        - process
+      operationId: activateProcessMethod
+      summary: activate Process Method
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessMethod"
+        "400":
+          description: Invalid process data
+        "401":
+          description: Authentication required
+        "403":
+          description: Feature entitlement required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Prerequisites or current state do not allow this transition
+  /process/methods/{id}/advance:
+    post:
+      tags:
+        - process
+      operationId: advanceProcessMethod
+      summary: advance Process Method
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdvanceProcessMethodRequest"
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessMethod"
+        "400":
+          description: Invalid process data
+        "401":
+          description: Authentication required
+        "403":
+          description: Feature entitlement required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Prerequisites or current state do not allow this transition
+  /process/evidence:
+    post:
+      tags:
+        - process
+      operationId: addProcessEvidence
+      summary: add Process Evidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddProcessEvidenceRequest"
+      responses:
+        "201":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessEvidence"
+        "400":
+          description: Invalid process data
+        "401":
+          description: Authentication required
+        "403":
+          description: Feature entitlement required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Prerequisites or current state do not allow this transition
+  /process/sessions:
+    post:
+      tags:
+        - process
+      operationId: startProcessSession
+      summary: start Process Session
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProcessSessionRequest"
+      responses:
+        "201":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessSession"
+        "400":
+          description: Invalid process data
+        "401":
+          description: Authentication required
+        "403":
+          description: Feature entitlement required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Prerequisites or current state do not allow this transition
+  /process/sessions/{id}:
+    delete:
+      tags: [process]
+      operationId: discardProcessSession
+      summary: Discard an unconfirmed preparation without recording a completed session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+        - name: expectedRevision
+          in: query
+          required: true
+          schema: {type: integer, minimum: 0}
+      responses:
+        "204":
+          description: Unstarted preparation discarded or already absent
+        "401":
+          description: Authentication required
+        "409":
+          description: Revision changed or the session already contains confirmed work
+    patch:
+      tags:
+        - process
+      operationId: patchProcessSession
+      summary: patch Process Session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProcessSessionRequest"
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessSession"
+        "400":
+          description: Invalid process data
+        "401":
+          description: Authentication required
+        "403":
+          description: Feature entitlement required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Prerequisites or current state do not allow this transition
+  /process/improvements:
+    post:
+      tags:
+        - process
+      operationId: createProcessImprovement
+      summary: create Process Improvement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProcessImprovementRequest"
+      responses:
+        "201":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessImprovement"
+        "400":
+          description: Invalid process data
+        "401":
+          description: Authentication required
+        "403":
+          description: Feature entitlement required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Prerequisites or current state do not allow this transition
+
+  /process/reviews:
+    post:
+      tags: [process]
+      operationId: createProcessReview
+      summary: Confirm a due review, its improvement and the resulting application policy atomically
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProcessReviewRequest"
+      responses:
+        "201":
+          description: Review confirmed, including an identical retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessReview"
+        "400":
+          description: Invalid review data
+        "401":
+          description: Authentication required
+        "404":
+          description: Owned record not found
+        "409":
+          description: Period is not due or a different review has already been confirmed
+
 components:
   parameters:
     AuthorizationSessionHeader:
@@ -1792,6 +2445,1650 @@ components:
         type: string
 
   schemas:
+    ProcessExecutionEnvironment:
+      type: string
+      enum: [simulation, real, unknown]
+      description: Observed execution environment; unknown never qualifies formal progression.
+    ProcessReviewPeriod:
+      type: object
+      required: [kind, periodStart, periodEnd]
+      properties:
+        kind:
+          type: string
+          enum: [weekly, four_week]
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+    ProcessReviewDue:
+      allOf:
+        - $ref: "#/components/schemas/ProcessReviewPeriod"
+        - type: object
+          required: [coveredPeriods]
+          properties:
+            coveredPeriods:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProcessReviewPeriod"
+    ProcessGuidance:
+      type: object
+      required: [action, reason, methodVersionId, sessionId, sessionMode, applicationHold, blockers, reviewDue, href, nextAvailableAt]
+      properties:
+        action:
+          type: string
+          enum: [resume_session, define_method, confirm_verification, collect_evidence, review_verification, review_application, review_period, revise_method, check_in, done]
+        reason:
+          type: string
+          enum: [work_pending, method_missing, protocol_required, verification_in_progress, verification_waiting, requirements_met, review_due, reverification_required, session_ready, day_complete]
+        methodVersionId:
+          type: [string, "null"]
+        sessionId:
+          type: [string, "null"]
+        sessionMode:
+          type: [string, "null"]
+          enum: [practice, validation, application, null]
+        applicationHold:
+          type: boolean
+        blockers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessCheck"
+        reviewDue:
+          anyOf:
+            - $ref: "#/components/schemas/ProcessReviewDue"
+            - type: "null"
+        href:
+          type: string
+        nextAvailableAt:
+          type: [string, "null"]
+          format: date
+    CreateProcessReviewRequest:
+      type: object
+      required: [methodVersionId, kind, periodStart, periodEnd, judgment, action, criterion, requestId]
+      properties:
+        methodVersionId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [weekly, four_week]
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        judgment:
+          type: string
+        action:
+          type: string
+        criterion:
+          type: string
+        previousImprovementOutcome:
+          type: string
+          enum: [met, not_met, unassessable]
+        previousImprovementNote:
+          type: string
+        requestId:
+          type: string
+          format: uuid
+    ProcessReview:
+      allOf:
+        - $ref: "#/components/schemas/ProcessReviewDue"
+        - type: object
+          required: [id, methodVersionId, recapId, improvementId, judgment, action, criterion, previousImprovementId, previousImprovementOutcome, previousImprovementNote, decision, checks, report, reviewedAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            methodVersionId:
+              type: string
+              format: uuid
+            recapId:
+              type: integer
+            improvementId:
+              type: string
+              format: uuid
+            judgment:
+              type: string
+            action:
+              type: string
+            criterion:
+              type: string
+            previousImprovementId:
+              type: [string, "null"]
+            previousImprovementOutcome:
+              type: [string, "null"]
+              enum: [met, not_met, unassessable, null]
+            previousImprovementNote:
+              type: string
+            decision:
+              type: string
+              enum: [continue, reverify]
+            checks:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProcessCheck"
+            report:
+              $ref: "#/components/schemas/ProcessReport"
+            reviewedAt:
+              type: string
+              format: date-time
+    ProcessMethodRules:
+      type: object
+      properties:
+        tools:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            enum: [markets, news, economic-calendar, sessions, calculator]
+        markets:
+          type: array
+          items:
+            type: string
+        windows:
+          type: string
+        setup:
+          type: string
+        entry:
+          type: string
+        exit:
+          type: string
+        invalidation:
+          type: string
+        waitConditions:
+          type: string
+        riskPerTrade:
+          type: number
+        maxDailyLoss:
+          type: number
+        maxDailyTrades:
+          type: integer
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        checklist:
+          type: array
+          items:
+            type: string
+      required:
+        - markets
+        - windows
+        - setup
+        - entry
+        - exit
+        - invalidation
+        - waitConditions
+        - riskPerTrade
+        - maxDailyLoss
+        - maxDailyTrades
+        - currency
+        - checklist
+    ProcessVerificationProtocol:
+      type: object
+      properties:
+        minSamples:
+          type: integer
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        minExpectancyR:
+          type: number
+        maxDrawdownR:
+          type: number
+        observationDays:
+          type: integer
+        minAdherencePct:
+          type: number
+      required:
+        - minSamples
+        - periodStart
+        - periodEnd
+        - minExpectancyR
+        - maxDrawdownR
+        - observationDays
+        - minAdherencePct
+    ProcessMethod:
+      type: object
+      properties:
+        reviewPolicyStartedAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        methodId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        name:
+          type: string
+        rules:
+          $ref: "#/components/schemas/ProcessMethodRules"
+        protocol:
+          anyOf:
+            - $ref: "#/components/schemas/ProcessVerificationProtocol"
+            - type: "null"
+        phase:
+          type: string
+          enum:
+            - define
+            - verify
+            - apply
+            - consolidate
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        phaseStartedAt:
+          type: string
+          format: date-time
+        riskConfirmedAt:
+          type: string
+          format: date-time
+        verificationStartedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        applicationStartedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+      required:
+        - id
+        - methodId
+        - version
+        - name
+        - rules
+        - protocol
+        - phase
+        - active
+        - createdAt
+        - phaseStartedAt
+        - riskConfirmedAt
+        - verificationStartedAt
+        - applicationStartedAt
+    CreateProcessMethodRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        rules:
+          $ref: "#/components/schemas/ProcessMethodRules"
+        protocol:
+          anyOf:
+            - $ref: "#/components/schemas/ProcessVerificationProtocol"
+            - type: "null"
+        riskConfirmed:
+          type: boolean
+          enum:
+            - true
+        previousVersionId:
+          type: string
+          format: uuid
+        requestId:
+          type: string
+          format: uuid
+        draftId:
+          type: string
+          format: uuid
+        expectedDraftRevision:
+          type: integer
+          minimum: 0
+          description: Required together with draftId to confirm the saved draft.
+      required:
+        - name
+        - rules
+        - riskConfirmed
+        - requestId
+    ProcessEvidence:
+      type: object
+      properties:
+        executionEnvironment:
+          $ref: "#/components/schemas/ProcessExecutionEnvironment"
+        id:
+          type: string
+          format: uuid
+        methodVersionId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+          enum:
+            - development
+            - validation
+            - live
+        source:
+          type: string
+          enum:
+            - manual
+            - external
+            - replay
+            - account_trade
+        netR:
+          type:
+            - number
+            - "null"
+        initialRisk:
+          type:
+            - number
+            - "null"
+        netPnl:
+          type:
+            - number
+            - "null"
+        costsStatus:
+          type: string
+          enum:
+            - included
+            - excluded
+            - unknown
+        currency:
+          type:
+            - string
+            - "null"
+        account:
+          type:
+            - string
+            - "null"
+        observedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        adherence:
+          type: string
+          enum:
+            - conforming
+            - violation
+            - unknown
+        provenance:
+          type: string
+          enum:
+            - declared
+            - calculated
+            - estimated
+        note:
+          type: string
+        accountTradeId:
+          type:
+            - integer
+            - "null"
+        backtestTradeId:
+          type:
+            - integer
+            - "null"
+        sessionId:
+          type:
+            - string
+            - "null"
+          format: uuid
+      required:
+        - id
+        - methodVersionId
+        - purpose
+        - source
+        - netR
+        - initialRisk
+        - netPnl
+        - costsStatus
+        - currency
+        - account
+        - observedAt
+        - createdAt
+        - adherence
+        - provenance
+        - note
+        - accountTradeId
+        - backtestTradeId
+        - sessionId
+    StartGuidedProcessRequest:
+      type: object
+      additionalProperties: false
+      required: [method, preparation, plan]
+      properties:
+        method:
+          $ref: "#/components/schemas/CreateProcessMethodRequest"
+        preparation:
+          type: object
+          additionalProperties: false
+          required: [checklist]
+          properties:
+            checklist:
+              type: array
+              items:
+                type: boolean
+            mood:
+              type: string
+              maxLength: 4000
+            focus:
+              type: string
+              maxLength: 4000
+        plan:
+          $ref: "#/components/schemas/ProcessSessionPlan"
+    ProcessCockpitAnalysis:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "day",
+          "mode",
+          "market",
+          "phase",
+          "cycle",
+          "context",
+          "scenario",
+          "trigger",
+          "area",
+          "execTF",
+          "news",
+          "itfSchema",
+          "ltfSchema",
+          "imbalance",
+          "targetConfirmed",
+          "asiaConfirmed",
+          "impulseStarted",
+          "target",
+          "notes",
+          "newsDay"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "enum": [
+              "2026-10-14-r3"
+            ]
+          },
+          "day": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "scalp",
+              "swing"
+            ]
+          },
+          "market": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "phase": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "cycle": {
+            "type": "string",
+            "enum": [
+              "",
+              "up",
+              "down",
+              "end_up",
+              "end_down"
+            ]
+          },
+          "context": {
+            "type": "string",
+            "enum": [
+              "",
+              "compression",
+              "swept",
+              "intermediate"
+            ]
+          },
+          "scenario": {
+            "type": "string",
+            "enum": [
+              "",
+              "valid_zone",
+              "no_zone",
+              "reaccum"
+            ]
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "",
+              "TEST",
+              "POC",
+              "JTC",
+              "BTI"
+            ]
+          },
+          "area": {
+            "type": "string",
+            "enum": [
+              "",
+              "history",
+              "virgin"
+            ]
+          },
+          "execTF": {
+            "type": "string",
+            "enum": [
+              "M1",
+              "M5"
+            ]
+          },
+          "news": {
+            "type": "string",
+            "enum": [
+              "unchecked",
+              "clear",
+              "pre",
+              "post"
+            ]
+          },
+          "itfSchema": {
+            "type": "boolean"
+          },
+          "ltfSchema": {
+            "type": "boolean"
+          },
+          "imbalance": {
+            "type": "boolean"
+          },
+          "targetConfirmed": {
+            "type": "boolean"
+          },
+          "asiaConfirmed": {
+            "type": "boolean"
+          },
+          "impulseStarted": {
+            "type": "boolean"
+          },
+          "target": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "newsDay": {
+            "type": "string",
+            "maxLength": 10
+          }
+        }
+      }
+
+    ProcessSessionGuidance:
+      type: object
+      additionalProperties: false
+      required: [expectation, invalidation, response]
+      properties:
+        cockpit:
+          $ref: "#/components/schemas/ProcessCockpitAnalysis"
+        expectation:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        invalidation:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        response:
+          type: string
+          enum: [wait, reassess, exit, custom]
+        responseNote:
+          type: string
+          maxLength: 4000
+        contextSnapshotId:
+          type: [string, "null"]
+          pattern: "^[a-f0-9]{64}$"
+    ProcessSessionPlan:
+      type: object
+      properties:
+        guidance:
+          $ref: "#/components/schemas/ProcessSessionGuidance"
+        decision:
+          type: string
+          enum:
+            - trade
+            - wait
+        market:
+          type: string
+        setup:
+          type: string
+        entry:
+          type: string
+        stop:
+          type: string
+        initialRisk:
+          type: number
+        invalidation:
+          type: string
+        waitReason:
+          type: string
+        marketDecisionId:
+          type: string
+          format: uuid
+      required:
+        - decision
+    ProcessSessionClosure:
+      type: object
+      properties:
+        outcome:
+          type: string
+          enum: [confirmed, partial, invalidated, unassessable, ""]
+        correction:
+          type: string
+          maxLength: 4000
+        assessment:
+          type: string
+          enum: [conforming, deviation, unknown]
+        notes:
+          type: string
+          maxLength: 4000
+          description: Required and nonblank for a deviation assessment; stored once, separately from documented violations.
+        violations:
+          type: array
+          maxItems: 100
+          description: Existing documented violations are preserved independently of the recap assessment and note.
+          items:
+            type: string
+            minLength: 1
+            maxLength: 500
+        reconciled:
+          type: boolean
+        noTrades:
+          type: boolean
+      required:
+        - notes
+        - violations
+        - reconciled
+        - noTrades
+    ProcessSessionDraft:
+      oneOf:
+        - $ref: "#/components/schemas/ProcessCheckInDraft"
+        - $ref: "#/components/schemas/ProcessPreparationDraft"
+        - $ref: "#/components/schemas/ProcessPlanDraft"
+        - $ref: "#/components/schemas/ProcessClosureDraft"
+    ProcessCheckInDraft:
+      type: object
+      additionalProperties: false
+      properties:
+        cockpit:
+          $ref: "#/components/schemas/ProcessCockpitAnalysis"
+        step:
+          type: integer
+          enum: [0, 1, 2]
+        expectation:
+          type: string
+          maxLength: 4000
+        invalidation:
+          type: string
+          maxLength: 4000
+        response:
+          type: string
+          enum: [wait, reassess, exit, custom, ""]
+        responseNote:
+          type: string
+          maxLength: 4000
+        contextSnapshotId:
+          type: [string, "null"]
+          pattern: "^[a-f0-9]{64}$"
+        stage:
+          type: string
+          enum: [check_in]
+        checklist:
+          type: array
+          items:
+            type: boolean
+        mood:
+          type: string
+          maxLength: 4000
+        focus:
+          type: string
+          maxLength: 4000
+        decision:
+          type: string
+          enum: [trade, wait, ""]
+        market:
+          type: string
+          maxLength: 32
+        entry:
+          type: string
+          maxLength: 4000
+        stop:
+          type: string
+          maxLength: 4000
+        risk:
+          type: string
+          maxLength: 64
+        reason:
+          type: string
+          maxLength: 4000
+        reasonCode:
+          type: string
+          maxLength: 64
+        marketDecisionId:
+          type: string
+          format: uuid
+      required:
+        [stage, checklist, mood, focus, decision, market, entry, stop, risk, reason, reasonCode]
+    ProcessPreparationDraft:
+      type: object
+      additionalProperties: false
+      properties:
+        stage:
+          type: string
+          enum:
+            - preparation
+        checklist:
+          type: array
+          items:
+            type: boolean
+        mood:
+          type: string
+          maxLength: 4000
+        focus:
+          type: string
+          maxLength: 4000
+      required:
+        - stage
+        - checklist
+        - mood
+        - focus
+    ProcessPlanDraft:
+      type: object
+      additionalProperties: false
+      properties:
+        stage:
+          type: string
+          enum:
+            - plan
+        decision:
+          type: string
+          enum:
+            - trade
+            - wait
+        market:
+          type: string
+          maxLength: 32
+        entry:
+          type: string
+          maxLength: 4000
+        stop:
+          type: string
+          maxLength: 4000
+        risk:
+          type: string
+          maxLength: 64
+        reason:
+          type: string
+          maxLength: 4000
+        marketDecisionId:
+          type: string
+          format: uuid
+      required:
+        - stage
+        - decision
+        - market
+        - entry
+        - stop
+        - risk
+        - reason
+    ProcessClosureDraft:
+      type: object
+      additionalProperties: false
+      properties:
+        outcome:
+          type: string
+          enum: [confirmed, partial, invalidated, unassessable, ""]
+        correction:
+          type: string
+          maxLength: 4000
+        assessment:
+          type: string
+          enum: [conforming, deviation, unknown, ""]
+        stage:
+          type: string
+          enum:
+            - closure
+        open:
+          type: boolean
+        notes:
+          type: string
+          maxLength: 4000
+        violations:
+          type: string
+          maxLength: 4000
+        reconciled:
+          type: boolean
+        noTrades:
+          type: boolean
+      required:
+        - stage
+        - open
+        - notes
+        - violations
+        - reconciled
+        - noTrades
+    ProcessDraftUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        action:
+          type: string
+          enum:
+            - draft
+        expectedRevision:
+          type: integer
+          minimum: 0
+        draft:
+          $ref: "#/components/schemas/ProcessSessionDraft"
+      required:
+        - action
+        - expectedRevision
+        - draft
+    ProcessSession:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [practice, validation, application]
+        id:
+          type: string
+          format: uuid
+        day:
+          type: string
+          format: date
+        methodVersionId:
+          type: string
+          format: uuid
+        rulesSnapshot:
+          $ref: "#/components/schemas/ProcessMethodRules"
+        draft:
+          anyOf:
+            - $ref: "#/components/schemas/ProcessSessionDraft"
+            - type: "null"
+        revision:
+          type: integer
+          minimum: 0
+        state:
+          type: string
+          enum:
+            - preparation
+            - plan
+            - operation
+            - closed
+        checklist:
+          type: array
+          items:
+            type: boolean
+        mood:
+          type: string
+        focus:
+          type: string
+        plan:
+          anyOf:
+            - $ref: "#/components/schemas/ProcessSessionPlan"
+            - type: "null"
+        closure:
+          anyOf:
+            - $ref: "#/components/schemas/ProcessSessionClosure"
+            - type: "null"
+        improvementId:
+          type:
+            - string
+            - "null"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        preparedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        closedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+      required:
+        - id
+        - day
+        - methodVersionId
+        - rulesSnapshot
+        - state
+        - draft
+        - revision
+        - checklist
+        - mood
+        - focus
+        - plan
+        - closure
+        - improvementId
+        - createdAt
+        - updatedAt
+        - preparedAt
+        - closedAt
+    ProcessImprovement:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        methodVersionId:
+          type: string
+          format: uuid
+        recapId:
+          type: integer
+        action:
+          type: string
+        criterion:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        recapKind:
+          type: string
+          enum:
+            - weekly
+            - four_week
+        periodStart:
+          type: string
+        periodEnd:
+          type: string
+      required:
+        - id
+        - methodVersionId
+        - recapId
+        - action
+        - criterion
+        - createdAt
+        - recapKind
+        - periodStart
+        - periodEnd
+    ProcessCheck:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        met:
+          type: boolean
+        detail:
+          type: string
+      required:
+        - key
+        - label
+        - met
+        - detail
+    ProcessReport:
+      type: object
+      properties:
+        eligibleSamples:
+          type: integer
+        incompleteSamples:
+          type: integer
+        expectancyR:
+          type:
+            - number
+            - "null"
+        drawdownR:
+          type:
+            - number
+            - "null"
+        adherencePct:
+          type:
+            - number
+            - "null"
+        closedSessions:
+          type: integer
+        amounts:
+          type: array
+          items:
+            type: object
+            properties:
+              account:
+                type: string
+              currency:
+                type: string
+              netPnl:
+                type: number
+              samples:
+                type: integer
+            required:
+              - account
+              - currency
+              - netPnl
+              - samples
+      required:
+        - eligibleSamples
+        - incompleteSamples
+        - expectancyR
+        - drawdownR
+        - adherencePct
+        - closedSessions
+        - amounts
+    ProcessProgress:
+      type: object
+      properties:
+        phase:
+          type: string
+          enum:
+            - define
+            - verify
+            - apply
+            - consolidate
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessCheck"
+        canAdvance:
+          type: boolean
+        nextAction:
+          type: string
+          enum:
+            - define_method
+            - confirm_verification
+            - collect_evidence
+            - review_verification
+            - prepare_session
+            - plan_session
+            - operate
+            - close_session
+            - review_application
+            - continue_improvement
+        report:
+          $ref: "#/components/schemas/ProcessReport"
+      required:
+        - phase
+        - checks
+        - canAdvance
+        - nextAction
+        - report
+    ProcessMethodDraft:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 0
+        step:
+          type: integer
+          enum: [0, 1, 2]
+        draft:
+          type: object
+          additionalProperties:
+            anyOf:
+              - type: string
+              - type: boolean
+        previousVersionId:
+          type:
+            - string
+            - "null"
+      required:
+        - id
+        - revision
+        - step
+        - draft
+        - previousVersionId
+    SaveProcessMethodDraftRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        expectedRevision:
+          type: integer
+          minimum: 0
+        step:
+          type: integer
+          enum: [0, 1, 2]
+        draft:
+          type: object
+          additionalProperties:
+            anyOf:
+              - type: string
+              - type: boolean
+        previousVersionId:
+          type: [string, "null"]
+      required: [id, expectedRevision, step, draft, previousVersionId]
+    CreateProcessSessionRequest:
+      type: object
+      properties:
+        methodVersionId:
+          type: string
+          format: uuid
+    ProcessCheckInUpdate:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [check_in]
+        expectedRevision:
+          type: integer
+          minimum: 0
+        preparation:
+          type: object
+          properties:
+            checklist:
+              type: array
+              items:
+                type: boolean
+            mood:
+              type: string
+            focus:
+              type: string
+          required: [checklist]
+        plan:
+          $ref: "#/components/schemas/ProcessSessionPlan"
+      required: [action, expectedRevision, preparation, plan]
+    ProcessPreparationUpdate:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - preparation
+        expectedRevision:
+          type: integer
+          minimum: 0
+          description: Revision seen by the trader before confirming this step.
+        checklist:
+          type: array
+          items:
+            type: boolean
+        mood:
+          type: string
+        focus:
+          type: string
+      required:
+        - action
+        - expectedRevision
+        - checklist
+        - mood
+        - focus
+    ProcessPlanUpdate:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - plan
+        expectedRevision:
+          type: integer
+          minimum: 0
+          description: Revision seen by the trader before confirming this step.
+        plan:
+          $ref: "#/components/schemas/ProcessSessionPlan"
+      required:
+        - action
+        - expectedRevision
+        - plan
+    ProcessClosureUpdate:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - close
+        expectedRevision:
+          type: integer
+          minimum: 0
+          description: Revision seen by the trader before confirming this step.
+        closure:
+          $ref: "#/components/schemas/ProcessSessionClosure"
+      required:
+        - action
+        - expectedRevision
+        - closure
+    UpdateProcessSessionRequest:
+      oneOf:
+        - $ref: "#/components/schemas/ProcessDraftUpdate"
+        - $ref: "#/components/schemas/ProcessCheckInUpdate"
+        - $ref: "#/components/schemas/ProcessPreparationUpdate"
+        - $ref: "#/components/schemas/ProcessPlanUpdate"
+        - $ref: "#/components/schemas/ProcessClosureUpdate"
+    AdvanceProcessMethodRequest:
+      type: object
+      properties:
+        protocol:
+          $ref: "#/components/schemas/ProcessVerificationProtocol"
+        review:
+          type: string
+        expectedPhase:
+          type: string
+          enum:
+            - define
+            - verify
+            - apply
+            - consolidate
+      required:
+        - review
+        - expectedPhase
+    CreateProcessImprovementRequest:
+      type: object
+      properties:
+        methodVersionId:
+          type: string
+          format: uuid
+        recapId:
+          type: integer
+        action:
+          type: string
+        criterion:
+          type: string
+        requestId:
+          type: string
+          format: uuid
+      required:
+        - methodVersionId
+        - recapId
+        - action
+        - criterion
+        - requestId
+    ProcessHistoryItem:
+      type: object
+      properties:
+        executionEnvironment:
+          $ref: "#/components/schemas/ProcessExecutionEnvironment"
+        id:
+          type: integer
+        symbol:
+          type: string
+        closedAt:
+          type:
+            - string
+            - "null"
+        netPnl:
+          type:
+            - number
+            - "null"
+        account:
+          type: string
+        initialRisk:
+          type:
+            - number
+            - "null"
+        currency:
+          type:
+            - string
+            - "null"
+        costsStatus:
+          type: string
+        sessionId:
+          type: integer
+        netR:
+          type:
+            - number
+            - "null"
+      required:
+        - id
+        - symbol
+        - closedAt
+        - netPnl
+        - account
+    ProcessHistory:
+      type: object
+      properties:
+        trades:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessHistoryItem"
+        replays:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessHistoryItem"
+      required:
+        - trades
+        - replays
+    ProcessState:
+      type: object
+      properties:
+        guidance:
+          $ref: "#/components/schemas/ProcessGuidance"
+        pendingReviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessReviewDue"
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessReview"
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessSession"
+        contextSnapshots:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties: true
+        dailyNextAction:
+          type: string
+          enum: [define_method, check_in, operate, close_session, done]
+        methods:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessMethod"
+        activeMethod:
+          anyOf:
+            - $ref: "#/components/schemas/ProcessMethod"
+            - type: "null"
+        session:
+          anyOf:
+            - $ref: "#/components/schemas/ProcessSession"
+            - type: "null"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessEvidence"
+        improvement:
+          anyOf:
+            - $ref: "#/components/schemas/ProcessImprovement"
+            - type: "null"
+        methodDraft:
+          anyOf:
+            - $ref: "#/components/schemas/ProcessMethodDraft"
+            - type: "null"
+        progress:
+          $ref: "#/components/schemas/ProcessProgress"
+        progressByVersion:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ProcessProgress"
+      required:
+        - methods
+        - activeMethod
+        - session
+        - evidence
+        - improvement
+        - methodDraft
+        - progress
+        - progressByVersion
+    AddProcessEvidenceRequest:
+      type: object
+      properties:
+        executionEnvironment:
+          $ref: "#/components/schemas/ProcessExecutionEnvironment"
+        methodVersionId:
+          type: string
+          format: uuid
+        purpose:
+          type: string
+          enum:
+            - development
+            - validation
+            - live
+        source:
+          type: string
+          enum:
+            - manual
+            - external
+            - replay
+            - account_trade
+        netR:
+          type:
+            - number
+            - "null"
+        initialRisk:
+          type:
+            - number
+            - "null"
+        netPnl:
+          type:
+            - number
+            - "null"
+        costsStatus:
+          type: string
+          enum:
+            - included
+            - excluded
+            - unknown
+        currency:
+          type:
+            - string
+            - "null"
+        account:
+          type:
+            - string
+            - "null"
+        observedAt:
+          type: string
+          format: date-time
+        adherence:
+          type: string
+          enum:
+            - conforming
+            - violation
+            - unknown
+        provenance:
+          type: string
+          enum:
+            - declared
+            - calculated
+            - estimated
+        note:
+          type: string
+        accountTradeId:
+          type:
+            - integer
+            - "null"
+        backtestTradeId:
+          type:
+            - integer
+            - "null"
+        sessionId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        requestId:
+          type: string
+          format: uuid
+      required:
+        - methodVersionId
+        - purpose
+        - source
+        - costsStatus
+        - observedAt
+        - adherence
+        - provenance
+        - requestId
+
+    MarketContext:
+      type: object
+      required:
+        [
+          pair,
+          version,
+          generatedAt,
+          tradingDay,
+          status,
+          score,
+          coverage,
+          disagreement,
+          components,
+          news,
+          newsConsidered,
+          calendarStatus,
+          events,
+          rangePercent,
+          price,
+          priceChangePct,
+          cotReports,
+          priceHistory,
+          ranges,
+        ]
+      properties:
+        horizon: { type: string, enum: [4h] }
+        snapshotId: { type: [string, "null"] }
+        outlook:
+          $ref: "#/components/schemas/DirectionalOutlook"
+        pair: { type: string }
+        version: { type: string }
+        generatedAt: { type: string }
+        tradingDay: { type: string }
+        status:
+          type: string
+          enum: [warming, insufficient, partial, available]
+        refreshing:
+          type: boolean
+          description: Sources are still being collected; poll briefly while true.
+        score: { type: [integer, "null"], minimum: -100, maximum: 100 }
+        coverage: { type: integer, minimum: 0, maximum: 100 }
+        disagreement: { type: boolean }
+        components:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketContextComponent"
+        news:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketContextEvidence"
+        relatedNews:
+          type: array
+          description: Recent relevant articles, including those without a measurable directional claim. These do not imply a score.
+          items:
+            type: object
+            required: [title, url, source, publishedAt]
+            properties:
+              title: { type: string }
+              url: { type: string }
+              source: { type: string }
+              publishedAt: { type: string }
+        newsConsidered: { type: integer }
+        calendarStatus: { type: string, enum: [available, unavailable] }
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketContextEvent"
+        rangePercent: { type: [number, "null"] }
+        price: { type: [number, "null"] }
+        priceChangePct: { type: [number, "null"] }
+        cotReports:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContextCotReport"
+        priceHistory:
+          type: array
+          items:
+            type: object
+            required: [time, close]
+            properties:
+              time: { type: string }
+              close: { type: number }
+        ranges:
+          type: array
+          items:
+            type: object
+            required: [days, samples, value]
+            properties:
+              days: { type: integer }
+              samples: { type: integer }
+              value: { type: [number, "null"] }
+    ContextCotReport:
+      type: object
+      required:
+        [
+          market,
+          currency,
+          date,
+          nonCommLong,
+          nonCommShort,
+          nonCommNet,
+          commLong,
+          commShort,
+          commNet,
+          retailLong,
+          retailShort,
+          retailNet,
+          history,
+          source,
+          fetchedAt,
+          publishedAt,
+          status,
+        ]
+      properties:
+        market: { type: string }
+        currency: { type: string }
+        date: { type: string }
+        nonCommLong: { type: number }
+        nonCommShort: { type: number }
+        nonCommNet: { type: number }
+        commLong: { type: number }
+        commShort: { type: number }
+        commNet: { type: number }
+        retailLong: { type: number }
+        retailShort: { type: number }
+        retailNet: { type: number }
+        source: { type: string }
+        fetchedAt: { type: string }
+        publishedAt: { type: "null" }
+        status: { type: string, enum: [available, stale] }
+        history:
+          type: array
+          items:
+            type: object
+            required: [date, nonCommNet, commNet]
+            properties:
+              date: { type: string }
+              nonCommNet: { type: number }
+              commNet: { type: number }
+    MarketContextComponent:
+      type: object
+      required: [id, weight, score, status, reason, source, fetchedAt, observedAt]
+      properties:
+        id: { type: string, enum: [price, news, retail, cot] }
+        weight: { type: number }
+        score: { type: [number, "null"] }
+        status: { type: string, enum: [available, unavailable, stale] }
+        reason:
+          type: [string, "null"]
+          enum: [source_unavailable, short_history, old_data, no_direction, not_configured, null]
+        source: { type: string }
+        fetchedAt: { type: [string, "null"] }
+        observedAt: { type: [string, "null"] }
+    MarketContextEvidence:
+      type: object
+      required: [title, url, source, publishedAt, direction, theme]
+      properties:
+        eventId: { type: string }
+        sourceDocumentId: { type: string }
+        title: { type: string }
+        url: { type: string }
+        source: { type: string }
+        publishedAt: { type: string }
+        direction: { type: number }
+        theme: { type: string, enum: [market, macro, geopolitics] }
+    MarketContextEvent:
+      type: object
+      required: [title, country, date, impact, forecast, previous]
+      properties:
+        title: { type: string }
+        country: { type: string }
+        date: { type: string }
+        impact: { type: string, enum: [High, Medium, Low, Holiday] }
+        forecast: { type: [string, "null"] }
+        previous: { type: [string, "null"] }
     WikiSource:
       type: object
       properties:
@@ -2098,22 +4395,22 @@ components:
         id:
           type: string
         email:
-          type: [string, 'null']
+          type: [string, "null"]
           format: email
         firstName:
-          type: [string, 'null']
+          type: [string, "null"]
         lastName:
-          type: [string, 'null']
+          type: [string, "null"]
         profileImageUrl:
-          type: [string, 'null']
+          type: [string, "null"]
     AuthUserEnvelope:
       type: object
       required: [user]
       properties:
         user:
           oneOf:
-            - $ref: '#/components/schemas/AuthUser'
-            - type: 'null'
+            - $ref: "#/components/schemas/AuthUser"
+            - type: "null"
     MobileTokenExchangeRequest:
       type: object
       required: [code, code_verifier, redirect_uri, state]
@@ -2413,6 +4710,7 @@ components:
     JournalEntry:
       type: object
       properties:
+        marketDecisionId: { type: [string, "null"], format: uuid }
         id:
           type: integer
         title:
@@ -2427,6 +4725,28 @@ components:
         tags:
           type: string
           nullable: true
+        manualTrade:
+          type: object
+          description: Structured manual trade linked to this journal entry, when present.
+          properties:
+            executionEnvironment:
+              $ref: "#/components/schemas/ProcessExecutionEnvironment"
+            symbol:
+              type: string
+            direction:
+              type: string
+              enum: [buy, sell]
+            entryPrice:
+              type: number
+            exitPrice:
+              type: number
+            stopLoss:
+              type: number
+              nullable: true
+            profit:
+              type: number
+            accountTradeId: { type: integer }
+          required: [accountTradeId, symbol, direction, entryPrice, exitPrice, stopLoss, profit]
         images:
           type: array
           items:
@@ -2448,6 +4768,9 @@ components:
     CreateJournalEntryRequest:
       type: object
       properties:
+        executionEnvironment:
+          $ref: "#/components/schemas/ProcessExecutionEnvironment"
+        marketDecisionId: { type: [string, "null"], format: uuid }
         title:
           type: string
         content:
@@ -2479,6 +4802,11 @@ components:
         profit:
           type: number
           nullable: true
+        commission:
+          { type: [number, "null"], description: Signed commission deducted from gross profit. }
+        swap: { type: [number, "null"], description: Signed swap added to gross profit. }
+        openTime: { type: [string, "null"], description: ISO 8601 entry timestamp. }
+        closeTime: { type: [string, "null"], description: ISO 8601 exit timestamp. }
       required:
         - title
         - content
@@ -2488,6 +4816,9 @@ components:
     UpdateJournalEntryRequest:
       type: object
       properties:
+        executionEnvironment:
+          $ref: "#/components/schemas/ProcessExecutionEnvironment"
+        marketDecisionId: { type: [string, "null"], format: uuid }
         title:
           type: string
         content:
@@ -2519,6 +4850,11 @@ components:
         profit:
           type: number
           nullable: true
+        commission:
+          { type: [number, "null"], description: Signed commission deducted from gross profit. }
+        swap: { type: [number, "null"], description: Signed swap added to gross profit. }
+        openTime: { type: [string, "null"], description: ISO 8601 entry timestamp. }
+        closeTime: { type: [string, "null"], description: ISO 8601 exit timestamp. }
       required:
         - title
         - content
@@ -2751,6 +5087,15 @@ components:
     EdgeReport:
       type: object
       properties:
+        rSamples:
+          type: array
+          items: { type: number }
+        rCoverage:
+          type: object
+          required: [withR, withoutR]
+          properties:
+            withR: { type: integer }
+            withoutR: { type: integer }
         generatedAt:
           type: string
         overall:
@@ -3082,9 +5427,70 @@ components:
         - text
         - completed
 
+    NewsSavedPreferences:
+      type: object
+      required: [keywords, profile]
+      properties:
+        keywords:
+          type: array
+          items:
+            type: string
+          description: Trimmed, nonempty topics; at most 40 stored
+        profile:
+          type: string
+          description: Strategy text; at most 2000 characters stored
+    NewsSavedFeedback:
+      type: object
+      required: [articleKey, source, vote]
+      properties:
+        articleKey:
+          type: string
+          minLength: 1
+        source:
+          type: string
+        vote:
+          type: integer
+          enum: [-1, 0, 1]
+
+    NewsDeepDive:
+      type: object
+      properties:
+        whatHappened:
+          type: string
+        whyItMatters:
+          type: string
+        possibleImpact:
+          type: string
+      required: [whatHappened, whyItMatters, possibleImpact]
+
     NewsArticle:
       type: object
       properties:
+        articleId: { type: string }
+        eventId: { type: string }
+        sourceDocumentId: { type: string }
+        articleIds:
+          type: array
+          items: { type: string }
+        sourceDocumentIds:
+          type: array
+          items: { type: string }
+        firstSeenAt: { type: string }
+        archiveStatus: { type: string, enum: [persisted, unavailable] }
+        effects:
+          type: array
+          items: { $ref: "#/components/schemas/NewsPairEffect" }
+        release: { $ref: "#/components/schemas/MacroRelease" }
+        impactDirection: { type: string, enum: [bullish, bearish, mixed, neutral] }
+        relevanceReason: { type: string }
+        matchConfidence:
+          { type: number, description: "Editorial relevance only; never a probability." }
+        freshnessTier: { type: string, enum: [live, fresh, fallback, stale] }
+        isFallback: { type: boolean }
+        ageMinutes: { type: number }
+        primaryAssets:
+          type: array
+          items: { type: string }
         title:
           type: string
         summary:
@@ -3095,6 +5501,56 @@ components:
           type: string
           nullable: true
         url:
+          type: string
+          nullable: true
+        resolvedUrl:
+          type: string
+          nullable: true
+        sourceUrl:
+          type: string
+          nullable: true
+        sourceType:
+          type: string
+          enum: [official, publisher]
+          description: Provenance of the original publication.
+        analysisMethod:
+          type: string
+          enum: [llm, heuristic, none]
+          description: Method used for the analysis, independent of provenance.
+        contentBasis:
+          type: string
+          enum: [full_text, snippet, headline]
+          description: Evidence available to the analysis. Deep dives require full_text.
+        curationScore:
+          type: number
+          description: Event selection score; distinct from normalized qualityScore.
+        qualityScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        originalTitle:
+          type: string
+        originalSummary:
+          type: string
+        sources:
+          type: array
+          items:
+            type: string
+        citationUrls:
+          type: array
+          items:
+            type: string
+        deepDive:
+          $ref: "#/components/schemas/NewsDeepDive"
+        impactScore:
+          type: number
+        impactReason:
+          type: string
+        affectedPairs:
+          type: array
+          items:
+            type: string
+        imageUrl:
           type: string
           nullable: true
         sentiment:
@@ -3109,14 +5565,48 @@ components:
     NewsResponse:
       type: object
       properties:
+        modelStatus:
+          type: array
+          items: { $ref: "#/components/schemas/DirectionalModelState" }
+        sourceCoverage:
+          type: array
+          items:
+            type: object
+            required: [source, url, status, fetchedAt, articleCount]
+            properties:
+              source: { type: string }
+              url: { type: string }
+              status: { type: string, enum: [available, unavailable] }
+              fetchedAt: { type: string }
+              articleCount: { type: integer }
+        lang: { type: string }
+        nextRefreshAt: { type: string }
+        nextCursor: { type: [string, "null"] }
+        totalCount: { type: integer }
+        watchedPairs:
+          type: array
+          items: { type: string }
         articles:
           type: array
           items:
             $ref: "#/components/schemas/NewsArticle"
+        sourceStatus:
+          type: string
+          enum: [available, partial, unavailable]
+          description: Distinguishes a quiet news day from a source outage.
+        analysisStatus:
+          type: string
+          enum: [available, unavailable, disabled]
+          description: Whether optional AI analysis succeeded, failed, or is unconfigured.
         fetchedAt:
           type: string
         hasApiKey:
           type: boolean
+        source:
+          type: string
+          enum: [ai, rss, fallback]
+        agentSummary:
+          type: string
       required:
         - articles
         - fetchedAt
@@ -3473,6 +5963,7 @@ components:
         - online
 
     SavePublicKeyBody:
+      description: A valid EC P-256 public JWK without private key material; key_ops, when present, must be empty
       type: object
       properties:
         publicKeyJwk:
@@ -3481,6 +5972,7 @@ components:
         - publicKeyJwk
 
     SaveAccountKeyBackupBody:
+      description: Matching EC P-256 public and private JWKs. Private key_ops, when present, must allow deriveBits. The server stores both keys; this is not encryption against the server operator.
       type: object
       properties:
         publicKeyJwk:
@@ -3724,6 +6216,15 @@ components:
     BacktestTrade:
       type: object
       properties:
+        initialRisk: { type: [string, "null"] }
+        cost: { type: [string, "null"] }
+        netPnl: { type: [string, "null"] }
+        netR: { type: [string, "null"] }
+        economicsProvenance:
+          { type: string, enum: [calculated, declared, estimated, legacy_unknown] }
+        currency: { type: [string, "null"] }
+        openTime: { type: [string, "null"], format: date-time }
+        closeTime: { type: [string, "null"], format: date-time }
         id:
           type: integer
         sessionId:
@@ -3773,6 +6274,20 @@ components:
     CreateBacktestTradeRequest:
       type: object
       properties:
+        initialRisk: { type: [string, "null"] }
+        cost: { type: [string, "null"] }
+        netPnl: { type: [string, "null"] }
+        economicsProvenance:
+          { type: string, enum: [calculated, declared, estimated, legacy_unknown] }
+        currency: { type: [string, "null"] }
+        openTime: { type: [string, "null"], format: date-time }
+        closeTime: { type: [string, "null"], format: date-time }
+        clientRequestId:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: "^[A-Za-z0-9:_-]+$"
+          description: Optional replay-save identity, scoped to the owner and session. Identical retries return the original trade; changed content or a deleted trade returns 409. Manual requests without it remain distinct.
         direction:
           type: string
           enum: [buy, sell]
@@ -3801,3 +6316,233 @@ components:
         - exitPrice
         - result
         - tradeDate
+
+    NewsPairEffect:
+      type: object
+      required: [pair, horizonHours, direction, fact, scenario, invalidation, evidenceUrls]
+      properties:
+        pair: { type: string }
+        horizonHours: { type: integer, enum: [4] }
+        direction: { type: string, enum: [bullish, bearish, uncertain] }
+        fact: { type: string }
+        scenario: { type: string }
+        invalidation: { type: string }
+        evidenceUrls:
+          type: array
+          items: { type: string }
+    MacroRelease:
+      type: object
+      properties:
+        eventType: { type: string }
+        country: { type: string }
+        referencePeriod: { type: [string, "null"] }
+        releaseAt: { type: [string, "null"] }
+        actual: { type: [number, "null"] }
+        previous: { type: [number, "null"] }
+        consensus: { type: [number, "null"] }
+        revisedPrevious: { type: [number, "null"] }
+        unit: { type: [string, "null"] }
+        consensusAsOf: { type: [string, "null"] }
+        sourceUrl: { type: string }
+    DirectionalModelState:
+      type: object
+      description: Statistical model status as of news fetchedAt; prices and publishable probabilities require a fresh market-context snapshot
+      required: [pair, horizon, state, version, reason, samples, probabilities]
+      properties:
+        pair: { type: string }
+        horizon: { type: string, enum: [4h] }
+        state: { type: string, enum: [unvalidated, validated] }
+        version: { type: [string, "null"] }
+        reason: { type: [string, "null"] }
+        samples: { type: integer }
+        probabilities: { type: "null" }
+    QueryMacroNewsRequest:
+      type: object
+      properties:
+        pairs: { type: string }
+        currency: { type: string }
+        lang: { type: string, enum: [it, en, es, fr, de] }
+    MacroNewsResponse:
+      type: object
+      required: [articles, sentiment, summary, fetchedAt]
+      properties:
+        articles:
+          type: array
+          items: { $ref: "#/components/schemas/MacroNewsArticle" }
+        sentiment: { type: string }
+        sentimentIntensity: { type: string }
+        summary: { type: string }
+        fetchedAt: { type: string }
+        citationUrls:
+          type: array
+          items: { type: string }
+        modelStatus:
+          type: array
+          items: { $ref: "#/components/schemas/DirectionalModelState" }
+        sourceCoverage:
+          type: array
+          items: { $ref: "#/components/schemas/NewsSourceCoverage" }
+    NewsSourceCoverage:
+      type: object
+      required: [source, url, status, fetchedAt, articleCount]
+      properties:
+        source: { type: string }
+        url: { type: string }
+        status: { type: string, enum: [available, unavailable] }
+        fetchedAt: { type: string }
+        articleCount: { type: integer }
+    MacroNewsArticle:
+      type: object
+      required: [title, summary, impact, currency, direction, source]
+      properties:
+        articleId: { type: string }
+        eventId: { type: string }
+        sourceDocumentId: { type: string }
+        articleIds:
+          type: array
+          items: { type: string }
+        sourceDocumentIds:
+          type: array
+          items: { type: string }
+        firstSeenAt: { type: string }
+        archiveStatus: { type: string, enum: [persisted, unavailable] }
+        effects:
+          type: array
+          items: { $ref: "#/components/schemas/NewsPairEffect" }
+        release: { $ref: "#/components/schemas/MacroRelease" }
+        title: { type: string }
+        summary: { type: string }
+        originalTitle: { type: string }
+        originalSummary: { type: string }
+        impact: { type: string }
+        currency: { type: string }
+        direction: { type: string }
+        source: { type: string }
+        timestamp: { type: [string, "null"] }
+        url: { type: [string, "null"] }
+        resolvedUrl: { type: [string, "null"] }
+        sourceUrl: { type: [string, "null"] }
+        sourceType: { type: string, enum: [official, publisher] }
+        contentBasis: { type: string, enum: [full_text, snippet, headline] }
+        analysisMethod: { type: string, enum: [llm, heuristic, none] }
+        verified: { type: boolean }
+        category: { type: string }
+        imageUrl: { type: [string, "null"] }
+        imageKeywords:
+          type: array
+          items: { type: string }
+        sources:
+          type: array
+          items: { type: string }
+        citationUrls:
+          type: array
+          items: { type: string }
+        affectedPairs:
+          type: array
+          items: { type: string }
+        primaryAssets:
+          type: array
+          items: { type: string }
+        deepDive: { $ref: "#/components/schemas/NewsDeepDive" }
+    DirectionalProbabilities:
+      type: object
+      required: [up, flat, down]
+      properties:
+        up: { type: number, minimum: 0, maximum: 1 }
+        flat: { type: number, minimum: 0, maximum: 1 }
+        down: { type: number, minimum: 0, maximum: 1 }
+    DirectionalValidation:
+      type: object
+      required: [passed, samples, classCounts, calibration, pValue, brier, startedAt, endedAt]
+      properties:
+        passed: { type: boolean }
+        samples: { type: integer }
+        classCounts:
+          type: object
+          additionalProperties: { type: integer }
+        calibration:
+          type: object
+          additionalProperties: { type: [number, "null"] }
+        pValue: { type: number }
+        brier: { type: [number, "null"] }
+        startedAt: { type: [string, "null"] }
+        endedAt: { type: [string, "null"] }
+    DirectionalOutlook:
+      type: object
+      required:
+        [
+          pair,
+          horizon,
+          status,
+          reason,
+          cutoffAt,
+          issuedAt,
+          targetEnd,
+          referencePrice,
+          referenceObservedAt,
+          neutralBand,
+          probabilities,
+          modelVersion,
+          validation,
+          sources,
+        ]
+      properties:
+        pair: { type: string }
+        horizon: { type: string, enum: [4h] }
+        status: { type: string, enum: [available, unvalidated, insufficient, unsupported, stale] }
+        reason: { type: [string, "null"] }
+        cutoffAt: { type: string }
+        issuedAt: { type: string }
+        targetEnd: { type: string }
+        referencePrice: { type: [number, "null"] }
+        referenceObservedAt: { type: [string, "null"] }
+        modelVersion: { type: [string, "null"] }
+        probabilities:
+          oneOf:
+            - $ref: "#/components/schemas/DirectionalProbabilities"
+            - type: "null"
+        neutralBand:
+          oneOf:
+            - type: object
+              required: [lower, upper]
+              properties:
+                lower: { type: number }
+                upper: { type: number }
+            - type: "null"
+        validation:
+          oneOf:
+            - $ref: "#/components/schemas/DirectionalValidation"
+            - type: "null"
+        sources:
+          type: array
+          items: { type: string }
+    MarketDecision:
+      type: object
+      required: [id, snapshotId, choice, note, journalEntryId, createdAt, snapshot, outcome]
+      properties:
+        id: { type: string, format: uuid }
+        snapshotId: { type: string }
+        choice: { type: string, enum: [trade, wait] }
+        note: { type: string }
+        journalEntryId: { type: [integer, "null"] }
+        createdAt: { type: string }
+        snapshot: { $ref: "#/components/schemas/MarketContext" }
+        outcome:
+          oneOf:
+            - type: object
+              required: [outcome, returnLog, finalPrice, observedAt]
+              properties:
+                outcome: { type: string, enum: [up, flat, down] }
+                returnLog: { type: number }
+                finalPrice: { type: number }
+                observedAt: { type: string }
+            - type: "null"
+
+    CreateMarketDecisionRequest:
+      type: object
+      required: [snapshotId, choice]
+      properties:
+        snapshotId: { type: string, pattern: "^[a-f0-9]{64}$" }
+        choice: { type: string, enum: [trade, wait] }
+        note: { type: string, maxLength: 4000 }
+        journalEntryId: { type: integer, minimum: 1 }

@@ -165,7 +165,7 @@ export function fetchTorneiWallet(options?: RelativeApiOptions): Promise<TorneiW
 export async function saveTorneiWallet(
   walletAddress: string,
   options?: RelativeApiOptions,
-): Promise<{ ok: boolean; walletAddress: string | null }> {
+): Promise<{ ok: boolean; walletAddress: string | null; status?: number }> {
   const res = await apiRequest(
     "tornei/wallet",
     {
@@ -175,7 +175,7 @@ export async function saveTorneiWallet(
     },
     options,
   );
-  if (!res.ok) return { ok: false, walletAddress: null };
+  if (!res.ok) return { ok: false, walletAddress: null, status: res.status };
   const body = (await res.json()) as { walletAddress: string | null };
   return { ok: true, walletAddress: body.walletAddress };
 }

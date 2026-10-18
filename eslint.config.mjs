@@ -18,6 +18,8 @@ export default tseslint.config(
       "lib/db/drizzle/**",
       ".local-postgres/**",
       ".local-logs/**",
+      // Immutable copies of production bundles used by isolated browser audits.
+      "artifacts.local/runtime-frontends/**",
       ".superpowers/**",
       ".agents/**",
       "artifacts/*/public/**",

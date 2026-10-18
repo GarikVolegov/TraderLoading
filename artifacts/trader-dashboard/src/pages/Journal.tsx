@@ -1,8 +1,11 @@
+import { ProcessReviewWorkspace } from "@/components/process/ProcessReview";
+import { orderJournalEntries, journalPage } from "@/lib/journalPagination";
 import { useState, useRef, useMemo, useEffect } from "react";
-import { useLocation, useSearch } from "wouter";
+import { useAuth } from "@clerk/react";
+import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, addWeeks, isWithinInterval } from "date-fns";
-import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles } from "lucide-react";
+import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles, Wallet } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
@@ -14,12 +17,17 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { JournalEntryModal } from "@/components/JournalEntryModal";
+import { traderProcessKey } from "@/lib/traderProcessApi";
+import { saveProcessImprovement } from "@/lib/processEvidenceApi";
+import { processText } from "@/lib/processCopy";
+import { useTraderProcess } from "@/hooks/useTraderProcess";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useGetJournalEntries,
   useDeleteJournalEntry,
   getGetJournalEntriesQueryKey,
+  getGetJournalEdgeQueryKey,
   useGetIdeas,
   useCreateIdea,
   useUpdateIdea,
@@ -35,6 +43,7 @@ import { getJournalRecapPeriod, isJournalRecapEditable } from "@/lib/journalReca
 import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTradeContent";
 import { PnlHeatmap } from "@/components/PnlHeatmap";
 import { TradeChartSnapshot } from "@/components/TradeChartSnapshot";
+import { SessionJournal } from "@/components/journal/SessionJournal";
 import { JournalOverview } from "@/components/journal/JournalOverview";
 import { CsvImportButton } from "@/components/journal/CsvImportButton";
 import {
@@ -45,9 +54,15 @@ import {
   saveJournalRecap,
   type JournalRecapFields,
 } from "@/lib/journalRecapsApi";
-import { parseJournalTab, type JournalTab } from "@/lib/journalTabs";
+import { parseJournalTab, parseJournalRecapKind, type JournalTab } from "@/lib/journalTabs";
+import { SectionTabs } from "@/components/SectionTabs";
+import { JournalPlan } from "@/components/journal/JournalPlan";
+import { BrokerWorkspace } from "@/pages/Broker";
+import { updateWorkspaceQuery } from "@/lib/workspaceNavigation";
+import { MarketDecisionReview } from "@/components/journal/MarketDecisionReview";
 
 function SyncedTradeDetails({ content }: { content: string }) {
+  const { language } = useLanguage();
   const parsed = useMemo(() => parseTradeContent(content), [content]);
   if (!parsed) return null;
 
@@ -69,7 +84,7 @@ function SyncedTradeDetails({ content }: { content: string }) {
         <div className="flex items-center gap-1.5">
           {rMultiple != null && (
             <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold font-mono ${rMultiple >= 0 ? "border-success/30 text-success" : "border-destructive/30 text-destructive"}`}>
-              {rMultiple >= 0 ? "+" : ""}{rMultiple}R
+              {rMultiple >= 0 ? "+" : ""}{rMultiple}R · {processText(language, "estimated")}
             </span>
           )}
           {duration && (
@@ -131,7 +146,8 @@ function SyncedTradeDetails({ content }: { content: string }) {
 }
 
 function TradesTab() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const process = useTraderProcess();
   const dateLocale = useDateLocale();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -140,19 +156,31 @@ function TradesTab() {
   const { data: entries, isLoading, isError, refetch } = useGetJournalEntries({
     query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 30_000 },
   });
+  const [requestedPage, setRequestedPage] = useState(1);
+  const journalGrid = useRef<HTMLDivElement>(null);
+  const sortedEntries = useMemo(() => orderJournalEntries(entries ?? []), [entries]);
+  const visible = journalPage(sortedEntries, requestedPage);
+  const changePage = (page: number) => {
+    setRequestedPage(page);
+    journalGrid.current?.scrollIntoView({ block: "start" });
+  };
   // handleDelete's own catch already shows its own toast below — opt out of
   // App.tsx's global mutation-error toast to avoid a double toast.
   const deleteMutation = useDeleteJournalEntry({ mutation: { meta: { suppressGlobalError: true } } });
 
-  // Deep-link dalla command palette: /journal?new=1 apre subito il form nuovo trade.
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  // React to repeat visits on the same tab and preserve the tab when consuming new=1.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(search);
     if (params.get("new") === "1") {
       setEditingEntry(null);
       setIsModalOpen(true);
-      window.history.replaceState({}, "", window.location.pathname);
+      params.delete("new");
+      params.set("t", "trades");
+      navigate(`/journal?${params.toString()}`, { replace: true });
     }
-  }, []);
+  }, [search, navigate]);
 
   const getResultConfig = (result: string) => {
     switch (result) {
@@ -171,19 +199,30 @@ function TradesTab() {
     try {
       await deleteMutation.mutateAsync({ id });
       queryClient.invalidateQueries({ queryKey: getGetJournalEntriesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetJournalEdgeQueryKey() });
       toast({ description: t("journal.deleted") });
     } catch {
       toast({ description: t("journal.error"), variant: "destructive" });
     }
   };
 
+  const accountsOpen = new URLSearchParams(search).get("panel") === "conti";
+  if (accountsOpen) return <section className="space-y-4">
+    <div className="flex items-center justify-between gap-3">
+      <h2 className="text-base font-semibold">{t("journal.workspace.accounts")}</h2>
+      <Button variant="ghost" onClick={() => navigate(`/journal${updateWorkspaceQuery(search, { panel: null, tab: null })}`)}>
+        <ChevronLeft className="mr-2 h-4 w-4" />{t("journal.workspace.back_trades")}
+      </Button>
+    </div>
+    <BrokerWorkspace />
+  </section>;
+
   return (
     <>
-      <div className="flex justify-end gap-2 mb-4 sm:mb-6">
+      <div className="flex flex-wrap justify-end gap-2 mb-4 sm:mb-6">
         <CsvImportButton />
-        <Button onClick={() => { setEditingEntry(null); setIsModalOpen(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          {t("journal.new_trade")}
+        <Button variant="outline" onClick={() => navigate(`/journal${updateWorkspaceQuery(search, { t: "trades", panel: "conti", tab: null })}`)}>
+          <Wallet className="w-4 h-4 mr-2" />{t("journal.workspace.accounts")}
         </Button>
       </div>
 
@@ -200,11 +239,9 @@ function TradesTab() {
       ) : isError ? (
         <QueryErrorState onRetry={() => void refetch()} />
       ) : entries && entries.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          <AnimatePresence>
-            {[...entries]
-              .sort((a, b) => new Date(b.tradeDate).getTime() - new Date(a.tradeDate).getTime())
-              .map((entry, idx) => {
+        <div ref={journalGrid} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 scroll-mt-24">
+          <AnimatePresence initial={false}>
+            {visible.entries.map((entry, idx) => {
                 const resConfig = getResultConfig(entry.result);
                 const syncedTrade = isSyncedTrade(entry);
                 return (
@@ -213,7 +250,7 @@ function TradesTab() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: idx * 0.05 }}
+                    transition={{ delay: Math.min(idx * 0.01, 0.12) }}
                     className="bg-card/60 backdrop-blur-sm border border-border/30 rounded-2xl p-3 sm:p-5 flex flex-col group hover:border-primary/50 transition-colors"
                   >
                     <div className="flex justify-between items-start mb-3">
@@ -236,6 +273,7 @@ function TradesTab() {
                     <h3 className="text-xl font-bold mb-2 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
                       {entry.title}
                     </h3>
+                    {entry.manualTrade && <div className="mb-3 text-sm text-muted-foreground">{process.data?.evidence.filter(e => e.accountTradeId === entry.manualTrade?.accountTradeId).slice(0,1).map(e => <span key={e.id}>{e.netPnl == null ? "—" : e.netPnl.toFixed(2)} {e.currency} · {e.costsStatus === "included" && e.initialRisk ? `${e.netR?.toFixed(2)} R` : "—"} · {processText(language, e.provenance)}</span>)}</div>}
 
                     {entry.tags && (
                       <div className="flex flex-wrap gap-2 mb-4">
@@ -267,7 +305,7 @@ function TradesTab() {
                       </p>
                     )}
 
-                    <div className="flex justify-end gap-2 mt-auto pt-4 border-t border-border/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-2 mt-auto pt-4 border-t border-border/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                       <Button variant="ghost" size="sm" className="h-8" onClick={() => { setEditingEntry(entry); setIsModalOpen(true); }}>
                         <Edit2 className="w-4 h-4 mr-2" />
                         {syncedTrade ? uiText("auto.ui.8459cac879") : t("journal.edit")}
@@ -295,7 +333,7 @@ function TradesTab() {
             <p className="text-muted-foreground max-w-md mx-auto mb-6">
               {t("journal.no_trades_desc")}
             </p>
-            <Button onClick={() => { setEditingEntry(null); setIsModalOpen(true); }}>
+            <Button variant="outline" onClick={() => { setEditingEntry(null); setIsModalOpen(true); }}>
               <Plus className="w-4 h-4 mr-2" />
               {t("journal.first_trade")}
             </Button>
@@ -303,10 +341,20 @@ function TradesTab() {
         </Card>
       )}
 
+      {visible.pages > 1 && <nav aria-label={t("journal.pagination")} className="flex items-center justify-between gap-3 mt-5">
+        <Button variant="outline" disabled={visible.page === 1} onClick={() => changePage(visible.page - 1)} aria-label={t("journal.previous_page")}><ChevronLeft size={16} /></Button>
+        <span role="status" className="text-sm text-muted-foreground">{t("journal.page_count", { page: visible.page, pages: visible.pages, total: entries?.length ?? 0 })}</span>
+        <Button variant="outline" disabled={visible.page === visible.pages} onClick={() => changePage(visible.page + 1)} aria-label={t("journal.next_page")}><ChevronRight size={16} /></Button>
+      </nav>}
+
       <JournalEntryModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); navigate(new URLSearchParams(search).has("processSessionId") ? "/" : `/journal${updateWorkspaceQuery(search, { marketDecisionId: null, processSessionId: null, methodVersionId: null, new: null })}`, { replace: true }); }}
         entry={editingEntry}
+        initialPair={new URLSearchParams(search).get("pair") ?? undefined}
+        marketDecisionId={new URLSearchParams(search).get("marketDecisionId") ?? undefined}
+        processSessionId={new URLSearchParams(search).get("processSessionId") ?? undefined}
+        methodVersionId={new URLSearchParams(search).get("methodVersionId") ?? undefined}
       />
     </>
   );
@@ -767,7 +815,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="opacity-0 group-hover:opacity-100 h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                    className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
                     aria-label={uiText("common.delete")}
                     onClick={() => handleDelete(item.id)}
                   >
@@ -795,20 +843,22 @@ const RECAP_FIELDS: Array<{ key: keyof JournalRecapFields; labelKey: string; row
 ];
 
 function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const copy = (key: Parameters<typeof processText>[1]) => processText(language, key);
   const dateLocale = useDateLocale();
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: entries, isLoading } = useGetJournalEntries({
     query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 30_000 },
   });
-  const [offset, setOffset] = useState(0);
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const requestedPeriod = new URLSearchParams(search).get("period");
+  const currentPeriod = getJournalRecapPeriod(mode);
 
   const periodInfo = useMemo(() => {
-    const base = offset === 0
-      ? new Date()
-      : (mode === "weekly" ? addWeeks(new Date(), offset) : addWeeks(new Date(), offset * 4));
-
+    const requested = requestedPeriod && /^\d{4}-\d{2}-\d{2}$/.test(requestedPeriod) ? parseISO(requestedPeriod) : null;
+    const base = requested && Number.isFinite(requested.getTime()) && requested <= new Date() ? requested : new Date();
     const recapPeriod = getJournalRecapPeriod(mode, base);
     const start = parseISO(recapPeriod.periodStart);
     const end = parseISO(recapPeriod.periodEnd);
@@ -817,13 +867,17 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
       : `${format(start, "d MMM", { locale: dateLocale })} - ${format(end, "d MMM yyyy", { locale: dateLocale })}`;
 
     return { start, end, label, recapPeriod };
-  }, [mode, offset, dateLocale]);
+  }, [mode, requestedPeriod, dateLocale]);
 
   const recapPeriod = periodInfo.recapPeriod;
   const recapEditable = isJournalRecapEditable(recapPeriod);
   const recapWindow = recapPeriod;
   const recapWindowLabel = `${format(parseISO(recapWindow.editWindowStart), "d MMM", { locale: dateLocale })} - ${format(parseISO(recapWindow.editWindowEnd), "d MMM yyyy", { locale: dateLocale })}`;
   const [recapDraft, setRecapDraft] = useState<JournalRecapFields>(emptyJournalRecapFields);
+  const processQuery = useTraderProcess();
+  const [improvementAction, setImprovementAction] = useState("");
+  const [improvementCriterion, setImprovementCriterion] = useState("");
+  const improvementRequestId = useRef(crypto.randomUUID());
 
   const recapQuery = useQuery({
     queryKey: journalRecapQueryKey(recapPeriod),
@@ -831,18 +885,27 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
   });
 
   const recapMutation = useMutation({
-    mutationFn: () => saveJournalRecap({
+    mutationFn: async () => {
+      const method = processQuery.data?.activeMethod;
+      if (method && (!improvementAction.trim() || !improvementCriterion.trim())) throw new Error(copy("improveRequired"));
+      const recap = await saveJournalRecap({
       kind: recapPeriod.kind,
       periodStart: recapPeriod.periodStart,
       periodEnd: recapPeriod.periodEnd,
       ...recapDraft,
-    }),
+      });
+      if (method) await saveProcessImprovement({ methodVersionId: method.id, recapId: recap.id,
+        action: improvementAction.trim(), criterion: improvementCriterion.trim(), requestId: improvementRequestId.current });
+      return recap;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: journalRecapQueryKey(recapPeriod) });
+      qc.invalidateQueries({ queryKey: traderProcessKey });
+      improvementRequestId.current = crypto.randomUUID();
       toast({ description: t("journal.recap.saved") });
     },
-    onError: () => {
-      toast({ description: t("journal.error"), variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ description: error.message || t("journal.error"), variant: "destructive" });
     },
   });
 
@@ -876,6 +939,16 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
       nextPeriodGoals: recap.nextPeriodGoals,
     } : { ...emptyJournalRecapFields });
   }, [recapQuery.data]);
+
+  const savedImprovementAction = processQuery.data?.improvement?.action ?? "";
+  const savedImprovementCriterion = processQuery.data?.improvement?.criterion ?? "";
+  const savedImprovementRecapId = processQuery.data?.improvement?.recapId;
+  useEffect(() => {
+    const linked = savedImprovementRecapId === recapQuery.data?.id;
+    setImprovementAction(linked ? savedImprovementAction : "");
+    setImprovementCriterion(linked ? savedImprovementCriterion : "");
+    improvementRequestId.current = crypto.randomUUID();
+  }, [recapQuery.data?.id, savedImprovementRecapId, savedImprovementAction, savedImprovementCriterion]);
 
   const patchRecapDraft = (key: keyof JournalRecapFields, value: string) => {
     setRecapDraft((draft) => ({ ...draft, [key]: value }));
@@ -934,15 +1007,16 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => setOffset((o) => o - 1)} className="h-9 w-9">
+        <Button variant="ghost" size="icon" onClick={() => navigate(`/journal${updateWorkspaceQuery(search, { t: "revisione", kind: mode, period: format(addWeeks(periodInfo.start, mode === "weekly" ? -1 : -4), "yyyy-MM-dd") })}`)} disabled={recapMutation.isPending || generateMutation.isPending} aria-label={t("journal.workspace.previous_period")} className="h-9 w-9">
           <ChevronLeft className="w-5 h-5" />
         </Button>
         <h3 className="text-base sm:text-lg font-bold capitalize">{periodInfo.label}</h3>
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setOffset((o) => o + 1)}
-          disabled={offset >= 0}
+          onClick={() => navigate(`/journal${updateWorkspaceQuery(search, { t: "revisione", kind: mode, period: format(addWeeks(periodInfo.start, mode === "weekly" ? 1 : 4), "yyyy-MM-dd") })}`)}
+          disabled={recapPeriod.periodStart >= currentPeriod.periodStart || recapMutation.isPending || generateMutation.isPending}
+          aria-label={t("journal.workspace.next_period")}
           className="h-9 w-9"
         >
           <ChevronRight className="w-5 h-5" />
@@ -973,7 +1047,7 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
             </CardHeader>
             <CardContent>
               <div className="flex items-end gap-3">
-                <span className={`text-4xl sm:text-5xl font-mono font-bold ${stats.winRate >= 50 ? "text-success" : "text-destructive"}`}>
+                <span className="text-4xl sm:text-5xl font-mono font-bold text-foreground">
                   {stats.winRate}%
                 </span>
                 <span className="text-sm text-muted-foreground mb-1.5">
@@ -1111,6 +1185,13 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
             ))}
           </div>
 
+          {processQuery.data?.activeMethod && <fieldset className="mt-5 rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+            <legend className="px-1 text-sm font-semibold">{copy("improvement")}</legend>
+            <p className="text-xs text-muted-foreground">{copy("improveRequired")}</p>
+            <label className="block space-y-1 text-sm">{copy("improvement")}<Textarea value={improvementAction} onChange={event => setImprovementAction(event.target.value)} rows={2} maxLength={4000} disabled={!recapEditable || recapMutation.isPending} /></label>
+            <label className="block space-y-1 text-sm">{copy("criterion")}<Textarea value={improvementCriterion} onChange={event => setImprovementCriterion(event.target.value)} rows={2} maxLength={4000} disabled={!recapEditable || recapMutation.isPending} /></label>
+          </fieldset>}
+
           {recapEditable && (
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button
@@ -1134,34 +1215,78 @@ function RecapTab({ mode }: { mode: "weekly" | "four_week" }) {
   );
 }
 
-export default function Journal() {
-  const { t } = useLanguage();
+function ReviewTab() {
+  const { userId } = useAuth();
+  const { t, language } = useLanguage();
+  const search = useSearch();
   const [, navigate] = useLocation();
-  const tab = parseJournalTab(useSearch());
-  const setTab = (next: JournalTab) => navigate(`/journal?t=${next}`);
+  const kind = new URLSearchParams(search).get("kind") === "market" ? "market" : parseJournalRecapKind(search);
+  const period = new URLSearchParams(search).get("period") ?? "current";
+  const process = useTraderProcess();
+  const legacy = new URLSearchParams(search).get("history") === "1" || new URLSearchParams(search).has("period");
+  if (process.data?.activeMethod && kind !== "market" && !legacy) return <div className="space-y-5">
+    <ProcessReviewWorkspace />
+    <details className="process-plan-summary">
+      <summary>{processText(language, "historyAccess")}</summary>
+      <div className="flex flex-wrap gap-3 pt-3">
+        <Link href="/journal?t=revisione&history=1" className="text-sm text-primary underline underline-offset-4">{t("journal.tab.weekly")} / {t("journal.tab.four_week")}</Link>
+        <Link href="/journal?t=revisione&kind=market" className="text-sm text-primary underline underline-offset-4">{t("intelligence.review")}</Link>
+      </div>
+    </details>
+  </div>;
+  return <div className="space-y-5">
+    <SectionTabs value={kind} ariaLabel={t("journal.workspace.review")} items={[
+      { value: "weekly", label: t("journal.tab.weekly") },
+      { value: "four_week", label: t("journal.tab.four_week") },
+      { value: "market", label: t("intelligence.review") },
+    ]} onValueChange={next => navigate(`/journal${updateWorkspaceQuery(search, { t: "revisione", kind: next, period: null })}`)} />
+    {kind === "market" ? <MarketDecisionReview key={userId ?? "guest"} ownerKey={userId ?? "guest"} /> : <RecapTab key={`${kind}:${period}`} mode={kind} />}
+  </div>;
+}
+
+export default function Journal() {
+  const { t, language } = useLanguage();
+  const [, navigate] = useLocation();
+  const search = useSearch();
+  const tab = parseJournalTab(search);
+  const setTab = (next: JournalTab, options: Record<string, string> = {}) => navigate(`/journal${updateWorkspaceQuery(search, {
+    t: next, panel: null, start: null, focus: null, new: null,
+    ...(next !== "piano" ? { vista: null } : {}),
+    ...(next !== "revisione" ? { kind: null, period: null } : {}),
+    ...options,
+  })}`);
+
+  useEffect(() => {
+    const legacy = new URLSearchParams(search).get("t");
+    if (["idee", "obiettivi", "idee-obiettivi"].includes(legacy ?? "")) {
+      navigate(`/journal${updateWorkspaceQuery(search, { t: "piano", vista: "idee-obiettivi", focus: legacy === "idee-obiettivi" ? null : legacy })}`, { replace: true });
+    } else if (legacy === "recap-settimanale" || legacy === "recap-mensile") {
+      navigate(`/journal${updateWorkspaceQuery(search, { t: "revisione", kind: legacy === "recap-mensile" ? "four_week" : "weekly" })}`, { replace: true });
+    }
+  }, [search, navigate]);
 
   return (
-    <PageLayout>
-      <PageHeader title={t("journal.title")} subtitle={t("journal.subtitle")} />
-
+    <PageLayout quiet>
+      <PageHeader title={t("journal.title")} subtitle={t("journal.subtitle")}
+        action={tab === "trades" && new URLSearchParams(search).get("panel") !== "conti" ? <Button onClick={() => setTab("trades", { new: "1" })}><Plus className="w-4 h-4 mr-2" />{t("journal.new_trade")}</Button> : undefined}
+      />
+      <SectionTabs value={tab} ariaLabel={t("journal.title")} items={[
+        { value: "sessioni", label: processText(language, "journalSessions") },
+        { value: "panoramica", label: t("journal.tab.overview") },
+        { value: "trades", label: t("journal.tab.trades") },
+        { value: "revisione", label: t("journal.workspace.review") },
+      ]} onValueChange={next => setTab(next as JournalTab)} />
       <AnimatePresence mode="wait">
-        <motion.div
-          key={tab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-        >
+        <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+          {tab === "sessioni" && <SessionJournal />}
           {tab === "panoramica" && <JournalOverview onNavigate={setTab} />}
           {tab === "trades" && <TradesTab />}
-          {tab === "recap-settimanale" && <RecapTab mode="weekly" />}
-          {tab === "recap-mensile" && <RecapTab mode="four_week" />}
-          {tab === "idee-obiettivi" && (
-            <div className="space-y-6">
-              <IdeasTab type="idea" />
-              <IdeasTab type="goal" />
-            </div>
-          )}
+          {tab === "piano" && <JournalPlan ideasGoals={<div className="space-y-6">
+            <section id="journal-idee"><IdeasTab type="idea" /></section>
+            <section id="journal-obiettivi"><IdeasTab type="goal" /></section>
+          </div>} />}
+          {tab === "revisione" && <ReviewTab />}
         </motion.div>
       </AnimatePresence>
     </PageLayout>

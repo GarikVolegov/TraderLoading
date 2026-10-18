@@ -13,8 +13,8 @@ assert.match(broker, /ProUpgradeGate/);
 assert.match(broker, /feature="broker"/);
 assert.match(chat, /ProUpgradeGate/);
 assert.match(chat, /feature="leaderboard"/);
-assert.match(wiki, /ProUpgradeGate/);
-assert.match(wiki, /feature="wiki"/);
+assert.match(wiki, /canUsePersonalArchive/);
+assert.match(wiki, /enabled: pro/);
 assert.match(gate, /export type ProFeature = "backtest" \| "leaderboard" \| "broker" \| "wiki"/);
 assert.match(gate, /billing\.gate\.wiki\.title/);
 

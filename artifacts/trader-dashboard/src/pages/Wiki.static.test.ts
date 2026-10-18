@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { rootDestination } from "../lib/navHubs";
 import { readFileSync } from "node:fs";
 
 const page = readFileSync(new URL("./Wiki.tsx", import.meta.url), "utf8");
@@ -11,8 +12,11 @@ const addDialog = readFileSync(new URL("../components/archive/ArchiveAddDialog.t
 // Route + nav wiring unchanged.
 assert.match(app, /const Wiki = lazy\(\(\) => import\("\.\/pages\/Wiki"\)\)/);
 assert.match(app, /<Route path="\/wiki" component=\{Wiki\}/);
-assert.match(bottomNav, /href: "\/wiki"/);
-assert.match(commandPalette, /href: "\/wiki"/);
+assert.match(bottomNav, /ROOT_ITEMS/);
+const navigation = readFileSync(new URL("../lib/navHubs.ts", import.meta.url), "utf8");
+assert.equal(rootDestination("/wiki"),"resources");
+const catalog = readFileSync(new URL("../lib/workspaceTools.ts", import.meta.url), "utf8");
+assert.match(catalog + commandPalette + navigation, /href:\s*"\/wiki"/);
 
 // Brain AI stays removed.
 assert.doesNotMatch(app, /pages\/Brain/);
@@ -37,7 +41,10 @@ assert.match(page, /ArchiveBoard/);
 assert.match(page, /ArchiveDetailModal/);
 assert.match(page, /ArchiveAddDialog/);
 assert.match(page, /collectionsFromFolders/);
-assert.match(page, /filterSources/);
+assert.match(page, /filterArchiveResources/);
+assert.match(page, /enabled:\s*pro/);
+assert.doesNotMatch(page, /ProUpgradeGate/);
+assert.match(page, /selected\?\.origin === "personal" && pro/);
 
 // Upload still uses react-dropzone with no click-to-open on the page surface.
 assert.match(page, /useDropzone/);
@@ -50,7 +57,7 @@ assert.match(addDialog, /openPicker/);
 // Loading skeleton shown while the initial sources fetch is pending, so the
 // empty state doesn't flash before real data arrives (usability audit 2C).
 assert.match(page, /isLoading:\s*sourcesLoading/);
-assert.match(page, /sourcesLoading \? \(\s*<ArchiveGridSkeleton/);
+assert.match(page, /pro && sourcesLoading/);
 
 // i18n keys exist.
 assert.match(i18n, /"wiki\.title": "Archivio"/);

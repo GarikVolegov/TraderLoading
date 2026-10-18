@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import { orderJournalEntries, journalPage } from "./journalPagination";
+const source = Array.from({ length: 10000 }, (_, id) => ({ id, tradeDate: id % 2 ? "2026-10-01" : "2026-10-02" }));
+const sorted = orderJournalEntries(source);
+assert.equal(source[0].id, 0, "Sorting never mutates the query cache");
+assert.equal(sorted[0].id, 9998);
+const seen = Array.from({ length: journalPage(sorted, 1).pages }, (_, i) => journalPage(sorted, i + 1).entries).flat();
+assert.equal(seen.length, 10000);assert.equal(new Set(seen.map(x => x.id)).size, 10000);
+assert.equal(journalPage(sorted.slice(0, 25), 999).page, 2);
+assert.equal(journalPage([], 999).page, 1);assert.equal(journalPage([], 1).entries.length, 0);
+console.log("Journal pagination includes all entries once and handles deleted last pages");

@@ -1,30 +1,57 @@
 import { useState, useMemo, useEffect, useCallback, type KeyboardEvent } from "react";
-import { Calendar, RefreshCw, TrendingUp, ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
+import {
+  Calendar,
+  RefreshCw,
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal,
+} from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useGetEconomicCalendar, getGetEconomicCalendarQueryKey, useUpdateUserSettings } from "@workspace/api-client-react";
+import {
+  useGetEconomicCalendar,
+  getGetEconomicCalendarQueryKey,
+  useUpdateUserSettings,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { refreshEconomicCalendar } from "@/lib/calendarApi";
 import { uiText } from "@/contexts/LanguageContext";
-import { resolveCalendarCurrencies } from "@/lib/favoritePairFilters";
+import { getFavoriteFilterCurrencies, resolveCalendarCurrencies } from "@/lib/favoritePairFilters";
 
 const IMPACT_CONFIG = {
-  High: { color: "bg-destructive", border: "border-destructive/30", text: "text-destructive", label: "Alto" },
-  Medium: { color: "bg-warning", border: "border-warning/30", text: "text-warning", label: "Medio" },
+  High: {
+    color: "bg-destructive",
+    border: "border-destructive/30",
+    text: "text-destructive",
+    label: "Alto",
+  },
+  Medium: {
+    color: "bg-warning",
+    border: "border-warning/30",
+    text: "text-warning",
+    label: "Medio",
+  },
   Low: { color: "bg-warning", border: "border-warning/30", text: "text-warning", label: "Basso" },
   Holiday: { color: "bg-white", border: "border-white/40", text: "text-white", label: "Festivo" },
 } as const;
 
 type Impact = keyof typeof IMPACT_CONFIG;
 
-export function CalendarWidget() {
+export function CalendarWidget({ pair }: { pair?: string } = {}) {
   const queryClient = useQueryClient();
-  const { selectedCurrencies: favoriteCurrencies, calendarImpacts, setCalendarImpacts } = useBackground();
-  const selectedCurrencies = useMemo(
-    () => new Set(resolveCalendarCurrencies(favoriteCurrencies).items),
-    [favoriteCurrencies],
+  const {
+    selectedCurrencies: favoriteCurrencies,
+    calendarImpacts,
+    setCalendarImpacts,
+  } = useBackground();
+  const currencyFilter = useMemo(
+    () =>
+      resolveCalendarCurrencies(pair ? getFavoriteFilterCurrencies([pair]) : favoriteCurrencies),
+    [favoriteCurrencies, pair],
   );
+  const selectedCurrencies = useMemo(() => new Set(currencyFilter.items), [currencyFilter]);
   const selectedImpacts = useMemo(() => new Set(calendarImpacts), [calendarImpacts]);
   const { mutate: saveSettings } = useUpdateUserSettings();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -37,19 +64,22 @@ export function CalendarWidget() {
     return () => clearInterval(interval);
   }, []);
 
-  const { data: events, isLoading } = useGetEconomicCalendar();
+  const { data: events, isLoading, isError } = useGetEconomicCalendar();
 
-  const toggleImpact = useCallback((impact: string) => {
-    const current = new Set(calendarImpacts);
-    if (current.has(impact)) {
-      if (current.size > 1) current.delete(impact);
-    } else {
-      current.add(impact);
-    }
-    const arr = Array.from(current);
-    setCalendarImpacts(arr);
-    saveSettings({ data: { calendarImpacts: arr } });
-  }, [calendarImpacts, setCalendarImpacts, saveSettings]);
+  const toggleImpact = useCallback(
+    (impact: string) => {
+      const current = new Set(calendarImpacts);
+      if (current.has(impact)) {
+        if (current.size > 1) current.delete(impact);
+      } else {
+        current.add(impact);
+      }
+      const arr = Array.from(current);
+      setCalendarImpacts(arr);
+      saveSettings({ data: { calendarImpacts: arr } });
+    },
+    [calendarImpacts, setCalendarImpacts, saveSettings],
+  );
 
   const toggleExpanded = (key: string) => {
     setExpandedEvents((prev) => {
@@ -131,7 +161,9 @@ export function CalendarWidget() {
         {filtersOpen && (
           <div className="space-y-3 pb-3 border-b border-border/30 animate-in slide-in-from-top-2 duration-200">
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{uiText("auto.ui.f150e87d33")}</p>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                {uiText("auto.ui.f150e87d33")}
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {(Object.keys(IMPACT_CONFIG) as Impact[]).map((impact) => {
                   const cfg = IMPACT_CONFIG[impact];
@@ -155,8 +187,17 @@ export function CalendarWidget() {
           </div>
         )}
 
+        {currencyFilter.unsupportedItems.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {uiText("market.unsupported", { symbols: currencyFilter.unsupportedItems.join(", ") })}
+          </p>
+        )}
         <div>
-          {isLoading ? (
+          {isError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {uiText("market.unavailable")}
+            </p>
+          ) : isLoading ? (
             <div className="p-8 flex justify-center">
               <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
             </div>
@@ -209,22 +250,42 @@ export function CalendarWidget() {
                   >
                     <div className="flex items-center gap-3 p-2.5">
                       <div className="flex flex-col items-center min-w-[52px] text-center">
-                        <span className="text-[10px] text-muted-foreground leading-tight">{day}</span>
-                        <span className={`text-sm font-mono font-bold ${isPast ? "text-muted-foreground" : "text-foreground"}`}>{time}</span>
+                        <span className="text-[10px] text-muted-foreground leading-tight">
+                          {day}
+                        </span>
+                        <span
+                          className={`text-sm font-mono font-bold ${isPast ? "text-muted-foreground" : "text-foreground"}`}
+                        >
+                          {time}
+                        </span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className={`w-2 h-2 rounded-full ${cfg.color} shrink-0 ${isPast ? "opacity-50" : ""}`} />
-                          <span className="text-xs font-bold text-muted-foreground">{event.country}</span>
+                          <span
+                            className={`w-2 h-2 rounded-full ${cfg.color} shrink-0 ${isPast ? "opacity-50" : ""}`}
+                          />
+                          <span className="text-xs font-bold text-muted-foreground">
+                            {event.country}
+                          </span>
                           {isPast && (
-                            <span className="text-[10px] text-muted-foreground/60 ml-auto">{uiText("auto.ui.de16ab599c")}</span>
+                            <span className="text-[10px] text-muted-foreground/60 ml-auto">
+                              {uiText("auto.ui.de16ab599c")}
+                            </span>
                           )}
                         </div>
-                        <p className={`text-sm font-medium truncate ${isPast ? "text-muted-foreground" : "text-foreground"}`}>{event.title}</p>
+                        <p
+                          className={`text-sm font-medium truncate ${isPast ? "text-muted-foreground" : "text-foreground"}`}
+                        >
+                          {event.title}
+                        </p>
                       </div>
                       {hasDetails && (
                         <div className="shrink-0 text-muted-foreground">
-                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
                         </div>
                       )}
                     </div>
@@ -234,14 +295,22 @@ export function CalendarWidget() {
                         <div className="grid grid-cols-2 gap-2 pt-2.5">
                           {event.forecast && (
                             <div className="bg-secondary/30 rounded-md p-2 text-center">
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{uiText("auto.ui.dcb2dd9945")}</p>
-                              <p className="text-sm font-mono font-bold text-foreground">{event.forecast}</p>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                                {uiText("auto.ui.dcb2dd9945")}
+                              </p>
+                              <p className="text-sm font-mono font-bold text-foreground">
+                                {event.forecast}
+                              </p>
                             </div>
                           )}
                           {event.previous && (
                             <div className="bg-secondary/30 rounded-md p-2 text-center">
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{uiText("auto.ui.4dfefd8dd2")}</p>
-                              <p className="text-sm font-mono font-bold text-foreground">{event.previous}</p>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                                {uiText("auto.ui.4dfefd8dd2")}
+                              </p>
+                              <p className="text-sm font-mono font-bold text-foreground">
+                                {event.previous}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -253,7 +322,6 @@ export function CalendarWidget() {
             </div>
           )}
         </div>
-
       </CardContent>
     </Card>
   );

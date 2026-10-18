@@ -10,6 +10,7 @@ for (const category of [
   "profile",
   "journal",
   "trading-data",
+  "trader-process",
   "routine",
   "preferences",
   "social-signals",

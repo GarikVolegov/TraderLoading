@@ -6,6 +6,7 @@ import { Loader2, Plus, ArrowLeft, UserPlus, Users, Hash, Volume2, Radio, Settin
 import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
 import { useToast } from "@/hooks/use-toast";
+import { useIsDesktop } from "@/hooks/use-media-query";
 import { useCommunities, useCommunityDetail } from "./hooks";
 import { CreateCommunityModal } from "./CreateCommunityModal";
 import { CreateChannelModal } from "./CreateChannelModal";
@@ -16,26 +17,43 @@ import { TextChannelView } from "./TextChannelView";
 import { VoiceChannelView } from "./VoiceChannelView";
 import { ChannelUnlockPanel } from "./ChannelUnlockPanel";
 import { ChannelPricingModal } from "./ChannelPricingModal";
+import { socialText } from "@/lib/i18n/reorganizationSocial";
+import { useSearch } from "wouter";
+import { parseSocialLocation } from "@/lib/chatTabs";
 
 export function CommunityTab({
   currentUserId,
   currentUserName,
+  embedded = false,
+  communityId = null,
+  channelId = null,
+  onChannelChange,
+  onBack,
 }: {
   currentUserId: string;
   currentUserName: string;
+  embedded?: boolean;
+  communityId?: number | null;
+  channelId?: number | null;
+  onChannelChange?: (id: number | null, replace?: boolean) => void;
+  onBack?: () => void;
 }) {
   const qc = useQueryClient();
-  const { t } = useLanguage();
+  const isDesktop = useIsDesktop();
+  const { t, language } = useLanguage();
+  const { unlock } = parseSocialLocation(useSearch());
   const { toast } = useToast();
   const { data: communities = [], isLoading: loadingCommunities } =
     useCommunities();
-  const [selectedCommunityId, setSelectedCommunityId] = useState<number | null>(
+  const [localCommunityId, setSelectedCommunityId] = useState<number | null>(
     null,
   );
-  const [selectedChannelId, setSelectedChannelId] = useState<number | null>(
+  const [localChannelId, setSelectedChannelId] = useState<number | null>(
     null,
   );
-  const { data: communityDetail, isLoading: loadingDetail } =
+  const selectedCommunityId = embedded ? communityId : localCommunityId;
+  const selectedChannelId = embedded ? channelId : localChannelId;
+  const { data: communityDetail, isLoading: loadingDetail, isError: detailFailed, refetch: refetchDetail } =
     useCommunityDetail(selectedCommunityId);
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
@@ -44,7 +62,11 @@ export function CommunityTab({
   const [showReviews, setShowReviews] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<
     "communities" | "channels" | "content"
-  >("communities");
+  >(embedded ? channelId ? "content" : "channels" : "communities");
+
+  useEffect(() => {
+    if (embedded) setMobilePanel(channelId ? "content" : "channels");
+  }, [embedded, channelId]);
 
   const selectedChannel =
     communityDetail?.channels?.find((c) => c.id === selectedChannelId) ?? null;
@@ -73,6 +95,7 @@ export function CommunityTab({
     try {
       await apiFetch(`community/${id}/leave`, { method: "DELETE" });
       qc.invalidateQueries({ queryKey: ["communities"] });
+      if (embedded && onBack) { onBack(); return; }
       setSelectedCommunityId(null);
       setSelectedChannelId(null);
       setMobilePanel("communities");
@@ -89,6 +112,7 @@ export function CommunityTab({
   };
 
   const selectChannel = (id: number) => {
+    if (embedded) onChannelChange?.(id);
     setSelectedChannelId(id);
     setShowReviews(false);
     setMobilePanel("content");
@@ -107,7 +131,7 @@ export function CommunityTab({
     // without the id ever changing — without this dependency the effect
     // never re-fires and the content pane is stuck on the empty placeholder
     // even though the now-unlocked sidebar is visible and clickable.
-    if (communityDetail?.channels?.length && !selectedChannelId) {
+    if (communityDetail?.channels?.length && !selectedChannelId && (!embedded || isDesktop)) {
       const chans = communityDetail.channels;
       // Prefer a channel the member can actually read (first unlocked text channel),
       // so opening a community doesn't dump them on a paywall by default.
@@ -116,9 +140,12 @@ export function CommunityTab({
         chans.find((c) => !c.locked) ??
         chans.find((c) => c.type === "text") ??
         chans[0];
-      if (first) setSelectedChannelId(first.id);
+      if (first) {
+        if (embedded) onChannelChange?.(first.id, true);
+        else setSelectedChannelId(first.id);
+      }
     }
-  }, [communityDetail?.id, communityDetail?.channels?.length, selectedChannelId]);
+  }, [communityDetail?.id, communityDetail?.channels?.length, selectedChannelId, embedded, isDesktop, onChannelChange]);
 
   const myCommunities = communities.filter((c) => c.isMember);
   const discoverCommunities = communities.filter((c) => !c.isMember);
@@ -237,8 +264,10 @@ export function CommunityTab({
           )}
           <div className="flex items-center gap-1.5 mb-1">
             <button
-              onClick={() => setMobilePanel("communities")}
-              className="lg:hidden p-1 rounded text-muted-foreground hover:text-foreground"
+              type="button"
+              aria-label={socialText(language, "back")}
+              onClick={() => embedded && onBack ? onBack() : setMobilePanel("communities")}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground lg:hidden"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
@@ -336,9 +365,10 @@ export function CommunityTab({
                     </button>
                     {canManageChannels && (
                       <button
+                        type="button"
                         onClick={() => setPricingChannelId(ch.id)}
                         aria-label={t("channel.access.pricing_title")}
-                        className="p-1 mr-1 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity shrink-0"
+                        className="p-1 mr-1 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-muted-foreground hover:text-foreground transition-opacity shrink-0"
                       >
                         <Settings className="w-3 h-3" />
                       </button>
@@ -406,6 +436,7 @@ export function CommunityTab({
         />
       ) : (
         <VoiceChannelView
+          key={`${currentUserId}:${selectedChannel.id}`}
           channel={selectedChannel}
           currentUserId={currentUserId}
           currentUserName={currentUserName}
@@ -414,7 +445,8 @@ export function CommunityTab({
     ) : (
       <div className="flex-1 flex items-center justify-center text-center p-8 text-muted-foreground">
         <div>
-          {!selectedCommunityId ? (
+          {loadingDetail ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : detailFailed ? <div role="alert"><p>{t("common.load_error")}</p><button className="min-h-11 text-primary" onClick={() => { void refetchDetail(); }}>{socialText(language, "retry")}</button></div> : selectedChannelId && !selectedChannel ? <p>{socialText(language, "unavailable")}</p> :
+          !selectedCommunityId ? (
             <>
               <Radio className="w-12 h-12 mx-auto opacity-20 mb-3" />
               <p className="text-sm font-medium">{uiText("chat.community.select_title")}</p>
@@ -482,17 +514,34 @@ export function CommunityTab({
       </div>
     );
 
+  useEffect(() => {
+    if (unlock !== "success" || !selectedChannel?.locked || !selectedCommunityId) return;
+    // Checkout completion is not an entitlement: wait for the authoritative webhook.
+    let attempts = 0;
+    const timer = setInterval(() => {
+      void qc.invalidateQueries({ queryKey: ["community", selectedCommunityId] });
+      if (++attempts >= 20) clearInterval(timer);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [unlock, selectedChannel?.locked, selectedCommunityId, qc]);
+
+  if (embedded && !communityDetail) return <div className="flex h-full flex-col">
+    <button onClick={onBack} className="flex min-h-11 items-center gap-2 border-b border-border/60 px-3 text-sm"><ArrowLeft className="h-4 w-4" />{socialText(language, "back")}</button>
+    <div className="flex flex-1 items-center justify-center p-6 text-center">{loadingDetail ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div role="alert"><p>{t("common.load_error")}</p><button className="min-h-11 text-primary" onClick={() => { void refetchDetail(); }}>{socialText(language, "retry")}</button></div>}</div>
+  </div>;
+
   return (
-    <>
-      {/* Desktop: 3 panels side by side */}
-      <div className="hidden lg:flex h-full">
-        {communityListPanel}
+    <div className="flex h-full min-h-0 flex-col">
+      {unlock && (unlock === "cancel" || selectedChannel?.locked) && <div role="status" className="border-b border-border/60 px-4 py-2 text-xs text-muted-foreground">{socialText(language, unlock === "success" ? "paymentWaiting" : "paymentCancelled")}</div>}
+      {/* Mount one workspace: hidden duplicates also open sockets and microphone effects. */}
+      {isDesktop ? (
+      <div className="flex min-h-0 flex-1">
+        {!embedded && communityListPanel}
         {channelPanel}
         <div className="flex-1 flex flex-col min-w-0">{contentArea}</div>
       </div>
-
-      {/* Mobile: stacked panels with back navigation */}
-      <div className="lg:hidden h-full flex flex-col">
+      ) : (
+      <div className="min-h-0 flex-1 flex flex-col">
         <AnimatePresence mode="wait">
           {mobilePanel === "communities" && (
             <motion.div
@@ -526,8 +575,10 @@ export function CommunityTab({
             >
               <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0 bg-card/20">
                 <button
-                  onClick={() => setMobilePanel("channels")}
-                  className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground"
+                  type="button"
+                  aria-label={uiText("common.back")}
+                  onClick={() => { if (embedded) onChannelChange?.(null); setMobilePanel("channels"); }}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-secondary/50 text-muted-foreground"
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
@@ -549,6 +600,7 @@ export function CommunityTab({
           )}
         </AnimatePresence>
       </div>
+      )}
 
       {showCreateCommunity && (
         <CreateCommunityModal
@@ -574,6 +626,6 @@ export function CommunityTab({
           <ChannelPricingModal channel={ch} onClose={() => setPricingChannelId(null)} />
         ) : null;
       })()}
-    </>
+    </div>
   );
 }

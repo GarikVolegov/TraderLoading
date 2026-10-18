@@ -246,6 +246,83 @@
       "when": 1784563200000,
       "tag": "0034_drop_credit_wallet",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791583200000,
+      "tag": "0035_candle_import_chunks",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791626400000,
+      "tag": "0036_market_intelligence",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791712800000,
+      "tag": "0037_trader_process",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791716400000,
+      "tag": "0038_backtest_economics",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791754856421,
+      "tag": "0039_process_session_drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791794545717,
+      "tag": "0040_process_method_draft_revisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791800000000,
+      "tag": "0041_process_quick_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791880000000,
+      "tag": "0042_process_guidance_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791880001000,
+      "tag": "0043_account_trade_environment",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792255900000,
+      "tag": "0044_academy_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1792255901000,
+      "tag": "0045_academy_content",
+      "breakpoints": true
     }
   ]
 }

@@ -147,3 +147,31 @@ assert.deepEqual(req.user, sessionUser);
 }
 
 console.log("auth middleware persisted sid checks passed");
+
+// Authorization failures must never become an authenticated request.
+for (const source of ["admin-status", "revocation"] as const) {
+  let nextCalled = false;
+  let responseStatus = 0;
+  const checked = createAuthMiddleware({
+    getClerkUserId: () => "user_test",
+    getClerkSessionId: () => "sess_test",
+    isSessionRevoked: async () => { if (source === "revocation") throw new Error("database unavailable"); return false; },
+    getAdminStatus: async () => { throw new Error("database unavailable"); },
+    recordAccess: async () => { throw new Error("must not log an authorized access"); },
+    warn: () => {},
+  });
+  const request: any = { headers: {}, socket: {} };
+  const response: any = { status(code: number) { responseStatus = code; return this; }, json() {} };
+  await checked(request, response, () => { nextCalled = true; });
+  assert.equal(responseStatus, 503);
+  assert.equal(nextCalled, false);
+  assert.equal(request.isAuthenticated(), false);
+}
+{
+  let nextCalled = false;
+  const checked = createAuthMiddleware({ getClerkUserId: () => "user_test", getClerkSessionId: () => "sess_revoked", isSessionRevoked: async () => true, recordAccess: async () => {} });
+  const request: any = { headers: {}, socket: {} };
+  await checked(request, {} as any, () => { nextCalled = true; });
+  assert.equal(nextCalled, true);
+  assert.equal(request.isAuthenticated(), false);
+}

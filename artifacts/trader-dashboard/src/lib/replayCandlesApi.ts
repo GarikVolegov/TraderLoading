@@ -5,6 +5,10 @@ export type ReplayCandlesResponse = {
   source?: string;
   /** Cursor for the next page when the response was truncated by `limit`. */
   nextFrom?: number;
+  partialCandle?: ReplayCandleRaw | null;
+  replayTime?: number;
+  /** Last observed canonical M1 close, exclusive, across every derived interval. */
+  availableTo?: number;
 };
 
 export type ReplayCandlesMeta = {
@@ -12,6 +16,20 @@ export type ReplayCandlesMeta = {
   warehouseEnabled: boolean;
   /** M1 ingestion bounds (bounds every derived timeframe), null when unavailable. */
   warehouse: { firstTs: number | null; lastTs: number | null } | null;
+  source?: string;
+  instrument?: string | null;
+  coverage?: {
+    status: "verified" | "partial" | "unavailable";
+    candleCount: number;
+    targetFrom: number;
+    targetTo: number;
+    verifiedRanges: { from: number; to: number }[];
+    missingDays: string[];
+    missingDayCount: number;
+    lastImportedAt: string | null;
+    lastImportStatus?: "idle" | "running" | "verified" | "failed";
+    lastImportReason?: "rate_limited" | "network_unavailable" | "source_empty" | "invalid_data" | "import_failed" | null;
+  };
 };
 
 export type ReplayCandlesRequest = {
@@ -22,6 +40,11 @@ export type ReplayCandlesRequest = {
   from?: number;
   to?: number;
   limit?: number;
+  /** Strict historical replay: one permanent canonical feed, no live fallback. */
+  mode?: "replay";
+  anchorTime?: number;
+  warmupBars?: number;
+  replayTime?: number;
 };
 
 function resolveBaseUrl(baseUrl?: string): string {
@@ -46,6 +69,10 @@ export function createReplayCandlesUrl(
   if (input.from != null) params.set("from", String(input.from));
   if (input.to != null) params.set("to", String(input.to));
   if (input.limit != null) params.set("limit", String(input.limit));
+  if (input.mode) params.set("mode", input.mode);
+  if (input.anchorTime != null) params.set("anchorTime", String(input.anchorTime));
+  if (input.warmupBars != null) params.set("warmupBars", String(input.warmupBars));
+  if (input.replayTime != null) params.set("replayTime", String(input.replayTime));
   return toUrl("/api/backtest/candles?" + params.toString(), options.baseUrl);
 }
 
@@ -58,7 +85,9 @@ async function parseJsonOrThrow<T>(response: Response): Promise<T> {
     } catch {
       /* keep HTTP status fallback */
     }
-    throw new Error(message);
+    const error = new Error(message) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
   return response.json() as Promise<T>;
 }
@@ -80,4 +109,33 @@ export async function fetchReplayCandlesMeta(
     signal: options.signal,
   });
   return parseJsonOrThrow<ReplayCandlesMeta>(response);
+}
+
+/** Execution always walks canonical M1, even while the chart displays H4/W1. */
+export async function fetchReplayExecutionCandles(
+  symbol: string,
+  from: number,
+  to: number,
+  options: { baseUrl?: string; signal?: AbortSignal } = {},
+): Promise<ReplayCandleRaw[]> {
+  const candles: ReplayCandleRaw[] = [];
+  for await (const page of iterateReplayExecutionCandles(symbol, from, to, options)) candles.push(...page);
+  return candles;
+}
+
+/** Stop fetching as soon as a trade exits, even on a long chart scrub. */
+export async function* iterateReplayExecutionCandles(
+  symbol: string,
+  from: number,
+  to: number,
+  options: { baseUrl?: string; signal?: AbortSignal } = {},
+): AsyncGenerator<ReplayCandleRaw[]> {
+  let next = from;
+  while (next < to) {
+    const page = await fetchReplayCandles({ symbol, interval: "M1", mode: "replay", from: next, to, limit: 5000 }, options);
+    yield page.candles.filter((bar) => bar.time >= next && bar.time < to);
+    if (page.nextFrom == null) break;
+    if (page.nextFrom <= next) throw new Error("Invalid historical candle cursor");
+    next = page.nextFrom;
+  }
 }

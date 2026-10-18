@@ -1,21 +1,43 @@
 import { Router, type IRouter } from "express";
 import webpush from "web-push";
-import { db, pushSubscriptionsTable, userSettingsTable, missionsTable, ideasTable } from "@workspace/db";
+import {
+  db,
+  pushSubscriptionsTable,
+  userSettingsTable,
+  missionsTable,
+  ideasTable,
+} from "@workspace/db";
 import { eq, and, isNull } from "drizzle-orm";
 import { getUserId } from "./profile.js";
 import { shouldSendPushNotification } from "../services/notifications/pushDedupe.js";
-import { getNotificationLanguage, getServerNotificationCopy, pickSessionQuote } from "../services/notifications/notificationCopy.js";
+import {
+  getNotificationLanguage,
+  getServerNotificationCopy,
+  pickSessionQuote,
+} from "../services/notifications/notificationCopy.js";
 import {
   buildScheduledCallDedupeKey,
   buildScheduledCallPayload,
   isServerScheduledCallDue,
   parseScheduledCallConfigs,
 } from "../services/notifications/scheduledCalls.js";
-import { isTimeReminderDue, localDayKey, isMacroAlertDue } from "../services/notifications/reminders.js";
+import {
+  isTimeReminderDue,
+  localDayKey,
+  isMacroAlertDue,
+} from "../services/notifications/reminders.js";
 import { getCalendarEvents, type CalendarEvent } from "./calendar.js";
 import logger from "../lib/logger.js";
 import { reportJobError } from "../lib/observability.js";
 import { tryAcquireLock } from "../lib/distributedLock.js";
+import { withLockedUserSettings } from "../services/settingsPersistence.js";
+import {
+  NotificationPreferencePatch,
+  PushSubscriptionBody,
+  PushUnsubscriptionBody,
+  createPublicPushAgent,
+  parsePushEndpoint,
+} from "../services/notifications/pushValidation.js";
 
 const router: IRouter = Router();
 
@@ -60,7 +82,20 @@ interface TradingSessionConfig {
 function parsePrefs(raw: string | null): NotificationPrefs {
   if (!raw) return { ...DEFAULT_NOTIF_PREFS };
   try {
-    return { ...DEFAULT_NOTIF_PREFS, ...JSON.parse(raw) };
+    const stored = JSON.parse(raw);
+    const prefs = { ...DEFAULT_NOTIF_PREFS };
+    for (const key of Object.keys(prefs) as (keyof NotificationPrefs)[]) {
+      if (typeof stored?.[key] === "boolean") prefs[key] = stored[key];
+    }
+    // Language is shared with /settings in the same stored JSON; preference
+    // updates must preserve it without exposing it as an editable push flag.
+    return {
+      ...prefs,
+      ...(typeof stored?.__language === "string" ? { __language: stored.__language } : {}),
+      ...(stored?.__riskGuard && typeof stored.__riskGuard === "object"
+        ? { __riskGuard: stored.__riskGuard }
+        : {}),
+    };
   } catch {
     return { ...DEFAULT_NOTIF_PREFS };
   }
@@ -121,22 +156,28 @@ export async function sendPushToUser(
   if (subs.length === 0) return;
 
   const dedupeKey = `${targetUserId ?? "guest"}:${payload.tag ?? payload.title}:${payload.body}`;
-  if (!shouldSendPushNotification(_recentPushes, dedupeKey, Date.now(), PUSH_DEDUPE_WINDOW_MS)) return;
+  if (!shouldSendPushNotification(_recentPushes, dedupeKey, Date.now(), PUSH_DEDUPE_WINDOW_MS))
+    return;
 
   const pushPayload = JSON.stringify(payload);
 
   await Promise.allSettled(
     subs.map(async (sub) => {
+      let agent: Awaited<ReturnType<typeof createPublicPushAgent>> | undefined;
       try {
+        agent = await createPublicPushAgent(sub.endpoint);
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           pushPayload,
+          { agent, timeout: 10_000 },
         );
       } catch (err) {
         const statusCode = (err as { statusCode?: number }).statusCode;
         if (statusCode === 410 || statusCode === 404) {
           await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.id, sub.id));
         }
+      } finally {
+        agent?.destroy();
       }
     }),
   );
@@ -217,7 +258,9 @@ async function checkScheduledCallsForUser(
 }
 
 function calendarEventKey(event: CalendarEvent): string {
-  return `${event.date}:${event.country}:${event.title}`.toLowerCase().replace(/[^a-z0-9:-]+/g, "-");
+  return `${event.date}:${event.country}:${event.title}`
+    .toLowerCase()
+    .replace(/[^a-z0-9:-]+/g, "-");
 }
 
 /** Finding 3.3: the daily-reminder push (mission count) only ever fired via an
@@ -259,11 +302,25 @@ async function checkDailyReminderForUser(
 
 /** Finding 3.3: goal reminders (journal "goal" ideas with a reminderTime) only
  *  ever fired via an in-tab setTimeout — never reaches a closed app. */
-async function checkGoalRemindersForUser(userId: string, now: Date, romeDay: string): Promise<void> {
+async function checkGoalRemindersForUser(
+  userId: string,
+  now: Date,
+  romeDay: string,
+): Promise<void> {
   const goals = await db
-    .select({ id: ideasTable.id, content: ideasTable.content, reminderTime: ideasTable.reminderTime })
+    .select({
+      id: ideasTable.id,
+      content: ideasTable.content,
+      reminderTime: ideasTable.reminderTime,
+    })
     .from(ideasTable)
-    .where(and(eq(ideasTable.userId, userId), eq(ideasTable.type, "goal"), eq(ideasTable.completed, false)));
+    .where(
+      and(
+        eq(ideasTable.userId, userId),
+        eq(ideasTable.type, "goal"),
+        eq(ideasTable.completed, false),
+      ),
+    );
 
   for (const goal of goals) {
     if (!isTimeReminderDue(goal.reminderTime, now)) continue;
@@ -400,11 +457,20 @@ export function startSessionScheduler(): SchedulerHandle {
               reportJobError(err, { job: "push-scheduler", check: name, userId });
             }
           };
-          if (sessions.length > 0) await runCheck("sessions", () => checkSessionsForUser(userId, sessions, nowH, nowM, today));
-          await runCheck("scheduledCalls", () => checkScheduledCallsForUser(userId, settings?.alarmConfigs, now));
-          await runCheck("dailyReminder", () => checkDailyReminderForUser(userId, settings?.dailyReminderTime, now, romeDay));
+          if (sessions.length > 0)
+            await runCheck("sessions", () =>
+              checkSessionsForUser(userId, sessions, nowH, nowM, today),
+            );
+          await runCheck("scheduledCalls", () =>
+            checkScheduledCallsForUser(userId, settings?.alarmConfigs, now),
+          );
+          await runCheck("dailyReminder", () =>
+            checkDailyReminderForUser(userId, settings?.dailyReminderTime, now, romeDay),
+          );
           await runCheck("goalReminders", () => checkGoalRemindersForUser(userId, now, romeDay));
-          await runCheck("macroEvents", () => checkMacroEventsForUser(userId, settings?.preMacroMinutes ?? 15, now, macroEvents));
+          await runCheck("macroEvents", () =>
+            checkMacroEventsForUser(userId, settings?.preMacroMinutes ?? 15, now, macroEvents),
+          );
         }),
       );
     } catch (err) {
@@ -439,21 +505,36 @@ router.get("/push/vapid-public-key", (_req, res) => {
 
 router.post("/push/subscribe", async (req, res) => {
   const userId = getUserId(req);
-  const { endpoint, keys } = req.body;
-
-  if (!endpoint || !keys?.p256dh || !keys?.auth) {
-    res.status(400).json({ error: "endpoint and keys are required" });
+  const parsed = PushSubscriptionBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Valid push endpoint and keys are required" });
+    return;
+  }
+  const { endpoint, keys } = parsed.data;
+  try {
+    parsePushEndpoint(endpoint);
+  } catch {
+    res.status(400).json({ error: "Push endpoint must be a public HTTPS URL" });
     return;
   }
 
   try {
-    await db
+    const userFilter = userId
+      ? eq(pushSubscriptionsTable.userId, userId)
+      : isNull(pushSubscriptionsTable.userId);
+    const saved = await db
       .insert(pushSubscriptionsTable)
       .values({ userId, endpoint, p256dh: keys.p256dh, auth: keys.auth })
       .onConflictDoUpdate({
         target: pushSubscriptionsTable.endpoint,
-        set: { userId, p256dh: keys.p256dh, auth: keys.auth },
-      });
+        set: { p256dh: keys.p256dh, auth: keys.auth },
+        setWhere: userFilter,
+      })
+      .returning({ id: pushSubscriptionsTable.id });
+    if (saved.length === 0) {
+      res.status(409).json({ error: "Push endpoint is already registered to another account" });
+      return;
+    }
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Push subscription failed");
@@ -462,12 +543,18 @@ router.post("/push/subscribe", async (req, res) => {
 });
 
 router.delete("/push/unsubscribe", async (req, res) => {
-  const { endpoint } = req.body;
-  if (!endpoint) {
-    res.status(400).json({ error: "endpoint is required" });
+  const userId = getUserId(req);
+  const parsed = PushUnsubscriptionBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Valid endpoint is required" });
     return;
   }
-  await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.endpoint, endpoint));
+  const userFilter = userId
+    ? eq(pushSubscriptionsTable.userId, userId)
+    : isNull(pushSubscriptionsTable.userId);
+  await db
+    .delete(pushSubscriptionsTable)
+    .where(and(eq(pushSubscriptionsTable.endpoint, parsed.data.endpoint), userFilter));
   res.json({ ok: true });
 });
 
@@ -479,29 +566,20 @@ router.get("/push/preferences", async (req, res) => {
 
 router.put("/push/preferences", async (req, res) => {
   const userId = getUserId(req);
-  const incoming = req.body as Partial<NotificationPrefs>;
-  const current = await getUserPrefs(userId);
-  const merged: NotificationPrefs = { ...current, ...incoming };
-
-  const where = userId ? eq(userSettingsTable.userId, userId) : isNull(userSettingsTable.userId);
-  const [existing] = await db.select({ id: userSettingsTable.id })
-    .from(userSettingsTable)
-    .where(where)
-    .limit(1);
-
-  if (existing) {
-    await db.update(userSettingsTable)
-      .set({ notificationPrefs: JSON.stringify(merged) })
-      .where(eq(userSettingsTable.id, existing.id));
-  } else {
-    await db.insert(userSettingsTable).values({
-      userId,
-      notificationPrefs: JSON.stringify(merged),
-      backgroundType: "default",
-      fontChoice: "inter",
-      backgroundDarkness: 60,
-    });
+  const parsed = NotificationPreferencePatch.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid notification preferences" });
+    return;
   }
+  const incoming = parsed.data;
+  const merged = await withLockedUserSettings(userId, async (tx, settings) => {
+    const prefs = { ...parsePrefs(settings.notificationPrefs), ...incoming };
+    await tx
+      .update(userSettingsTable)
+      .set({ notificationPrefs: JSON.stringify(prefs) })
+      .where(eq(userSettingsTable.id, settings.id));
+    return prefs;
+  });
 
   res.json(merged);
 });

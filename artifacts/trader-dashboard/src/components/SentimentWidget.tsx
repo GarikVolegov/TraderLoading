@@ -10,6 +10,8 @@ import { apiFetch } from "@/lib/apiFetch";
 import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
 import { uiText } from "@/contexts/LanguageContext";
 
+import { MarketDataStatus, type MarketDataMetadata } from "./MarketDataStatus";
+
 interface SentimentSymbol {
   name: string;
   longPercentage: number;
@@ -18,12 +20,21 @@ interface SentimentSymbol {
   shortPositions: number;
 }
 
-export function SentimentWidget() {
+export function SentimentWidget({ pair }: { pair?: string } = {}) {
   const { selectedPairs: userPairs } = useBackground();
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["widget", "sentiment"],
-    queryFn: () => apiFetch<{ symbols: SentimentSymbol[]; live?: boolean; fallback?: boolean; hasCredentials?: boolean }>("/api/tools/sentiment"),
+    queryFn: () =>
+      apiFetch<
+        MarketDataMetadata & {
+          symbols: SentimentSymbol[];
+          live?: boolean;
+          fallback?: boolean;
+          hasCredentials?: boolean;
+          reason?: string;
+        }
+      >("/api/tools/sentiment"),
     staleTime: 5 * 60_000,
     refetchInterval: 10 * 60_000,
   });
@@ -31,11 +42,11 @@ export function SentimentWidget() {
   const sentimentFilter = useMemo(
     () =>
       deriveEffectiveFilterItems({
-        requestedItems: userPairs,
+        requestedItems: pair ? [pair] : userPairs,
         supportedItems: data?.symbols?.map((symbol) => symbol.name) ?? [],
         defaultItems: data?.symbols?.slice(0, 6).map((symbol) => symbol.name) ?? [],
       }),
-    [data?.symbols, userPairs],
+    [data?.symbols, userPairs, pair],
   );
 
   const sortedSymbols = useMemo(() => {
@@ -50,16 +61,11 @@ export function SentimentWidget() {
 
   const avgBias = avgLong >= 55 ? "Long" : avgLong <= 45 ? "Short" : "Neutro";
   const avgBiasClass =
-    avgBias === "Long"
-      ? "text-success"
-      : avgBias === "Short"
-        ? "text-destructive"
-        : "text-warning";
+    avgBias === "Long" ? "text-success" : avgBias === "Short" ? "text-destructive" : "text-warning";
 
-  // Without MYFXBOOK_EMAIL/PASSWORD the backend serves static demo numbers —
-  // showing them as if they were real sentiment data would be misleading, so
-  // hide the widget entirely rather than label it as a demo.
-  if (data && !data.hasCredentials) return null;
+  const usable = Boolean(
+    data && data.status !== "unavailable" && !data.fallback && data.symbols.length > 0,
+  );
 
   return (
     <Card className="relative overflow-hidden flex flex-col bg-card/60 backdrop-blur-sm border-border/30">
@@ -69,13 +75,14 @@ export function SentimentWidget() {
         title={uiText("auto.ui.52bfe34c30")}
         action={
           <div className="flex items-center gap-1.5">
-            {data?.live && (
+            {data?.status === "available" && sortedSymbols.length > 0 && !isError && (
               <span className="inline-flex items-center gap-1 text-[9px] text-success">
                 <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" />
-                LIVE
+                {uiText("market.available")}
               </span>
             )}
             <button
+              aria-label={uiText("market.retry")}
               onClick={() => refetch()}
               disabled={isFetching}
               className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground/50 hover:text-foreground transition-colors"
@@ -94,22 +101,41 @@ export function SentimentWidget() {
         )}
         {isError && (
           <div className="flex items-center gap-2 text-xs text-destructive py-4">
-            <AlertCircle className="w-4 h-4 shrink-0" /> Dati non disponibili
+            <AlertCircle className="w-4 h-4 shrink-0" /> {uiText("market.unavailable")}
           </div>
         )}
 
-        {data?.symbols && (
+        {!isLoading && !isError && !usable && (
+          <p role="status" className="text-sm text-muted-foreground">
+            {uiText(
+              data?.reason === "not_configured"
+                ? "market.sentiment_unconfigured"
+                : "market.unavailable",
+            )}
+          </p>
+        )}
+        {usable && sentimentFilter.unsupportedItems.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {uiText("market.unsupported", { symbols: sentimentFilter.unsupportedItems.join(", ") })}
+          </p>
+        )}
+        {usable && data && <MarketDataStatus data={data} stale={isError} />}
+        {usable && sortedSymbols.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
             <div className="flex flex-col items-center gap-1">
+              <p className="text-xs text-muted-foreground text-center">
+                {uiText("market.sentiment_basis")}
+              </p>
               <Gauge value={avgLong} width={150} />
-              <span className={`text-xs font-semibold font-mono ${avgBiasClass}`}>
-                {avgBias}
-              </span>
+              <span className={`text-xs font-semibold font-mono ${avgBiasClass}`}>{avgBias}</span>
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
               {sentimentFilter.items.map((pair) => (
-                <span key={pair} className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-primary/10 text-primary border border-primary/25">
+                <span
+                  key={pair}
+                  className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-primary/10 text-primary border border-primary/25"
+                >
                   {pair}
                 </span>
               ))}
@@ -122,22 +148,35 @@ export function SentimentWidget() {
 
             <div className="space-y-2">
               {sortedSymbols.map((sym) => {
-                const bias = sym.longPercentage >= 55 ? "Long" : sym.shortPercentage >= 55 ? "Short" : "Neutro";
+                const bias =
+                  sym.longPercentage >= 55
+                    ? "Long"
+                    : sym.shortPercentage >= 55
+                      ? "Short"
+                      : "Neutro";
 
                 return (
                   <div key={sym.name} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-mono font-bold">{sym.name}</span>
-                        <span className={`text-[9px] font-semibold px-1 py-0.5 rounded-md ${
-                          bias === "Long"  ? "bg-primary/10 text-primary" :
-                          bias === "Short" ? "bg-destructive/10 text-destructive" :
-                                            "bg-secondary text-muted-foreground"
-                        }`}>{bias}</span>
+                        <span
+                          className={`text-[9px] font-semibold px-1 py-0.5 rounded-md ${
+                            bias === "Long"
+                              ? "bg-primary/10 text-primary"
+                              : bias === "Short"
+                                ? "bg-destructive/10 text-destructive"
+                                : "bg-secondary text-muted-foreground"
+                          }`}
+                        >
+                          {bias}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-[9px] font-mono font-bold">
                         <span className="text-primary">▲ {sym.longPercentage.toFixed(0)}%</span>
-                        <span className="text-destructive">▼ {sym.shortPercentage.toFixed(0)}%</span>
+                        <span className="text-destructive">
+                          ▼ {sym.shortPercentage.toFixed(0)}%
+                        </span>
                       </div>
                     </div>
                     <div className="h-1.5 rounded-full bg-destructive/20 overflow-hidden">

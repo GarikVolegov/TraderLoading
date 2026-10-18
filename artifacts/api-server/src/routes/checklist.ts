@@ -1,9 +1,14 @@
 import { Router, type IRouter } from "express";
 import { db, checklistItemsTable } from "@workspace/db";
 import { eq, asc, and, isNull } from "drizzle-orm";
+import { z } from "zod";
 import { getUserId } from "./profile.js";
 
 const router: IRouter = Router();
+const itemText = z.string().trim().min(1).max(2000);
+const itemId = z.coerce.number().int().positive();
+const updateItem = z.object({ text: itemText.optional(), completed: z.boolean().optional() })
+  .refine(value => Object.keys(value).length > 0, "At least one field is required");
 
 function userFilter(userId: string | null) {
   return userId ? eq(checklistItemsTable.userId, userId) : isNull(checklistItemsTable.userId);
@@ -17,7 +22,7 @@ router.get("/checklist", async (req, res) => {
 
 router.post("/checklist", async (req, res) => {
   const userId = getUserId(req);
-  const { text } = req.body;
+  const { text } = z.object({ text: itemText }).parse(req.body);
   if (!text) { res.status(400).json({ error: "text is required" }); return; }
   const all = await db.select().from(checklistItemsTable).where(userFilter(userId));
   const maxOrder = all.length > 0 ? Math.max(...all.map(i => i.order)) : -1;
@@ -27,8 +32,8 @@ router.post("/checklist", async (req, res) => {
 
 router.put("/checklist/:id", async (req, res) => {
   const userId = getUserId(req);
-  const id = parseInt(req.params.id);
-  const { text, completed } = req.body;
+  const id = itemId.parse(req.params.id);
+  const { text, completed } = updateItem.parse(req.body);
   const updateData: Partial<{ text: string; completed: boolean }> = {};
   if (text !== undefined) updateData.text = text;
   if (completed !== undefined) updateData.completed = completed;
@@ -42,7 +47,7 @@ router.put("/checklist/:id", async (req, res) => {
 
 router.delete("/checklist/:id", async (req, res) => {
   const userId = getUserId(req);
-  const id = parseInt(req.params.id);
+  const id = itemId.parse(req.params.id);
   await db.delete(checklistItemsTable).where(and(eq(checklistItemsTable.id, id), userFilter(userId)));
   res.json({ success: true });
 });

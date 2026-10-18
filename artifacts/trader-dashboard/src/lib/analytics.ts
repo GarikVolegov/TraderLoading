@@ -5,9 +5,11 @@
 import { hasAcceptedCookieConsent } from "./cookieConsent";
 import { shouldTrackSignUp } from "./signupConversion";
 
-const MEASUREMENT_ID = (import.meta as ImportMeta & {
-  env?: { VITE_GA_MEASUREMENT_ID?: string };
-}).env?.VITE_GA_MEASUREMENT_ID?.trim();
+const MEASUREMENT_ID = (
+  import.meta as ImportMeta & {
+    env?: { VITE_GA_MEASUREMENT_ID?: string };
+  }
+).env?.VITE_GA_MEASUREMENT_ID?.trim();
 
 const SIGNUP_TRACKED_KEY = "tl_ga_signup_tracked";
 
@@ -43,7 +45,7 @@ export function initAnalytics(): boolean {
 }
 
 export function trackEvent(name: string, params?: Record<string, string | number | boolean>): void {
-  if (!initialized || typeof window === "undefined") return;
+  if (!initialized || typeof window === "undefined" || !hasAcceptedCookieConsent()) return;
   window.gtag?.("event", name, params ?? {});
 }
 

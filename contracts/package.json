@@ -1,0 +1,5 @@
+{
+  "name": "@workspace/trader-process-contract",
+  "private": true,
+  "type": "module"
+}

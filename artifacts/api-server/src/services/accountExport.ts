@@ -23,6 +23,13 @@ import {
   postLikesTable,
   postsTable,
   profileTable,
+  processMethodsTable,
+  processDraftsTable,
+  processSessionsTable,
+  processEvidenceTable,
+  processImprovementsTable,
+  processAdvancementsTable,
+  processReviewsTable,
   pushSubscriptionsTable,
   quotesTable,
   routineCompletionsTable,
@@ -36,6 +43,7 @@ export const ACCOUNT_EXPORT_CATEGORIES = [
   "profile",
   "journal",
   "trading-data",
+  "trader-process",
   "routine",
   "preferences",
   "social-signals",
@@ -66,6 +74,7 @@ export function getAccountExportDisclosure(): AccountExportDisclosure {
       "Profilo, preferenze, notifiche e impostazioni operative.",
       "Diario, tag, recap, check-in, routine, missioni e certificati livello.",
       "Dati trading sincronizzati, sessioni backtest e trade manuali.",
+      "Metodi e versioni, protocolli, sessioni, evidenze, miglioramenti e conferme del processo.",
       "Dati social e community collegati all'account, incluse relazioni, post e messaggi cifrati.",
     ],
     excludedData: [
@@ -108,11 +117,22 @@ export async function exportAccountData(
     directMessages,
     communityMessages,
     communityFiles,
+    methods,
+    methodDraft,
+    sessions,
+    evidence,
+    improvements,
+    advancements,
+    reviews,
   ] = await Promise.all([
     database.select().from(profileTable).where(eq(profileTable.userId, userId)),
     database.select().from(userSettingsTable).where(eq(userSettingsTable.userId, userId)),
     database.select().from(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.userId, userId)),
-    database.select().from(journalEntriesTable).where(eq(journalEntriesTable.userId, userId)).orderBy(desc(journalEntriesTable.createdAt)),
+    database
+      .select()
+      .from(journalEntriesTable)
+      .where(eq(journalEntriesTable.userId, userId))
+      .orderBy(desc(journalEntriesTable.createdAt)),
     database.select().from(journalTagsTable).where(eq(journalTagsTable.userId, userId)),
     database.select().from(journalRecapsTable).where(eq(journalRecapsTable.userId, userId)),
     database.select().from(checkinsTable).where(eq(checkinsTable.userId, userId)),
@@ -125,7 +145,10 @@ export async function exportAccountData(
     database.select().from(accountTradesTable).where(eq(accountTradesTable.userId, userId)),
     database.select().from(backtestSessionsTable).where(eq(backtestSessionsTable.userId, userId)),
     database.select().from(backtestTradesTable).where(eq(backtestTradesTable.userId, userId)),
-    database.select().from(routineCompletionsTable).where(eq(routineCompletionsTable.userId, userId)),
+    database
+      .select()
+      .from(routineCompletionsTable)
+      .where(eq(routineCompletionsTable.userId, userId)),
     database.select().from(newsPreferencesTable).where(eq(newsPreferencesTable.userId, userId)),
     database.select().from(newsFeedbackTable).where(eq(newsFeedbackTable.userId, userId)),
     database
@@ -145,6 +168,15 @@ export async function exportAccountData(
       .where(or(eq(chatMessagesTable.senderId, userId), eq(chatMessagesTable.receiverId, userId))),
     database.select().from(communityMessagesTable).where(eq(communityMessagesTable.userId, userId)),
     database.select().from(communityFilesTable).where(eq(communityFilesTable.userId, userId)),
+    ...[
+      processMethodsTable,
+      processDraftsTable,
+      processSessionsTable,
+      processEvidenceTable,
+      processImprovementsTable,
+      processAdvancementsTable,
+      processReviewsTable,
+    ].map((table) => database.select().from(table).where(eq(table.userId, userId))),
   ]);
 
   return {
@@ -171,6 +203,7 @@ export async function exportAccountData(
         routineCompletions,
         levelCertificates,
       },
+      process: { methods, methodDraft, sessions, evidence, improvements, advancements, reviews },
       trading: {
         accountTrades,
         backtestSessions,

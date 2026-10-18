@@ -238,4 +238,5 @@ export interface VoiceParticipant {
   userId: string;
   userName: string;
   avatarUrl: string | null;
+  joinedAt?: string;
 }

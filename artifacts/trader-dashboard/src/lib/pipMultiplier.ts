@@ -5,6 +5,7 @@ export function getPipMultiplier(symbol: string): number {
   const s = symbol.replace("/", "").toUpperCase();
   if (s.includes("JPY")) return 100;
   if (s === "XAUUSD") return 10;
+  if (s === "USOIL") return 100; // WTI CFD: one quoted tick is $0.01.
   if (["US30", "NAS100", "SPX500"].includes(s)) return 1;
   if (s.includes("BTC") || s.includes("ETH")) return 1;
   return 10000;

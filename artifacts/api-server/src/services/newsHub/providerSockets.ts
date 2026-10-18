@@ -1,7 +1,6 @@
 import { WebSocket } from "ws";
 import type { NewsArticle } from "./types.js";
 import type { NewsHubRuntime } from "./runtime.js";
-import { classifyNewsArticle } from "./intelligence.js";
 
 export interface NewsProviderSocketManager {
   close(): Promise<void>;
@@ -11,13 +10,14 @@ function clean(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function dateOrNow(value: unknown): string {
-  const raw = typeof value === "string" || typeof value === "number" ? value : Date.now();
+function publicationDate(value: unknown): string | null {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const raw = value;
   const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function articleFromBenzingaMessage(message: unknown): NewsArticle | null {
+export function articleFromBenzingaMessage(message: unknown): NewsArticle | null {
   const value = typeof message === "object" && message !== null ? (message as Record<string, unknown>) : {};
   const data = typeof value.data === "object" && value.data !== null ? (value.data as Record<string, unknown>) : {};
   const content = typeof data.content === "object" && data.content !== null ? (data.content as Record<string, unknown>) : value;
@@ -27,14 +27,14 @@ function articleFromBenzingaMessage(message: unknown): NewsArticle | null {
     title,
     summary: clean(content.summary ?? content.teaser ?? content.body) || title,
     source: "Benzinga",
-    publishedAt: dateOrNow(content.created_at ?? content.updated_at ?? data.timestamp),
+    publishedAt: publicationDate(content.created_at),
     url: clean(content.url) || null,
     sentiment: null,
     imageUrl: clean(content.image_url ?? content.image) || null,
   };
 }
 
-function articleFromFinnhubMessage(message: unknown): NewsArticle[] {
+export function articleFromFinnhubMessage(message: unknown): NewsArticle[] {
   const value = typeof message === "object" && message !== null ? (message as Record<string, unknown>) : {};
   const payload = Array.isArray(value.data) ? value.data : [];
   return payload
@@ -46,7 +46,7 @@ function articleFromFinnhubMessage(message: unknown): NewsArticle[] {
         title,
         summary: clean(record.summary) || title,
         source: clean(record.source) || "Finnhub",
-        publishedAt: dateOrNow(record.datetime ? Number(record.datetime) * 1000 : record.publishedAt),
+        publishedAt: publicationDate(record.datetime ? Number(record.datetime) * 1000 : record.publishedAt),
         url: clean(record.url) || null,
         sentiment: null,
         imageUrl: clean(record.image) || null,
@@ -130,9 +130,7 @@ function connectWithReconnect(input: {
 }
 
 function ingestIfRelevant(runtime: NewsHubRuntime, article: NewsArticle): void {
-  const request = runtime.getLastRequest();
-  const classified = classifyNewsArticle(article, { pairs: request.pairs, lang: request.lang });
-  if (classified.relevant) runtime.ingestArticle(classified.article);
+  runtime.ingestArticle(article);
 }
 
 export function attachNewsProviderSockets(runtime: NewsHubRuntime): NewsProviderSocketManager {

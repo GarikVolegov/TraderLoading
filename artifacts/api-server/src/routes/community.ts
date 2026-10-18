@@ -5,10 +5,12 @@ import fs from "fs";
 import { db, communitiesTable, communityMembersTable, communityChannelsTable, communityMessagesTable, communityFilesTable, communityRolesTable, communityBansTable, communityMutesTable, voicePresenceTable, profileTable, communityJoinRequestsTable, communityChannelEntitlementsTable } from "@workspace/db";
 import { eq, and, desc, asc, sql, lt, type SQL } from "drizzle-orm";
 import { canSeeFullCommunity, decideJoin, canRequestJoin } from "../services/community/joinPolicy.js";
+import { resolveChannelContext } from "../services/community/channelContext.js";
 import { canAccessChannel } from "../services/community/channelAccess.js";
 import { isChannelFree } from "../services/community/channelPricing.js";
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
+import { imageMatchesType } from "../lib/imageValidation.js";
 import {
   getMemberContext,
   requirePermission,
@@ -21,15 +23,18 @@ import {
 import { emitSocialEvent } from "../services/socialHub/socialEvents.js";
 import { deleteCommunityDeep, deleteChannelDeep } from "../services/communityDeletion.js";
 import { recordModerationAction } from "../services/communityModerationLog.js";
+import { voiceChannelId, voiceSignalInput } from "../services/community/voiceSignalInput.js";
 
 const COMMUNITY_FILES_DIR = resolveUploadPath("community-files");
 if (!fs.existsSync(COMMUNITY_FILES_DIR)) fs.mkdirSync(COMMUNITY_FILES_DIR, { recursive: true });
 
-/** Best-effort disk cleanup for deleted community files (DB rows already gone). */
-function unlinkCommunityFiles(fileUrls: string[]): void {
-  for (const fileUrl of fileUrls) {
-    fs.unlink(path.join(COMMUNITY_FILES_DIR, path.basename(fileUrl)), () => {});
-  }
+/** Best-effort disk cleanup after committed deletion, limited to owned upload roots. */
+async function unlinkCommunityFiles(fileUrls: string[]): Promise<void> {
+  await Promise.allSettled(fileUrls.map(async (fileUrl) => {
+    const match = /^\/api\/uploads\/(community-files|community-assets)\/([^/\\]+)$/.exec(fileUrl);
+    if (!match || match[2].startsWith(".")) return;
+    await fs.promises.unlink(resolveUploadPath(match[1], match[2]));
+  }));
 }
 
 const communityFileStorage = multer.diskStorage({
@@ -118,6 +123,7 @@ async function resolveVoiceChannelOrDeny(
 ): Promise<typeof communityChannelsTable.$inferSelect | null> {
   const [channel] = await db.select().from(communityChannelsTable).where(eq(communityChannelsTable.id, channelId)).limit(1);
   if (!channel) { res.status(404).json({ error: "Canale non trovato" }); return null; }
+  if (channel.type !== "voice") { res.status(400).json({ error: "Non è un canale vocale" }); return null; }
   const [membership] = await db
     .select({ id: communityMembersTable.id })
     .from(communityMembersTable)
@@ -175,57 +181,84 @@ router.post("/community", async (req, res) => {
       return;
     }
 
-    const [community] = await db
-      .insert(communitiesTable)
-      .values({
-        name: name.trim(),
-        description: (description ?? "").slice(0, 200),
-        iconEmoji: iconEmoji ?? "🏛️",
-        creatorId: userId,
-        // Defaults to true (public) via the schema when omitted — private
-        // communities are owner-approved-join, discoverable-but-locked.
-        ...(typeof isPublic === "boolean" ? { isPublic } : {}),
-      })
-      .returning();
+    const community = await db.transaction(async (tx) => {
+      const [community] = await tx
+        .insert(communitiesTable)
+        .values({
+          name: name.trim(),
+          description: (description ?? "").slice(0, 200),
+          iconEmoji: iconEmoji ?? "🏛️",
+          creatorId: userId,
+          // Defaults to true (public) via the schema when omitted — private
+          // communities are owner-approved-join, discoverable-but-locked.
+          ...(typeof isPublic === "boolean" ? { isPublic } : {}),
+        })
+        .returning();
 
-    // Seed the two starter roles. "Membro" is the default assigned to joiners;
-    // "Admin" carries every permission. The creator stays owner (implicit, full
-    // power via creatorId) and is additionally given the Admin role.
-    await db.insert(communityRolesTable).values({
-      communityId: community.id,
-      name: "Membro",
-      permissions: DEFAULT_MEMBER_PERMISSIONS,
-      position: 0,
-      isDefault: true,
-    });
-    const [adminRole] = await db
-      .insert(communityRolesTable)
-      .values({
+      // Seed the two starter roles. "Membro" is the default assigned to joiners;
+      // "Admin" carries every permission. The creator stays owner (implicit, full
+      // power via creatorId) and is additionally given the Admin role.
+      await tx.insert(communityRolesTable).values({
         communityId: community.id,
-        name: "Admin",
-        permissions: ADMIN_ROLE_PERMISSIONS,
-        position: 1,
-        isDefault: false,
-      })
-      .returning({ id: communityRolesTable.id });
+        name: "Membro",
+        permissions: DEFAULT_MEMBER_PERMISSIONS,
+        position: 0,
+        isDefault: true,
+      });
+      const [adminRole] = await tx
+        .insert(communityRolesTable)
+        .values({
+          communityId: community.id,
+          name: "Admin",
+          permissions: ADMIN_ROLE_PERMISSIONS,
+          position: 1,
+          isDefault: false,
+        })
+        .returning({ id: communityRolesTable.id });
 
-    await db.insert(communityMembersTable).values({
-      communityId: community.id,
-      userId,
-      role: "owner",
-      roleId: adminRole.id,
+      await tx.insert(communityMembersTable).values({
+        communityId: community.id,
+        userId,
+        role: "owner",
+        roleId: adminRole.id,
+      });
+
+      const defaultChannels = [
+        { communityId: community.id, name: "generale", type: "text", position: 0 },
+        { communityId: community.id, name: "analisi", type: "text", position: 1 },
+        { communityId: community.id, name: "Sala Vocale", type: "voice", position: 2 },
+      ];
+      await tx.insert(communityChannelsTable).values(defaultChannels);
+      return community;
     });
-
-    const defaultChannels = [
-      { communityId: community.id, name: "generale", type: "text", position: 0 },
-      { communityId: community.id, name: "analisi", type: "text", position: 1 },
-      { communityId: community.id, name: "Sala Vocale", type: "voice", position: 2 },
-    ];
-    await db.insert(communityChannelsTable).values(defaultChannels);
 
     res.status(201).json({ ...community, isMember: true });
   } catch (err) {
     console.error("POST /community error:", err);
+    res.status(500).json({ error: "Errore interno" });
+  }
+});
+
+// Resolve old Stripe returns without disclosing private community context.
+// This does not grant content access: all content handlers retain their entitlement check.
+router.get("/community/channels/:channelId/context", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const raw = req.params.channelId;
+  const channelId = Number(raw);
+  if (!/^[1-9]\d*$/.test(raw) || !Number.isSafeInteger(channelId) || channelId > 2_147_483_647) {
+    res.status(400).json({ error: "Identificativo non valido" }); return;
+  }
+  try {
+    const context = await resolveChannelContext(userId, channelId, {
+      findChannel: async id => (await db.select({ id: communityChannelsTable.id, communityId: communityChannelsTable.communityId })
+        .from(communityChannelsTable).where(eq(communityChannelsTable.id, id)).limit(1))[0] ?? null,
+      memberContext: getMemberContext,
+    });
+    if (!context) { res.status(404).json({ error: "Canale non disponibile" }); return; }
+    res.json(context);
+  } catch (err) {
+    console.error("GET channel context error:", err);
     res.status(500).json({ error: "Errore interno" });
   }
 });
@@ -400,11 +433,15 @@ router.post("/community/:id/join", async (req, res) => {
       .where(and(eq(communityRolesTable.communityId, id), eq(communityRolesTable.isDefault, true)))
       .limit(1);
 
-    await db.insert(communityMembersTable).values({ communityId: id, userId, role: "member", roleId: defaultRole?.id ?? null });
-    await db
-      .update(communitiesTable)
-      .set({ memberCount: sql`${communitiesTable.memberCount} + 1` })
-      .where(eq(communitiesTable.id, id));
+    await db.transaction(async tx => {
+      const inserted = await tx.insert(communityMembersTable)
+        .values({ communityId: id, userId, role: "member", roleId: defaultRole?.id ?? null })
+        .onConflictDoNothing({ target: [communityMembersTable.communityId, communityMembersTable.userId] })
+        .returning({ id: communityMembersTable.id });
+      if (inserted.length) await tx.update(communitiesTable)
+        .set({ memberCount: sql`${communitiesTable.memberCount} + 1` })
+        .where(eq(communitiesTable.id, id));
+    });
 
     res.json({ ok: true });
   } catch (err) {
@@ -419,13 +456,16 @@ router.delete("/community/:id/leave", async (req, res) => {
   if (!userId) return;
   try {
     const id = parseInt(req.params.id);
-    await db
-      .delete(communityMembersTable)
-      .where(and(eq(communityMembersTable.communityId, id), eq(communityMembersTable.userId, userId)));
-    await db
-      .update(communitiesTable)
-      .set({ memberCount: sql`GREATEST(${communitiesTable.memberCount} - 1, 0)` })
-      .where(eq(communitiesTable.id, id));
+    const [community] = await db.select({ ownerId: communitiesTable.creatorId }).from(communitiesTable).where(eq(communitiesTable.id, id));
+    if (community?.ownerId === userId) { res.status(409).json({ error: "Il proprietario deve eliminare la community o trasferirne la gestione" }); return; }
+    await db.transaction(async tx => {
+      const removed = await tx.delete(communityMembersTable)
+        .where(and(eq(communityMembersTable.communityId, id), eq(communityMembersTable.userId, userId)))
+        .returning({ id: communityMembersTable.id });
+      if (removed.length) await tx.update(communitiesTable)
+        .set({ memberCount: sql`GREATEST(${communitiesTable.memberCount} - 1, 0)` })
+        .where(eq(communitiesTable.id, id));
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error("DELETE /community/:id/leave error:", err);
@@ -480,7 +520,7 @@ router.delete("/community/channels/:channelId", async (req, res) => {
     if (!(await requirePermission(req, res, channel.communityId, "channels.manage"))) return;
 
     const orphanFiles = await deleteChannelDeep(channelId);
-    unlinkCommunityFiles(orphanFiles);
+    await unlinkCommunityFiles(orphanFiles);
     await recordModerationAction({ communityId: channel.communityId, actorUserId: userId, action: "channel.delete", targetId: channelId, metadata: { name: channel.name } });
     res.json({ ok: true });
   } catch (err) {
@@ -596,7 +636,8 @@ router.post("/community/voice/:channelId/join", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const channelId = parseInt(req.params.channelId);
+    const channelId = voiceChannelId(req.params.channelId);
+    if (channelId === null) { res.status(400).json({ error: "Canale non valido" }); return; }
 
     const [channel] = await db.select().from(communityChannelsTable).where(eq(communityChannelsTable.id, channelId)).limit(1);
     if (!channel || channel.type !== "voice") { res.status(400).json({ error: "Non è un canale vocale" }); return; }
@@ -615,18 +656,22 @@ router.post("/community/voice/:channelId/join", async (req, res) => {
       .where(eq(profileTable.userId, userId))
       .limit(1);
 
-    await db
-      .insert(voicePresenceTable)
-      .values({
-        channelId,
-        userId,
-        userName: profile?.name ?? "Trader",
-        avatarUrl: profile?.avatarUrl ?? null,
-      })
-      .onConflictDoUpdate({
-        target: [voicePresenceTable.channelId, voicePresenceTable.userId],
-        set: { lastPing: sql`now()`, userName: profile?.name ?? "Trader", avatarUrl: profile?.avatarUrl ?? null },
-      });
+    await db.transaction(async tx => {
+      await tx.execute(sql`DELETE FROM signals WHERE scope = ${`voice:${channelId}`}
+        AND (recipient_id = ${userId} OR from_id = ${userId})`);
+      await tx
+        .insert(voicePresenceTable)
+        .values({
+          channelId,
+          userId,
+          userName: profile?.name ?? "Trader",
+          avatarUrl: profile?.avatarUrl ?? null,
+        })
+        .onConflictDoUpdate({
+          target: [voicePresenceTable.channelId, voicePresenceTable.userId],
+          set: { joinedAt: sql`now()`, lastPing: sql`now()`, userName: profile?.name ?? "Trader", avatarUrl: profile?.avatarUrl ?? null },
+        });
+    });
 
     res.json({ ok: true });
   } catch (err) {
@@ -640,7 +685,9 @@ router.post("/community/voice/:channelId/ping", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const channelId = parseInt(req.params.channelId);
+    const channelId = voiceChannelId(req.params.channelId);
+    if (channelId === null) { res.status(400).json({ error: "Canale non valido" }); return; }
+    if (!(await resolveVoiceChannelOrDeny(userId, channelId, res))) return;
     await db
       .update(voicePresenceTable)
       .set({ lastPing: sql`now()` })
@@ -656,10 +703,15 @@ router.delete("/community/voice/:channelId/leave", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const channelId = parseInt(req.params.channelId);
-    await db
-      .delete(voicePresenceTable)
-      .where(and(eq(voicePresenceTable.channelId, channelId), eq(voicePresenceTable.userId, userId)));
+    const channelId = voiceChannelId(req.params.channelId);
+    if (channelId === null) { res.status(400).json({ error: "Canale non valido" }); return; }
+    await db.transaction(async tx => {
+      await tx
+        .delete(voicePresenceTable)
+        .where(and(eq(voicePresenceTable.channelId, channelId), eq(voicePresenceTable.userId, userId)));
+      await tx.execute(sql`DELETE FROM signals WHERE scope = ${`voice:${channelId}`}
+        AND (recipient_id = ${userId} OR from_id = ${userId})`);
+    });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
@@ -671,12 +723,26 @@ router.get("/community/voice/:channelId/presence", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const channelId = parseInt(req.params.channelId);
-    if (!(await resolveVoiceChannelOrDeny(userId, channelId, res))) return;
+    const channelId = voiceChannelId(req.params.channelId);
+    if (channelId === null) { res.status(400).json({ error: "Canale non valido" }); return; }
+    const channel = await resolveVoiceChannelOrDeny(userId, channelId, res);
+    if (!channel) return;
     const cutoff = new Date(Date.now() - 15_000);
     const participants = await db
-      .select()
+      .select({
+        id: voicePresenceTable.id,
+        channelId: voicePresenceTable.channelId,
+        userId: voicePresenceTable.userId,
+        userName: voicePresenceTable.userName,
+        avatarUrl: voicePresenceTable.avatarUrl,
+        joinedAt: voicePresenceTable.joinedAt,
+        lastPing: voicePresenceTable.lastPing,
+      })
       .from(voicePresenceTable)
+      .innerJoin(communityMembersTable, and(
+        eq(communityMembersTable.userId, voicePresenceTable.userId),
+        eq(communityMembersTable.communityId, channel.communityId),
+      ))
       .where(and(
         eq(voicePresenceTable.channelId, channelId),
         sql`${voicePresenceTable.lastPing} > ${cutoff.toISOString()}`
@@ -697,10 +763,17 @@ router.post("/community/voice/:channelId/signal", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const { to, type, data } = req.body;
-    if (!to || !type) { res.status(400).json({ error: "Parametri mancanti" }); return; }
-    if (!(await resolveVoiceChannelOrDeny(userId, parseInt(req.params.channelId), res))) return;
-    await pushSignal({ scope: `voice:${req.params.channelId}`, to, from: userId, type, data: data ?? "" });
+    const channelId = voiceChannelId(req.params.channelId);
+    if (channelId === null) { res.status(400).json({ error: "Canale non valido" }); return; }
+    const parsed = voiceSignalInput.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "Segnale non valido" }); return; }
+    const channel = await resolveVoiceChannelOrDeny(userId, channelId, res);
+    if (!channel) return;
+    const { to, type, data } = parsed.data;
+    const [recipient] = await db.select({ id: communityMembersTable.id }).from(communityMembersTable)
+      .where(and(eq(communityMembersTable.communityId, channel.communityId), eq(communityMembersTable.userId, to))).limit(1);
+    if (!recipient) { res.status(404).json({ error: "Destinatario non disponibile" }); return; }
+    await pushSignal({ scope: `voice:${channelId}`, to, from: userId, type, data });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
@@ -711,8 +784,10 @@ router.get("/community/voice/:channelId/signals", async (req, res) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    if (!(await resolveVoiceChannelOrDeny(userId, parseInt(req.params.channelId), res))) return;
-    const signals = await consumeSignals(`voice:${req.params.channelId}`, userId);
+    const channelId = voiceChannelId(req.params.channelId);
+    if (channelId === null) { res.status(400).json({ error: "Canale non valido" }); return; }
+    if (!(await resolveVoiceChannelOrDeny(userId, channelId, res))) return;
+    const signals = await consumeSignals(`voice:${channelId}`, userId);
     res.json({ signals });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
@@ -726,6 +801,7 @@ router.post("/community/channels/:channelId/files", (req: Request, res: Response
   communityFileUpload.single("file")(req, res, async (err) => {
     if (err) { res.status(400).json({ error: err.message ?? "Upload fallito" }); return; }
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
+    let persisted = false;
     try {
       const channelId = parseInt(String(req.params.channelId));
       const [channel] = await db.select().from(communityChannelsTable).where(eq(communityChannelsTable.id, channelId)).limit(1);
@@ -738,6 +814,11 @@ router.post("/community/channels/:channelId/files", (req: Request, res: Response
         .limit(1);
       if (!membership) { res.status(403).json({ error: "Non sei membro" }); return; }
       if (!(await assertChannelAccess(userId, channel, res))) return;
+
+      if (req.file.mimetype.startsWith("image/") && !imageMatchesType(await fs.promises.readFile(req.file.path), req.file.mimetype, req.file.originalname)) {
+        res.status(415).json({ error: "Contenuto immagine non valido" });
+        return;
+      }
 
       const ctx = await getMemberContext(channel.communityId, userId);
       const canManageFiles = hasPermission(ctx, "files.manage");
@@ -759,10 +840,13 @@ router.post("/community/channels/:channelId/files", (req: Request, res: Response
         fileUrl,
         downloadable,
       }).returning();
+      persisted = true;
       res.status(201).json(fileRow);
     } catch (e) {
       console.error("POST /community/channels/:channelId/files error:", e);
       res.status(500).json({ error: "Errore interno" });
+    } finally {
+      if (!persisted) await fs.promises.unlink(req.file.path).catch(() => {});
     }
   });
 });
@@ -853,6 +937,9 @@ router.get("/uploads/community-files/:filename", async (req, res) => {
   if (!userId) { res.status(401).json({ error: "Non autorizzato" }); return; }
   try {
     const filename = req.params.filename;
+    if (path.basename(filename) !== filename || filename.includes("\\") || filename.startsWith(".")) {
+      res.status(404).json({ error: "File non trovato" }); return;
+    }
     const [file] = await db
       .select()
       .from(communityFilesTable)
@@ -878,7 +965,9 @@ router.get("/uploads/community-files/:filename", async (req, res) => {
       res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(file.fileName)}"`);
     }
     res.setHeader("Content-Type", file.mimeType);
-    res.sendFile(filePath);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, no-store");
+    res.sendFile(filename, { root: COMMUNITY_FILES_DIR });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
   }
@@ -895,7 +984,7 @@ router.delete("/community/:id", async (req, res) => {
     if (community.creatorId !== userId) { res.status(403).json({ error: "Solo il creatore può eliminare la community" }); return; }
 
     const orphanFiles = await deleteCommunityDeep(id);
-    unlinkCommunityFiles(orphanFiles);
+    await unlinkCommunityFiles(orphanFiles);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });

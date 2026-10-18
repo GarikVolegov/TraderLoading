@@ -1,3 +1,4 @@
+import {assertIsolatedBrowser} from "./isolation.mjs";
 // Shared helpers for the manual usability-sweep drivers (scripts/verify-usability/*).
 // Extracted from scripts/verify-nav-hubs/drive.mjs (the canonical Clerk test-user
 // Playwright driver). Not part of the automated test suite; run by hand against a
@@ -57,6 +58,7 @@ export async function clerkUserId(email) {
 
 // Idempotent: returns the existing user id or creates a passwordless test user.
 export async function ensureTestUser(email, { firstName = "Verify", lastName = "B" } = {}) {
+  assertIsolatedBrowser(BASE,email);
   try {
     return await clerkUserId(email);
   } catch {
@@ -112,6 +114,7 @@ export function ensureClerkSetup() {
 
 // Full ticket-strategy sign-in for `email` on a fresh page/context.
 export async function signIn(page, email) {
+  assertIsolatedBrowser(BASE,email);
   await ensureClerkSetup();
   const userId = await clerkUserId(email);
   await setupClerkTestingToken({ page });
@@ -175,6 +178,7 @@ export async function apiFromPage(page, path, init = {}) {
 }
 
 export function outDirFor(area) {
+  assertIsolatedBrowser(BASE);
   const dir = new URL(`../../../artifacts.local/verify-usability/${area}/`, import.meta.url);
   mkdirSync(dir, { recursive: true });
   return dir;
@@ -254,7 +258,7 @@ export function reportFindings(area, findings, collectors) {
       all.push({ step: "*", kind: "failed-request", detail: text });
     }
   }
-  const payload = { area, at: new Date().toISOString(), findings: all };
+  const payload = { runId: process.env.VERIFY_RUN_ID, area, at: new Date().toISOString(), findings: all };
   const dir = outDirFor(area);
   writeFileSync(fileURLToPath(new URL("findings.json", dir)), JSON.stringify(payload, null, 2));
   console.log(`FINDINGS_JSON: ${JSON.stringify(payload)}`);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getAdminSupportTicketThread,
@@ -32,6 +32,8 @@ export function AdminTicketsPage() {
   const qc = useQueryClient();
   const [status, setStatus] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const selectedTicket = useRef(selectedId);
+  selectedTicket.current = selectedId;
   const [reply, setReply] = useState("");
 
   const list = useQuery({
@@ -45,16 +47,19 @@ export function AdminTicketsPage() {
     enabled: selectedId !== null,
   });
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["admin", "support", "ticket", selectedId] });
-    qc.invalidateQueries({ queryKey: ["admin", "support", "tickets", status] });
+  const invalidate = (ticketId: number) => {
+    qc.invalidateQueries({ queryKey: ["admin", "support", "ticket", ticketId] });
+    qc.invalidateQueries({ queryKey: ["admin", "support", "tickets"] });
   };
 
   const replyMutation = useMutation({
-    mutationFn: (body: string) => replyAdminSupportTicket(selectedId as number, body),
-    onSuccess: () => {
-      setReply("");
-      invalidate();
+    mutationFn: ({ ticketId, body }: { ticketId: number; body: string }) =>
+      replyAdminSupportTicket(ticketId, body),
+    onSuccess: (_data, { ticketId, body }) => {
+      if (selectedTicket.current === ticketId) {
+        setReply((current) => current.trim() === body ? "" : current);
+      }
+      invalidate(ticketId);
       toast({ description: t("admin.tickets.toast.replied") });
     },
     onError: () =>
@@ -62,10 +67,10 @@ export function AdminTicketsPage() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: (next: string) =>
-      setAdminSupportTicketStatus(selectedId as number, next),
-    onSuccess: () => {
-      invalidate();
+    mutationFn: ({ ticketId, next }: { ticketId: number; next: string }) =>
+      setAdminSupportTicketStatus(ticketId, next),
+    onSuccess: (_data, { ticketId }) => {
+      invalidate(ticketId);
       toast({ description: t("admin.tickets.toast.status") });
     },
     onError: () =>
@@ -124,12 +129,13 @@ export function AdminTicketsPage() {
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
                   placeholder={t("admin.tickets.reply.ph")}
+                  aria-label={t("admin.tickets.reply.ph")}
                   rows={3}
                 />
                 <div className="flex flex-wrap gap-2">
                   <Button
-                    onClick={() => reply.trim() && replyMutation.mutate(reply.trim())}
-                    disabled={replyMutation.isPending || !reply.trim()}
+                    onClick={() => reply.trim() && replyMutation.mutate({ ticketId: selectedId, body: reply.trim() })}
+                    disabled={replyMutation.isPending || statusMutation.isPending || !reply.trim()}
                   >
                     {replyMutation.isPending
                       ? t("admin.tickets.reply.sending")
@@ -137,22 +143,22 @@ export function AdminTicketsPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => statusMutation.mutate("open")}
-                    disabled={statusMutation.isPending}
+                    onClick={() => statusMutation.mutate({ ticketId: selectedId, next: "open" })}
+                    disabled={statusMutation.isPending || replyMutation.isPending}
                   >
                     {t("admin.tickets.status.open")}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => statusMutation.mutate("pending")}
-                    disabled={statusMutation.isPending}
+                    onClick={() => statusMutation.mutate({ ticketId: selectedId, next: "pending" })}
+                    disabled={statusMutation.isPending || replyMutation.isPending}
                   >
                     {t("admin.tickets.status.pending")}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => statusMutation.mutate("closed")}
-                    disabled={statusMutation.isPending}
+                    onClick={() => statusMutation.mutate({ ticketId: selectedId, next: "closed" })}
+                    disabled={statusMutation.isPending || replyMutation.isPending}
                   >
                     {t("admin.tickets.status.closed")}
                   </Button>

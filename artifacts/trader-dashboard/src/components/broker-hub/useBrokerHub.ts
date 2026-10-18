@@ -1,5 +1,5 @@
 import { uiText } from "@/contexts/LanguageContext";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   BrokerAccountProfile,
   BrokerConnectionIntent,
@@ -67,27 +67,40 @@ export function useBrokerHub() {
   const [connectionIntent, setConnectionIntent] = useState<BrokerConnectionIntent | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const activeProfileRef = useRef<string | null>(null);
+  const refreshGeneration = useRef(0);
+  const cancelRefresh = useCallback(() => { refreshGeneration.current++; }, []);
 
   const refreshProfiles = useCallback(async () => {
+    const generation = ++refreshGeneration.current;
     setLoading(true);
     try {
       const list = await listBrokerProfiles();
+      if (refreshGeneration.current !== generation) return;
+      if (activeProfileRef.current !== list.activeProfileId) setHistory([]);
+      activeProfileRef.current = list.activeProfileId;
       setProfiles(list);
       if (list.activeProfileId) {
+        setSnapshot((previous) => previous.profileId === list.activeProfileId ? previous : EMPTY_SNAPSHOT);
         const nextSnapshot = await getBrokerSnapshot(list.activeProfileId);
+        if (refreshGeneration.current !== generation) return;
         setSnapshot(nextSnapshot);
+      } else {
+        setSnapshot(EMPTY_SNAPSHOT);
+        setHistory([]);
       }
       setMessage(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : uiText("auto.ui.68de907f03"));
+      if (refreshGeneration.current === generation) setMessage(error instanceof Error ? error.message : uiText("auto.ui.68de907f03"));
     } finally {
-      setLoading(false);
+      if (refreshGeneration.current === generation) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void refreshProfiles();
-  }, [refreshProfiles]);
+    return cancelRefresh;
+  }, [refreshProfiles, cancelRefresh]);
 
   useEffect(() => {
     const profileId = profiles.activeProfileId;
@@ -103,7 +116,7 @@ export function useBrokerHub() {
         if (cancelled) return;
         setSnapshot(nextSnapshot);
         setHistory(nextHistory);
-        setMessage(nextSnapshot.status === uiText("auto.ui.c5e23457aa") ? "FX Blue sincronizzato" : nextSnapshot.error ?? null);
+        setMessage(nextSnapshot.status === "connected" ? uiText("auto.ui.c5e23457aa") : nextSnapshot.error ?? null);
       } catch (error) {
         if (!cancelled) setMessage(error instanceof Error ? error.message : uiText("auto.ui.e49ece2b58"));
       }

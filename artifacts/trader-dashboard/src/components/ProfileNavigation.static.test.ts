@@ -1,22 +1,15 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-
 const topNav = fs.readFileSync("src/components/TopNav.tsx", "utf8");
-const bottomNav = fs.readFileSync("src/components/BottomNav.tsx", "utf8");
-
+const nav = fs.readFileSync("src/components/BottomNav.tsx", "utf8");
 assert.match(topNav, /useGetProfile/);
-assert.match(bottomNav, /useGetProfile/);
-
-assert.doesNotMatch(topNav, /import \{ Settings,/);
-assert.doesNotMatch(topNav, /<Settings className=/);
-assert.doesNotMatch(topNav, /UserButton/);
-assert.doesNotMatch(bottomNav, /UserButton/);
-
-assert.match(topNav, /href="\/settings"/);
-assert.match(bottomNav, /href="\/settings"/);
 assert.match(topNav, /profile\.avatarUrl/);
-assert.match(bottomNav, /profile\.avatarUrl/);
 assert.match(topNav, /images\/avatar-default\.webp/);
-assert.match(bottomNav, /images\/avatar-default\.webp/);
-
-console.log("profile navigation static checks passed");
+assert.match(topNav, /DropdownMenuTrigger asChild/);
+assert.match(topNav, /navigate\("\/settings\?section=profilo"\)/);
+assert.match(topNav, /navigate\("\/method"\)/);
+assert.match(topNav, /navigate\("\/resources"\)/);
+assert.match(nav, /href="\/settings"/);
+assert.doesNotMatch(nav, /href="\/milestones"/);
+assert.doesNotMatch(topNav, /UserButton/);
+console.log("profile and progress navigation checks passed");

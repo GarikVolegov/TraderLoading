@@ -87,7 +87,7 @@ function buildFallback(): CalendarEvent[] {
 
 /** Cached-or-fetch economic calendar (shared, not per-user) — reused by the
  *  route and by the macro-event push scheduler (see routes/push.ts). */
-export async function getCalendarEvents(noCache = false): Promise<CalendarEvent[]> {
+export async function getCalendarEvents(noCache = false, strict = false): Promise<CalendarEvent[]> {
   const cached = noCache ? null : await getJsonCache<CalendarEvent[]>(CACHE_KEY);
   if (cached) return cached;
 
@@ -97,6 +97,7 @@ export async function getCalendarEvents(noCache = false): Promise<CalendarEvent[
     return events;
   } catch (err) {
     console.error("[calendar] fetch error:", err instanceof Error ? err.message : err);
+    if (strict) throw err;
     return buildFallback();
   }
 }

@@ -1,5 +1,6 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
+import { brokerLocalPath } from "./localStoragePath.js";
 import type { BrokerOrderResult, NormalizedBrokerOrderRequest } from "./types.js";
 
 export type BrokerAuditRequest =
@@ -16,7 +17,7 @@ export interface BrokerAuditLog {
 }
 
 function defaultPath(): string {
-  return join(process.cwd(), ".local", "broker-order-audit.ndjson");
+  return brokerLocalPath("broker-order-audit.ndjson");
 }
 
 export function createBrokerAuditLog(path = defaultPath()): BrokerAuditLog {

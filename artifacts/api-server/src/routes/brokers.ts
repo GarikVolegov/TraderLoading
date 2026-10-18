@@ -3,6 +3,8 @@ import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { brokerHubRuntime, type BrokerHubRuntime } from "../services/brokerHub/runtime.js";
+import { executionEnvironmentFromSource } from "../services/brokerHub/executionEnvironment.js";
+import { authorizeBrokerOpening, processOrderRejection } from "../services/brokerHub/processOrderAuthorization.js";
 import {
   createConnectionIntentStore,
   publicIntent,
@@ -16,6 +18,7 @@ import {
   type BrokerProviderRegistry,
 } from "../services/brokerHub/providerRegistry.js";
 import { parseFxBlueProfileRef } from "../services/brokerHub/fxBlueConnector.js";
+import { BrokerProfileOwnershipError } from "../services/brokerHub/profileStore.js";
 import {
   createFxBlueSetupIntentStore,
   type FxBlueSetupIntentStore,
@@ -229,6 +232,7 @@ function normalizeAccount(value: unknown, brokerName: string): BrokerAccount {
     brokerName: readString(data.brokerName, brokerName),
     currency: readString(data.currency, "USD"),
     environment: data.environment === "demo" ? "demo" : "live",
+    executionEnvironment: executionEnvironmentFromSource(data.environment),
   };
 }
 
@@ -820,7 +824,7 @@ export function createBrokersRouter(
       }
       res.status(201).json({ profile });
     } catch (error) {
-      res.status(400).json({ error: message(error) });
+      res.status(error instanceof BrokerProfileOwnershipError ? 404 : 400).json({ error: message(error) });
     }
   });
 
@@ -1228,7 +1232,25 @@ export function createBrokersRouter(
         isSmartLink
           ? await companionStore.listPendingOrdersTrusted(profileId)
           : await companionStore.listPendingOrders(profileId, token);
-      res.json({ orders });
+      const authorized = [];
+      const snapshot = await companionStore.getSnapshot(profileId);
+      for (const pending of orders) {
+        // Only the explicit server-created close operation can bypass readiness.
+        if (pending.order.closePositionId) { authorized.push(pending); continue; }
+        try {
+          if (!profile || !snapshot) throw Object.assign(new Error("Conto non sincronizzato."), { status: 409 });
+          await authorizeBrokerOpening(profile, snapshot, pending.order);
+          authorized.push(pending);
+        } catch (error) {
+          // On a temporary process-store outage leave the request queued, but
+          // never hand it to the terminal. Existing explicit closes still flow.
+          if (!(error instanceof Error && "status" in error && typeof error.status === "number" && error.status < 500)) continue;
+          const input = { profileId, orderId: pending.id, result: { accepted: false, reason: processOrderRejection(error) } };
+          if (isSmartLink) await companionStore.completeOrderTrusted(input);
+          else await companionStore.completeOrder({ ...input, token });
+        }
+      }
+      res.json({ orders: authorized });
     } catch (error) {
       res.status(400).json({ error: message(error) });
     }

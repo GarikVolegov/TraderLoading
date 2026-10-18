@@ -1,3 +1,4 @@
+import { useDailyChecklist } from "@/hooks/useDailyChecklist";
 import { useEffect, useRef } from "react";
 import { useGetMissions, useGetChecklist } from "@workspace/api-client-react";
 import { useLoading } from "@/contexts/LoadingContext";
@@ -12,6 +13,7 @@ export function WelcomeNotification() {
   const { data: missions } = useGetMissions();
   const { data: checklist } = useGetChecklist();
   const { toast } = useToast();
+  const { checked } = useDailyChecklist(checklist);
 
   useEffect(() => {
     if (isLoading || firedRef.current) return;
@@ -24,7 +26,7 @@ export function WelcomeNotification() {
     const pendingMissions = totalMissions - doneMissions;
 
     const totalChecklist = checklist.length;
-    const doneChecklist = checklist.filter((c) => c.completed).length;
+    const doneChecklist = checked.size;
 
     const lines: string[] = [];
     if (totalMissions > 0) {
@@ -55,7 +57,7 @@ export function WelcomeNotification() {
       tag: "welcome-summary",
       showToast,
     });
-  }, [isLoading, missions, checklist, toast, t]);
+  }, [isLoading, missions, checklist, checked, toast, t]);
 
   return null;
 }

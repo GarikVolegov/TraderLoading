@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
+import { deflateRawSync } from "node:zlib";
 
 const {
   classifyWikiFile,
@@ -69,6 +70,10 @@ const urlExtraction = await extractWikiText({
   text: "Fetched URL body",
 });
 assert.deepEqual(urlExtraction, { text: "Fetched URL body", status: "ready" });
+assert.deepEqual(await extractWikiText({
+  kind: "text", filename: "uploaded.txt", mimeType: "text/plain", text: "",
+  buffer: Buffer.from("Uploaded text must remain searchable"),
+}), { text: "Uploaded text must remain searchable", status: "ready" });
 
 const docxBuffer = createStoredZip([
   { name: "word/document.xml", content: "<w:t>Brain AI</w:t><w:t>wiki personale</w:t>" },
@@ -128,6 +133,19 @@ assert.equal(validateWikiUploadContent({
   filename: "export.pdf",
   buffer: Buffer.from("<!doctype html><html><body><h1>Risk plan</h1></body></html>"),
 }), null);
+assert.match(validateWikiUploadContent({
+  kind: "pdf", filename: "spoofed.pdf", buffer: Buffer.from("MZ executable"),
+}) ?? "", /PDF non valido/);
+
+const bombName = Buffer.from("word/document.xml");
+const bombPayload = deflateRawSync(Buffer.alloc(21 * 1024 * 1024, 65));
+const bombHeader = Buffer.alloc(30);
+bombHeader.writeUInt32LE(0x04034b50, 0);
+bombHeader.writeUInt16LE(8, 8);
+bombHeader.writeUInt32LE(bombPayload.length, 18);
+bombHeader.writeUInt32LE(1, 22); // Deliberately false expanded size.
+bombHeader.writeUInt16LE(bombName.length, 26);
+assert.throws(() => extractOfficeText(Buffer.concat([bombHeader, bombName, bombPayload]), "bomb.docx"), /larger than|decompressione|too large/i);
 assert.equal(validateWikiUploadContent({
   kind: "pdf",
   filename: "real.pdf",

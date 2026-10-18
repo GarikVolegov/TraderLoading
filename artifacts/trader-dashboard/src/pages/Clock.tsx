@@ -6,7 +6,7 @@ import { ClockWidget } from "@/components/ClockWidget";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useBackground, type TradingSessionConfig } from "@/contexts/BackgroundContext";
-import { getLocalClockHours, getLocalTimeZoneLabel, isMarketClosedSession, isTradingSession, normalizeLocalSessionTime, type MarketSessionConfig } from "@/lib/marketSessions";
+import { getLocalClockHours, getLocalTimeZoneLabel, isMarketClosedSession, isTradingSession, normalizeLocalSessionTime, isMarketSessionActive, minutesUntilSessionOpen, type MarketSessionConfig } from "@/lib/marketSessions";
 import { sessionBadgeClasses, toneForSessionColor, type SessionTone } from "@/lib/sessionBadge";
 import { uiText } from "@/contexts/LanguageContext";
 
@@ -14,11 +14,6 @@ import { uiText } from "@/contexts/LanguageContext";
 function parseTime(t: string): number {
   const [h, m] = t.split(":").map(Number);
   return h + (m || 0) / 60;
-}
-function isInSession(localHours: number, s: TradingSessionConfig): boolean {
-  const open = parseTime(s.openUTC);
-  const close = parseTime(s.closeUTC);
-  return open < close ? localHours >= open && localHours < close : localHours >= open || localHours < close;
 }
 /** Ore di durata della sessione (gestisce il wrap a mezzanotte). */
 function sessionDuration(s: TradingSessionConfig): number {
@@ -46,6 +41,10 @@ const SESSION_DOT: Record<string, string> = {
 };
 
 export default function Clock() {
+  return <PageLayout><ClockWorkspace /></PageLayout>;
+}
+
+export function ClockWorkspace() {
   const [now, setNow] = useState(new Date());
   const { tradingSessions } = useBackground();
   const localTimeZoneLabel = getLocalTimeZoneLabel();
@@ -64,24 +63,24 @@ export default function Clock() {
 
   const rows = useMemo(() => {
     return sessions.map((s) => {
-      const active = isInSession(localHours, s);
+      const active = isMarketSessionActive(s, now);
       const openH = parseTime(s.openUTC);
       const duration = sessionDuration(s);
       const untilClose = minutesUntil(parseTime(s.closeUTC), localHours);
-      const untilOpen = minutesUntil(openH, localHours);
+      const untilOpen = minutesUntilSessionOpen(s, now);
       // Avanzamento (0-100) all'interno della sessione attiva.
       let elapsed = localHours - openH;
       if (elapsed < 0) elapsed += 24;
       const progress = active ? Math.min(100, Math.max(0, (elapsed / duration) * 100)) : 0;
       return { s, active, untilClose, untilOpen, progress };
     });
-  }, [sessions, localHours]);
+  }, [sessions, localHours, now]);
 
   const activeCount = rows.filter((r) => r.active && isTradingSession(r.s as MarketSessionConfig)).length;
   const closedActive = rows.some((r) => r.active && isMarketClosedSession(r.s as MarketSessionConfig));
 
   return (
-    <PageLayout>
+    <>
       <PageHeader
         icon={
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
@@ -175,6 +174,6 @@ export default function Clock() {
           </div>
         )}
       </div>
-    </PageLayout>
+    </>
   );
 }

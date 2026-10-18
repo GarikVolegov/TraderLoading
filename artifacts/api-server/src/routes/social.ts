@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { db, followsTable, postsTable, postLikesTable, postCommentsTable, profileTable, userPublicKeysTable, chatFileAccessTable } from "@workspace/db";
+import { db, followsTable, postsTable, postLikesTable, postCommentsTable, profileTable, userPublicKeysTable, userE2eeKeyBackupsTable, chatMessagesTable, chatFileAccessTable } from "@workspace/db";
 import { eq, and, or, desc, asc, sql, inArray, gt, isNull, lt } from "drizzle-orm";
 import { areMutualFollowers } from "./chat.js";
 import { getUserNotificationLanguage, sendPushToUser } from "./push.js";
@@ -10,11 +10,17 @@ import { getServerNotificationCopy } from "../services/notifications/notificatio
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
 import { parseFeedPagination, nextFeedCursor } from "../services/feedPagination.js";
+import { imageMatchesType } from "../lib/imageValidation.js";
+import { encryptChatPayload } from "../services/chatPayloadEncryption.js";
 
 const POST_IMAGES_DIR = resolveUploadPath("post-images");
 const CHAT_FILES_DIR = resolveUploadPath("chat-files");
 if (!fs.existsSync(POST_IMAGES_DIR)) fs.mkdirSync(POST_IMAGES_DIR, { recursive: true });
 if (!fs.existsSync(CHAT_FILES_DIR)) fs.mkdirSync(CHAT_FILES_DIR, { recursive: true });
+function removeUploadedFile(filePath: string) {
+  try { fs.rmSync(filePath, { force: true }); }
+  catch (error) { console.error("social upload cleanup failed", error); }
+}
 
 const postImageStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, POST_IMAGES_DIR),
@@ -107,7 +113,7 @@ async function sendSocialPush(targetUserId: string | null, actorName: string, bo
       title: actorName,
       body,
       tag,
-      data: { url: "/chat" },
+      data: { url: "/chat?t=social" },
     },
     "social",
   ).catch(() => {});
@@ -119,10 +125,11 @@ router.post("/social/follow/:targetId", async (req, res) => {
   const { targetId } = req.params;
   if (targetId === userId) { res.status(400).json({ error: "Non puoi seguire te stesso" }); return; }
   try {
-    const existing = await db.select().from(followsTable)
-      .where(and(eq(followsTable.followerId, userId), eq(followsTable.followingId, targetId))).limit(1);
-    if (existing.length > 0) { res.status(409).json({ error: "Già seguito" }); return; }
-    const [row] = await db.insert(followsTable).values({ followerId: userId, followingId: targetId }).returning();
+    const target = await getProfile(targetId);
+    if (!target) { res.status(404).json({ error: "Utente non trovato" }); return; }
+    const [row] = await db.insert(followsTable).values({ followerId: userId, followingId: targetId })
+      .onConflictDoNothing({ target: [followsTable.followerId, followsTable.followingId] }).returning();
+    if (!row) { res.status(409).json({ error: "Già seguito" }); return; }
     res.status(201).json(row);
     const profile = await getProfile(userId);
     const actorName = profile?.name ?? "Trader";
@@ -232,8 +239,16 @@ router.post("/social/upload-image", (req: Request, res: Response) => {
   postImageUpload.single("image")(req, res, (err) => {
     if (err) { res.status(400).json({ error: err.message ?? "Upload fallito" }); return; }
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
-    const imageUrl = `/api/uploads/post-images/${req.file.filename}`;
-    res.json({ imageUrl });
+    try {
+      if (!imageMatchesType(fs.readFileSync(req.file.path), req.file.mimetype, req.file.originalname)) {
+        removeUploadedFile(req.file.path); res.status(415).json({ error: "Immagine non valida" }); return;
+      }
+      const imageUrl = `/api/uploads/post-images/${req.file.filename}`;
+      res.json({ imageUrl });
+    } catch {
+      removeUploadedFile(req.file.path);
+      res.status(500).json({ error: "Errore interno" });
+    }
   });
 });
 
@@ -249,7 +264,13 @@ router.post("/social/upload-file", (req: Request, res: Response) => {
       // ones the authenticated serving route will let read the file.
       const toUserId = typeof req.body?.toUserId === "string" ? req.body.toUserId : "";
       if (!toUserId || !(await areMutualFollowers(userId, toUserId))) {
+        removeUploadedFile(req.file.path);
         res.status(400).json({ error: "Destinatario non valido" }); return;
+      }
+      if (req.file.mimetype.startsWith("image/") &&
+          !imageMatchesType(fs.readFileSync(req.file.path), req.file.mimetype, req.file.originalname)) {
+        removeUploadedFile(req.file.path);
+        res.status(415).json({ error: "Immagine non valida" }); return;
       }
       await db
         .insert(chatFileAccessTable)
@@ -262,6 +283,7 @@ router.post("/social/upload-file", (req: Request, res: Response) => {
         size: req.file.size,
       });
     } catch {
+      if (fs.existsSync(req.file.path)) removeUploadedFile(req.file.path);
       res.status(500).json({ error: "Errore interno" });
     }
   });
@@ -276,6 +298,7 @@ router.get("/uploads/chat-files/:filename", async (req: Request, res: Response) 
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
   try {
     const filename = String(req.params.filename);
+    if (filename !== path.basename(filename) || filename.startsWith(".")) { res.status(404).json({ error: "File non trovato" }); return; }
     const [row] = await db
       .select()
       .from(chatFileAccessTable)
@@ -288,7 +311,17 @@ router.get("/uploads/chat-files/:filename", async (req: Request, res: Response) 
     if (!fs.existsSync(filePath)) { res.status(404).json({ error: "File non trovato" }); return; }
     res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.sendFile(filePath);
+    // Passive, validated raster images can render inside a private conversation.
+    // Every other attachment remains a download, never executable app content.
+    const imageMime: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp" };
+    const mime = imageMime[path.extname(filename).toLowerCase()];
+    if (mime && imageMatchesType(fs.readFileSync(filePath), mime, filename)) {
+      res.type(mime);
+      res.setHeader("Content-Disposition", "inline");
+    } else {
+      res.attachment(filename);
+    }
+    res.sendFile(filename, { root: CHAT_FILES_DIR });
   } catch {
     res.status(500).json({ error: "Errore interno" });
   }
@@ -331,10 +364,16 @@ router.delete("/social/posts/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ error: "ID non valido" }); return; }
-    const [post] = await db.select().from(postsTable).where(eq(postsTable.id, id)).limit(1);
-    if (!post) { res.status(404).json({ error: "Post non trovato" }); return; }
-    if (post.userId !== userId) { res.status(403).json({ error: "Non autorizzato" }); return; }
-    await db.delete(postsTable).where(eq(postsTable.id, id));
+    const status = await db.transaction(async tx => {
+      const [post] = await tx.select().from(postsTable).where(eq(postsTable.id, id)).limit(1).for("update");
+      if (!post) return 404;
+      if (post.userId !== userId) return 403;
+      await tx.delete(postLikesTable).where(eq(postLikesTable.postId, id));
+      await tx.delete(postCommentsTable).where(eq(postCommentsTable.postId, id));
+      await tx.delete(postsTable).where(eq(postsTable.id, id));
+      return 200;
+    });
+    if (status !== 200) { res.status(status).json({ error: status === 404 ? "Post non trovato" : "Non autorizzato" }); return; }
     res.json({ success: true });
   } catch (err) {
     console.error("post delete error:", err);
@@ -348,23 +387,29 @@ router.post("/social/posts/:id/like", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ error: "ID non valido" }); return; }
-    const existing = await db.select().from(postLikesTable)
-      .where(and(eq(postLikesTable.postId, id), eq(postLikesTable.userId, userId))).limit(1);
-    if (existing.length > 0) {
-      await db.delete(postLikesTable).where(and(eq(postLikesTable.postId, id), eq(postLikesTable.userId, userId)));
-      await db.update(postsTable).set({ likesCount: sql`GREATEST(0, ${postsTable.likesCount} - 1)` }).where(eq(postsTable.id, id));
-      res.json({ liked: false });
-    } else {
-      await db.insert(postLikesTable).values({ postId: id, userId });
-      await db.update(postsTable).set({ likesCount: sql`${postsTable.likesCount} + 1` }).where(eq(postsTable.id, id));
-      res.json({ liked: true });
-      const [post] = await db.select({ userId: postsTable.userId }).from(postsTable).where(eq(postsTable.id, id)).limit(1);
-      if (post?.userId && post.userId !== userId) {
+    const result = await db.transaction(async tx => {
+      const [post] = await tx.select({ userId: postsTable.userId }).from(postsTable).where(eq(postsTable.id, id)).limit(1).for("update");
+      if (!post) return null;
+      const [existing] = await tx.select().from(postLikesTable)
+        .where(and(eq(postLikesTable.postId, id), eq(postLikesTable.userId, userId))).limit(1);
+      if (existing) {
+        await tx.delete(postLikesTable).where(eq(postLikesTable.id, existing.id));
+        await tx.update(postsTable).set({ likesCount: sql`GREATEST(0, ${postsTable.likesCount} - 1)` }).where(eq(postsTable.id, id));
+      } else {
+        await tx.insert(postLikesTable).values({ postId: id, userId });
+        await tx.update(postsTable).set({ likesCount: sql`${postsTable.likesCount} + 1` }).where(eq(postsTable.id, id));
+      }
+      return { liked: !existing, ownerId: post.userId };
+    });
+    if (!result) { res.status(404).json({ error: "Post non trovato" }); return; }
+    res.json({ liked: result.liked });
+    if (result.liked && result.ownerId !== userId) {
+      void (async () => {
         const profile = await getProfile(userId);
         const actorName = profile?.name ?? "Trader";
-        const copy = getServerNotificationCopy(await getUserNotificationLanguage(post.userId));
-        await sendSocialPush(post.userId, actorName, copy.socialLikeBody(actorName), `post-like-${id}-${userId}`);
-      }
+        const copy = getServerNotificationCopy(await getUserNotificationLanguage(result.ownerId));
+        await sendSocialPush(result.ownerId, actorName, copy.socialLikeBody(actorName), `post-like-${id}-${userId}`);
+      })().catch(() => {});
     }
   } catch (err) {
     console.error("like error:", err);
@@ -453,7 +498,18 @@ router.get("/social/profile/:targetUserId", async (req, res) => {
   if (!userId) return;
   const { targetUserId } = req.params;
   try {
-    const [profile] = await db.select().from(profileTable)
+    // This is a public social card, not the account/settings profile. Keep an
+    // explicit projection so newly added private columns cannot leak here.
+    const [profile] = await db.select({
+      id: profileTable.id,
+      userId: profileTable.userId,
+      name: profileTable.name,
+      avatarUrl: profileTable.avatarUrl,
+      xp: profileTable.xp,
+      level: profileTable.level,
+      streak: profileTable.streak,
+      yearsExperience: profileTable.yearsExperience,
+    }).from(profileTable)
       .where(eq(profileTable.userId, targetUserId)).limit(1);
     if (!profile) { res.status(404).json({ error: "Profilo non trovato" }); return; }
 
@@ -524,7 +580,7 @@ if (!fs.existsSync(VOICE_DIR)) fs.mkdirSync(VOICE_DIR, { recursive: true });
 
 const voiceStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, VOICE_DIR),
-  filename: (_req, _file, cb) => cb(null, `voice-${Date.now()}-${Math.round(Math.random() * 1e9)}.webm`),
+  filename: (_req, file, cb) => cb(null, `voice-${Date.now()}-${Math.round(Math.random() * 1e9)}${file.mimetype === "audio/ogg" ? ".ogg" : ".webm"}`),
 });
 const voiceUpload = multer({ storage: voiceStorage, limits: { fileSize: 20 * 1024 * 1024 } });
 
@@ -538,13 +594,19 @@ router.post("/social/upload-voice", (req: Request, res: Response) => {
     // (the DM peer, or the story owner) — so the authenticated GET /uploads/voice
     // route below can gate on it. Recipient is required (audit 0.1).
     const toUserId = typeof req.body?.toUserId === "string" ? req.body.toUserId.trim() : "";
-    if (!toUserId) { res.status(400).json({ error: "Destinatario mancante" }); return; }
+    if (!toUserId) { removeUploadedFile(req.file.path); res.status(400).json({ error: "Destinatario mancante" }); return; }
     try {
+    const bytes = fs.readFileSync(req.file.path);
+    const validAudio = req.file.mimetype === "audio/webm" ? bytes.length > 8 && bytes.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))
+      : req.file.mimetype === "audio/ogg" && bytes.length > 16 && bytes.subarray(0, 4).toString() === "OggS";
+    if (!validAudio) { removeUploadedFile(req.file.path); res.status(415).json({ error: "Audio non valido" }); return; }
+      if (!(await areMutualFollowers(userId, toUserId))) { removeUploadedFile(req.file.path); res.status(403).json({ error: "Destinatario non consentito" }); return; }
       await db
         .insert(chatFileAccessTable)
         .values({ fileKey: req.file.filename, ownerUserId: userId, peerUserId: toUserId })
         .onConflictDoNothing({ target: chatFileAccessTable.fileKey });
     } catch {
+      if (fs.existsSync(req.file.path)) removeUploadedFile(req.file.path);
       res.status(500).json({ error: "Errore interno" }); return;
     }
     res.json({ audioUrl: `/api/uploads/voice/${req.file.filename}` });
@@ -559,6 +621,7 @@ router.get("/uploads/voice/:filename", async (req: Request, res: Response) => {
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
   try {
     const filename = String(req.params.filename);
+    if (filename !== path.basename(filename) || filename.startsWith(".")) { res.status(404).json({ error: "File non trovato" }); return; }
     const [row] = await db
       .select()
       .from(chatFileAccessTable)
@@ -571,7 +634,7 @@ router.get("/uploads/voice/:filename", async (req: Request, res: Response) => {
     if (!fs.existsSync(filePath)) { res.status(404).json({ error: "File non trovato" }); return; }
     res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.sendFile(filePath);
+    res.sendFile(filename, { root: VOICE_DIR });
   } catch {
     res.status(500).json({ error: "Errore interno" });
   }
@@ -611,22 +674,24 @@ router.post("/social/posts/:id/comments", async (req, res) => {
     if (content.trim().length > 1000) {
       res.status(400).json({ error: "Commento troppo lungo (max 1000 caratteri)" }); return;
     }
-    const [post] = await db.select({ id: postsTable.id }).from(postsTable).where(eq(postsTable.id, id)).limit(1);
-    if (!post) { res.status(404).json({ error: "Post non trovato" }); return; }
     const profile = await getProfile(userId);
-    const [comment] = await db.insert(postCommentsTable).values({
-      postId: id,
-      userId,
-      userName: profile?.name ?? "Trader",
-      avatarUrl: profile?.avatarUrl ?? null,
-      content: content.trim(),
-    }).returning();
-    res.status(201).json(comment);
-    const [postOwner] = await db.select({ userId: postsTable.userId }).from(postsTable).where(eq(postsTable.id, id)).limit(1);
-    if (postOwner?.userId && postOwner.userId !== userId) {
+    const result = await db.transaction(async tx => {
+      const [post] = await tx.select({ userId: postsTable.userId }).from(postsTable).where(eq(postsTable.id, id)).limit(1).for("update");
+      if (!post) return null;
+      const [comment] = await tx.insert(postCommentsTable).values({
+        postId: id, userId, userName: profile?.name ?? "Trader",
+        avatarUrl: profile?.avatarUrl ?? null, content: content.trim(),
+      }).returning();
+      return { comment, ownerId: post.userId };
+    });
+    if (!result) { res.status(404).json({ error: "Post non trovato" }); return; }
+    res.status(201).json(result.comment);
+    if (result.ownerId !== userId) {
+      void (async () => {
       const actorName = profile?.name ?? "Trader";
-      const copy = getServerNotificationCopy(await getUserNotificationLanguage(postOwner.userId));
-      await sendSocialPush(postOwner.userId, actorName, copy.socialCommentBody(actorName), `post-comment-${id}-${userId}`);
+      const copy = getServerNotificationCopy(await getUserNotificationLanguage(result.ownerId));
+      await sendSocialPush(result.ownerId, actorName, copy.socialCommentBody(actorName), `post-comment-${id}-${userId}`);
+      })().catch(() => {});
     }
   } catch (err) {
     console.error("POST comment error:", err);
@@ -651,19 +716,46 @@ router.delete("/social/posts/:postId/comments/:commentId", async (req, res) => {
   }
 });
 
-// ─── Story Replies ────────────────────────────────────────────────────────────
-interface StoryReply { from: string; type: string; content: string; createdAt: string; }
-const storyReplies = new Map<string, StoryReply[]>();
-
-router.post("/social/story-reply/:storyId", (req: Request, res: Response) => {
+// Story replies use the existing private inbox, so they survive API restarts.
+router.post("/social/story-reply/:storyId", async (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Non autorizzato" }); return; }
   const { content, type = "text" } = req.body;
-  if (!content?.trim()) { res.status(400).json({ error: "Contenuto mancante" }); return; }
-  const storyId = String(req.params.storyId);
-  const arr = storyReplies.get(storyId) ?? [];
-  arr.push({ from: userId, type, content: content.trim(), createdAt: new Date().toISOString() });
-  storyReplies.set(storyId, arr);
+  const storyId = Number(req.params.storyId);
+  if (!Number.isInteger(storyId) || typeof content !== "string" || !content.trim() || content.length > 2000 || !["text", "image", "voice"].includes(type)) {
+    res.status(400).json({ error: "Risposta non valida" }); return;
+  }
+  const [story] = await db.select().from(postsTable).where(and(eq(postsTable.id, storyId), eq(postsTable.isStory, true), gt(postsTable.expiresAt, new Date()))).limit(1);
+  if (!story) { res.status(404).json({ error: "Storia non disponibile" }); return; }
+  if (userId === story.userId || !(await areMutualFollowers(userId, story.userId))) { res.status(403).json({ error: "Le risposte richiedono un contatto reciproco" }); return; }
+  if (type !== "text") {
+    const match = /^\/api\/uploads\/(chat-files|voice)\/([^/]+)$/.exec(content.trim());
+    if (!match || (type === "voice") !== (match[1] === "voice")) { res.status(400).json({ error: "Allegato non valido" }); return; }
+    const [attachment] = await db.select({ id: chatFileAccessTable.id }).from(chatFileAccessTable).where(and(
+      eq(chatFileAccessTable.fileKey, match[2]), eq(chatFileAccessTable.ownerUserId, userId), eq(chatFileAccessTable.peerUserId, story.userId),
+    )).limit(1);
+    if (!attachment) { res.status(403).json({ error: "Allegato non disponibile per questo contatto" }); return; }
+  }
+  const [[backup], [publicKey], [senderPublicKey]] = await Promise.all([
+    db.select({ privateKeyJwk: userE2eeKeyBackupsTable.privateKeyJwk }).from(userE2eeKeyBackupsTable).where(eq(userE2eeKeyBackupsTable.userId, userId)).limit(1),
+    db.select({ publicKeyJwk: userPublicKeysTable.publicKeyJwk }).from(userPublicKeysTable).where(eq(userPublicKeysTable.userId, story.userId)).limit(1),
+    db.select({ publicKeyJwk: userPublicKeysTable.publicKeyJwk }).from(userPublicKeysTable).where(eq(userPublicKeysTable.userId, userId)).limit(1),
+  ]);
+  if (!backup || !publicKey || !senderPublicKey) { res.status(409).json({ error: "Apri i messaggi e attendi che il contatto attivi la chat" }); return; }
+  let encrypted;
+  try {
+    const privateJwk = JSON.parse(backup.privateKeyJwk), publishedJwk = JSON.parse(senderPublicKey.publicKeyJwk);
+    if (!["x", "y", "crv", "kty"].every(key => privateJwk[key] === publishedJwk[key])) {
+      res.status(409).json({ error: "Chiavi chat non sincronizzate; riapri i messaggi" }); return;
+    }
+    encrypted = await encryptChatPayload({ type, content: content.trim(), ...(type === "text" ? {} : { url: content.trim() }), storyId }, privateJwk, JSON.parse(publicKey.publicKeyJwk));
+  } catch {
+    res.status(409).json({ error: "Chiavi chat non disponibili; riapri i messaggi" }); return;
+  }
+  const sender = await getProfile(userId);
+  const copy = getServerNotificationCopy(await getUserNotificationLanguage(story.userId));
+  await db.insert(chatMessagesTable).values({ senderId: userId, receiverId: story.userId, ...encrypted });
+  void sendPushToUser(story.userId, { title: sender?.name ?? "Trader", body: copy.chatBody, tag: `chat-${userId}`, data: { url: `/chat?t=conversazioni&peer=${encodeURIComponent(userId)}` } }, "messages").catch(() => {});
   res.json({ ok: true });
 });
 

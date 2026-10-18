@@ -1,4 +1,7 @@
-import { useMemo } from "react";
+import { processText } from "@/lib/processCopy";
+import { Link } from "wouter";
+import { RiskGuardPanel } from "@/components/RiskGuardPanel";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { LineChart, Activity, Sparkles, List, TrendingUp, ArrowRight } from "lucide-react";
@@ -33,9 +36,14 @@ function clampPct(v: number): number {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensile") => void }) {
-  const { t } = useLanguage();
+export function JournalOverview({
+  onNavigate,
+}: {
+  onNavigate: (tab: "revisione" | "trades", options?: Record<string, string>) => void;
+}) {
+  const { t, language } = useLanguage();
   const dateLocale = useDateLocale();
+  const [analysisOpen, setAnalysisOpen] = useState(false);
 
   const { data: edge } = useGetJournalEdge({
     query: { queryKey: getGetJournalEdgeQueryKey(), refetchInterval: 30_000 },
@@ -50,27 +58,26 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
     queryFn: () => fetchJournalRecap(recapPeriod),
   });
 
-  const rSamples = useMemo(() => {
-    if (!entries) return [] as number[];
-    return [...entries]
-      .sort((a, b) => a.tradeDate.localeCompare(b.tradeDate))
-      .map((e) => tradeRMultiple(parseTradeContent(e.content) ?? {}))
-      .filter((r): r is number => r !== null);
-  }, [entries]);
+  const rSamples = useMemo(() => edge?.rSamples ?? [], [edge?.rSamples]);
 
   const realized = useMemo(() => cumulativeR(rSamples), [rSamples]);
   const bands = useMemo(
-    () => monteCarloBands(rSamples, { steps: PROJECTION_STEPS, start: realized[realized.length - 1] ?? 0 }),
+    () =>
+      monteCarloBands(rSamples, {
+        steps: PROJECTION_STEPS,
+        start: realized[realized.length - 1] ?? 0,
+      }),
     [rSamples, realized],
   );
-  const netR = realized[realized.length - 1] ?? 0;
+  const netR = edge?.rSamples && rSamples.length ? (realized[realized.length - 1] ?? null) : null;
 
   const overall = edge?.overall;
   const payoff =
     overall?.avgWinR != null && overall?.avgLossR != null && overall.avgLossR !== 0
       ? Math.abs(overall.avgWinR / overall.avgLossR)
       : null;
-  const disciplinePct = 100 - (edge?.discipline.stopDiscipline?.pct ?? 0);
+  const stopDiscipline = edge?.discipline.stopDiscipline;
+  const disciplinePct = stopDiscipline ? 100 - stopDiscipline.pct : null;
   const revenge = edge?.highlights.postLoss?.trades ?? 0;
 
   const recentTrades = useMemo(() => {
@@ -79,7 +86,9 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
       .sort((a, b) => b.tradeDate.localeCompare(a.tradeDate))
       .slice(0, 5)
       .map((e) => {
-        const parsed = parseTradeContent(e.content) ?? {};
+        const parsed = e.manualTrade
+          ? { ...e.manualTrade, stopLoss: e.manualTrade.stopLoss ?? undefined }
+          : (parseTradeContent(e.content) ?? {});
         return {
           id: e.id,
           pair: parsed.symbol ?? e.title,
@@ -93,10 +102,26 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
   }, [entries]);
 
   const edgeBars = [
-    { l: t("journal.overview.edge_expectancy"), v: fmtR(overall?.expectancyR ?? null), pct: clampPct((overall?.expectancyR ?? 0) * 100) },
-    { l: t("journal.overview.edge_payoff"), v: payoff === null ? "—" : payoff.toFixed(1), pct: clampPct((payoff ?? 0) * 33) },
-    { l: t("journal.overview.edge_discipline"), v: `${clampPct(disciplinePct)}%`, pct: clampPct(disciplinePct) },
-    { l: t("journal.overview.edge_revenge"), v: String(revenge), pct: revenge === 0 ? 4 : Math.min(100, revenge * 20) },
+    {
+      l: t("journal.overview.edge_expectancy"),
+      v: fmtR(overall?.expectancyR ?? null),
+      pct: clampPct((overall?.expectancyR ?? 0) * 100),
+    },
+    {
+      l: t("journal.overview.edge_payoff"),
+      v: payoff === null ? "—" : payoff.toFixed(1),
+      pct: clampPct((payoff ?? 0) * 33),
+    },
+    {
+      l: t("journal.overview.edge_discipline"),
+      v: disciplinePct === null ? "—" : `${clampPct(disciplinePct)}%`,
+      pct: clampPct(disciplinePct ?? 0),
+    },
+    {
+      l: t("journal.overview.edge_revenge"),
+      v: String(revenge),
+      pct: revenge === 0 ? 4 : Math.min(100, revenge * 20),
+    },
   ];
 
   const recap = recapQuery.data;
@@ -112,12 +137,46 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
   return (
     <div className="space-y-4">
       {/* KPI tiles */}
+      <p className="text-sm text-muted-foreground">
+        {processText(language, "legacyAnalytics")}{" "}
+        <Link href="/method" className="text-primary underline underline-offset-4">
+          {t("process.nav.method")}
+        </Link>
+      </p>
+      <RiskGuardPanel />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label={t("journal.overview.kpi_total")} value={overall ? String(overall.closedTrades) : "—"} size="lg" />
-        <StatTile label={t("journal.overview.kpi_winrate")} value={overall?.winRate != null ? `${overall.winRate}%` : "—"} tone="success" size="lg" />
-        <StatTile label={t("journal.overview.kpi_net")} value={fmtR(netR)} tone={netR >= 0 ? "primary" : "destructive"} size="lg" />
-        <StatTile label={t("journal.overview.kpi_pf")} value={overall?.profitFactor != null ? overall.profitFactor.toFixed(1) : "—"} size="lg" />
+        <StatTile
+          label={t("journal.overview.kpi_total")}
+          value={overall ? String(overall.closedTrades) : "—"}
+          size="lg"
+        />
+        <StatTile
+          label={t("journal.overview.kpi_winrate")}
+          value={overall?.winRate != null ? `${overall.winRate}%` : "—"}
+          tone="success"
+          size="lg"
+        />
+        <StatTile
+          label={`${t("journal.overview.kpi_net")} · ${processText(language, "estimated")}`}
+          value={fmtR(netR)}
+          tone={netR === null || netR >= 0 ? "primary" : "destructive"}
+          size="lg"
+        />
+        <StatTile
+          label={t("journal.overview.kpi_pf")}
+          value={overall?.profitFactor != null ? overall.profitFactor.toFixed(1) : "—"}
+          size="lg"
+        />
       </div>
+      {overall && (
+        <p className="text-xs text-muted-foreground">
+          {t("intelligence.r_coverage", {
+            withR: edge?.rCoverage?.withR ?? 0,
+            total: overall.closedTrades,
+            missing: edge?.rCoverage?.withoutR ?? overall.closedTrades,
+          })}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         {/* Equity curve */}
@@ -127,7 +186,9 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
               <LineChart className="h-4 w-4 text-primary" />
               <div>
                 <p className="text-sm font-semibold">{t("journal.overview.equity_title")}</p>
-                <p className="text-xs text-muted-foreground">{t("journal.overview.equity_subtitle")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("journal.overview.equity_subtitle")}
+                </p>
               </div>
             </div>
             <Badge variant="secondary">
@@ -136,7 +197,17 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
             </Badge>
           </CardHeader>
           <CardContent className="pt-2">
-            <EquityCurveChart realized={realized} bands={bands} projectionSteps={PROJECTION_STEPS} />
+            {rSamples.length ? (
+              <EquityCurveChart
+                realized={realized}
+                bands={bands}
+                projectionSteps={PROJECTION_STEPS}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {t("intelligence.status.insufficient")}
+              </p>
+            )}
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-0.5 w-3.5 rounded bg-[hsl(142_71%_45%)]" />
@@ -161,7 +232,9 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
               <Activity className="h-4 w-4 text-primary" />
               <div>
                 <p className="text-sm font-semibold">{t("journal.overview.edge_title")}</p>
-                <p className="text-xs text-muted-foreground">{t("journal.overview.edge_subtitle")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("journal.overview.edge_subtitle")}
+                </p>
               </div>
             </div>
           </CardHeader>
@@ -179,14 +252,25 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
         </Card>
       </div>
 
-      {/* Edge quality: Wilson CI, Kelly, max drawdown, R distribution */}
-      <EdgeQualityCard stats={edge?.stats} />
-
-      {/* Risk of ruin (bootstrapped from real R) */}
-      <RiskOfRuinCard />
-
-      {/* Portfolio correlation / concentration risk (open positions) */}
-      <CorrelationCard />
+      <details
+        open={analysisOpen}
+        onToggle={(event) => setAnalysisOpen(event.currentTarget.open)}
+        className="rounded-xl border border-border bg-card/50"
+      >
+        <summary className="cursor-pointer p-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          {t("journal.workspace.analysis")}
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">
+            {t("journal.workspace.analysis_desc")}
+          </span>
+        </summary>
+        {analysisOpen && (
+          <div className="space-y-4 p-3 pt-0 sm:p-4 sm:pt-0">
+            <EdgeQualityCard stats={edge?.stats} />
+            <RiskOfRuinCard />
+            <CorrelationCard />
+          </div>
+        )}
+      </details>
 
       {/* 4-week recap */}
       <Card>
@@ -195,10 +279,17 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
             <Sparkles className="h-4 w-4 text-primary" />
             <div>
               <p className="text-sm font-semibold">{t("journal.overview.recap_title")}</p>
-              <p className="text-xs text-muted-foreground">{t("journal.overview.recap_subtitle")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("journal.overview.recap_subtitle")}
+              </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onNavigate("recap-mensile")}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => onNavigate("revisione", { kind: "four_week" })}
+          >
             {t("journal.overview.recap_open")}
             <ArrowRight className="ml-1 h-3 w-3" />
           </Button>
@@ -208,13 +299,17 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {recapBlocks.map((b) => (
                 <div key={b.k} className="rounded-lg border border-border/40 bg-secondary/30 p-3.5">
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-primary">{b.k}</p>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-primary">
+                    {b.k}
+                  </p>
                   <p className="text-[13px] leading-relaxed text-muted-foreground">{b.text}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="py-6 text-center text-sm text-muted-foreground">{t("journal.overview.recap_empty")}</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {t("journal.overview.recap_empty")}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -227,14 +322,28 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
             <p className="text-sm font-semibold">{t("journal.overview.trades_title")}</p>
             <p className="text-xs text-muted-foreground">{t("journal.overview.trades_subtitle")}</p>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto"
+            onClick={() => onNavigate("trades")}
+          >
+            {t("journal.tab.trades")}
+            <ArrowRight className="ml-1 h-3 w-3" />
+          </Button>
         </CardHeader>
         {recentTrades.length > 0 ? (
           <div>
             {recentTrades.map((tr) => (
-              <div key={tr.id} className="flex items-center gap-3.5 border-t border-border/20 px-4 py-3">
+              <div
+                key={tr.id}
+                className="flex items-center gap-3.5 border-t border-border/20 px-4 py-3"
+              >
                 <span className="w-20 shrink-0 font-mono text-sm font-bold">{tr.pair}</span>
                 {tr.dir && (
-                  <Badge variant={/long/i.test(tr.dir) ? "secondary" : "destructive"}>{tr.dir.toUpperCase()}</Badge>
+                  <Badge variant={/long/i.test(tr.dir) ? "secondary" : "destructive"}>
+                    {tr.dir.toUpperCase()}
+                  </Badge>
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px]">{tr.note}</p>
@@ -244,7 +353,11 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
                 </div>
                 <span
                   className={`font-mono text-base ${
-                    tr.result === "win" ? "text-success" : tr.result === "loss" ? "text-destructive" : "text-muted-foreground"
+                    tr.result === "win"
+                      ? "text-success"
+                      : tr.result === "loss"
+                        ? "text-destructive"
+                        : "text-muted-foreground"
                   }`}
                 >
                   {fmtR(tr.r)}
@@ -254,7 +367,9 @@ export function JournalOverview({ onNavigate }: { onNavigate: (tab: "recap-mensi
           </div>
         ) : (
           <CardContent>
-            <p className="py-6 text-center text-sm text-muted-foreground">{t("journal.overview.trades_empty")}</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {t("journal.overview.trades_empty")}
+            </p>
           </CardContent>
         )}
       </Card>

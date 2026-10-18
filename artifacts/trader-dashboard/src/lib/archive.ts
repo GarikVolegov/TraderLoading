@@ -2,7 +2,7 @@
 // filtering. No React, no i18n — components resolve display strings via uiText.
 
 export type WikiStatus = "queued" | "processing" | "ready" | "error" | "pending_transcription";
-export type WikiKind = "text" | "pdf" | "image" | "office" | "audio" | "video" | "url" | "unknown";
+export type WikiKind = "text" | "pdf" | "image" | "office" | "audio" | "video" | "url" | "unknown" | "mindmap";
 
 export interface WikiSource {
   id: number;
@@ -19,6 +19,15 @@ export interface WikiSource {
   originalUrl: string | null;
   fileSize: number;
   createdAt: string;
+  /** View-only references: never persisted into wiki_sources. */
+  resourceKey?: string;
+  readOnly?: boolean;
+  unavailable?: boolean;
+  originLabelKey?: string;
+}
+
+export function archiveSourceKey(source: WikiSource): string {
+  return source.resourceKey ?? `wiki:${source.id}`;
 }
 
 export interface ArchiveFolder {
@@ -29,7 +38,7 @@ export interface ArchiveFolder {
   position: number;
 }
 
-export type ArchiveType = "image" | "video" | "audio" | "pdf" | "link" | "note";
+export type ArchiveType = "image" | "video" | "audio" | "pdf" | "link" | "note" | "mindmap";
 
 export interface Collection {
   id: number;
@@ -50,7 +59,7 @@ export interface ArchiveFilter {
   tag: string | null;
 }
 
-export const ARCHIVE_TYPES: ArchiveType[] = ["image", "pdf", "video", "audio", "link", "note"];
+export const ARCHIVE_TYPES: ArchiveType[] = ["image", "pdf", "video", "audio", "link", "note", "mindmap"];
 
 export const TYPE_ACCENT: Record<ArchiveType, string> = {
   image: "hsl(142 71% 45%)",
@@ -59,6 +68,7 @@ export const TYPE_ACCENT: Record<ArchiveType, string> = {
   audio: "hsl(38 92% 52%)",
   link: "hsl(217 91% 62%)",
   note: "hsl(214 26% 74%)",
+  mindmap: "hsl(262 83% 66%)",
 };
 
 export const TYPE_LABEL_KEY: Record<ArchiveType, string> = {
@@ -68,6 +78,7 @@ export const TYPE_LABEL_KEY: Record<ArchiveType, string> = {
   audio: "archive.type.audio",
   link: "archive.type.link",
   note: "archive.type.note",
+  mindmap: "reorg.archive.mindmap",
 };
 
 export function archiveTypeOf(kind: WikiKind): ArchiveType {
@@ -84,6 +95,8 @@ export function archiveTypeOf(kind: WikiKind): ArchiveType {
       return "pdf";
     case "url":
       return "link";
+    case "mindmap":
+      return "mindmap";
     default:
       return "note"; // text, unknown
   }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { useLocation, useSearch } from "wouter";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
@@ -8,7 +8,7 @@ import { AudioPlayer } from "@/components/AudioPlayer";
 import { BackgroundPresetsManager } from "@/components/BackgroundPresetsManager";
 import { BillingSubscriptionPanel } from "@/components/BillingSubscriptionPanel";
 import { Button } from "@/components/ui/button";
-import { LogIn, LogOut, UserPlus, Sun, TrendingUp, Target, Quote, Bell, Lock, Globe, Music, ChevronRight, CheckSquare, ChevronDown, BarChart2, Library, HelpCircle, Star, FileText, LifeBuoy, Trophy, LayoutGrid } from "lucide-react";
+import { LogIn, LogOut, UserPlus, Sun, TrendingUp, Target, Quote, Bell, Lock, Globe, Music, CheckSquare, BarChart2, Library, HelpCircle, Star, FileText, LifeBuoy, Trophy, LayoutGrid } from "lucide-react";
 import { useAuth, useClerk } from "@clerk/react";
 import { usePinLock } from "@/contexts/PinLockContext";
 import { useLanguage, LANGUAGES, uiText } from "@/contexts/LanguageContext";
@@ -106,34 +106,11 @@ export default function Settings() {
   const searchString = useSearch();
   const requestedSection = getRequestedSection(searchString);
   const [activeDesktopSection, setActiveDesktopSection] =
-    useState<TileId>(requestedSection ?? "audio");
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    pairs: false,
-    abbonamento: false,
-    audio: false,
-    aspetto: false,
-    notifiche: false,
-    sicurezza: false,
-    lingua: false,
-    trading: false,
-    missioni: false,
-    citazioni: false,
-    checklist: false,
-    account: false,
-    biblioteca: false,
-    traguardi: false,
-    supporto: false,
-    aiuto: false,
-    termini: false,
-    ...(requestedSection ? { [requestedSection]: true } : {}),
-  });
-
+    useState<TileId>(requestedSection ?? "profilo");
   // Reagisce ai cambi di query string anche a componente già montato
   // (es. click sul badge Pro del TopNav mentre si è già su /settings).
   useEffect(() => {
-    if (!requestedSection) return;
-    setActiveDesktopSection(requestedSection);
-    setOpenSections((prev) => (prev[requestedSection] ? prev : { ...prev, [requestedSection]: true }));
+    setActiveDesktopSection(requestedSection ?? "profilo");
   }, [requestedSection]);
 
   const tiles: SettingsTile[] = [
@@ -291,7 +268,19 @@ export default function Settings() {
     },
   ];
 
-  const collapsibleSections = tiles.filter((tile) => tile.id !== "profilo");
+  const groups: { key: string; sections: TileId[] }[] = [
+    { key: "profile", sections: ["profilo", "sicurezza", "account"] },
+    { key: "trading", sections: ["pairs", "trading", "checklist", "missioni"] },
+    { key: "experience", sections: ["aspetto", "lingua", "audio", "notifiche", "citazioni"] },
+    { key: "billing", sections: ["abbonamento"] },
+    { key: "help", sections: ["aiuto", "supporto", "termini"] },
+  ];
+  const activeGroup = groups.find(group => group.sections.includes(activeDesktopSection)) ?? groups[0];
+  const selectSection = (section: TileId) => navigate(`/settings?section=${section}`);
+  useEffect(() => {
+    if (requestedSection === "biblioteca") navigate("/wiki?t=unlocked", { replace: true });
+    if (requestedSection === "traguardi") navigate("/milestones", { replace: true });
+  }, [requestedSection, navigate]);
 
   const tileContent: Record<TileId, React.ReactNode> = {
     profilo: (
@@ -370,160 +359,41 @@ export default function Settings() {
     ),
   };
 
+  const activeTile = tiles.find(tile => tile.id === activeDesktopSection);
   return (
-    <PageLayout>
-      <PageHeader
-        title={uiText("auto.ui.8f710ac6af")}
-        subtitle={uiText("auto.ui.8d80245829")}
-      />
-      <div className="space-y-6 max-w-5xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0 }}
-        >
-          <div className="bg-card/60 backdrop-blur-sm border border-border rounded-2xl p-5 sm:p-6">
-            <ProfileWidget />
-          </div>
-        </motion.div>
-
-        <div className="hidden lg:flex gap-6">
-          <div className="w-64 shrink-0 space-y-1 self-start sticky top-16">
-            <div className="bg-card/60 backdrop-blur-sm border border-border rounded-2xl p-2">
-              {collapsibleSections.map((tile) => (
-                <button
-                  key={tile.id}
-                  onClick={() =>
-                    tile.id === "traguardi"
-                      ? navigate("/milestones")
-                      : setActiveDesktopSection(tile.id)
-                  }
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${
-                    activeDesktopSection === tile.id
-                      ? "bg-primary/10 text-primary border border-primary/30"
-                      : "text-muted-foreground hover:bg-card/80 hover:text-foreground border border-transparent"
-                  }`}
-                >
-                  <div
-                    className={`${activeDesktopSection === tile.id ? tile.color : "text-muted-foreground"} shrink-0`}
-                  >
-                    {React.cloneElement(
-                      tile.icon as React.ReactElement<{ className?: string }>,
-                      { className: "w-4 h-4" },
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{tile.label}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">
-                      {tile.subtitle}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeDesktopSection}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="bg-card/60 backdrop-blur-sm border border-border rounded-2xl p-5 sm:p-6">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div
-                      className={
-                        tiles.find((t) => t.id === activeDesktopSection)?.color
-                      }
-                    >
-                      {tiles.find((t) => t.id === activeDesktopSection)?.icon}
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-bold">
-                        {
-                          tiles.find((t) => t.id === activeDesktopSection)
-                            ?.label
-                        }
-                      </h2>
-                      <p className="text-xs text-muted-foreground">
-                        {
-                          tiles.find((t) => t.id === activeDesktopSection)
-                            ?.subtitle
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  {tileContent[activeDesktopSection]}
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
+    <PageLayout quiet>
+      <PageHeader title={t("settings.title")} subtitle={uiText("auto.ui.8d80245829")} />
+      <div className="mx-auto max-w-6xl space-y-4">
+        <div className="flex flex-wrap gap-3 text-sm">
+          <Button variant="outline" onClick={() => navigate("/milestones")}>{t("workspace.path")}</Button>
+          <Button variant="outline" onClick={() => navigate("/wiki?t=unlocked")}>{t("nav.wiki")}</Button>
         </div>
-
-        <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-          {collapsibleSections.map((tile, i) => (
-            <motion.div
-              key={tile.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: (i + 1) * 0.05 }}
-              className="space-y-2"
-            >
-              <button
-                onClick={() =>
-                  tile.id === "traguardi"
-                    ? navigate("/milestones")
-                    : setOpenSections((prev) => ({
-                        ...prev,
-                        [tile.id]: !prev[tile.id],
-                      }))
-                }
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card/60 backdrop-blur-sm hover:border-primary/30 hover:bg-card transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`${tile.color} transition-transform duration-200 group-hover:scale-110`}
-                  >
-                    {tile.icon}
-                  </div>
-                  <div className="text-left">
-                    <h2 className="text-base font-bold">{tile.label}</h2>
-                    <p className="text-xs text-muted-foreground">
-                      {tile.subtitle}
-                    </p>
-                  </div>
-                </div>
-                {tile.id === "traguardi" ? (
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                ) : (
-                  <ChevronDown
-                    className={`w-5 h-5 text-muted-foreground transition-transform duration-300 ${
-                      openSections[tile.id] ? "rotate-180" : ""
-                    }`}
-                  />
-                )}
-              </button>
-
-              <AnimatePresence>
-                {openSections[tile.id] && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="bg-card/60 backdrop-blur-sm border border-border rounded-2xl p-5 sm:p-6">
-                      {tileContent[tile.id]}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          ))}
+        <div className="lg:hidden space-y-2">
+          <label className="text-xs text-muted-foreground" htmlFor="settings-group">{t("settings.title")}</label>
+          <select id="settings-group" value={activeGroup.key} onChange={event => selectSection(groups.find(group => group.key === event.target.value)!.sections[0])} className="min-h-11 w-full rounded-lg border border-border bg-card px-3 text-sm">
+            {groups.map(group => <option key={group.key} value={group.key}>{t(`workspace.settings.${group.key}`)}</option>)}
+          </select>
+          <nav aria-label={t(`workspace.settings.${activeGroup.key}`)} className="flex flex-wrap gap-1">
+            {activeGroup.sections.map(id => <button key={id} type="button" onClick={() => selectSection(id)} aria-pressed={id === activeDesktopSection} className={`min-h-11 rounded-lg px-3 text-sm ${id === activeDesktopSection ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>{tiles.find(tile => tile.id === id)?.label}</button>)}
+          </nav>
+        </div>
+        <div className="flex items-start gap-6">
+          <nav aria-label={t("settings.title")} className="sticky top-20 hidden w-56 shrink-0 space-y-5 lg:block">
+            {groups.map(group => <section key={group.key}>
+              <h2 className="mb-1 px-3 text-xs font-semibold text-muted-foreground">{t(`workspace.settings.${group.key}`)}</h2>
+              {group.sections.map(id => {
+                const tile = tiles.find(item => item.id === id)!;
+                return <button key={id} type="button" onClick={() => selectSection(id)} aria-pressed={id === activeDesktopSection} className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm ${id === activeDesktopSection ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+                  {React.cloneElement(tile.icon as React.ReactElement<{ className?: string }>, { className: "h-4 w-4 shrink-0" })}<span>{tile.label}</span>
+                </button>;
+              })}
+            </section>)}
+          </nav>
+          <section className="min-w-0 flex-1 rounded-xl border border-border bg-card p-4 sm:p-6" aria-label={activeTile?.label}>
+            <h2 className="mb-1 text-lg font-semibold">{activeTile?.label}</h2>
+            <p className="mb-6 text-sm text-muted-foreground">{activeTile?.subtitle}</p>
+            {tileContent[activeDesktopSection]}
+          </section>
         </div>
       </div>
     </PageLayout>

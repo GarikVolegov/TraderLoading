@@ -91,6 +91,7 @@ export function SocialTab({
                 type="text"
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
+                aria-label={uiText("auto.ui.d174e7aa6b")}
                 placeholder={uiText("auto.ui.244dbe72f9")}
                 autoFocus
                 className="w-full pl-9 pr-4 py-1.5 bg-secondary/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
@@ -101,11 +102,14 @@ export function SocialTab({
           )}
         </div>
         <button
+          type="button"
+          aria-label={uiText(showSearch ? "common.close" : "auto.ui.d174e7aa6b")}
+          aria-expanded={showSearch}
           onClick={() => {
             setShowSearch((s) => !s);
             setSearchQ("");
           }}
-          className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-primary transition-colors"
+          className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-white/5 text-muted-foreground hover:text-primary transition-colors"
         >
           {showSearch ? (
             <X className="w-4 h-4" />
@@ -114,8 +118,10 @@ export function SocialTab({
           )}
         </button>
         <button
+          type="button"
+          aria-label={uiText("chat.new_post")}
           onClick={() => setShowCreate(true)}
-          className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+          className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -269,7 +275,7 @@ export function SocialTab({
             {storyGroups.length > 0 && (
               <div className="p-4 border-b border-border shrink-0">
                 <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
-                  <div
+                  <button type="button"
                     onClick={() => setShowCreate(true)}
                     className="flex flex-col items-center gap-1 cursor-pointer shrink-0"
                   >
@@ -279,10 +285,11 @@ export function SocialTab({
                     <span className="text-[10px] text-muted-foreground">
                       {uiText("auto.ui.83f510aa41")}
                     </span>
-                  </div>
+                  </button>
                   {storyGroups.map((group, i) => (
-                    <div
+                    <button type="button"
                       key={group.userId}
+                      aria-label={uiText("social.story.alt", { name: group.userName })}
                       onClick={() =>
                         setViewingStories({ groups: storyGroups, index: i })
                       }
@@ -300,7 +307,7 @@ export function SocialTab({
                       <span className="text-[10px] text-muted-foreground truncate max-w-[56px]">
                         {group.isOwn ? uiText("auto.ui.b44892b7f8") : group.userName.split(" ")[0]}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>

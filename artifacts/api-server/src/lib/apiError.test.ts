@@ -1,3 +1,4 @@
+import multer from "multer";
 import assert from "node:assert/strict";
 import { z } from "zod";
 import { classifyApiError } from "./apiError.js";
@@ -32,3 +33,6 @@ assert.equal(result500.body.error, "Internal server error");
 assert.equal(result500.body.details, undefined);
 
 console.log("apiError classification checks passed");
+
+assert.equal(classifyApiError(new multer.MulterError("LIMIT_UNEXPECTED_FILE")).status, 400);
+assert.equal(classifyApiError(new multer.MulterError("LIMIT_FILE_SIZE")).status, 413);

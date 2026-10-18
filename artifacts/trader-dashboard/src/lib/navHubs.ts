@@ -1,79 +1,55 @@
-import {
-  Globe, MessageCircle, Radio, Trophy, Award,
-  TrendingUp, BookOpen, Lightbulb, Target, BarChart3, Calendar,
-} from "lucide-react";
+import { hasExplicitCenterView } from "./workspaceNavigation";
+import { Sunrise, BookOpen, Route, Library, MessagesSquare, FlaskConical } from "lucide-react";
 
-export type HubItem = {
-  href: string;
-  /** Route path used for active matching (query stripped). Defaults to href. */
-  path?: string;
-  /** When set, active also requires the current ?t= to equal this value. */
-  tab?: string;
-  icon: React.ElementType;
-  labelKey: string;
-};
+export const ROOT_ITEMS = [
+  { id: "today", href: "/", icon: Sunrise, labelKey: "process.nav.today" },
+  { id: "method", href: "/method", icon: Route, labelKey: "process.nav.method" },
+  { id: "journal", href: "/journal", icon: BookOpen, labelKey: "nav.journal" },
+] as const;
+export const SECONDARY_ITEMS = [
+  { id: "resources", href: "/resources", icon: Library, labelKey: "process.nav.resources" },
+  { id: "backtest", href: "/backtest", icon: FlaskConical, labelKey: "nav.backtest" },
+  { id: "social", href: "/chat", icon: MessagesSquare, labelKey: "process.nav.social" },
+] as const;
+export const NAV_ITEMS = [...ROOT_ITEMS, ...SECONDARY_ITEMS] as const;
 
-export type Hub = {
-  id: string;
-  /** Routes that put the bottom nav into this hub's contextual mode. */
-  routes: string[];
-  items: readonly HubItem[];
-};
-
-const COMMUNITY_HUB: Hub = {
-  id: "community",
-  routes: ["/chat", "/tornei"],
-  items: [
-    { href: "/chat?t=social",     path: "/chat", tab: "social",     icon: Globe,         labelKey: "chat.tab.social" },
-    { href: "/chat?t=messaggi",   path: "/chat", tab: "messaggi",   icon: MessageCircle, labelKey: "chat.tab.messages" },
-    { href: "/chat?t=comunita",   path: "/chat", tab: "comunita",   icon: Radio,         labelKey: "chat.tab.community" },
-    { href: "/chat?t=classifica", path: "/chat", tab: "classifica", icon: Trophy,        labelKey: "chat.tab.leaderboard" },
-    { href: "/tornei",            path: "/tornei",                  icon: Award,         labelKey: "tornei.nav" },
-  ],
-};
-
-const JOURNAL_HUB: Hub = {
-  id: "journal",
-  routes: ["/journal"],
-  items: [
-    { href: "/journal?t=panoramica",         path: "/journal", tab: "panoramica",         icon: TrendingUp, labelKey: "journal.tab.overview" },
-    { href: "/journal?t=trades",             path: "/journal", tab: "trades",             icon: BookOpen,   labelKey: "journal.tab.trades" },
-    { href: "/journal?t=idee",               path: "/journal", tab: "idee",               icon: Lightbulb,  labelKey: "journal.tab.ideas" },
-    { href: "/journal?t=obiettivi",          path: "/journal", tab: "obiettivi",          icon: Target,     labelKey: "journal.tab.goals" },
-    { href: "/journal?t=recap-settimanale",  path: "/journal", tab: "recap-settimanale",  icon: BarChart3,  labelKey: "journal.tab.weekly" },
-    { href: "/journal?t=recap-mensile",      path: "/journal", tab: "recap-mensile",      icon: Calendar,   labelKey: "journal.tab.four_week" },
-  ],
-};
-
-export const HUBS: readonly Hub[] = [COMMUNITY_HUB, JOURNAL_HUB];
-
-/** Tornei, reused as a standalone shortcut on the desktop sidebar outside any hub. */
-export const TORNEI_ITEM = COMMUNITY_HUB.items[4];
-
-/** Resolves which hub (if any) a location's pathname puts the nav into. */
-export function matchHub(location: string): Hub | undefined {
-  return HUBS.find((hub) =>
-    hub.routes.some((route) => location === route || location.startsWith(`${route}/`)),
-  );
-}
-
-const MAX_DIRECT_ITEMS = 5;
-const PRIMARY_COUNT_WHEN_OVERFLOWING = 4;
-
-/**
- * Mobile bottom pill can only fit so many slots (arrow + items). Hubs with
- * up to 5 items render flat; beyond that the rest collapse into an
- * overflow sheet.
- */
-export function splitHubItems(items: readonly HubItem[]): {
-  primary: readonly HubItem[];
-  overflow: readonly HubItem[];
-} {
-  if (items.length <= MAX_DIRECT_ITEMS) {
-    return { primary: items, overflow: [] };
-  }
-  return {
-    primary: items.slice(0, PRIMARY_COUNT_WHEN_OVERFLOWING),
-    overflow: items.slice(PRIMARY_COUNT_WHEN_OVERFLOWING),
-  };
+export function rootDestination(
+  location: string,
+  search = "",
+): (typeof NAV_ITEMS)[number]["id"] | undefined {
+  const [path, embeddedQuery = ""] = location.split("?");
+  const params = new URLSearchParams(search || embeddedQuery);
+  if (path === "/") return hasExplicitCenterView(params.toString()) ? "resources" : "today";
+  if (path === "/method" || path === "/checklist") return "method";
+  if (path === "/tools" || path === "/backtest" || path.startsWith("/backtest/")) return "backtest";
+  if (
+    [
+      "/resources",
+      "/library",
+      "/wiki",
+      "/routine",
+      "/missions",
+      "/calendar",
+      "/milestones",
+      "/news",
+      "/clock",
+      "/settings",
+      "/support",
+      "/dashboard/widgets",
+    ].includes(path)
+  )
+    return "resources";
+  if (
+    ["/chat", "/tornei"].some((route) => path === route || path.startsWith(`${route}/`))
+  )
+    return "social";
+  if (
+    path === "/journal" &&
+    params.get("t") === "piano" &&
+    (!params.has("vista") || params.get("vista") === "oggi")
+  )
+    return "today";
+  if (path === "/journal" && params.get("t") === "piano") return "resources";
+  if (["/journal", "/broker"].includes(path)) return "journal";
+  return undefined;
 }

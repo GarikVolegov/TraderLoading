@@ -1,3 +1,4 @@
+import { listClerkSessions, revokeClerkSessions } from "../services/sessionRevocation.js";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   accountTradesTable,
@@ -413,34 +414,19 @@ async function updateAdminContentPublished({
     return;
   }
 
-  const [before] = await db
-    .select()
-    .from(libraryContentsTable)
-    .where(eq(libraryContentsTable.id, itemId))
-    .limit(1);
-
-  if (!before) {
-    res.status(404).json({ error: "Contenuto non trovato" });
-    return;
-  }
-
-  const [after] = await db
-    .update(libraryContentsTable)
-    .set({ published, updatedAt: new Date() })
-    .where(eq(libraryContentsTable.id, itemId))
-    .returning();
-
-  await writeAdminAudit({
-    req,
-    admin: req.admin!,
-    action: published ? "content.publish" : "content.unpublish",
-    targetType: "library_content",
-    targetId: String(itemId),
-    reason,
-    before,
-    after,
+  const after = await db.transaction(async tx => {
+    const [before] = await tx.select().from(libraryContentsTable)
+      .where(eq(libraryContentsTable.id, itemId)).limit(1).for("update");
+    if (!before) return null;
+    const [updated] = await tx.update(libraryContentsTable)
+      .set({ published, updatedAt: new Date() }).where(eq(libraryContentsTable.id, itemId)).returning();
+    await writeAdminAudit({
+      req, admin: req.admin!, action: published ? "content.publish" : "content.unpublish",
+      targetType: "library_content", targetId: String(itemId), reason, before, after: updated,
+    }, tx);
+    return updated;
   });
-
+  if (!after) { res.status(404).json({ error: "Contenuto non trovato" }); return; }
   res.json({ success: true, item: after });
 }
 
@@ -906,29 +892,21 @@ router.post(
       return;
     }
 
-    const [message] = await db
-      .insert(supportTicketMessagesTable)
-      .values({
-        ticketId: id,
-        authorType: "support",
-        authorId: req.admin!.userId,
-        body,
-      })
-      .returning();
-    const [updated] = await db
-      .update(supportTicketsTable)
-      .set({ status: "pending", updatedAt: new Date() })
-      .where(eq(supportTicketsTable.id, id))
-      .returning();
-
-    await writeAdminAudit({
-      req,
-      admin: req.admin!,
-      action: "support.reply",
-      targetType: "support_ticket",
-      targetId: String(id),
-      before: ticket,
-      after: updated,
+    const { message, updated } = await db.transaction(async (tx) => {
+      const [message] = await tx
+        .insert(supportTicketMessagesTable)
+        .values({ ticketId: id, authorType: "support", authorId: req.admin!.userId, body })
+        .returning();
+      const [updated] = await tx
+        .update(supportTicketsTable)
+        .set({ status: "pending", updatedAt: new Date() })
+        .where(eq(supportTicketsTable.id, id))
+        .returning();
+      await writeAdminAudit({
+        req, admin: req.admin!, action: "support.reply", targetType: "support_ticket",
+        targetId: String(id), before: ticket, after: updated,
+      }, tx);
+      return { message, updated };
     });
 
     void sendTicketReplyEmail(
@@ -966,20 +944,17 @@ router.post(
       return;
     }
 
-    const [updated] = await db
-      .update(supportTicketsTable)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(supportTicketsTable.id, id))
-      .returning();
-
-    await writeAdminAudit({
-      req,
-      admin: req.admin!,
-      action: "support.status",
-      targetType: "support_ticket",
-      targetId: String(id),
-      before: ticket,
-      after: updated,
+    const updated = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(supportTicketsTable)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(supportTicketsTable.id, id))
+        .returning();
+      await writeAdminAudit({
+        req, admin: req.admin!, action: "support.status", targetType: "support_ticket",
+        targetId: String(id), before: ticket, after: updated,
+      }, tx);
+      return updated;
     });
 
     if (status === "closed" || status === "open") {
@@ -1218,22 +1193,19 @@ router.post(
       return;
     }
 
-    const result = await db
-      .delete(sessionsTable)
+    const clerkSessionIds = await listClerkSessions(targetUserId);
+    // Persist the deny-list before provider revocation: already issued JWTs must
+    // stop working immediately, including if the provider call fails halfway.
+    await writeAdminAudit({
+      req, admin: req.admin!, action: "users.revoke_sessions",
+      targetType: "user", targetId: targetUserId, reason,
+      after: { clerkSessionIds },
+    });
+    const result = await db.delete(sessionsTable)
       .where(sql`${sessionsTable.sess}->'user'->>'id' = ${targetUserId}`)
       .returning({ sid: sessionsTable.sid });
-
-    await writeAdminAudit({
-      req,
-      admin: req.admin!,
-      action: "users.revoke_sessions",
-      targetType: "user",
-      targetId: targetUserId,
-      reason,
-      after: { revokedSessions: result.length },
-    });
-
-    res.json({ success: true, revokedSessions: result.length });
+    await revokeClerkSessions(clerkSessionIds);
+    res.json({ success: true, revokedSessions: result.length + clerkSessionIds.length });
   },
 );
 

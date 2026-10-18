@@ -1,5 +1,6 @@
 import type { NewsArticle, NewsEvent, NewsProviderStatus, NewsRefreshRequest, NewsResponse } from "./types.js";
 import { reportJobError } from "../../lib/observability.js";
+import { newsSubscriptionKey, queueProviderArticle } from "./providerCorpus.js";
 
 type Listener = (event: NewsEvent) => void;
 type FetchSnapshot = (request: NewsRefreshRequest) => Promise<NewsResponse>;
@@ -24,19 +25,14 @@ export function shouldRefreshSnapshot(lastRefreshAt: number | null, now: number,
 
 export interface NewsHubRuntime {
   refresh(request?: NewsRefreshRequest): Promise<NewsResponse>;
-  getSnapshot(): NewsResponse | null;
+  getSnapshot(request?: NewsRefreshRequest): NewsResponse | null;
+  subscribe(request: NewsRefreshRequest): () => void;
   getProviderStatuses(): NewsProviderStatus[];
   setProviderStatus(status: Omit<NewsProviderStatus, "lastUpdated"> & { lastUpdated?: string }): void;
   ingestArticle(article: NewsArticle): boolean;
-  getLastRequest(): NewsRefreshRequest;
   onEvent(listener: Listener): () => void;
   start(request?: NewsRefreshRequest): void;
   stop(): Promise<void>;
-}
-
-function articleKey(article: NewsArticle): string {
-  if (article.url) return `url:${article.url.toLowerCase()}`;
-  return `title:${article.title.toLowerCase().replace(/\s+/g, " ").trim().slice(0, 160)}`;
 }
 
 function defaultStatuses(): NewsProviderStatus[] {
@@ -59,11 +55,9 @@ function defaultStatuses(): NewsProviderStatus[] {
     },
     {
       provider: "polygon",
-      status: process.env.POLYGON_API_KEY ? "polling" : "disabled",
-      transport: process.env.POLYGON_API_KEY ? "rest" : "none",
-      message: process.env.POLYGON_API_KEY
-        ? "Polygon configurato per news REST/market stream."
-        : "POLYGON_API_KEY non configurata.",
+      status: "disabled",
+      transport: "none",
+      message: "Ingestione news Polygon non attiva.",
       lastUpdated: now,
     },
   ];
@@ -72,11 +66,12 @@ function defaultStatuses(): NewsProviderStatus[] {
 export function createNewsHubRuntime(options: NewsHubRuntimeOptions): NewsHubRuntime {
   const listeners = new Set<Listener>();
   const providerStatuses = new Map<string, NewsProviderStatus>();
-  const seenArticles = new Set<string>();
   let snapshot: NewsResponse | null = null;
   let timer: NodeJS.Timeout | null = null;
-  let lastRequest: NewsRefreshRequest = {};
-  let lastRefreshAt: number | null = null;
+  const snapshots = new Map<string, NewsResponse>();
+  const refreshTimes = new Map<string, number>();
+  const subscriptions = new Map<string, { request: NewsRefreshRequest; count: number }>();
+  const pending = new Map<string, Promise<NewsResponse>>();
   const snapshotFreshMs = options.snapshotFreshMs ?? DEFAULT_SNAPSHOT_FRESH_MS;
 
   for (const status of defaultStatuses()) providerStatuses.set(status.provider, status);
@@ -91,25 +86,34 @@ export function createNewsHubRuntime(options: NewsHubRuntimeOptions): NewsHubRun
   }
 
   function ingestArticle(article: NewsArticle): boolean {
-    const key = articleKey(article);
-    if (seenArticles.has(key)) return false;
-    seenArticles.add(key);
-    emit({ type: "news_article", article });
-    return true;
+    return queueProviderArticle(article);
   }
 
   async function refresh(request: NewsRefreshRequest = {}): Promise<NewsResponse> {
+    const key = newsSubscriptionKey(request);
+    const running = pending.get(key);
+    if (running) return running;
+    const work = performRefresh(request, key);
+    pending.set(key, work);
+    try { return await work; } finally { pending.delete(key); }
+  }
+
+  async function performRefresh(request: NewsRefreshRequest, key: string): Promise<NewsResponse> {
     try {
-      lastRequest = request;
-      const data = withProviderStatuses(await options.fetchSnapshot(request));
+      const [pairs, lang] = key.split(":");
+      const data = withProviderStatuses({ ...await options.fetchSnapshot({ ...request, pairs, lang }), lang });
       snapshot = data;
-      lastRefreshAt = Date.now();
-      for (const article of data.articles) ingestArticle(article);
+      refreshTimes.set(key,Date.now());
+      snapshots.set(key,data);
+      while(snapshots.size>100) {
+        const oldest = snapshots.keys().next().value!;
+        snapshots.delete(oldest); refreshTimes.delete(oldest);
+      }
       emit({ type: "news_snapshot", snapshot: data });
       return data;
     } catch (error) {
       const message = error instanceof Error ? error.message : "News refresh failed";
-      emit({ type: "news_error", message });
+      emit({ type: "news_error", message, subscriptionKey:key });
       throw error;
     }
   }
@@ -122,11 +126,23 @@ export function createNewsHubRuntime(options: NewsHubRuntimeOptions): NewsHubRun
 
   return {
     refresh,
-    getSnapshot: () => snapshot,
+    getSnapshot: (request) => request ? snapshots.get(newsSubscriptionKey(request)) ?? null : snapshot,
+    subscribe(request): () => void {
+      const key = newsSubscriptionKey(request);
+      const existing = subscriptions.get(key);
+      if (existing) existing.count++;
+      else subscriptions.set(key, { request:{pairs:key.split(":")[0],lang:key.split(":")[1]}, count:1 });
+      let subscribed = true;
+      return () => {
+        if (!subscribed) return;
+        subscribed = false;
+        const current = subscriptions.get(key);
+        if (current && --current.count <= 0) subscriptions.delete(key);
+      };
+    },
     getProviderStatuses: () => Array.from(providerStatuses.values()),
     setProviderStatus,
     ingestArticle,
-    getLastRequest: () => lastRequest,
     onEvent(listener: Listener): () => void {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -138,13 +154,18 @@ export function createNewsHubRuntime(options: NewsHubRuntimeOptions): NewsHubRun
         // Skip the expensive rebuild while the snapshot is still fresh (zero-user
         // periods must not burn LLM/translate quota every tick), and surface
         // failures instead of swallowing them.
-        if (!shouldRefreshSnapshot(lastRefreshAt, Date.now(), snapshotFreshMs)) return;
-        void refresh({ ...request, force: true }).catch((err) => reportJobError(err, { job: "news-refresh" }));
+        const active = subscriptions.size ? [...subscriptions.values()].map(value=>value.request) : [request];
+        for (const current of active) {
+          const key = newsSubscriptionKey(current);
+          if (!shouldRefreshSnapshot(refreshTimes.get(key) ?? null, Date.now(), snapshotFreshMs)) continue;
+          void refresh({ ...current, force: true }).catch((err) => reportJobError(err, { job: "news-refresh", key }));
+        }
       }, Math.max(10_000, interval));
     },
     async stop(): Promise<void> {
       if (timer) clearInterval(timer);
       timer = null;
+      subscriptions.clear();
       listeners.clear();
     },
   };

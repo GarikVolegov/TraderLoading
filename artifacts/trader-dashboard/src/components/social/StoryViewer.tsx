@@ -1,8 +1,13 @@
-import { useState, useEffect, useRef, type ChangeEvent } from "react";
+import { useState, useEffect, useRef, useCallback, type ChangeEvent } from "react";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
 import { uiText } from "@/contexts/LanguageContext";
 import { apiRequest as apiFetch } from "@/lib/apiFetch";
 import { reportClientError } from "@/lib/clientErrorReporter";
+import { useToast } from "@/hooks/use-toast";
+import { useE2EEKeys } from "@/hooks/useE2EEKeys";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { createPortal } from "react-dom";
+import { useAuth } from "@clerk/react";
 import { X, Clock, Reply, Send, Loader2, Camera, Mic } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { fmtDur } from "./format";
@@ -17,6 +22,9 @@ export function StoryViewer({
   startIndex: number;
   onClose: () => void;
 }) {
+  const { userId } = useAuth();
+  const { isReady: chatReady, error: chatError } = useE2EEKeys(userId ?? null);
+  const { toast } = useToast();
   const [groupIdx, setGroupIdx] = useState(startIndex);
   const [storyIdx, setStoryIdx] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -32,20 +40,59 @@ export function StoryViewer({
   >("text");
   const [replyText, setReplyText] = useState("");
   const [replySent, setReplySent] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [replySending, setReplySending] = useState(false);
+  const replySendingRef = useRef(false);
+  const replyUploadRef = useRef(false);
+  const voiceUploadedRef = useRef<{ blob: Blob; url: string } | null>(null);
+  const [replyImageUrl, setReplyImageUrl] = useState<string | null>(null);
   const [replyImgUploading, setReplyImgUploading] = useState(false);
   const [replyRecording, setReplyRecording] = useState(false);
   const [replyBlob, setReplyBlob] = useState<Blob | null>(null);
+  const [replyBlobUrl, setReplyBlobUrl] = useState<string | null>(null);
   const [replyDuration, setReplyDuration] = useState(0);
   const replyMrRef = useRef<MediaRecorder | null>(null);
-  const replyChunksRef = useRef<Blob[]>([]);
+  const mountedRef = useRef(true);
+  const recordingGenerationRef = useRef(0);
+  const micRequestRef = useRef(false);
+  const [micRequestPending, setMicRequestPending] = useState(false);
   const replyTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(
     undefined,
   );
   const replyFileRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!replyBlob) { setReplyBlobUrl(null); return; }
+    const url = URL.createObjectURL(replyBlob);
+    setReplyBlobUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [replyBlob]);
+  const discardRecording = useCallback(() => {
+    recordingGenerationRef.current++;
+    clearInterval(replyTimerRef.current);
+    const recorder = replyMrRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      recorder.stop();
+    }
+    recorder?.stream.getTracks().forEach((track) => track.stop());
+    replyMrRef.current = null;
+    if (mountedRef.current) setReplyRecording(false);
+  }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; clearTimeout(successTimerRef.current); discardRecording(); };
+  }, [discardRecording]);
+  useEffect(() => {
+    if (!showReply || replyTab !== "voice") discardRecording();
+  }, [showReply, replyTab, discardRecording]);
 
   const group = groups[groupIdx];
   const story = group?.stories[storyIdx];
   const totalInGroup = group?.stories.length ?? 1;
+  const { titleId, panelProps } = useDialogA11y({ isOpen: Boolean(story), onClose, panelRef });
 
   useEffect(() => {
     setProgress(0);
@@ -83,58 +130,102 @@ export function StoryViewer({
     : 0;
 
   const sendStoryReply = async (content: string, type = "text") => {
+    if (!mountedRef.current) return false;
+    if (replySendingRef.current || (replyUploadRef.current && type === "text")) return false;
+    if (!chatReady) {
+      toast({ description: uiText(chatError ? "auto.ui.6f9df8e4ac" : "auto.ui.d8059d85da"), variant: "destructive" });
+      return false;
+    }
+    replySendingRef.current = true;
+    setReplySending(true);
+    setReplyError(null);
     try {
-      await apiFetch(`social/story-reply/${story.id}`, {
+      const response = await apiFetch(`social/story-reply/${story.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content, type }),
       });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || uiText("support.error.generic"));
+      }
+      if (!mountedRef.current) return true;
       setReplySent(true);
-      setTimeout(() => {
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => {
         setReplySent(false);
         setShowReply(false);
+        setPaused(false);
+        discardRecording();
         setReplyText("");
         setReplyBlob(null);
+        setReplyImageUrl(null);
+        voiceUploadedRef.current = null;
       }, 1500);
+      return true;
     } catch (err) {
-      reportClientError(err, { context: "story reply", notify: false });
+      if (!mountedRef.current) return false;
+      setReplyError(err instanceof Error ? err.message : uiText("support.error.generic"));
+      reportClientError(err, { context: "story reply", toast });
+      return false;
+    } finally {
+      replySendingRef.current = false;
+      if (mountedRef.current) setReplySending(false);
     }
   };
 
   const handleReplyImage = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || replyUploadRef.current || replySendingRef.current || !chatReady) return;
+    replyUploadRef.current = true;
     setReplyImgUploading(true);
+    setReplyError(null);
     try {
       const fd = new FormData();
-      fd.append("image", file);
-      const res = await apiFetch("social/upload-image", {
+      fd.append("file", file);
+      fd.append("toUserId", group.userId);
+      const res = await apiFetch("social/upload-file", {
         method: "POST",
         body: fd,
       });
       if (!res.ok) throw new Error("Upload fallito");
-      const { imageUrl } = await res.json();
-      await sendStoryReply(imageUrl, "image");
+      const { fileUrl } = await res.json();
+      if (!mountedRef.current) return;
+      setReplyImageUrl(fileUrl);
+      await sendStoryReply(fileUrl, "image");
     } catch (err) {
-      reportClientError(err, { context: "story image reply", notify: false });
+      if (!mountedRef.current) return;
+      setReplyError(err instanceof Error ? err.message : uiText("support.error.generic"));
+      reportClientError(err, { context: "story image reply", toast });
     } finally {
       setReplyImgUploading(false);
+      replyUploadRef.current = false;
       if (replyFileRef.current) replyFileRef.current.value = "";
     }
   };
 
   const startReplyRecording = async () => {
+    if (micRequestRef.current || replyMrRef.current) return;
+    micRequestRef.current = true;
+    setMicRequestPending(true);
+    const generation = recordingGenerationRef.current;
+    let stream: MediaStream | undefined;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!mountedRef.current || generation !== recordingGenerationRef.current) {
+        stream.getTracks().forEach((track) => track.stop()); return;
+      }
+      const recordingStream = stream;
       const mimeType = MediaRecorder.isTypeSupported("audio/webm")
         ? "audio/webm"
         : "audio/ogg";
       const mr = new MediaRecorder(stream, { mimeType });
-      replyChunksRef.current = [];
-      mr.ondataavailable = (e) => replyChunksRef.current.push(e.data);
+      const chunks: Blob[] = [];
+      mr.ondataavailable = (e) => chunks.push(e.data);
       mr.onstop = () => {
-        setReplyBlob(new Blob(replyChunksRef.current, { type: mimeType }));
-        stream.getTracks().forEach((t) => t.stop());
+        if (mountedRef.current && generation === recordingGenerationRef.current) setReplyBlob(new Blob(chunks, { type: mimeType }));
+        recordingStream.getTracks().forEach((t) => t.stop());
+        if (replyMrRef.current === mr) replyMrRef.current = null;
       };
       mr.start();
       replyMrRef.current = mr;
@@ -145,41 +236,54 @@ export function StoryViewer({
         1000,
       );
     } catch (err) {
-      reportClientError(err, { context: "story reply mic", notify: false });
+      stream?.getTracks().forEach((track) => track.stop());
+      reportClientError(err, { context: "story reply mic", toast });
+    } finally {
+      micRequestRef.current = false;
+      if (mountedRef.current) setMicRequestPending(false);
     }
   };
 
   const stopReplyRecording = () => {
-    replyMrRef.current?.stop();
+    if (replyMrRef.current?.state === "recording") replyMrRef.current.stop();
     clearInterval(replyTimerRef.current);
     setReplyRecording(false);
   };
 
   const sendReplyVoice = async () => {
-    if (!replyBlob) return;
-    const fd = new FormData();
-    fd.append("audio", replyBlob, "reply.webm");
-    // Recipient = the story owner, recorded server-side so only the two of us can
-    // fetch the note (GET /uploads/voice is gated on participation).
-    fd.append("toUserId", group.userId);
+    if (!replyBlob || replyUploadRef.current || replySendingRef.current || !chatReady) return;
+    replyUploadRef.current = true;
+    setReplyImgUploading(true);
+    setReplyError(null);
     try {
-      const res = await apiFetch("social/upload-voice", {
-        method: "POST",
-        body: fd,
-      });
-      if (!res.ok) throw new Error();
-      const { audioUrl } = await res.json();
-      await sendStoryReply(audioUrl, "voice");
-      setReplyBlob(null);
-      setReplyDuration(0);
+      let audioUrl = voiceUploadedRef.current?.blob === replyBlob ? voiceUploadedRef.current.url : null;
+      if (!audioUrl) {
+        const fd = new FormData();
+        fd.append("audio", replyBlob, "reply.webm");
+        fd.append("toUserId", group.userId);
+        const res = await apiFetch("social/upload-voice", { method: "POST", body: fd });
+        if (!res.ok) throw new Error(uiText("support.error.generic"));
+        audioUrl = (await res.json()).audioUrl as string;
+        if (!mountedRef.current) return;
+        voiceUploadedRef.current = { blob: replyBlob, url: audioUrl };
+      }
+      if (await sendStoryReply(audioUrl, "voice")) {
+        setReplyBlob(null);
+        setReplyDuration(0);
+      }
     } catch (err) {
-      reportClientError(err, { context: "story voice reply", notify: false });
+      if (!mountedRef.current) return;
+      setReplyError(err instanceof Error ? err.message : uiText("support.error.generic"));
+      reportClientError(err, { context: "story voice reply", toast });
+    } finally {
+      replyUploadRef.current = false;
+      setReplyImgUploading(false);
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
-      <div className="w-full max-w-sm h-full max-h-[700px] relative rounded-2xl overflow-hidden bg-gradient-to-b from-gray-900 to-gray-800 flex flex-col">
+      <div ref={panelRef} {...panelProps} className="w-full max-w-sm h-full max-h-[700px] relative rounded-2xl overflow-hidden bg-gradient-to-b from-gray-900 to-gray-800 flex flex-col">
         {/* Progress bars */}
         <div className="absolute top-0 left-0 right-0 p-3 z-10 flex gap-1">
           {group.stories.map((_, i) => (
@@ -209,7 +313,7 @@ export function StoryViewer({
               ring="ring-white/50"
             />
             <div>
-              <p className="text-white text-sm font-semibold">
+              <p id={titleId} className="text-white text-sm font-semibold">
                 {group.userName}
               </p>
               <p className="text-white/60 text-xs flex items-center gap-1">
@@ -224,6 +328,7 @@ export function StoryViewer({
               onClose();
             }}
             className="p-2 rounded-full bg-white/10"
+            aria-label={uiText("backtest_terminal.close")}
           >
             <X className="w-5 h-5 text-white" />
           </button>
@@ -281,12 +386,19 @@ export function StoryViewer({
                 </div>
               ) : (
                 <>
+                  {!chatReady && (
+                    <p role={chatError ? "alert" : "status"} className="text-sm text-white/70">
+                      {uiText(chatError ? "auto.ui.6f9df8e4ac" : "auto.ui.d8059d85da")}
+                    </p>
+                  )}
+                  {replyError && <p role="alert" className="text-sm text-red-300">{replyError}</p>}
                   {/* Tabs */}
                   <div className="flex gap-2">
                     {(["text", "emoji", "image", "voice"] as const).map(
                       (tab) => (
                         <button
                           key={tab}
+                          disabled={replySending || replyImgUploading}
                           onClick={() => setReplyTab(tab)}
                           className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${replyTab === tab ? "bg-white/20 text-white" : "text-white/50 hover:text-white/80"}`}
                         >
@@ -306,6 +418,7 @@ export function StoryViewer({
                     <div className="flex gap-2">
                       <input
                         value={replyText}
+                        disabled={replySending || replyImgUploading}
                         onChange={(e) => setReplyText(e.target.value)}
                         onKeyDown={(e) =>
                           e.key === "Enter" &&
@@ -320,10 +433,11 @@ export function StoryViewer({
                         onClick={() =>
                           replyText.trim() && sendStoryReply(replyText.trim())
                         }
-                        disabled={!replyText.trim()}
+                        disabled={!replyText.trim() || replySending || replyImgUploading || !chatReady}
+                        aria-label={uiText("admin.tickets.reply.send")}
                         className="px-3 py-2 bg-white text-black rounded-xl disabled:opacity-40"
                       >
-                        <Send className="w-4 h-4" />
+                        {replySending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                       </button>
                     </div>
                   )}
@@ -338,9 +452,14 @@ export function StoryViewer({
 
                   {replyTab === "image" && (
                     <div className="flex items-center justify-center gap-3 py-2">
+                      {replyImageUrl && (
+                        <button type="button" onClick={() => sendStoryReply(replyImageUrl, "image")} disabled={replySending || replyImgUploading} className="px-3 py-2 bg-white text-black rounded-xl disabled:opacity-40">
+                          {uiText("admin.tickets.reply.send")}
+                        </button>
+                      )}
                       <button
                         onClick={() => replyFileRef.current?.click()}
-                        disabled={replyImgUploading}
+                        disabled={replyImgUploading || replySending || !chatReady}
                         className="flex items-center gap-2 px-5 py-2.5 bg-white/15 border border-white/20 rounded-xl text-white text-sm hover:bg-white/25 transition-colors disabled:opacity-50"
                       >
                         {replyImgUploading ? (
@@ -364,6 +483,8 @@ export function StoryViewer({
                     <div className="flex items-center gap-3 py-1">
                       {!replyBlob ? (
                         <button
+                          disabled={micRequestPending || replySending || replyImgUploading || !chatReady}
+                          aria-label={uiText(replyRecording ? "auto.ui.bce10aee8e" : "auto.ui.38fbbb0c51")}
                           onClick={
                             replyRecording
                               ? stopReplyRecording
@@ -381,8 +502,7 @@ export function StoryViewer({
                             </>
                           ) : (
                             <>
-                              <Mic className="w-4 h-4" /> Tieni premuto per
-                              registrare
+                              <Mic className="w-4 h-4" /> {uiText("auto.ui.38fbbb0c51")}
                             </>
                           )}
                         </button>
@@ -390,10 +510,11 @@ export function StoryViewer({
                         <>
                           <audio
                             controls
-                            src={URL.createObjectURL(replyBlob)}
+                            src={replyBlobUrl ?? undefined}
                             className="flex-1 h-8"
                           />
                           <button
+                            aria-label={uiText("auto.ui.6c3de5381b")}
                             onClick={() => {
                               setReplyBlob(null);
                               setReplyDuration(0);
@@ -404,6 +525,8 @@ export function StoryViewer({
                           </button>
                           <button
                             onClick={sendReplyVoice}
+                            aria-label={uiText("admin.tickets.reply.send")}
+                            disabled={replySending || replyImgUploading || !chatReady}
                             className="p-2 bg-white text-black rounded-lg"
                           >
                             <Send className="w-4 h-4" />
@@ -414,6 +537,7 @@ export function StoryViewer({
                   )}
 
                   <button
+                    disabled={replySending || replyImgUploading}
                     onClick={() => {
                       setShowReply(false);
                       setPaused(false);
@@ -428,6 +552,6 @@ export function StoryViewer({
           )}
         </div>
       </div>
-    </div>
+    </div>, document.body
   );
 }

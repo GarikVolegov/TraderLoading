@@ -147,6 +147,8 @@ export function MissionsWidget() {
                 >
                   {/* Status icon */}
                   <button
+                    type="button"
+                    aria-label={`${t(mission.completed ? "common.completed" : "common.complete")}: ${mission.title}`}
                     onClick={() => !mission.completed && completeMutation.mutate({ id: mission.id })}
                     disabled={mission.completed || completeMutation.isPending}
                     className="shrink-0 transition-transform active:scale-90"

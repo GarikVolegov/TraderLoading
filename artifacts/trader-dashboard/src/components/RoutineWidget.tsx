@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useRoutineStorage } from "@/hooks/useRoutineStorage";
+import { loadCompletion } from "@/components/routine/completion";
+import { useEffect, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Check,
@@ -23,21 +25,6 @@ import {
   getRoutineStatusCopy,
   type RoutineProgram,
 } from "./RoutineWidget.helpers";
-
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function loadDone(program: "morning" | "evening"): boolean {
-  try {
-    const raw = localStorage.getItem(`tl_session_${program}_v2`);
-    if (!raw) return false;
-    const { date } = JSON.parse(raw) as { date: string };
-    return date === todayKey();
-  } catch {
-    return false;
-  }
-}
 
 function SessionRow({
   label,
@@ -88,31 +75,34 @@ function SessionRow({
 }
 
 export function RoutineWidget() {
+  const storage = useRoutineStorage();
   const [morningDone, setMorningDone] = useState(false);
   const [eveningDone, setEveningDone] = useState(false);
   const [routineStreakDays, setRoutineStreakDays] = useState(0);
   const [activeSession, setActiveSession] = useState<RoutineProgram | null>(null);
   const { data: friends } = useGetFriends();
 
-  const refresh = () => {
-    setMorningDone(loadDone("morning"));
-    setEveningDone(loadDone("evening"));
-    setRoutineStreakDays(getRoutineMetrics(loadRoutineCompletions(), loadCustomRoutines()).currentStreakDays);
-  };
+  const refresh = useCallback(() => {
+    setMorningDone(loadCompletion("morning", storage));
+    setEveningDone(loadCompletion("evening", storage));
+    setRoutineStreakDays(getRoutineMetrics(loadRoutineCompletions(storage), loadCustomRoutines(storage)).currentStreakDays);
+  }, [storage]);
 
   useEffect(() => {
     refresh();
+    const timer = window.setInterval(refresh, 30_000);
     window.addEventListener("tl_routine_morning_done", refresh);
     window.addEventListener("tl_routine_evening_done", refresh);
     window.addEventListener("tl_routine_history_updated", refresh);
     window.addEventListener("storage", refresh);
     return () => {
+      clearInterval(timer);
       window.removeEventListener("tl_routine_morning_done", refresh);
       window.removeEventListener("tl_routine_evening_done", refresh);
       window.removeEventListener("tl_routine_history_updated", refresh);
       window.removeEventListener("storage", refresh);
     };
-  }, []);
+  }, [refresh]);
 
   const done = (morningDone ? 1 : 0) + (eveningDone ? 1 : 0);
   const bothDone = done === 2;
@@ -124,14 +114,14 @@ export function RoutineWidget() {
     setActiveSession(program);
   };
 
-  const handleSessionComplete = (program: RoutineProgram, answers: Answers) => {
-    saveRoutineCompletion(program, answers);
-    void recordRoutineCompletion({
+  const handleSessionComplete = async (program: RoutineProgram, answers: Answers) => {
+    await recordRoutineCompletion({
       routineId: program,
       routineTitle: program === "morning" ? "Programma Mattutino" : "Programma Serale",
       template: program,
       answers,
-    }).catch(() => {});
+    });
+    saveRoutineCompletion(program, answers, { storage });
     window.dispatchEvent(new Event("tl_routine_history_updated"));
     window.dispatchEvent(new Event(`tl_routine_${program}_done`));
     setActiveSession(null);

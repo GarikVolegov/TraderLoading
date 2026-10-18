@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
+import { brokerLocalPath } from "./localStoragePath.js";
 import type {
   BrokerCapabilities,
   BrokerDeal,
@@ -58,7 +59,7 @@ const EMPTY_FILE: CompanionFile = { pairings: [], snapshots: {}, histories: {}, 
 const DEFAULT_STALE_MS = 1000 * 60 * 2;
 
 function defaultPath(): string {
-  return join(process.cwd(), ".local", "broker-companion.json");
+  return brokerLocalPath("broker-companion.json");
 }
 
 function now(): string {

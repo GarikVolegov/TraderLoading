@@ -1,3 +1,4 @@
+import { readDesignColors } from "@/lib/designColors";
 // ─── Replay chart (lightweight-charts core) ──────────────────────────────────
 // Owns the IChartApi lifecycle for the terminal: price series (candles /
 // heikin / line), volume histogram, watermark, price-pane indicator overlays
@@ -19,11 +20,13 @@ import {
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type ITextWatermarkPluginApi,
+  type Logical,
   type SeriesMarker,
   type Time,
 } from "lightweight-charts";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { computeIndicator } from "@/lib/replay/indicatorCatalog";
+import { cursorAtReplayTime, logicalIndexAtTime } from "@/lib/replay/replayClock";
 import { toHeikinAshi } from "@/lib/replay/heikinAshi";
 import type { ReplayCandle } from "@/lib/replay/types";
 import { DrawingsOverlay } from "./DrawingsOverlay";
@@ -40,8 +43,8 @@ export interface ReplayChartApi {
   takeScreenshot: () => string | null;
 }
 
-const UP = "#10b981";
-const DOWN = "#ef4444";
+const UP = "#26a69a";
+const DOWN = "#ef5350";
 const VISIBLE_BARS_ON_SEEK = 120;
 
 type PriceSeries =
@@ -67,6 +70,8 @@ export function ReplayChart({
   const indicatorSeriesRef = useRef<Map<string, ISeriesApi<"Line">[]>>(new Map());
   const watermarkRef = useRef<ITextWatermarkPluginApi<Time> | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const historyLoaderRef = useRef(engine.ensureHistoryBefore);
+  historyLoaderRef.current = engine.ensureHistoryBefore;
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const [revision, setRevision] = useState(0);
   const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 });
@@ -74,10 +79,12 @@ export function ReplayChart({
   // data/watermark/marker/price-line effects must re-run against the new chart
   // even though their own deps did not change.
   const [chartEpoch, setChartEpoch] = useState(0);
-  const lastRenderRef = useRef<{ firstTime: number | null; length: number; chartType: string }>({
+  const lastRenderRef = useRef<{ firstTime: number | null; lastTime: number | null; length: number; chartType: string; lastValue: string }>({
     firstTime: null,
+    lastTime: null,
     length: 0,
     chartType: "candles",
+    lastValue: "",
   });
 
   const { revealed, symbol, interval, indicators, settings } = engine;
@@ -100,22 +107,23 @@ export function ReplayChart({
     const indicatorSeries = indicatorSeriesRef.current;
     const subSeries = subSeriesRef.current;
 
+    const theme = readDesignColors();
     const chart = createChart(container, {
       autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#9ca3af",
-        fontFamily: "ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace",
+        background: { type: ColorType.Solid, color: theme.background },
+        textColor: theme.muted,
+        fontFamily: getComputedStyle(container).fontFamily,
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: "rgba(255,255,255,0.04)" },
-        horzLines: { color: "rgba(255,255,255,0.04)" },
+        vertLines: { color: theme.panel },
+        horzLines: { color: theme.panel },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: "rgba(148,163,184,0.4)", labelBackgroundColor: "#334155" },
-        horzLine: { color: "rgba(148,163,184,0.4)", labelBackgroundColor: "#334155" },
+        vertLine: { color: "rgba(148,163,184,0.4)", labelBackgroundColor: theme.border },
+        horzLine: { color: "rgba(148,163,184,0.4)", labelBackgroundColor: theme.border },
       },
       rightPriceScale: {
         borderColor: "rgba(255,255,255,0.08)",
@@ -128,7 +136,16 @@ export function ReplayChart({
         rightOffset: 4,
         shiftVisibleRangeOnNewBar: true,
       },
-      localization: { locale: terminalLocale(language) },
+      localization: {
+        locale: terminalLocale(language),
+        timeFormatter: (time: Time) => {
+          if (typeof time !== "number") return String(time);
+          return new Intl.DateTimeFormat(terminalLocale(language), {
+            timeZone: "UTC", day: "2-digit", month: "short", year: "numeric",
+            hour: "2-digit", minute: "2-digit", hour12: false,
+          }).format(new Date(time * 1000));
+        },
+      },
       handleScroll: { vertTouchDrag: false },
     });
 
@@ -157,7 +174,10 @@ export function ReplayChart({
 
     // Overlay re-projection: pan/zoom and container resizes bump `revision`.
     const bump = () => setRevision((value) => value + 1);
-    chart.timeScale().subscribeVisibleLogicalRangeChange(bump);
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      bump();
+      if (range && range.from < 50 && lastRenderRef.current.length > 0) historyLoaderRef.current();
+    });
     const resizeObserver = new ResizeObserver(() => {
       setOverlaySize({ width: container.clientWidth, height: container.clientHeight });
       bump();
@@ -176,7 +196,7 @@ export function ReplayChart({
       priceLinesRef.current = [];
       indicatorSeries.clear();
       subSeries.clear();
-      lastRenderRef.current = { firstTime: null, length: 0, chartType: "candles" };
+      lastRenderRef.current = { firstTime: null, lastTime: null, length: 0, chartType: "candles", lastValue: "" };
       chart.remove();
       chartRef.current = null;
     };
@@ -261,11 +281,13 @@ export function ReplayChart({
 
     const last = lastRenderRef.current;
     const firstTime = displayCandles.length > 0 ? displayCandles[0].time : null;
+    const lastBar = displayCandles[displayCandles.length - 1];
+    const lastValue = lastBar ? `${interval}:${lastBar.time}:${lastBar.open}:${lastBar.high}:${lastBar.low}:${lastBar.close}:${lastBar.volume}` : "";
     // Same window, same cursor (e.g. a prefetch append behind the cursor or an
     // unrelated re-render): the visible data is unchanged — never touch the
     // series or the user's pan/zoom. (A just-toggled volume series still needs
     // its first fill.)
-    if (last.firstTime === firstTime && last.chartType === chartType && last.length === displayCandles.length) {
+    if (last.firstTime === firstTime && last.chartType === chartType && last.length === displayCandles.length && last.lastValue === lastValue) {
       if (volumeJustCreated && volumeSeriesRef.current) {
         volumeSeriesRef.current.setData(
           displayCandles.map((candle) => ({
@@ -281,6 +303,7 @@ export function ReplayChart({
       last.firstTime === firstTime &&
       last.chartType === chartType &&
       last.length > 0 &&
+      displayCandles[last.length - 1]?.time === last.lastTime &&
       displayCandles.length > last.length &&
       displayCandles.length - last.length <= 3;
 
@@ -299,23 +322,33 @@ export function ReplayChart({
     });
 
     if (isIncremental) {
+      // A previous forming candle may now be complete after a forward seek.
+      if (price.type === "line") price.series.update(toLinePoint(displayCandles[last.length - 1]));
+      else price.series.update(toCandlePoint(displayCandles[last.length - 1]));
+      volumeSeriesRef.current?.update(toVolumePoint(displayCandles[last.length - 1]));
       for (let i = last.length; i < displayCandles.length; i++) {
         if (price.type === "line") price.series.update(toLinePoint(displayCandles[i]));
         else price.series.update(toCandlePoint(displayCandles[i]));
         volumeSeriesRef.current?.update(toVolumePoint(displayCandles[i]));
       }
     } else {
+      const previousRange = chart.timeScale().getVisibleLogicalRange();
+      const addedBefore = displayCandles.length - last.length;
+      const isPrepend = addedBefore > 0 && last.length > 0 && last.lastValue === lastValue &&
+        displayCandles[addedBefore]?.time === last.firstTime;
       if (price.type === "line") price.series.setData(displayCandles.map(toLinePoint));
       else price.series.setData(displayCandles.map(toCandlePoint));
       volumeSeriesRef.current?.setData(showVolume ? displayCandles.map(toVolumePoint) : []);
-      if (displayCandles.length > 0) {
+      if (isPrepend && previousRange) {
+        chart.timeScale().setVisibleLogicalRange({ from: previousRange.from + addedBefore, to: previousRange.to + addedBefore });
+      } else if (displayCandles.length > 0) {
         const to = displayCandles.length - 1 + 4;
         chart.timeScale().setVisibleLogicalRange({ from: to - VISIBLE_BARS_ON_SEEK, to });
       }
     }
 
-    lastRenderRef.current = { firstTime, length: displayCandles.length, chartType };
-  }, [displayCandles, chartType, showVolume, ensurePriceSeries, chartEpoch]);
+    lastRenderRef.current = { firstTime, lastTime: lastBar?.time ?? null, length: displayCandles.length, chartType, lastValue };
+  }, [displayCandles, chartType, showVolume, ensurePriceSeries, chartEpoch, interval]);
 
   // ── indicator overlays and sub-panes ───────────────────────────────────────
   // Price-pane lines live in pane 0 next to the candles; each active sub-pane
@@ -472,19 +505,25 @@ export function ReplayChart({
     const markersApi = markersRef.current;
     if (!markersApi || lastRevealedTime == null) return;
     const markers: SeriesMarker<Time>[] = [];
+    const timeForExecution = (time: number) => {
+      const index = cursorAtReplayTime(revealed, time);
+      return index < 0 ? null : revealed[index].time;
+    };
     for (const trade of engine.trades) {
-      if (trade.entryTime <= lastRevealedTime) {
+      const entryBarTime = timeForExecution(trade.entryTime);
+      const exitBarTime = timeForExecution(trade.exitTime);
+      if (engine.replayTime != null && trade.entryTime <= engine.replayTime && entryBarTime != null) {
         markers.push({
-          time: trade.entryTime as Time,
+          time: entryBarTime as Time,
           position: trade.direction === "buy" ? "belowBar" : "aboveBar",
           color: trade.direction === "buy" ? UP : DOWN,
           shape: trade.direction === "buy" ? "arrowUp" : "arrowDown",
           text: `${trade.direction === "buy" ? "▲" : "▼"} ${formatPrice(trade.entryPrice, symbol)}`,
         });
       }
-      if (trade.exitTime <= lastRevealedTime) {
+      if (engine.replayTime != null && trade.exitTime <= engine.replayTime && exitBarTime != null) {
         markers.push({
-          time: trade.exitTime as Time,
+          time: exitBarTime as Time,
           position: "aboveBar",
           color: trade.result === "win" ? UP : trade.result === "loss" ? DOWN : "#eab308",
           shape: "circle",
@@ -494,7 +533,7 @@ export function ReplayChart({
     }
     markers.sort((a, b) => (a.time as number) - (b.time as number));
     markersApi.setMarkers(markers);
-  }, [engine.trades, lastRevealedTime, symbol, chartType, chartEpoch]);
+  }, [engine.trades, engine.replayTime, revealed, lastRevealedTime, symbol, chartType, chartEpoch]);
 
   // ── open-position price lines (entry / SL / TP on the price axis) ──────────
   useEffect(() => {
@@ -528,7 +567,9 @@ export function ReplayChart({
     return {
       xForTime: (time: number) => {
         const coordinate = chart.timeScale().timeToCoordinate(time as Time);
-        return coordinate == null ? null : coordinate;
+        if (coordinate != null) return coordinate;
+        const logical = logicalIndexAtTime(revealed, time, engine.intervalSeconds);
+        return logical == null ? null : chart.timeScale().logicalToCoordinate(logical as Logical);
       },
       yForPrice: (value: number) => {
         const coordinate = price.series.priceToCoordinate(value);
@@ -543,7 +584,7 @@ export function ReplayChart({
       height: overlaySize.height,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- revision invalidates chart coordinates after pan/zoom
-  }, [overlaySize, revision, revealed.length]);
+  }, [overlaySize, revision, revealed, engine.intervalSeconds]);
 
   // Right-click = replay jump to the bar under the cursor (FX Replay behavior);
   // the browser menu stays available on the rest of the terminal.

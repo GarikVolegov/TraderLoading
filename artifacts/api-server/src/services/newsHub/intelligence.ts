@@ -1,3 +1,4 @@
+import { pairEffects } from "./eventEvidence.js";
 import type { NewsArticle } from "./types.js";
 
 export interface NewsIntelligenceContext {
@@ -10,24 +11,21 @@ export interface ClassifiedNewsArticle {
   relevant: boolean;
 }
 
-type Direction = NonNullable<NewsArticle["impactDirection"]>;
-
 interface RuleMatch {
   assets: string[];
   score: number;
   confidence: number;
-  direction: Direction;
   reasonKey: string;
 }
 
 const ASSET_KEYWORDS: Record<string, RegExp[]> = {
   XAU: [/\bgold\b/i, /\bxau\b/i, /\bbullion\b/i, /precious\s+metals?/i, /gold\s+etf/i, /gold\s+futures/i],
-  USD: [/\busd\b/i, /\bdollar\b/i, /\bdxy\b/i, /\bfed\b/i, /\bfomc\b/i, /treasury\s+yields?/i, /powell/i],
+  USD: [/\busd\b/i, /\bdollar\b/i, /\bdxy\b/i, /\bfed\b/i, /\bfomc\b/i, /federal\s+reserve/i, /\b(?:bls|bea)\b/i, /treasury\s+yields?/i, /powell/i],
   EUR: [/\beur\b/i, /\beuro\b/i, /\becb\b/i, /\blagarde\b/i],
-  GBP: [/\bgbp\b/i, /\bpound\b/i, /\bsterling\b/i, /\bboe\b/i],
-  JPY: [/\bjpy\b/i, /\byen\b/i, /\bboj\b/i],
+  GBP: [/\bgbp\b/i, /\bpound\b/i, /\bsterling\b/i, /\bboe\b/i, /bank\s+of\s+england/i],
+  JPY: [/\bjpy\b/i, /\byen\b/i, /\bboj\b/i, /bank\s+of\s+japan/i],
   CHF: [/\bchf\b/i, /\bswiss\s+franc\b/i, /\bsnb\b/i],
-  CAD: [/\bcad\b/i, /\bcanadian\s+dollar\b/i, /\bboc\b/i],
+  CAD: [/\bcad\b/i, /\bcanadian\s+dollar\b/i, /\bboc\b/i, /bank\s+of\s+canada/i],
   AUD: [/\baud\b/i, /\baussie\b/i, /\brba\b/i],
   NZD: [/\bnzd\b/i, /\bkiwi\b/i, /\brbnz\b/i, /\bnew\s+zealand\s+dollar\b/i],
   BTC: [/\bbtc\b/i, /\bbitcoin\b/i, /\bcrypto\b/i],
@@ -41,14 +39,14 @@ const KNOWN_ASSETS = ["EUR", "USD", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "X
 const GLOBAL_MACRO_RE =
   /\b(fed|fomc|powell|ecb|lagarde|boe|boj|snb|rba|rbnz|boc|central\s+bank|rate\s+(decision|hike|cut|change)|interest\s+rates?|cpi|inflation|pce|nonfarm|non.?farm|nfp|payrolls?|jobs?\s+report|unemployment|gdp|pmi|treasury\s+yields?|bond\s+yields?|geopolit|war|conflict|sanction|tariff|trade\s+war|recession)\b/i;
 
-const XAU_INDIRECT_RULES: Array<{ re: RegExp; assets: string[]; score: number; confidence: number; direction: Direction; reasonKey: string }> = [
-  { re: /\bcpi\b|inflation|pce|price\s+index/i, assets: ["USD", "XAU"], score: 8, confidence: 0.78, direction: "bearish", reasonKey: "inflation" },
-  { re: /\bfed\b|\bfomc\b|powell|rate\s+(hike|decision|cut)|interest\s+rates?/i, assets: ["USD", "XAU"], score: 8, confidence: 0.76, direction: "bearish", reasonKey: "fed" },
-  { re: /treasury\s+yields?|real\s+yields?|bond\s+yields?/i, assets: ["USD", "XAU"], score: 8, confidence: 0.8, direction: "bearish", reasonKey: "yields" },
-  { re: /non.?farm|nfp|payrolls?|jobs?\s+report|unemployment/i, assets: ["USD", "XAU"], score: 7, confidence: 0.72, direction: "mixed", reasonKey: "jobs" },
-  { re: /geopolitical|war|conflict|tensions?|safe.?haven|risk.?off|sanctions/i, assets: ["XAU", "USD"], score: 8, confidence: 0.82, direction: "bullish", reasonKey: "risk" },
-  { re: /dollar\s+(rises?|jumps?|surges?|stronger|firmer)|dxy\s+(rises?|jumps?|surges?)/i, assets: ["USD", "XAU"], score: 7, confidence: 0.74, direction: "bearish", reasonKey: "usd_up" },
-  { re: /dollar\s+(falls?|drops?|weakens?|slides)|dxy\s+(falls?|drops?|slides?)/i, assets: ["USD", "XAU"], score: 7, confidence: 0.74, direction: "bullish", reasonKey: "usd_down" },
+const XAU_INDIRECT_RULES: Array<{ re: RegExp; assets: string[]; score: number; confidence: number; reasonKey: string }> = [
+  { re: /\bcpi\b|inflation|pce|price\s+index/i, assets: ["USD", "XAU"], score: 8, confidence: 0.78, reasonKey: "inflation" },
+  { re: /\bfed\b|\bfomc\b|powell|rate\s+(hike|decision|cut)|interest\s+rates?/i, assets: ["USD", "XAU"], score: 8, confidence: 0.76, reasonKey: "fed" },
+  { re: /treasury\s+yields?|real\s+yields?|bond\s+yields?/i, assets: ["USD", "XAU"], score: 8, confidence: 0.8, reasonKey: "yields" },
+  { re: /non.?farm|nfp|payrolls?|jobs?\s+report|unemployment/i, assets: ["USD", "XAU"], score: 7, confidence: 0.72, reasonKey: "jobs" },
+  { re: /geopolitical|war|conflict|tensions?|safe.?haven|risk.?off|sanctions/i, assets: ["XAU", "USD"], score: 8, confidence: 0.82, reasonKey: "risk" },
+  { re: /dollar\s+(rises?|jumps?|surges?|stronger|firmer)|dxy\s+(rises?|jumps?|surges?)/i, assets: ["USD", "XAU"], score: 7, confidence: 0.74, reasonKey: "usd_up" },
+  { re: /dollar\s+(falls?|drops?|weakens?|slides)|dxy\s+(falls?|drops?|slides?)/i, assets: ["USD", "XAU"], score: 7, confidence: 0.74, reasonKey: "usd_down" },
 ];
 
 const CORPORATE_EQUITY_RE = /\b(inc\.?|corp\.?|ltd\.?|plc|earnings|transcript|revenue|guidance|shares?|stock|nasdaq|nyse)\b/i;
@@ -83,20 +81,10 @@ const REASONS: Record<string, Record<string, string>> = {
 // title/summary, otherwise Italian/Spanish/... feeds fail keyword matching
 // ("gold" → "oro" would never match).
 function textOf(article: NewsArticle): string {
-  return [article.title, article.summary, article.originalTitle, article.originalSummary]
+  return [article.title, article.summary, article.originalTitle, article.originalSummary, article.sourceType === "official" ? article.source : undefined]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-}
-
-// Headlines that lead with an explicit call ("Bullish for gold: …") beat the
-// per-driver hard-coded direction, which can be wrong for second-order stories
-// (e.g. "inflation could send real yields lower" is gold-bullish).
-function explicitTitleDirection(article: NewsArticle): Direction | null {
-  const lead = `${article.originalTitle ?? article.title}`.slice(0, 40);
-  if (/\b(bullish|rialzista)\b/i.test(lead)) return "bullish";
-  if (/\b(bearish|ribassista)\b/i.test(lead)) return "bearish";
-  return null;
 }
 
 function selectedPairs(pairs = ""): string[] {
@@ -170,11 +158,6 @@ function directMatches(text: string, focusAssets: string[]): RuleMatch[] {
       assets: [asset],
       score: asset === "XAU" ? 8 : 6,
       confidence: asset === "XAU" && CORPORATE_EQUITY_RE.test(text) && !COMMODITY_GOLD_RE.test(text) ? 0.32 : asset === "XAU" ? 0.9 : 0.68,
-      direction: /rises?|rally|gains?|inflows?|record|surges?|safe.?haven/i.test(text)
-        ? "bullish"
-        : /falls?|drops?|outflows?|slumps?|sell.?off/i.test(text)
-          ? "bearish"
-          : "neutral",
       reasonKey: asset === "XAU" ? "direct_xau" : "generic",
     }));
 }
@@ -185,7 +168,6 @@ function xauIndirectMatches(text: string, focusAssets: string[]): RuleMatch[] {
     assets: rule.assets,
     score: rule.score,
     confidence: rule.confidence,
-    direction: rule.direction,
     reasonKey: rule.reasonKey,
   }));
 }
@@ -241,7 +223,9 @@ export function classifyNewsArticle(article: NewsArticle, context: NewsIntellige
   // its impact score must not be silently replaced by the rule's fixed score.
   const ruleScore = match?.score ?? (isGlobalMacro ? 6 : undefined);
   const effScore = Math.max(article.impactScore ?? 0, ruleScore ?? 0) || (article.impactScore ?? 2);
-  const titleDirection = explicitTitleDirection(article);
+  const effects = pairEffects(article, context.pairs ?? "", context.lang);
+  const directions = new Set(effects.map(e => e.direction));
+  const titleDirection = directions.size === 1 && effects[0].direction !== "uncertain" ? effects[0].direction : "neutral";
 
   return {
     relevant,
@@ -250,8 +234,9 @@ export function classifyNewsArticle(article: NewsArticle, context: NewsIntellige
       primaryAssets: articleAssets,
       affectedPairs,
       impactScore: effScore,
-      impactDirection: titleDirection ?? match?.direction ?? "neutral",
-      sentiment: titleDirection ?? article.sentiment ?? match?.direction ?? null,
+      impactDirection: titleDirection,
+      effects,
+      sentiment: titleDirection,
       relevanceReason,
       impactReason: article.impactReason ?? relevanceReason,
       matchConfidence: Number(effConfidence.toFixed(2)),

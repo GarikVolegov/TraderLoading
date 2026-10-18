@@ -2,8 +2,8 @@
 // Mockup's gear dialog with two tabs: Indicatori (catalog + per-indicator
 // cards with params, colors, placement, custom formula) and Strumenti (chart
 // type, default drawing color/width, magnet, rail visibility).
-import { useMemo, useState } from "react";
-import { Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Search, Trash2, X } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
 import { useEscapeToClose } from "./HotkeysHelp";
 import { FormulaError, parseFormula } from "@/lib/replay/formulaParser";
@@ -11,6 +11,7 @@ import {
   createIndicator,
   INDICATOR_META,
   INDICATOR_SWATCHES,
+  indicatorLabel,
   indicatorPane,
   type IndicatorConfig,
   type IndicatorMa,
@@ -214,8 +215,9 @@ function IndicatorCard({
               data-active={config.color === swatch}
               style={{ background: swatch }}
               onClick={() => onChange({ ...config, color: swatch })}
-              title={uiText("backtest_terminal.color")}
-              aria-label={uiText("backtest_terminal.color")}
+              title={`${uiText("backtest_terminal.color")} ${swatch}`}
+              aria-label={`${uiText("backtest_terminal.color")} ${swatch}`}
+              aria-pressed={config.color === swatch}
             />
           ))}
         </div>
@@ -311,33 +313,64 @@ function ChartTemplates({ engine }: { engine: ReplayEngine }) {
 export function TerminalSettingsDialog({
   engine,
   initialTab = "indicators",
+  initialIndicatorId,
   onClose,
 }: {
   engine: ReplayEngine;
   initialTab?: "indicators" | "tools";
+  initialIndicatorId?: string;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<"indicators" | "tools">(initialTab);
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState<string | undefined>(initialIndicatorId ?? engine.indicators[0]?.id);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    const dialog = dialogRef.current;
+    dialog?.querySelector<HTMLElement>("input, button")?.focus();
+    const containFocus = (event: FocusEvent) => {
+      if (dialog && !dialog.contains(event.target as Node)) dialog.querySelector<HTMLElement>("input, button")?.focus();
+    };
+    document.addEventListener("focusin", containFocus);
+    return () => {
+      document.removeEventListener("focusin", containFocus);
+      if (previous instanceof HTMLElement) previous.focus();
+    };
+  }, []);
   useEscapeToClose(onClose);
   const { indicators, setIndicators, settings, setSettings } = engine;
   const idCounterRef = useState(() => ({ value: Date.now() }))[0];
+  const selected = indicators.find((config) => config.id === selectedId) ?? indicators[0];
+  const matchingTypes = ADDABLE_TYPES.filter((type) => `${type} ${uiText(INDICATOR_META[type].labelKey)}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
 
   const addIndicator = (type: IndicatorType) => {
     idCounterRef.value += 1;
-    setIndicators([...indicators, createIndicator(type, `ind-${idCounterRef.value}`)]);
+    const indicator = createIndicator(type, `ind-${idCounterRef.value}`);
+    setIndicators([...indicators, indicator]);
+    setSelectedId(indicator.id);
   };
 
   return (
     <div className="btm-modal-backdrop" onClick={onClose} role="presentation">
       <div
-        className="btm-modal"
+        ref={dialogRef}
+        className="btm-modal btm-settings-modal"
         role="dialog"
         aria-modal="true"
         aria-label={uiText("backtest_terminal.settings")}
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key !== "Tab") return;
+          const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]'));
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+        }}
       >
         <div className="btm-modal-head">
-          <h2 className="btm-modal-title">{uiText("backtest_terminal.settings")}</h2>
+          <h2 className="btm-modal-title">{uiText(tab === "indicators" ? "backtest_terminal.indicators" : "backtest_terminal.tools_tab")}</h2>
           <button type="button" className="btm-iconbtn" onClick={onClose} aria-label={uiText("backtest_terminal.close")}>
             <X size={15} />
           </button>
@@ -354,23 +387,43 @@ export function TerminalSettingsDialog({
 
         <div className="btm-modal-body">
           {tab === "indicators" ? (
-            <>
-              <div className="btm-addgrid">
-                {ADDABLE_TYPES.map((type) => (
-                  <button key={type} type="button" className="btm-addbtn" onClick={() => addIndicator(type)}>
-                    + {uiText(INDICATOR_META[type].labelKey)}
+            <div className="btm-indicator-workspace">
+              <aside className="btm-indicator-catalog">
+                <label className="btm-indicator-search">
+                  <Search size={16} />
+                  <input value={query} onChange={(event) => setQuery(event.target.value)}
+                    placeholder={uiText("backtest_terminal.ind_search")}
+                    aria-label={uiText("backtest_terminal.ind_search")} />
+                </label>
+                <div className="btm-catalog-caption">{uiText("backtest_terminal.ind_library")}</div>
+                {matchingTypes.map((type) => (
+                  <button key={type} type="button" className="btm-catalog-item" onClick={() => addIndicator(type)}>
+                    <span><strong>{uiText(INDICATOR_META[type].labelKey)}</strong><small>{uiText(`backtest_terminal.pane_${INDICATOR_META[type].pane}`)}</small></span>
+                    <Plus size={15} />
                   </button>
                 ))}
-              </div>
-              {indicators.map((config) => (
+                {matchingTypes.length === 0 && <p className="btm-muted btm-catalog-empty">{uiText("backtest_terminal.ind_no_results")}</p>}
+              </aside>
+              <div className="btm-indicator-editor">
+                <div className="btm-catalog-caption">{uiText("backtest_terminal.ind_on_chart")} <span>{indicators.length}</span></div>
+                <div className="btm-active-indicators">
+                  {indicators.map((config) => <button key={config.id} type="button" className="btm-active-indicator"
+                    data-active={selected?.id === config.id} aria-pressed={selected?.id === config.id}
+                    onClick={() => setSelectedId(config.id)}>
+                    <span className="btm-inddot" style={{ background: config.color }} />{indicatorLabel(config)}
+                    {!config.on && <span className="btm-muted">{uiText("backtest_terminal.ind_off")}</span>}
+                  </button>)}
+                </div>
+                {selected ? (
                 <IndicatorCard
-                  key={config.id}
-                  config={config}
+                  key={selected.id}
+                  config={selected}
                   onChange={(next) => setIndicators(indicators.map((item) => (item.id === next.id ? next : item)))}
-                  onRemove={() => setIndicators(indicators.filter((item) => item.id !== config.id))}
+                  onRemove={() => setIndicators(indicators.filter((item) => item.id !== selected.id))}
                 />
-              ))}
-            </>
+                ) : <div className="btm-indicator-empty"><Plus size={28} /><p>{uiText("backtest_terminal.ind_empty")}</p></div>}
+              </div>
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
               <div className="btm-field">
@@ -400,8 +453,9 @@ export function TerminalSettingsDialog({
                       data-active={settings.toolColor === swatch}
                       style={{ background: swatch }}
                       onClick={() => setSettings({ ...settings, toolColor: swatch })}
-                      title={uiText("backtest_terminal.tool_color")}
-                      aria-label={uiText("backtest_terminal.tool_color")}
+                      title={`${uiText("backtest_terminal.tool_color")} ${swatch}`}
+                      aria-label={`${uiText("backtest_terminal.tool_color")} ${swatch}`}
+                      aria-pressed={settings.toolColor === swatch}
                     />
                   ))}
                 </div>

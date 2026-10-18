@@ -1,0 +1,18 @@
+import assert from "node:assert/strict";
+import { corpusWindowCovered, documentedMacroFeatures } from "./corpusCoverage.js";
+import type { MacroRelease } from "./eventEvidence.js";
+const cutoff="2026-10-08T12:00:00Z",end=Date.parse(cutoff);
+const runs=Array.from({length:17},(_,i)=>({availableAt:new Date(end-14400000+i*15*60000).toISOString(),complete:true}));
+assert.equal(corpusWindowCovered(runs,cutoff),true);
+assert.equal(corpusWindowCovered(runs.slice(1),cutoff),false);
+assert.equal(corpusWindowCovered(runs.filter((_,i)=>i!==8),cutoff),false);
+assert.equal(corpusWindowCovered(runs.map(r=>({...r,complete:false})),cutoff),false);
+assert.deepEqual(documentedMacroFeatures("EURUSD",cutoff,[]),[0,0,0]);
+const release:MacroRelease={eventType:"cpi_mom",country:"USD",referencePeriod:"September 2026",releaseAt:"2026-10-08T10:00:00Z",actual:.4,previous:.3,consensus:.2,revisedPrevious:null,unit:"percent_mom_seasonally_adjusted",consensusAsOf:"2026-10-08T09:00:00Z",sourceUrl:"https://www.bls.gov/news.release/cpi.htm"};
+const doc={eventId:"event",firstSeenAt:"2026-10-08T10:01:00Z",article:{release,title:"USD CPI release",source:"BLS",publishedAt:release.releaseAt,url:release.sourceUrl,summary:"Original release",sentiment:null,imageUrl:null}};
+assert.deepEqual(documentedMacroFeatures("EURUSD",cutoff,[doc,doc]),[1,-.2,0]);
+assert.deepEqual(documentedMacroFeatures("USDJPY",cutoff,[doc]),[1,.2,0]);
+assert.deepEqual(documentedMacroFeatures("EURUSD",cutoff,[{...doc,firstSeenAt:"2026-10-08T12:01:00Z"}]),[0,0,0]);
+assert.equal(documentedMacroFeatures("EURUSD",cutoff,[{...doc,article:{...doc.article,release:{...release,consensus:null}}}]),null);
+assert.equal(documentedMacroFeatures("EURUSD",cutoff,[{...doc,article:{...doc.article,release:{...release,consensusAsOf:"2026-10-08T10:01:00Z"}}}]),null);
+console.log("Macro coverage, first acquisition, deduplication, base/quote and missing consensus checks passed");

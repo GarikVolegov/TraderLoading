@@ -7,6 +7,16 @@ export interface ArticleDeepDive {
 }
 
 export interface Article {
+  articleId?: string;
+  eventId?: string | null;
+  sourceDocumentId?: string;
+  firstSeenAt?: string;
+  archiveStatus?: "persisted" | "unavailable";
+  effects?: NewsPairEffect[];
+  release?: { eventType: string; country: string; referencePeriod: string | null; releaseAt: string | null; actual: number | null; consensus: number | null; previous: number | null; revisedPrevious: number | null; unit: string | null; consensusAsOf: string | null; sourceUrl: string };
+  sourceType?: "official" | "publisher";
+  analysisMethod?: "llm" | "heuristic" | "none";
+  contentBasis?: "full_text" | "snippet" | "headline";
   title: string;
   summary: string;
   originalTitle?: string;
@@ -32,11 +42,16 @@ export interface Article {
   ageMinutes?: number;
   isFallback?: boolean;
   qualityScore?: number;
+  curationScore?: number;
   deepDive?: ArticleDeepDive;
 }
 
+export interface NewsPairEffect { pair: string; horizonHours: 4; direction: "bullish" | "bearish" | "uncertain"; fact: string; scenario: string; invalidation: string; evidenceUrls: string[] }
+
 export interface NewsData {
   articles: Article[];
+  sourceStatus?: "available" | "partial" | "unavailable";
+  analysisStatus?: "available" | "unavailable" | "disabled";
   fetchedAt: string;
   hasApiKey: boolean;
   source?: string;

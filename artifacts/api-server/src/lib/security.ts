@@ -40,7 +40,6 @@ const ALLOWED_UPLOAD_DIRS = new Set([
   "post-images",
   "community-files",
   "community-assets",
-  "milestone-files",
   "avatars",
 ]);
 const ALLOWED_UPLOAD_EXTENSIONS = new Set([
@@ -212,6 +211,8 @@ export function createHelmetOptions(
           "'self'",
           "https://js.stripe.com",
           "https://hooks.stripe.com",
+          "https://www.youtube-nocookie.com",
+          "https://player.vimeo.com",
           "https://challenges.cloudflare.com",
           "https://www.tradingview-widget.com",
           "https://s.tradingview.com",

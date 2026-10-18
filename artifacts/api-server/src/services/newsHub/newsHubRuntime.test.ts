@@ -61,7 +61,7 @@ assert.equal(fetchCount, 1);
 assert.equal(snapshot.articles.length, 2);
 assert.equal(runtime.getSnapshot()?.articles[0]?.title, "Fed signals rate cuts");
 assert.equal(events.filter((type) => type === "news_snapshot").length, 1);
-assert.equal(events.filter((type) => type === "news_article").length, 2);
+assert.equal(events.filter((type) => type === "news_article").length, 0);
 
 runtime.setProviderStatus({ provider: "benzinga", status: "connected", transport: "websocket" });
 const statuses = runtime.getProviderStatuses();
@@ -72,7 +72,7 @@ assert.equal(events.includes("news_provider_status"), true);
 await runtime.refresh({ pairs: "EURUSD,XAUUSD", lang: "it", force: true });
 assert.equal(fetchCount, 2);
 assert.equal(events.filter((type) => type === "news_snapshot").length, 2);
-assert.equal(events.filter((type) => type === "news_article").length, 2);
+assert.equal(events.filter((type) => type === "news_article").length, 0);
 
 unsubscribe();
 await runtime.stop();

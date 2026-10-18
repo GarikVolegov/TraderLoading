@@ -144,13 +144,15 @@ export function AdminReviewsPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={row.published ? "default" : "secondary"}>
-                      {uiText(`admin.reviews.filter.${row.status}`)}
+                      {uiText(row.status === "approved" && !row.published
+                        ? "community.review.hidden"
+                        : `admin.reviews.filter.${row.status}`)}
                     </Badge>
                   </TableCell>
                   <TableCell>{formatAdminDate(row.createdAt)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {row.status !== "approved" && (
+                      {(row.status !== "approved" || !row.published) && (
                         <Button
                           size="sm"
                           disabled={actionPending}

@@ -1,0 +1,11 @@
+import {setAuditScenario,recordAuditRequest,auditExecutionId as executionId} from './env.mjs';
+import assert from 'node:assert/strict';import{readFileSync,writeFileSync}from'node:fs';import{api,root,run,base}from'./env.mjs';
+const u=JSON.parse(readFileSync(root+'.local-logs/full-audit-users.json')),checks=[];
+const check=async(name,fn)=>{setAuditScenario(name);try{await fn();checks.push({name,status:'passed'});}catch(e){checks.push({name,status:'failed',error:e.message});}console.log(checks.at(-1));writeFileSync(run.output+'/profile-flows.json',JSON.stringify({runId:run.runId,executionId,checks},null,2));};
+const upload=async(path,name,buffer)=>{const form=new FormData();form.set('image',new Blob([buffer],{type:'image/png'}),name);const r=await fetch(base+'/api'+path,{method:'POST',headers:{Cookie:'sid='+u.a.sid},body:form});recordAuditRequest({method:'POST',path,status:r.status,authenticated:true});return r;};
+let avatar;
+await check('Valid profile image renders and nickname edit preserves it',async()=>{const r=await upload('/profile/avatar','valid.png',Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ioAAAAASUVORK5CYII=','base64'));assert.equal(r.status,200);avatar=(await r.json()).avatarUrl;assert.equal((await fetch(base+avatar)).status,200);assert.equal((await api(u.a.sid,'/profile','PUT',{name:'Audit nickname '+Date.now()})).status,200);assert.equal((await api(u.a.sid,'/profile')).data.avatarUrl,avatar);});
+await check('Spoofed image rejected and prior profile preserved',async()=>{assert.equal((await upload('/profile/avatar','spoof.png','Not image')).status,415);assert.equal((await api(u.a.sid,'/profile')).data.avatarUrl,avatar);});
+await check('Invalid background rejected without changing preference',async()=>{const before=(await api(u.a.sid,'/settings')).data.backgroundUrl;assert.equal((await upload('/settings/background','spoof.png','Not image')).status,415);assert.equal((await api(u.a.sid,'/settings')).data.backgroundUrl,before);});
+await check('Blank nickname rejected',async()=>assert.equal((await api(u.a.sid,'/profile','PUT',{name:'  '})).status,400));
+if(checks.some(x=>x.status==='failed'))process.exitCode=1;

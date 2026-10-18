@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { rootDestination } from "./lib/navHubs";
 import { existsSync, readFileSync } from "node:fs";
 
 const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
@@ -11,16 +12,14 @@ const cotWidget = readFileSync(new URL("./components/CotWidget.tsx", import.meta
 
 assert.doesNotMatch(app, /const Tools = lazy/);
 assert.match(app, /<Route path="\/backtest" component=\{Backtest\} \/>/);
-assert.match(app, /<Route path="\/tools" component=\{Backtest\} \/>/);
+assert.match(app, /<Route path="\/tools" component=\{WorkspaceAlias\} \/>/);
 assert.equal(existsSync(legacyToolsPage), false);
 
-assert.match(
-  bottomNav,
-  /\{\s*href: "\/backtest",\s*icon: FlaskConical,\s*labelKey: "nav\.backtest",\s*isChat: false\s*\}/,
-);
+const navigation = readFileSync(new URL("./lib/navHubs.ts", import.meta.url), "utf8");
+assert.match(navigation, /id: "method"[\s\S]*?href: "\/method"/);
+assert.equal(rootDestination("/backtest/42/replay"),"backtest");
 assert.doesNotMatch(bottomNav, /href: "\/tools"/);
-assert.doesNotMatch(bottomNav, /labelKey: "nav\.tools"/);
-assert.equal((bottomNav.match(/href: "\/backtest"/g) ?? []).length, 1);
+assert.equal((navigation.match(/href: "\/backtest"/g) ?? []).length, 1);
 
 assert.doesNotMatch(dashboard, /route: "\/tools\?tab=/);
 assert.doesNotMatch(sentimentWidget, /href="\/tools"/);

@@ -97,10 +97,10 @@ export default function ProPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
-            className="mx-auto mt-5 max-w-2xl font-mono text-3xl font-extrabold tracking-tight sm:text-5xl"
+            className="mx-auto mt-5 max-w-2xl font-sans text-3xl font-extrabold tracking-tight sm:text-5xl"
           >
             {t("billing.pro_page.headline_1")}{" "}
-            <span className="bg-gradient-to-r from-primary to-emerald-300 bg-clip-text text-transparent">
+            <span className="text-primary">
               {t("billing.pro_page.headline_2")}
             </span>
           </motion.h1>
@@ -148,7 +148,7 @@ export default function ProPage() {
                   <Button
                     type="button"
                     size="lg"
-                    className="px-10 shadow-[0_0_30px_rgba(34,197,94,0.3)] transition-shadow hover:shadow-[0_0_40px_rgba(34,197,94,0.45)]"
+                    className="px-10"
                     onClick={() => setCheckoutOpen(true)}
                   >
                     <Crown className="mr-2 h-4 w-4" />
@@ -196,7 +196,7 @@ export default function ProPage() {
 
         {/* ── Confronto Free vs Pro ── */}
         <section className="relative px-4 pb-12">
-          <motion.h2 {...sectionMotion} className="mb-6 text-center font-mono text-2xl font-extrabold">
+          <motion.h2 {...sectionMotion} className="mb-6 text-center font-sans text-2xl font-extrabold">
             {t("billing.pro_page.compare_title")}
           </motion.h2>
           <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-2">
@@ -227,7 +227,7 @@ export default function ProPage() {
               </Card>
             </motion.div>
             <motion.div {...sectionMotion} transition={{ delay: 0.08 }}>
-              <Card className="relative h-full border-primary/40 bg-card/60 shadow-[0_0_30px_rgba(34,197,94,0.12)]">
+              <Card className="relative h-full border-primary/40 bg-card/60">
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
                   {t("billing.pro_page.recommended")}
                 </span>

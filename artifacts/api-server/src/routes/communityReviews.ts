@@ -109,7 +109,8 @@ router.post("/community/:id/reviews", async (req, res) => {
       .values({ communityId, userId, rating, text })
       .onConflictDoUpdate({
         target: [communityReviewsTable.communityId, communityReviewsTable.userId],
-        set: { rating, text, hidden: false, updatedAt: sql`now()` },
+        // Editing is not a moderation action: only reviews.moderate can unhide.
+        set: { rating, text, updatedAt: sql`now()` },
       });
     await recomputeRating(communityId);
     res.status(201).json({ ok: true });

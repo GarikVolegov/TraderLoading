@@ -17,6 +17,14 @@ on:
         type: choice
         options: [tail, seed]
         default: tail
+      symbols:
+        description: "Symbols to import (comma separated)"
+        type: string
+        default: "XAUUSD,EURUSD,USOIL"
+      years:
+        description: "Years of history for seed mode"
+        type: string
+        default: "5"
 
 concurrency:
   group: candle-tail
@@ -25,10 +33,13 @@ concurrency:
 jobs:
   tail:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: ${{ github.event.inputs.mode == 'seed' && 360 || 60 }}
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       NODE_ENV: production
+      INGEST_MODE: ${{ github.event.inputs.mode || 'tail' }}
+      INGEST_SYMBOLS: ${{ github.event.inputs.symbols || '' }}
+      INGEST_YEARS: ${{ github.event.inputs.years || '5' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -38,4 +49,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Run candle ingest
-        run: pnpm --filter @workspace/api-server exec tsx src/ingest.ts ${{ github.event.inputs.mode || 'tail' }}
+        shell: bash
+        run: |
+          args=("$INGEST_MODE")
+          if [[ -n "$INGEST_SYMBOLS" ]]; then
+            args+=("--symbols=$INGEST_SYMBOLS")
+          fi
+          if [[ "$INGEST_MODE" == "seed" ]]; then
+            args+=("--years=$INGEST_YEARS" "--resume=true")
+          fi
+          pnpm --filter @workspace/api-server exec tsx src/ingest.ts "${args[@]}"

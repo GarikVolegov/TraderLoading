@@ -4,7 +4,9 @@
 import { PAIR_CATALOG } from "@workspace/pair-catalog";
 import { getJsonCache, setJsonCache } from "../lib/cache.js";
 import { aggregateInterval, bucketStart, mergeTail } from "./aggregate.js";
-import { INTERVAL_SECONDS, RES, symbolId } from "./candleRegistry.js";
+import { INTERVAL_SECONDS, REPLAY_INSTRUMENTS, RES, SOURCE_ID, symbolId } from "./candleRegistry.js";
+import { readReplayHistory, ReplayHistoryError } from "./replayHistory.js";
+import type { WarehouseCoverage } from "./ingest/candleStore.js";
 
 const YAHOO_SYMBOLS: Record<string, string> = {
   EURUSD: "EURUSD=X", GBPUSD: "GBPUSD=X", USDJPY: "USDJPY=X",
@@ -13,6 +15,7 @@ const YAHOO_SYMBOLS: Record<string, string> = {
   GBPJPY: "GBPJPY=X", AUDJPY: "AUDJPY=X", XAUUSD: "GC=F",
   US30: "YM=F", NAS100: "NQ=F", SPX500: "ES=F",
   BTCUSD: "BTC-USD", ETHUSD: "ETH-USD",
+  USOIL: "CL=F",
   // Extra volatility-widget instruments (Yahoo here is the local-dev fallback;
   // prod serves these from Dukascopy, which works from Railway's IP).
   XAGUSD: "SI=F", USDMXN: "MXN=X", USDZAR: "ZAR=X",
@@ -97,11 +100,17 @@ function getTwelveDataApiKey(): string {
 
 interface CachedData { data: CandlesResult; timestamp: number; }
 const cache = new Map<string, CachedData>();
+const contextInFlight = new Map<string, Promise<CandlesResult>>();
 const CACHE_TTL = 60 * 60 * 1000;
 
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume?: number };
 
 export type CandlesRequestOptions = {
+  mode?: "replay";
+  anchorTime?: number;
+  warmupBars?: number;
+  /** Exclusive logical observation cutoff; forming bar excludes future M1. */
+  replayTime?: number;
   startDate?: string;
   /** Cursor paging (unix seconds, inclusive): continue a replay past the first page. */
   from?: number;
@@ -109,6 +118,9 @@ export type CandlesRequestOptions = {
   to?: number;
   /** Max bars per response (clamped to 1..WAREHOUSE_MAX_CANDLES). */
   limit?: number;
+  /** Internal live-context request: require a known provider retrieval age.
+   * Bypasses warehouse snapshots, whose last price-update time is unknown. */
+  maxAgeMs?: number;
 };
 
 export interface CandlesResult {
@@ -116,8 +128,16 @@ export interface CandlesResult {
   interval: string;
   source: string;
   candles: Candle[];
+  /** Provider retrieval time; retained across cache reads. */
+  fetchedAt?: string;
+  /** A provider refresh failed and this is the previous cached payload. */
+  stale?: boolean;
   /** Cursor for the next page when this one is full (paged requests only). */
   nextFrom?: number;
+  partialCandle?: Candle | null;
+  replayTime?: number;
+  /** Exclusive end of the canonical persisted M1 archive, independent of TF. */
+  availableTo?: number;
 }
 
 /** Lista dei simboli supportati (usata per la validazione delle route). */
@@ -528,6 +548,19 @@ export async function getCandles(
   interval: string,
   options: CandlesRequestOptions = {},
 ): Promise<CandlesResult> {
+  if (options.mode === "replay") {
+    if (!isCandleWarehouseEnabled()) throw new ReplayHistoryError("Archivio storico permanente non attivo. Attiva CANDLE_WAREHOUSE.");
+    return readReplayHistory(symbol, interval, options);
+  }
+  if (options.maxAgeMs !== undefined) {
+    const key = JSON.stringify([symbol, interval, options]);
+    let pending = contextInFlight.get(key);
+    if (!pending) {
+      pending = fetchLiveCandles(symbol, interval, options).finally(() => contextInFlight.delete(key));
+      contextInFlight.set(key, pending);
+    }
+    return pending;
+  }
   if (!isCandleWarehouseEnabled()) return fetchLiveCandles(symbol, interval, options);
 
   const startDate = normalizeStartDate(options.startDate);
@@ -597,6 +630,9 @@ export interface CandlesMetaResult {
   warehouseEnabled: boolean;
   /** M1 ingestion bounds (they bound every derived timeframe), or null when unavailable. */
   warehouse: CandleWatermark | null;
+  source?: string | null;
+  instrument?: string | null;
+  coverage?: WarehouseCoverage;
 }
 
 /**
@@ -616,6 +652,23 @@ export async function getCandlesMeta(
   if (sid === undefined) return { symbol, warehouseEnabled: true, warehouse: null };
 
   try {
+    if (!deps.loadWatermark) {
+      const { readCoverage } = await import("./ingest/candleStore.js");
+      const source = REPLAY_INSTRUMENTS[symbol]?.source ?? (symbol === "BTCUSD" || symbol === "ETHUSD" ? "binance" : "dukascopy");
+      const now = Math.floor(Date.now() / 1000);
+      const targetTo = Math.floor(now / 86400) * 86400;
+      const start = new Date(targetTo * 1000);
+      start.setUTCFullYear(start.getUTCFullYear() - 5);
+      const coverageKey = `candles:coverage:v2:${symbol}:${targetTo}`;
+      const cached = await getJsonCache<CandlesMetaResult>(coverageKey);
+      if (cached) return cached;
+      const state = await readCoverage(sid, SOURCE_ID[source], Math.floor(start.getTime() / 1000), targetTo);
+      const result: CandlesMetaResult = { symbol, warehouseEnabled: true,
+        warehouse: state.firstTs == null ? null : { firstTs: state.firstTs, lastTs: state.lastTs },
+        source, instrument: REPLAY_INSTRUMENTS[symbol]?.description ?? symbol, coverage: state.coverage };
+      await setJsonCache(coverageKey, result, 60);
+      return result;
+    }
     const load =
       deps.loadWatermark ??
       (await import("./ingest/candleStore.js")).readWatermark;
@@ -650,9 +703,13 @@ async function fetchLiveCandles(
   const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
   const cacheKey = candleCacheKey(symbol, interval, startDate, options);
   const requiredCached = requiredReplayCandles(interval, options);
+  const freshnessOK = (data: CandlesResult) => options.maxAgeMs === undefined ||
+    (!data.stale && Number.isFinite(Date.parse(data.fetchedAt ?? "")) &&
+      Date.now() - Date.parse(data.fetchedAt!) >= 0 && Date.now() - Date.parse(data.fetchedAt!) <= options.maxAgeMs);
   const cached = cache.get(cacheKey);
   if (
     cached &&
+    freshnessOK(cached.data) &&
     Date.now() - cached.timestamp < CACHE_TTL &&
     (isPaged || cached.data.candles.length >= requiredCached)
   ) {
@@ -660,7 +717,7 @@ async function fetchLiveCandles(
   }
 
   const distributedCached = await getJsonCache<CandlesResult>(cacheKey);
-  if (distributedCached && (isPaged || distributedCached.candles.length >= requiredCached)) {
+  if (distributedCached && freshnessOK(distributedCached) && (isPaged || distributedCached.candles.length >= requiredCached)) {
     cache.set(cacheKey, { data: distributedCached, timestamp: Date.now() });
     return distributedCached;
   }
@@ -668,6 +725,12 @@ async function fetchLiveCandles(
   const errors: string[] = [];
   let bestCandlesCount = 0;
   const chain = getFallbackChain(symbol, interval, Boolean(startDate));
+  // On a local workstation Yahoo is reachable and is a single request, while
+  // Dukascopy's daily history can exceed the operating-center deadline. Keep
+  // the production/Railway chain and replay behavior unchanged.
+  if (options.maxAgeMs !== undefined && process.env.NODE_ENV !== "production") {
+    chain.sort((a, b) => Number(b.name === "Yahoo") - Number(a.name === "Yahoo"));
+  }
 
   for (const { name, fn } of chain) {
     try {
@@ -689,7 +752,7 @@ async function fetchLiveCandles(
         isPaged || startDate
           ? paginateCandles(candles, options, intervalSecs)
           : { candles: latestWindowCandles(candles, options) };
-      const responseData: CandlesResult = { symbol, interval, source: name.toLowerCase(), ...page };
+      const responseData: CandlesResult = { symbol, interval, source: name.toLowerCase(), ...page, fetchedAt: new Date().toISOString(), stale: false };
       cache.set(cacheKey, { data: responseData, timestamp: Date.now() });
       // Cursor pages: full pages are immutable (24h), short/tail pages may
       // still grow (60s) — mirrors the warehouse TTL rule.
@@ -710,7 +773,7 @@ async function fetchLiveCandles(
   const stale = cache.get(cacheKey);
   if (stale && (isPaged || stale.data.candles.length >= requiredCached)) {
     console.log(`[candles] Serving stale cache for ${symbol} ${interval}`);
-    return stale.data;
+    return { ...stale.data, stale: true };
   }
 
   if (!isPaged && bestCandlesCount > 0 && bestCandlesCount < getMinReplayCandles(interval)) {

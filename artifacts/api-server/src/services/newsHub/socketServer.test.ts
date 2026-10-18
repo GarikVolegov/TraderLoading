@@ -76,7 +76,7 @@ assert.equal(snapshots.length, 1);
 assert.equal(snapshots[0]?.snapshot.watchedPairs?.[0], "XAU/USD");
 assert.equal(snapshots[0]?.snapshot.articles[0]?.title, "Gold refresh for XAU traders");
 assert.equal(snapshots[0]?.snapshot.articles[0]?.affectedPairs?.[0], "XAU/USD");
-assert.equal(received.some((event) => event.type === "news_article" && event.article.title === "Gold refresh for XAU traders"), true);
+assert.equal(received.some((event) => event.type === "news_article" && event.article.title === "Gold refresh for XAU traders"), false);
 
 socket.close();
 await wsServer.close();

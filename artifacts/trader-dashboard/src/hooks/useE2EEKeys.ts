@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getOrCreateAccountKeyPair, type E2EEKeyPair } from "@/lib/e2ee";
 import {
   getAccountKeyBackup,
@@ -13,14 +13,38 @@ export function useE2EEKeys(userId: string | null) {
   const [keyPair, setKeyPair] = useState<{ publicKey: JsonWebKey; privateKey: JsonWebKey } | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState(false);
-  const savePublicKeyMutation = useSavePublicKey();
+  // Readiness/error UI owns this feedback; a stale request must not toast into
+  // the next account after this hook has been cancelled.
+  const { mutateAsync: savePublicKey } = useSavePublicKey({
+    mutation: { meta: { suppressGlobalError: true } },
+  });
+  const generationRef = useRef(0);
+  const activeAccountRef = useRef(userId);
+  activeAccountRef.current = userId;
+  const cancelInitialization = useCallback(() => {
+    generationRef.current++;
+  }, []);
 
   const initialize = useCallback(async () => {
     if (!userId) return;
+    const generation = ++generationRef.current;
+    const isCurrent = () => generationRef.current === generation && activeAccountRef.current === userId;
+    const assertCurrent = () => {
+      if (!isCurrent()) throw new Error("Account key initialization cancelled");
+    };
+    const assertResponseAccount = (responseUserId: string) => {
+      if (responseUserId !== userId) {
+        generationRef.current++;
+        throw new Error("Account changed during key initialization");
+      }
+    };
     try {
       const pair = await getOrCreateAccountKeyPair(userId, {
         load: async (): Promise<E2EEKeyPair | null> => {
+          assertCurrent();
           const backup = await getAccountKeyBackup();
+          assertCurrent();
+          assertResponseAccount(backup.userId);
           if (!backup.hasBackup || !backup.publicKeyJwk || !backup.privateKeyJwk) {
             return null;
           }
@@ -30,27 +54,37 @@ export function useE2EEKeys(userId: string | null) {
           };
         },
         save: async (nextPair) => {
-          await saveAccountKeyBackup({
+          assertCurrent();
+          const saved = await saveAccountKeyBackup({
             publicKeyJwk: nextPair.publicKey as SaveAccountKeyBackupBodyPublicKeyJwk,
             privateKeyJwk: nextPair.privateKey as SaveAccountKeyBackupBodyPrivateKeyJwk,
           });
+          assertCurrent();
+          assertResponseAccount(saved.userId);
         },
       });
+      // The shared key store can fall back to a local pair after a failed load
+      // or save. Recheck here so a cancelled account cannot publish that pair
+      // with the next account's cookies.
+      assertCurrent();
+      await savePublicKey({ data: { publicKeyJwk: pair.publicKey as SavePublicKeyBodyPublicKeyJwk } });
+      assertCurrent();
       setKeyPair(pair);
-      await savePublicKeyMutation.mutateAsync({ data: { publicKeyJwk: pair.publicKey as SavePublicKeyBodyPublicKeyJwk } });
       setIsReady(true);
     } catch (err) {
+      if (!isCurrent()) return;
       console.error("E2EE key initialization failed:", err);
       setError(true);
     }
-  }, [userId]);
+  }, [userId, savePublicKey]);
 
   useEffect(() => {
     setIsReady(false);
     setError(false);
     setKeyPair(null);
     initialize();
-  }, [initialize]);
+    return cancelInitialization;
+  }, [initialize, cancelInitialization]);
 
   return { keyPair, isReady, error };
 }

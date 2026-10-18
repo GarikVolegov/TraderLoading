@@ -5,7 +5,7 @@
 // disk (best-effort — this service doesn't own the uploads dir).
 
 import { eq, sql } from "drizzle-orm";
-import { db as defaultDb, communityFilesTable } from "@workspace/db";
+import { db as defaultDb, communityFilesTable, communitiesTable } from "@workspace/db";
 
 type DatabaseLike = typeof defaultDb;
 
@@ -14,6 +14,10 @@ export async function deleteCommunityDeep(
   communityId: number,
   database: DatabaseLike = defaultDb,
 ): Promise<string[]> {
+  const [community] = await database
+    .select({ avatarUrl: communitiesTable.avatarUrl, bannerUrl: communitiesTable.bannerUrl })
+    .from(communitiesTable)
+    .where(eq(communitiesTable.id, communityId));
   const files = await database
     .select({ fileUrl: communityFilesTable.fileUrl })
     .from(communityFilesTable)
@@ -38,6 +42,10 @@ export async function deleteCommunityDeep(
       DELETE FROM voice_presence
       WHERE channel_id IN (SELECT id FROM community_channels WHERE community_id = ${communityId})
     `);
+    await tx.execute(sql`
+      DELETE FROM signals
+      WHERE scope IN (SELECT 'voice:' || id::text FROM community_channels WHERE community_id = ${communityId})
+    `);
     await tx.execute(sql`DELETE FROM community_files WHERE community_id = ${communityId}`);
     await tx.execute(sql`DELETE FROM community_channels WHERE community_id = ${communityId}`);
     await tx.execute(sql`DELETE FROM community_members WHERE community_id = ${communityId}`);
@@ -48,7 +56,10 @@ export async function deleteCommunityDeep(
     await tx.execute(sql`DELETE FROM communities WHERE id = ${communityId}`);
   });
 
-  return files.map((f) => f.fileUrl);
+  return [
+    ...files.map((f) => f.fileUrl),
+    ...[community?.avatarUrl, community?.bannerUrl].filter((url): url is string => typeof url === "string"),
+  ];
 }
 
 /** Delete a channel and every child row (messages, files, voice presence). */
@@ -65,6 +76,7 @@ export async function deleteChannelDeep(
     await tx.execute(sql`DELETE FROM community_channel_entitlements WHERE channel_id = ${channelId}`);
     await tx.execute(sql`DELETE FROM community_messages WHERE channel_id = ${channelId}`);
     await tx.execute(sql`DELETE FROM voice_presence WHERE channel_id = ${channelId}`);
+    await tx.execute(sql`DELETE FROM signals WHERE scope = ${`voice:${channelId}`}`);
     await tx.execute(sql`DELETE FROM community_files WHERE channel_id = ${channelId}`);
     await tx.execute(sql`DELETE FROM community_channels WHERE id = ${channelId}`);
   });

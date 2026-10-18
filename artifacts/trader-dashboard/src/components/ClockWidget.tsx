@@ -4,28 +4,15 @@ import { it } from "date-fns/locale";
 import { Quote } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useBackground, type TradingSessionConfig } from "@/contexts/BackgroundContext";
+import { useBackground } from "@/contexts/BackgroundContext";
 import {
-  getLocalClockHours,
   isMarketClosedSession,
-  isSessionEnabledForDate,
+  isMarketSessionActive,
   isTradingSession,
   type MarketSessionConfig,
 } from "@/lib/marketSessions";
 import { sessionBadgeClasses, toneForSessionColor, type SessionTone } from "@/lib/sessionBadge";
 import { getGetRandomQuoteQueryKey, useGetRandomQuote } from "@workspace/api-client-react";
-
-function parseTime(t: string): number {
-  const [h, m] = t.split(":").map(Number);
-  return h + (m || 0) / 60;
-}
-
-function isInSession(localHours: number, session: TradingSessionConfig): boolean {
-  const open = parseTime(session.openUTC);
-  const close = parseTime(session.closeUTC);
-  if (open < close) return localHours >= open && localHours < close;
-  return localHours >= open || localHours < close;
-}
 
 export function ClockWidget() {
   const [time, setTime] = useState(new Date());
@@ -44,22 +31,20 @@ export function ClockWidget() {
     return () => clearInterval(timer);
   }, []);
 
-  const localHours = useMemo(() => getLocalClockHours(time), [time]);
-
   const activeSession = useMemo(() => {
     const enabled = tradingSessions.filter(
-      (s) => s.enabled && isTradingSession(s as MarketSessionConfig) && isSessionEnabledForDate(s as MarketSessionConfig, time),
+      (s) => s.enabled && isTradingSession(s as MarketSessionConfig),
     );
-    return enabled.find((s) => isInSession(localHours, s)) ?? null;
-  }, [localHours, time, tradingSessions]);
+    return enabled.find((s) => isMarketSessionActive(s, time)) ?? null;
+  }, [time, tradingSessions]);
 
   const activeClosedSession = useMemo(() => {
     if (activeSession) return null;
     const enabled = tradingSessions.filter(
-      (s) => s.enabled && isMarketClosedSession(s as MarketSessionConfig) && isSessionEnabledForDate(s as MarketSessionConfig, time),
+      (s) => s.enabled && isMarketClosedSession(s as MarketSessionConfig),
     );
-    return enabled.find((s) => isInSession(localHours, s)) ?? null;
-  }, [activeSession, localHours, time, tradingSessions]);
+    return enabled.find((s) => isMarketSessionActive(s, time)) ?? null;
+  }, [activeSession, time, tradingSessions]);
 
   const dayOfWeek = time.getDay();
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;

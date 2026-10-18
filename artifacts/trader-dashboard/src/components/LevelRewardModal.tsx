@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetProfile } from "@workspace/api-client-react";
+import { Link } from "wouter";
+import { useArchiveCatalog } from "@/lib/useArchiveCatalog";
+import { catalogMilestones, catalogRewardsForMilestone } from "@/lib/archiveResources";
 import { X, Trophy, ExternalLink, Play, FileText, Presentation, Sparkles, ChevronRight } from "lucide-react";
-import { getRewardsForMilestone, MILESTONES, type Reward, type RewardType } from "@/lib/rewardsLibrary";
+import { isRewardAvailable, type Reward, type RewardType } from "@/lib/rewardsLibrary";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 
@@ -44,20 +47,17 @@ export function RewardTypeBadge({ type }: { type: RewardType }) {
 }
 
 export function RewardCard({ reward, compact = false }: { reward: Reward; compact?: boolean }) {
-  return (
-    <a
-      href={reward.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`group block rounded-xl overflow-hidden border border-border/40 bg-card/60 hover:border-primary/40 hover:bg-card/80 transition-all ${compact ? "" : "hover:shadow-lg hover:shadow-primary/5"}`}
-    >
+  const { t } = useLanguage();
+  const available = isRewardAvailable(reward);
+  const className = `group block rounded-xl overflow-hidden border border-border/40 bg-card/60 transition-all ${available ? "hover:border-primary/40 hover:bg-card/80" : "opacity-60"}`;
+  const content = <>
       <div className="relative aspect-video overflow-hidden bg-secondary/30">
-        <img
+        {reward.thumbnailUrl && <img
           src={reward.thumbnailUrl}
           alt={reward.title}
           className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
           loading="lazy"
-        />
+        />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
           <RewardTypeBadge type={reward.type} />
@@ -67,7 +67,7 @@ export function RewardCard({ reward, compact = false }: { reward: Reward; compac
             </span>
           )}
         </div>
-        <ExternalLink className="absolute top-2 right-2 w-3.5 h-3.5 text-white/60 group-hover:text-white transition-colors" />
+        {available && <ExternalLink className="absolute top-2 right-2 w-3.5 h-3.5 text-white/60 group-hover:text-white transition-colors" />}
       </div>
       <div className="p-3">
         <p className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors line-clamp-2">
@@ -76,12 +76,16 @@ export function RewardCard({ reward, compact = false }: { reward: Reward; compac
         {!compact && (
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{reward.description}</p>
         )}
+        {!available && <p className="mt-2 text-xs text-muted-foreground">{t("reorg.archive.unavailable")}</p>}
         {reward.author && (
           <p className="text-[10px] text-muted-foreground/60 mt-1.5">{reward.author}</p>
         )}
       </div>
-    </a>
-  );
+  </>;
+  if (!available) return <div aria-disabled className={className}>{content}</div>;
+  return reward.url.startsWith("/")
+    ? <Link href={reward.url} className={className}>{content}</Link>
+    : <a href={reward.url} target="_blank" rel="noopener noreferrer" className={className}>{content}</a>;
 }
 
 interface MilestoneModalProps {
@@ -91,7 +95,8 @@ interface MilestoneModalProps {
 
 function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
   const { t } = useLanguage();
-  const rewards = getRewardsForMilestone(milestone);
+  const catalog = useArchiveCatalog();
+  const rewards = catalogRewardsForMilestone(catalog.data ?? [], milestone);
   const panelRef = useRef<HTMLDivElement>(null);
   const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose, panelRef });
 
@@ -176,13 +181,13 @@ function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
         )}
 
         <div className="p-6 pt-4">
-          <button
+          <Link href="/wiki?t=unlocked"
             onClick={onClose}
             className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors"
           >
-            {t("rewards.go_library")}
+            {t("reorg.archive.open")}
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </Link>
         </div>
       </motion.div>
     </div>
@@ -191,21 +196,21 @@ function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
 
 export function LevelRewardModal() {
   const { data: profile } = useGetProfile();
+  const catalog = useArchiveCatalog();
   const [pendingMilestone, setPendingMilestone] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!profile?.level) return undefined;
+    if (!profile?.level || catalog.isPending) return undefined;
     const level = profile.level;
     const celebrated = getCelebrated();
 
-    const hit = MILESTONES.find((m) => level >= m && !celebrated.has(m));
+    const hit = catalogMilestones(catalog.data ?? []).find((m) => level >= m && !celebrated.has(m));
     if (hit) {
-      markCelebrated(hit);
-      const timer = setTimeout(() => setPendingMilestone(hit), 1200);
+      const timer = setTimeout(() => { markCelebrated(hit); setPendingMilestone(hit); }, 1200);
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [profile?.level]);
+  }, [profile?.level, catalog.data, catalog.isPending]);
 
   return (
     <AnimatePresence>

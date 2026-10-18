@@ -12,7 +12,11 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { uiText } from "@/contexts/LanguageContext";
+import { uiText, useLanguage } from "@/contexts/LanguageContext";
+import { useRoutineStorage } from "@/hooks/useRoutineStorage";
+import { useToast } from "@/hooks/use-toast";
+import type { AccountStorage } from "@/lib/accountStorage";
+import { AGENDA_ITEMS_KEY, readAgendaItems, mergeAgendaItems, type ManualPlannerItem, type ManualItemType, type AgendaPriority as Priority } from "@/lib/agendaStorage";
 import {
   useGetEconomicCalendar,
   useGetIdeas,
@@ -26,22 +30,7 @@ import {
   type NewsArticle,
 } from "@workspace/api-client-react";
 
-const MANUAL_ITEMS_KEY = "tl_calendar_manual_items_v1";
-
-type ManualItemType = "appointment" | "note" | "review" | "trade-plan";
-type Priority = "low" | "medium" | "high";
 type AgendaSource = "market" | "goal" | "idea" | "mission" | "news" | "journal" | "manual";
-
-interface ManualPlannerItem {
-  id: string;
-  type: ManualItemType;
-  title: string;
-  notes: string;
-  startAt: string;
-  endAt: string | null;
-  priority: Priority;
-  createdAt: string;
-}
 
 interface AgendaItem {
   id: string;
@@ -80,42 +69,6 @@ const MANUAL_TYPE_LABELS: Record<ManualItemType, string> = {
 
 function isPriority(value: unknown): value is Priority {
   return value === "low" || value === "medium" || value === "high";
-}
-
-function isManualType(value: unknown): value is ManualItemType {
-  return value === "appointment" || value === "note" || value === "review" || value === "trade-plan";
-}
-
-function isManualPlannerItem(value: unknown): value is ManualPlannerItem {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Partial<ManualPlannerItem>;
-  return (
-    typeof item.id === "string" &&
-    isManualType(item.type) &&
-    typeof item.title === "string" &&
-    typeof item.notes === "string" &&
-    typeof item.startAt === "string" &&
-    (typeof item.endAt === "string" || item.endAt === null) &&
-    isPriority(item.priority) &&
-    typeof item.createdAt === "string"
-  );
-}
-
-function readManualItems(): ManualPlannerItem[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const raw = window.localStorage.getItem(MANUAL_ITEMS_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isManualPlannerItem) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveManualItems(items: ManualPlannerItem[]) {
-  window.localStorage.setItem(MANUAL_ITEMS_KEY, JSON.stringify(items));
 }
 
 function toDate(value?: string | null): Date | null {
@@ -304,7 +257,26 @@ function buildAgendaItems({
 }
 
 export function CalendarPlannerWorkspace() {
-  const [manualItems, setManualItems] = useState<ManualPlannerItem[]>([]);
+  const { t } = useLanguage();
+  const { toast } = useToast();
+  const storage = useRoutineStorage();
+  const [agendaState, setAgendaState] = useState<{ storage?: AccountStorage; items: ManualPlannerItem[] }>({ items: [] });
+  const manualItems = useMemo(() => agendaState.storage === storage ? agendaState.items : [], [agendaState, storage]);
+  const [legacyItems, setLegacyItems] = useState<ManualPlannerItem[]>([]);
+  const [legacyDismissed, setLegacyDismissed] = useState(false);
+  const [sources, setSources] = useState<Set<AgendaSource>>(() => new Set(["goal", "idea", "mission", "manual"]));
+  const pendingLegacy = mergeAgendaItems(manualItems, legacyItems).slice(manualItems.length);
+  const commitItems = (next: ManualPlannerItem[]) => {
+    if (!storage) return false;
+    try {
+      storage.setItem(AGENDA_ITEMS_KEY, JSON.stringify(next));
+      setAgendaState({ storage, items: next });
+      return true;
+    } catch {
+      toast({ description: t("journal.workspace.storage_error"), variant: "destructive" });
+      return false;
+    }
+  };
   const [type, setType] = useState<ManualItemType>("trade-plan");
   const [priority, setPriority] = useState<Priority>("medium");
   const [title, setTitle] = useState("");
@@ -320,8 +292,15 @@ export function CalendarPlannerWorkspace() {
   const { data: macroNews, isLoading: newsLoading } = useGetMacroNews();
 
   useEffect(() => {
-    setManualItems(readManualItems());
-  }, []);
+    const refresh = () => {
+      setAgendaState({ storage, items: readAgendaItems(storage) });
+      try { setLegacyItems(readAgendaItems(window.localStorage)); } catch { setLegacyItems([]); }
+    };
+    refresh();
+    setLegacyDismissed(false);
+    window.addEventListener("storage", refresh);
+    return () => window.removeEventListener("storage", refresh);
+  }, [storage]);
 
   const agendaItems = useMemo(
     () =>
@@ -339,7 +318,7 @@ export function CalendarPlannerWorkspace() {
   const { pastGroups, upcomingGroups } = useMemo(() => {
     const groups = new Map<string, { date: Date; items: AgendaItem[] }>();
 
-    agendaItems.forEach((item) => {
+    agendaItems.filter(item => sources.has(item.source)).forEach((item) => {
       const date = toDate(item.startAt);
       if (!date) return;
       const key = dayKey(date);
@@ -358,27 +337,28 @@ export function CalendarPlannerWorkspace() {
       pastGroups: sorted.filter((g) => g.date < startOfToday),
       upcomingGroups: sorted.filter((g) => g.date >= startOfToday),
     };
-  }, [agendaItems]);
+  }, [agendaItems, sources]);
 
   const groupedAgenda = showPast ? [...pastGroups, ...upcomingGroups] : upcomingGroups;
 
   const summary = useMemo(() => {
     const now = new Date();
     const today = dayKey(now);
+    const visibleItems = agendaItems.filter(item => sources.has(item.source));
     return {
-      total: agendaItems.length,
-      today: agendaItems.filter((item) => {
+      total: visibleItems.length,
+      today: visibleItems.filter((item) => {
         const date = toDate(item.startAt);
         return date ? dayKey(date) === today : false;
       }).length,
-      upcoming: agendaItems.filter((item) => {
+      upcoming: visibleItems.filter((item) => {
         const date = toDate(item.startAt);
         return date ? date >= now : false;
       }).length,
-      high: agendaItems.filter((item) => item.priority === "high").length,
+      high: visibleItems.filter((item) => item.priority === "high").length,
       manual: manualItems.length,
     };
-  }, [agendaItems, manualItems.length]);
+  }, [agendaItems, manualItems.length, sources]);
 
   const isLoading = eventsLoading || ideasLoading || missionsLoading || journalLoading || newsLoading;
 
@@ -397,11 +377,11 @@ export function CalendarPlannerWorkspace() {
       createdAt: new Date().toISOString(),
     };
 
-    setManualItems((current) => {
-      const next = [...current, item];
-      saveManualItems(next);
-      return next;
-    });
+    if (item.endAt && Date.parse(item.endAt) <= Date.parse(item.startAt)) {
+      toast({ description: t("journal.workspace.invalid_time"), variant: "destructive" });
+      return;
+    }
+    if (!commitItems([...manualItems, item])) return;
 
     setTitle("");
     setNotes("");
@@ -412,15 +392,30 @@ export function CalendarPlannerWorkspace() {
   };
 
   const handleDeleteManualItem = (id: string) => {
-    setManualItems((current) => {
-      const next = current.filter((item) => item.id !== id);
-      saveManualItems(next);
-      return next;
-    });
+    commitItems(manualItems.filter((item) => item.id !== id));
   };
 
   return (
     <div className="space-y-4">
+      {storage && pendingLegacy.length > 0 && !legacyDismissed && (
+        <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+          <h3 className="text-sm font-semibold">{t("journal.workspace.legacy_title")}</h3>
+          <p className="text-sm text-muted-foreground">{t("journal.workspace.legacy_desc", { count: pendingLegacy.length })}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => commitItems(mergeAgendaItems(manualItems, legacyItems))}>{t("journal.workspace.legacy_import")}</Button>
+            <Button variant="ghost" onClick={() => setLegacyDismissed(true)}>{t("journal.workspace.legacy_later")}</Button>
+          </div>
+        </section>
+      )}
+      <section aria-label={t("journal.workspace.sources")} className="flex flex-wrap gap-2">
+        {(Object.keys(SOURCE_CONFIG) as AgendaSource[]).map(source => <button type="button" key={source}
+          aria-pressed={sources.has(source)} onClick={() => setSources(current => {
+            const next = new Set(current); if (next.has(source)) next.delete(source); else next.add(source); return next;
+          })} className={`rounded-lg border px-3 py-2 text-xs font-medium ${sources.has(source) ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
+          {t(`journal.workspace.source.${source}`)}
+        </button>)}
+      </section>
+      {(sources.has("news") || sources.has("journal")) && <p className="text-xs text-muted-foreground">{t("journal.workspace.agenda_context")}</p>}
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <SummaryTile label="Agenda" value={summary.total} tone="text-foreground" />
         <SummaryTile label="Oggi" value={summary.today} tone="text-primary" />
@@ -441,12 +436,14 @@ export function CalendarPlannerWorkspace() {
         <div className="grid gap-2 md:grid-cols-[1fr_150px_130px]">
           <input
             value={title}
+            aria-label={t("journal.workspace.agenda_title")}
             onChange={(event) => setTitle(event.target.value)}
             placeholder={uiText("auto.ui.b2f23da948")}
             className="h-10 rounded-lg border border-border/50 bg-secondary/40 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary/50"
           />
           <select
             value={type}
+            aria-label={t("journal.workspace.agenda_type")}
             onChange={(event) => setType(event.target.value as ManualItemType)}
             className="h-10 rounded-lg border border-border/50 bg-secondary/40 px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50"
           >
@@ -458,6 +455,7 @@ export function CalendarPlannerWorkspace() {
           </select>
           <select
             value={priority}
+            aria-label={t("journal.workspace.agenda_priority")}
             onChange={(event) => setPriority(event.target.value as Priority)}
             className="h-10 rounded-lg border border-border/50 bg-secondary/40 px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50"
           >
@@ -471,26 +469,30 @@ export function CalendarPlannerWorkspace() {
           <input
             type="datetime-local"
             value={startAt}
+            aria-label={t("journal.workspace.agenda_start")}
             onChange={(event) => setStartAt(event.target.value)}
             className="h-10 rounded-lg border border-border/50 bg-secondary/40 px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50"
           />
           <input
             type="datetime-local"
             value={endAt}
+            aria-label={t("journal.workspace.agenda_end")}
             onChange={(event) => setEndAt(event.target.value)}
             className="h-10 rounded-lg border border-border/50 bg-secondary/40 px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50"
           />
           <input
             value={notes}
+            aria-label={t("journal.workspace.agenda_notes")}
             onChange={(event) => setNotes(event.target.value)}
             placeholder={uiText("auto.ui.2c34336594")}
             className="h-10 rounded-lg border border-border/50 bg-secondary/40 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary/50"
           />
-          <Button type="submit" disabled={!title.trim() || !startAt} className="h-10 gap-2">
+          <Button type="submit" disabled={!storage || !title.trim() || !startAt} className="h-10 gap-2">
             <Plus className="h-4 w-4" />
             Aggiungi
           </Button>
         </div>
+        <p className="mt-3 text-xs text-muted-foreground">{t("journal.workspace.agenda_local")}</p>
       </form>
 
       <section className="rounded-xl border border-border/40 bg-card/55 backdrop-blur-sm">
@@ -560,6 +562,7 @@ function AgendaRow({
   item: AgendaItem;
   onDeleteManual: (id: string) => void;
 }) {
+  const { t } = useLanguage();
   const source = SOURCE_CONFIG[item.source];
   const priority = PRIORITY_CONFIG[item.priority];
   const SourceIcon = source.Icon;
@@ -577,7 +580,7 @@ function AgendaRow({
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
             <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold ${source.className}`}>
               <SourceIcon className="h-3 w-3" />
-              {source.label}
+              {t(`journal.workspace.source.${item.source}`)}
             </span>
             <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${priority.className}`}>
               {priority.label}

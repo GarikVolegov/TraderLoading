@@ -120,7 +120,7 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
       <main className="mx-auto max-w-3xl px-4 py-14 text-center sm:px-6 sm:py-20">
         {/* Hero */}
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{eyebrow}</p>
-        <h1 className="mt-3 font-mono text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+        <h1 className="mt-3 font-sans text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
           {withKeyword(h1, h1Kw)}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">{t(`${base}.intro`)}</p>
@@ -189,7 +189,7 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
 
         {/* Final CTA */}
         <section className="mt-16 rounded-2xl border border-primary/25 bg-primary/[0.06] p-8 text-center">
-          <h2 className="font-mono text-2xl font-extrabold">{t(`${base}.cta.title`)}</h2>
+          <h2 className="font-sans text-2xl font-extrabold">{t(`${base}.cta.title`)}</h2>
           <p className="mx-auto mt-3 max-w-xl leading-relaxed text-muted-foreground">
             {t(`${base}.cta.body`)}
           </p>

@@ -45,8 +45,11 @@ const navHubs = readFileSync(new URL("../lib/navHubs.ts", import.meta.url), "utf
 // /zen is gone from routing, nav, command palette, and hubs.
 assert.doesNotMatch(app, /pages\/Zen|path="\/zen"/);
 assert.doesNotMatch(bottomNav, /href: "\/zen"/);
-const rootItemsBlock = bottomNav.slice(bottomNav.indexOf("const ROOT_ITEMS"), bottomNav.indexOf("const SECONDARY_ITEMS"));
-assert.match(rootItemsBlock, /href: "\/routine"/, "routine takes over zen's old root-level mobile nav slot");
+const dashboard = readFileSync(new URL("./Dashboard.tsx", import.meta.url), "utf8");
+assert.match(routinePage, /export function RoutineWorkspace/, "routine can be embedded in the daily plan");
+assert.match(routinePage, /getRoutineStartProgram\(search\)/, "URL start actions preserve guided programs");
+const aliases = readFileSync(new URL("../lib/workspaceNavigation.ts", import.meta.url), "utf8");
+assert.match(aliases, /"\/routine"/, "legacy routine links stay compatible");
 assert.doesNotMatch(commandPalette, /zen\.title/);
 assert.doesNotMatch(navHubs, /ZEN_HUB|\/zen/);
 

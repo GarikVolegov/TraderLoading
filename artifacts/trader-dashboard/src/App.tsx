@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from "wouter";
-import { motion } from "framer-motion";
+import { Switch, Route, Redirect, useLocation, useSearch, Router as WouterRouter } from "wouter";
+import { hasExplicitCenterView, resolveWorkspaceAlias } from "./lib/workspaceNavigation";
+import { motion, MotionConfig } from "framer-motion";
+import { useMediaQuery } from "./hooks/use-media-query";
 import { MutationCache, QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { shouldRetryQuery } from "./lib/queryRetry";
 import { shouldNotifyGlobally } from "./lib/mutationErrorPolicy";
@@ -19,26 +21,21 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { AuthPageShell } from "./components/AuthPageShell";
 import { CookieConsentPopup } from "./components/CookieConsentPopup";
-import { WelcomeNotification } from "./components/WelcomeNotification";
 import { GoalReminders } from "./components/GoalReminders";
 import { DailyAlarmNotifier } from "./components/DailyAlarmNotifier";
 import { MacroNotifier } from "./components/MacroNotifier";
 import { SessionStartNotifier } from "./components/SessionStartNotifier";
-import { SessionCheckinModal } from "./components/SessionCheckinModal";
 import { CommandPalette } from "./components/CommandPalette";
 import { SignUpConversionTracker } from "./components/SignUpConversionTracker";
+import { ReferralAttributionTracker } from "./components/ReferralAttributionTracker";
 import { NicknameOnboarding } from "./pages/NicknameOnboarding";
 import { initAnalytics } from "./lib/analytics";
+import { academyAuthDestination } from "./lib/academyReferral";
 
 // Avvio analytics (no-op senza VITE_GA_MEASUREMENT_ID o senza consenso cookie).
 initAnalytics();
 import { ScheduledCallRuntime } from "./components/ScheduledCallRuntime";
-import { LevelRewardModal } from "./components/LevelRewardModal";
-import { ReviewPromptModal } from "./components/ReviewPromptModal";
 import { PinLockScreen } from "./components/PinLockScreen";
-import { ChecklistSetupModal } from "./components/ChecklistSetupModal";
-import { PairOnboardingWrapper } from "./components/PairOnboardingWrapper";
-import { AppTutorialWrapper } from "./components/AppTutorialWrapper";
 import { TopNav } from "./components/TopNav";
 import { BottomNav } from "./components/BottomNav";
 import { hasStoredLanguagePreference, LANGUAGES, useLanguage } from "./contexts/LanguageContext";
@@ -52,24 +49,20 @@ import {
 import { getGetUserSettingsQueryKey, useGetUserSettings, useUpdateUserSettings } from "@workspace/api-client-react";
 import { decideLanguageSync } from "./lib/languageSync";
 
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Dashboard = lazy(() => import("./pages/OperatingDashboard"));
+const Today = lazy(() => import("./pages/Today"));
+const Academy = lazy(() => import("./pages/Academy"));
+const AcademyWelcome = lazy(() => import("./pages/Academy").then(module => ({ default: module.AcademyWelcome })));
+const Method = lazy(() => import("./pages/Method"));
+const Resources = lazy(() => import("./pages/Resources"));
 const Journal = lazy(() => import("./pages/Journal"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Support = lazy(() => import("./pages/Support"));
-const Checklist = lazy(() => import("./pages/Checklist"));
-const News = lazy(() => import("./pages/News"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Backtest = lazy(() => import("./pages/Backtest"));
 const BacktestReplay = lazy(() => import("./pages/BacktestReplay"));
 const Wiki = lazy(() => import("./pages/Wiki"));
 const Milestones = lazy(() => import("./pages/Milestones"));
-const Library = lazy(() => import("./pages/Library"));
-const Routine = lazy(() => import("./pages/Routine"));
-const Missions = lazy(() => import("./pages/Missions"));
-const Tornei = lazy(() => import("./pages/Tornei"));
-const Clock = lazy(() => import("./pages/Clock"));
-const Calendar = lazy(() => import("./pages/Calendar"));
-const Broker = lazy(() => import("./pages/Broker"));
 const ProPage = lazy(() => import("./pages/ProPage"));
 const BillingReturn = lazy(() => import("./pages/BillingReturn"));
 const NotFound = lazy(() => import("./pages/not-found"));
@@ -195,12 +188,16 @@ const clerkAppearance = {
 };
 
 function SignInPage() {
+  const search = useSearch();
+  const academyDestination = academyAuthDestination(search);
+  const academyQuery = academyDestination ? `?${search}` : "";
   return (
     <AuthPageShell mode="sign-in">
       <SignIn
         routing="path"
         path={`${basePath}/sign-in`}
-        signUpUrl={`${basePath}/sign-up`}
+        signUpUrl={`${basePath}/sign-up${academyQuery}`}
+        forceRedirectUrl={academyDestination ? `${basePath}${academyDestination}` : undefined}
         fallbackRedirectUrl={`${basePath}/`}
       />
     </AuthPageShell>
@@ -208,12 +205,16 @@ function SignInPage() {
 }
 
 function SignUpPage() {
+  const search = useSearch();
+  const academyDestination = academyAuthDestination(search);
+  const academyQuery = academyDestination ? `?${search}` : "";
   return (
     <AuthPageShell mode="sign-up">
       <SignUp
         routing="path"
         path={`${basePath}/sign-up`}
-        signInUrl={`${basePath}/sign-in`}
+        signInUrl={`${basePath}/sign-in${academyQuery}`}
+        forceRedirectUrl={academyDestination ? `${basePath}${academyDestination}` : undefined}
         fallbackRedirectUrl={`${basePath}/welcome`}
       />
     </AuthPageShell>
@@ -314,6 +315,9 @@ function LanguageServerSync() {
       }
     }
 
+    // A settings save already updates the query before applying the local choice.
+    // Avoid sending a duplicate PUT from this bootstrap synchronizer.
+    if (settings.data?.language === language) { lastSyncedRef.current = language; return; }
     if (lastSyncedRef.current === language) return;
     lastSyncedRef.current = language;
     updateSettings.mutate(
@@ -323,6 +327,27 @@ function LanguageServerSync() {
   }, [settings.isSuccess, settings.isError, settings.data, language, qc, updateSettings, setLanguage]);
 
   return null;
+}
+
+function WorkspaceAlias() {
+  const [path, navigate] = useLocation();
+  const search = useSearch();
+  const destination = resolveWorkspaceAlias(path, search);
+  useEffect(() => {
+    if (destination) navigate(destination, { replace: true });
+  }, [destination, navigate]);
+  return <PageFallback />;
+}
+
+function HomeRoute() {
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const legacyDestination = resolveWorkspaceAlias("/", search);
+  useEffect(() => {
+    if (legacyDestination) navigate(legacyDestination, { replace: true });
+  }, [legacyDestination, navigate]);
+  if (legacyDestination) return <PageFallback />;
+  return hasExplicitCenterView(search) ? <Dashboard /> : <Today />;
 }
 
 function AppRouter() {
@@ -338,23 +363,27 @@ function AppRouter() {
     <motion.div key={location} {...pageTransition}>
       <Suspense fallback={<PageFallback />}>
         <Switch>
-          <Route path="/" component={Dashboard} />
+          <Route path="/" component={HomeRoute} />
+          <Route path="/method" component={Method} />
+          <Route path="/academy" component={Academy} />
+          <Route path="/resources" component={Resources} />
+          <Route path="/dashboard/widgets" component={WorkspaceAlias} />
           <Route path="/journal" component={Journal} />
-          <Route path="/checklist" component={Checklist} />
-          <Route path="/news" component={News} />
+          <Route path="/checklist" component={WorkspaceAlias} />
+          <Route path="/news" component={WorkspaceAlias} />
           <Route path="/chat" component={Chat} />
           <Route path="/backtest/:id/replay" component={BacktestReplay} />
           <Route path="/backtest" component={Backtest} />
-          <Route path="/tools" component={Backtest} />
+          <Route path="/tools" component={WorkspaceAlias} />
           <Route path="/wiki" component={Wiki} />
           <Route path="/milestones" component={Milestones} />
-          <Route path="/library" component={Library} />
-          <Route path="/routine" component={Routine} />
-          <Route path="/missions" component={Missions} />
-          <Route path="/tornei" component={Tornei} />
-          <Route path="/clock" component={Clock} />
-          <Route path="/calendar" component={Calendar} />
-          <Route path="/broker" component={Broker} />
+          <Route path="/library" component={WorkspaceAlias} />
+          <Route path="/routine" component={WorkspaceAlias} />
+          <Route path="/missions" component={WorkspaceAlias} />
+          <Route path="/tornei" component={WorkspaceAlias} />
+          <Route path="/clock" component={WorkspaceAlias} />
+          <Route path="/calendar" component={WorkspaceAlias} />
+          <Route path="/broker" component={WorkspaceAlias} />
           <Route path="/pro" component={ProPage} />
           <Route path="/billing/return" component={BillingReturn} />
           <Route path="/settings" component={Settings} />
@@ -369,6 +398,10 @@ function AppRouter() {
 
 function AuthenticatedShell() {
   const [location] = useLocation();
+  const shellSearch = useSearch();
+  const shellParams = new URLSearchParams(shellSearch);
+  const cockpit = location === "/" && !hasExplicitCenterView(shellSearch) && shellParams.get("process") !== "legacy" && !shellParams.has("marketDecisionId");
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   if (location.startsWith("/admin")) {
     return (
@@ -379,33 +412,27 @@ function AuthenticatedShell() {
   }
 
   return (
+    <MotionConfig reducedMotion="user" skipAnimations={reduceMotion}>
     <BackgroundProvider>
       {/* Global overlays — never unmounted during page transitions */}
       <PinLockScreen />
-      <ChecklistSetupModal />
       <LoadingScreen />
-      <WelcomeNotification />
       <GoalReminders />
       <DailyAlarmNotifier />
       <ScheduledCallRuntime />
       <MacroNotifier />
       <SessionStartNotifier />
       <LanguageServerSync />
-      <PairOnboardingWrapper />
-      <AppTutorialWrapper />
-      <SessionCheckinModal />
-      <LevelRewardModal />
-      <ReviewPromptModal />
       <CommandPalette />
       <SignUpConversionTracker />
 
       {/* Global nav — always mounted, unaffected by page transitions */}
-      <TopNav />
-      <BottomNav />
+      {!cockpit && <><TopNav /><BottomNav /></>}
 
       {/* Animated page content */}
       <AppRouter />
     </BackgroundProvider>
+    </MotionConfig>
   );
 }
 
@@ -413,6 +440,7 @@ function AuthTimeoutScreen() {
   return (
     <div
       role="alert"
+      data-auth-unavailable
       style={{
         minHeight: "100dvh",
         display: "flex",
@@ -455,17 +483,24 @@ function AuthTimeoutScreen() {
 }
 
 function AppShell() {
-  const { isLoaded } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
+  const [location] = useLocation();
   const [authTimedOut, setAuthTimedOut] = useState(false);
 
   // If Clerk never finishes initializing (e.g. its Frontend API is
   // unreachable), surface an actionable screen rather than an indefinite black
   // placeholder — the "tutto nero" symptom is precisely isLoaded stuck false.
   useEffect(() => {
-    if (isLoaded) return;
+    if (isLoaded || location === "/") return;
     const timer = window.setTimeout(() => setAuthTimedOut(true), 12000);
     return () => window.clearTimeout(timer);
-  }, [isLoaded]);
+  }, [isLoaded, location]);
+
+  // Keep the same public component while auth initializes and after sign-out,
+  // so loading Clerk doesn't reset a visitor's demonstration or analytics.
+  // Signed-in root visitors still enter their workspace once auth loads.
+  if (location === "/" && !isSignedIn) return <MarketingLanding lang="en" />;
+  if (location === "/academy" && !isSignedIn) return <Suspense fallback={<PageFallback />}><AcademyWelcome /></Suspense>;
 
   if (!isLoaded) {
     return authTimedOut ? (
@@ -493,6 +528,7 @@ function ClerkConfigErrorScreen() {
   return (
     <div
       role="alert"
+      data-auth-unavailable
       style={{
         minHeight: "100dvh",
         display: "flex",
@@ -595,6 +631,7 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
+        <ReferralAttributionTracker />
         <Switch>
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />

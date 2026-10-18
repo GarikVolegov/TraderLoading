@@ -1,3 +1,4 @@
+import { imageMatchesType } from "../lib/imageValidation.js";
 import { Router, type IRouter, type Request } from "express";
 import multer from "multer";
 import path from "path";
@@ -8,6 +9,7 @@ import { accountTradesTable, profileTable } from "@workspace/db";
 import { UpdateProfileBody, UpdateProfileResponse, GetProfileResponse, GetLeaderboardResponse } from "@workspace/api-zod";
 import { eq, isNull, and, ne, sql, isNotNull, desc } from "drizzle-orm";
 import { resolveUploadPath } from "../lib/uploads.js";
+import { tradingDay } from "../lib/tradingTime.js";
 import { requireProFeature } from "../lib/billing.js";
 
 const router: IRouter = Router();
@@ -88,13 +90,13 @@ function computeStreakBonus(streak: number): number {
   return Math.min(50, (streak - 1) * 5);
 }
 
-async function updateStreak(profileId: number): Promise<{ newStreak: number; bonusXp: number }> {
-  const [current] = await db.select({ streak: profileTable.streak, lastActiveDate: profileTable.lastActiveDate })
-    .from(profileTable).where(eq(profileTable.id, profileId)).limit(1);
+async function updateStreak(profileId: number, conn: Parameters<Parameters<typeof db.transaction>[0]>[0]): Promise<{ newStreak: number; bonusXp: number }> {
+  const [current] = await conn.select({ streak: profileTable.streak, lastActiveDate: profileTable.lastActiveDate })
+    .from(profileTable).where(eq(profileTable.id, profileId)).limit(1).for("update");
   if (!current) return { newStreak: 0, bonusXp: 0 };
 
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const today = tradingDay(new Date())!;
+  const yesterday = new Date(Date.parse(`${today}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
 
   if (current.lastActiveDate === today) return { newStreak: current.streak, bonusXp: 0 };
 
@@ -104,7 +106,7 @@ async function updateStreak(profileId: number): Promise<{ newStreak: number; bon
   // Only advance the streak state here — XP is NOT applied. The caller applies
   // `bonusXp` exactly once, atomically (sql`xp + bonusXp`, see missions.ts). Writing
   // xp here too caused a double credit of the streak bonus (audit 0.6).
-  await db.update(profileTable)
+  await conn.update(profileTable)
     .set({
       streak: newStreak,
       lastActiveDate: today,
@@ -116,16 +118,6 @@ async function updateStreak(profileId: number): Promise<{ newStreak: number; bon
 
 function getUserId(req: Request): string | null {
   return req.user?.id ?? null;
-}
-
-async function generateUniqueName(base: string): Promise<string> {
-  const existing = await db.select({ id: profileTable.id })
-    .from(profileTable)
-    .where(sql`lower(${profileTable.name}) = lower(${base}) AND ${profileTable.userId} IS NOT NULL`)
-    .limit(1);
-  if (existing.length === 0) return base;
-  const suffix = Math.floor(1000 + Math.random() * 9000);
-  return `${base}${suffix}`;
 }
 
 async function computeWinRate(userId: string | null): Promise<{ winRate: number | null; totalTrades: number }> {
@@ -148,16 +140,23 @@ async function getOrCreateProfile(userId: string | null) {
   const profiles = await db.select().from(profileTable).where(where).limit(1);
   if (profiles.length > 0) return profiles[0];
 
-  const name = userId ? await generateUniqueName("Trader") : "Trader";
+  // The first page requests profile, missions and other resources concurrently.
+  // Serialize creation for this identity across API processes, then read again:
+  // a check followed by an unguarded insert can create duplicate user profiles.
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('traderloading.profile.create'), hashtext(${userId ?? "anonymous"}))`);
+    const [existing] = await tx.select().from(profileTable).where(where).limit(1);
+    if (existing) return existing;
 
-  const [created] = await db.insert(profileTable).values({
-    name,
-    avatarUrl: null,
-    xp: 0,
-    level: 1,
-    userId,
-  }).returning();
-  return created;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const name = attempt === 0 ? "Trader" : `Trader${crypto.randomUUID().slice(0, 8)}`;
+      const [created] = await tx.insert(profileTable).values({
+        name, avatarUrl: null, xp: 0, level: 1, userId,
+      }).onConflictDoNothing().returning();
+      if (created) return created;
+    }
+    throw new Error("Unable to allocate a unique profile name");
+  });
 }
 
 async function isNameTaken(name: string, excludeProfileId: number, userId: string | null): Promise<boolean> {
@@ -203,6 +202,7 @@ router.put("/profile", async (req, res) => {
   const userId = getUserId(req);
   const body = UpdateProfileBody.parse(req.body);
   body.name = body.name.trim();
+  if (!body.name) { res.status(400).json({ error: "Nome obbligatorio" }); return; }
   const profile = await getOrCreateProfile(userId);
 
   if (userId && body.name !== profile.name) {
@@ -217,8 +217,8 @@ router.put("/profile", async (req, res) => {
     const [updated] = await db.update(profileTable)
       .set({
         name: body.name,
-        avatarUrl: body.avatarUrl ?? null,
-        yearsExperience: body.yearsExperience ?? null,
+        avatarUrl: body.avatarUrl === undefined ? profile.avatarUrl : body.avatarUrl,
+        yearsExperience: body.yearsExperience === undefined ? profile.yearsExperience : body.yearsExperience,
       })
       .where(eq(profileTable.id, profile.id))
       .returning();
@@ -276,6 +276,11 @@ router.post("/profile/avatar", avatarUpload.single("image"), async (req, res) =>
     return;
   }
 
+  if (!imageMatchesType(await fs.promises.readFile(req.file.path), req.file.mimetype, req.file.originalname)) {
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    res.status(415).json({ error: "Il file non è un'immagine valida nel formato indicato" });
+    return;
+  }
   const userId = getUserId(req);
   const profile = await getOrCreateProfile(userId);
   const avatarUrl = `/api/uploads/avatars/${req.file.filename}`;

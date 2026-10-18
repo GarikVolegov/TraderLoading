@@ -1,12 +1,17 @@
+import { imageMatchesType } from "../lib/imageValidation.js";
 import { Router, type IRouter } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db, userSettingsTable } from "@workspace/db";
-import { eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getUserId } from "./profile.js";
 import { getUploadsDir } from "../lib/uploads.js";
 import { riskGuardSettingsView, sanitizeRiskGuardOverrides } from "../services/riskGuard.js";
+import {
+  getOrCreateUserSettings,
+  withLockedUserSettings,
+} from "../services/settingsPersistence.js";
 
 const router: IRouter = Router();
 const SUPPORTED_LANGUAGES = new Set(["it", "en", "es", "fr", "de"]);
@@ -50,22 +55,44 @@ export function serializeSettings(settings: SettingsRecord): Record<string, unkn
   result.onboardingTutorialCompletedAt = serializeDate(settings.onboardingTutorialCompletedAt);
   result.language = readLanguageFromSettings(settings);
   if (settings.tradingSessions) {
-    try { result.tradingSessions = JSON.parse(settings.tradingSessions); } catch { result.tradingSessions = null; }
+    try {
+      result.tradingSessions = JSON.parse(settings.tradingSessions);
+    } catch {
+      result.tradingSessions = null;
+    }
   }
   if (settings.calendarCurrencies) {
-    try { result.calendarCurrencies = JSON.parse(settings.calendarCurrencies); } catch { result.calendarCurrencies = null; }
+    try {
+      result.calendarCurrencies = JSON.parse(settings.calendarCurrencies);
+    } catch {
+      result.calendarCurrencies = null;
+    }
   }
   if (settings.calendarImpacts) {
-    try { result.calendarImpacts = JSON.parse(settings.calendarImpacts); } catch { result.calendarImpacts = null; }
+    try {
+      result.calendarImpacts = JSON.parse(settings.calendarImpacts);
+    } catch {
+      result.calendarImpacts = null;
+    }
   }
   if (settings.selectedPairs) {
-    try { result.selectedPairs = JSON.parse(settings.selectedPairs); } catch { result.selectedPairs = null; }
+    try {
+      result.selectedPairs = JSON.parse(settings.selectedPairs);
+    } catch {
+      result.selectedPairs = null;
+    }
   }
   if (settings.alarmConfigs) {
-    try { result.alarmConfigs = JSON.parse(settings.alarmConfigs); } catch { result.alarmConfigs = null; }
+    try {
+      result.alarmConfigs = JSON.parse(settings.alarmConfigs);
+    } catch {
+      result.alarmConfigs = null;
+    }
   }
   result.riskGuard = riskGuardSettingsView(
-    sanitizeRiskGuardOverrides(parseNotificationPrefs(settings.notificationPrefs ?? null).__riskGuard),
+    sanitizeRiskGuardOverrides(
+      parseNotificationPrefs(settings.notificationPrefs ?? null).__riskGuard,
+    ),
   );
   return result;
 }
@@ -97,12 +124,16 @@ export function buildSettingsUpdateData(
 
   const updateData: Record<string, unknown> = {};
   if (backgroundUrl !== undefined) updateData.backgroundUrl = backgroundUrl ?? null;
-  if (backgroundUrlDesktop !== undefined) updateData.backgroundUrlDesktop = backgroundUrlDesktop ?? null;
-  if (backgroundUrlMobile !== undefined) updateData.backgroundUrlMobile = backgroundUrlMobile ?? null;
+  if (backgroundUrlDesktop !== undefined)
+    updateData.backgroundUrlDesktop = backgroundUrlDesktop ?? null;
+  if (backgroundUrlMobile !== undefined)
+    updateData.backgroundUrlMobile = backgroundUrlMobile ?? null;
   if (backgroundType !== undefined) updateData.backgroundType = backgroundType || "default";
   if (fontChoice !== undefined) updateData.fontChoice = fontChoice;
-  if (backgroundDarkness !== undefined) updateData.backgroundDarkness = Math.min(90, Math.max(0, Number(backgroundDarkness)));
-  if (tradingSessions !== undefined) updateData.tradingSessions = tradingSessions ? JSON.stringify(tradingSessions) : null;
+  if (backgroundDarkness !== undefined)
+    updateData.backgroundDarkness = Math.min(90, Math.max(0, Number(backgroundDarkness)));
+  if (tradingSessions !== undefined)
+    updateData.tradingSessions = tradingSessions ? JSON.stringify(tradingSessions) : null;
   if (lotDivisor !== undefined) {
     const parsedDivisor = Number(lotDivisor);
     if (isNaN(parsedDivisor) || parsedDivisor < 1) {
@@ -111,14 +142,20 @@ export function buildSettingsUpdateData(
     updateData.lotDivisor = parsedDivisor;
   }
   if (calendarCurrencies !== undefined) {
-    updateData.calendarCurrencies = Array.isArray(calendarCurrencies) ? JSON.stringify(calendarCurrencies) : null;
+    updateData.calendarCurrencies = Array.isArray(calendarCurrencies)
+      ? JSON.stringify(calendarCurrencies)
+      : null;
   }
   if (calendarImpacts !== undefined) {
-    updateData.calendarImpacts = Array.isArray(calendarImpacts) ? JSON.stringify(calendarImpacts) : null;
+    updateData.calendarImpacts = Array.isArray(calendarImpacts)
+      ? JSON.stringify(calendarImpacts)
+      : null;
   }
   if (dailyReminderTime !== undefined) updateData.dailyReminderTime = dailyReminderTime || null;
-  if (preMacroMinutes !== undefined) updateData.preMacroMinutes = Math.max(0, Number(preMacroMinutes));
-  if (maxDailyLoss !== undefined) updateData.maxDailyLoss = maxDailyLoss ? Math.abs(Number(maxDailyLoss)) : null;
+  if (preMacroMinutes !== undefined)
+    updateData.preMacroMinutes = Math.max(0, Number(preMacroMinutes));
+  if (maxDailyLoss !== undefined)
+    updateData.maxDailyLoss = maxDailyLoss ? Math.abs(Number(maxDailyLoss)) : null;
   if (selectedPairs !== undefined) {
     updateData.selectedPairs = Array.isArray(selectedPairs) ? JSON.stringify(selectedPairs) : null;
   }
@@ -131,11 +168,17 @@ export function buildSettingsUpdateData(
     } else if (typeof onboardingTutorialCompletedAt === "string") {
       const parsedDate = new Date(onboardingTutorialCompletedAt);
       if (Number.isNaN(parsedDate.getTime())) {
-        return { updateData, error: "onboardingTutorialCompletedAt must be a valid ISO date string or null" };
+        return {
+          updateData,
+          error: "onboardingTutorialCompletedAt must be a valid ISO date string or null",
+        };
       }
       updateData.onboardingTutorialCompletedAt = parsedDate;
     } else {
-      return { updateData, error: "onboardingTutorialCompletedAt must be a valid ISO date string or null" };
+      return {
+        updateData,
+        error: "onboardingTutorialCompletedAt must be a valid ISO date string or null",
+      };
     }
   }
   if (language !== undefined) {
@@ -145,9 +188,10 @@ export function buildSettingsUpdateData(
     });
   }
   if (riskGuard !== undefined) {
-    const base = typeof updateData.notificationPrefs === "string"
-      ? JSON.parse(updateData.notificationPrefs)
-      : parseNotificationPrefs(settings.notificationPrefs ?? null);
+    const base =
+      typeof updateData.notificationPrefs === "string"
+        ? JSON.parse(updateData.notificationPrefs)
+        : parseNotificationPrefs(settings.notificationPrefs ?? null);
     base.__riskGuard = sanitizeRiskGuardOverrides(riskGuard);
     updateData.notificationPrefs = JSON.stringify(base);
   }
@@ -168,44 +212,31 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
-async function getOrCreateSettings(userId: string | null) {
-  const where = userId ? eq(userSettingsTable.userId, userId) : isNull(userSettingsTable.userId);
-  const [existing] = await db.select().from(userSettingsTable).where(where).limit(1);
-  if (existing) return existing;
-  const [created] = await db.insert(userSettingsTable).values({
-    backgroundType: "default",
-    fontChoice: "inter",
-    backgroundDarkness: 60,
-    userId,
-  }).returning();
-  return created;
-}
-
 router.get("/settings", async (req, res) => {
   const userId = getUserId(req);
-  const settings = await getOrCreateSettings(userId);
+  const settings = await getOrCreateUserSettings(userId);
   res.json(serializeSettings(settings));
 });
 
 router.put("/settings", async (req, res) => {
   const userId = getUserId(req);
-  const settings = await getOrCreateSettings(userId);
+  const result = await withLockedUserSettings(userId, async (tx, settings) => {
+    const { updateData, error } = buildSettingsUpdateData(req.body, settings);
+    if (error) {
+      return { status: 400, data: { error } };
+    }
+    if (Object.keys(updateData).length === 0) {
+      return { status: 200, data: serializeSettings(settings) };
+    }
+    const [updated] = await tx
+      .update(userSettingsTable)
+      .set(updateData)
+      .where(eq(userSettingsTable.id, settings.id))
+      .returning();
 
-  const { updateData, error } = buildSettingsUpdateData(req.body, settings);
-  if (error) {
-    res.status(400).json({ error });
-    return;
-  }
-  if (Object.keys(updateData).length === 0) {
-    res.json(serializeSettings(settings));
-    return;
-  }
-  const [updated] = await db.update(userSettingsTable)
-    .set(updateData)
-    .where(eq(userSettingsTable.id, settings.id))
-    .returning();
-  
-  res.json(serializeSettings(updated));
+    return { status: 200, data: serializeSettings(updated) };
+  });
+  res.status(result.status).json(result.data);
 });
 
 router.post("/settings/background", upload.single("image"), async (req, res) => {
@@ -213,10 +244,22 @@ router.post("/settings/background", upload.single("image"), async (req, res) => 
     res.status(400).json({ error: "No image uploaded" });
     return;
   }
+  if (
+    !imageMatchesType(
+      await fs.promises.readFile(req.file.path),
+      req.file.mimetype,
+      req.file.originalname,
+    )
+  ) {
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    res.status(415).json({ error: "Il file non è un'immagine valida nel formato indicato" });
+    return;
+  }
   const userId = getUserId(req);
   const url = `/api/uploads/${req.file.filename}`;
-  const settings = await getOrCreateSettings(userId);
-  await db.update(userSettingsTable)
+  const settings = await getOrCreateUserSettings(userId);
+  await db
+    .update(userSettingsTable)
     .set({ backgroundUrl: url, backgroundType: "custom" })
     .where(eq(userSettingsTable.id, settings.id));
   res.json({ url });

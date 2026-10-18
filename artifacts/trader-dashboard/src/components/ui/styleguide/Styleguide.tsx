@@ -29,8 +29,8 @@ export default function Styleguide() {
   return (
     <div className="mx-auto max-w-5xl space-y-10 p-8">
       <header className="space-y-1">
-        <h1 className="text-2xl font-mono">Design System — Liquid Glass / Neutral Jade</h1>
-        <p className="text-text-lo">Single source of truth for tokens, material, motion &amp; primitives.</p>
+        <h1 className="text-2xl font-sans">TraderLoading — Midnight / Cyan</h1>
+        <p className="text-text-lo">Shared typography, surfaces, states and controls for the public site and trading workspaces.</p>
       </header>
 
       <Section title="Neutral ramp">
@@ -44,13 +44,13 @@ export default function Styleguide() {
       </Section>
 
       <Section title="Accent & P&L">
-        <Swatch name="jade" varName="--accent-jade" />
+        <Swatch name="brand" varName="--accent-jade" />
         <Swatch name="win" varName="--success" />
         <Swatch name="loss" varName="--destructive" />
         <Swatch name="be" varName="--warning" />
       </Section>
 
-      <Section title="Glass tiers">
+      <Section title="Opaque surfaces · compatibility classes">
         <div className="glass-bar h-20 w-40 rounded-lg p-3 text-xs">glass-bar</div>
         <div className="glass-panel h-20 w-40 p-3 text-xs">glass-panel</div>
         <div className="glass-raised h-20 w-40 p-3 text-xs">glass-raised</div>
@@ -69,7 +69,7 @@ export default function Styleguide() {
         <Button variant="secondary">Secondary</Button>
         <Button variant="outline">Outline</Button>
         <Button variant="ghost">Ghost</Button>
-        <Button variant="glass">Glass</Button>
+        <Button variant="glass">Surface</Button>
         <Button variant="destructive">Destructive</Button>
         <Button variant="link">Link</Button>
       </Section>
@@ -80,11 +80,11 @@ export default function Styleguide() {
             <CardTitle>Card title</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className="text-text-lo text-sm">Liquid-glass card body.</p>
+            <p className="text-text-lo text-sm">Shared opaque panel.</p>
             <div className="flex gap-2">
               <Badge>Default</Badge>
             </div>
-            <Input placeholder="Glass-inset input" />
+            <Input placeholder="Text input" />
           </CardContent>
         </Card>
       </Section>

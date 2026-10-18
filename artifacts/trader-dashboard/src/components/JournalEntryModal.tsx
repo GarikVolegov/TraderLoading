@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/react";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { useDropzone } from "react-dropzone";
@@ -18,17 +19,27 @@ import {
   useUploadJournalImage,
   useDeleteJournalImage,
   getGetJournalEntriesQueryKey,
+  getGetJournalEdgeQueryKey,
   useGetChecklist,
   type JournalEntry
 } from "@workspace/api-client-react";
 import { useLanguage, uiText } from "@/contexts/LanguageContext";
 import { fetchJournalTags, journalTagsQueryKey, saveJournalTag, type JournalTagSummary } from "@/lib/journalTagsApi";
 import { trackEvent } from "@/lib/analytics";
+import { addProcessEvidence, fetchTraderProcess, traderProcessKey } from "@/lib/traderProcessApi";
+import { processDateTimeInput, parseProcessDateTime } from "@/lib/processDateTime";
+import { processDay } from "../../../../contracts/trader-process";
+import { journeyText } from "@/lib/processJourneyCopy";
+import { processText } from "@/lib/processCopy";
 
 interface JournalEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   entry?: JournalEntry | null;
+  initialPair?: string;
+  marketDecisionId?: string;
+  processSessionId?: string;
+  methodVersionId?: string;
 }
 
 // ─── Saved tags hook ──────────────────────────────────────────────────────────
@@ -262,10 +273,15 @@ function ChecklistTagPanel({ activeTags, onAdd }: ChecklistTagPanelProps) {
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 
-export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalProps) {
+export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketDecisionId, processSessionId, methodVersionId }: JournalEntryModalProps) {
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const copy = (key: Parameters<typeof processText>[1]) => processText(language, key);
   const queryClient = useQueryClient();
+  const processContext = Boolean(!entry && processSessionId && methodVersionId);
+  const { userId, isLoaded, isSignedIn } = useAuth();
+  const processQuery = useQuery({ queryKey: [...traderProcessKey, userId], queryFn: fetchTraderProcess, enabled: processContext && isOpen && isLoaded && isSignedIn === true && Boolean(userId) });
+  const contextSession = processQuery.data?.session?.id === processSessionId ? processQuery.data?.session ?? null : null;
 
   // All 4 are driven via mutateAsync inside handleSave's own try/catch (which
   // already shows a "journal_modal.error" toast below) — suppressGlobalError
@@ -291,25 +307,49 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
   const [pendingDeletes, setPendingDeletes] = useState<number[]>([]);
   const [pendingFiles, setPendingFiles] = useState<(File & { preview: string })[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const pendingFilesRef = useRef(pendingFiles);
   // Optional structured trade → feeds the coach (finding 3.5). Kept as strings for
   // controlled inputs; only sent when complete, so a plain-text edit never touches
   // an existing trade (the backend guard ignores a body without trade fields).
+  const [executionEnvironment, setExecutionEnvironment] = useState<"simulation" | "real" | "unknown" | "">("");
   const [symbol, setSymbol] = useState("");
   const [direction, setDirection] = useState<"buy" | "sell">("buy");
   const [entryPrice, setEntryPrice] = useState("");
   const [exitPrice, setExitPrice] = useState("");
   const [stopLoss, setStopLoss] = useState("");
   const [profit, setProfit] = useState("");
+  const [initialRisk, setInitialRisk] = useState("");
+  const [costs, setCosts] = useState("");
+  const [adherence, setAdherence] = useState<"conforming" | "violation" | "unknown">("unknown");
+  const [processNote, setProcessNote] = useState("");
+  const [currency, setCurrency] = useState("");
+  const [processOpenTime, setProcessOpenTime] = useState("");
+  const [processCloseTime, setProcessCloseTime] = useState("");
+  const timeDefaults = useRef({ input: "", iso: "" });
+  const evidenceRequestId = useRef(crypto.randomUUID());
+  const evidenceSaved = useRef(false);
+  const linkedTradeId = useRef<number | undefined>(undefined);
 
+  const savedEntryId = useRef<number | undefined>(undefined);
+  const saving = useRef(false);
   useEffect(() => {
-    // Trade fields aren't on the entry response; always start blank so an untouched
-    // edit sends nothing and the linked trade is preserved.
-    setSymbol("");
-    setDirection("buy");
-    setEntryPrice("");
-    setExitPrice("");
-    setStopLoss("");
-    setProfit("");
+    pendingFilesRef.current.forEach(file => URL.revokeObjectURL(file.preview));
+    savedEntryId.current = entry?.id;
+    evidenceSaved.current = false;
+    linkedTradeId.current = undefined;
+    evidenceRequestId.current = crypto.randomUUID();
+    setInitialRisk(""); setCosts(""); setAdherence("unknown"); setProcessNote(""); setCurrency("");
+    const opened = new Date();
+    timeDefaults.current = { input: processDateTimeInput(opened, true), iso: opened.toISOString() };
+    setProcessOpenTime(timeDefaults.current.input); setProcessCloseTime(timeDefaults.current.input);
+    const trade = entry?.manualTrade;
+    setExecutionEnvironment(trade?.executionEnvironment ?? "");
+    setSymbol(trade?.symbol ?? initialPair ?? "");
+    setDirection(trade?.direction ?? "buy");
+    setEntryPrice(trade ? String(trade.entryPrice) : "");
+    setExitPrice(trade ? String(trade.exitPrice) : "");
+    setStopLoss(trade?.stopLoss != null ? String(trade.stopLoss) : "");
+    setProfit(trade ? String(trade.profit) : "");
     if (entry) {
       setTitle(entry.title);
       setContent(entry.content);
@@ -322,14 +362,23 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
     } else {
       setTitle("");
       setContent("");
-      setTradeDate(format(new Date(), "yyyy-MM-dd"));
+      setTradeDate(processDay());
       setResult("none");
       setTagList([]);
       setExistingImages([]);
       setPendingDeletes([]);
       setPendingFiles([]);
     }
-  }, [entry, isOpen]);
+  }, [entry, isOpen, initialPair]);
+
+  useEffect(() => {
+    if (!isOpen || !contextSession) return;
+    setTitle(current => current || `${contextSession.plan?.market ?? initialPair ?? ""} · ${contextSession.plan?.setup ?? ""}`.trim());
+    setInitialRisk(current => current || (contextSession.plan?.initialRisk != null ? String(contextSession.plan.initialRisk) : ""));
+    setCurrency(current => current || contextSession.rulesSnapshot.currency);
+    setSymbol(current => current || contextSession.plan?.market || "");
+    setExecutionEnvironment(current => current || (contextSession.mode === "application" ? "real" : "simulation"));
+  }, [contextSession, initialPair, isOpen]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map(file => Object.assign(file, {
@@ -340,7 +389,7 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/*': [] },
+    accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'], 'image/webp': ['.webp'], 'image/gif': ['.gif'] },
     maxSize: 5 * 1024 * 1024
   });
 
@@ -366,41 +415,75 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
   };
 
   const handleSave = async () => {
+    if (saving.current) return;
     if (!title.trim()) {
       toast({ title: t("common.error"), description: t("journal_modal.title_required"), variant: "destructive" });
       return;
     }
 
+    saving.current = true;
     setIsSaving(true);
     try {
-      let entryId = entry?.id;
+      let entryId = savedEntryId.current;
       const tagsString = tagList.length > 0 ? tagList.join(", ") : null;
       // Only attach the trade when the essentials are present; otherwise send no
       // trade fields at all so the backend leaves any existing linked trade alone.
       const tradeComplete =
         symbol.trim() !== "" && entryPrice.trim() !== "" && exitPrice.trim() !== "" && profit.trim() !== "";
+      const tradeStarted = [entryPrice, exitPrice, stopLoss, profit].some(value => value.trim() !== "");
+      if (processContext && (!contextSession || contextSession.methodVersionId !== methodVersionId || contextSession.state !== "operation")) throw new Error(copy("processUnavailable"));
+      const actualOpenTime = processContext ? (processOpenTime === timeDefaults.current.input ? timeDefaults.current.iso : parseProcessDateTime(processOpenTime)) : undefined;
+      const actualCloseTime = processContext ? (processCloseTime === timeDefaults.current.input ? timeDefaults.current.iso : parseProcessDateTime(processCloseTime)) : undefined;
+      if (actualOpenTime && actualCloseTime && actualCloseTime < actualOpenTime) throw new Error(copy("closeTime"));
+      if (tradeComplete && !executionEnvironment) throw new Error(journeyText(language, "environment"));
+      if (tradeStarted && !tradeComplete) throw new Error(t("journal_modal.trade_incomplete"));
+      if (processContext && !tradeComplete) throw new Error("Completa i dati dell'operazione per collegarla alla sessione.");
+      if (initialRisk && (!Number.isFinite(Number(initialRisk)) || Number(initialRisk) <= 0)) throw new Error("Il rischio monetario iniziale deve essere positivo.");
+      if (costs && (!Number.isFinite(Number(costs)) || Number(costs) < 0)) throw new Error("Indica costi totali non negativi, oppure lascia il campo vuoto se sconosciuti.");
       const tradeFields = tradeComplete
         ? {
             symbol: symbol.trim(),
+            executionEnvironment: executionEnvironment || "unknown",
             direction,
             entryPrice: Number(entryPrice),
             exitPrice: Number(exitPrice),
             stopLoss: stopLoss.trim() !== "" ? Number(stopLoss) : null,
             profit: Number(profit),
+            ...(processContext && costs.trim() !== "" ? { commission: -Number(costs), swap: 0 } : {}),
+            ...(processContext ? { openTime: actualOpenTime, closeTime: actualCloseTime } : {}),
           }
         : {};
-      const formData = { title, content, tradeDate, result, tags: tagsString, ...tradeFields };
+      const formData = { title, content, tradeDate, result, tags: tagsString, ...tradeFields, ...(!entry && marketDecisionId ? { marketDecisionId } : {}) };
 
       if (!entryId) {
         const newEntry = await createMutation.mutateAsync({ data: formData });
         entryId = newEntry.id;
+        savedEntryId.current = entryId;
+        linkedTradeId.current = newEntry.manualTrade?.accountTradeId;
         trackEvent("journal_entry_created", { has_result: result ? 1 : 0 });
       } else {
-        await updateMutation.mutateAsync({ id: entryId, data: formData });
+        const updated = await updateMutation.mutateAsync({ id: entryId, data: formData });
+        linkedTradeId.current = updated.manualTrade?.accountTradeId;
+      }
+
+      if (processContext && !evidenceSaved.current && methodVersionId && processSessionId) {
+        if (!linkedTradeId.current) throw new Error("L'operazione è salvata. Il collegamento al processo richiede un nuovo tentativo.");
+        await addProcessEvidence({
+          methodVersionId, sessionId: processSessionId, accountTradeId: linkedTradeId.current,
+          purpose: contextSession?.mode === "practice" ? "development" : contextSession?.mode === "validation" ? "validation" : "live", source: "account_trade", requestId: evidenceRequestId.current,
+          initialRisk: initialRisk.trim() ? Number(initialRisk) : null,
+          netPnl: costs.trim() ? Number(profit) - Number(costs) : null,
+          costsStatus: costs.trim() ? "included" : "unknown", currency: currency || null,
+          observedAt: actualCloseTime!,
+          adherence, provenance: "declared", note: processNote,
+        });
+        evidenceSaved.current = true;
+        queryClient.invalidateQueries({ queryKey: traderProcessKey });
       }
 
       for (const imageId of pendingDeletes) {
         await deleteImageMutation.mutateAsync({ id: entryId, imageId });
+        setPendingDeletes(previous => previous.filter(id => id !== imageId));
       }
 
       for (const file of pendingFiles) {
@@ -408,11 +491,15 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
           id: entryId,
           data: { image: file }
         });
+        URL.revokeObjectURL(file.preview);
+        setPendingFiles(previous => previous.filter(pending => pending !== file));
       }
 
       toast({ title: t("common.success"), description: t("journal_modal.saved") });
       queryClient.invalidateQueries({ queryKey: getGetJournalEntriesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetJournalEdgeQueryKey() });
       queryClient.invalidateQueries({ queryKey: journalTagsQueryKey });
+      queryClient.invalidateQueries({ queryKey: ["market-decisions"] });
       onClose();
     } catch (err) {
       toast({
@@ -421,13 +508,13 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
         variant: "destructive"
       });
     } finally {
+      saving.current = false;
       setIsSaving(false);
     }
   };
 
-  useEffect(() => {
-    return () => pendingFiles.forEach(file => URL.revokeObjectURL(file.preview));
-  }, [pendingFiles]);
+  useEffect(() => { pendingFilesRef.current = pendingFiles; }, [pendingFiles]);
+  useEffect(() => () => pendingFilesRef.current.forEach(file => URL.revokeObjectURL(file.preview)), []);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !isSaving && !open && onClose()}>
@@ -437,6 +524,12 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
             {entry ? t("journal_modal.edit") : t("journal_modal.new")}
           </DialogTitle>
         </DialogHeader>
+        {!entry && marketDecisionId && <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">{t("intelligence.linked_note")}</p>}
+        {processContext && <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2 text-sm">
+          <p className="font-medium">{copy("processEvidence")}</p>
+          <p className="text-muted-foreground">{copy("outsidePlan")}</p>
+          {contextSession?.plan && <p className="text-muted-foreground">Piano: {contextSession.plan.decision === "wait" ? `attesa · ${contextSession.plan.waitReason}` : `${contextSession.plan.market} · ${contextSession.plan.setup}`}</p>}
+        </div>}
 
         <div className="grid gap-6 py-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -444,6 +537,7 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
               <Label className="text-muted-foreground">{t("journal_modal.date")}</Label>
               <Input
                 type="date"
+                aria-label={t("journal_modal.date")}
                 value={tradeDate}
                 onChange={e => setTradeDate(e.target.value)}
                 className="bg-background/50 border-white/10"
@@ -472,15 +566,41 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
             </div>
           </div>
 
+          {processContext && <fieldset className="space-y-3 rounded-xl border border-primary/20 p-3">
+            <legend className="px-1 text-sm font-medium">{copy("processEvidence")}</legend>
+            <p className="text-xs text-muted-foreground">{copy("grossHint")}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label className="space-y-1 text-xs">{copy("initialRisk")}<Input type="number" min="0" step="any" value={initialRisk} onChange={event => setInitialRisk(event.target.value)} /></label>
+              <label className="space-y-1 text-xs">{copy("totalCosts")}<Input type="number" min="0" step="any" value={costs} onChange={event => setCosts(event.target.value)} /></label>
+              <label className="space-y-1 text-xs">{copy("currency")}<Input value={currency} maxLength={3} onChange={event => setCurrency(event.target.value.toUpperCase())} /></label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><label className="space-y-1 text-xs">{copy("openTime")}<Input type="datetime-local" step="1" value={processOpenTime} onChange={event => setProcessOpenTime(event.target.value)} /></label><label className="space-y-1 text-xs">{copy("closeTime")}<Input type="datetime-local" step="1" value={processCloseTime} onChange={event => setProcessCloseTime(event.target.value)} /></label></div>
+            <label className="block space-y-1 text-xs">{copy("adherence")} · {copy("declared")}<select aria-label={`${copy("adherence")} · ${copy("declared")}`} value={adherence} onChange={event => setAdherence(event.target.value as typeof adherence)} className="w-full rounded-md border border-border bg-background p-2 text-base min-h-11">
+              <option value="unknown">{copy("unknown")}</option><option value="conforming">{copy("conforming")}</option><option value="violation">{copy("violation")}</option>
+            </select></label>
+            <label className="block space-y-1 text-xs">{copy("evidenceNote")}<Textarea value={processNote} onChange={event => setProcessNote(event.target.value)} rows={2} /></label>
+          </fieldset>}
+
           <div className="space-y-3 rounded-xl border border-white/10 bg-background/30 p-3">
             <div>
               <Label className="text-muted-foreground">{t("journal_modal.trade.section")}</Label>
               <p className="text-[11px] text-muted-foreground/70">{t("journal_modal.trade.hint")}</p>
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="trade-execution-environment">{journeyText(language, "environment")}</Label>
+              <select id="trade-execution-environment" aria-label={journeyText(language, "environment")}
+                value={executionEnvironment} disabled={Boolean(entry?.manualTrade && entry.manualTrade.executionEnvironment !== "unknown")}
+                className="h-11 w-full rounded-lg border border-border bg-background px-3 text-base sm:text-sm"
+                onChange={event => setExecutionEnvironment(event.target.value as typeof executionEnvironment)}>
+                <option value="">—</option>
+                {(["simulation", "real", "unknown"] as const).map(value => <option key={value} value={value}>{journeyText(language, value)}</option>)}
+              </select>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.symbol")}</Label>
                 <Input
+                  aria-label={t("journal_modal.trade.symbol")}
                   value={symbol}
                   onChange={e => setSymbol(e.target.value)}
                   className="bg-background/50 border-white/10 uppercase"
@@ -507,19 +627,19 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.profit")}</Label>
-                <Input type="number" inputMode="decimal" value={profit} onChange={e => setProfit(e.target.value)} className="bg-background/50 border-white/10" />
+                <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.profit")} value={profit} onChange={e => setProfit(e.target.value)} className="bg-background/50 border-white/10" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.entry")}</Label>
-                <Input type="number" inputMode="decimal" value={entryPrice} onChange={e => setEntryPrice(e.target.value)} className="bg-background/50 border-white/10" />
+                <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.entry")} value={entryPrice} onChange={e => setEntryPrice(e.target.value)} className="bg-background/50 border-white/10" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.exit")}</Label>
-                <Input type="number" inputMode="decimal" value={exitPrice} onChange={e => setExitPrice(e.target.value)} className="bg-background/50 border-white/10" />
+                <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.exit")} value={exitPrice} onChange={e => setExitPrice(e.target.value)} className="bg-background/50 border-white/10" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.stop")}</Label>
-                <Input type="number" inputMode="decimal" value={stopLoss} onChange={e => setStopLoss(e.target.value)} className="bg-background/50 border-white/10" />
+                <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.stop")} value={stopLoss} onChange={e => setStopLoss(e.target.value)} className="bg-background/50 border-white/10" />
               </div>
             </div>
           </div>
@@ -527,6 +647,7 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
           <div className="space-y-2">
             <Label className="text-muted-foreground">{t("journal_modal.title_label")}</Label>
             <Input
+              aria-label={t("journal_modal.title_label")}
               placeholder={t("journal_modal.title_placeholder")}
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -546,10 +667,10 @@ export function JournalEntryModal({ isOpen, onClose, entry }: JournalEntryModalP
               onSaveTag={(tag) => saveTagMutation.mutate(tag)}
               savedTags={savedTagsData}
             />
-            <ChecklistTagPanel
+            {!processContext && <ChecklistTagPanel
               activeTags={tagList}
               onAdd={addTagFromPanel}
-            />
+            />}
           </div>
 
           <div className="space-y-2">

@@ -7,7 +7,7 @@ locale.
 
 1. Node.js 20+
 2. pnpm installato globalmente: `npm install -g pnpm`
-3. Docker Desktop avviato, necessario per PostgreSQL locale
+3. PostgreSQL locale: Docker Desktop oppure il cluster Postgres.app già configurato su Mac
 4. File `.env.local` presente con le variabili richieste
 
 ## Comandi consigliati
@@ -38,6 +38,23 @@ Avvia tutto in locale:
 ```bash
 pnpm run start:local
 ```
+
+L'avvio riutilizza lo schema esistente: **non esegue più `push-force` o migrazioni**.
+Su questo Mac riavvia il cluster esistente `.local-postgres` tramite Postgres.app
+su `55432`. Non crea un nuovo database e non rimuove il blocco `postmaster.pid`.
+In VS Code usa **App: start local stack**; il frontend da solo non avvia le API.
+Per avviare solo il frontend con le variabili della radice caricate correttamente:
+
+```bash
+pnpm --filter ./scripts exec tsx local/startFrontendDev.ts
+```
+
+Accesso: [http://localhost:5173/sign-in](http://localhost:5173/sign-in).
+Le chiavi Clerk `pk_test`/`sk_test` devono appartenere alla stessa istanza Development.
+Gli utenti Development e Production sono separati: un account del sito online non
+è automaticamente disponibile in locale. Non incollare chiavi segrete nella chat;
+non sostituire le chiavi locali con quelle live per aggirare un errore su localhost.
+Vedi [avvio locale e alternative a Railway](docs/local-access-and-hosting.md).
 
 In alternativa, usa i wrapper sottili:
 
@@ -96,8 +113,8 @@ Consigli:
   serverless o con molte istanze;
 - per Node/pg preferisci `sslmode=verify-full&channel_binding=require`;
 - tieni un database/branch Neon separato per staging e produzione;
-- dopo aver impostato `DATABASE_URL`, esegui `pnpm --filter @workspace/db run push`
-  per applicare lo schema al database Neon;
+- per aggiornare lo schema, verifica prima il database di destinazione e un backup,
+  poi usa le migrazioni versionate (`pnpm db:migrate`) come operazione separata;
 - non committare `.env.local` o file `.env` con credenziali reali.
 
 ## Debug rapido

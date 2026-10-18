@@ -23,7 +23,8 @@ assert.equal(cpi.article.primaryAssets?.[0], "USD");
 assert.ok(cpi.article.primaryAssets?.includes("XAU"));
 assert.ok(cpi.article.primaryAssets?.includes("USD"));
 assert.deepEqual(cpi.article.affectedPairs, ["XAU/USD"]);
-assert.equal(cpi.article.impactDirection, "bearish");
+assert.equal(cpi.article.impactDirection, "neutral");
+assert.equal(cpi.article.effects?.[0].direction, "uncertain");
 assert.ok((cpi.article.matchConfidence ?? 0) >= 0.7);
 assert.match(cpi.article.relevanceReason ?? "", /oro|XAU|dollaro|rendimenti/i);
 
@@ -32,7 +33,7 @@ const geo = classifyNewsArticle(
   { pairs: "XAUUSD", lang: "it" },
 );
 assert.equal(geo.relevant, true);
-assert.equal(geo.article.impactDirection, "bullish");
+assert.equal(geo.article.impactDirection, "neutral");
 assert.ok((geo.article.impactScore ?? 0) >= 8);
 
 const miner = classifyNewsArticle(
@@ -41,7 +42,7 @@ const miner = classifyNewsArticle(
 );
 assert.equal(miner.relevant, true);
 assert.ok((miner.article.matchConfidence ?? 0) >= 0.85);
-assert.equal(miner.article.impactDirection, "bullish");
+assert.equal(miner.article.impactDirection, "neutral");
 
 const bitcoin = classifyNewsArticle(
   article("Bitcoin rallies as ETF demand grows", "Crypto traders increase risk exposure."),
@@ -97,4 +98,10 @@ assert.equal(filtered.some((item) => item.title.includes("NZD/USD")), false);
 assert.equal(filtered.some((item) => item.title.includes("New Zealand Dollar")), false);
 assert.equal(filtered[0]?.affectedPairs?.includes("XAU/USD"), true);
 
+for (const title of ["US CPI cools below expectations", "Federal Reserve cuts interest rates", "US CPI rises above expectations"]) {
+  const result = classifyNewsArticle({ ...article(title, title), sentiment:"bullish", impactDirection:"bearish" }, { pairs:"XAUUSD", lang:"it" }).article;
+  assert.equal(result.sentiment, "neutral");
+  assert.equal(result.impactDirection, "neutral");
+  assert.equal(result.effects?.[0].direction,"uncertain");
+}
 console.log("news intelligence checks passed");

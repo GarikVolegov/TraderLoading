@@ -266,8 +266,10 @@ console.log("tradeEngine checks passed");
   assert.equal(withCost.cost, 8.5); // buy.lots = 0.5 → 1×10×0.5 + 7×0.5
   assert.equal(withCost.profit, 191.5); // 200 gross − 8.5
   assert.equal(withCost.pips, 40, "gross pips unchanged");
-  // R is NET: cost 8.5 = 1.7 pips (8.5 / (10×0.5)); (40−1.7)/20 = 1.915 → 1.91
-  assert.equal(withCost.rMultiple, 1.91);
+  // Monetary net R: 191.5 / the immutable 100 entry risk = 1.915 → 1.92.
+  // The prior pips calculation rounded a floating-point artifact down to 1.91.
+  assert.equal(withCost.initialRiskAmount, 100);
+  assert.equal(withCost.rMultiple, 1.92);
   assert.equal(withCost.result, "win");
 
   // a marginal winner fully eaten by costs flips to a loss (result follows NET)

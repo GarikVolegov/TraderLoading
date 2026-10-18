@@ -7,6 +7,7 @@ export const ACCOUNT_DELETION_CATEGORIES = [
   "auth-provider",
   "profile",
   "journal",
+  "trader-process",
   "trading-data",
   "push-notifications",
   "social-community",
@@ -254,6 +255,13 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
       DELETE FROM journal_images
       WHERE entry_id IN (SELECT id FROM journal_entries WHERE user_id = ${userId})
     `);
+    await tx.execute(sql`DELETE FROM process_reviews WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM process_advancements WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM process_evidence WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM process_sessions WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM process_improvements WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM process_drafts WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM process_methods WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM account_trades WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM journal_recaps WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM journal_tags WHERE user_id = ${userId}`);
@@ -261,7 +269,9 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
 
     await tx.execute(sql`DELETE FROM backtest_trades WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM backtest_sessions WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM broker_profile_store WHERE store_key LIKE 'backtest-trade:%' AND data->>'userId' = ${userId}`);
     await tx.execute(sql`DELETE FROM routine_completions WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM market_decisions WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM news_feedback WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM news_preferences WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM level_certificates WHERE user_id = ${userId}`);

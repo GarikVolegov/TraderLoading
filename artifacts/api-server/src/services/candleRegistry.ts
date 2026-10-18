@@ -24,6 +24,7 @@ export const SYMBOL_ID = {
   SPX500: 15,
   BTCUSD: 16,
   ETHUSD: 17,
+  USOIL: 18,
 } as const;
 
 export type WarehouseSymbol = keyof typeof SYMBOL_ID;
@@ -38,6 +39,13 @@ export const SOURCE_ID = {
 } as const;
 
 export type WarehouseSource = keyof typeof SOURCE_ID;
+
+/** Replay uses one instrument and one quote side throughout its history. */
+export const REPLAY_INSTRUMENTS: Record<string, { source: WarehouseSource; instrument: string; description: string }> = {
+  EURUSD: { source: "dukascopy", instrument: "eurusd", description: "EUR/USD · Dukascopy bid" },
+  XAUUSD: { source: "dukascopy", instrument: "xauusd", description: "Gold spot · Dukascopy bid" },
+  USOIL: { source: "dukascopy", instrument: "lightcmdusd", description: "WTI crude oil CFD · Dukascopy bid" },
+};
 
 /** Stored base resolution in minutes (`candle.res`). */
 export const RES = {

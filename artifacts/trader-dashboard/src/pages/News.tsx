@@ -31,7 +31,9 @@ import {
   type NewsSocketMessage,
 } from "@/lib/newsApi";
 import { apiJSON } from "@/lib/apiFetch";
-import { simpleStatusLabel } from "@/lib/uiCopyPolicy";
+import { useLocation, useSearch } from "wouter";
+import { updateWorkspaceQuery } from "@/lib/workspaceNavigation";
+import { newsArticleReference, newsArticleMatchesReference, newsRelevantToPair, selectNewsBrief, sourceHostname } from "@/lib/newsBrief";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -79,21 +81,16 @@ function ImpactScore({ score }: { score: number }) {
   );
 }
 
-function ConfidenceBadge({ confidence }: { confidence?: number }) {
-  if (typeof confidence !== "number") return null;
-  const pct = Math.round(confidence * 100);
-  const color =
-    pct >= 80 ? "text-emerald-400 border-emerald-500/40 bg-emerald-500/10" :
-    pct >= 60 ? "text-amber-400 border-amber-500/40 bg-amber-500/10" :
-                "text-muted-foreground border-white/10 bg-white/5";
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border whitespace-nowrap ${color}`}>
-      {pct}% match
-    </span>
-  );
+function PairEffectsBadge({ article, pair }: { article: Article; pair: string | null }) {
+  const { t } = useLanguage();
+  const effects = (article.effects ?? []).filter(effect => !pair || effect.pair === pair);
+  if (!effects.length) return <span className="text-xs text-muted-foreground">{t("intelligence.uncertain")}</span>;
+  return <>{effects.slice(0, 3).map(effect => <span key={effect.pair} className="inline-flex items-center gap-1"><PairBadge pair={effect.pair} />{effect.direction === "uncertain" ? <span className="text-xs text-muted-foreground">{t("intelligence.uncertain")}</span> : <SentimentBadge sentiment={effect.direction} />}</span>)}</>;
 }
 
 function FreshnessBadge({ article }: { article: Article }) {
+  const { t } = useLanguage();
+  if (!article.publishedAt || !Number.isFinite(Date.parse(article.publishedAt))) return <span className="text-xs text-muted-foreground">{t("market.unknown_time")}</span>;
   const tier = article.freshnessTier ?? (article.isFallback ? "fallback" : "fresh");
   const age = article.ageMinutes;
   const label =
@@ -246,6 +243,8 @@ function mergeSnapshotMeta(
     watchedPairs: snapshot.watchedPairs ?? first.watchedPairs,
     providerStatuses: snapshot.providerStatuses ?? first.providerStatuses,
     source: snapshot.source ?? first.source,
+    sourceStatus: snapshot.sourceStatus ?? first.sourceStatus,
+    analysisStatus: snapshot.analysisStatus ?? first.analysisStatus,
     freshArticlesCount: snapshot.freshArticlesCount ?? first.freshArticlesCount,
     freshnessWindowHours: snapshot.freshnessWindowHours ?? first.freshnessWindowHours,
   };
@@ -287,12 +286,12 @@ function RefreshCountdown({ nextRefreshAt }: { nextRefreshAt?: string }) {
 
 // ─── Article Card ─────────────────────────────────────────────────────────────
 
-function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+function NewsDetailDialog({ article, pair, open, onOpenChange }: { article: Article | null; pair: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const { t } = useLanguage();
   const explanation = article ? article.relevanceReason ?? article.impactReason : undefined;
   if (!article) return null;
   const detailUrl = preferredArticleUrl(article);
-  const deepDive = article.deepDive;
+  const deepDive = article.contentBasis === "full_text" ? article.deepDive : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -301,7 +300,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
           <div className="flex items-center gap-2 flex-wrap pr-6">
             <FreshnessBadge article={article} />
             {article.impactScore && <ImpactScore score={article.impactScore} />}
-            <SentimentBadge sentiment={article.sentiment} />
+            <PairEffectsBadge article={article} pair={pair} />
           </div>
           <DialogTitle className="text-xl leading-snug pt-2">{article.title}</DialogTitle>
           <DialogDescription className="flex items-center gap-2 flex-wrap">
@@ -319,7 +318,9 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
         )}
 
         <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">{t(`workspace.evidence.${article.contentBasis ?? "snippet"}`)} · {t(`workspace.analysis.${article.analysisMethod ?? "none"}`)} · {article.source}</p>
           <p className="text-sm leading-relaxed text-foreground/90">{article.summary}</p>
+          {(article.effects ?? []).filter(effect => !pair || effect.pair === pair).map(effect => <section key={effect.pair} className="rounded-lg border border-border bg-secondary/20 p-3"><h3 className="font-sans text-sm font-semibold">{effect.pair} / 4h</h3><dl className="mt-3 space-y-3 text-sm">{[["event_fact", effect.fact], ["scenario", effect.scenario], ["invalidation", effect.invalidation]].map(([key, value]) => <div key={key}><dt className="text-xs font-semibold text-primary">{t(`intelligence.${key}`)}</dt><dd className="mt-1 text-muted-foreground">{value}</dd></div>)}</dl>{effect.evidenceUrls.filter(url => /^https?:\/\//i.test(url)).map(url => <a key={url} className="mt-2 block text-xs text-primary underline" href={url} target="_blank" rel="noopener noreferrer">{sourceHostname(url)}</a>)}</section>)}
 
           {deepDive ? (
             <div className="grid gap-3">
@@ -334,7 +335,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
                 </div>
               ))}
             </div>
-          ) : explanation && (
+          ) : explanation && article.contentBasis === "full_text" && (
             <div className="rounded-lg border border-primary/15 bg-primary/5 p-3">
               <p className="text-xs font-bold uppercase tracking-wide text-primary/80 mb-1">{t("news.impact_for_trading")}</p>
               <p className="text-sm text-muted-foreground leading-relaxed">{explanation}</p>
@@ -356,6 +357,7 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
           )}
 
           <div className="flex flex-wrap gap-2">
+            {(article.citationUrls ?? []).filter(url => /^https?:\/\//i.test(url) && sourceHostname(url) && url !== detailUrl && url !== article.sourceUrl).map(url => <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">{sourceHostname(url)}</a>)}
             {detailUrl && (
               <a
                 href={detailUrl}
@@ -385,11 +387,10 @@ function NewsDetailDialog({ article, open, onOpenChange }: { article: Article | 
   );
 }
 
-function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Article; idx: number; isAI: boolean; onOpen: (article: Article) => void; vote: number; onVote: (vote: number) => void }) {
+function ArticleCard({ article, pair, idx, isAI, onOpen, vote, onVote, voteDisabled }: { article: Article; pair: string | null; idx: number; isAI: boolean; onOpen: (article: Article) => void; vote: number; onVote: (vote: number) => void; voteDisabled: boolean }) {
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const explanation = article.relevanceReason ?? article.impactReason;
-  const hasImpactDetails = isAI && (article.impactScore || (article.affectedPairs && article.affectedPairs.length > 0) || explanation);
 
   return (
     <motion.div
@@ -403,6 +404,7 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
         tabIndex={0}
         onClick={() => onOpen(article)}
         onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             onOpen(article);
@@ -435,8 +437,7 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
           {(article.impactScore || article.sentiment || article.freshnessTier || article.isFallback) && (
             <div className="flex items-center gap-1.5 flex-wrap">
               {isAI && article.impactScore && <ImpactScore score={article.impactScore} />}
-              <SentimentBadge sentiment={article.sentiment} />
-              <ConfidenceBadge confidence={article.matchConfidence} />
+              <PairEffectsBadge article={article} pair={pair} />
               <FreshnessBadge article={article} />
             </div>
           )}
@@ -464,7 +465,7 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
           )}
 
           {/* Impact reason expand */}
-          {isAI && explanation && (
+          {isAI && explanation && article.contentBasis === "full_text" && (
             <div>
               <button
                 onClick={(event) => { event.stopPropagation(); setExpanded((v) => !v); }}
@@ -493,6 +494,8 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
 
           {/* Footer */}
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50 flex-wrap mt-auto pt-1 border-t border-border/20">
+            <span>{article.source}</span>
+            <span>{t(`workspace.evidence.${article.contentBasis ?? "snippet"}`)}</span>
             {article.publishedAt && (
               <>
                 <span>·</span>
@@ -501,11 +504,13 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
             )}
             <div className="ml-auto flex items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
               <button type="button" title={t("news.more_like_this")} aria-label={t("news.more_like_this")}
+                aria-pressed={vote === 1} disabled={voteDisabled}
                 onClick={() => onVote(vote === 1 ? 0 : 1)}
                 className={`p-1 rounded transition-colors hover:bg-emerald-500/15 ${vote === 1 ? "text-emerald-400" : "text-muted-foreground/40"}`}>
                 <ThumbsUp className="w-3 h-3" />
               </button>
               <button type="button" title={t("news.less_like_this")} aria-label={t("news.less_like_this")}
+                aria-pressed={vote === -1} disabled={voteDisabled}
                 onClick={() => onVote(vote === -1 ? 0 : -1)}
                 className={`p-1 rounded transition-colors hover:bg-red-500/15 ${vote === -1 ? "text-red-400" : "text-muted-foreground/40"}`}>
                 <ThumbsDown className="w-3 h-3" />
@@ -524,8 +529,9 @@ function ArticleCard({ article, idx, isAI, onOpen, vote, onVote }: { article: Ar
 
 function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
   const { t } = useLanguage();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const { data } = useQuery<{ keywords: string[]; profile: string }>({
+  const { data, isPending, isError, refetch } = useQuery<{ keywords: string[]; profile: string }>({
     queryKey: ["news-preferences"],
     queryFn: () => apiJSON("news/preferences"),
   });
@@ -533,6 +539,8 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
   const [profile, setProfile] = useState("");
   const [kwInput, setKwInput] = useState("");
   const loadedRef = useRef(false);
+  const savingRef = useRef(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   useEffect(() => {
     if (data && !loadedRef.current) {
       loadedRef.current = true;
@@ -542,9 +550,20 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
   }, [data]);
 
   const save = useMutation({
-    mutationFn: () => apiJSON("news/preferences", { method: "PUT", body: JSON.stringify({ keywords, profile }) }),
-    onSuccess: () => onApplied(),
+    mutationFn: (submitted: { keywords: string[]; profile: string }) => apiJSON<{ keywords: string[]; profile: string }>("news/preferences", { method: "PUT", body: JSON.stringify(submitted) }),
+    onSuccess: (saved) => {
+      qc.setQueryData(["news-preferences"], saved);
+      setKeywords(saved.keywords); setProfile(saved.profile);
+      onApplied();
+    },
+    onError: (cause) => setSaveError(cause instanceof Error ? cause.message : t("settings.preference_failed")),
+    onSettled: () => { savingRef.current = false; },
   });
+  const submit = () => {
+    if (savingRef.current || isPending || isError) return;
+    savingRef.current = true; setSaveError(null);
+    save.mutate({ keywords: [...keywords], profile });
+  };
 
   const addKw = () => {
     const k = kwInput.trim();
@@ -561,6 +580,9 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
       </button>
       {open && (
         <div className="mt-3 space-y-3">
+          {isError && <div role="alert"><QueryErrorState onRetry={() => void refetch()} /></div>}
+          {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
+          <fieldset disabled={save.isPending || isPending || isError} aria-busy={save.isPending} className="space-y-3 min-w-0">
           <div>
             <label className="text-xs text-muted-foreground">{t("news.personalization.keywords")}</label>
             {keywords.length > 0 && (
@@ -568,12 +590,13 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
                 {keywords.map((k) => (
                   <span key={k} className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs text-primary">
                     {k}
-                    <button type="button" onClick={() => setKeywords(keywords.filter((x) => x !== k))} className="hover:text-red-400"><X className="w-3 h-3" /></button>
+                    <button type="button" aria-label={`${t("common.delete")} ${k}`} onClick={() => setKeywords(keywords.filter((x) => x !== k))} className="hover:text-red-400"><X className="w-3 h-3" /></button>
                   </span>
                 ))}
               </div>
             )}
             <input
+              aria-label={t("news.personalization.keywords")}
               value={kwInput}
               onChange={(e) => setKwInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKw(); } }}
@@ -584,6 +607,7 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
           <div>
             <label className="text-xs text-muted-foreground">{t("news.personalization.strategy")}</label>
             <textarea
+              aria-label={t("news.personalization.strategy")}
               value={profile}
               onChange={(e) => setProfile(e.target.value)}
               placeholder={t("news.personalization.strategy_placeholder")}
@@ -592,11 +616,12 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
           </div>
           <div className="flex items-center justify-between gap-2">
             <p className="text-[11px] text-muted-foreground/60">{t("news.personalization.feedback_hint")}</p>
-            <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
+            <Button size="sm" disabled={save.isPending || isPending || isError} onClick={submit}>
               {save.isPending && <RefreshCw className="w-4 h-4 mr-1 animate-spin" />}
               {uiText("auto.ui.21a71b1d79")}
             </Button>
           </div>
+          </fieldset>
         </div>
       )}
     </div>
@@ -606,27 +631,53 @@ function FeedTrainingPanel({ onApplied }: { onApplied: () => void }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function News() {
+  return <PageLayout><NewsWorkspace /></PageLayout>;
+}
+
+export function NewsWorkspace() {
   const { t, language } = useLanguage();
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const requestedArticle = new URLSearchParams(search).get("article");
   const qc = useQueryClient();
-  const { selectedPairs } = useBackground();
-  const selectedPairsKey = selectedPairs.join(",");
+  const { selectedPairs, settingsLoaded } = useBackground();
+  const requestedPair = new URLSearchParams(search).get("pair");
+  const activePair = requestedPair === "all" ? null : selectedPairs.includes(requestedPair ?? "") ? requestedPair : selectedPairs[0] ?? null;
+  const selectedPairsKey = activePair ?? selectedPairs.join(",");
   const queryKey = useMemo(() => createNewsQueryKey(selectedPairsKey, language), [language, selectedPairsKey]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "fallback" | "error">("connecting");
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const [votes, setVotes] = useState<Record<string, number>>({});
-  const [impactFilter, setImpactFilter] = useState<ImpactBand>("all");
-  const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>("all");
-  const [currencyFilters, setCurrencyFilters] = useState<string[]>([]);
+  type Feedback = { articleKey: string; source: string; vote: number };
+  const feedbackQuery = useQuery<{ feedback: Feedback[] }>({ queryKey: ["news-feedback"], queryFn: () => apiJSON("news/feedback") });
+  const votes = useMemo(() => Object.fromEntries((feedbackQuery.data?.feedback ?? []).map(entry => [entry.articleKey, entry.vote])), [feedbackQuery.data]);
+  const votePendingRef = useRef(false);
+  const [voteError, setVoteError] = useState<string | null>(null);
+  const params = new URLSearchParams(search);
+  const requestedImpact = params.get("impact") as ImpactBand;
+  const impactFilter: ImpactBand = IMPACT_FILTER_OPTIONS.some(option => option.id === requestedImpact) ? requestedImpact : "all";
+  const requestedSentiment = params.get("sentiment") as SentimentFilter;
+  const sentimentFilter: SentimentFilter = SENTIMENT_FILTER_OPTIONS.some(option => option.id === requestedSentiment) ? requestedSentiment : "all";
+  const currencyFilters = useMemo(() => (new URLSearchParams(search).get("currencies") ?? "").split(",").filter(Boolean), [search]);
+  const setImpactFilter = (impact: ImpactBand) => navigate(`/${updateWorkspaceQuery(search, { impact: impact === "all" ? null : impact })}`);
+  const setSentimentFilter = (sentiment: SentimentFilter) => navigate(`/${updateWorkspaceQuery(search, { sentiment: sentiment === "all" ? null : sentiment })}`);
   const voteMutation = useMutation({
-    mutationFn: (payload: { articleKey: string; source: string; vote: number }) =>
-      apiJSON("news/feedback", { method: "POST", body: JSON.stringify(payload) }),
+    mutationFn: async (payload: Feedback) => {
+      await qc.cancelQueries({ queryKey: ["news-feedback"] });
+      return apiJSON("news/feedback", { method: "POST", body: JSON.stringify(payload) });
+    },
+    onSuccess: (_response, saved) => {
+      qc.setQueryData<{ feedback: Feedback[] }>(["news-feedback"], current => ({ feedback: [...(current?.feedback ?? []).filter(entry => entry.articleKey !== saved.articleKey), saved] }));
+      void qc.invalidateQueries({ queryKey: ["macro-news"] });
+    },
+    onError: (cause) => setVoteError(cause instanceof Error ? cause.message : t("settings.preference_failed")),
+    onSettled: () => { votePendingRef.current = false; },
   });
   const handleVote = (article: Article, v: number) => {
+    if (votePendingRef.current || feedbackQuery.isPending || feedbackQuery.isError) return;
+    votePendingRef.current = true; setVoteError(null);
     const key = articleKey(article);
-    setVotes((prev) => ({ ...prev, [key]: v }));
     voteMutation.mutate({ articleKey: key, source: article.source, vote: v });
   };
 
@@ -636,30 +687,52 @@ export default function News() {
       queryFn: ({ pageParam }) =>
         fetchNews({ selectedPairsKey, language, cursor: (pageParam as string) ?? "0", limit: NEWS_PAGE_SIZE }),
       initialPageParam: "0",
+      enabled: settingsLoaded,
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       staleTime: 90 * 1000,
+      refetchInterval: liveStatus === "live" ? false : 120_000,
     });
 
-  const articles = useMemo(() => flattenNewsPages(data), [data]);
+  const preview = useQuery({
+    queryKey: [...queryKey, "preview"],
+    queryFn: () => fetchNews({ selectedPairsKey, language, limit: 100 }),
+    enabled: settingsLoaded, staleTime: 90_000,
+  });
+  const articles = useMemo(() => flattenNewsPages(data).filter(article => votes[articleKey(article)] !== -1), [data, votes]);
+  const selectedArticle = [...articles, ...(preview.data?.articles ?? [])].find(article => newsArticleMatchesReference(article, requestedArticle)) ?? null;
+  const setSelectedArticle = (article: Article | null) => navigate(`/${updateWorkspaceQuery(search, { vista: "notizie", article: article ? newsArticleReference(article) : null })}`);
 
   const allCurrencies = useMemo(
     () => [...new Set(articles.flatMap((article) => article.affectedPairs ?? []))],
     [articles],
   );
-  const toggleCurrencyFilter = (currency: string) =>
-    setCurrencyFilters((current) =>
-      current.includes(currency) ? current.filter((c) => c !== currency) : [...current, currency],
-    );
+  const toggleCurrencyFilter = (currency: string) => {
+    const next = currencyFilters.includes(currency) ? currencyFilters.filter(c => c !== currency) : [...currencyFilters, currency];
+    navigate(`/${updateWorkspaceQuery(search, { currencies: next.join(",") || null })}`);
+  };
   const filteredArticles = useMemo(
     () =>
       articles.filter(
         (article) =>
           (impactFilter === "all" || impactBand(article.impactScore ?? 0) === impactFilter) &&
-          (sentimentFilter === "all" || article.sentiment === sentimentFilter) &&
+          newsRelevantToPair(article, activePair) &&
+          (sentimentFilter === "all" || (article.effects ?? []).some(effect => (!activePair || effect.pair === activePair) && effect.direction === (sentimentFilter === "neutral" ? "uncertain" : sentimentFilter))) &&
           (currencyFilters.length === 0 || (article.affectedPairs ?? []).some((pair) => currencyFilters.includes(pair))),
       ),
-    [articles, impactFilter, sentimentFilter, currencyFilters],
+    [articles, impactFilter, sentimentFilter, currencyFilters, activePair],
   );
+  const brief = useMemo(() => selectNewsBrief((preview.data?.articles ?? articles).filter(article =>
+    votes[articleKey(article)] !== -1
+    && (impactFilter === "all" || impactBand(article.impactScore ?? 0) === impactFilter)
+    && newsRelevantToPair(article, activePair)
+    && (sentimentFilter === "all" || (article.effects ?? []).some(effect => (!activePair || effect.pair === activePair) && effect.direction === (sentimentFilter === "neutral" ? "uncertain" : sentimentFilter)))
+    && (currencyFilters.length === 0 || (article.affectedPairs ?? []).some(pair => currencyFilters.includes(pair)))
+  )), [preview.data, articles, votes, impactFilter, sentimentFilter, currencyFilters, activePair]);
+
+  // Resolve a linked story that is on a later feed page before declaring it unavailable.
+  useEffect(() => {
+    if (requestedArticle && !selectedArticle && hasNextPage && !isFetchingNextPage && !isError) void fetchNextPage();
+  }, [requestedArticle, selectedArticle, hasNextPage, isFetchingNextPage, isError, fetchNextPage]);
 
   // Load the next page when the sentinel near the bottom scrolls into view.
   useEffect(() => {
@@ -720,8 +793,7 @@ export default function News() {
 
   const newsData = data?.pages?.[0];
   const isAI = newsData?.source === "ai";
-  const liveLabel =
-    liveStatus === "connecting" ? uiText("auto.ui.9fc25260f0") : simpleStatusLabel(liveStatus);
+  const liveLabel = t(liveStatus === "connecting" ? "intelligence.loading" : liveStatus === "live" ? "market.available" : "market.unavailable");
   const hasFreshArticles = (newsData?.freshArticlesCount ?? articles.filter((article) => !article.isFallback).length) > 0;
   const freshnessLabel = hasFreshArticles
     ? uiText("auto.ui.826f7a559f", { hours: newsData?.freshnessWindowHours ?? 48 })
@@ -742,7 +814,7 @@ export default function News() {
   };
 
   return (
-    <PageLayout>
+    <>
       <PageHeader
         title={t("news.title")}
         subtitle={t("news.subtitle")}
@@ -754,33 +826,26 @@ export default function News() {
         }
       />
 
-      {/* Agent summary panel (AI only) */}
-      <AnimatePresence>
-        {isAI && newsData?.agentSummary && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="tl-panel flex gap-3 border-primary/20 bg-primary/5 p-4"
-          >
-            <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
-              <Newspaper className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="text-xs font-bold text-primary/80 uppercase tracking-wider">{t("news.market_summary")}</span>
-                {newsData.watchedPairs && newsData.watchedPairs.length > 0 && (
-                  <div className="flex gap-1 flex-wrap">
-                    {newsData.watchedPairs.map((p) => <PairBadge key={p} pair={p} />)}
-                  </div>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground/90 leading-relaxed">{newsData.agentSummary}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <nav aria-label={t("intelligence.pair_focus")} className="flex flex-wrap items-center gap-2"><span className="mr-1 text-xs text-muted-foreground">{t("intelligence.pair_focus")} / 4h</span>{[...selectedPairs, "all"].map(pair => <button key={pair} type="button" aria-pressed={pair === (activePair ?? "all")} className={`min-h-10 rounded-full border px-3 py-2 text-xs font-semibold ${pair === (activePair ?? "all") ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`} onClick={() => navigate(`/${updateWorkspaceQuery(search, { pair, horizon: "4h", article: null, currencies: null })}`)}>{pair === "all" ? t("intelligence.all_pairs") : pair}</button>)}</nav>
+
+      {newsData?.sourceStatus && newsData.sourceStatus !== "available" && <p role="status" className="text-sm text-muted-foreground">{t(`workspace.news_sources.${newsData.sourceStatus}`)}</p>}
+      {newsData?.analysisStatus === "unavailable" && <p role="status" className="text-sm text-muted-foreground">{t("workspace.news_analysis_unavailable")}</p>}
+      {voteError && <p role="alert" className="text-sm text-destructive">{voteError}</p>}
+      {feedbackQuery.isError && <div role="alert"><QueryErrorState onRetry={() => void feedbackQuery.refetch()} /></div>}
+      {requestedArticle && !selectedArticle && !isLoading && !isFetchingNextPage && !hasNextPage && <p role="status" className="rounded-lg border border-border p-3 text-sm text-muted-foreground">{t("workspace.article_unavailable")}</p>}
+
+      <section aria-label={t("workspace.brief")} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <h2 className="font-sans text-lg font-semibold">{t("workspace.brief")}</h2>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">{t("workspace.brief_hint")}</p>
+        {brief.length > 0 ? <ol className="divide-y divide-border">{brief.map((article, index) => <li key={newsArticleReference(article)}>
+          <button type="button" onClick={() => setSelectedArticle(article)} className="flex min-h-14 w-full items-start gap-3 py-3 text-left hover:text-primary">
+            <span className="pt-0.5 font-mono text-xs text-primary">0{index + 1}</span><span><span className="block text-sm font-semibold">{article.title}</span><span className="mt-1 block text-xs text-muted-foreground">{article.source} · {article.publishedAt ? <TimeAgo iso={article.publishedAt} /> : null} · {t(`workspace.evidence.${article.contentBasis ?? "snippet"}`)}</span>{article.summary && article.summary !== article.title && <span className="mt-1 block text-sm text-muted-foreground">{article.summary}</span>}</span>
+          </button>
+        </li>)}</ol>
+          : !isLoading && !isError
+            ? <p className="text-sm text-muted-foreground">{t(newsData?.sourceStatus === "unavailable" ? "workspace.news_sources.unavailable" : "workspace.brief_empty")}</p>
+            : null}
+      </section>
 
       {/* Meta bar */}
       {newsData && (
@@ -802,16 +867,17 @@ export default function News() {
             }`}
           >
             <Zap className="h-3 w-3" />
-            {liveLabel}
+            {t("intelligence.connection")}: {liveLabel}
           </span>
           <span className="inline-flex items-center gap-1 rounded-md border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 font-semibold text-sky-300">
             <Clock className="h-3 w-3" />
-            {freshnessLabel}
+            {t("intelligence.freshness")}: {freshnessLabel}
           </span>
         </div>
       )}
 
       <FeedTrainingPanel onApplied={() => { qc.invalidateQueries({ queryKey: ["news-preferences"] }); qc.invalidateQueries({ queryKey }); }} />
+      <h2 className="pt-3 text-base font-semibold">{t("workspace.feed")}</h2>
 
       {/* Filters (impact / sentiment / currency) */}
       {articles.length > 0 && (
@@ -855,7 +921,7 @@ export default function News() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredArticles.map((article, idx) => (
-              <ArticleCard key={`${articleKey(article)}-${idx}`} article={article} idx={idx} isAI={isAI} onOpen={setSelectedArticle} vote={votes[articleKey(article)] ?? 0} onVote={(v) => handleVote(article, v)} />
+              <ArticleCard key={`${articleKey(article)}-${idx}`} article={article} pair={activePair} idx={idx} isAI={isAI} onOpen={setSelectedArticle} vote={votes[articleKey(article)] ?? 0} onVote={(v) => handleVote(article, v)} voteDisabled={voteMutation.isPending || feedbackQuery.isPending || feedbackQuery.isError} />
             ))}
           </div>
 
@@ -896,9 +962,7 @@ export default function News() {
           </CardContent>
         </Card>
       )}
-      <NewsDetailDialog article={selectedArticle} open={Boolean(selectedArticle)} onOpenChange={(open) => !open && setSelectedArticle(null)} />
-    </PageLayout>
+      <NewsDetailDialog article={selectedArticle} pair={activePair} open={Boolean(selectedArticle)} onOpenChange={(open) => !open && setSelectedArticle(null)} />
+    </>
   );
 }
-
-

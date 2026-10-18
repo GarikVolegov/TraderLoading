@@ -1,9 +1,15 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { loadEnvLocal, repoRoot } from "./lib/env.js";
 import { checkTcp, describePortOwners, waitForHttp, waitForTcp } from "./lib/health.js";
 import { runCommand, spawnLongRunning } from "./lib/process.js";
 import { resolveDatabaseTarget, type DatabaseTarget } from "./startDatabase.js";
 import { buildApiDevEnv, buildFrontendDevArgs, buildFrontendDevEnv } from "./startEnv.js";
+
+loadEnvLocal();
 
 const containerName = "traderloadings-db";
 const postgresEnv = ["POSTGRES_USER=trader", "POSTGRES_PASSWORD=trader", "POSTGRES_DB=traderloadings"];
@@ -35,10 +41,19 @@ async function chooseDatabaseUrl(): Promise<DatabaseTarget> {
 }
 
 async function assertPortFree(port: number): Promise<void> {
+  if (!(await checkTcp("127.0.0.1", port))) return;
   const owners = await describePortOwners(port);
-  if (!owners.startsWith("No Windows TCP owner")) {
-    throw new Error(`Port ${port} is already in use: ${owners}`);
-  }
+  throw new Error(`Port ${port} is already in use. Stop the previous local server first. ${owners}`);
+}
+
+async function startExistingMacDatabase(database: DatabaseTarget): Promise<void> {
+  if (process.platform !== "darwin" || !["localhost", "127.0.0.1"].includes(database.host) ||
+      database.port !== managedPostgresPort || await checkTcp(database.host, database.port)) return;
+  const pgCtl = path.join(homedir(), "Applications/Postgres.app/Contents/Versions/16/bin/pg_ctl");
+  const dataDir = path.join(repoRoot, ".local-postgres");
+  if (!existsSync(pgCtl) || !existsSync(path.join(dataDir, "PG_VERSION"))) return;
+  console.log(`Starting the existing Postgres.app database on ${database.host}:${database.port}.`);
+  await runCommand(pgCtl, ["-D", dataDir, "-o", `-p ${database.port}`, "-l", path.join(repoRoot, ".local-logs/postgres.log"), "start", "-w", "-t", "30"]);
 }
 
 async function dockerAvailable(): Promise<boolean> {
@@ -88,10 +103,9 @@ async function ensureDatabaseContainer(port: number): Promise<void> {
   ]);
 }
 
-loadEnvLocal();
-
 let api: ReturnType<typeof spawnLongRunning> | undefined;
 let frontend: ReturnType<typeof spawnLongRunning> | undefined;
+let historyWorker: ReturnType<typeof spawnLongRunning> | undefined;
 
 try {
   mkdirSync(localLogsDir, { recursive: true });
@@ -105,7 +119,7 @@ try {
   const database = await chooseDatabaseUrl();
   process.env["DATABASE_URL"] = database.url;
 
-  console.log("\n> ensuring Docker Postgres container");
+  await startExistingMacDatabase(database);
   if (database.managed) {
     await ensureDatabaseContainer(database.port);
   }
@@ -119,10 +133,7 @@ try {
   console.log("\n> pnpm --filter @workspace/api-spec run codegen");
   await runCommand("pnpm", ["--filter", "@workspace/api-spec", "run", "codegen"]);
 
-  console.log("\n> pnpm --filter @workspace/db run push-force");
-  await runCommand("pnpm", ["--filter", "@workspace/db", "run", "push-force"], {
-    env: { DATABASE_URL: database.url },
-  });
+  console.log("\n> reusing the database schema unchanged (migrations are a separate operation)");
 
   console.log("\n> starting API on http://127.0.0.1:3001");
   api = spawnLongRunning("pnpm", ["--filter", "@workspace/api-server", "exec", "tsx", "./src/index.ts"], {
@@ -141,15 +152,26 @@ try {
   await waitForHttp("http://127.0.0.1:5173", 30_000);
   console.log("\nTraderLoadings is running at http://localhost:5173");
 
+  if (process.env["CANDLE_WAREHOUSE"] === "1" && process.env["BACKTEST_HISTORY_SYNC"] !== "0") {
+    console.log("\n> synchronizing durable backtest history in the background (XAUUSD, EURUSD, USOIL)");
+    historyWorker = spawnLongRunning(process.execPath, ["--import", createRequire(import.meta.url).resolve("tsx"), fileURLToPath(new URL("./backtestHistoryWorker.ts", import.meta.url))], {
+      cwd: repoRoot,
+      env: { DATABASE_URL: database.url },
+      label: "backtest history worker",
+    });
+  }
+
   const shutdown = () => {
     api?.kill();
     frontend?.kill();
+    historyWorker?.kill();
   };
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 } catch (error) {
   api?.kill();
   frontend?.kill();
+  historyWorker?.kill();
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 }

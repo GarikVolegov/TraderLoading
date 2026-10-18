@@ -76,7 +76,7 @@ assert.equal(completions.length, 2);
 assert.equal(completions[1].routineId, custom.id);
 assert.equal(completions[1].date, "2026-06-07");
 
-const metrics = getRoutineMetrics(completions, loadCustomRoutines(storage));
+const metrics = getRoutineMetrics(completions, loadCustomRoutines(storage), new Date("2026-06-07T23:00:00Z"));
 assert.equal(metrics.totalCompletions, 2);
 assert.equal(metrics.customRoutineCount, 1);
 assert.equal(metrics.currentStreakDays, 2);
@@ -122,3 +122,5 @@ console.log("routine storage checks passed");
 
   console.log("zen mood storage checks passed");
 }
+
+assert.equal(getRoutineMetrics(completions, [], new Date("2026-06-10T08:00:00Z")).currentStreakDays, 0);

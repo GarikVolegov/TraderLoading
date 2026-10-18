@@ -13,6 +13,8 @@ import { createDefaultBrokerProfileStore, type BrokerProfileStore } from "./prof
 import { createSnapTradeBrokerConnector } from "./snapTradeConnector.js";
 import { reportJobError } from "../../lib/observability.js";
 import { singleFlight } from "../../lib/singleFlight.js";
+import { createDatabaseOrderReceiptStore, createMemoryOrderReceiptStore, type OrderReceiptStore, type ReceiptRequest } from "./orderReceiptStore.js";
+import { submitAuthorizedBrokerOpening, processOrderRejection, type BrokerOpeningAuthorizer } from "./processOrderAuthorization.js";
 import type {
   BrokerAccountProfile,
   BrokerConnector,
@@ -46,9 +48,11 @@ interface BrokerHubRuntimeOptions {
   store?: BrokerProfileStore;
   vault?: BrokerVault;
   auditLog?: BrokerAuditLog;
+  orderReceiptStore?: OrderReceiptStore;
   companionStore?: CompanionStore;
   connectorFactory?: (profile: BrokerAccountProfile, vault: BrokerVault) => BrokerConnector;
   accountDataImporter?: (input: { profile: BrokerAccountProfile; snapshot: BrokerSnapshot; deals: BrokerDeal[] }) => Promise<BrokerAccountDataSyncResult>;
+  authorizeOpening?: BrokerOpeningAuthorizer;
   autoSyncIntervalMs?: number;
   /** How long a fetched FX Blue snapshot is served from cache before a read
    *  re-fetches. Reads within the window skip the upstream fetch + DB import
@@ -98,6 +102,7 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
   const store = options.store ?? createDefaultBrokerProfileStore();
   const vault = options.vault ?? createBrokerVault();
   const auditLog = options.auditLog ?? createBrokerAuditLog();
+  const orderReceipts = options.orderReceiptStore ?? createMemoryOrderReceiptStore();
   const localCompanionStore = options.companionStore ?? companionStore;
   const accountDataImporter = options.accountDataImporter ?? importBrokerAccountData;
   const autoSyncIntervalMs = options.autoSyncIntervalMs ?? 10_000;
@@ -121,6 +126,38 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
     });
     activeOperations.add(current);
     return current;
+  }
+
+  async function dispatchOnce(id: string, request: ReceiptRequest, send: () => Promise<BrokerOrderResult>): Promise<BrokerOrderResult> {
+    let claim;
+    try {
+      claim = await orderReceipts.claim(id, request);
+    } catch {
+      console.error("[brokerHub] order receipt unavailable; dispatch blocked");
+      return { accepted: false, reason: "Verifica ordini non disponibile. Nessun ordine inviato." };
+    }
+    if (claim.status === "resolved") return claim.result;
+    if (claim.status === "conflict") return { accepted: false, reason: "Questo ID richiesta è già associato a un ordine diverso." };
+    if (claim.status === "pending") return { accepted: false, reason: "Operazione già in elaborazione o esito non confermato. Verifica sul broker prima di un nuovo invio." };
+    let result: BrokerOrderResult;
+    try {
+      result = await send();
+      await orderReceipts.resolve(id, request, result);
+    } catch {
+      // A provider may have accepted the order before a timeout, and a DB
+      // completion failure has the same ambiguity. Keep the durable pending
+      // reservation so a retry or API restart cannot send it a second time.
+      console.error("[brokerHub] order outcome unconfirmed; retry dispatch blocked");
+      return { accepted: false, reason: "Esito operazione non confermato. Verifica sul broker: un nuovo invio con questo ID è bloccato." };
+    }
+    try {
+      await auditLog.append({ profileId: id, request, result });
+    } catch {
+      // The database receipt is durable. A secondary file log failure must
+      // not turn a confirmed order into a failed HTTP request inviting retry.
+      console.error("[brokerHub] secondary order audit log unavailable");
+    }
+    return result;
   }
 
   function emit(event: BrokerEvent): void {
@@ -382,9 +419,28 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
           return result;
         }
 
-        const result = await connector.placeOrder(normalized.order);
-        await auditLog.append({ profileId: id, request: normalized.order, result });
-        return result;
+        return dispatchOnce(id, normalized.order, async () => {
+          // A resolved receipt returns without resending. A new submission must
+          // re-read the current process and connector state immediately before IO.
+          let submitted = false;
+          const submit = () => { submitted = true; return connector.placeOrder(normalized.order); };
+          try {
+            const currentProfile = await store.getProfile(id);
+            if (!currentProfile?.tradingEnabled || !currentProfile.capabilities.placeOrders) {
+              return { accepted: false, reason: "Invio ordini non disponibile per questo conto." };
+            }
+            const currentSnapshot = await connector.getSnapshot();
+            if (options.authorizeOpening) {
+              await options.authorizeOpening(currentProfile, currentSnapshot, normalized.order);
+              return await submit();
+            }
+            return await submitAuthorizedBrokerOpening(currentProfile, currentSnapshot, normalized.order,
+              submit);
+          } catch (error) {
+            if (submitted) throw error; // Preserve an uncertain provider reply in the receipt store.
+            return { accepted: false, reason: processOrderRejection(error) };
+          }
+        });
       });
     },
 
@@ -419,9 +475,7 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
           await auditLog.append({ profileId: id, request, result });
           return result;
         }
-        const result = await connector.closePosition(positionId);
-        await auditLog.append({ profileId: id, request, result });
-        return result;
+        return dispatchOnce(id, { ...request, clientRequestId: "position-close:" + positionId }, () => connector.closePosition(positionId));
       });
     },
 
@@ -467,4 +521,4 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
   };
 }
 
-export const brokerHubRuntime = createBrokerHubRuntime();
+export const brokerHubRuntime = createBrokerHubRuntime({ orderReceiptStore: createDatabaseOrderReceiptStore() });

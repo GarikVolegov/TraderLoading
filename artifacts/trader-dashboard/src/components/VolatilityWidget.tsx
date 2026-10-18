@@ -10,7 +10,9 @@ import { deriveEffectiveFilterItems } from "@/lib/toolPairFilters";
 import { uiText } from "@/contexts/LanguageContext";
 import { adrPercentUsed, adrLevel, type AdrLevelKey } from "./VolatilityWidget.helpers";
 
-interface VolatilityResult {
+import { MarketDataStatus, type MarketDataMetadata } from "./MarketDataStatus";
+
+interface VolatilityResult extends MarketDataMetadata {
   pair: string;
   currentPrice: number;
   todayPips: number;
@@ -24,7 +26,22 @@ interface VolatilityResult {
   pipUnit: string;
 }
 
-const ALL_VOL_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD", "NZDUSD", "EURGBP", "EURJPY", "GBPJPY", "XAUUSD", "XAGUSD"];
+const ALL_VOL_PAIRS = [
+  "EURUSD",
+  "GBPUSD",
+  "USDJPY",
+  "USDCHF",
+  "AUDUSD",
+  "USDCAD",
+  "NZDUSD",
+  "EURGBP",
+  "EURJPY",
+  "GBPJPY",
+  "XAUUSD",
+  "XAGUSD",
+  "USDMXN",
+  "USDZAR",
+];
 
 // Bound the number of concurrent /api/tools/volatility calls (Yahoo can throttle).
 const MAX_TILES = 8;
@@ -41,27 +58,28 @@ const TONE_TEXT_CLASS: Record<"destructive" | "warning" | "success", string> = {
   success: "text-success",
 };
 
-export function VolatilityWidget() {
-  const { selectedPairs: userPairs } = useBackground();
+export function VolatilityWidget({ pair }: { pair?: string } = {}) {
+  const { selectedPairs: userPairs, settingsLoaded } = useBackground();
 
   const volatilityFilter = useMemo(
     () =>
       deriveEffectiveFilterItems({
-        requestedItems: userPairs,
+        requestedItems: pair ? [pair] : userPairs,
         supportedItems: ALL_VOL_PAIRS,
         defaultItems: ALL_VOL_PAIRS,
       }),
-    [userPairs],
+    [userPairs, pair],
   );
 
-  const displayPairs = volatilityFilter.items.slice(0, MAX_TILES);
+  const displayPairs = settingsLoaded ? volatilityFilter.items.slice(0, MAX_TILES) : [];
 
   const results = useQueries({
     queries: displayPairs.map((pair) => ({
       queryKey: ["widget", "volatility", pair],
       queryFn: () => apiFetch<VolatilityResult>(`/api/tools/volatility?pair=${pair}`),
       staleTime: 15 * 60_000,
-      refetchInterval: 15 * 60_000,
+      refetchInterval: (query: { state: { data?: VolatilityResult } }) =>
+        query.state.data ? 15 * 60_000 : 10_000,
     })),
   });
 
@@ -93,7 +111,9 @@ export function VolatilityWidget() {
       <CardContent className="p-4 space-y-3 flex-1">
         {volatilityFilter.hasUserSelection && volatilityFilter.unsupportedItems.length > 0 && (
           <p className="text-[9px] text-muted-foreground tabular-nums">
-            {volatilityFilter.supportedCount}/{volatilityFilter.requestedCount}
+            {uiText("market.unsupported", {
+              symbols: volatilityFilter.unsupportedItems.join(", "),
+            })}
           </p>
         )}
 
@@ -105,34 +125,58 @@ export function VolatilityWidget() {
           {displayPairs.map((pair, i) => {
             const q = results[i];
             const data = q?.data;
-            const pct = data ? adrPercentUsed(data.todayPips, data.y1) : 0;
-            const level = adrLevel(pct);
+            const pct =
+              data && data.status !== "unavailable"
+                ? adrPercentUsed(data.todayPips, data.y1)
+                : null;
+            const stale = data?.status === "stale" || Boolean(q?.isError && data);
+            const level = pct !== null && !stale ? adrLevel(pct) : null;
             return (
               <div
                 key={pair}
                 className="flex flex-col items-center gap-1.5 rounded-xl border border-border/40 bg-secondary/35 px-2 py-3"
               >
-                {q?.isError ? (
+                {pct === null ? (
                   <div
                     className="flex h-18.5 w-18.5 items-center justify-center text-muted-foreground"
-                    role="img"
-                    aria-label={uiText("vol.adr.unavailable")}
-                    title={uiText("vol.adr.unavailable")}
+                    role="status"
                   >
-                    <AlertCircle className="w-5 h-5" />
+                    {q?.isLoading ? (
+                      <span>{uiText("market.loading")}</span>
+                    ) : (
+                      <AlertCircle className="w-5 h-5" aria-label={uiText("market.unavailable")} />
+                    )}
                   </div>
                 ) : (
-                  <ProgressRing value={pct} size={74} stroke={7} tone={level.tone}>
+                  <ProgressRing value={pct} size={74} stroke={7} tone={level?.tone ?? "warning"}>
                     <span className="font-mono text-base font-bold tabular-nums text-foreground">
-                      {q?.isLoading ? "--" : pct}
+                      {pct}
                     </span>
                     <span className="text-[8px] text-muted-foreground">%</span>
                   </ProgressRing>
                 )}
                 <span className="font-mono text-xs font-bold text-foreground">{pair}</span>
-                <span className={`text-[9px] font-bold uppercase tracking-[0.04em] ${TONE_TEXT_CLASS[level.tone]}`}>
-                  {uiText(LEVEL_LABEL_KEY[level.key])}
+                <span
+                  className={`text-xs text-center ${level ? TONE_TEXT_CLASS[level.tone] : "text-muted-foreground"}`}
+                >
+                  {level
+                    ? uiText(LEVEL_LABEL_KEY[level.key])
+                    : uiText(
+                        q?.isLoading
+                          ? "market.loading"
+                          : stale
+                            ? "market.stale"
+                            : "market.unavailable",
+                      )}
                 </span>
+                {data && pct !== null && (
+                  <details className="w-full text-xs text-muted-foreground">
+                    <summary className="cursor-pointer text-center">
+                      {uiText("market.source", { source: data.source ?? "—" })}
+                    </summary>
+                    <MarketDataStatus data={data} stale={stale} />
+                  </details>
+                )}
               </div>
             );
           })}

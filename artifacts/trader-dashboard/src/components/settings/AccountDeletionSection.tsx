@@ -100,7 +100,7 @@ export function AccountDeletionSection({ onDeleted }: { onDeleted: () => void })
                   event.preventDefault();
                   void handleDelete();
                 }}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/95"
               >
                 {deleting ? "Eliminazione..." : "Elimina definitivamente"}
               </AlertDialogAction>

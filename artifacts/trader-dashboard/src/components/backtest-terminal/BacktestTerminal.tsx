@@ -3,8 +3,8 @@
 // rail · chart column · 340px right panel) / 54px transport bar. Orchestrates
 // the engine hook and the chart; the order ticket, account and journal panels
 // land in the trading phase, drawings in the final phase.
-import { useEffect, useRef, useState } from "react";
-import { Settings2, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { X } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
 import type { ClosedTrade } from "@/lib/replay/types";
 import { AccountPanel } from "./AccountPanel";
@@ -16,7 +16,8 @@ import { OrderTicket } from "./OrderTicket";
 import { ReplayChart, type ReplayChartApi } from "./ReplayChart";
 import { TerminalHeader } from "./TerminalHeader";
 import { TerminalSettingsDialog } from "./TerminalSettingsDialog";
-import { DRAWING_TOOLS, type DrawingToolId } from "./toolRailModel";
+import { type DrawingToolId } from "./toolRailModel";
+import { ToolRail } from "./ToolRail";
 import { TransportBar } from "./TransportBar";
 import { useReplayEngine } from "./useReplayEngine";
 import { useReplayHotkeys } from "./useReplayHotkeys";
@@ -30,6 +31,7 @@ export interface BacktestTerminalProps {
   onExit: () => void;
   /** Called whenever a trade closes (the page persists them to the API). */
   onTradeClosed?: (trade: ClosedTrade) => void;
+  persistenceStatus?: ReactNode;
 }
 
 export function BacktestTerminal({
@@ -39,13 +41,15 @@ export function BacktestTerminal({
   initialInterval,
   onExit,
   onTradeClosed,
+  persistenceStatus,
 }: BacktestTerminalProps) {
   const engine = useReplayEngine({ sessionKey, symbol, initialInterval });
   const chartApiRef = useRef<ReplayChartApi | null>(null);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 1100);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [limitedDismissed, setLimitedDismissed] = useState(false);
+  const [settingsIndicatorId, setSettingsIndicatorId] = useState<string | undefined>();
   const [settingsTab, setSettingsTab] = useState<"indicators" | "tools">("indicators");
   const [activeTool, setActiveTool] = useState<DrawingToolId>("cursor");
 
@@ -95,51 +99,25 @@ export function BacktestTerminal({
         }}
         onOpenSettings={() => {
           setSettingsTab("indicators");
+          setSettingsIndicatorId(undefined);
           setSettingsOpen(true);
         }}
       />
 
       <div className="btm-main">
-        <aside className="btm-rail" aria-label={uiText("backtest_terminal.tools")}>
-          {DRAWING_TOOLS.filter((tool) => engine.settings.visibleTools[tool.id] !== false).map((tool) => (
-            <button
-              key={tool.id}
-              type="button"
-              className="btm-iconbtn"
-              data-active={activeTool === tool.id}
-              onClick={() => setActiveTool(activeTool === tool.id ? "cursor" : tool.id)}
-              title={uiText(tool.labelKey)}
-              aria-label={uiText(tool.labelKey)}
-            >
-              <tool.Icon size={16} />
-            </button>
-          ))}
-          <div className="btm-rail-sep" aria-hidden="true" />
-          <button
-            type="button"
-            className="btm-iconbtn"
-            onClick={() => {
-              setSettingsTab("tools");
-              setSettingsOpen(true);
-            }}
-            title={uiText("backtest_terminal.tools_tab")}
-            aria-label={uiText("backtest_terminal.tools_tab")}
-          >
-            <Settings2 size={15} />
-          </button>
-          <button
-            type="button"
-            className="btm-iconbtn"
-            onClick={() => engine.setDrawings([])}
-            title={uiText("backtest_terminal.clear_drawings")}
-            aria-label={uiText("backtest_terminal.clear_drawings")}
-          >
-            <Trash2 size={15} />
-          </button>
-        </aside>
+        <ToolRail engine={engine} activeTool={activeTool} onToolChange={setActiveTool}
+          onOpenSettings={() => {
+            setSettingsTab("tools");
+            setSettingsIndicatorId(undefined);
+            setSettingsOpen(true);
+          }} />
 
         <div className="btm-chartcol">
-          <IndicatorStrip engine={engine} onOpenSettings={() => setSettingsOpen(true)} />
+          <IndicatorStrip engine={engine} onOpenSettings={(indicatorId) => {
+            setSettingsTab("indicators");
+            setSettingsIndicatorId(indicatorId);
+            setSettingsOpen(true);
+          }} />
           <div className="btm-chartwrap">
             {limitedHistory && !engine.loading && !engine.error && !limitedDismissed && (
               <div className="btm-notice">
@@ -169,11 +147,13 @@ export function BacktestTerminal({
             {engine.error && !engine.loading && (
               <div className="btm-center">
                 <span>{engine.error}</span>
+                <button type="button" className="btm-primary-btn" onClick={engine.retryHistory}>{uiText("backtest_terminal.retry_history")}</button>
               </div>
             )}
             {engine.noData && !engine.loading && !engine.error && (
               <div className="btm-center">
                 <span>{uiText("backtest_terminal.no_data")}</span>
+                <button type="button" className="btm-primary-btn" onClick={engine.retryHistory}>{uiText("backtest_terminal.retry_history")}</button>
               </div>
             )}
             {engine.notice && (
@@ -190,7 +170,7 @@ export function BacktestTerminal({
             )}
             {helpOpen && <HotkeysHelp onClose={() => setHelpOpen(false)} />}
             {settingsOpen && (
-              <TerminalSettingsDialog engine={engine} initialTab={settingsTab} onClose={() => setSettingsOpen(false)} />
+              <TerminalSettingsDialog engine={engine} initialTab={settingsTab} initialIndicatorId={settingsIndicatorId} onClose={() => setSettingsOpen(false)} />
             )}
           </div>
         </div>
@@ -204,6 +184,7 @@ export function BacktestTerminal({
         )}
       </div>
 
+      {persistenceStatus}
       <TransportBar engine={engine} />
       </div>
     </div>

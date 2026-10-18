@@ -9,6 +9,7 @@ export type BrokerProviderKind =
   | "demo";
 export type BrokerKind = BrokerProviderKind;
 export type BrokerEnvironment = "demo" | "live";
+export type ExecutionEnvironment = "simulation" | "real" | "unknown";
 export type BrokerConnectionStatus = "offline" | "connecting" | "connected" | "error";
 export type ConnectorRoute =
   | "smartlink_mt5"
@@ -118,6 +119,8 @@ export interface BrokerAccount {
   brokerName: string;
   currency: string;
   environment: BrokerEnvironment;
+  /** Source-attested environment, independent of the legacy display default. */
+  executionEnvironment?: ExecutionEnvironment;
 }
 
 export interface BrokerMetrics {

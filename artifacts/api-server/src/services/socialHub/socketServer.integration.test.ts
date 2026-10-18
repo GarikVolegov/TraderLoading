@@ -119,3 +119,19 @@ function nextMessage(ws: WebSocket, timeoutMs: number): Promise<string> {
 }
 
 console.log("social websocket integration checks passed");
+
+// Membership removed after subscribing must stop live channel notifications.
+{
+  let member = true;
+  const { server, hub, url } = await listen({ authenticate: async () => ({ userId: "revoked", source: "session" }), canAccessChannel: async () => member });
+  const ws = await openSocket(url);
+  ws.send(JSON.stringify({ type: "subscribe", channelId: 1 }));
+  await delay(50);
+  member = false;
+  let leaked = false;
+  ws.on("message", () => { leaked = true; });
+  emitSocialEvent({ type: "community:message", channelId: 1 });
+  await delay(100);
+  assert.equal(leaked, false, "Revoked member received a live event");
+  ws.close(); await hub.close(); server.close();
+}

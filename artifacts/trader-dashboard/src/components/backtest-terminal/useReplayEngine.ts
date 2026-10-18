@@ -5,6 +5,9 @@
 // persisted terminal state. UI components consume the returned API only.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getReplayIntervalSeconds } from "../chartReplayWindow";
+import { simulateReplayExecution } from "@/lib/replay/replayExecution";
+import { cursorAtReplayTime, revealAtReplayTime } from "@/lib/replay/replayClock";
+import { iterateReplayExecutionCandles } from "@/lib/replayCandlesApi";
 import { getPipMultiplier } from "@/lib/pipMultiplier";
 import { buildAccountState } from "@/lib/replay/accountTracker";
 import { defaultIndicators, type IndicatorConfig } from "@/lib/replay/indicatorCatalog";
@@ -15,14 +18,10 @@ import {
   cursorFraction,
   cursorFromFraction,
   MIN_REVEALED_BARS,
-  seekCursorToTime,
   stepCursor,
 } from "@/lib/replay/replayCursor";
 import {
-  checkPendingFill,
   closePosition,
-  fillPendingOrder,
-  manageBar,
   openPosition,
   positionPips,
   unrealizedProfit,
@@ -73,7 +72,25 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     : "H1";
 
   const [interval, setIntervalState] = useState<string>(restored?.interval ?? defaultInterval);
-  const [startDate, setStartDate] = useState<string | null>(null);
+  const requestedStart = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const id = sessionKey.replace(/^backtest-session-/, "");
+      const key = `traderloading:backtest-start:${id}`;
+      const raw = window.localStorage.getItem(key) ?? window.sessionStorage.getItem(key);
+      const timestamp = raw ? Number(raw) : NaN;
+      return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : null;
+    } catch { return null; }
+  }, [sessionKey]);
+  const [startTime, setStartTime] = useState<number | null>(restored?.startTime ?? requestedStart);
+  const [replayTime, setReplayTime] = useState<number | null>(restored?.replayTime ?? requestedStart);
+  const [anchorTime, setAnchorTime] = useState<number | null>(restored?.replayTime ?? requestedStart);
+  const [requestId, setRequestId] = useState(0);
+  const startDate = startTime == null ? null : new Date(startTime * 1000).toISOString().slice(0, 10);
+  const [executing, setExecuting] = useState(false);
+  const [executionError, setExecutionError] = useState<string | null>(null);
+  const executingRef = useRef(false);
+  const executionControllerRef = useRef<AbortController | null>(null);
   const [cursor, setCursor] = useState(0);
   const [cursorReady, setCursorReady] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -86,7 +103,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     restored?.settings ?? { ...DEFAULT_TERMINAL_SETTINGS },
   );
   const [indicators, setIndicators] = useState<IndicatorConfig[]>(
-    restored?.indicators.length ? restored.indicators : defaultIndicators(),
+    restored?.indicators ?? defaultIndicators(),
   );
   const [drawings, setDrawings] = useState<ReplayDrawing[]>(restored?.drawings ?? []);
   // Transient event feedback (order filled, stopped out, target hit); the shell
@@ -108,7 +125,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
   }, []);
 
-  const window_ = useCandleWindow(normalizedSymbol, interval, startDate);
+  const window_ = useCandleWindow(normalizedSymbol, interval, anchorTime, requestId);
   const { candles, ensureAhead } = window_;
 
   // Trade ids are epoch-seconds-seeded and monotonic: they never collide with
@@ -121,8 +138,9 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
       Math.floor(Date.now() / 1000),
     ),
   );
-  const anchorRef = useRef<{ closeTime: number; price: number } | null>(null);
-  const restoreCursorRef = useRef<number | null>(restored?.cursorTime ?? null);
+  const replayTimeRef = useRef(replayTime);
+  useEffect(() => { replayTimeRef.current = replayTime; }, [replayTime]);
+  useEffect(() => () => executionControllerRef.current?.abort(), []);
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const positionRef = useRef<OpenPosition | null>(position);
   const pendingRef = useRef<PendingOrder | null>(pendingOrder);
@@ -138,68 +156,61 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   }, [cursor]);
 
   const intervalSeconds = getReplayIntervalSeconds(interval);
+  const metadataAvailableTo = window_.meta?.warehouse?.lastTs != null ? window_.meta.warehouse.lastTs + 60 : null;
+  const availableTo = window_.availableTo != null && metadataAvailableTo != null
+    ? Math.max(window_.availableTo, metadataAvailableTo)
+    : window_.availableTo ?? metadataAvailableTo;
 
-  // ── cursor placement on (re)load ───────────────────────────────────────────
-  // Runs once per loaded window (initial, timeframe switch, date jump); guarded
-  // by cursorReady so forward-page appends never re-place the cursor, and by
-  // loadedFor so the same-commit run after a timeframe switch (when `candles`
-  // is still the previous window and `loading` hasn't flipped yet) never
-  // consumes the anchor against stale data.
+  // An import can extend the last, still-forming aggregate. Refresh the window
+  // while preserving its exact clock so its future OHLC can advance safely.
+  useEffect(() => {
+    if (!cursorReady || window_.availableTo == null || metadataAvailableTo == null || metadataAvailableTo <= window_.availableTo) return;
+    setCursorReady(false);
+    setAnchorTime(replayTimeRef.current);
+    setRequestId((id) => id + 1);
+  }, [cursorReady, metadataAvailableTo, window_.availableTo]);
+
+  // A chart interval is a view over the clock, never the source of replay time.
   useEffect(() => {
     const loadedFor = window_.loadedFor;
-    if (
-      window_.loading ||
-      cursorReady ||
-      !loadedFor ||
-      loadedFor.interval !== interval ||
-      (loadedFor.startDate ?? null) !== (startDate ?? null)
-    ) {
-      return;
-    }
-
-    // Load resolved for THIS request but returned no bars (e.g. a date jump into
-    // a range with no data for a live-only symbol). Leave the spinner — mark
-    // ready so the UI can show an explicit empty state instead of hanging.
+    if (window_.loading || cursorReady || !loadedFor ||
+        loadedFor.symbol !== normalizedSymbol || loadedFor.interval !== interval ||
+        loadedFor.anchorTime !== anchorTime || loadedFor.requestId !== requestId) return;
     if (candles.length === 0) {
-      anchorRef.current = null;
-      restoreCursorRef.current = null;
       setCursorReady(true);
       return;
     }
-
-    const anchor = anchorRef.current;
-    if (anchor) {
-      // Timeframe switch: land on the bar whose close covers the previous
-      // bar's close time (same rule as resolveReplayWindowForCloseAnchor).
-      anchorRef.current = null;
-      const secs = getReplayIntervalSeconds(interval);
-      let index = candles.findIndex((candle) => candle.time + secs >= anchor.closeTime);
-      if (index === -1) index = candles.length - 1;
-      setCursor(clampCursor(index, candles.length, MIN_REVEALED_BARS));
-      setCursorReady(true);
-      return;
-    }
-
-    const restoredTime = restoreCursorRef.current;
-    if (restoredTime != null) {
-      restoreCursorRef.current = null;
-      setCursor(seekCursorToTime(candles, restoredTime, MIN_REVEALED_BARS));
-      setCursorReady(true);
-      return;
-    }
-
-    // Fresh session (or date jump): start just past the warm-up window for a
-    // date jump, around half the loaded history otherwise (mockup behavior).
-    const fallback = startDate
-      ? MIN_REVEALED_BARS
-      : Math.max(MIN_REVEALED_BARS, Math.floor(candles.length * 0.52));
-    setCursor(clampCursor(fallback, candles.length, MIN_REVEALED_BARS));
+    const requestedTime = anchorTime ?? candles[clampCursor(
+      Math.max(MIN_REVEALED_BARS, Math.floor(candles.length * 0.52)), candles.length, 0,
+    )].time + intervalSeconds;
+    const time = availableTo == null ? requestedTime : Math.min(requestedTime, availableTo);
+    const index = Math.max(0, cursorAtReplayTime(candles, time));
+    cursorRef.current = index;
+    replayTimeRef.current = time;
+    setCursor(index);
+    setReplayTime(time);
+    setStartTime((current) => current ?? time);
     setCursorReady(true);
-  }, [window_.loading, window_.loadedFor, candles, interval, startDate, cursorReady]);
+    ensureAhead(index);
+  }, [window_.loading, window_.loadedFor, cursorReady, normalizedSymbol, interval, anchorTime,
+      requestId, candles, intervalSeconds, ensureAhead, availableTo]);
 
-  // ── trading ──────────────────────────────────────────────────────────────
-  const currentBar = candles.length > 0 ? candles[Math.min(cursor, candles.length - 1)] : null;
+  const revealed = useMemo(() => cursorReady
+    ? revealAtReplayTime(candles, replayTime, intervalSeconds, window_.partialCandle)
+    : [], [cursorReady, candles, replayTime, intervalSeconds, window_.partialCandle]);
+  const currentBar = revealed[revealed.length - 1] ?? null;
   const currentPrice = currentBar?.close ?? 0;
+
+  // Prepending older history shifts indices, while the observation clock stays
+  // fixed. Forward appends leave this index unchanged.
+  useEffect(() => {
+    if (!cursorReady || replayTime == null) return;
+    const next = Math.max(0, cursorAtReplayTime(candles, replayTime));
+    if (next !== cursorRef.current) {
+      cursorRef.current = next;
+      setCursor(next);
+    }
+  }, [candles, cursorReady, replayTime]);
 
   const account = useMemo(() => {
     const openProfit = position && currentPrice > 0 ? unrealizedProfit(position, currentPrice, normalizedSymbol) : 0;
@@ -235,53 +246,11 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
         symbol: normalizedSymbol,
         costs: costsRef.current,
       });
+      closed.syncId = crypto.randomUUID();
       setPosition(null);
       setTrades((old) => [closed, ...old]);
     },
     [normalizedSymbol],
-  );
-
-  /**
-   * Full per-bar processing of the open position: stop check (pre-bar levels),
-   * excursion tracking, auto-breakeven and trailing per the ticket rules.
-   * Returns true when the bar closed the position.
-   */
-  const revealBar = useCallback(
-    (index: number): boolean => {
-      const bar = candles[index];
-      if (!bar) return false;
-
-      // A resting order fills first; its position is then managed from the NEXT
-      // bar (no intra-bar look-ahead), so we return early on a fill.
-      if (!positionRef.current && pendingRef.current) {
-        const fillPrice = checkPendingFill(pendingRef.current, bar);
-        if (fillPrice != null) {
-          const opened = fillPendingOrder(pendingRef.current, fillPrice, bar.time, normalizedSymbol);
-          pendingRef.current = null;
-          positionRef.current = opened;
-          setPendingOrder(null);
-          setPosition(opened);
-          pushNotice("fill", fillPrice);
-          return false;
-        }
-      }
-
-      const open = positionRef.current;
-      if (!open) return false;
-      const { position: managed, hit } = manageBar(
-        open,
-        bar,
-        { breakevenAtR: ticket.breakevenAtR, trailingPips: ticket.trailingPips },
-        normalizedSymbol,
-      );
-      positionRef.current = managed;
-      setPosition(managed);
-      if (!hit) return false;
-      pushNotice(hit.exitReason, hit.exitPrice);
-      closeAt(hit.exitPrice, bar.time, hit.exitReason);
-      return true;
-    },
-    [candles, closeAt, normalizedSymbol, pushNotice, ticket.breakevenAtR, ticket.trailingPips],
   );
 
   const stop = useCallback(() => {
@@ -291,41 +260,103 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
       playTimerRef.current = null;
     }
   }, []);
+  useEffect(() => { if (window_.pageError) stop(); }, [window_.pageError, stop]);
 
-  const stepForward = useCallback((): boolean => {
-    const next = stepCursor(cursorRef.current, 1, candles.length, MIN_REVEALED_BARS);
-    if (next === cursorRef.current) return false;
+  const advanceToTime = useCallback(async (targetTime: number): Promise<boolean> => {
+    const from = replayTimeRef.current;
+    if (from == null || targetTime <= from || executingRef.current || !cursorReady) return false;
+    let finalTime = targetTime;
+    if (positionRef.current || pendingRef.current) {
+      executingRef.current = true;
+      setExecuting(true);
+      setExecutionError(null);
+      const controller = new AbortController();
+      executionControllerRef.current = controller;
+      try {
+        const result = await simulateReplayExecution({
+          pages: iterateReplayExecutionCandles(normalizedSymbol, from, targetTime, { signal: controller.signal }),
+          position: positionRef.current,
+          pendingOrder: pendingRef.current,
+          symbol: normalizedSymbol,
+          targetTime,
+          rules: { breakevenAtR: ticket.breakevenAtR, trailingPips: ticket.trailingPips },
+          signal: controller.signal,
+        });
+        finalTime = result.finalTime;
+        positionRef.current = result.position;
+        pendingRef.current = result.pendingOrder;
+        setPosition(result.position);
+        setPendingOrder(result.pendingOrder);
+        if (result.event) pushNotice(result.event.kind, result.event.price);
+        if (result.exit) { closeAt(result.exit.exitPrice, finalTime, result.exit.exitReason); stop(); }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setExecutionError(error instanceof Error ? error.message : String(error));
+          stop();
+        }
+        return false;
+      } finally {
+        if (executionControllerRef.current === controller) {
+          executingRef.current = false;
+          setExecuting(false);
+        }
+      }
+    }
+    const next = Math.max(0, cursorAtReplayTime(candles, finalTime));
+    cursorRef.current = next;
+    replayTimeRef.current = finalTime;
     setCursor(next);
+    setReplayTime(finalTime);
     ensureAhead(next);
-    const closed = revealBar(next);
-    if (closed) stop();
+    if (candles[next] && candles[next].time + intervalSeconds > finalTime) {
+      // A stop inside the displayed candle needs its M1-derived partial OHLC.
+      setCursorReady(false);
+      setAnchorTime(finalTime);
+      setRequestId((id) => id + 1);
+    }
     return true;
-  }, [candles.length, ensureAhead, revealBar, stop]);
+  }, [candles, closeAt, cursorReady, ensureAhead, intervalSeconds, normalizedSymbol, pushNotice, stop, ticket.breakevenAtR, ticket.trailingPips]);
 
-  /** Lowest cursor allowed right now: an open position pins it to its entry bar. */
+  const stepForward = useCallback(async (): Promise<boolean> => {
+    if (!cursorReady || candles.length === 0) return false;
+    const current = candles[cursorRef.current];
+    const completingPartial = current && replayTimeRef.current != null && current.time + intervalSeconds > replayTimeRef.current;
+    const next = completingPartial ? cursorRef.current : cursorRef.current + 1;
+    if (!candles[next]) { ensureAhead(cursorRef.current); return false; }
+    const nextTime = candles[next].time + intervalSeconds;
+    return advanceToTime(availableTo == null ? nextTime : Math.min(nextTime, availableTo));
+  }, [advanceToTime, availableTo, candles, cursorReady, ensureAhead, intervalSeconds]);
+
+  /** Never rewind an open trade or pending order into market data it already consumed. */
   const minCursorIndex = useCallback((): number => {
-    const open = positionRef.current;
-    if (!open) return MIN_REVEALED_BARS;
-    const entryIndex = candles.findIndex((candle) => candle.time >= open.entryTime);
-    return entryIndex === -1 ? MIN_REVEALED_BARS : Math.max(MIN_REVEALED_BARS, entryIndex);
-  }, [candles]);
+    if (positionRef.current || pendingRef.current) return cursorRef.current;
+    return 0;
+  }, []);
 
   const stepBack = useCallback(() => {
     stop();
-    setCursor((current) => stepCursor(current, -1, candles.length, minCursorIndex()));
-  }, [candles.length, minCursorIndex, stop]);
+    if (!cursorReady || executingRef.current) return;
+    const next = stepCursor(cursorRef.current, -1, candles.length, minCursorIndex());
+    if (next >= cursorRef.current || !candles[next]) return;
+    const time = candles[next].time + intervalSeconds;
+    cursorRef.current = next;
+    replayTimeRef.current = time;
+    setCursor(next);
+    setReplayTime(time);
+  }, [candles, cursorReady, intervalSeconds, minCursorIndex, stop]);
 
   // ── play loop ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!playing) return;
     let cancelled = false;
-    const tick = () => {
+    const tick = async () => {
       if (cancelled) return;
-      const advanced = stepForward();
+      const advanced = await stepForward();
+      if (cancelled) return;
       if (!advanced) {
         // At the loaded edge: if a forward page is still on its way, idle one
         // tick instead of dropping out of play.
-        if (window_.appending || window_.hasMore) {
+        if (window_.appending || window_.hasMore || executingRef.current || !cursorReady) {
           playTimerRef.current = setTimeout(tick, BASE_TICK_MS);
           return;
         }
@@ -342,93 +373,92 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
         playTimerRef.current = null;
       }
     };
-  }, [playing, speed, stepForward, window_.appending, window_.hasMore]);
+  }, [playing, speed, stepForward, window_.appending, window_.hasMore, cursorReady]);
 
   const togglePlay = useCallback(() => {
+    if (!cursorReady || window_.error || window_.pageError || executionError || candles.length === 0) return;
     setPlaying((current) => !current);
-  }, []);
+  }, [cursorReady, window_.error, window_.pageError, executionError, candles.length]);
 
-  const restart = useCallback(() => {
+  const jumpToTime = useCallback((timestamp: number) => {
+    if (!Number.isFinite(timestamp) || timestamp <= 0) return;
     stop();
+    executionControllerRef.current?.abort();
+    executingRef.current = false;
+    setExecuting(false);
+    setExecutionError(null);
     setPosition(null);
     positionRef.current = null;
     setPendingOrder(null);
     pendingRef.current = null;
-    const fallback = startDate
-      ? MIN_REVEALED_BARS
-      : Math.max(MIN_REVEALED_BARS, Math.floor(candles.length * 0.52));
-    setCursor(clampCursor(fallback, candles.length, MIN_REVEALED_BARS));
-  }, [candles.length, startDate, stop]);
+    const time = Math.floor(timestamp / 60) * 60;
+    setCursorReady(false);
+    setStartTime(time);
+    setReplayTime(time);
+    replayTimeRef.current = time;
+    setAnchorTime(time);
+    setRequestId((id) => id + 1);
+  }, [stop]);
 
-  // Backward seeks can't cross the open position's entry bar; forward seeks
-  // replay the full per-bar processing (pending fills, stops, BE, trailing)
-  // across every skipped bar, so scrubbing cannot fast-forward through a fill
-  // or a stop-out.
-  const seekToIndex = useCallback(
-    (target: number) => {
-      const from = cursorRef.current;
-      if (target > from && (positionRef.current || pendingRef.current)) {
-        for (let index = from + 1; index <= target; index++) {
-          const closed = revealBar(index);
-          if (closed || (!positionRef.current && !pendingRef.current)) break;
-        }
-      }
-      setCursor(target);
-      ensureAhead(target);
-    },
-    [ensureAhead, revealBar],
-  );
+  const jumpToDate = useCallback((date: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    const time = new Date(`${date}T00:00:00.000Z`);
+    if (Number.isFinite(time.getTime()) && time.toISOString().slice(0, 10) === date) jumpToTime(time.getTime() / 1000);
+  }, [jumpToTime]);
 
-  const seekFraction = useCallback(
-    (fraction: number) => {
-      stop();
-      seekToIndex(cursorFromFraction(fraction, candles.length, minCursorIndex()));
-    },
-    [candles.length, minCursorIndex, seekToIndex, stop],
-  );
+  const restart = useCallback(() => {
+    if (startTime != null) jumpToTime(startTime);
+    else if (candles.length) jumpToTime(candles[clampCursor(
+      Math.max(MIN_REVEALED_BARS, Math.floor(candles.length * 0.52)), candles.length, 0,
+    )].time + intervalSeconds);
+  }, [candles, intervalSeconds, jumpToTime, startTime]);
 
-  /** Jump the replay to the bar at/after `time` (right-click jump, Go-To). */
-  const seekToTime = useCallback(
-    (time: number) => {
-      stop();
-      seekToIndex(seekCursorToTime(candles, time, minCursorIndex()));
-    },
-    [candles, minCursorIndex, seekToIndex, stop],
-  );
+  const seekToIndex = useCallback((target: number) => {
+    if (!cursorReady || executingRef.current || !candles[target] || target === cursorRef.current) return;
+    const requestedTime = candles[target].time + intervalSeconds;
+    const time = availableTo == null ? requestedTime : Math.min(requestedTime, availableTo);
+    if (replayTimeRef.current != null && time > replayTimeRef.current) { void advanceToTime(time); return; }
+    cursorRef.current = target;
+    replayTimeRef.current = time;
+    setCursor(target);
+    setReplayTime(time);
+  }, [advanceToTime, availableTo, candles, cursorReady, intervalSeconds]);
 
-  const jumpToDate = useCallback(
-    (date: string) => {
-      stop();
-      // Clear open position AND pending order (a resting order from the old
-      // date must not leak into and fill against the new window).
-      setPosition(null);
-      positionRef.current = null;
-      setPendingOrder(null);
-      pendingRef.current = null;
-      anchorRef.current = null;
-      restoreCursorRef.current = null;
-      setCursorReady(false);
-      setStartDate(date || null);
-    },
-    [stop],
-  );
+  const seekFraction = useCallback((fraction: number) => {
+    stop();
+    const target = cursorFromFraction(fraction, candles.length, 0);
+    seekToIndex(Math.max(minCursorIndex(), target));
+  }, [candles.length, minCursorIndex, seekToIndex, stop]);
 
-  const changeInterval = useCallback(
-    (nextInterval: string) => {
-      if (nextInterval === interval) return;
-      stop();
-      const bar = candles[cursorRef.current];
-      if (bar) {
-        anchorRef.current = {
-          closeTime: bar.time + getReplayIntervalSeconds(interval),
-          price: bar.close,
-        };
-      }
-      setCursorReady(false);
-      setIntervalState(nextInterval);
-    },
-    [candles, interval, stop],
-  );
+  const seekToTime = useCallback((time: number) => {
+    stop();
+    const index = Math.max(minCursorIndex(), cursorAtReplayTime(candles, time + intervalSeconds));
+    seekToIndex(index);
+  }, [candles, intervalSeconds, minCursorIndex, seekToIndex, stop]);
+
+  const changeInterval = useCallback((nextInterval: string) => {
+    if (nextInterval === interval || !REPLAY_TIMEFRAMES.includes(nextInterval as typeof REPLAY_TIMEFRAMES[number])) return;
+    stop();
+    executionControllerRef.current?.abort();
+    executingRef.current = false;
+    setExecuting(false);
+    setExecutionError(null);
+    setCursorReady(false);
+    setAnchorTime(replayTimeRef.current);
+    setIntervalState(nextInterval);
+    setRequestId((id) => id + 1);
+  }, [interval, stop]);
+
+  const retryHistory = useCallback(() => {
+    stop();
+    executionControllerRef.current?.abort();
+    executingRef.current = false;
+    setExecuting(false);
+    setExecutionError(null);
+    setCursorReady(false);
+    setAnchorTime(replayTimeRef.current ?? startTime);
+    setRequestId((id) => id + 1);
+  }, [startTime, stop]);
 
   const changeSpeed = useCallback((next: number) => {
     setSpeed(next);
@@ -446,11 +476,11 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     (direction: TradeDirection = "buy") => {
       // Reject while a position OR a resting order exists (the B/S hotkeys reach
       // here even when the ticket hides the buttons behind the pending card).
-      if (positionRef.current || pendingRef.current || !currentBar || lots <= 0) return;
+      if (positionRef.current || pendingRef.current || !currentBar || !cursorReady || executingRef.current || lots <= 0) return;
       const opened = openPosition({
         direction,
         entryPrice: currentBar.close,
-        entryTime: currentBar.time,
+        entryTime: replayTimeRef.current ?? currentBar.time,
         slPips: ticket.slPips,
         tpPips: ticket.tpPips,
         lots,
@@ -460,7 +490,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
       positionRef.current = opened;
       setPosition(opened);
     },
-    [currentBar, lots, normalizedSymbol, riskAmount, ticket.slPips, ticket.tpPips],
+    [currentBar, cursorReady, lots, normalizedSymbol, riskAmount, ticket.slPips, ticket.tpPips],
   );
 
   const sell = useCallback(() => buy("sell"), [buy]);
@@ -473,7 +503,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
    */
   const placeOrder = useCallback(
     (direction: TradeDirection, price: number) => {
-      if (positionRef.current || pendingRef.current || !currentBar || lots <= 0) return;
+      if (positionRef.current || pendingRef.current || !currentBar || !cursorReady || executingRef.current || lots <= 0) return;
       if (!Number.isFinite(price) || price <= 0) return;
       const below = price < currentBar.close;
       const kind: "limit" | "stop" = direction === "buy" ? (below ? "limit" : "stop") : below ? "stop" : "limit";
@@ -485,26 +515,31 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
         tpPips: ticket.tpPips,
         lots,
         riskAmount,
-        placedTime: currentBar.time,
+        placedTime: replayTimeRef.current ?? currentBar.time,
       };
       pendingRef.current = order;
       setPendingOrder(order);
     },
-    [currentBar, lots, riskAmount, ticket.slPips, ticket.tpPips],
+    [currentBar, cursorReady, lots, riskAmount, ticket.slPips, ticket.tpPips],
   );
 
   const cancelOrder = useCallback(() => {
+    // The X hotkey can fire while a transport fetch is in flight. Abort the
+    // staged move so it cannot resurrect an order the user just cancelled.
+    executionControllerRef.current?.abort();
+    stop();
     pendingRef.current = null;
     setPendingOrder(null);
-  }, []);
+  }, [stop]);
 
   const closeMarket = useCallback(() => {
-    if (!positionRef.current || !currentBar) return;
-    closeAt(currentBar.close, currentBar.time, "manual");
-  }, [closeAt, currentBar]);
+    if (!positionRef.current || !currentBar || executingRef.current || !cursorReady) return;
+    closeAt(currentBar.close, replayTimeRef.current ?? currentBar.time, "manual");
+  }, [closeAt, currentBar, cursorReady]);
 
   const updatePositionLevels = useCallback(
     (levels: { stopLoss?: number; takeProfit?: number; entryPrice?: number }) => {
+      if (executingRef.current || !cursorReady) return;
       // Re-derive the pip distances so R:R, the hit checks' guards and the
       // closed trade's R multiple track the dragged lines, not the original
       // ticket values.
@@ -522,7 +557,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
         return next;
       });
     },
-    [normalizedSymbol],
+    [normalizedSymbol, cursorReady],
   );
 
   const deleteTrade = useCallback((id: number) => {
@@ -535,7 +570,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
 
   // ── persistence ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (typeof window === "undefined" || window_.loading || !cursorReady) return;
+    if (typeof window === "undefined" || window_.loading || window_.error || !cursorReady || !currentBar) return;
     try {
       window.localStorage.setItem(
         storageKey,
@@ -543,6 +578,8 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
           symbol: normalizedSymbol,
           interval,
           cursorTime: currentBar?.time ?? null,
+          replayTime,
+          startTime,
           indicators,
           drawings,
           trades,
@@ -553,6 +590,9 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
           initialBalance: restored?.initialBalance ?? INITIAL_BALANCE,
         }),
       );
+      const requestedStartKey = `traderloading:backtest-start:${sessionKey.replace(/^backtest-session-/, "")}`;
+      window.localStorage.removeItem(requestedStartKey);
+      window.sessionStorage.removeItem(requestedStartKey);
     } catch {
       // Storage can fail (private mode / quota); the in-memory replay stays usable.
     }
@@ -562,7 +602,11 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     cursorReady,
     normalizedSymbol,
     interval,
-    currentBar?.time,
+    currentBar,
+    replayTime,
+    startTime,
+    sessionKey,
+    window_.error,
     indicators,
     drawings,
     trades,
@@ -576,21 +620,14 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const openProfit = position && currentPrice > 0 ? unrealizedProfit(position, currentPrice, normalizedSymbol) : 0;
   const openPips = position && currentPrice > 0 ? positionPips(position, currentPrice, normalizedSymbol) : 0;
 
-  // Stable identity: the chart's reveal effect keys on this array, and a fresh
-  // slice per render would reset the user's pan/zoom on every unrelated
-  // interaction (typing in the ticket, toggling the panel, pausing…).
-  const revealed = useMemo(
-    () => (cursorReady ? candles.slice(0, cursor + 1) : []),
-    [cursorReady, candles, cursor],
-  );
-
   return {
     symbol: normalizedSymbol,
     interval,
     intervalSeconds,
     candles,
     loading: window_.loading || !cursorReady,
-    error: window_.error,
+    error: window_.error ?? executionError ?? window_.pageError,
+    executing,
     meta: window_.meta,
     appending: window_.appending,
     cursor,
@@ -600,10 +637,12 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     dismissNotice,
     currentBar,
     currentPrice,
-    progress: cursorFraction(cursor, candles.length, MIN_REVEALED_BARS),
+    progress: cursorFraction(cursor, candles.length, 0),
     playing,
     speed,
     startDate,
+    startTime,
+    replayTime,
     trades,
     position,
     pendingOrder,
@@ -630,6 +669,9 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     seekFraction,
     seekToTime,
     jumpToDate,
+    jumpToTime,
+    retryHistory,
+    ensureHistoryBefore: window_.ensureBefore,
     changeInterval,
     changeSpeed,
     bumpSpeed,

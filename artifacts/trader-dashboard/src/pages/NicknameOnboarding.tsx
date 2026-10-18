@@ -103,7 +103,7 @@ export function NicknameOnboarding() {
           </span>
         </div>
 
-        <h1 className="font-mono text-2xl font-extrabold tracking-tight text-foreground">
+        <h1 className="font-sans text-2xl font-extrabold tracking-tight text-foreground">
           {t("auth.nickname.title")}
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t("auth.nickname.subtitle")}</p>

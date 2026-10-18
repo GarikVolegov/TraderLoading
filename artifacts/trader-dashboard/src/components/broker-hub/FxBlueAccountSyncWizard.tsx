@@ -1,5 +1,5 @@
 import { uiText } from "@/contexts/LanguageContext";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, LockKeyhole, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,9 @@ export function FxBlueAccountSyncWizard({
 }: {
   hub: ReturnType<typeof useBrokerHub>;
   onConnected: () => void;
-  onBack: () => void;
+  onBack?: () => void;
 }) {
+  const fieldId = useId();
   const [step, setStep] = useState<FxBlueStep>("details");
   const [platform, setPlatform] = useState<"MT4" | "MT5">("MT5");
   const [brokerName, setBrokerName] = useState("FX Blue");
@@ -55,6 +56,10 @@ export function FxBlueAccountSyncWizard({
       const verified = await hub.verifyFxBlueProfile(created.intent.id, { fxBlueProfileRef: fxBlueProfileRef.trim() });
       if (verified.error) {
         setError(verified.error);
+        return;
+      }
+      if (verified.snapshot?.status !== "connected") {
+        setError(verified.snapshot?.error ?? verified.intent?.displayStatus ?? uiText("auto.ui.e49ece2b58"));
         return;
       }
 
@@ -97,6 +102,10 @@ export function FxBlueAccountSyncWizard({
         setError(data.error);
         return;
       }
+      if (data.snapshot?.status !== "connected") {
+        setError(data.snapshot?.error ?? data.intent?.displayStatus ?? uiText("auto.ui.e49ece2b58"));
+        return;
+      }
       if (data.intent?.id) setIntentId(data.intent.id);
       setStep("done");
     } catch (err) {
@@ -137,7 +146,7 @@ export function FxBlueAccountSyncWizard({
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           {error}
         </div>
@@ -147,8 +156,9 @@ export function FxBlueAccountSyncWizard({
         <div className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>{uiText("auto.ui.0dcad48c42")}</Label>
+              <Label htmlFor={`${fieldId}-platform`}>{uiText("auto.ui.0dcad48c42")}</Label>
               <select
+                id={`${fieldId}-platform`}
                 value={platform}
                 onChange={(event) => setPlatform(event.target.value as "MT4" | "MT5")}
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -158,8 +168,9 @@ export function FxBlueAccountSyncWizard({
               </select>
             </div>
             <div className="space-y-2">
-              <Label>{uiText("auto.ui.e6fefb74bf")}</Label>
+              <Label htmlFor={`${fieldId}-environment`}>{uiText("auto.ui.e6fefb74bf")}</Label>
               <select
+                id={`${fieldId}-environment`}
                 value={environment}
                 onChange={(event) => setEnvironment(event.target.value as "demo" | "live")}
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -170,17 +181,17 @@ export function FxBlueAccountSyncWizard({
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Broker</Label>
-            <Input value={brokerName} onChange={(event) => setBrokerName(event.target.value)} />
+            <Label htmlFor={`${fieldId}-broker`}>Broker</Label>
+            <Input id={`${fieldId}-broker`} value={brokerName} onChange={(event) => setBrokerName(event.target.value)} />
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>{uiText("auto.ui.e10d36a838")}</Label>
-              <Input value={accountNumber} onChange={(event) => setAccountNumber(event.target.value)} />
+              <Label htmlFor={`${fieldId}-account`}>{uiText("auto.ui.e10d36a838")}</Label>
+              <Input id={`${fieldId}-account`} value={accountNumber} onChange={(event) => setAccountNumber(event.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>{uiText("auto.ui.5c7ea0ffb1")}</Label>
-              <Input value={server} onChange={(event) => setServer(event.target.value)} />
+              <Label htmlFor={`${fieldId}-server`}>{uiText("auto.ui.5c7ea0ffb1")}</Label>
+              <Input id={`${fieldId}-server`} value={server} onChange={(event) => setServer(event.target.value)} />
             </div>
           </div>
 
@@ -192,8 +203,9 @@ export function FxBlueAccountSyncWizard({
               </p>
             </div>
             <div className="space-y-2">
-              <Label>{uiText("auto.ui.373038118c")}</Label>
+              <Label htmlFor={`${fieldId}-profile`}>{uiText("auto.ui.373038118c")}</Label>
               <Input
+                id={`${fieldId}-profile`}
                 value={fxBlueProfileRef}
                 onChange={(event) => setFxBlueProfileRef(event.target.value)}
                 placeholder={uiText("auto.ui.6da3300121")}
@@ -206,17 +218,17 @@ export function FxBlueAccountSyncWizard({
           </div>
 
           <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
+            <Label htmlFor={`${fieldId}-password`} className="flex items-center gap-1.5">
               <LockKeyhole className="h-3.5 w-3.5" />
               password investor/read-only opzionale
             </Label>
-            <Input type="password" autoComplete="off" value={investorPassword} onChange={(event) => setInvestorPassword(event.target.value)} />
+            <Input id={`${fieldId}-password`} type="password" autoComplete="off" value={investorPassword} onChange={(event) => setInvestorPassword(event.target.value)} />
             <p className="text-xs text-amber-400">{uiText("auto.ui.f3e32e2b66")}</p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button variant="outline" onClick={onBack}>
+          <div className={`grid gap-2 ${onBack ? "sm:grid-cols-2" : ""}`}>
+            {onBack && <Button variant="outline" onClick={onBack}>
               Indietro
-            </Button>
+            </Button>}
             <Button className="gap-2" disabled={busy || !detailsReady} onClick={createIntent}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               Prepara setup FX Blue
@@ -246,8 +258,9 @@ export function FxBlueAccountSyncWizard({
       {step === "profile" && (
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label>{uiText("auto.ui.373038118c")}</Label>
+            <Label htmlFor={`${fieldId}-profile`}>{uiText("auto.ui.373038118c")}</Label>
             <Input
+              id={`${fieldId}-profile`}
               value={fxBlueProfileRef}
               onChange={(event) => setFxBlueProfileRef(event.target.value)}
               placeholder={uiText("auto.ui.206cfc5fc5")}

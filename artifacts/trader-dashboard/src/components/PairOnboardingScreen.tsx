@@ -6,6 +6,8 @@ import { uiText } from "@/contexts/LanguageContext";
 
 interface PairOnboardingScreenProps {
   initialPairs?: string[];
+  saving?: boolean;
+  failed?: boolean;
   onConfirm: (pairs: string[]) => void;
 }
 
@@ -22,7 +24,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 const POPULAR_PAIRS = ["EURUSD", "GBPUSD", "XAUUSD", "US30", "NAS100", "USDJPY", "BTCUSD", "GBPJPY"];
 
-export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboardingScreenProps) {
+export function PairOnboardingScreen({ initialPairs = [], onConfirm, saving = false, failed = false }: PairOnboardingScreenProps) {
   const [selected, setSelected] = useState<string[]>(initialPairs);
   const [search, setSearch] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
@@ -76,6 +78,7 @@ export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboa
       className="fixed inset-0 z-[60] flex flex-col bg-[hsl(224,71%,4%)] overflow-hidden"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
+      <fieldset disabled={saving} className="contents">
       {/* Subtle gradient background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/5 rounded-full blur-3xl" />
@@ -174,10 +177,11 @@ export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboa
               </div>
             )}
 
+            {failed && <p role="alert" className="text-sm text-destructive">{uiText("pairs.save_error")}</p>}
             {/* Desktop CTA */}
             <button
               onClick={() => selected.length > 0 && onConfirm(selected)}
-              disabled={selected.length === 0}
+              disabled={saving || selected.length === 0}
               className={[
                 "mt-6 w-full py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all",
                 selected.length > 0
@@ -185,7 +189,7 @@ export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboa
                   : "bg-secondary/40 text-muted-foreground cursor-not-allowed",
               ].join(" ")}
             >
-              {selected.length > 0 ? (
+              {saving ? uiText("pairs.saving") : selected.length > 0 ? (
                 <>Inizia con {selected.length} pair <ArrowRight className="w-4 h-4" /></>
               ) : (
                 "Seleziona almeno un pair"
@@ -374,9 +378,10 @@ export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboa
             </button>
           )}
         </div>
+        {failed && <p role="alert" className="text-sm text-destructive mb-2">{uiText("pairs.save_error")}</p>}
         <button
           onClick={() => selected.length > 0 && onConfirm(selected)}
-          disabled={selected.length === 0}
+          disabled={saving || selected.length === 0}
           className={[
             "w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all",
             selected.length > 0
@@ -384,13 +389,14 @@ export function PairOnboardingScreen({ initialPairs = [], onConfirm }: PairOnboa
               : "bg-secondary/50 text-muted-foreground cursor-not-allowed",
           ].join(" ")}
         >
-          {selected.length > 0 ? (
+          {saving ? uiText("pairs.saving") : selected.length > 0 ? (
             <>Inizia con {selected.length} pair <ArrowRight className="w-5 h-5" /></>
           ) : (
             "Seleziona almeno un pair"
           )}
         </button>
       </div>
+      </fieldset>
     </motion.div>
   );
 }

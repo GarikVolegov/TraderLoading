@@ -93,6 +93,10 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
   const { ticket, setTicket, position, pendingOrder } = engine;
   const [pendingMode, setPendingMode] = useState(false);
   const [orderPrice, setOrderPrice] = useState("");
+  const unavailable = engine.loading || engine.executing || engine.noData || Boolean(engine.error);
+  const oil = engine.symbol === "USOIL";
+  const slLabel = uiText(oil ? "backtest_terminal.stop_loss_ticks" : "backtest_terminal.stop_loss_pips");
+  const tpLabel = uiText(oil ? "backtest_terminal.take_profit_ticks" : "backtest_terminal.take_profit_pips");
 
   const numberInput = (
     value: number,
@@ -135,10 +139,10 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
             <span style={{ color: "var(--btm-up)" }}>TP {formatPrice(position.takeProfit, engine.symbol)}</span>
             <span style={{ color: "var(--btm-mut)" }}>
               {engine.openPips > 0 ? "+" : ""}
-              {engine.openPips} pip
+              {engine.openPips} {oil ? "tick" : "pip"}
             </span>
           </div>
-          <button type="button" className="btm-close-btn" onClick={engine.closeMarket}>
+          <button type="button" className="btm-close-btn" onClick={engine.closeMarket} disabled={unavailable}>
             {uiText("backtest_terminal.close_market")}
           </button>
         </div>
@@ -166,7 +170,7 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
           <div className="btm-poscard-levels">
             <span style={{ color: "var(--btm-mut)" }}>{uiText("backtest_terminal.pending_waiting")}</span>
           </div>
-          <button type="button" className="btm-close-btn" onClick={engine.cancelOrder}>
+          <button type="button" className="btm-close-btn" onClick={engine.cancelOrder} disabled={engine.executing}>
             {uiText("backtest_terminal.cancel_order")}
           </button>
         </div>
@@ -221,15 +225,15 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
           <div className="btm-field">
             <span className="btm-field-label" style={{ color: "var(--btm-dn)" }}>
-              {uiText("backtest_terminal.stop_loss_pips")}
+              {slLabel}
             </span>
-            {numberInput(ticket.slPips, (next) => setTicket({ ...ticket, slPips: next }), "sl", uiText("backtest_terminal.stop_loss_pips"))}
+            {numberInput(ticket.slPips, (next) => setTicket({ ...ticket, slPips: next }), "sl", slLabel)}
           </div>
           <div className="btm-field">
             <span className="btm-field-label" style={{ color: "var(--btm-up)" }}>
-              {uiText("backtest_terminal.take_profit_pips")}
+              {tpLabel}
             </span>
-            {numberInput(ticket.tpPips, (next) => setTicket({ ...ticket, tpPips: next }), "tp", uiText("backtest_terminal.take_profit_pips"))}
+            {numberInput(ticket.tpPips, (next) => setTicket({ ...ticket, tpPips: next }), "tp", tpLabel)}
           </div>
         </div>
 
@@ -286,6 +290,8 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
           </div>
         </div>
 
+        {oil && <p className="btm-muted" style={{ margin: 0, fontSize: 10.5 }}>{uiText("backtest_terminal.oil_contract")}</p>}
+
         {engine.lots <= 0 && (
           <p style={{ margin: 0, fontSize: 10.5, color: "var(--btm-mut)", textAlign: "center" }}>
             {uiText("backtest_terminal.size_hint")}
@@ -297,7 +303,7 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
             type="button"
             className="btm-buy"
             onClick={() => submit("buy")}
-            disabled={engine.lots <= 0 || (pendingMode && !canPlace)}
+            disabled={unavailable || engine.lots <= 0 || (pendingMode && !canPlace)}
           >
             <ArrowUp size={15} /> BUY
           </button>
@@ -305,7 +311,7 @@ export function OrderTicket({ engine }: { engine: ReplayEngine }) {
             type="button"
             className="btm-sell"
             onClick={() => submit("sell")}
-            disabled={engine.lots <= 0 || (pendingMode && !canPlace)}
+            disabled={unavailable || engine.lots <= 0 || (pendingMode && !canPlace)}
           >
             <ArrowDown size={15} /> SELL
           </button>

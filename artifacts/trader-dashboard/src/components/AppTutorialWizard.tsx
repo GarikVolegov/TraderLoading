@@ -2,12 +2,11 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
-  Brain,
+  Archive,
   ChevronLeft,
   ChevronRight,
   FlaskConical,
   LayoutDashboard,
-  MessageCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -42,23 +41,22 @@ export function AppTutorialWizard({
         tint: "text-primary",
       },
       {
-        icon: BookOpen,
-        title: t("app_tutorial.slide_journal_title"),
-        body: t("app_tutorial.slide_journal_body"),
-        tint: "text-sky-400",
-      },
-      {
         icon: FlaskConical,
         title: t("app_tutorial.slide_tools_title"),
         body: t("app_tutorial.slide_tools_body"),
         tint: "text-amber-400",
       },
       {
-        icon: Brain,
-        title: t("app_tutorial.slide_zen_community_title"),
-        body: t("app_tutorial.slide_zen_community_body"),
-        tint: "text-emerald-400",
-        companionIcon: MessageCircle,
+        icon: BookOpen,
+        title: t("app_tutorial.slide_journal_title"),
+        body: t("app_tutorial.slide_journal_body"),
+        tint: "text-sky-400",
+      },
+      {
+        icon: Archive,
+        title: t("app_tutorial.slide_archive_title"),
+        body: t("app_tutorial.slide_archive_body"),
+        tint: "text-amber-400",
       },
     ],
     [t],
@@ -66,7 +64,6 @@ export function AppTutorialWizard({
 
   const current = slides[index] ?? slides[0];
   const Icon = current.icon;
-  const CompanionIcon = current.companionIcon;
   const isFirst = index === 0;
   const isLast = index === slides.length - 1;
 
@@ -105,7 +102,7 @@ export function AppTutorialWizard({
                     type="button"
                     onClick={() => setIndex(slideIndex)}
                     className={[
-                      "flex h-10 items-center justify-center rounded-lg border transition-colors md:h-auto md:justify-start md:gap-3 md:px-3 md:py-2.5",
+                      "flex min-h-11 items-center justify-center rounded-lg border transition-colors md:h-auto md:justify-start md:gap-3 md:px-3 md:py-2.5",
                       active
                         ? "border-primary/35 bg-primary/10 text-primary"
                         : "border-border/40 bg-secondary/20 text-muted-foreground hover:border-primary/25 hover:text-foreground",
@@ -142,11 +139,7 @@ export function AppTutorialWizard({
                   <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-border/60 bg-background shadow-[0_18px_48px_rgba(0,0,0,0.24)]">
                     <Icon className={`h-9 w-9 ${current.tint}`} />
                   </div>
-                  {CompanionIcon && (
-                    <div className="absolute -right-4 -top-4 flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 bg-card">
-                      <CompanionIcon className="h-5 w-5 text-primary" />
-                    </div>
-                  )}
+
                 </div>
                 <h2 className="text-2xl font-bold leading-tight text-foreground sm:text-3xl">
                   {current.title}

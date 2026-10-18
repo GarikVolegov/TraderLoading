@@ -189,6 +189,23 @@ try {
   assert.equal(connectedStatus.connected, true);
   assert.equal(connectedStatus.message, "Conto sincronizzato.");
 
+  // A real terminal cannot open a position when the process cannot be authorized.
+  const blockedReal = await fetch(`${base}/profiles/${pairing.profile.id}/orders`, {
+    method: "POST", headers: { "content-type": "application/json", "x-test-user": "user-one" },
+    body: JSON.stringify({ symbol: "EURUSD", side: "buy", type: "market", volume: 0.1, clientRequestId: "blocked-real-order" }),
+  });
+  assert.equal((await blockedReal.json() as { accepted: boolean }).accepted, false);
+  // Continue transport/receipt regression checks with an explicitly simulated account.
+  const simulatedSnapshot = await fetch(`${base}/companion/snapshot`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ profileId: pairing.profile.id, token: pairing.pairing.token,
+      account: { id: "123456", label: "Synthetic demo", brokerName: "Audit", currency: "USD", environment: "demo" },
+      metrics: { balance: 1000, equity: 1000, margin: 0, freeMargin: 1000, currency: "USD", dailyProfit: 0 },
+      positions: snapshotAfter.positions ?? [], orders: [], capabilities: { placeOrders: true, closePositions: true },
+    }),
+  });
+  assert.equal(simulatedSnapshot.status, 200);
+
   const orderRes = await fetch(`${base}/profiles/${pairing.profile.id}/orders`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-test-user": "user-one" },

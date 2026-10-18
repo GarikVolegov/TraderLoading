@@ -331,13 +331,16 @@ export function NotificationSettings() {
                         </span>
                       </span>
                       <Switch
+                        aria-label={notificationCopy.prefs[key].label}
                         checked={push.prefs[key]}
                         onCheckedChange={(v) => push.updatePref(key, v)}
+                        disabled={push.preferenceSaving || !push.ready}
                       />
                     </div>
                   ))}
                 </div>
               )}
+              {push.preferenceError && <p role="alert" className="text-sm text-destructive">{ui.saveError}</p>}
             </>
           )}
         </CardContent>

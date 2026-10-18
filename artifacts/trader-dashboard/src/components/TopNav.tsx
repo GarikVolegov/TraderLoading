@@ -1,13 +1,21 @@
+import { BrandMark } from "@/components/BrandMark";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Volume2, VolumeX } from "lucide-react";
 import { useAudio } from "@/contexts/AudioContext";
 import { MacroNewsTicker } from "@/components/MacroNewsTicker";
 import { useGetProfile } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBillingStatus } from "@/lib/billingApi";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { NAV_ITEMS, rootDestination } from "@/lib/navHubs";
 
 export function TopNav() {
+  const [location, navigate] = useLocation();
+  const search = useSearch();
+  const hub = rootDestination(location, search);
+  const currentLabel = location === "/settings" ? "nav.settings" : NAV_ITEMS.find((item) => item.id === hub)?.labelKey ?? "process.nav.today";
   const { mode, setMode } = useAudio();
   const { t } = useLanguage();
   const { data: profile } = useGetProfile();
@@ -24,9 +32,9 @@ export function TopNav() {
       initial={{ y: -56, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.0 }}
-      className="fixed top-0 left-0 right-0 z-40 lg:left-20"
+      className="fixed top-0 left-0 right-0 z-40 lg:left-[var(--app-inset-left)]"
     >
-      <div className="bg-background/80 backdrop-blur-2xl border-b border-border/40 shadow-[0_1px_0_0_rgba(255,255,255,0.03)] pt-[var(--safe-top)]">
+      <div className="bg-background border-b border-border pt-[var(--safe-top)]">
           <div className="mx-auto flex h-14 max-w-[1760px] items-center gap-2 px-3 sm:gap-3 sm:px-5 lg:px-5 xl:px-7">
 
           {/* Brand — mobile/tablet only */}
@@ -37,11 +45,7 @@ export function TopNav() {
             className="lg:hidden shrink-0"
           >
             <Link href="/">
-              {/* Hard gradient stop at 46% = the "Trader|Loading" split in the mono wordmark:
-                  "Trader" stays foreground, "Loading" is the brand jade (--primary). */}
-              <span className="text-sm font-bold font-mono tracking-wide whitespace-nowrap bg-gradient-to-r from-foreground from-46% to-primary to-46% bg-clip-text text-transparent cursor-pointer">
-                TraderLoading
-              </span>
+              <BrandMark />
             </Link>
           </motion.div>
 
@@ -55,7 +59,7 @@ export function TopNav() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.28, duration: 0.4 }}
           >
-            <MacroNewsTicker />
+            {hub === "resources" && new URLSearchParams(search).get("vista") === "notizie" ? <MacroNewsTicker /> : <span className="hidden lg:block text-xs text-muted-foreground"><span className="font-mono text-primary">{t("process.nav.path")}</span><span className="mx-3 opacity-40">/</span>{t(currentLabel)}</span>}
           </motion.div>
 
           {/* Right controls */}
@@ -73,7 +77,7 @@ export function TopNav() {
               onClick={() => setMode(isPlaying ? "off" : "deepfocus")}
               className={`flex h-11 w-11 items-center justify-center rounded-lg border transition-colors ${
                 isPlaying
-                  ? "border-primary/30 bg-primary/15 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.15)]"
+                  ? "border-primary/30 bg-primary/15 text-primary"
                   : "border-border/55 bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-primary"
               }`}
               title={isPlaying ? "Audio on" : "Audio off"}
@@ -87,13 +91,14 @@ export function TopNav() {
 
             {/* User avatar */}
             <motion.div whileTap={{ scale: 0.88 }} className="flex items-center">
-              <Link
-                href="/settings"
+              <DropdownMenu><DropdownMenuTrigger asChild><button
+                type="button"
                 aria-label={t("profile.open_settings")}
                 title={t("profile.settings")}
-                className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-primary/45 bg-card/60 shadow-[0_0_12px_hsl(var(--primary)/0.1)] transition-colors hover:border-primary hover:bg-primary/10"
+                className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-primary hover:bg-primary/10"
               >
-                <img
+                <ProfileAvatar
+                  name={profileName}
                   src={avatarSrc}
                   alt={t("profile.alt", { name: profileName })}
                   className="h-full w-full object-cover"
@@ -103,7 +108,12 @@ export function TopNav() {
                     {billing.data?.pro ? "Pro" : t("billing.status.free")}
                   </span>
                 )}
-              </Link>
+              </button></DropdownMenuTrigger><DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => navigate("/settings?section=profilo")}>{t("workspace.profile")}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => navigate("/method")}>{t("process.nav.method")}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => navigate("/resources")}>{t("process.nav.resources")}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => navigate("/settings")}>{t("nav.settings")}</DropdownMenuItem>
+              </DropdownMenuContent></DropdownMenu>
             </motion.div>
           </motion.div>
         </div>

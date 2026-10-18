@@ -1,3 +1,4 @@
+import { useRoutineStorage } from "@/hooks/useRoutineStorage";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -144,14 +145,16 @@ const MOOD_META: { id: string; emoji: string; labelKey: string }[] = [
 ];
 
 function MoodCheckIn() {
+  const storage = useRoutineStorage();
   // Persisted per-day: reopening the page shows today's check-in instead of
   // silently forgetting it (the "recorded" copy must be truthful).
-  const [mood, setMood] = useState<string | null>(() => readMoodForDate(new Date()));
+  const [mood, setMood] = useState<string | null>(() => readMoodForDate(new Date(), storage));
+  useEffect(() => { setMood(readMoodForDate(new Date(), storage)); }, [storage]);
   const MOODS = MOOD_META.map((m) => ({ ...m, label: uiText(m.labelKey) }));
 
   const selectMood = (id: string) => {
     setMood(id);
-    saveMoodForDate(id, new Date());
+    saveMoodForDate(id, new Date(), storage);
   };
 
   return (

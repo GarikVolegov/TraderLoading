@@ -2,9 +2,17 @@ import type { NewsArticle, NewsDeepDive, NewsResponse } from "./types.js";
 import { computeRiskRegime } from "./riskRegime.js";
 import { selectCuratedNews } from "./curation.js";
 import { isTradingDecisionRelevantNews } from "./tradingRelevance.js";
-import { buildNewsDeepDive } from "./deepDive.js";
 
 export interface MacroNewsArticle {
+  articleId?: string;
+  eventId?: string;
+  sourceDocumentId?: string;
+  articleIds?: string[];
+  sourceDocumentIds?: string[];
+  firstSeenAt?: string;
+  archiveStatus?: NewsArticle["archiveStatus"];
+  effects?: NewsArticle["effects"];
+  release?: NewsArticle["release"];
   title: string;
   summary: string;
   originalTitle?: string;
@@ -19,6 +27,11 @@ export interface MacroNewsArticle {
   sources?: string[];
   citationUrls?: string[];
   verified?: boolean;
+  sourceType?: NewsArticle["sourceType"];
+  analysisMethod?: NewsArticle["analysisMethod"];
+  contentBasis?: NewsArticle["contentBasis"];
+  qualityScore?: number;
+  curationScore?: number;
   category?: string;
   timestamp?: string | null;
   imageUrl?: string | null;
@@ -29,6 +42,8 @@ export interface MacroNewsArticle {
 }
 
 export interface MacroNewsResultLike {
+  modelStatus?:NewsResponse["modelStatus"];
+  sourceCoverage?: NewsResponse["sourceCoverage"];
   articles: MacroNewsArticle[];
   sentiment: string;
   sentimentIntensity?: string;
@@ -60,7 +75,7 @@ export function pairsFromMacroCurrencies(currenciesRaw: string): string {
   const pairs: string[] = [];
   if (set.has("XAU") && set.has("USD")) pairs.push("XAUUSD");
   for (const currency of MAJOR_CURRENCIES) {
-    if (set.has(currency) && set.has("USD")) pairs.push(`${currency}USD`);
+    if (set.has(currency) && set.has("USD")) pairs.push(["JPY","CHF","CAD"].includes(currency)?`USD${currency}`:`${currency}USD`);
   }
   return pairs.join(",");
 }
@@ -72,8 +87,8 @@ function impactFromScore(score: number | undefined): "alto" | "medio" | "basso" 
 }
 
 function directionFromArticle(article: NewsArticle): "bullish" | "bearish" | "neutrale" {
-  if (article.impactDirection === "bullish" || article.sentiment === "bullish") return "bullish";
-  if (article.impactDirection === "bearish" || article.sentiment === "bearish") return "bearish";
+  if (article.impactDirection === "bullish") return "bullish";
+  if (article.impactDirection === "bearish") return "bearish";
   return "neutrale";
 }
 
@@ -304,6 +319,8 @@ export function macroArticleToNewsLike(article: MacroNewsArticle): NewsArticle {
     sources: article.sources,
     citationUrls: article.citationUrls,
     verified: article.verified,
+    sourceType: article.sourceType, analysisMethod: article.analysisMethod, contentBasis: article.contentBasis,
+    qualityScore: article.qualityScore, curationScore: article.curationScore,
     publishedAt: article.timestamp ?? null,
     url: article.url ?? null,
     resolvedUrl: article.resolvedUrl ?? null,
@@ -317,20 +334,10 @@ export function macroArticleToNewsLike(article: MacroNewsArticle): NewsArticle {
   };
 }
 
-/**
- * Guarantee every macro article carries a deepDive. Idempotent: articles that already have
- * one (e.g. built from the richer NewsArticle in the primary path) are left untouched.
- */
-export function ensureMacroDeepDive(result: MacroNewsResultLike, lang = "it"): MacroNewsResultLike {
-  return {
-    ...result,
-    articles: result.articles.map((article, index) => ({
-      ...article,
-      deepDive:
-        article.deepDive ??
-        buildNewsDeepDive(macroArticleToNewsLike(article), { lang, variantSeed: index }),
-    })),
-  };
+/** Preserve evidence-based analysis; never manufacture a detail from a headline. */
+export function ensureMacroDeepDive(result: MacroNewsResultLike, _lang = "it"): MacroNewsResultLike {
+  return { ...result, articles: result.articles.map(article => ({ ...article,
+    deepDive: article.contentBasis === "full_text" ? article.deepDive : undefined })) };
 }
 
 export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: string; lang?: string } = {}): MacroNewsResultLike {
@@ -338,12 +345,15 @@ export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: stri
     news.articles.filter(
       (article) => !isExplicitlyOutsideRequestedPairs(article, options.pairs) && isTradingDecisionRelevantNews(article),
     ),
-    { pairs: options.pairs, limit: 3 },
+    { pairs: options.pairs, limit: 5, minKeep: 0 },
   );
   const regime = computeRiskRegime(kept);
   const seenImageUrls = new Set<string>();
   const articles = kept
     .map((article, index): MacroNewsArticle => ({
+    articleId: article.articleId, eventId: article.eventId, sourceDocumentId: article.sourceDocumentId,
+    articleIds: article.articleIds, sourceDocumentIds: article.sourceDocumentIds,
+    firstSeenAt: article.firstSeenAt, archiveStatus: article.archiveStatus, effects: article.effects, release: article.release,
     title: article.title,
     summary: article.summary,
     originalTitle: article.originalTitle,
@@ -357,14 +367,16 @@ export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: stri
     sourceUrl: article.sourceUrl,
     sources: article.sources?.length ? article.sources : [article.source],
     citationUrls: article.citationUrls ?? (article.url ? [article.url] : []),
-    verified: article.verified ?? Boolean(article.url),
+    verified: article.verified,
+    sourceType: article.sourceType, analysisMethod: article.analysisMethod, contentBasis: article.contentBasis,
+    qualityScore: article.qualityScore, curationScore: article.curationScore,
     category: categoryFromArticle(article),
     timestamp: article.publishedAt,
     imageUrl: uniqueMacroImageUrl(article, index, seenImageUrls),
     imageKeywords: article.primaryAssets,
     affectedPairs: article.affectedPairs,
     primaryAssets: article.primaryAssets,
-    deepDive: article.deepDive ?? buildNewsDeepDive(article, { lang: options.lang, variantSeed: index }),
+    deepDive: article.contentBasis === "full_text" ? article.deepDive : undefined,
   }));
 
   return {
@@ -373,6 +385,8 @@ export function macroNewsFromNewsHub(news: NewsResponse, options: { pairs?: stri
     sentimentIntensity: regime.intensity ?? undefined,
     summary: buildMacroTickerSummary(kept, regime, options),
     fetchedAt: news.fetchedAt,
+    sourceCoverage: news.sourceCoverage,
+    modelStatus: news.modelStatus,
     citationUrls: articles.flatMap((article) => article.citationUrls ?? []),
   };
 }

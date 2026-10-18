@@ -8,6 +8,9 @@ const settings = readSettingsFeatureSource();
 
 assert.match(dashboard, /URLSearchParams\(window\.location\.search\)\.get\("layout"\) === "edit"/);
 assert.doesNotMatch(dashboard, />\s*Layout\s*</);
+assert.doesNotMatch(dashboard, /window\.history\.replaceState/);
+assert.match(dashboard, /updateWorkspaceQuery\(search, \{ vista: "strumenti", layout: null \}\)/);
+assert.match(dashboard, /updateWorkspaceQuery\(search, \{ vista: "strumenti", layout: "edit" \}\)/);
 assert.match(settings, /auto\.ui\.4432b3c245/);
 assert.match(settings, /navigate\("\/\?layout=edit"\)/);
 

@@ -27,8 +27,8 @@ assert.match(
 );
 assert.match(
   css,
-  /@media\s*\(min-width:\s*1024px\)[\s\S]*--app-inset-left:\s*5rem/,
-  "lg override: content shifts 5rem (80px) for the sidebar (old lg:pl-20)",
+  /@media\s*\(min-width:\s*1024px\)[\s\S]*--app-inset-left:\s*13rem/,
+  "lg override: content shifts 13rem (208px) for the labelled global sidebar",
 );
 assert.match(
   css,
@@ -63,9 +63,14 @@ assert.doesNotMatch(
 const chat = fs.readFileSync("src/pages/Chat.tsx", "utf8");
 assert.match(
   chat,
-  /calc\(100dvh\s*-\s*var\(--safe-top\)\s*-\s*8\.5rem\s*-\s*var\(--bottom-nav-clearance\)\)/,
-  "Chat scroll region height must subtract --safe-top and the clearance token",
+  /calc\(100dvh\s*-\s*var\(--safe-top\)\s*-\s*13rem\s*-\s*var\(--bottom-nav-clearance\)\)/,
+  "Chat desktop scroll region reserves local tabs and subtracts notch/clearance tokens",
 );
+assert.match(chat, /calc\(100dvh-var\(--safe-top\)-8\.8rem-var\(--bottom-nav-clearance\)\)/,
+  "Chat mobile scroll region uses its own visible-tab budget");
+const bottomNav = fs.readFileSync("src/components/BottomNav.tsx", "utf8");
+assert.match(bottomNav, /w-\[var\(--app-inset-left\)\]/,
+  "desktop navigation and content use the same sidebar-width token");
 assert.doesNotMatch(
   chat,
   /100dvh\s*-\s*180px/,

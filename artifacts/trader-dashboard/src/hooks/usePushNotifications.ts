@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useAuth } from "@clerk/react";
 import {
   DEFAULT_NOTIFICATION_PREFS,
   normalizeNotificationPrefs,
@@ -11,10 +12,7 @@ import {
   unregisterPushSubscription,
   updatePushPreferences,
 } from "@/lib/pushNotificationsApi";
-import {
-  loadSharedPushPreferences,
-  setSharedPushPreferences,
-} from "@/lib/pushPreferencesStore";
+import { loadSharedPushPreferences, setSharedPushPreferences } from "@/lib/pushPreferencesStore";
 import { reportClientError } from "@/lib/clientErrorReporter";
 
 export type { NotificationPrefs };
@@ -27,17 +25,19 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 }
 
 export function usePushNotifications() {
+  const { userId } = useAuth();
+  const currentAccount = useRef(userId);
+  currentAccount.current = userId;
+  const savingPreference = useRef(false);
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
   );
-  const [subscription, setSubscription] = useState<PushSubscription | null>(
-    null,
-  );
-  const [prefs, setPrefs] = useState<NotificationPrefs>(
-    DEFAULT_NOTIFICATION_PREFS,
-  );
+  const [subscription, setSubscription] = useState<PushSubscription | null>(null);
+  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [preferenceSaving, setPreferenceSaving] = useState(false);
+  const [preferenceError, setPreferenceError] = useState(false);
 
   const isSupported =
     typeof window !== "undefined" &&
@@ -46,32 +46,46 @@ export function usePushNotifications() {
     "Notification" in window;
 
   useEffect(() => {
-    if (!isSupported) {
+    let cancelled = false;
+    savingPreference.current = false;
+    setPreferenceSaving(false);
+    setPreferenceError(false);
+    setPrefs(DEFAULT_NOTIFICATION_PREFS);
+    setSubscription(null);
+    if (!userId) {
       setReady(true);
       return;
     }
     setReady(false);
-    const subscriptionPromise = navigator.serviceWorker.ready
-      .then((reg) => reg.pushManager.getSubscription())
-      .then(setSubscription)
-      .catch((error) =>
-        reportClientError(error, {
-          context: "push subscription lookup",
-          notify: false,
-        }),
-      );
-    const prefsPromise = loadSharedPushPreferences(fetchPushPreferences)
-      .then((data) => setPrefs(normalizeNotificationPrefs(data)))
+    if (isSupported)
+      void navigator.serviceWorker.ready
+        .then((reg) => reg.pushManager.getSubscription())
+        .then((sub) => {
+          if (!cancelled) setSubscription(sub);
+        })
+        .catch((error) =>
+          reportClientError(error, {
+            context: "push subscription lookup",
+            notify: false,
+          }),
+        );
+    void loadSharedPushPreferences(fetchPushPreferences, userId)
+      .then((data) => {
+        if (!cancelled) setPrefs(normalizeNotificationPrefs(data));
+      })
       .catch((error) =>
         reportClientError(error, {
           context: "push preferences fetch",
           notify: false,
         }),
-      );
-    Promise.allSettled([subscriptionPromise, prefsPromise]).finally(() =>
-      setReady(true),
-    );
-  }, [isSupported]);
+      )
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isSupported, userId]);
 
   const subscribe = useCallback(async (): Promise<boolean> => {
     if (!isSupported) return false;
@@ -121,21 +135,31 @@ export function usePushNotifications() {
 
   const updatePref = useCallback(
     async (key: keyof NotificationPrefs, value: boolean) => {
-      const updated = { ...normalizeNotificationPrefs(prefs), [key]: value };
-      setPrefs(updated);
+      if (!userId || savingPreference.current) return false;
+      savingPreference.current = true;
+      setPreferenceSaving(true);
+      setPreferenceError(false);
+      const accountId = userId;
       try {
         const data = await updatePushPreferences({ [key]: value });
-        setSharedPushPreferences(data);
-        setPrefs(normalizeNotificationPrefs(data));
+        setSharedPushPreferences(data, accountId);
+        if (currentAccount.current === accountId) setPrefs(normalizeNotificationPrefs(data));
+        return true;
       } catch (error) {
         reportClientError(error, {
           context: "push preference update",
           notify: false,
         });
-        // Keep the optimistic local preference if the server is temporarily unavailable.
+        if (currentAccount.current === accountId) setPreferenceError(true);
+        return false;
+      } finally {
+        if (currentAccount.current === accountId) {
+          savingPreference.current = false;
+          setPreferenceSaving(false);
+        }
       }
     },
-    [prefs],
+    [userId],
   );
 
   return {
@@ -145,6 +169,8 @@ export function usePushNotifications() {
     prefs,
     loading,
     ready,
+    preferenceSaving,
+    preferenceError,
     subscribe,
     unsubscribe,
     updatePref,

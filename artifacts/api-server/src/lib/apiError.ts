@@ -1,3 +1,4 @@
+import multer from "multer";
 // Maps a thrown error to an HTTP response shape for the global Express handler.
 // Pure so it can be unit-tested without booting the app.
 
@@ -28,6 +29,14 @@ function isZodError(err: unknown): err is { name: string; issues: ZodLikeIssue[]
 }
 
 export function classifyApiError(err: unknown): ClassifiedError {
+  if (err instanceof multer.MulterError) {
+    const code = (err as Error & { code?: string }).code;
+    return { status: code === "LIMIT_FILE_SIZE" ? 413 : 400, body: { error: "Invalid upload" }, capture: false };
+  }
+  // Express/sendFile client errors must not become misleading internal errors.
+  if (err instanceof Error && "status" in err && [400, 404, 413, 415].includes(Number(err.status))) {
+    return { status: Number(err.status), body: { error: Number(err.status) === 404 ? "Not found" : "Invalid request" }, capture: false };
+  }
   if (isZodError(err)) {
     return {
       status: 400,

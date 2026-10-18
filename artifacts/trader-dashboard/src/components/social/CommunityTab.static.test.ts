@@ -17,7 +17,12 @@ assert.match(src, /context: "community leave", toast, fallbackMessage: t\("error
 //    stayed on the empty placeholder despite the now-unlocked sidebar.
 assert.match(
   src,
-  /\[communityDetail\?\.id, communityDetail\?\.channels\?\.length, selectedChannelId\]/,
+  /\[communityDetail\?\.id, communityDetail\?\.channels\?\.length, selectedChannelId,/,
 );
+assert.match(src, /selectedCommunityId = embedded \? communityId : localCommunityId/);
+assert.match(src, /selectedChannelId = embedded \? channelId : localChannelId/);
+assert.match(src, /if \(embedded\) onChannelChange\?\.\(id\)/);
+assert.match(src, /unlock !== "success" \|\| !selectedChannel\?\.locked/);
+assert.doesNotMatch(src, /unlock === "success"[\s\S]*set.*Entitlement/, "checkout URL cannot grant access");
 
 console.log("CommunityTab static checks passed");

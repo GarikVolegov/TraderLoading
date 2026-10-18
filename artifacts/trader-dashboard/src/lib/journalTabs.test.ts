@@ -1,15 +1,25 @@
 import assert from "node:assert/strict";
-import { parseJournalTab } from "./journalTabs";
+import { parseJournalTab, parseJournalPlanView, parseJournalRecapKind } from "./journalTabs";
 
-assert.equal(parseJournalTab(""), "panoramica", "empty search defaults to panoramica");
-assert.equal(parseJournalTab("?t=panoramica"), "panoramica");
-assert.equal(parseJournalTab("?t=trades"), "trades");
-assert.equal(parseJournalTab("?t=idee"), "idee");
-assert.equal(parseJournalTab("?t=obiettivi"), "obiettivi");
-assert.equal(parseJournalTab("?t=recap-settimanale"), "recap-settimanale");
-assert.equal(parseJournalTab("?t=recap-mensile"), "recap-mensile");
-assert.equal(parseJournalTab("t=trades"), "trades", "leading ? optional");
-assert.equal(parseJournalTab("?t=bogus"), "panoramica", "unknown value falls back to panoramica");
-assert.equal(parseJournalTab("?foo=1"), "panoramica", "missing t falls back to panoramica");
-
-console.log("journalTabs unit checks passed");
+for (const tab of ["sessioni", "panoramica", "trades", "piano", "revisione"] as const) {
+  assert.equal(parseJournalTab(`?t=${tab}`), tab);
+}
+assert.equal(parseJournalTab(""), "sessioni");
+assert.equal(parseJournalTab("?new=1"), "trades");
+assert.equal(parseJournalTab("?t=unknown"), "panoramica");
+assert.equal(parseJournalTab("t=trades&pair=EURUSD"), "trades");
+for (const legacy of ["idee", "obiettivi", "idee-obiettivi"]) {
+  assert.equal(parseJournalTab(`?t=${legacy}`), "piano");
+  assert.equal(parseJournalPlanView(`?t=${legacy}`), "idee-obiettivi");
+}
+for (const legacy of ["recap-settimanale", "recap-mensile"]) {
+  assert.equal(parseJournalTab(`?t=${legacy}`), "revisione");
+}
+assert.equal(parseJournalRecapKind("?t=recap-mensile"), "four_week");
+assert.equal(parseJournalRecapKind("?t=recap-settimanale"), "weekly");
+assert.equal(parseJournalRecapKind("?t=revisione&kind=four_week&period=2026-08-03"), "four_week");
+assert.equal(parseJournalRecapKind("?kind=bogus"), "weekly");
+assert.equal(parseJournalPlanView("?t=piano&vista=agenda"), "agenda");
+assert.equal(parseJournalPlanView("?t=piano&vista=idee-obiettivi"), "idee-obiettivi");
+assert.equal(parseJournalPlanView("?t=piano&vista=bogus"), "oggi");
+console.log("journal workspace URL checks passed");

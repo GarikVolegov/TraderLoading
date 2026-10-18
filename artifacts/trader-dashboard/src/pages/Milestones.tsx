@@ -29,11 +29,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGetProfile } from "@workspace/api-client-react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
-import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
-import { reportClientError } from "@/lib/clientErrorReporter";
+import { apiJSON } from "@/lib/apiFetch";
+import { reportClientError, getClientErrorMessage } from "@/lib/clientErrorReporter";
 import { formatFileSize } from "@/lib/fileFormatting";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { parseSkills } from "./Milestones.helpers";
+import { QueryErrorState } from "@/components/QueryErrorState";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -330,11 +331,13 @@ function MilestoneEditor({
   milestone,
   files,
   onClose,
+  onBusyChange,
 }: {
   level: number;
   milestone: Milestone | null;
   files: MilestoneFile[];
   onClose: () => void;
+  onBusyChange: (busy: boolean) => void;
 }) {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -346,8 +349,12 @@ function MilestoneEditor({
   const [badgeColor, setBadgeColor] = useState(
     milestone?.badgeColor ?? "#22c55e",
   );
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [operation, setOperation] = useState<"save" | "upload" | "file" | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const busyRef = useRef(false);
+  const busy = operation !== null;
+  const saving = operation === "save";
+  const uploading = operation === "upload";
 
   const addSkill = () => {
     const s = skillInput.trim();
@@ -355,77 +362,56 @@ function MilestoneEditor({
     setSkillInput("");
   };
 
-  const save = async () => {
-    setSaving(true);
-    try {
-      await apiJSON(`milestones/${level}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          description,
-          skills,
-          badgeEmoji,
-          badgeColor,
-        }),
-      });
-      qc.invalidateQueries({ queryKey: ["milestones"] });
-      qc.invalidateQueries({ queryKey: ["milestone-detail", level] });
+  const runOperation = async (kind: "save" | "upload" | "file", task: () => Promise<void>, context: string) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    onBusyChange(true);
+    setOperation(kind);
+    setErrorMessage(null);
+    try { await task(); }
+    catch (error) {
+      setErrorMessage(getClientErrorMessage(error, uiText("common.error")));
+      reportClientError(error, { context, notify: false });
+    } finally {
+      busyRef.current = false;
+      onBusyChange(false);
+      setOperation(null);
+    }
+  };
+
+  const save = () => {
+    const submitted = { title, description, skills: [...skills], badgeEmoji, badgeColor };
+    return runOperation("save", async () => {
+      await apiJSON(`milestones/${level}`, { method: "PUT", body: JSON.stringify(submitted) });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["milestones"] }),
+        qc.invalidateQueries({ queryKey: ["milestone-detail", level] }),
+      ]);
       onClose();
-    } catch (error) {
-      reportClientError(error, { context: "milestone save", notify: false });
-    } finally {
-      setSaving(false);
-    }
+    }, "milestone save");
   };
 
-  const uploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const uploadFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      await apiFetch(`milestones/${level}/files`, { method: "POST", body: fd });
-      qc.invalidateQueries({ queryKey: ["milestone-detail", level] });
-    } catch (error) {
-      reportClientError(error, {
-        context: "milestone file upload",
-        notify: false,
-      });
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
+    return runOperation("upload", async () => {
+      try {
+        const form = new FormData(); form.append("file", file);
+        await apiJSON(`milestones/${level}/files`, { method: "POST", body: form });
+        await qc.invalidateQueries({ queryKey: ["milestone-detail", level] });
+      } finally { if (fileInputRef.current) fileInputRef.current.value = ""; }
+    }, "milestone file upload");
   };
 
-  const toggleDownloadable = async (fileId: number, current: boolean) => {
-    try {
-      await apiJSON(`milestones/files/${fileId}/downloadable`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ downloadable: !current }),
-      });
-      qc.invalidateQueries({ queryKey: ["milestone-detail", level] });
-    } catch (error) {
-      reportClientError(error, {
-        context: "milestone file downloadable toggle",
-        notify: false,
-      });
-    }
-  };
+  const toggleDownloadable = (fileId: number, current: boolean) => runOperation("file", async () => {
+    await apiJSON(`milestones/files/${fileId}/downloadable`, { method: "PATCH", body: JSON.stringify({ downloadable: !current }) });
+    await qc.invalidateQueries({ queryKey: ["milestone-detail", level] });
+  }, "milestone file downloadable toggle");
 
-  const deleteFile = async (fileId: number) => {
-    try {
-      await apiFetch(`milestones/files/${fileId}`, { method: "DELETE" });
-      qc.invalidateQueries({ queryKey: ["milestone-detail", level] });
-    } catch (error) {
-      reportClientError(error, {
-        context: "milestone file delete",
-        notify: false,
-      });
-    }
-  };
+  const deleteFile = (fileId: number) => runOperation("file", async () => {
+    await apiJSON(`milestones/files/${fileId}`, { method: "DELETE" });
+    await qc.invalidateQueries({ queryKey: ["milestone-detail", level] });
+  }, "milestone file delete");
 
   return (
     <motion.div
@@ -438,195 +424,203 @@ function MilestoneEditor({
           {uiText("auto.ui.6ddd3bca3c", { level })}
         </span>
         <button
-          onClick={onClose}
+          onClick={() => { if (!busyRef.current) onClose(); }}
+          disabled={busy}
+          aria-label={uiText("common.close")}
           className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            {uiText("auto.ui.259cbd5e44")}
-          </label>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={uiText("auto.ui.5a8bc536be")}
-            className="w-full h-9 px-3 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50"
-          />
-        </div>
-        <div className="flex items-end gap-2">
-          <div className="space-y-1.5 flex-1">
-            <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              {uiText("auto.ui.633288e36d")}
-            </label>
-            <div className="flex flex-wrap gap-1">
-              {BADGE_EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => setBadgeEmoji(e)}
-                  className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-all ${badgeEmoji === e ? "bg-primary/20 ring-1 ring-primary" : "bg-secondary/30 hover:bg-secondary/60"}`}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            {uiText("auto.ui.6062c61902")}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {BADGE_COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setBadgeColor(c)}
-                aria-label={c}
-                aria-pressed={badgeColor === c}
-                className={`w-7 h-7 rounded-full border-2 transition-all ${badgeColor === c ? "scale-110 border-white" : "border-transparent"}`}
-                style={{ background: c }}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.07dfa30eec")}</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={uiText("auto.ui.7a0349621f")}
-            rows={3}
-            className="w-full px-3 py-2 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50 resize-none"
-          />
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            {uiText("auto.ui.2b7a7f86e7")}
-          </label>
-          <div className="flex gap-2">
-            <input
-              value={skillInput}
-              onChange={(e) => setSkillInput(e.target.value)}
-              onKeyDown={(e) =>
-                e.key === "Enter" && (e.preventDefault(), addSkill())
-              }
-              placeholder={uiText("auto.ui.3e04830784")}
-              className="flex-1 h-9 px-3 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50"
-            />
-            <button
-              onClick={addSkill}
-              className="h-9 w-9 rounded-xl bg-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-          {skills.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {skills.map((s, i) => (
-                <span
-                  key={i}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20"
-                >
-                  {s}
-                  <button
-                    onClick={() => setSkills(skills.filter((_, j) => j !== i))}
-                    className="text-primary/60 hover:text-primary ml-0.5"
-                  >
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* File section */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            {uiText("auto.ui.1ccd55f663")}
-          </label>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/15 hover:bg-primary/25 text-primary transition-colors disabled:opacity-50"
-          >
-            {uploading ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
-            ) : (
-              <Upload className="w-3 h-3" />
-            )}
-            {uploading ? uiText("common.loading") : uiText("auto.ui.6cdd9c8c78")}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={uploadFile}
-            accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.mp4,.webm"
-          />
-        </div>
-        {files.length > 0 && (
+      {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
+      <fieldset disabled={busy} aria-busy={busy} className="space-y-4 border-0 p-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            {files.map((f) => (
-              <div
-                key={f.id}
-                className="flex items-center gap-2 p-2 rounded-xl border border-border bg-secondary/20 group"
-              >
-                <div className="shrink-0">{fileIcon(f.mimeType)}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold truncate">{f.fileName}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {formatFileSize(f.fileSize)}
-                  </p>
-                </div>
-                <button
-                  onClick={() => toggleDownloadable(f.id, f.downloadable)}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${f.downloadable ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
-                >
-                  {f.downloadable ? (
-                    <ToggleRight className="w-3 h-3" />
-                  ) : (
-                    <ToggleLeft className="w-3 h-3" />
-                  )}
-                  {f.downloadable ? "DL" : "NO"}
-                </button>
-                <button
-                  onClick={() => deleteFile(f.id)}
-                  aria-label={uiText("common.delete")}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
+            <label htmlFor={`milestone-${level}-title`} className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              {uiText("auto.ui.259cbd5e44")}
+            </label>
+            <input
+              id={`milestone-${level}-title`}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={uiText("auto.ui.5a8bc536be")}
+              className="w-full h-9 px-3 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50"
+            />
           </div>
-        )}
-        {files.length === 0 && (
-          <p className="text-[11px] text-muted-foreground/50 text-center py-3 border border-dashed border-border rounded-xl">
-            {uiText("auto.ui.133509ea5d")}
-          </p>
-        )}
-      </div>
+          <div className="flex items-end gap-2">
+            <div className="space-y-1.5 flex-1">
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                {uiText("auto.ui.633288e36d")}
+              </label>
+              <div className="flex flex-wrap gap-1">
+                {BADGE_EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    onClick={() => setBadgeEmoji(e)}
+                    className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-all ${badgeEmoji === e ? "bg-primary/20 ring-1 ring-primary" : "bg-secondary/30 hover:bg-secondary/60"}`}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              {uiText("auto.ui.6062c61902")}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {BADGE_COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setBadgeColor(c)}
+                  aria-label={c}
+                  aria-pressed={badgeColor === c}
+                  className={`w-7 h-7 rounded-full border-2 transition-all ${badgeColor === c ? "scale-110 border-white" : "border-transparent"}`}
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <label htmlFor={`milestone-${level}-description`} className="text-[10px] text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.07dfa30eec")}</label>
+            <textarea
+              id={`milestone-${level}-description`}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={uiText("auto.ui.7a0349621f")}
+              rows={3}
+              className="w-full px-3 py-2 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50 resize-none"
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <label htmlFor={`milestone-${level}-skill`} className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              {uiText("auto.ui.2b7a7f86e7")}
+            </label>
+            <div className="flex gap-2">
+              <input
+                id={`milestone-${level}-skill`}
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && (e.preventDefault(), addSkill())
+                }
+                placeholder={uiText("auto.ui.3e04830784")}
+                className="flex-1 h-9 px-3 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50"
+              />
+              <button
+                onClick={addSkill}
+                className="h-9 w-9 rounded-xl bg-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            {skills.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {skills.map((s, i) => (
+                  <span
+                    key={i}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20"
+                  >
+                    {s}
+                    <button
+                      onClick={() => setSkills(skills.filter((_, j) => j !== i))}
+                      className="text-primary/60 hover:text-primary ml-0.5"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
-      <div className="flex justify-end">
-        <button
-          onClick={save}
-          disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
-        >
-          {saving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
+        {/* File section */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              {uiText("auto.ui.1ccd55f663")}
+            </label>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/15 hover:bg-primary/25 text-primary transition-colors disabled:opacity-50"
+            >
+              {uploading ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Upload className="w-3 h-3" />
+              )}
+              {uploading ? uiText("common.loading") : uiText("auto.ui.6cdd9c8c78")}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={uploadFile}
+              accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.mp4,.webm"
+            />
+          </div>
+          {files.length > 0 && (
+            <div className="space-y-1.5">
+              {files.map((f) => (
+                <div
+                  key={f.id}
+                  className="flex items-center gap-2 p-2 rounded-xl border border-border bg-secondary/20 group"
+                >
+                  <div className="shrink-0">{fileIcon(f.mimeType)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate">{f.fileName}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {formatFileSize(f.fileSize)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => toggleDownloadable(f.id, f.downloadable)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${f.downloadable ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
+                  >
+                    {f.downloadable ? (
+                      <ToggleRight className="w-3 h-3" />
+                    ) : (
+                      <ToggleLeft className="w-3 h-3" />
+                    )}
+                    {f.downloadable ? "DL" : "NO"}
+                  </button>
+                  <button
+                    onClick={() => deleteFile(f.id)}
+                    aria-label={uiText("common.delete")}
+                    className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
-          {saving ? uiText("auto.ui.7760459f96") : uiText("auto.ui.157ad75db3")}
-        </button>
-      </div>
+          {files.length === 0 && (
+            <p className="text-[11px] text-muted-foreground/50 text-center py-3 border border-dashed border-border rounded-xl">
+              {uiText("auto.ui.133509ea5d")}
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={save}
+            disabled={busy}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {saving ? uiText("auto.ui.7760459f96") : uiText("auto.ui.157ad75db3")}
+          </button>
+        </div>
+      </fieldset>
     </motion.div>
   );
 }
@@ -647,6 +641,8 @@ function LevelRow({
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [editingBusy, setEditingBusy] = useState(false);
+  const editingBusyRef = useRef(false);
   const isUnlocked = currentLevel >= level;
   const isCurrent = currentLevel === level;
   const hasCert = certificates.some((c) => c.level === level);
@@ -654,7 +650,7 @@ function LevelRow({
   const color = BADGE_COLORS[(level - 1) % BADGE_COLORS.length];
   const emoji = BADGE_EMOJIS[(level - 1) % BADGE_EMOJIS.length];
 
-  const { data: detail, isLoading: loadingDetail } = useQuery<{
+  const { data: detail, isLoading: loadingDetail, isError: detailError, refetch: refetchDetail } = useQuery<{
     milestone: Milestone | null;
     files: MilestoneFile[];
   }>({
@@ -672,101 +668,108 @@ function LevelRow({
     <div
       className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
         isCurrent
-          ? "border-primary/50 shadow-[0_0_16px_rgba(34,197,94,0.1)]"
+          ? "border-primary/50"
           : isUnlocked
             ? "border-border hover:border-border/80"
             : "border-border/30 opacity-60"
       } bg-card/40 backdrop-blur-sm`}
     >
-      <button
-        onClick={() => setExpanded((s) => !s)}
-        className="w-full flex items-center gap-3 p-4 text-left hover:bg-secondary/10 transition-colors"
-      >
-        {/* Badge */}
-        <div className="shrink-0 relative">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-            style={{
-              background: isUnlocked
-                ? `radial-gradient(circle, ${color}25 0%, ${color}08 100%)`
-                : "rgba(255,255,255,0.03)",
-              border: `1.5px solid ${isUnlocked ? color + "50" : "rgba(255,255,255,0.08)"}`,
-            }}
-          >
-            {isUnlocked ? (
-              emoji
-            ) : (
-              <Lock className="w-4 h-4 text-muted-foreground/30" />
-            )}
-          </div>
-          {hasCert && (
-            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-yellow-500 flex items-center justify-center shadow-sm">
-              <Star className="w-2.5 h-2.5 text-white fill-white" />
-            </div>
-          )}
-        </div>
-
-        {/* Level info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              className="text-[10px] font-bold uppercase tracking-wider"
-              style={{ color: isUnlocked ? color : "rgba(255,255,255,0.3)" }}
+      <div className="flex items-center">
+        <button
+          onClick={() => { if (!editingBusyRef.current) setExpanded(s => !s); }}
+          disabled={editingBusy}
+          className="w-full flex items-center gap-3 p-4 text-left hover:bg-secondary/10 transition-colors"
+        >
+          {/* Badge */}
+          <div className="shrink-0 relative">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+              style={{
+                background: isUnlocked
+                  ? `radial-gradient(circle, ${color}25 0%, ${color}08 100%)`
+                  : "rgba(255,255,255,0.03)",
+                border: `1.5px solid ${isUnlocked ? color + "50" : "rgba(255,255,255,0.08)"}`,
+              }}
             >
-              LV {level}
-            </span>
-            {isCurrent && (
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-primary/20 text-primary border border-primary/30">
-                {uiText("auto.ui.a1991c83d4")}
-              </span>
-            )}
+              {isUnlocked ? (
+                emoji
+              ) : (
+                <Lock className="w-4 h-4 text-muted-foreground/30" />
+              )}
+            </div>
             {hasCert && (
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                {uiText("auto.ui.8a14d6fe3e")}
-              </span>
+              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-yellow-500 flex items-center justify-center shadow-sm">
+                <Star className="w-2.5 h-2.5 text-white fill-white" />
+              </div>
             )}
           </div>
-          <p
-            className={`text-sm font-bold leading-tight truncate ${isUnlocked ? "text-foreground" : "text-muted-foreground/40"}`}
-          >
-            {levelName}
-          </p>
-          {milestone?.title && (
-            <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">
-              {milestone.title}
-            </p>
-          )}
-        </div>
 
-        {/* XP needed */}
-        <div className="shrink-0 text-right mr-2 hidden sm:block">
-          <p className="text-[10px] text-muted-foreground/50">{uiText("auto.ui.00f59e3a8e")}</p>
-          <p className="text-xs font-mono font-bold text-muted-foreground">
-            {((level - 1) * XP_PER_LEVEL).toLocaleString()}
-          </p>
-        </div>
+          {/* Level info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[10px] font-bold uppercase tracking-wider"
+                style={{ color: isUnlocked ? color : "rgba(255,255,255,0.3)" }}
+              >
+                LV {level}
+              </span>
+              {isCurrent && (
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-primary/20 text-primary border border-primary/30">
+                  {uiText("auto.ui.a1991c83d4")}
+                </span>
+              )}
+              {hasCert && (
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                  {uiText("auto.ui.8a14d6fe3e")}
+                </span>
+              )}
+            </div>
+            <p
+              className={`text-sm font-bold leading-tight truncate ${isUnlocked ? "text-foreground" : "text-muted-foreground/40"}`}
+            >
+              {levelName}
+            </p>
+            {milestone?.title && (
+              <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">
+                {milestone.title}
+              </p>
+            )}
+          </div>
+
+          {/* XP needed */}
+          <div className="shrink-0 text-right mr-2 hidden sm:block">
+            <p className="text-[10px] text-muted-foreground/50">{uiText("auto.ui.00f59e3a8e")}</p>
+            <p className="text-xs font-mono font-bold text-muted-foreground">
+              {((level - 1) * XP_PER_LEVEL).toLocaleString()}
+            </p>
+          </div>
+
+
+          {expanded ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+          )}
+        </button>
 
         {/* Admin edit */}
         {isAdmin && (
           <button
             onClick={(e) => {
               e.stopPropagation();
+              if (editingBusyRef.current) return;
               setExpanded(true);
               setEditing((s) => !s);
             }}
-            className="shrink-0 p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+            className="mr-4 shrink-0 p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+            disabled={editingBusy}
             title={uiText("auto.ui.d24714bb3d")}
           >
             <Edit3 className="w-3.5 h-3.5" />
           </button>
         )}
 
-        {expanded ? (
-          <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-        )}
-      </button>
+      </div>
 
       <AnimatePresence>
         {expanded && (
@@ -782,6 +785,8 @@ function LevelRow({
                 <div className="flex justify-center py-6">
                   <Loader2 className="w-5 h-5 animate-spin text-primary" />
                 </div>
+              ) : detailError ? (
+                <div role="alert"><QueryErrorState onRetry={() => void refetchDetail()} /></div>
               ) : !milestone && !isAdmin ? (
                 <p className="text-sm text-muted-foreground/50 text-center py-6">
                   {isUnlocked
@@ -874,6 +879,7 @@ function LevelRow({
                       milestone={milestone}
                       files={files}
                       onClose={() => setEditing(false)}
+                      onBusyChange={value => { editingBusyRef.current = value; setEditingBusy(value); }}
                     />
                   )}
                   {isAdmin && !editing && (

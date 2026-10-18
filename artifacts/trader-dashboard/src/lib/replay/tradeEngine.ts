@@ -5,6 +5,7 @@
 // lower-timeframe data the intra-bar order is unknowable).
 import { getPipMultiplier } from "../pipMultiplier";
 import { pipSize, pipValuePerLot } from "./lotSizing";
+import { calculateNetR } from "../../../../../contracts/trader-process";
 import type {
   ClosedTrade,
   ExitReason,
@@ -35,6 +36,7 @@ export function openPosition(input: {
     takeProfit: entryPrice + sign * tpPips * size,
     lots,
     riskAmount,
+    initialRiskAmount: slPips > 0 ? slPips * pipValuePerLot(symbol) * lots : 0,
     slPips,
     tpPips,
     hasStop: slPips > 0,
@@ -232,11 +234,8 @@ export function closePosition(
   const profit = Math.round((grossProfit - cost) * 100) / 100;
   const initialRisk = position.initialSlPips ?? position.slPips;
   const round2 = (value: number) => Math.round(value * 100) / 100;
-  // R is NET of costs so it agrees with the net result and P&L: expressing the
-  // cost back in pips (cost / pips-worth) and subtracting keeps R, winRate and
-  // expectancy telling the same story (an edge measured after friction).
-  const costPips = pipValue > 0 && position.lots > 0 ? cost / (pipValue * position.lots) : 0;
-  const netPips = pips - costPips;
+  const monetaryRisk = position.initialRiskAmount ?? null;
+  const netR = calculateNetR(profit, monetaryRisk);
   return {
     id: close.id,
     direction: position.direction,
@@ -249,9 +248,10 @@ export function closePosition(
     lots: position.lots,
     pips,
     profit,
+    initialRiskAmount: monetaryRisk,
     cost: round2(cost),
     // Result follows NET profit: a tiny winner eaten by costs is a loss.
-    rMultiple: initialRisk > 0 ? round2(netPips / initialRisk) : null,
+    rMultiple: netR == null ? null : round2(netR),
     exitReason: close.exitReason,
     result: profit > 0 ? "win" : profit < 0 ? "loss" : "breakeven",
     maeR: initialRisk > 0 ? round2(Math.max(0, -(position.worstPips ?? 0)) / initialRisk) : null,

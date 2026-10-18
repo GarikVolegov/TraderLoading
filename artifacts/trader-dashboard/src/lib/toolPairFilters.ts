@@ -34,7 +34,7 @@ export function deriveEffectiveFilterItems(input: DeriveEffectiveFilterItemsInpu
   const matched = requestedItems.filter((item) => supportedSet.has(item));
   const unsupportedItems = requestedItems.filter((item) => !supportedSet.has(item));
   const hasUserSelection = requestedItems.length > 0;
-  const isFallback = !hasUserSelection || matched.length === 0;
+  const isFallback = !hasUserSelection;
   const items = isFallback ? defaultItems : matched;
 
   return {

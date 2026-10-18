@@ -24,6 +24,7 @@ function format(value: number): string {
 }
 
 function StatusStrip({ snapshot, message }: ReturnType<typeof useBrokerHub>) {
+  const hasMeasurement = snapshot.status === "connected" && Boolean(snapshot.profileId) && Date.parse(snapshot.lastUpdated) > 0;
   return (
     <div className="grid gap-3 md:grid-cols-[1.3fr_repeat(4,1fr)]">
       <div className="rounded-xl border border-border/40 bg-card/60 p-3">
@@ -39,7 +40,7 @@ function StatusStrip({ snapshot, message }: ReturnType<typeof useBrokerHub>) {
       ].map(([label, value]) => (
         <div key={label} className="rounded-xl border border-border/40 bg-secondary/25 p-3">
           <p className="text-[11px] uppercase text-muted-foreground">{label}</p>
-          <p className="mt-1 font-mono text-lg font-bold">{Number.isFinite(Number(value)) ? format(Number(value)) : "—"}</p>
+          <p className="mt-1 font-mono text-lg font-bold">{hasMeasurement && Number.isFinite(Number(value)) ? format(Number(value)) : "—"}</p>
         </div>
       ))}
       {(snapshot.error || message) && (
@@ -77,7 +78,7 @@ function AccountsPanel({ hub, onConnected }: { hub: ReturnType<typeof useBrokerH
                 <Button size="sm" onClick={() => void hub.connectProfile(profile.id).then(onConnected)}>
                   {active ? uiText("auto.ui.4ba2114446") : uiText("auto.ui.136c9ce323")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void hub.deleteProfile(profile.id)}>
+                <Button size="sm" variant="outline" aria-label={`${uiText("common.delete")} ${profile.label}`} onClick={() => void hub.deleteProfile(profile.id)}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -96,10 +97,6 @@ function AccountsPanel({ hub, onConnected }: { hub: ReturnType<typeof useBrokerH
 }
 
 function HistoryPanel({ hub }: { hub: ReturnType<typeof useBrokerHub> }) {
-  useEffect(() => {
-    if (hub.profiles.activeProfileId) void hub.refreshHistory(hub.profiles.activeProfileId);
-  }, [hub.profiles.activeProfileId, hub.refreshHistory]);
-
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-bold">
@@ -119,11 +116,12 @@ function HistoryPanel({ hub }: { hub: ReturnType<typeof useBrokerHub> }) {
   );
 }
 
-export function BrokerHubWorkspace({ initialTab = "connect" }: { initialTab?: BrokerHubTab }) {
+export function BrokerHubWorkspace({ initialTab = "connect", onTabChange }: { initialTab?: BrokerHubTab; onTabChange?: (tab: BrokerHubTab) => void }) {
   const hub = useBrokerHub();
   const [tab, setTab] = useState<BrokerHubTab>(initialTab);
 
   useEffect(() => setTab(initialTab), [initialTab]);
+  const changeTab = (next: BrokerHubTab) => { setTab(next); onTabChange?.(next); };
 
   return (
     <div className="space-y-4">
@@ -134,14 +132,14 @@ export function BrokerHubWorkspace({ initialTab = "connect" }: { initialTab?: Br
         currency={hub.snapshot.metrics.currency}
         connected={hub.snapshot.status === "connected"}
       />
-      <Tabs value={tab} onValueChange={(value) => setTab(value as BrokerHubTab)} className="space-y-4">
+      <Tabs value={tab} onValueChange={(value) => changeTab(value as BrokerHubTab)} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="connect" className="gap-2"><Cable className="h-3.5 w-3.5" />{uiText("auto.ui.2671bbd8db")}</TabsTrigger>
           <TabsTrigger value="accounts" className="gap-2"><ListChecks className="h-3.5 w-3.5" />Account</TabsTrigger>
           <TabsTrigger value="history" className="gap-2"><History className="h-3.5 w-3.5" />{uiText("auto.ui.b38270fe36")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="connect"><ConnectAccountWizard hub={hub} onConnected={() => setTab("accounts")} /></TabsContent>
-        <TabsContent value="accounts"><AccountsPanel hub={hub} onConnected={() => setTab("accounts")} /></TabsContent>
+        <TabsContent value="connect"><ConnectAccountWizard hub={hub} onConnected={() => changeTab("accounts")} /></TabsContent>
+        <TabsContent value="accounts"><AccountsPanel hub={hub} onConnected={() => changeTab("accounts")} /></TabsContent>
         <TabsContent value="history"><HistoryPanel hub={hub} /></TabsContent>
       </Tabs>
     </div>

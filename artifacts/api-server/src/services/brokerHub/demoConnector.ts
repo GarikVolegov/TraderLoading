@@ -40,6 +40,7 @@ export function createDemoBrokerConnector(profile: BrokerAccountProfile): Broker
     brokerName: profile.brokerName,
     currency: "USD",
     environment: "demo",
+    executionEnvironment: "simulation",
   };
   let nextOrder = 1;
   let positions: BrokerPosition[] = [];

@@ -42,7 +42,15 @@ export function apiRequest(path: string, opts?: RequestInit, options?: RelativeA
 }
 
 export async function apiJSON<T>(path: string, opts?: RequestInit, options?: RelativeApiOptions): Promise<T> {
-  const res = await apiRequest(path, opts, options);
+  // String bodies supplied to this JSON helper must reach express.json().
+  // FormData keeps its browser-generated boundary; explicit headers take priority.
+  const headers = new Headers(opts?.headers);
+  let requestOpts = opts;
+  if (typeof opts?.body === "string" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+    requestOpts = { ...opts, headers };
+  }
+  const res = await apiRequest(path, requestOpts, options);
   if (!res.ok) {
     // Surface the server's {error} message like apiFetch/apiUpload, so off-contract
     // callers show the real reason instead of a bare status code.
@@ -50,6 +58,7 @@ export async function apiJSON<T>(path: string, opts?: RequestInit, options?: Rel
     const message = typeof body?.error === "string" && body.error ? body.error : `HTTP ${res.status}`;
     throw apiError(message, res.status);
   }
+  if (res.status === 204 || res.status === 205) return undefined as T;
   return res.json() as Promise<T>;
 }
 

@@ -91,7 +91,7 @@ export function CompleteStep({ program, answers }: { program: Program; answers: 
       </p>
 
       <Link
-        href={program === "morning" ? "/news" : "/journal"}
+        href={program === "morning" ? "/?vista=notizie" : "/journal"}
         className="flex items-center gap-2 text-sm font-bold text-primary/80 hover:text-primary transition-colors"
       >
         {program === "morning" ? "Leggi il briefing macro" : "Apri il diario di trading"}

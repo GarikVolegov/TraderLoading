@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const css = readFileSync(new URL("./index.css", import.meta.url), "utf8");
+const css = readFileSync(new URL("./styles/tokens.css", import.meta.url), "utf8");
 
 function tokenHsl(name: string): [number, number, number] {
+  const alias = css.match(new RegExp(`${name}:\\s*var\\((--[\\w-]+)\\)`));
+  if (alias) return tokenHsl(alias[1]);
   const m = css.match(new RegExp(`${name}:\\s*([\\d.]+)\\s+([\\d.]+)%\\s+([\\d.]+)%`));
   assert.ok(m, `cannot read HSL token ${name}`);
   return [Number(m![1]), Number(m![2]) / 100, Number(m![3]) / 100];

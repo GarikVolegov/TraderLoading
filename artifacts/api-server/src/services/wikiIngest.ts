@@ -1,4 +1,3 @@
-import path from "node:path";
 import { eq } from "drizzle-orm";
 import {
   db,
@@ -9,6 +8,7 @@ import {
 import { extractWikiText, type WikiSourceKind } from "./wikiProcessor.js";
 import { createWikiStorageFromEnv } from "./wikiStorage.js";
 import { captureError } from "../lib/observability.js";
+import { resolveUploadPath } from "../lib/uploads.js";
 
 async function updateJob(sourceId: number, patch: Partial<typeof wikiIngestJobsTable.$inferInsert>) {
   await db.update(wikiIngestJobsTable)
@@ -38,7 +38,7 @@ export async function processWikiSourceJob(sourceId: number, buffer?: Buffer): P
     }
 
     const localPath = source.storageProvider === "local" && source.storageKey
-      ? path.join(process.cwd(), "uploads", "wiki", source.storageKey)
+      ? resolveUploadPath("wiki", source.storageKey)
       : undefined;
     const extracted = await extractWikiText({
       kind: source.kind as WikiSourceKind,

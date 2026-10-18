@@ -154,6 +154,14 @@ try {
   const tenantList = await tenantStore.listProfiles();
   assert.equal(tenantList.activeByUser?.["user_A"], profileA.id, "user A keeps their own active profile");
   assert.equal(tenantList.activeByUser?.["user_B"], profileB.id, "user B has their own active profile");
+  await assert.rejects(tenantStore.saveProfile({ id: profileA.id, ownerUserId: "user_B", label: "Seized" }), /not found/);
+  const attempts = await Promise.allSettled(Array.from({ length: 8 }, (_, i) => tenantStore.saveProfile({ id: profileA.id, ownerUserId: i % 2 ? "user_B" : "user_A", label: i % 2 ? "Seized" : "Owned update" })));
+  assert.equal(attempts.filter(r => r.status === "rejected").length, 4);
+  assert.equal((await tenantStore.getProfile(profileA.id))?.ownerUserId, "user_A");
+  assert.equal((await tenantStore.getProfile(profileA.id))?.label, "Owned update");
+  for (const payload of [{ kind: "unknown" }, { providerKind: "unknown" }, { environment: "invalid" }, { kind: "demo", providerKind: "demo", environment: "live" }]) {
+    await assert.rejects(tenantStore.saveProfile({ ownerUserId: "user_A", ...payload }));
+  }
 
   // Deleting a profile clears only its owner's active entry.
   await tenantStore.deleteProfile(profileB.id);

@@ -27,6 +27,8 @@ export interface OpenPosition {
   lots: number;
   /** Account-currency amount risked when the position was sized. */
   riskAmount: number;
+  /** Monetary risk measured once at entry after lot rounding. Never inferred on reload. */
+  initialRiskAmount?: number;
   /** Absolute stop distance in pips (magnitude); 0 once the stop trails to entry. */
   slPips: number;
   tpPips: number;
@@ -44,6 +46,8 @@ export interface OpenPosition {
 
 export interface ClosedTrade {
   id: number;
+  /** Durable save identity, unique across tabs and unchanged by retries. */
+  syncId?: string;
   direction: TradeDirection;
   entryPrice: number;
   exitPrice: number;
@@ -56,6 +60,8 @@ export interface ClosedTrade {
   pips: number;
   /** Signed account-currency P&L. */
   profit: number;
+  /** Immutable monetary entry risk; absent for incomplete legacy trades. */
+  initialRiskAmount?: number | null;
   /** Signed R multiple (profit measured in risk units), null when unsized (slPips <= 0). */
   rMultiple: number | null;
   exitReason: ExitReason;

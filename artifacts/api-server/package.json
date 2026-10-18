@@ -22,7 +22,7 @@
     "@workspace/db": "workspace:*",
     "@workspace/integrations-openai-ai-server": "workspace:*",
     "@workspace/pair-catalog": "workspace:*",
-    "compression": "^1.8.1",
+    "compression": "^1.8.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
     "drizzle-orm": "catalog:",
@@ -31,8 +31,8 @@
     "express": "^5",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
-    "http-proxy-middleware": "^3.0.5",
-    "multer": "^2.1.1",
+    "http-proxy-middleware": "^3.0.7",
+    "multer": "^2.4.0",
     "node-cron": "^4.2.1",
     "openai": "^6.27.0",
     "openid-client": "^6.8.2",
@@ -43,7 +43,7 @@
     "stripe": "^22.2.0",
     "unpdf": "^1.6.2",
     "web-push": "^3.6.7",
-    "ws": "^8.20.0",
+    "ws": "^8.21.0",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -54,7 +54,7 @@
     "@types/node": "catalog:",
     "@types/node-cron": "^3.0.11",
     "@types/web-push": "^3.6.4",
-    "esbuild": "^0.27.3",
+    "esbuild": "^0.28.1",
     "tsx": "catalog:"
   }
 }

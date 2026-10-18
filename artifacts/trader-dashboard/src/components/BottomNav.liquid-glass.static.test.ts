@@ -10,13 +10,13 @@ assert.match(
 );
 assert.match(
   bottomNav,
-  /rounded-full/,
-  "mobile nav shell should be a rounded pill",
+  /rounded-xl/,
+  "mobile nav shell should have consistent corners",
 );
 assert.match(
   bottomNav,
-  /backdrop-blur-2xl/,
-  "mobile nav shell should keep a strong frosted glass blur",
+  /bg-card shadow-lg/,
+  "mobile nav shell should remain legible on an opaque surface",
 );
 assert.doesNotMatch(
   bottomNav,

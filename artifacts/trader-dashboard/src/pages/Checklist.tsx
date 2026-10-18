@@ -15,13 +15,14 @@ import {
   getGetChecklistQueryKey,
 } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { QueryErrorState } from "@/components/QueryErrorState";
 
-export default function Checklist() {
+export function ChecklistWorkspace({ embedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
   const { t } = useLanguage();
   const qc = useQueryClient();
   const [newText, setNewText] = useState("");
-  const { data: items, isLoading } = useGetChecklist();
+  const { data: items, isLoading, isError, refetch } = useGetChecklist();
   // Each handler's own catch already shows its own toast below — opt out of
   // App.tsx's global mutation-error toast to avoid a double toast.
   const suppress = { mutation: { meta: { suppressGlobalError: true } } };
@@ -53,11 +54,11 @@ export default function Checklist() {
   const total = items?.length ?? 0;
 
   return (
-    <PageLayout>
-      <PageHeader
+    <div className="space-y-4">
+      {embedded ? <div><h2 className="text-base font-semibold">{t("checklist.confirmation_title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("checklist.confirmation_subtitle")}</p></div> : <PageHeader
         title={t("checklist.confirmation_title")}
         subtitle={t("checklist.confirmation_subtitle")}
-      />
+      />}
 
       <Card>
         <CardHeader>
@@ -89,6 +90,8 @@ export default function Checklist() {
             <div className="p-8 flex justify-center">
               <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
             </div>
+          ) : isError ? (
+            <QueryErrorState onRetry={() => void refetch()} />
           ) : !items || items.length === 0 ? (
             <div className="p-12 text-center text-muted-foreground">
               <ShieldCheck className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -119,7 +122,8 @@ export default function Checklist() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                      aria-label={t("common.delete")}
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
                       onClick={() => handleDelete(item.id)}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -137,6 +141,10 @@ export default function Checklist() {
           {t(total === 1 ? "checklist.confirmation_count_one" : "checklist.confirmation_count_many", { total })}
         </p>
       )}
-    </PageLayout>
+    </div>
   );
+}
+
+export default function Checklist() {
+  return <PageLayout><ChecklistWorkspace /></PageLayout>;
 }

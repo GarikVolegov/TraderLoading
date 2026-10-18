@@ -42,7 +42,7 @@ function StatTile({ icon: Icon, label, value, accent }: {
   );
 }
 
-export default function Missions() {
+export function MissionsWorkspace({ embedded = false }: { embedded?: boolean }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { data: missions, isLoading } = useGetMissions();
@@ -53,6 +53,7 @@ export default function Missions() {
       onSuccess: (data) => {
         qc.invalidateQueries({ queryKey: getGetMissionsQueryKey() });
         qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
+        qc.invalidateQueries({ queryKey: ["my-certificates"] });
         toast({ title: uiText("auto.ui.f16def3338"), description: `+${data.mission.xpReward} XP` });
         if (data.levelUp) {
           const end = Date.now() + 3000;
@@ -80,8 +81,8 @@ export default function Missions() {
   const progress = totalPossible > 0 ? (totalXp / totalPossible) * 100 : 0;
 
   return (
-    <PageLayout>
-      <PageHeader
+    <div className="space-y-4">
+      {embedded ? <div><h2 className="text-base font-semibold">{uiText("auto.ui.0a38d7a6de")}</h2><p className="mt-1 text-sm text-muted-foreground">{uiText("auto.ui.41e9873ac5")}</p></div> : <PageHeader
         icon={
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent">
             <Target className="h-4.5 w-4.5" />
@@ -89,7 +90,7 @@ export default function Missions() {
         }
         title={uiText("auto.ui.0a38d7a6de")}
         subtitle={uiText("auto.ui.41e9873ac5")}
-      />
+      />}
 
       {/* Profilo / statistiche */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -170,6 +171,8 @@ export default function Missions() {
                   className={`flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/15 ${mission.completed ? "grayscale" : ""}`}
                 >
                   <button
+                    type="button"
+                    aria-label={`${uiText(mission.completed ? "common.completed" : "common.complete")}: ${mission.title}`}
                     onClick={() => !mission.completed && completeMutation.mutate({ id: mission.id })}
                     disabled={mission.completed || completeMutation.isPending}
                     className="shrink-0 transition-transform active:scale-90"
@@ -214,6 +217,10 @@ export default function Missions() {
           </div>
         </Card>
       )}
-    </PageLayout>
+    </div>
   );
+}
+
+export default function Missions() {
+  return <PageLayout><MissionsWorkspace /></PageLayout>;
 }

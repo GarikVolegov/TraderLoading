@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
@@ -17,7 +17,7 @@ import { stripePromise } from "@/lib/stripe";
 type Translate = ReturnType<typeof useLanguage>["t"];
 
 function checkoutErrorMessage(error: unknown, t: Translate): string {
-  if (error instanceof Error && error.message === "503") {
+  if ((error as { status?: number } | null)?.status === 503) {
     return t("billing.checkout.not_configured");
   }
   return t("billing.checkout.error");
@@ -34,27 +34,43 @@ export function ProCheckoutDialog({
   const { t } = useLanguage();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const generation = useRef(0);
+  const pending = useRef<number | null>(null);
+  const cancelSession = useCallback(() => {
+    generation.current++;
+    pending.current = null;
+  }, []);
+
+  const loadSession = useCallback(() => {
+    if (pending.current === generation.current) return;
+    const request = ++generation.current;
+    pending.current = request;
+    setError(null);
+    setClientSecret(null);
+    createCheckoutSession()
+      .then((session) => {
+        if (generation.current === request) setClientSecret(session.clientSecret);
+      })
+      .catch((err: unknown) => {
+        if (generation.current === request) setError(checkoutErrorMessage(err, t));
+      })
+      .finally(() => {
+        if (pending.current === request) pending.current = null;
+      });
+  }, [t]);
 
   useEffect(() => {
     if (!open) {
+      cancelSession();
       setClientSecret(null);
       setError(null);
       return;
     }
 
-    let cancelled = false;
-    createCheckoutSession()
-      .then((session) => {
-        if (!cancelled) setClientSecret(session.clientSecret);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(checkoutErrorMessage(err, t));
-      });
+    loadSession();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [open, t]);
+    return cancelSession;
+  }, [open, loadSession, cancelSession]);
 
   const checkoutOptions = useMemo(
     () =>
@@ -69,13 +85,6 @@ export function ProCheckoutDialog({
     [clientSecret, queryClient],
   );
 
-  function retry() {
-    setError(null);
-    createCheckoutSession()
-      .then((session) => setClientSecret(session.clientSecret))
-      .catch((err: unknown) => setError(checkoutErrorMessage(err, t)));
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-primary/25 bg-card">
@@ -86,7 +95,7 @@ export function ProCheckoutDialog({
         {error && (
           <div className="space-y-3 py-2 text-center">
             <p className="text-sm text-destructive">{error}</p>
-            <Button type="button" variant="outline" onClick={retry}>
+            <Button type="button" variant="outline" onClick={loadSession}>
               <RefreshCw className="mr-2 h-4 w-4" />
               {t("billing.checkout.retry")}
             </Button>

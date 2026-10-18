@@ -4,6 +4,7 @@ import { repoRoot } from "./env.js";
 export type RunOptions = {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
+  inheritEnv?: boolean;
   stdio?: "inherit" | "pipe";
   label?: string;
 };
@@ -44,7 +45,7 @@ export function runCommand(command: string, args: string[], options: RunOptions 
     const resolved = spawnCommand(commandName(command), args);
     const child = spawn(resolved.command, resolved.args, {
       cwd: options.cwd ?? repoRoot,
-      env: { ...process.env, ...options.env },
+      env: options.inheritEnv === false ? options.env : { ...process.env, ...options.env },
       shell: false,
       stdio: stdio === "inherit" ? "inherit" : ["ignore", "pipe", "pipe"],
       windowsHide: true,
@@ -83,7 +84,7 @@ export function spawnLongRunning(command: string, args: string[], options: RunOp
   const resolved = spawnCommand(commandName(command), args);
   const child = spawn(resolved.command, resolved.args, {
     cwd: options.cwd ?? repoRoot,
-    env: { ...process.env, ...options.env },
+    env: options.inheritEnv === false ? options.env : { ...process.env, ...options.env },
     shell: false,
     stdio: "inherit",
     windowsHide: true,

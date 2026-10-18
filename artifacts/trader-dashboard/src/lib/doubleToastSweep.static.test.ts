@@ -13,7 +13,7 @@ const FILES = [
   "src/components/settings/QuotesSettings.tsx",
   "src/components/settings/ChecklistSettings.tsx",
   "src/components/settings/TradingSettings.tsx",
-  "src/components/settings/PairPreferencesSettings.tsx",
+  "src/hooks/useSavePairs.ts",
   "src/components/settings/LanguageSettings.tsx",
   "src/pages/Support.tsx",
   "src/pages/Backtest.tsx",

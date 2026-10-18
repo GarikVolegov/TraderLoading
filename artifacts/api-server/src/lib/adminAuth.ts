@@ -49,3 +49,12 @@ export function requireAdmin(permission: AdminPermission) {
     next();
   };
 }
+
+/** Content tools share DB roles; legacy platform IDs apply only without a DB role. */
+export async function canPublishPlatformContent(userId: string): Promise<boolean> {
+  const principal = await getAdminPrincipalForUser(userId);
+  if (principal) return hasAdminPermission(principal.role, "content.publish");
+  const [storedRole] = await db.select({ status: adminUsersTable.status }).from(adminUsersTable).where(eq(adminUsersTable.userId, userId)).limit(1);
+  if (storedRole) return false;
+  return (process.env.PLATFORM_ADMIN_IDS || "").split(",").map(id => id.trim()).filter(Boolean).includes(userId);
+}

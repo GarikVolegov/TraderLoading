@@ -5,6 +5,7 @@
 // (source="manual") and the existing analytics light up unchanged. Pure builder.
 
 export interface ManualTradeInput {
+  executionEnvironment?: unknown;
   symbol?: unknown;
   direction?: unknown;
   entryPrice?: unknown;
@@ -51,6 +52,7 @@ export interface ManualTradeRow {
   /** Provenance: "manual" for journal entries and CSV imports — both user-provided,
    *  so both are excluded from tornei (see tornei/store.ts). */
   source: string;
+  executionEnvironment: "simulation" | "real" | "unknown";
   symbol: string;
   direction: "buy" | "sell";
   volume: string;
@@ -113,6 +115,8 @@ export function buildTradeRow(
   return {
     ticket: opts.ticket,
     source: opts.source,
+    executionEnvironment: input.executionEnvironment === "simulation" || input.executionEnvironment === "real"
+      ? input.executionEnvironment : "unknown",
     symbol,
     direction: normalizeDirection(input.direction),
     volume: toNumString(input.volume) ?? "0",

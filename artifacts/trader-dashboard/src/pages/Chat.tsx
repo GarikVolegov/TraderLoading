@@ -1,111 +1,74 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { lazy, Suspense } from "react";
 import { PageLayout } from "@/components/PageLayout";
 import { PageHeader } from "@/components/PageHeader";
+import { SectionTabs } from "@/components/SectionTabs";
 import { useLocation, useSearch } from "wouter";
-import { parseChatTab, type ChatTab } from "@/lib/chatTabs";
+import { parseSocialLocation, socialHref } from "@/lib/chatTabs";
+import { socialText } from "@/lib/i18n/reorganizationSocial";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { useUser } from "@clerk/react";
-import { Loader2, LogIn, Globe } from "lucide-react";
+import { Loader2, LogIn, Users } from "lucide-react";
 import type { SocialUser } from "@/components/social/types";
-import { SocialTab } from "@/components/social/SocialTab";
-import { MessaggiTab } from "@/components/social/MessaggiTab";
-import { ClassificaTab } from "@/components/social/ClassificaTab";
-import { CommunityTab } from "@/components/social/CommunityTab";
 
-// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
+const SocialTab = lazy(() => import("@/components/social/SocialTab").then(m => ({ default: m.SocialTab })));
+const ConversationsWorkspace = lazy(() => import("@/components/social/ConversationsWorkspace"));
+const ClassificaTab = lazy(() => import("@/components/social/ClassificaTab").then(m => ({ default: m.ClassificaTab })));
+const TorneiWorkspace = lazy(() => import("./Tornei").then(m => ({ default: m.TorneiWorkspace })));
+
+function Loading() {
+  return <div className="flex min-h-48 items-center justify-center" role="status"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+}
 
 export default function Chat() {
-  const { t } = useLanguage();
-  // Clerk è la fonte auth dell'app (lo shim legacy replit-auth-web faceva una
-  // fetch ridondante e la sua CTA puntava al vecchio login OIDC, morto in prod).
+  const { t, language } = useLanguage();
   const { user, isSignedIn, isLoaded } = useUser();
-  const authLoading = !isLoaded;
-  const isAuthenticated = !!isSignedIn;
   const [, navigate] = useLocation();
-  const login = () => navigate("/sign-in");
-  const activeTab: ChatTab = parseChatTab(useSearch());
-  const [pendingChat, setPendingChat] = useState<SocialUser | null>(null);
-
-  const handleStartChat = (u: SocialUser) => {
-    setPendingChat(u);
-    navigate("/chat?t=messaggi");
+  const location = parseSocialLocation(useSearch());
+  const text = (key: Parameters<typeof socialText>[1]) => socialText(language, key);
+  const handleStartChat = (peer: SocialUser) => {
+    if (peer.userId) navigate(socialHref("conversazioni", { peer: peer.userId }));
   };
 
-  useEffect(() => {
-    if (activeTab === "messaggi" && pendingChat) {
-      setPendingChat(null);
-    }
-  }, [activeTab, pendingChat]);
-
-  if (authLoading)
-    return (
-      <PageLayout>
-        <div className="flex items-center justify-center h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  if (!isLoaded) return <PageLayout quiet><Loading /></PageLayout>;
+  if (!isSignedIn) return (
+    <PageLayout quiet>
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="space-y-4 text-center">
+          <Users className="mx-auto h-12 w-12 text-primary/50" />
+          <h1 className="text-xl font-semibold">{text("title")}</h1>
+          <p className="text-muted-foreground">{t("chat.login_required")}</p>
+          <button onClick={() => navigate("/sign-in")} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-6 py-3 text-primary-foreground"><LogIn className="h-4 w-4" />{t("common.start")}</button>
         </div>
-      </PageLayout>
-    );
-
-  if (!isAuthenticated)
-    return (
-      <PageLayout>
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="text-center space-y-4">
-            <Globe className="w-16 h-16 mx-auto text-primary opacity-40" />
-            <h2 className="text-xl font-bold font-mono tracking-tight">
-              {t("chat.title")}
-            </h2>
-            <p className="text-muted-foreground">{t("chat.login_required")}</p>
-            <button
-              onClick={() => login()}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
-            >
-              <LogIn className="w-4 h-4" /> {t("common.start")}
-            </button>
-          </div>
-        </div>
-      </PageLayout>
-    );
+      </div>
+    </PageLayout>
+  );
 
   return (
-    <PageLayout>
-      <PageHeader title={t("chat.title")} subtitle={t("chat.subtitle")} />
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-card/30 backdrop-blur-md border border-border rounded-2xl overflow-hidden flex flex-col min-h-0 h-[calc(100dvh-var(--safe-top)-4.6rem-var(--bottom-nav-clearance))] sm:h-[calc(100dvh-var(--safe-top)-8.5rem-var(--bottom-nav-clearance))]"
-      >
-        <div className="flex-1 min-h-0 overflow-hidden">
-          {activeTab === "social" && (
-            <SocialTab
-              currentUserId={user?.id ?? ""}
-              onStartChat={handleStartChat}
-            />
-          )}
-          {activeTab === "messaggi" && (
-            <MessaggiTab
-              currentUser={{ id: user?.id ?? "" }}
-              initialPeer={pendingChat}
-            />
-          )}
-          {activeTab === "comunita" && (
-            <CommunityTab
-              currentUserId={user?.id ?? ""}
-              currentUserName={
-                user?.firstName ?? "Trader"
-              }
-            />
-          )}
-          {activeTab === "classifica" && (
-            <ProUpgradeGate feature="leaderboard">
-              <ClassificaTab currentUserId={user?.id ?? ""} />
-            </ProUpgradeGate>
-          )}
-        </div>
-      </motion.section>
+    <PageLayout quiet>
+      <PageHeader title={text("title")} subtitle={text("subtitle")} />
+      <SectionTabs ariaLabel={text("navigation")} value={location.tab} items={[
+        { value: "conversazioni", label: text("conversations"), href: socialHref("conversazioni") },
+        { value: "social", label: text("activity"), href: socialHref("social") },
+        { value: "competizioni", label: text("competitions"), href: socialHref("competizioni") },
+      ]} />
+      {location.tab === "competizioni" && (
+        <SectionTabs ariaLabel={text("competitionNavigation")} value={location.competitionView === "xp" ? "xp" : "torneo"} items={[
+          { value: "xp", label: text("xp"), href: socialHref("competizioni", { vista: "xp" }) },
+          { value: "torneo", label: text("tournament"), href: socialHref("competizioni", { vista: "torneo" }) },
+        ]} />
+      )}
+      <Suspense fallback={<Loading />}>
+        {location.tab === "conversazioni" && <section className="h-[calc(100dvh-var(--safe-top)-8.8rem-var(--bottom-nav-clearance))] min-h-[240px] overflow-hidden rounded-2xl border border-border/60 bg-card/40 sm:h-[calc(100dvh-var(--safe-top)-13rem-var(--bottom-nav-clearance))]">
+          <ConversationsWorkspace currentUserId={user?.id ?? ""} currentUserName={user?.firstName ?? "Trader"} />
+        </section>}
+        {location.tab === "social" && <section className="h-[calc(100dvh-var(--safe-top)-8.8rem-var(--bottom-nav-clearance))] min-h-[240px] overflow-hidden rounded-2xl border border-border/60 bg-card/40 sm:h-[calc(100dvh-var(--safe-top)-13rem-var(--bottom-nav-clearance))]">
+          <SocialTab currentUserId={user?.id ?? ""} onStartChat={handleStartChat} />
+        </section>}
+        {location.tab === "competizioni" && (location.competitionView === "xp"
+          ? <section className="h-[min(70dvh,800px)] min-h-96 overflow-hidden rounded-2xl border border-border/60 bg-card/40"><ProUpgradeGate feature="leaderboard"><ClassificaTab currentUserId={user?.id ?? ""} /></ProUpgradeGate></section>
+          : <TorneiWorkspace embedded />)}
+      </Suspense>
     </PageLayout>
   );
 }

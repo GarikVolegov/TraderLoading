@@ -48,13 +48,13 @@ assert.deepEqual(
     defaultItems: ["EURUSD"],
   }),
   {
-    items: ["EURUSD"],
+    items: [],
     requestedItems: ["BTCUSD"],
     unsupportedItems: ["BTCUSD"],
     supportedCount: 0,
     requestedCount: 1,
     hasUserSelection: true,
-    isFallback: true,
+    isFallback: false,
   },
 );
 

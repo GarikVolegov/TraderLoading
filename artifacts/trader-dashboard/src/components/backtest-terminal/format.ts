@@ -20,7 +20,8 @@ export function priceDecimals(symbol: string): number {
   if (["US30", "NAS100", "SPX500"].includes(s)) return 1;
   if (s.includes("BTC")) return 1;
   if (s.includes("ETH")) return 2;
-  if (s === "XAUUSD") return 2;
+  if (s === "XAUUSD" || s === "USOIL") return 2;
+  if (s === "USOIL") return 2;
   return 5;
 }
 

@@ -10,6 +10,7 @@ export interface Reward {
   url: string;
   duration?: string;
   author?: string;
+  available?: boolean;
 }
 
 const UNSPLASH_CHART = "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&q=80";
@@ -171,4 +172,13 @@ export function getMilestoneProgress(level: number): number {
   if (!next) return 100;
   const prev = MILESTONES.filter((m) => m <= level).at(-1) ?? 0;
   return Math.round(((level - prev) / (next - prev)) * 100);
+}
+
+/** Search pages and sample documents are placeholders, not a deliverable reward. */
+export function isRewardAvailable(reward: Reward): boolean {
+  if (reward.available === false || !reward.url) return false;
+  try {
+    const url = new URL(reward.url, "https://traderloading.local");
+    return !url.pathname.includes("/results") && !/example/i.test(url.pathname);
+  } catch { return false; }
 }

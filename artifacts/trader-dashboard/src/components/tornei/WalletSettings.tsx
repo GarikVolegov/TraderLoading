@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Wallet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,27 +17,35 @@ export function WalletSettings() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [value, setValue] = useState("");
+  const dirty = useRef(false);
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   const walletQuery = useQuery({ queryKey: torneiWalletKey(), queryFn: () => fetchTorneiWallet() });
 
   useEffect(() => {
-    if (walletQuery.data) setValue(walletQuery.data.walletAddress ?? "");
+    if (walletQuery.data && !dirty.current) setValue(walletQuery.data.walletAddress ?? "");
   }, [walletQuery.data]);
 
   const trimmed = value.trim();
   const invalid = trimmed !== "" && !EVM_ADDRESS_RE.test(trimmed);
 
   const save = useMutation({
-    mutationFn: () => saveTorneiWallet(trimmed),
-    onSuccess: (res) => {
+    mutationFn: (submitted: string) => saveTorneiWallet(submitted),
+    onSuccess: (res, submitted) => {
       if (res.ok) {
+        // A delayed save/refetch must not erase a newer draft in the input.
+        if (valueRef.current.trim() === submitted) {
+          dirty.current = false;
+          setValue(res.walletAddress ?? "");
+        }
         toast({ title: t("tornei.wallet.saved") });
         qc.invalidateQueries({ queryKey: torneiWalletKey() });
       } else {
-        toast({ title: t("tornei.wallet.invalid"), variant: "destructive" });
+        toast({ title: t(res.status === 400 ? "tornei.wallet.invalid" : "errors.mutation.generic"), variant: "destructive" });
       }
     },
-    onError: () => toast({ title: t("tornei.wallet.invalid"), variant: "destructive" }),
+    onError: () => toast({ title: t("errors.mutation.generic"), variant: "destructive" }),
   });
 
   return (
@@ -49,13 +57,15 @@ export function WalletSettings() {
       <p className="text-sm text-muted-foreground">{t("tornei.wallet.desc")}</p>
       <Input
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => { dirty.current = true; setValue(e.target.value); }}
+        aria-label={t("tornei.wallet.title")}
+        aria-invalid={invalid}
         placeholder={t("tornei.wallet.placeholder")}
         spellCheck={false}
         autoComplete="off"
       />
       {invalid && <p className="text-xs text-red-400">{t("tornei.wallet.invalid")}</p>}
-      <Button onClick={() => save.mutate()} disabled={save.isPending || invalid} className="w-full justify-center">
+      <Button onClick={() => save.mutate(trimmed)} disabled={save.isPending || invalid} className="w-full justify-center">
         {save.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
         {t("tornei.wallet.save")}
       </Button>

@@ -149,7 +149,7 @@ export function MissionTemplatesSettings() {
           </div>
         ) : !templates || templates.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-3">
-            Nessuna missione personalizzata. Verranno usate le 5 predefinite.
+            {uiText("journal.workspace.no_custom_missions")}
           </p>
         ) : (
           <div className="space-y-2">

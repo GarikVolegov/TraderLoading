@@ -12,6 +12,8 @@ export * from "./milestones";
 export * from "./account";
 export * from "./routines";
 export * from "./news";
+export * from "./marketIntelligence";
+export * from "./traderProcess";
 export * from "./signals";
 export * from "./library";
 export * from "./wiki";
@@ -23,3 +25,9 @@ export * from "./tornei";
 export * from "./referral";
 export * from "./emailLifecycle";
 export * from "./payout";
+
+export * from "./traderProcess";
+
+export * from "./academy";
+
+export * from "./academyBilling";

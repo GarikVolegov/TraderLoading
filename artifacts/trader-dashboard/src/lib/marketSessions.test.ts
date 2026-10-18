@@ -4,6 +4,8 @@ import {
   getLocalTimeZone,
   getLocalTimeZoneLabel,
   isSessionEnabledForDate,
+  isMarketSessionActive,
+  minutesUntilSessionOpen,
   isMarketClosedSession,
   isTradingSession,
   legacyUtcTimeToLocalSessionTime,
@@ -51,6 +53,12 @@ assert.equal(isSessionEnabledForDate({ ...closed, days: [6, 0] }, new Date(2026,
 assert.equal(isSessionEnabledForDate(closed, new Date(2026, 5, 5)), true);
 assert.deepEqual(toDailyIntervals(23 * 60, 2 * 60), [[1380, 1440], [0, 120]]);
 assert.deepEqual(toDailyIntervals(0, 0), [[0, 1440]]);
+const overnight = { ...london, openUTC: "23:00", closeUTC: "02:00", days: [5] };
+assert.equal(isMarketSessionActive(overnight, new Date(2026, 5, 5, 23, 30)), true);
+assert.equal(isMarketSessionActive(overnight, new Date(2026, 5, 6, 1, 0)), true);
+assert.equal(isMarketSessionActive(overnight, new Date(2026, 5, 6, 23, 30)), false);
+assert.equal(isMarketSessionActive(overnight, new Date(2026, 5, 6, 2, 0)), false);
+assert.equal(minutesUntilSessionOpen({ ...london, days: [1] }, new Date(2026, 5, 5, 12)), 3 * 1440 - 5 * 60);
 assert.equal(detectTradingSessionOverlap([london, overlap])?.includes("sovrappongono"), true);
 assert.equal(detectTradingSessionOverlap([london, closed]), null);
 

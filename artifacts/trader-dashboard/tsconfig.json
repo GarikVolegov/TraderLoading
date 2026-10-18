@@ -15,6 +15,7 @@
     }
   },
   "references": [
+    { "path": "../../contracts" },
     {
       "path": "../../lib/api-client-react"
     },

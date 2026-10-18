@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { QueryErrorState } from "@/components/QueryErrorState";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   open: "default",
@@ -107,7 +108,7 @@ function NewTicketForm() {
 
 function TicketList() {
   const { t, language } = useLanguage();
-  const { data: tickets, isLoading } = useGetSupportTickets();
+  const { data: tickets, isLoading, isError, refetch } = useGetSupportTickets();
 
   return (
     <Card>
@@ -117,6 +118,8 @@ function TicketList() {
           <div className="flex justify-center py-6">
             <Spinner />
           </div>
+        ) : isError ? (
+          <QueryErrorState onRetry={() => void refetch()} />
         ) : !tickets || tickets.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             <Inbox className="h-8 w-8 text-muted-foreground/50" />
@@ -175,7 +178,7 @@ function TicketThread({ id }: { id: number }) {
   const { t } = useLanguage();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data, isLoading } = useGetSupportTicketThread(id);
+  const { data, isLoading, isError, error, refetch } = useGetSupportTicketThread(id);
   // The reply handler's own catch already shows its own toast below — opt
   // out of App.tsx's global mutation-error toast to avoid a double toast.
   const sendMessage = useCreateSupportTicketMessage({ mutation: { meta: { suppressGlobalError: true } } });
@@ -200,6 +203,9 @@ function TicketThread({ id }: { id: number }) {
         <Spinner />
       </div>
     );
+  }
+  if (isError && error?.status !== 404) {
+    return <QueryErrorState onRetry={() => void refetch()} />;
   }
   if (!data) {
     return <p className="text-sm text-muted-foreground">{t("support.notfound")}</p>;

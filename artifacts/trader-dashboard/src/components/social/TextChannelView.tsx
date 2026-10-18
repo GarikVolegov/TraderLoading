@@ -2,24 +2,35 @@ import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { uiText } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { Send, Loader2, Trash2, Hash, Settings2, Download, Paperclip, ToggleLeft, ToggleRight, FolderOpen, Flag, Check } from "lucide-react";
-import { apiJSON, apiRequest as apiFetch } from "@/lib/apiFetch";
+import { apiJSON } from "@/lib/apiFetch";
 import { formatFileSize } from "@/lib/fileFormatting";
 import { reportClientError } from "@/lib/clientErrorReporter";
+import { useToast } from "@/hooks/use-toast";
 import { fileIcon } from "./format";
 import { useCommunityFiles, useCommunityMessages } from "./hooks";
 import { useSocialSocket } from "./useSocialSocket";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import type { ChannelType, CommunityMsg } from "./types";
 
-export function TextChannelView({
-  channel,
-  currentUserId,
-  isOwnerOrAdmin,
-}: {
+type TextChannelProps = {
   channel: ChannelType;
   currentUserId: string;
   isOwnerOrAdmin: boolean;
-}) {
+};
+
+export function TextChannelView(props: TextChannelProps) {
+  // Pending responses from the previous account/channel cannot clear another draft.
+  return <TextChannelSession key={`${props.currentUserId}:${props.channel.id}`} {...props} />;
+}
+
+function TextChannelSession({
+  channel,
+  currentUserId,
+  isOwnerOrAdmin,
+}: TextChannelProps) {
   const qc = useQueryClient();
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const { toast } = useToast();
   const { data, isLoading } = useCommunityMessages(channel.id);
   // Real-time push: refresh the messages immediately on a new message instead of
   // waiting for the poll. Polling stays as the guaranteed fallback (see hook).
@@ -29,6 +40,7 @@ export function TextChannelView({
   const { data: files = [] } = useCommunityFiles(channel.id);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const [activeTab, setActiveTab] = useState<"chat" | "files">("chat");
   const [uploadingFile, setUploadingFile] = useState(false);
   const [reportedIds, setReportedIds] = useState<Set<number>>(new Set());
@@ -37,13 +49,14 @@ export function TextChannelView({
   const messages = data?.messages ?? [];
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+    bottomRef.current?.scrollIntoView({ behavior: reduceMotion ? "instant" : "smooth" });
+  }, [messages.length, reduceMotion]);
 
   const sendMsg = async () => {
     const content = text.trim();
-    if (!content || sending) return;
-    setText("");
+    if (!content || sendingRef.current) return;
+    const submittedText = text;
+    sendingRef.current = true;
     setSending(true);
     try {
       await apiJSON(`community/channels/${channel.id}/messages`, {
@@ -51,13 +64,16 @@ export function TextChannelView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       });
+      setText((current) => current === submittedText ? "" : current);
       qc.invalidateQueries({ queryKey: ["communityMessages", channel.id] });
     } catch (error) {
       reportClientError(error, {
         context: "community message send",
-        notify: false,
+        toast,
+        fallbackMessage: uiText("errors.mutation.generic"),
       });
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };
@@ -69,7 +85,7 @@ export function TextChannelView({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      await apiFetch(`community/channels/${channel.id}/files`, {
+      await apiJSON(`community/channels/${channel.id}/files`, {
         method: "POST",
         body: fd,
       });
@@ -78,7 +94,8 @@ export function TextChannelView({
     } catch (error) {
       reportClientError(error, {
         context: "community file upload",
-        notify: false,
+        toast,
+        fallbackMessage: uiText("errors.mutation.generic"),
       });
     } finally {
       setUploadingFile(false);
@@ -97,19 +114,21 @@ export function TextChannelView({
     } catch (error) {
       reportClientError(error, {
         context: "community file downloadable toggle",
-        notify: false,
+        toast,
+        fallbackMessage: uiText("errors.mutation.generic"),
       });
     }
   };
 
   const deleteFile = async (fileId: number) => {
     try {
-      await apiFetch(`community/files/${fileId}`, { method: "DELETE" });
+      await apiJSON(`community/files/${fileId}`, { method: "DELETE" });
       qc.invalidateQueries({ queryKey: ["communityFiles", channel.id] });
     } catch (error) {
       reportClientError(error, {
         context: "community file delete",
-        notify: false,
+        toast,
+        fallbackMessage: uiText("errors.mutation.generic"),
       });
     }
   };
@@ -118,10 +137,10 @@ export function TextChannelView({
   const deleteMessage = async (id: number) => {
     if (!window.confirm(uiText("community.msg.delete_confirm"))) return;
     try {
-      await apiFetch(`community/messages/${id}`, { method: "DELETE" });
+      await apiJSON(`community/messages/${id}`, { method: "DELETE" });
       qc.invalidateQueries({ queryKey: ["communityMessages", channel.id] });
     } catch (error) {
-      reportClientError(error, { context: "community message delete", notify: false });
+      reportClientError(error, { context: "community message delete", toast, fallbackMessage: uiText("errors.mutation.generic") });
     }
   };
 
@@ -137,7 +156,7 @@ export function TextChannelView({
       });
       setReportedIds((prev) => new Set(prev).add(id));
     } catch (error) {
-      reportClientError(error, { context: "community message report", notify: false });
+      reportClientError(error, { context: "community message report", toast, fallbackMessage: uiText("errors.mutation.generic") });
     }
   };
 
@@ -299,12 +318,14 @@ export function TextChannelView({
           </div>
 
           <div className="shrink-0 px-4 py-3 border-t border-border bg-card/20">
-            <div className="flex items-center gap-2 bg-secondary/30 border border-border rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 bg-secondary/30 border border-border rounded-xl px-3 py-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring">
               <button
+                type="button"
+                aria-label={uiText("auto.ui.2b269b1b68")}
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingFile}
                 title={uiText("auto.ui.2b269b1b68")}
-                className="text-muted-foreground hover:text-primary transition-colors shrink-0 disabled:opacity-40"
+                className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-primary transition-colors shrink-0 disabled:opacity-40"
               >
                 {uploadingFile ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -321,6 +342,9 @@ export function TextChannelView({
               />
               <input
                 value={text}
+                aria-label={`${uiText("chat.send_placeholder")} #${channel.name}`}
+                disabled={sending}
+                aria-busy={sending}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) =>
                   e.key === "Enter" &&
@@ -328,12 +352,14 @@ export function TextChannelView({
                   (e.preventDefault(), sendMsg())
                 }
                 placeholder={`Messaggio in #${channel.name}`}
-                className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/50 min-w-0"
+                className="min-h-11 flex-1 bg-transparent text-base focus:outline-none placeholder:text-muted-foreground min-w-0"
               />
               <button
+                type="button"
                 onClick={sendMsg}
+                aria-label={uiText("chat.send")}
                 disabled={!text.trim() || sending}
-                className="w-7 h-7 rounded-lg bg-primary/20 hover:bg-primary/40 text-primary flex items-center justify-center disabled:opacity-40 transition-colors shrink-0"
+                className="w-11 h-11 rounded-lg bg-primary/20 hover:bg-primary/40 text-primary flex items-center justify-center disabled:opacity-40 transition-colors shrink-0"
               >
                 {sending ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -421,8 +447,10 @@ export function TextChannelView({
                     )}
                     {(f.userId === currentUserId || isOwnerOrAdmin) && (
                       <button
+                        type="button"
                         onClick={() => deleteFile(f.id)}
-                        className="w-7 h-7 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center transition-all"
+                        aria-label={uiText("common.delete")}
+                        className="w-7 h-7 rounded-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

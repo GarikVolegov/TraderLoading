@@ -1,3 +1,4 @@
+import {isolatedDatabaseUrl} from "./lib/isolation.mjs";
 // Usability sweep — area "tornei": Arena + Percorso on /tornei with USER_A (Pro,
 // onboarded, but NOT enrolled and with no synced real broker account — the real
 // state of this local env). Exercises: Arena standings/enroll-gate, Percorso +
@@ -33,7 +34,7 @@ const AREA = "tornei";
 const outDir = outDirFor(AREA);
 const shot = makeShot(outDir);
 const DB_URL =
-  process.env.VERIFY_DATABASE_URL || "postgres://trader:trader@127.0.0.1:55432/traderloadings";
+  isolatedDatabaseUrl();
 const TEST_WALLET = "0x1111111111111111111111111111111111111111";
 
 const findings = [];

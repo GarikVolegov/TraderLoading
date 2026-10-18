@@ -24,7 +24,7 @@ const sample: EdgeTrade[] = [
 
   assert.deepEqual(
     Object.keys(report).sort(),
-    ["breakdowns", "discipline", "generatedAt", "guard", "highlights", "overall", "stats"],
+    ["breakdowns", "discipline", "generatedAt", "guard", "highlights", "overall", "rCoverage", "rSamples", "stats"],
     "EdgeReport top-level keys",
   );
   assert.deepEqual(
@@ -59,7 +59,16 @@ const sample: EdgeTrade[] = [
   const report = composeEdgeReport([]);
   assert.equal(report.overall.closedTrades, 0);
   assert.equal(report.discipline.stopDiscipline, null);
-  assert.deepEqual(Object.keys(report).sort(), ["breakdowns", "discipline", "generatedAt", "guard", "highlights", "overall", "stats"]);
+  assert.deepEqual(Object.keys(report).sort(), ["breakdowns", "discipline", "generatedAt", "guard", "highlights", "overall", "rCoverage", "rSamples", "stats"]);
+  assert.deepEqual(report.rSamples,[]);
+  assert.deepEqual(report.rCoverage,{withR:0,withoutR:0});
+}
+
+{
+  const report=composeEdgeReport([...sample,{symbol:"GBPUSD",direction:"buy",openTime:"2026-06-16T09:00:00Z",closeTime:"2026-06-16T10:00:00Z",entryPrice:1.2,exitPrice:1.3,stopLoss:null,profit:80}]);
+  assert.equal(report.rSamples.length,report.overall.tradesWithR);
+  assert.equal(report.rCoverage.withR+report.rCoverage.withoutR,report.overall.closedTrades);
+  assert.equal(report.rSamples.reduce((n,r)=>n+r,0)/report.rSamples.length,report.overall.expectancyR);
 }
 
 console.log("edgeReport.test.ts: all assertions passed");

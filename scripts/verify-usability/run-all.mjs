@@ -2,7 +2,7 @@
 // would trample each other's state) and aggregates their findings.json outputs.
 // Usage: node scripts/verify-usability/run-all.mjs [only-area ...]
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const ORDER = [
@@ -19,6 +19,7 @@ const ORDER = [
 const only = process.argv.slice(2);
 const areas = only.length ? ORDER.filter((a) => only.includes(a)) : ORDER;
 
+const runId = `sweep-${Date.now()}`;
 const results = [];
 for (const area of areas) {
   const script = fileURLToPath(new URL(`drive-${area}.mjs`, import.meta.url));
@@ -27,17 +28,18 @@ for (const area of areas) {
     continue;
   }
   console.log(`\n━━━ ${area} ━━━`);
-  const r = spawnSync(process.execPath, [script], { stdio: "inherit" });
-  const findingsPath = fileURLToPath(
-    new URL(`../../artifacts.local/verify-usability/${area}/findings.json`, import.meta.url),
-  );
+  const findingsPath = fileURLToPath(new URL(`../../artifacts.local/verify-usability/${area}/findings.json`, import.meta.url));
+  rmSync(findingsPath,{force:true});
+  const r = spawnSync(process.execPath, [script], { stdio: "inherit", env: {...process.env,VERIFY_RUN_ID:runId} });
   let findings = [];
   try {
-    findings = JSON.parse(readFileSync(findingsPath, "utf8")).findings ?? [];
+    const payload = JSON.parse(readFileSync(findingsPath, "utf8"));
+    if(payload.runId!==runId)throw new Error("Stale report");
+    findings = payload.findings ?? [];
   } catch {
-    /* driver crashed before reporting */
+    findings = [{kind:"runner-error",detail:"No report from this execution"}];
   }
-  results.push({ area, exit: r.status ?? 1, findings });
+  results.push({ area, exit: r.status === 0 && !findings.some(f=>f.kind==="runner-error") ? 0 : 1, findings });
 }
 
 console.log("\n━━━ SWEEP SUMMARY ━━━");

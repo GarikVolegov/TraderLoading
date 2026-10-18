@@ -6,7 +6,7 @@ import { type useBrokerHub } from "./useBrokerHub";
 export function ConnectAccountWizard({ hub, onConnected }: { hub: ReturnType<typeof useBrokerHub>; onConnected: () => void }) {
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <FxBlueAccountSyncWizard hub={hub} onConnected={onConnected} onBack={() => {}} />
+      <FxBlueAccountSyncWizard hub={hub} onConnected={onConnected} />
       <aside className="rounded-lg border border-border/40 bg-secondary/20 p-4 text-sm">
         <div className="flex items-center gap-2 font-bold">
           <ShieldCheck className="h-4 w-4 text-primary" />

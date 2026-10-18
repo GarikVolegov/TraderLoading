@@ -1,3 +1,4 @@
+import {isolatedDatabaseUrl} from "./lib/isolation.mjs";
 // Usability sweep — area "community": private community + owner-approved join,
 // DM (E2EE), and paid-channel checkout, with USER_A (creator/owner) and a fresh
 // third user USER_C in an independent browser context (USER_B is reserved for
@@ -39,7 +40,7 @@ const AREA = "community";
 const outDir = outDirFor(AREA);
 const shot = makeShot(outDir);
 const DB_URL =
-  process.env.VERIFY_DATABASE_URL || "postgres://trader:trader@127.0.0.1:55432/traderloadings";
+  isolatedDatabaseUrl();
 const USER_C = process.env.VERIFY_EMAIL_C || "verify.c+clerk_test@example.com";
 
 // Mirrors services/communityPermissions.ts COMMUNITY_PERMISSIONS (kept in sync by

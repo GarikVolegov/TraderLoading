@@ -11,6 +11,7 @@ import type {
   BrokerDeal,
 } from "./types.js";
 import type { BrokerAccountCredentials, BrokerProviderVerification } from "./providerRegistry.js";
+import { executionEnvironmentFromSource } from "./executionEnvironment.js";
 
 type Fetch = typeof fetch;
 
@@ -312,6 +313,7 @@ export function createMetaApiProvider(options: MetaApiProviderOptions = {}) {
       brokerName,
       currency: typeof accountInfo.currency === "string" && accountInfo.currency ? accountInfo.currency : "USD",
       environment: accountEnvironment(accountInfo.type),
+      executionEnvironment: executionEnvironmentFromSource(accountInfo.type),
     };
     return {
       profileId,

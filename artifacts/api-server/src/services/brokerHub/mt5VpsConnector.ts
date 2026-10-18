@@ -12,6 +12,7 @@ import type {
 } from "./types.js";
 import { mapMt5Trade } from "./mappers.js";
 import type { BrokerVault } from "./brokerVault.js";
+import { executionEnvironmentFromSource } from "./executionEnvironment.js";
 
 type Mt5Message = { type: string; payload?: unknown };
 
@@ -74,7 +75,8 @@ export function createMt5VpsBrokerConnector(profile: BrokerAccountProfile, vault
       ...snapshot,
       status: "connected",
       accounts: accountId
-        ? [{ id: accountId, label: profile.label, brokerName: profile.brokerName, currency, environment: profile.environment }]
+        ? [{ id: accountId, label: profile.label, brokerName: profile.brokerName, currency, environment: profile.environment,
+          executionEnvironment: executionEnvironmentFromSource(account.tradeMode ?? account.environment) }]
         : [],
       metrics: {
         balance: typeof metrics.balance === "number" ? metrics.balance : 0,

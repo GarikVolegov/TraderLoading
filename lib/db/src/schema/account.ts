@@ -7,6 +7,7 @@ export const accountTradesTable = pgTable(
     id: serial("id").primaryKey(),
     ticket: text("ticket").notNull(),
     source: text("source").notNull(),
+    executionEnvironment: text("execution_environment").$type<"simulation" | "real" | "unknown">().notNull().default("unknown"),
     symbol: text("symbol").notNull(),
     direction: text("direction").notNull(),
     volume: numeric("volume", { precision: 12, scale: 2 }).notNull(),

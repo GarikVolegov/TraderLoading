@@ -25,6 +25,16 @@ export const backtestTradesTable = pgTable("backtest_trades", {
   lotSize: numeric("lot_size", { precision: 8, scale: 2 }).notNull().default("0.01"),
   result: text("result").notNull(),
   pips: numeric("pips", { precision: 10, scale: 1 }),
+  // Immutable entry risk and execution economics. Nulls preserve incomplete
+  // legacy history: the final/trailing stop is not evidence of initial risk.
+  initialRisk: numeric("initial_risk", { precision: 18, scale: 6 }),
+  cost: numeric("cost", { precision: 18, scale: 6 }),
+  netPnl: numeric("net_pnl", { precision: 18, scale: 6 }),
+  netR: numeric("net_r", { precision: 18, scale: 8 }),
+  economicsProvenance: text("economics_provenance").notNull().default("legacy_unknown"),
+  currency: text("currency"),
+  openTime: timestamp("open_time", { withTimezone: true }),
+  closeTime: timestamp("close_time", { withTimezone: true }),
   notes: text("notes"),
   tradeDate: text("trade_date").notNull(),
   userId: text("user_id"),

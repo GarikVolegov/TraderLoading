@@ -1,8 +1,9 @@
-import { archiveTypeOf, parseTags, TYPE_ACCENT, type WikiSource } from "@/lib/archive";
+import { uiText } from "@/contexts/LanguageContext";
+import { archiveSourceKey, archiveTypeOf, parseTags, TYPE_ACCENT, type WikiSource } from "@/lib/archive";
 import { ARCHIVE_DND_TYPE, formatDate, typeIcon, typeLabel } from "./typeMeta";
 import { ArchiveStatusPill } from "./ArchiveStatusPill";
 
-export function ArchiveRow({ source, onOpen }: { source: WikiSource; onOpen: (id: number) => void }) {
+export function ArchiveRow({ source, onOpen }: { source: WikiSource; onOpen: (id: string) => void }) {
   const type = archiveTypeOf(source.kind);
   const accent = TYPE_ACCENT[type];
   const Icon = typeIcon(type);
@@ -10,12 +11,14 @@ export function ArchiveRow({ source, onOpen }: { source: WikiSource; onOpen: (id
   return (
     <button
       type="button"
-      draggable
+      draggable={!source.readOnly}
+      disabled={source.unavailable}
       onDragStart={(e) => {
+        if (source.readOnly) { e.preventDefault(); return; }
         e.dataTransfer.setData(ARCHIVE_DND_TYPE, String(source.id));
         e.dataTransfer.effectAllowed = "move";
       }}
-      onClick={() => onOpen(source.id)}
+      onClick={() => onOpen(archiveSourceKey(source))}
       className="flex w-full items-center gap-3 rounded-lg border border-border/40 bg-card/55 px-3.5 py-[var(--arc-rowpad,11px)] text-left transition-all hover:border-primary/45 hover:bg-card/70"
     >
       <span
@@ -32,6 +35,8 @@ export function ArchiveRow({ source, onOpen }: { source: WikiSource; onOpen: (id
         <span className="font-mono text-[10px] uppercase tracking-wide" style={{ color: accent }}>
           {typeLabel(type)}
         </span>
+        {source.originLabelKey && <span className="ml-2 text-[10px] text-muted-foreground">{uiText(source.originLabelKey)}</span>}
+        {source.unavailable && <span className="ml-2 text-[10px] text-muted-foreground">{uiText("reorg.archive.unavailable")}</span>}
       </div>
       <div className="hidden shrink-0 gap-1 sm:flex">
         {tags.map((t) => (

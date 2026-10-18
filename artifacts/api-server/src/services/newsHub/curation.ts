@@ -32,13 +32,7 @@ export interface NewsCurationOptions {
   pairs?: string;
   limit?: number;
   minScore?: number;
-  /**
-   * Guarantee at least this many articles when enough non-stale candidates
-   * exist: if fewer than `minKeep` pass `minScore`, the threshold is relaxed
-   * step by step and the next strongest articles backfill the feed. This keeps
-   * the feed alive on quiet news days without letting weak items outrank
-   * strong ones.
-   */
+  /** Deprecated: a minimum count never relaxes the quality gate. */
   minKeep?: number;
   /**
    * Final ordering of the curated set. `score` (default) keeps the strongest
@@ -117,7 +111,16 @@ export function isHardNoiseNews(article: NewsArticle): boolean {
   // Titles are tested one by one (not concatenated) so anchored patterns like
   // the question-headline rule work on each title independently.
   if (HARD_NOISE_TITLE_RE.test(article.title)) return true;
-  return Boolean(article.originalTitle && HARD_NOISE_TITLE_RE.test(article.originalTitle));
+  if (article.originalTitle && HARD_NOISE_TITLE_RE.test(article.originalTitle)) return true;
+  // A calendar preview phrased as a question or a multi-year rate forecast
+  // does not report an event. Keep original central-bank communications.
+  return article.sourceType !== "official" && [article.title, article.originalTitle].map(title =>
+    title?.replace(/\s+[-–—|]\s+[^?]{2,60}$/, "")
+  ).some(title =>
+    Boolean(title && (
+      (/\?\s*$/.test(title) && /\b(fed|fomc|ecb|bce|rates?|tass[oi])\b/i.test(title)) ||
+      /(?:forecast|prediction|prevision)[\s\S]{0,100}(?:next|prossim)[\s\S]{0,15}\d+[\s\S]{0,10}(?:years?|anni)/i.test(title)
+    )));
 }
 
 // Tokens used for near-duplicate detection across outlets (same story, slightly
@@ -291,6 +294,26 @@ export function scoreCuratedNewsArticle(
   return { score, reasons, penalties, topicKey: topicKey(article) };
 }
 
+export function mergeNewsAttribution(lead: NewsArticle, other: NewsArticle): NewsArticle {
+  if (!canMergeNewsEvents(lead, other)) return lead;
+  return { ...lead, sources: [...new Set([lead.source, ...(lead.sources ?? []), other.source, ...(other.sources ?? [])])],
+    articleIds: [...new Set([lead.articleId, ...(lead.articleIds ?? []), other.articleId, ...(other.articleIds ?? [])].filter((id): id is string => Boolean(id)))],
+    sourceDocumentIds: [...new Set([lead.sourceDocumentId, ...(lead.sourceDocumentIds ?? []), other.sourceDocumentId, ...(other.sourceDocumentIds ?? [])].filter((id): id is string => Boolean(id)))],
+    citationUrls: [...new Set([lead.url, lead.resolvedUrl, ...(lead.citationUrls ?? []), other.url, other.resolvedUrl, ...(other.citationUrls ?? [])].filter((url): url is string => Boolean(url)))] };
+}
+
+/** Attribution is not independent confirmation. Never conflate distinct releases. */
+export function canMergeNewsEvents(a: NewsArticle, b: NewsArticle): boolean {
+  if (a.release && b.release) {
+    if (a.release.eventType !== b.release.eventType || a.release.country !== b.release.country) return false;
+    if (a.eventId && b.eventId && a.eventId !== b.eventId) return false;
+    for (const field of ["referencePeriod", "releaseAt"] as const)
+      if (a.release[field] && b.release[field] && a.release[field] !== b.release[field]) return false;
+  }
+  const first = publishedTime(a), second = publishedTime(b);
+  return !first || !second || Math.abs(first - second) <= 4 * 3_600_000;
+}
+
 interface ScoredEntry {
   article: NewsArticle;
   curation: NewsCurationScore;
@@ -300,13 +323,20 @@ function strongestPerTopic(articles: NewsArticle[], options: NewsCurationOptions
   const strongestByTopic = new Map<string, ScoredEntry>();
   for (const article of articles) {
     const curation = scoreCuratedNewsArticle(article, options);
-    const existing = strongestByTopic.get(curation.topicKey);
+    const topic = `${curation.topicKey}:${article.release && article.eventId ? article.eventId : ""}`;
+    const existing = strongestByTopic.get(topic);
+    if (existing && !canMergeNewsEvents(existing.article, article)) {
+      strongestByTopic.set(`${topic}:${article.sourceDocumentId ?? article.url ?? publishedTime(article)}`, { article, curation });
+      continue;
+    }
     if (
       !existing ||
       curation.score > existing.curation.score ||
       (curation.score === existing.curation.score && publishedTime(article) > publishedTime(existing.article))
     ) {
-      strongestByTopic.set(curation.topicKey, { article, curation });
+      strongestByTopic.set(topic, { article: existing ? mergeNewsAttribution(article, existing.article) : article, curation });
+    } else if (existing) {
+      existing.article = mergeNewsAttribution(existing.article, article);
     }
   }
   return Array.from(strongestByTopic.values()).sort((a, b) => {
@@ -321,7 +351,8 @@ function dropNearDuplicates(entries: ScoredEntry[]): ScoredEntry[] {
   const kept: Array<{ entry: ScoredEntry; tokens: TitleTokenSets }> = [];
   for (const entry of entries) {
     const tokens = titleTokens(entry.article);
-    if (kept.some((other) => isNearDuplicate(tokens, other.tokens))) continue;
+    const duplicate = kept.find(other => canMergeNewsEvents(entry.article, other.entry.article) && ((entry.article.url && other.entry.article.url === entry.article.url) || isNearDuplicate(tokens, other.tokens)));
+    if (duplicate) { duplicate.entry.article = mergeNewsAttribution(duplicate.entry.article, entry.article); continue; }
     kept.push({ entry, tokens });
   }
   return kept.map((item) => item.entry);
@@ -333,36 +364,11 @@ export function selectCuratedNews(
 ): NewsArticle[] {
   const minScore = options.minScore ?? DEFAULT_MIN_SCORE;
   const limit = options.limit ?? DEFAULT_LIMIT;
-  const minKeep = Math.min(options.minKeep ?? 0, limit);
+  const usable = articles.filter(article => !isHardNoiseNews(article) && !article.isFallback && article.freshnessTier !== "stale" && article.freshnessTier !== "fallback");
+  const byScore = dropNearDuplicates(strongestPerTopic(usable, options));
+  const curated = byScore.filter(entry => entry.curation.score >= minScore);
 
-  const usable = articles.filter((article) => !isHardNoiseNews(article) && article.freshnessTier !== "stale");
-  const fresh = usable.filter((article) => article.freshnessTier !== "fallback" && !article.isFallback);
-  const fallbackTier = usable.filter((article) => article.freshnessTier === "fallback" || article.isFallback);
-
-  const byScore = dropNearDuplicates(strongestPerTopic(fresh, options));
-
-  const curated = byScore.filter((entry) => entry.curation.score >= minScore);
-  if (curated.length < minKeep) {
-    // Backfill preserves strongest-first order because `byScore` is sorted.
-    for (const entry of byScore) {
-      if (curated.length >= minKeep) break;
-      if (entry.curation.score >= minScore) continue;
-      curated.push(entry);
-    }
-  }
-
-  // Last resort for quiet news days (e.g. weekends, where everything ages past
-  // the freshness window): fill up to the floor with the strongest fallback-tier
-  // articles instead of returning an empty feed. Stale items stay excluded.
-  if (curated.length < minKeep && fallbackTier.length > 0) {
-    const fallbackByScore = dropNearDuplicates(strongestPerTopic(fallbackTier, options));
-    for (const entry of fallbackByScore) {
-      if (curated.length >= minKeep) break;
-      curated.push(entry);
-    }
-  }
-
-  const selected = curated.slice(0, limit).map((entry) => entry.article);
+  const selected = curated.slice(0, limit).map(entry => ({ ...entry.article, curationScore: entry.curation.score }));
   if (options.sort === "chronological") {
     return selected.sort((a, b) => publishedTime(b) - publishedTime(a));
   }

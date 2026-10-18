@@ -5,6 +5,7 @@
  */
 export function isValidSnapshot(html: string): boolean {
   if (html.includes("data-root-error-boundary")) return false;
+  if (html.includes("data-auth-unavailable")) return false;
   if (!/<h1[\s>]/.test(html)) return false;
   return true;
 }

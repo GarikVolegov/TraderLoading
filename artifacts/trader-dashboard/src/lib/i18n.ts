@@ -1,4 +1,5 @@
 import DICT_IT from "./i18n/dict.it";
+import { reorganizationDictionary } from "./i18n/reorganization";
 
 export type Language = "it" | "en" | "es" | "fr" | "de";
 
@@ -22,7 +23,7 @@ export function detectLanguageFromLocales(
 }
 
 /** Italian dictionary — default language and the `t()` fallback; the only one in the eager bundle. */
-export const FALLBACK_DICT: Record<string, string> = DICT_IT;
+export const FALLBACK_DICT: Record<string, string> = { ...DICT_IT, ...reorganizationDictionary("it") };
 
 export type TranslationKey = keyof typeof DICT_IT;
 
@@ -36,5 +37,5 @@ const DICT_LOADERS: Record<Language, () => Promise<{ default: Record<string, str
 
 /** Load a language's dictionary; non-Italian languages arrive as lazy chunks. */
 export async function loadDict(lang: Language): Promise<Record<string, string>> {
-  return (await DICT_LOADERS[lang]()).default;
+  return { ...(await DICT_LOADERS[lang]()).default, ...reorganizationDictionary(lang) };
 }

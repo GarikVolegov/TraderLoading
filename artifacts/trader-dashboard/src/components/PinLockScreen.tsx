@@ -77,7 +77,7 @@ export function PinLockScreen() {
           <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.15)]">
             <ShieldCheck className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold font-mono tracking-tight">TraderLoading</h1>
+          <h1 className="text-2xl font-bold font-sans tracking-tight">TraderLoading</h1>
           <p className="text-sm text-muted-foreground">{t("pin.enter")}</p>
         </div>
 

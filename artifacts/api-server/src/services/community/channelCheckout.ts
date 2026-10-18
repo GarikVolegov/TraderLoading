@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import { getMemberContext, hasPermission } from "../communityPermissions.js";
 import { isChannelFree, computeApplicationFee } from "./channelPricing.js";
+import { channelReturnUrls } from "./channelReturnUrls.js";
 
 export class ChannelNotFoundError extends Error { constructor() { super("channel_not_found"); this.name = "ChannelNotFoundError"; } }
 export class ChannelFreeError extends Error { constructor() { super("channel_free"); this.name = "ChannelFreeError"; } }
@@ -99,8 +100,7 @@ export async function createChannelCheckout(
   if (!acct || !acct.payoutsEnabled) throw new CreatorNotOnboardedError();
 
   const feeBps = platformFeeBps();
-  const successUrl = `${appBaseUrl}/?channel=${channelId}&unlock=success`;
-  const cancelUrl = `${appBaseUrl}/?channel=${channelId}&unlock=cancel`;
+  const { successUrl, cancelUrl } = channelReturnUrls(appBaseUrl, channel.communityId, channelId);
   const priceCents = channel.priceCents ?? 0;
 
   if (channel.accessModel === "subscription") {

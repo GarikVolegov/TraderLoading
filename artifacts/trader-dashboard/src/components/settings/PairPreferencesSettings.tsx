@@ -1,20 +1,16 @@
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { X, Plus, BarChart2 } from "lucide-react";
-import { useUpdateUserSettings, getGetUserSettingsQueryKey } from "@workspace/api-client-react";
+import { useSavePairs } from "@/hooks/useSavePairs";
+import { uiText } from "@/contexts/LanguageContext";
 import { useBackground } from "@/contexts/BackgroundContext";
-import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { getPairLabel } from "@workspace/pair-catalog";
 import { PairSelectionModal } from "@/components/PairSelectionModal";
 
 export function PairPreferencesSettings() {
-  const { selectedPairs, setSelectedPairs } = useBackground();
-  // Both handlers using this mutation (remove/update pairs) already show
-  // their own toast on catch — opt out of App.tsx's global mutation-error
-  // toast to avoid a double toast.
-  const updateMutation = useUpdateUserSettings({ mutation: { meta: { suppressGlobalError: true } } });
-  const qc = useQueryClient();
+  const { selectedPairs } = useBackground();
+  const { save, saving, failed } = useSavePairs();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
 
@@ -27,25 +23,13 @@ export function PairPreferencesSettings() {
       });
       return;
     }
-    setSelectedPairs(newPairs);
-    try {
-      await updateMutation.mutateAsync({ data: { selectedPairs: newPairs } });
-      qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
-      toast({ description: "Pair rimosso." });
-    } catch {
-      toast({ description: "Errore.", variant: "destructive" });
-    }
+    if (await save(newPairs)) toast({ description: "Pair rimosso." });
   };
 
   const handleConfirm = async (pairs: string[]) => {
-    setSelectedPairs(pairs);
-    setShowModal(false);
-    try {
-      await updateMutation.mutateAsync({ data: { selectedPairs: pairs } });
-      qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
+    if (await save(pairs)) {
+      setShowModal(false);
       toast({ description: "Pair aggiornati." });
-    } catch {
-      toast({ description: "Errore.", variant: "destructive" });
     }
   };
 
@@ -73,6 +57,7 @@ export function PairPreferencesSettings() {
         </CardHeader>
 
         <CardContent className="space-y-3 pt-0">
+          {failed && !showModal && <p role="alert" className="text-sm text-destructive">{uiText("pairs.save_error")}</p>}
           {/* Pair chips grid */}
           {selectedPairs.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -83,6 +68,7 @@ export function PairPreferencesSettings() {
                 >
                   {getPairLabel(sym)}
                   <button
+                    disabled={saving}
                     onClick={() => removePair(sym)}
                     aria-label={`Rimuovi ${sym}`}
                     className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-destructive/15 hover:text-destructive transition-colors ml-0.5"
@@ -106,6 +92,7 @@ export function PairPreferencesSettings() {
 
           {/* CTA button */}
           <button
+            disabled={saving}
             onClick={() => setShowModal(true)}
             className="w-full flex items-center justify-center gap-2 h-11 rounded-xl border border-dashed border-primary/30 text-sm font-medium text-primary hover:bg-primary/8 hover:border-primary/50 active:scale-[0.98] transition-all"
           >
@@ -121,6 +108,8 @@ export function PairPreferencesSettings() {
         open={showModal}
         onConfirm={handleConfirm}
         initialPairs={selectedPairs}
+        saving={saving}
+        failed={failed}
         dismissible
         onClose={() => setShowModal(false)}
       />

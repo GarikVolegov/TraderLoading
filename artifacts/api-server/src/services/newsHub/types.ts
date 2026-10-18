@@ -5,6 +5,15 @@ export interface NewsDeepDive {
 }
 
 export interface NewsArticle {
+  articleId?: string;
+  eventId?: string;
+  sourceDocumentId?: string;
+  articleIds?: string[];
+  sourceDocumentIds?: string[];
+  firstSeenAt?: string;
+  archiveStatus?: "persisted" | "unavailable";
+  release?: import("./eventEvidence.js").MacroRelease;
+  effects?: import("./eventEvidence.js").NewsPairEffect[];
   title: string;
   summary: string;
   originalTitle?: string;
@@ -30,6 +39,10 @@ export interface NewsArticle {
   ageMinutes?: number;
   isFallback?: boolean;
   qualityScore?: number;
+  curationScore?: number;
+  sourceType?: "official" | "publisher";
+  analysisMethod?: "llm" | "heuristic" | "none";
+  contentBasis?: "full_text" | "snippet" | "headline";
   deepDive?: NewsDeepDive;
 }
 
@@ -42,7 +55,12 @@ export interface NewsProviderStatus {
 }
 
 export interface NewsResponse {
+  modelStatus?:import("../directional/status.js").DirectionalModelState[];
+  lang?: string;
+  sourceCoverage?: NewsSourceCoverage[];
   articles: NewsArticle[];
+  sourceStatus?: "available" | "partial" | "unavailable";
+  analysisStatus?: "available" | "unavailable" | "disabled";
   fetchedAt: string;
   hasApiKey: boolean;
   source: "ai" | "rss";
@@ -58,11 +76,19 @@ export interface NewsResponse {
   totalCount?: number;
 }
 
+export interface NewsSourceCoverage {
+  source: string;
+  url: string;
+  status: "available" | "unavailable";
+  fetchedAt: string;
+  articleCount: number;
+}
+
 export type NewsEvent =
   | { type: "news_snapshot"; snapshot: NewsResponse }
   | { type: "news_article"; article: NewsArticle }
   | { type: "news_provider_status"; status: NewsProviderStatus }
-  | { type: "news_error"; message: string; provider?: string };
+  | { type: "news_error"; message: string; provider?: string; subscriptionKey?: string };
 
 export interface NewsRefreshRequest {
   pairs?: string;

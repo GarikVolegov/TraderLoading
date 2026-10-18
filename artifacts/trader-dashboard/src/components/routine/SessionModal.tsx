@@ -1,3 +1,7 @@
+import { useAuth } from "@clerk/react";
+import { useRoutineStorage } from "@/hooks/useRoutineStorage";
+import { readRoutineDraft, routineDraftKey } from "@/lib/routineDraft";
+import { checklistDay } from "@/lib/dailyChecklist";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -17,18 +21,45 @@ import { ReflectionStep } from "./ReflectionStep";
 import { TomorrowStep } from "./TomorrowStep";
 import { CompleteStep } from "./CompleteStep";
 
-export function SessionModal({
+export function SessionModal(props: { program: Program; onClose: () => void; onComplete: (answers: Answers) => Promise<void> }) {
+  const { userId } = useAuth();
+  return <RoutineSession key={userId ?? "anonymous"} {...props} />;
+}
+
+function RoutineSession({
   program,
   onClose,
   onComplete,
 }: {
   program: Program;
   onClose: () => void;
-  onComplete: (answers: Answers) => void;
+  onComplete: (answers: Answers) => Promise<void>;
 }) {
   const steps = program === "morning" ? MORNING_STEPS : EVENING_STEPS;
-  const [stepIdx, setStepIdx] = useState(0);
-  const [answers, setAnswers] = useState<Answers>({});
+  const storage = useRoutineStorage();
+  const [draft] = useState(() => readRoutineDraft(storage, program, steps.length));
+  const [stepIdx, setStepIdx] = useState(draft?.stepIdx ?? 0);
+  const [answers, setAnswers] = useState<Answers>(draft?.answers ?? {});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const sending = useRef(false);
+  const close = () => { if (!sending.current) onClose(); };
+  useEffect(() => {
+    try { storage?.setItem(routineDraftKey(program), JSON.stringify({ day: checklistDay(), stepIdx, answers })); }
+    catch { /* A blocked browser cache must not prevent server persistence. */ }
+  }, [storage, program, stepIdx, answers]);
+  const complete = async () => {
+    if (sending.current) return;
+    sending.current = true;
+    setSaving(true);
+    setSaveError(false);
+    try {
+      await onComplete(answers);
+      try { storage?.removeItem(routineDraftKey(program)); } catch { /* Optional local cache. */ }
+      void confetti({ particleCount: 100, spread: 70, origin: { y: 0.4 }, scalar: 0.9 });
+    } catch { setSaveError(true); }
+    finally { sending.current = false; setSaving(false); }
+  };
   const [breathingReady, setBreathingReady] = useState(false);
   const [vizDone, setVizDone] = useState(false);
 
@@ -46,7 +77,7 @@ export function SessionModal({
 
   const advance = () => {
     if (isLastStep) {
-      onComplete(answers);
+      void complete();
       return;
     }
     setStepIdx((i) => i + 1);
@@ -59,17 +90,7 @@ export function SessionModal({
 
   const Icon = step.icon;
   const panelRef = useRef<HTMLDivElement>(null);
-  const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose, panelRef });
-
-  // Fire confetti when reaching complete step
-  useEffect(() => {
-    if (step.type === "complete") {
-      const colors = program === "morning"
-        ? ["#f59e0b", "#fcd34d", "#ffffff"]
-        : ["#6366f1", "#a5b4fc", "#ffffff"];
-      setTimeout(() => confetti({ particleCount: 100, spread: 70, origin: { y: 0.4 }, colors, scalar: 0.9 }), 200);
-    }
-  }, [step.type, program]);
+  const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose: close, panelRef });
 
   return (
     <motion.div
@@ -101,7 +122,8 @@ export function SessionModal({
         </div>
 
         <button
-          onClick={onClose}
+          onClick={close}
+          disabled={saving}
           aria-label={uiText("common.close")}
           className="w-8 h-8 rounded-full border border-border/30 flex items-center justify-center hover:border-border/70 hover:bg-card/40 transition-all"
         >
@@ -132,8 +154,8 @@ export function SessionModal({
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               className="text-center"
             >
-              <h2 id={titleId} className="text-2xl sm:text-3xl font-bold font-mono tracking-tight">{step.title}</h2>
-              <p className="text-sm text-muted-foreground/60 mt-1">{step.subtitle}</p>
+              <h2 id={titleId} className="text-2xl sm:text-3xl font-bold font-sans tracking-tight">{isLastStep ? uiText("routine.save.review") : step.title}</h2>
+              <p className="text-sm text-muted-foreground/60 mt-1">{isLastStep ? uiText("routine.save.review_hint") : step.subtitle}</p>
             </motion.div>
           </AnimatePresence>
 
@@ -184,10 +206,13 @@ export function SessionModal({
         </div>
       </div>
 
+      {saveError && <p role="alert" className="px-6 py-3 text-sm text-red-300">{uiText("routine.save.failed")}</p>}
+
       {/* Bottom nav — always show back button; hide Avanti only on auto-advancing steps */}
       <div className="border-t border-border/20 px-4 sm:px-6 py-4 flex items-center justify-between shrink-0">
         <button
-          onClick={stepIdx === 0 ? onClose : goBack}
+          onClick={stepIdx === 0 ? close : goBack}
+          disabled={saving}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/30 text-sm text-muted-foreground/60 hover:text-muted-foreground/90 hover:border-border/60 transition-all"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -208,12 +233,13 @@ export function SessionModal({
             {step.type === "complete" ? (
               <motion.button
                 whileTap={{ scale: 0.97 }}
-                onClick={() => onComplete(answers)}
+                onClick={() => void complete()}
+                disabled={saving}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-white"
                 style={{ backgroundColor: accentColor }}
               >
                 <Check className="w-4 h-4" strokeWidth={3} />
-                Completa sessione
+                {saving ? uiText("routine.save.pending") : uiText("routine.save.complete")}
               </motion.button>
             ) : (
               <motion.button

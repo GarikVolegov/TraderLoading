@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import { executionEnvironmentFromSource, snapshotExecutionEnvironment } from "./executionEnvironment.js";
+import type { BrokerAccount, BrokerSnapshot } from "./types.js";
+for (const value of ["DEMO", " simulation ", "ACCOUNT_TRADE_MODE_DEMO"]) assert.equal(executionEnvironmentFromSource(value), "simulation");
+for (const value of ["LIVE", "real", "ACCOUNT_TRADE_MODE_REAL"]) assert.equal(executionEnvironmentFromSource(value), "real");
+for (const value of [undefined, null, 0, "", "contest", "paper-trading"]) assert.equal(executionEnvironmentFromSource(value), "unknown");
+const snapshot = (accounts: Partial<BrokerAccount>[], status: BrokerSnapshot["status"] = "connected") => ({ accounts, status }) as Pick<BrokerSnapshot, "accounts" | "status">;
+assert.equal(snapshotExecutionEnvironment({ accountId: "A" }, snapshot([{ id: "A", environment: "demo" }])), "unknown", "Editable display defaults do not establish execution environment");
+assert.equal(snapshotExecutionEnvironment({ accountId: "A" }, snapshot([{ id: "B", executionEnvironment: "real" }])), "unknown", "Another account cannot certify this one");
+assert.equal(snapshotExecutionEnvironment({ accountId: "A" }, snapshot([{ id: "A", executionEnvironment: "simulation" }], "offline")), "unknown");
+assert.equal(snapshotExecutionEnvironment({ accountId: "" }, snapshot([{ id: "A", executionEnvironment: "real" }, { id: "B", executionEnvironment: "simulation" }])), "unknown", "Ambiguous accounts stay unknown");
+assert.equal(snapshotExecutionEnvironment({ accountId: "A" }, snapshot([{ id: "A", executionEnvironment: "real" }])), "real");
+console.log("Source execution environment rejects defaults, stale connectivity and account mismatch");

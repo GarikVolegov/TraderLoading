@@ -18,15 +18,35 @@ function parseSslMode(raw: string | undefined): PoolConfig["ssl"] | undefined {
 }
 
 export function createPgPoolConfig(env: DbEnv = process.env): PoolConfig {
-  const connectionString = env.DATABASE_URL;
+  let connectionString = env.DATABASE_URL;
   if (!connectionString) {
     throw new Error(
       "DATABASE_URL must be set. Did you forget to provision a database?",
     );
   }
 
+  // Drizzle maps timestamp-without-time-zone values to UTC and writes explicit
+  // Dates as ISO UTC. PostgreSQL's DEFAULT now() must use the same convention.
+  // Keep trading-day/display rules in Europe/Rome; this only controls storage.
+  // pg merges DSN parameters after config fields, so move any existing options
+  // out of the URL and append UTC last to prevent a DSN timezone overriding it.
+  let url: URL;
+  try {
+    url = new URL(connectionString);
+  } catch {
+    // Native URL errors include their input, which can contain DB credentials.
+    throw new Error("DATABASE_URL must be a valid PostgreSQL URL");
+  }
+  const dsnOptions = url.searchParams.getAll("options").at(-1);
+  if (dsnOptions !== undefined) {
+    url.searchParams.delete("options");
+    connectionString = url.toString();
+  }
+  const options = [dsnOptions ?? env.PGOPTIONS, "-c TimeZone=UTC"].filter(Boolean).join(" ");
+
   const config: PoolConfig = {
     connectionString,
+    options,
     // Default of 20 connections per process; raise via PGPOOL_MAX. Keep the sum of
     // (max × instances) under the managed-Postgres connection cap (Neon pooler).
     max: parsePositiveInteger(env.PGPOOL_MAX, 20),

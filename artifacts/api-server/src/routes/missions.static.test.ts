@@ -20,7 +20,7 @@ assert.match(missions, /if \(!updatedMission\)/);
 
 // XP is incremented in SQL (xp = xp + delta), not read-modify-write, so
 // concurrent grants don't clobber each other.
-assert.match(missions, /xp: sql`\$\{profileTable\.xp\} \+ \$\{awardXp\}`/);
+assert.match(missions, /xp: sql`\$\{profileTable\.xp\} \+ \$\{awardXp \+ bonusXp\}`/);
 
 // The per-completion award is capped as defense in depth for legacy missions.
 assert.match(missions, /MISSION_XP_MAX/);

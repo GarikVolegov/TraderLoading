@@ -3,6 +3,7 @@ import type { Duplex } from "node:stream";
 import { WebSocket } from "ws";
 import type { NewsEvent, NewsRefreshRequest } from "./types.js";
 import type { NewsHubRuntime } from "./runtime.js";
+import { newsSubscriptionKey } from "./providerCorpus.js";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
 import { rejectWebSocketUpgrade } from "../webSocketAuth.js";
 import { isAtConnectionCapacity } from "../webSocketCapacity.js";
@@ -60,22 +61,15 @@ function formatPairs(pairs?: string): string[] {
 
 function matchesSnapshot(subscription: ClientSubscription | undefined, event: Extract<NewsEvent, { type: "news_snapshot" }>): boolean {
   if (!subscription) return false;
-  const watched = event.snapshot.watchedPairs ?? [];
-  if (subscription.formattedPairs.length === 0) return watched.length === 0;
-  return subscription.formattedPairs.every((pair) => watched.includes(pair));
-}
-
-function matchesArticle(subscription: ClientSubscription | undefined, event: Extract<NewsEvent, { type: "news_article" }>): boolean {
-  if (!subscription) return false;
-  if (subscription.formattedPairs.length === 0) return true;
-  const affected = event.article.affectedPairs ?? [];
-  return affected.some((pair) => subscription.formattedPairs.includes(pair));
+  return newsSubscriptionKey({pairs:subscription.pairs,lang:subscription.lang}) ===
+    newsSubscriptionKey({pairs:(event.snapshot.watchedPairs ?? []).join(","),lang:event.snapshot.lang});
 }
 
 export function attachNewsHubWebSocket(server: Server, runtime: NewsHubRuntime): NewsHubWebSocketServer {
   const wss = createControlWebSocketServer();
   const stopHeartbeat = startHeartbeat(wss);
   const subscriptions = new WeakMap<WebSocket, ClientSubscription>();
+  const subscriptionCleanups = new WeakMap<WebSocket, () => void>();
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "", "http://localhost");
     if (url.pathname !== "/api/news/ws") return;
@@ -97,14 +91,17 @@ export function attachNewsHubWebSocket(server: Server, runtime: NewsHubRuntime):
         continue;
       }
       if (event.type === "news_article") {
-        if (matchesArticle(subscriptions.get(client), event)) send(client, event);
+        // Raw transport messages enter the shared corpus. Only a curated,
+        // language-specific snapshot can reach a subscriber.
         continue;
       }
+      if (event.type === "news_error" && event.subscriptionKey && event.subscriptionKey !== newsSubscriptionKey(subscriptions.get(client) ?? {})) continue;
       send(client, event);
     }
   });
 
   wss.on("connection", (client) => {
+    client.on("close", () => subscriptionCleanups.get(client)?.());
     for (const status of runtime.getProviderStatuses()) send(client, { type: "news_provider_status", status });
 
     client.on("message", (raw) => {
@@ -115,6 +112,8 @@ export function attachNewsHubWebSocket(server: Server, runtime: NewsHubRuntime):
       }
 
       if (message.type === "refresh" || message.type === "subscribe") {
+        subscriptionCleanups.get(client)?.();
+        subscriptionCleanups.set(client,runtime.subscribe(requestFromMessage(message)));
         subscriptions.set(client, {
           pairs: typeof message.pairs === "string" ? message.pairs : undefined,
           formattedPairs: formatPairs(message.pairs),

@@ -8,7 +8,7 @@ function article(title: string, input: Partial<NewsArticle> = {}): NewsArticle {
     summary: input.summary ?? title,
     source: input.source ?? "Reuters",
     publishedAt: input.publishedAt ?? "2026-06-09T10:00:00.000Z",
-    url: input.url ?? "https://example.com/news",
+    url: input.url ?? `https://example.com/news/${encodeURIComponent(title)}`,
     sentiment: input.sentiment ?? null,
     imageUrl: input.imageUrl ?? null,
     affectedPairs: input.affectedPairs ?? ["XAU/USD"],
@@ -78,6 +78,14 @@ const duplicateStrong = article("US CPI surprise pushes Treasury yields higher",
 const deduped = selectCuratedNews([duplicateWeak, duplicateStrong], { pairs: "XAUUSD" });
 assert.equal(deduped.length, 1);
 assert.equal(deduped[0]?.impactScore, 9);
+const attributed = selectCuratedNews([
+  { ...duplicateWeak, source: "Reuters", url: "https://reuters.example/cpi" },
+  { ...duplicateStrong, source: "Federal Reserve", url: "https://fed.example/cpi", citationUrls: ["https://fed.example/release"] },
+], { pairs: "XAUUSD" });
+assert.equal(attributed.length, 1);
+assert.deepEqual(new Set(attributed[0].sources), new Set(["Reuters", "Federal Reserve"]));
+assert.ok(attributed[0].citationUrls?.includes("https://reuters.example/cpi"));
+assert.ok(attributed[0].citationUrls?.includes("https://fed.example/release"));
 
 const ranked = selectCuratedNews([
   article("Fed minutes show inflation concern", {
@@ -121,15 +129,14 @@ const chronological = selectCuratedNews([
 assert.equal(chronological.length, 2);
 assert.equal(chronological[0]?.title, "Fed minutes show inflation concern");
 
-// minKeep backfill: a below-threshold (but non-stale) article is kept when the
-// feed would otherwise starve, while stale/fallback items stay excluded.
+// Deprecated minKeep never lowers the quality gate, including on an empty feed.
 const weakButUsable = article("Gold steadies near record on rate cut expectations", {
   summary: "Bullion consolidates as markets weigh interest rates outlook.",
   impactScore: 5,
   matchConfidence: 0.5,
 });
 assert.equal(selectCuratedNews([weakButUsable], { pairs: "EURUSD" }).length, 0);
-assert.equal(selectCuratedNews([weakButUsable], { pairs: "EURUSD", minKeep: 3 }).length, 1);
+assert.equal(selectCuratedNews([weakButUsable], { pairs: "EURUSD", minKeep: 3 }).length, 0);
 const staleWeak = article("Fed rate decision shocks dollar markets", {
   summary: "The decision moves yields and FX volatility.",
   freshnessTier: "stale",
@@ -137,14 +144,14 @@ const staleWeak = article("Fed rate decision shocks dollar markets", {
 assert.equal(selectCuratedNews([staleWeak], { pairs: "XAUUSD", minKeep: 3 }).length, 0);
 
 // minKeep never overrides the strongest-first selection: the high-impact
-// article still leads when backfill kicks in.
+// article is retained while weaker candidates are excluded.
 const backfilled = selectCuratedNews([
-  weakButUsable,
+  { ...weakButUsable, affectedPairs: ["EUR/USD"], primaryAssets: ["EUR", "USD"] },
   article("US CPI surprise sends Treasury yields higher", {
     summary: "Inflation data reprices Fed expectations and pressures XAU/USD.",
   }),
 ], { pairs: "XAUUSD", minKeep: 2 });
-assert.equal(backfilled.length, 2);
+assert.equal(backfilled.length, 1);
 assert.equal(backfilled[0]?.title, "US CPI surprise sends Treasury yields higher");
 
 // Hard noise: price-forecast listicles never enter the feed, not even via
@@ -214,8 +221,8 @@ const trumpDeduped = selectCuratedNews([trumpA, trumpB], { pairs: "XAUUSD" });
 assert.equal(trumpDeduped.length, 1);
 assert.equal(trumpDeduped[0]?.impactScore, 9);
 
-// Re-published bank calls hours apart are merged too: headline function words
-// (dell', mentre, …) are ignored so the shared substance dominates.
+// Similar bank calls outside the 4h horizon have no confirmed common event id:
+// preserve both publications rather than guessing that they are one update.
 const msA = article("Morgan Stanley prevede un indebolimento del dollaro USA mentre la Fed mantiene i tassi", {
   summary: "La banca vede un dollaro più debole nel 2026.",
   impactScore: 8,
@@ -229,7 +236,7 @@ const msB = article("Morgan Stanley avverte che il dollaro USA potrebbe indeboli
   publishedAt: "2026-06-10T00:54:00.000Z",
 });
 const msDeduped = selectCuratedNews([msA, msB], { pairs: "XAUUSD" });
-assert.equal(msDeduped.length, 1);
+assert.equal(msDeduped.length, 2);
 
 // …but genuinely different stories on the same asset are NOT merged.
 const distinctStories = selectCuratedNews([
@@ -285,13 +292,28 @@ for (const noisy of [
 }
 
 // Quiet-day last resort: with zero fresh candidates, fallback-tier articles
-// backfill the floor instead of returning an empty feed (stale stays out).
+// do not backfill the brief or feed; an empty selection is truthful.
 const fallbackOnly = article("Fed rate decision moves Treasury yields", {
   summary: "The decision changes rate expectations for XAU/USD.",
   freshnessTier: "fallback",
   isFallback: true,
 });
 assert.equal(selectCuratedNews([fallbackOnly], { pairs: "XAUUSD" }).length, 0);
-assert.equal(selectCuratedNews([fallbackOnly], { pairs: "XAUUSD", minKeep: 3 }).length, 1);
+assert.equal(selectCuratedNews([fallbackOnly], { pairs: "XAUUSD", minKeep: 3 }).length, 0);
 
 console.log("news curation checks passed");
+
+// Even high-confidence macro matches must report events, not speculative
+// calendar questions or evergreen multi-year forecasts.
+for (const title of [
+  "Fed rate decision October 2026: hike or hold on October 28?",
+  "Fed Rate Decision October 2026: Hike or Hold on 28 Oct? - Admirals",
+  "Decisione sui tassi della Fed: rialzo o attesa il 28 ottobre?",
+  "Fed interest rate forecast for the next 5 years: 2026 to 2031",
+  "Previsioni sui tassi di interesse della Fed per i prossimi 5 anni",
+]) {
+  assert.equal(selectCuratedNews([article(title, { impactScore: 10 })], { pairs: "XAUUSD" }).length, 0, title);
+}
+const officialQuestion = { ...article("What next for monetary policy and interest rates?"), sourceType: "official" as const };
+assert.equal(selectCuratedNews([officialQuestion], { pairs: "XAUUSD" }).length, 1);
+assert.equal(selectCuratedNews([article("Fed cuts rates by 25 basis points after inflation report")], { pairs: "XAUUSD" }).length, 1);
