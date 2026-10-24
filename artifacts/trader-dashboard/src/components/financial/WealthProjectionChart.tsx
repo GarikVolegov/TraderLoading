@@ -161,6 +161,11 @@ export const WealthProjectionChart: React.FC<WealthProjectionChartProps> = ({
 
         {active && (
           <div className="flex items-center gap-2.5 shrink-0 text-[10px]">
+            {active.point.taxDragEuro !== undefined && active.point.taxDragEuro > 0 && (
+              <span className="text-red-400 font-semibold whitespace-nowrap hidden sm:inline" title="Impatto fiscale cumulato a questo step">
+                Drag: -{active.point.taxDragEuro.toLocaleString("it-IT")} €
+              </span>
+            )}
             <span className="text-muted-foreground whitespace-nowrap">
               Rendita:{" "}
               <strong className="text-[#E8C56A] font-bold">

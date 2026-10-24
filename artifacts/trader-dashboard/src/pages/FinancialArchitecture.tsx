@@ -20,6 +20,8 @@ import {
   ArrowUpRight,
   Clock,
   Zap,
+  Scale,
+  Landmark,
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
@@ -70,6 +72,7 @@ import { InstrumentDossierModal } from "@/components/financial/InstrumentDossier
 import { WealthAssetCard } from "@/components/financial/WealthAssetCard";
 import { WealthProjectionChart } from "@/components/financial/WealthProjectionChart";
 import { AdvisorVerdictCard } from "@/components/financial/AdvisorVerdictCard";
+import { TaxDoctrineModal } from "@/components/financial/TaxDoctrineModal";
 
 /**
  * Sintesi chirurgica dei regimi di timing per l'interfaccia a 3 colonne (Zero sovrapposizioni)
@@ -142,6 +145,9 @@ export default function FinancialArchitecture() {
 
   // Modal Dossier Trigger State [• ℹ]
   const [activeDossierToolId, setActiveDossierToolId] = useState<string | null>(null);
+
+  // Modal Dottrina Fiscale (Italia)
+  const [isTaxModalOpen, setIsTaxModalOpen] = useState<boolean>(false);
 
   // Auto-calculation reactive mode flag
   const [isAutoAllocation, setIsAutoAllocation] = useState<boolean>(true);
@@ -302,6 +308,9 @@ export default function FinancialArchitecture() {
         monthlySavingsCapacity: monthlyPAC,
         targetNetWorth: targetNetWorth,
         monthlyLivingExpenses: profile.monthlyExpenses,
+        taxCountry: profile.taxCountry || "IT",
+        taxRegime: profile.taxRegime || "DICHIARATIVO",
+        showNetOfTax: profile.showNetOfTax !== false,
       },
     });
   }, [
@@ -310,6 +319,9 @@ export default function FinancialArchitecture() {
     profile.tradingAllocation,
     profile.expectedMonthlyReturnPct,
     profile.monthlyExpenses,
+    profile.taxCountry,
+    profile.taxRegime,
+    profile.showNetOfTax,
     subAllocations,
     selectedHorizon,
     monthlyPAC,
@@ -335,6 +347,9 @@ export default function FinancialArchitecture() {
         const nextIncome =
           patch.externalStableIncome !== undefined ? Math.max(0, patch.externalStableIncome) : prev.externalStableIncome;
         const nextDependents = patch.hasDependents !== undefined ? patch.hasDependents : prev.hasDependents;
+        const nextTaxCountry = patch.taxCountry !== undefined ? patch.taxCountry : prev.taxCountry || "IT";
+        const nextTaxRegime = patch.taxRegime !== undefined ? patch.taxRegime : prev.taxRegime || "DICHIARATIVO";
+        const nextShowNetOfTax = patch.showNetOfTax !== undefined ? patch.showNetOfTax : prev.showNetOfTax !== false;
 
         if (isAutoAllocation) {
           const optimal = calculateOptimalLimenAllocation({
@@ -356,6 +371,9 @@ export default function FinancialArchitecture() {
             liquidityMonthsCovered: nextMonths,
             externalStableIncome: nextIncome,
             hasDependents: nextDependents,
+            taxCountry: nextTaxCountry,
+            taxRegime: nextTaxRegime,
+            showNetOfTax: nextShowNetOfTax,
             ...optimal,
           };
         } else {
@@ -386,6 +404,9 @@ export default function FinancialArchitecture() {
             liquidityMonthsCovered: nextMonths,
             externalStableIncome: nextIncome,
             hasDependents: nextDependents,
+            taxCountry: nextTaxCountry,
+            taxRegime: nextTaxRegime,
+            showNetOfTax: nextShowNetOfTax,
             liquidityAllocation: newLiq,
             reserveAllocation: newReserve,
             tradingAllocation: newTrading,
@@ -758,20 +779,83 @@ export default function FinancialArchitecture() {
             </div>
 
             {/* Switch Familiari a Carico */}
-            <div className="flex items-center justify-between rounded-lg border border-border/70 px-2.5 py-2 bg-[#07080b]/60">
+            <div className="flex items-center justify-between rounded-lg border border-border/70 px-2.5 py-1.5 bg-[#07080b]/60">
               <div className="flex flex-col">
-                <span className="font-mono text-[11px] font-bold uppercase text-foreground">
+                <span className="font-mono text-[10.5px] font-bold uppercase text-foreground">
                   Familiari a Carico
                 </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {profile.hasDependents ? "Sì (Figli / coniuge a carico)" : "No (Nessun carico familiare)"}
+                <span className="text-[9.5px] text-muted-foreground">
+                  {profile.hasDependents ? "Sì (A carico)" : "No (Nessun carico)"}
                 </span>
               </div>
               <Switch
                 checked={profile.hasDependents}
                 onCheckedChange={(checked) => updateBaseParam({ hasDependents: checked })}
-                className="scale-90"
+                className="scale-75"
               />
+            </div>
+
+            {/* Box Residenza Erariale & Regime Fiscale (Italia 🇮🇹) */}
+            <div className="rounded-lg border border-[#C5A059]/30 bg-[#07080b]/80 p-2 space-y-1.5 font-mono text-[10.5px]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Scale className="h-3.5 w-3.5 text-[#C5A059] shrink-0" />
+                  <span className="font-bold text-foreground uppercase tracking-tight text-[11px] truncate">
+                    Residenza Erariale
+                  </span>
+                  <ToolInfoTrigger
+                    toolId="taxRegime"
+                    toolName="Regime Fiscale Italiano"
+                    onClick={setActiveDossierToolId}
+                    size="xs"
+                  />
+                </div>
+                <Badge className="bg-[#C5A059]/15 border-[#C5A059]/40 text-[#E8C56A] text-[9.5px] px-1.5 py-0.2 shrink-0">
+                  Italia 🇮🇹 (26%)
+                </Badge>
+              </div>
+
+              {/* Selettore compatto Regime Dichiarativo vs Amministrato */}
+              <div className="flex items-center justify-between gap-1 pt-0.5">
+                <div className="grid grid-cols-2 gap-1 p-0.5 bg-[#0d0f14] rounded border border-border/70 flex-1 text-[9.5px]">
+                  <button
+                    type="button"
+                    onClick={() => updateBaseParam({ taxRegime: "DICHIARATIVO" })}
+                    className={`py-0.5 px-1 rounded transition-all font-bold text-center tracking-wider whitespace-nowrap ${
+                      (profile.taxRegime || "DICHIARATIVO") === "DICHIARATIVO"
+                        ? "bg-[#C5A059] text-[#07080b] shadow-sm"
+                        : "text-slate-400 hover:text-foreground"
+                    }`}
+                    title="Regime Dichiarativo: Broker esteri (IBKR, prop firm). Modello Redditi RT/RW/RM."
+                  >
+                    DICHIARATIVO
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateBaseParam({ taxRegime: "AMMINISTRATO" })}
+                    className={`py-0.5 px-1 rounded transition-all font-bold text-center tracking-wider whitespace-nowrap ${
+                      profile.taxRegime === "AMMINISTRATO"
+                        ? "bg-[#C5A059] text-[#07080b] shadow-sm"
+                        : "text-slate-400 hover:text-foreground"
+                    }`}
+                    title="Regime Amministrato: Banche e broker italiani (Fineco, Directa). Sostituto d'imposta."
+                  >
+                    AMMINISTRATO
+                  </button>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsTaxModalOpen(true)}
+                  className="h-6 px-1.5 text-[9.5px] border-[#C5A059]/40 text-[#E8C56A] hover:bg-[#C5A059]/15 shrink-0 font-bold gap-1"
+                  title="Apri il Compendio di Dottrina Fiscale per l'Italia"
+                >
+                  <Landmark className="h-2.5 w-2.5" />
+                  <span>Dottrina</span>
+                </Button>
+              </div>
             </div>
           </div>
 
