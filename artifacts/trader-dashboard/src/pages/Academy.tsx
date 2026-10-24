@@ -557,13 +557,6 @@ export default function Academy() {
   const [, navigate] = useLocation();
   const { entitlements } = useLimenEntitlements();
 
-  if (!entitlements.doctrineOfTime) {
-    return (
-      <PageLayout>
-        <LimenServiceLockGate serviceId="doctrine_of_time" />
-      </PageLayout>
-    );
-  }
   const params = new URLSearchParams(search);
   const _ref = validAcademyReferral(params.get("ref"));
   const tabParam = params.get("tab") ?? "canoni";
@@ -722,6 +715,14 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
     ],
     [isTeacher],
   );
+
+  if (!entitlements.doctrineOfTime) {
+    return (
+      <PageLayout quiet>
+        <LimenServiceLockGate serviceId="doctrine_of_time" />
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout quiet>

@@ -325,14 +325,6 @@ export default function Backtest() {
   const activeMethod = processQuery.data?.activeMethod ?? null;
   const { entitlements } = useLimenEntitlements();
 
-  if (!entitlements.forgeOfThePast) {
-    return (
-      <PageLayout>
-        <LimenServiceLockGate serviceId="forge_of_the_past" />
-      </PageLayout>
-    );
-  }
-
   const { data: sessions, isLoading, isError, refetch } = useGetBacktestSessions({
     query: {
       staleTime: 0,
@@ -426,6 +418,14 @@ export default function Backtest() {
     }
     return trades;
   }, [trades, tradeFilter]);
+
+  if (!entitlements.forgeOfThePast) {
+    return (
+      <PageLayout>
+        <LimenServiceLockGate serviceId="forge_of_the_past" />
+      </PageLayout>
+    );
+  }
 
   const showBattlesHub = new URLSearchParams(search).get("tab") === "battaglie" || new URLSearchParams(search).get("sub") === "battaglie";
 
