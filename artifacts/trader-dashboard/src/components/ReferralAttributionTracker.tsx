@@ -26,7 +26,7 @@ export function ReferralAttributionTracker() {
   }, [isLoaded, userId, path, search]);
 
   useEffect(() => {
-    if (!isLoaded || !userId || createdAt == null || !session || session.user.id !== userId) return;
+    if (!isLoaded || !userId || createdAt == null || !session || session?.user?.id !== userId) return;
     let storage: Storage;
     try { storage = window.sessionStorage; } catch { return; }
     const pending = claimSignupReferral(storage, userId, createdAt);

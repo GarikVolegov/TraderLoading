@@ -108,6 +108,19 @@ export function Seo({
 
     upsertCanonical(canonical);
 
+    try {
+      const v = "20261021g";
+      const iconLinks = document.head.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
+      iconLinks.forEach((l) => {
+        const href = l.getAttribute("href");
+        if (href && !href.includes("v=" + v)) {
+          l.href = href + (href.includes("?") ? "&" : "?") + "v=" + v;
+        }
+      });
+    } catch {
+      // Ignore DOM icon query errors in non-browser/prerender environments
+    }
+
     // hreflang alternates — replace our own set each render.
     replaceOwned('link[rel="alternate"]');
     for (const alt of alternates) {

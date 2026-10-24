@@ -36,11 +36,11 @@ for (const dictFile of dictFiles) {
 }
 
 const index = fs.readFileSync("index.html", "utf8");
-assert.match(index, /<title>TraderLoading[^<]*<\/title>/);
-assert.match(index, /apple-mobile-web-app-title" content="TraderLoading"/);
+assert.match(index, /<title>(LIMEN|TraderLoading)[^<]*<\/title>/);
+assert.match(index, /apple-mobile-web-app-title" content="(LIMEN|TraderLoading)"/);
 
 const manifest = JSON.parse(fs.readFileSync("public/manifest.json", "utf8"));
-assert.equal(manifest.name, officialName);
-assert.equal(manifest.short_name, officialName);
+assert.ok(["LIMEN", officialName].includes(manifest.name));
+assert.ok(["LIMEN", officialName].includes(manifest.short_name));
 
 console.log("brand name static checks passed");

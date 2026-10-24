@@ -34,6 +34,7 @@ assert.equal(parseAdminStatusFilter("weird"), "all");
 assert.equal(parseAdminStatusFilter(["suspended"]), "suspended");
 assert.equal(parseAdminSubscriptionPlan("pro"), "pro");
 assert.equal(parseAdminSubscriptionPlan("free"), "free");
+assert.equal(parseAdminSubscriptionPlan("tributo_150"), "tributo_150");
 assert.equal(parseAdminSubscriptionPlan("TEAM"), null);
 assert.equal(parseAdminSubscriptionPlan("weird"), null);
 assert.equal(parseAdminSubscriptionStatus("active"), "active");

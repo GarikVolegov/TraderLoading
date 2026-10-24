@@ -16,6 +16,7 @@ import logger from "../lib/logger.js";
 import { handleAcademyStripeEvent, isAcademySubscription } from "../services/academyBilling.js";
 import { syncConnectAccount } from "../services/payout/payoutService.js";
 import { grantOneTimeEntitlement, grantSubscriptionEntitlement, syncSubscriptionEntitlement, revokeChannelEntitlement } from "../services/community/channelEntitlements.js";
+import { handleArsenalOrderSession } from "./arsenal.js";
 
 type SubscriptionLike = {
   plan: string;
@@ -65,6 +66,10 @@ function toIsoFromSeconds(value: unknown): string | null {
 function serializeBillingStatus(subscription: SubscriptionLike | null, checkoutAvailable: boolean) {
   const plan = getPlanFromSubscription(subscription);
   const capabilities = getBillingCapabilities(subscription);
+  const isTrial =
+    subscription?.status === "trialing" ||
+    subscription?.source === "trial_1_day" ||
+    subscription?.plan === "trial";
   return {
     plan,
     pro: isProSubscription(subscription),
@@ -79,6 +84,7 @@ function serializeBillingStatus(subscription: SubscriptionLike | null, checkoutA
     // Whether POST /billing/checkout-session can succeed (Stripe env present).
     // The FE uses this to replace dead-end "Upgrade" CTAs with an honest notice.
     checkoutAvailable,
+    ...(isTrial ? { isTrial: true } : {}),
   };
 }
 
@@ -312,6 +318,39 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
     res.json(serializeBillingStatus(subscription, checkoutAvailable()));
   });
 
+  router.post("/billing/trial", async (req, res) => {
+    const user = requireBillingUser(req);
+    if (!user) {
+      res.status(401).json({ error: "Autenticazione richiesta." });
+      return;
+    }
+
+    const trialEnd = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await db
+      .insert(adminUserSubscriptionsTable)
+      .values({
+        userId: user.id,
+        plan: "pro",
+        status: "trialing",
+        source: "trial_1_day",
+        manualOverride: false,
+        currentPeriodEnd: trialEnd,
+      })
+      .onConflictDoUpdate({
+        target: adminUserSubscriptionsTable.userId,
+        set: {
+          plan: "pro",
+          status: "trialing",
+          source: "trial_1_day",
+          currentPeriodEnd: trialEnd,
+          updatedAt: new Date(),
+        },
+      });
+
+    const subscription = await getSubscription(user.id);
+    res.json(serializeBillingStatus(subscription, checkoutAvailable()));
+  });
+
   router.post("/billing/checkout-session", async (req, res) => {
     const user = requireBillingUser(req);
     if (!user) {
@@ -512,6 +551,10 @@ export async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Pr
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     const session = event.data.object as Stripe.Checkout.Session;
     const mdType = session.metadata?.type;
+    if (mdType === "arsenal_order") {
+      await handleArsenalOrderSession(session);
+      return;
+    }
     if (mdType === "channel_unlock" || mdType === "channel_sub") {
       await grantFromChannelSession(session, stripe);
       return;
@@ -539,22 +582,89 @@ export async function handleStripeEvent(event: Stripe.Event, stripe: Stripe): Pr
   }
 
   if (event.type === "charge.dispute.created" || event.type === "charge.refunded") {
-    // Revoke a paid-channel entitlement bought with this charge (mapped via the PI metadata
+    // Revoke a paid-channel entitlement bought with this charge (mapped via the PI or invoice metadata
     // we stamp at checkout) — otherwise the buyer keeps access after clawing back the money.
     const obj = event.data.object as Stripe.Charge | Stripe.Dispute;
-    const piId = typeof obj.payment_intent === "string" ? obj.payment_intent : obj.payment_intent?.id ?? null;
-    if (piId) {
-      try {
-        const pi = await stripe.paymentIntents.retrieve(piId);
-        if (pi.metadata?.type === "channel_unlock" && pi.metadata.channelId && pi.metadata.userId) {
-          await revokeChannelEntitlement(Number(pi.metadata.channelId), pi.metadata.userId);
+    let charge: Stripe.Charge | null = null;
+    if (obj.object === "charge") {
+      charge = obj as Stripe.Charge;
+    } else if (obj.object === "dispute") {
+      const dispute = obj as Stripe.Dispute;
+      const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+      if (chargeId) {
+        try {
+          charge = await stripe.charges.retrieve(chargeId);
+        } catch (err) {
+          logger.error({ chargeId, err }, "[billing] failed to retrieve charge for dispute");
         }
-      } catch (err) {
-        console.error("[billing] channel refund/dispute revoke failed:", err);
       }
     }
-    // A chargeback/refund does NOT cancel the Pro subscription on its own.
-    const customerId = await chargeCustomerId(event, stripe);
+
+    const piId = charge
+      ? (typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id ?? null)
+      : (typeof obj.payment_intent === "string" ? obj.payment_intent : obj.payment_intent?.id ?? null);
+
+    let pi: Stripe.PaymentIntent | null = null;
+    if (piId) {
+      try {
+        pi = await stripe.paymentIntents.retrieve(piId);
+      } catch (err) {
+        logger.error({ piId, err }, "[billing] channel refund/dispute PI retrieve failed");
+      }
+    }
+
+    // 1. One-time channel unlock refund/dispute
+    if (pi?.metadata?.type === "channel_unlock" || charge?.metadata?.type === "channel_unlock") {
+      const channelId = Number(pi?.metadata?.channelId ?? charge?.metadata?.channelId);
+      const userId = pi?.metadata?.userId ?? charge?.metadata?.userId;
+      if (channelId && userId) {
+        await revokeChannelEntitlement(channelId, userId);
+      }
+      return;
+    }
+
+    // 2. Channel subscription refund/dispute via PI metadata
+    if (pi?.metadata?.type === "channel_sub" || charge?.metadata?.type === "channel_sub") {
+      const channelId = Number(pi?.metadata?.channelId ?? charge?.metadata?.channelId);
+      const userId = pi?.metadata?.userId ?? charge?.metadata?.userId;
+      if (channelId && userId) {
+        await revokeChannelEntitlement(channelId, userId);
+      }
+      return;
+    }
+
+    // 3. Subscription invoice refund/dispute via Stripe invoicePayments
+    if (piId) {
+      try {
+        const payments = await stripe.invoicePayments.list({ payment: { type: "payment_intent", payment_intent: piId }, limit: 10 });
+        for (const payment of payments.data) {
+          const invoiceId = typeof payment.invoice === "string" ? payment.invoice : payment.invoice?.id;
+          if (!invoiceId) continue;
+          const invoice = await stripe.invoices.retrieve(invoiceId);
+          const subscriptionId = invoiceSubscriptionId(invoice);
+          if (subscriptionId) {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId);
+            if (sub.metadata?.type === "channel_sub") {
+              await syncSubscriptionEntitlement(sub.id, new Date(), "canceled");
+              if (sub.metadata.channelId && sub.metadata.userId) {
+                await revokeChannelEntitlement(Number(sub.metadata.channelId), sub.metadata.userId);
+              }
+              return;
+            }
+            if (isAcademySubscription(sub)) {
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        logger.error({ piId, err }, "[billing] invoicePayments retrieve during dispute/refund failed");
+      }
+    }
+
+    // A chargeback/refund on platform billing cancels the Pro subscription.
+    const customerId = charge
+      ? (typeof charge.customer === "string" ? charge.customer : charge.customer?.id ?? null)
+      : await chargeCustomerId(event, stripe);
     if (customerId) await revokeStripeProForCustomer(customerId, event.type);
   }
 }

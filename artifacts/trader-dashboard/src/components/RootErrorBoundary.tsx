@@ -51,27 +51,28 @@ export class RootErrorBoundary extends Component<Props, State> {
           justifyContent: "center",
           gap: "1.25rem",
           padding: "1.5rem",
-          background: "#07111f",
-          color: "#f8fafc",
+          background: "#0A0A0C",
+          color: "#F4F4F6",
           fontFamily:
-            "'Fira Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+            "'Space Grotesk', system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
           textAlign: "center",
         }}
       >
         <div style={{ fontSize: "2.5rem", lineHeight: 1 }}>⚠️</div>
-        <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>
-          Something went wrong
+        <h1 style={{ margin: 0, fontSize: "1.75rem", fontWeight: 700, fontFamily: "'Cinzel', serif", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          Errore Imprevisto
         </h1>
         <p
           style={{
             margin: 0,
             maxWidth: "32rem",
-            color: "#94a3b8",
-            lineHeight: 1.5,
+            color: "#8E8E99",
+            lineHeight: 1.6,
+            fontSize: "0.95rem",
           }}
         >
-          The app hit an unexpected error and could not load. Reloading usually
-          fixes it. If this keeps happening, please contact support.
+          Si è verificato un errore imprevisto durante l'esecuzione del protocollo.
+          Ricaricare la pagina di solito risolve il problema. Se persiste, contatta il supporto.
         </p>
         <button
           type="button"
@@ -80,14 +81,17 @@ export class RootErrorBoundary extends Component<Props, State> {
             cursor: "pointer",
             border: "none",
             borderRadius: "0.5rem",
-            padding: "0.75rem 1.5rem",
+            padding: "0.75rem 1.75rem",
             fontWeight: 700,
-            fontSize: "1rem",
-            background: "#51a488",
-            color: "#031a0d",
+            fontSize: "0.95rem",
+            background: "#C5A059",
+            color: "#0A0A0C",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            boxShadow: "0 4px 16px rgba(197, 160, 89, 0.25)",
           }}
         >
-          Reload
+          Ricarica
         </button>
         {isDev && (
           <pre
@@ -95,8 +99,8 @@ export class RootErrorBoundary extends Component<Props, State> {
               maxWidth: "min(48rem, 90vw)",
               overflow: "auto",
               textAlign: "left",
-              background: "#0d1527",
-              border: "1px solid #334155",
+              background: "#141418",
+              border: "1px solid #26262E",
               borderRadius: "0.5rem",
               padding: "1rem",
               fontSize: "0.75rem",

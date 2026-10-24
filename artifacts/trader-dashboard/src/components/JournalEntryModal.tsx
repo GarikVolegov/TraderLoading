@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, UploadCloud, Loader2, Image as ImageIcon, Tag, Plus, Star, Hash, ClipboardCheck } from "lucide-react";
+import { X, UploadCloud, Loader2, Image as ImageIcon, Tag, Plus, Star, Hash, ClipboardCheck, Target, Zap } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
@@ -181,7 +181,7 @@ function SmartTagInput({ value, onChange, onSaveTag, savedTags }: SmartTagInputP
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.4a76dcb4c0")}</span>
                 </div>
               )}
-              {suggestions.map((s, i) => (
+              {suggestions.map((s) => (
                 <button
                   key={s.tag}
                   type="button"
@@ -380,6 +380,38 @@ export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketD
     setExecutionEnvironment(current => current || (contextSession.mode === "application" ? "real" : "simulation"));
   }, [contextSession, initialPair, isOpen]);
 
+  const operativePlanData = (() => {
+    if (!isOpen || Boolean(entry)) return null;
+    const pair = symbol || initialPair;
+    if (!pair) return null;
+    try {
+      const raw = localStorage.getItem(`tl_cockpit_operative_plan_${pair}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.entryPrice || parsed.setupName || parsed.stopLoss) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  })();
+
+  const handleImportOperativePlan = () => {
+    if (!operativePlanData) return;
+    if (operativePlanData.asset) setSymbol(operativePlanData.asset);
+    if (operativePlanData.bias) setDirection(operativePlanData.bias === "short" ? "sell" : "buy");
+    if (operativePlanData.entryPrice) setEntryPrice(operativePlanData.entryPrice);
+    if (operativePlanData.stopLoss) setStopLoss(operativePlanData.stopLoss);
+    if (operativePlanData.riskAmount) setInitialRisk(operativePlanData.riskAmount.replace(/[^0-9.]/g, ""));
+    if (operativePlanData.setupName) setTitle(prev => prev || operativePlanData.setupName);
+    if (operativePlanData.notes) setContent(prev => prev ? `${prev}\n\n${operativePlanData.notes}` : operativePlanData.notes);
+    if (!executionEnvironment) setExecutionEnvironment("real");
+    toast({
+      title: "Piano Operativo Importato",
+      description: `Asset ${operativePlanData.asset}, Entry e Stop Loss caricati con successo nel trade.`,
+    });
+  };
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map(file => Object.assign(file, {
       preview: URL.createObjectURL(file)
@@ -530,6 +562,43 @@ export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketD
           <p className="text-muted-foreground">{copy("outsidePlan")}</p>
           {contextSession?.plan && <p className="text-muted-foreground">Piano: {contextSession.plan.decision === "wait" ? `attesa · ${contextSession.plan.waitReason}` : `${contextSession.plan.market} · ${contextSession.plan.setup}`}</p>}
         </div>}
+
+        {operativePlanData && !entry && (
+          <div className="p-3 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/15 via-[#1a1c26] to-[#0e1017] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-md">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shrink-0">
+                <Target size={16} />
+              </div>
+              <div className="text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-foreground">
+                    Piano Operativo Rilevato · {operativePlanData.asset}
+                  </span>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold uppercase ${
+                    operativePlanData.bias === "short" ? "text-rose-400 bg-rose-500/10" : "text-emerald-400 bg-emerald-500/10"
+                  }`}>
+                    {operativePlanData.bias}
+                  </span>
+                </div>
+                <div className="text-muted-foreground font-mono text-[11px] mt-0.5">
+                  {operativePlanData.setupName && <strong className="text-foreground mr-1.5">{operativePlanData.setupName} ·</strong>}
+                  {operativePlanData.entryPrice && <span>Entry: <strong className="text-primary">{operativePlanData.entryPrice}</strong> </span>}
+                  {operativePlanData.stopLoss && <span>· SL: <strong className="text-rose-400">{operativePlanData.stopLoss}</strong> </span>}
+                  {operativePlanData.riskAmount && <span>· Rischio: <strong className="text-foreground">{operativePlanData.riskAmount}</strong></span>}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleImportOperativePlan}
+              className="text-xs font-mono px-3.5 py-1.5 rounded-lg bg-primary text-black font-bold hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow cursor-pointer shrink-0 self-start sm:self-center"
+            >
+              <Zap size={13} />
+              <span>⚡ Importa nel Trade</span>
+            </button>
+          </div>
+        )}
 
         <div className="grid gap-6 py-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

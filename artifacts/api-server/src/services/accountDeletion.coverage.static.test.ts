@@ -54,6 +54,9 @@ for (const table of [
   "chat_file_access", // owner_user_id / peer_user_id
   "community_moderation_log", // actor_user_id / target_user_id
   "referrals", // referrer_user_id / referred_user_id
+  "academy_attributions", // buyer_user_id / affiliate_user_id
+  "academy_commissions", // buyer_user_id / affiliate_user_id
+  "academy_payouts", // affiliate_user_id / requested_by
 ]) {
   assert.match(
     deletionSrc,

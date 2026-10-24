@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Delete, ShieldCheck, AlertCircle } from "lucide-react";
+import { Delete, AlertCircle } from "lucide-react";
 import { usePinLock } from "@/contexts/PinLockContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -65,8 +65,8 @@ export function PinLockScreen() {
   if (!isLocked) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center px-6">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5 pointer-events-none" />
+    <div className="fixed inset-0 z-[200] bg-[#0A0A0C] flex flex-col items-center justify-center px-6">
+      <div className="absolute inset-0 bg-[radial-gradient(50%_40%_at_50%_30%,rgba(197,160,89,0.08),transparent_70%)] pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -74,11 +74,11 @@ export function PinLockScreen() {
         className="flex flex-col items-center gap-8 relative z-10"
       >
         <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.15)]">
-            <ShieldCheck className="w-8 h-8 text-primary" />
+          <div className="w-16 h-16 rounded-xl bg-[#141418] border border-[#C5A059]/40 flex items-center justify-center text-[#C5A059] shadow-[0_0_25px_rgba(197,160,89,0.2)] overflow-hidden">
+            <img src="/app-icon-192.png?v=20261021g" alt="LIMEN" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-2xl font-bold font-sans tracking-tight">TraderLoading</h1>
-          <p className="text-sm text-muted-foreground">{t("pin.enter")}</p>
+          <h1 className="text-xl font-bold font-serif tracking-[0.2em] text-[#F4F4F6]">LIMEN</h1>
+          <p className="text-xs font-mono uppercase tracking-widest text-[#8E8E98]">{t("pin.enter")}</p>
         </div>
 
         <motion.div
@@ -90,16 +90,16 @@ export function PinLockScreen() {
             <motion.div
               key={i}
               animate={{
-                scale: pin.length > i ? 1.1 : 1,
+                scale: pin.length > i ? 1.15 : 1,
                 backgroundColor: error
-                  ? "rgba(239,68,68,0.3)"
+                  ? "rgba(139,30,30,0.6)"
                   : pin.length > i
-                  ? "rgb(34,197,94)"
+                  ? "#C5A059"
                   : "transparent",
               }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
               className={`w-4 h-4 rounded-full border-2 ${
-                error ? "border-destructive" : pin.length > i ? "border-primary" : "border-border"
+                error ? "border-rose-500" : pin.length > i ? "border-[#C5A059]" : "border-[#3A3A48]"
               }`}
             />
           ))}
@@ -111,7 +111,7 @@ export function PinLockScreen() {
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-2 text-destructive text-sm"
+              className="flex items-center gap-2 text-rose-400 text-xs font-mono"
             >
               <AlertCircle className="w-4 h-4" />
               {t("pin.incorrect")}
@@ -126,13 +126,13 @@ export function PinLockScreen() {
               onClick={() => handleKey(key)}
               aria-label={key === "⌫" ? t("pin.delete") : key || undefined}
               aria-hidden={!key}
-              whileTap={{ scale: key ? 0.9 : 1 }}
+              whileTap={{ scale: key ? 0.92 : 1 }}
               disabled={!key}
-              className={`h-16 rounded-2xl text-xl font-semibold transition-colors ${
+              className={`h-14 rounded-xl text-lg font-mono font-bold transition-all ${
                 key === "⌫"
-                  ? "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                  ? "text-[#8E8E98] hover:text-[#F4F4F6] hover:bg-[#1A1A22]"
                   : key
-                  ? "bg-secondary/50 border border-border hover:bg-secondary hover:border-primary/40 text-foreground"
+                  ? "bg-[#141418] border border-[#252530] hover:border-[#C5A059]/60 hover:bg-[#1C1C24] text-[#F4F4F6] shadow-sm"
                   : ""
               }`}
             >
@@ -141,7 +141,7 @@ export function PinLockScreen() {
           ))}
         </div>
 
-        <p className="text-xs text-muted-foreground/50">{t("pin.remembered")}</p>
+        <p className="text-[11px] font-mono tracking-wider text-[#666675]">{t("pin.remembered")}</p>
       </motion.div>
     </div>
   );

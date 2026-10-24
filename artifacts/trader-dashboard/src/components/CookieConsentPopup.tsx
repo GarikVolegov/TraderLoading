@@ -36,14 +36,14 @@ export function CookieConsentPopup() {
   };
 
   return (
-    <div className="fixed inset-x-3 bottom-[var(--bottom-nav-clearance)] lg:bottom-5 lg:left-[calc(var(--app-inset-left)+0.75rem)] z-[80] mx-auto max-w-xl rounded-lg border border-border bg-background/95 p-4 shadow-2xl backdrop-blur">
+    <div className="cookie-consent fixed inset-x-3 bottom-[var(--bottom-nav-clearance)] lg:bottom-5 lg:left-[calc(var(--app-inset-left)+0.75rem)] z-[80] mx-auto max-w-xl rounded-lg border border-border bg-background/95 p-4 shadow-2xl backdrop-blur">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-5 text-muted-foreground">
           {analyticsConfigured
             ? t("cookie.banner.analytics")
             : t("cookie.banner.technical")}
         </p>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {/* Con GA configurato il rifiuto è un obbligo GDPR; con soli cookie
               tecnici non c'è nulla da rifiutare, basta prendere atto. */}
           {analyticsConfigured && (

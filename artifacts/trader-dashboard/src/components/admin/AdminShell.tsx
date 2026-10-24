@@ -10,6 +10,7 @@ import {
   Shield,
   Star,
   Users,
+  UserCheck,
 } from "lucide-react";
 import { type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
@@ -22,6 +23,12 @@ const navItems = [
     labelKey: "admin.nav.dashboard",
     icon: BarChart3,
     permission: "dashboard.read",
+  },
+  {
+    href: "/admin/candidature",
+    labelKey: "admin.nav.candidature",
+    icon: UserCheck,
+    permission: "users.read",
   },
   { href: "/admin/users", labelKey: "admin.nav.users", icon: Users, permission: "users.read" },
   {
@@ -105,11 +112,11 @@ export function AdminShell({
   );
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border bg-card/95 lg:block">
+    <div className="admin-shell min-h-dvh bg-background text-foreground">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 overflow-y-auto border-r border-border bg-card/95 lg:block">
         <div className="flex h-16 items-center border-b border-border px-5">
           <div>
-            <p className="text-sm font-semibold">TraderLoadings</p>
+            <p className="text-sm font-semibold font-display tracking-wider">LIMEN PROTOCOL</p>
             <p className="text-xs text-muted-foreground">{t("admin.brand.console")}</p>
           </div>
         </div>
@@ -147,7 +154,7 @@ export function AdminShell({
           </div>
           <Link
             href="/"
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
             {t("admin.header.back_app")}
@@ -166,7 +173,7 @@ export function AdminShell({
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors",
+                    "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors",
                     active
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",

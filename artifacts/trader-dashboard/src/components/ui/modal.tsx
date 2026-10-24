@@ -82,6 +82,8 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
       if (event.defaultPrevented) return;
+      event.preventDefault();
+      event.stopPropagation();
       onClose();
       return;
     }
@@ -109,7 +111,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
   const modal = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+        <div className="app-modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -130,21 +132,21 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: "spring", duration: 0.4, bounce: 0.1 }}
             className={cn(
-              "relative z-[100] w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl focus:outline-none",
+              "app-modal-panel relative z-[100] flex max-h-[calc(100dvh-3rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl focus:outline-none",
               className
             )}
           >
-            <div className="flex items-center justify-between border-b border-border/50 px-6 py-4">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/50 px-6 py-4">
               <h2 id={titleId} className="text-lg font-semibold font-sans">{title}</h2>
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6">{children}</div>
+            <div className="app-modal-body min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">{children}</div>
           </motion.div>
         </div>
       )}

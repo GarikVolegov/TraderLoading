@@ -1,29 +1,38 @@
-/* TraderLoading · Midnight / Cyan
-   Shared by public pages, workspaces, cockpit, portals and replay.
-   Keep domain colours (P&L, sessions, divisions) separate from brand chrome. */
+/* LIMEN PROTOCOL (TL: Trans-Limen) · Nero Ossidiana / Pietra Antracite / Oro Brunito / Cremisi Scuro
+   Palette Ufficiale:
+   - Nero Ossidiana (#0A0A0C) -> --surface-0: 240 9% 4%
+   - Grigio Antracite/Pietra (#141418) -> --surface-1: 240 9% 9%
+   - Bordi sottili Grigio Ferro (#26262E) -> --border-subtle: 240 10% 16%
+   - Testo Principale Avorio/Bianco Puro (#F4F4F6) -> --text-hi: 240 11% 96%
+   - Accenti di stato Oro Brunito / Bronzo Antico (#C5A059) -> --brand-accent: 40 48% 56%
+   - Violazioni del Codice Rosso Cremisi Scuro (#8B1E1E) -> --limen-crimson: 0 64% 33%
+*/
 :root {
   color-scheme: dark;
-  --font-sans: "Fira Sans", sans-serif;
-  --font-mono: "Fira Code", monospace;
-  --surface-0: 216 43% 7%;
-  --surface-1: 214 43% 10%;
-  --surface-2: 214 35% 14%;
-  --surface-3: 214 30% 18%;
-  --border-subtle: 215 31% 20%;
-  --border-strong: 214 25% 33%;
-  --text-hi: 212 32% 92%;
-  --text-lo: 215 22% 68%;
-  --text-faint: 215 16% 58%;
-  --brand-accent: 191 67% 60%;
-  --brand-accent-hover: 191 72% 72%;
+  --font-display: "Cinzel", "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Space Grotesk", "Inter", "Fira Sans", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --surface-0: 240 9% 4%;
+  --surface-1: 240 9% 9%;
+  --surface-2: 240 10% 12%;
+  --surface-3: 240 10% 16%;
+  --border-subtle: 240 10% 16%;
+  --border-strong: 240 10% 25%;
+  --text-hi: 240 11% 96%;
+  --text-lo: 240 8% 70%;
+  --text-faint: 240 6% 54%;
+  --brand-accent: 40 48% 56%;
+  --brand-accent-hover: 40 53% 65%;
+  --limen-gold: 40 48% 56%;
+  --limen-crimson: 0 64% 33%;
   /* Compatibility aliases; there is one brand accent. */
   --accent-jade: var(--brand-accent);
   --accent-jade-soft: var(--brand-accent-hover);
-  --success: 158 39% 59%;
+  --success: 152 38% 52%;
   --success-foreground: var(--surface-0);
-  --destructive: 0 78% 72%;
-  --destructive-foreground: var(--surface-0);
-  --warning: 39 84% 67%;
+  --destructive: 0 65% 45%;
+  --destructive-foreground: var(--text-hi);
+  --warning: 40 48% 56%;
   --warning-foreground: var(--surface-0);
   --background: var(--surface-0);
   --foreground: var(--text-hi);
@@ -42,13 +51,13 @@
   --border: var(--border-subtle);
   --input: var(--border-strong);
   --ring: var(--brand-accent);
-  --radius: 0.625rem;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --radius: 0.375rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
   --radius-pill: 9999px;
-  --shadow-panel: 0 4px 16px rgb(0 0 0 / 0.12);
-  --shadow-overlay: 0 20px 64px rgb(0 0 0 / 0.35);
+  --shadow-panel: 0 8px 28px rgb(0 0 0 / 0.45);
+  --shadow-overlay: 0 24px 72px rgb(0 0 0 / 0.65);
   --tl-surface-panel: var(--surface-1);
   --tl-surface-raised: var(--surface-2);
   --tl-border-strong: var(--border-strong);

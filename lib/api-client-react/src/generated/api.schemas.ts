@@ -5,6 +5,281 @@
  * TraderLoading API
  * OpenAPI spec version: 0.1.0
  */
+export type BacktestChartPreferencesVersion = typeof BacktestChartPreferencesVersion[keyof typeof BacktestChartPreferencesVersion];
+
+
+export const BacktestChartPreferencesVersion = {
+  NUMBER_1: 1,
+} as const;
+
+export type BacktestChartSettingsChartType = typeof BacktestChartSettingsChartType[keyof typeof BacktestChartSettingsChartType];
+
+
+export const BacktestChartSettingsChartType = {
+  candles: 'candles',
+  heikin: 'heikin',
+  bars: 'bars',
+  line: 'line',
+  area: 'area',
+} as const;
+
+export type BacktestChartSettingsChartBgType = typeof BacktestChartSettingsChartBgType[keyof typeof BacktestChartSettingsChartBgType];
+
+
+export const BacktestChartSettingsChartBgType = {
+  solid: 'solid',
+  gradient: 'gradient',
+} as const;
+
+export type BacktestChartSettingsTradeLineMode = typeof BacktestChartSettingsTradeLineMode[keyof typeof BacktestChartSettingsTradeLineMode];
+
+
+export const BacktestChartSettingsTradeLineMode = {
+  hover_or_latest: 'hover_or_latest',
+  all: 'all',
+  none: 'none',
+} as const;
+
+export type BacktestChartSettingsGridStyle = typeof BacktestChartSettingsGridStyle[keyof typeof BacktestChartSettingsGridStyle];
+
+
+export const BacktestChartSettingsGridStyle = {
+  solid: 'solid',
+  dashed: 'dashed',
+  dotted: 'dotted',
+} as const;
+
+export type BacktestChartSettingsCrosshairStyle = typeof BacktestChartSettingsCrosshairStyle[keyof typeof BacktestChartSettingsCrosshairStyle];
+
+
+export const BacktestChartSettingsCrosshairStyle = {
+  solid: 'solid',
+  dashed: 'dashed',
+  dotted: 'dotted',
+} as const;
+
+export type BacktestChartSettingsPriceScaleMode = typeof BacktestChartSettingsPriceScaleMode[keyof typeof BacktestChartSettingsPriceScaleMode];
+
+
+export const BacktestChartSettingsPriceScaleMode = {
+  normal: 'normal',
+  logarithmic: 'logarithmic',
+  percentage: 'percentage',
+} as const;
+
+export type BacktestChartSettingsVisibleTools = {[key: string]: boolean};
+
+/**
+ * Portable appearance and drawing defaults; excludes execution costs, ticket inputs, replay state and trades. Field definitions are shared in contracts/backtestChart.ts.
+ */
+export interface BacktestChartSettings {
+  showSessions?: boolean;
+  magnet?: boolean;
+  showTradesOnChart?: boolean;
+  candleBordersVisible?: boolean;
+  candleWicksVisible?: boolean;
+  showVertGrid?: boolean;
+  showHorzGrid?: boolean;
+  showWatermark?: boolean;
+  showOhlcLegend?: boolean;
+  showBarChange?: boolean;
+  showLastPriceLine?: boolean;
+  showHighLowLines?: boolean;
+  /** @maxLength 64 */
+  toolColor?: string;
+  /** @maxLength 64 */
+  candleUpColor?: string;
+  /** @maxLength 64 */
+  candleDownColor?: string;
+  /** @maxLength 64 */
+  wickUpColor?: string;
+  /** @maxLength 64 */
+  wickDownColor?: string;
+  /** @maxLength 64 */
+  borderUpColor?: string;
+  /** @maxLength 64 */
+  borderDownColor?: string;
+  /** @maxLength 64 */
+  lineColor?: string;
+  /** @maxLength 64 */
+  areaTopColor?: string;
+  /** @maxLength 64 */
+  areaBottomColor?: string;
+  /** @maxLength 64 */
+  chartBgColor1?: string;
+  /** @maxLength 64 */
+  chartBgColor2?: string;
+  /** @maxLength 64 */
+  gridColor?: string;
+  /** @maxLength 64 */
+  crosshairColor?: string;
+  /** @maxLength 64 */
+  textColor?: string;
+  /** @maxLength 64 */
+  axisColor?: string;
+  /** @maxLength 64 */
+  volumeUpColor?: string;
+  /** @maxLength 64 */
+  volumeDownColor?: string;
+  chartType?: BacktestChartSettingsChartType;
+  chartBgType?: BacktestChartSettingsChartBgType;
+  tradeLineMode?: BacktestChartSettingsTradeLineMode;
+  gridStyle?: BacktestChartSettingsGridStyle;
+  crosshairStyle?: BacktestChartSettingsCrosshairStyle;
+  priceScaleMode?: BacktestChartSettingsPriceScaleMode;
+  visibleTools?: BacktestChartSettingsVisibleTools;
+  /**
+     * @minimum 1
+     * @maximum 8
+     */
+  toolWidth?: number;
+  /** @maxLength 120 */
+  watermarkText?: string;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  watermarkOpacity?: number;
+}
+
+export type BacktestChartPreferencesFavoriteToolsItem = typeof BacktestChartPreferencesFavoriteToolsItem[keyof typeof BacktestChartPreferencesFavoriteToolsItem];
+
+
+export const BacktestChartPreferencesFavoriteToolsItem = {
+  cursor: 'cursor',
+  trend: 'trend',
+  ray: 'ray',
+  arrow: 'arrow',
+  hline: 'hline',
+  vline: 'vline',
+  rect: 'rect',
+  fib: 'fib',
+  ruler: 'ruler',
+  longPosition: 'longPosition',
+  shortPosition: 'shortPosition',
+  text: 'text',
+} as const;
+
+export type BacktestChartIndicatorType = typeof BacktestChartIndicatorType[keyof typeof BacktestChartIndicatorType];
+
+
+export const BacktestChartIndicatorType = {
+  ema: 'ema',
+  sma: 'sma',
+  wma: 'wma',
+  bb: 'bb',
+  vwap: 'vwap',
+  rsi: 'rsi',
+  macd: 'macd',
+  atr: 'atr',
+  stoch: 'stoch',
+  volume: 'volume',
+  custom: 'custom',
+} as const;
+
+export type BacktestChartIndicatorSource = typeof BacktestChartIndicatorSource[keyof typeof BacktestChartIndicatorSource];
+
+
+export const BacktestChartIndicatorSource = {
+  close: 'close',
+  open: 'open',
+  high: 'high',
+  low: 'low',
+  hl2: 'hl2',
+  ohlc4: 'ohlc4',
+} as const;
+
+export type BacktestChartIndicatorMa = typeof BacktestChartIndicatorMa[keyof typeof BacktestChartIndicatorMa];
+
+
+export const BacktestChartIndicatorMa = {
+  ema: 'ema',
+  sma: 'sma',
+  wma: 'wma',
+  none: 'none',
+} as const;
+
+export type BacktestChartIndicatorPane = typeof BacktestChartIndicatorPane[keyof typeof BacktestChartIndicatorPane];
+
+
+export const BacktestChartIndicatorPane = {
+  price: 'price',
+  sub: 'sub',
+  volume: 'volume',
+} as const;
+
+export interface BacktestChartIndicator {
+  /** @maxLength 100 */
+  id: string;
+  type: BacktestChartIndicatorType;
+  on: boolean;
+  color: string;
+  period?: number;
+  mult?: number;
+  fast?: number;
+  slow?: number;
+  signal?: number;
+  k?: number;
+  d?: number;
+  source?: BacktestChartIndicatorSource;
+  ma?: BacktestChartIndicatorMa;
+  /** @maxLength 2000 */
+  formula?: string;
+  /** @maxLength 100 */
+  name?: string;
+  pane?: BacktestChartIndicatorPane;
+}
+
+export type BacktestChartPreferencesTemplatesItem = {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  name: string;
+  settings: BacktestChartSettings;
+  /** @maxItems 40 */
+  indicators: BacktestChartIndicator[];
+};
+
+export type BacktestChartPreferencesToolbarPosition = {
+  /**
+     * @minimum 0
+     * @maximum 20000
+     */
+  x: number;
+  /**
+     * @minimum 0
+     * @maximum 20000
+     */
+  y: number;
+};
+
+export interface BacktestChartPreferences {
+  version: BacktestChartPreferencesVersion;
+  settings: BacktestChartSettings;
+  /** @maxItems 12 */
+  favoriteTools: BacktestChartPreferencesFavoriteToolsItem[];
+  /**
+     * @maxItems 24
+     * @items.maxLength 64
+     */
+  favoriteColors: string[];
+  /** @maxItems 50 */
+  templates: BacktestChartPreferencesTemplatesItem[];
+  toolbarPosition: BacktestChartPreferencesToolbarPosition;
+}
+
+export interface BacktestChartSnapshot {
+  /** @minimum 0 */
+  revision: number;
+  preferences: BacktestChartPreferences | null;
+}
+
 /**
  * Observed execution environment; unknown never qualifies formal progression.
  */
@@ -191,6 +466,221 @@ export type ProcessReview = ProcessReviewDue & ({
   report: ProcessReport;
   reviewedAt: string;
 });
+
+export interface VarcoVisionCandle {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+}
+
+export interface VarcoVisionChecklistCurrent {
+  htfContext?: boolean;
+  turningPoint?: boolean;
+  ltfTrigger?: boolean;
+  riskGuard?: boolean;
+}
+
+/**
+ * @nullable
+ */
+export type VarcoVisionRequestOperativeMemoryFlipDirection = typeof VarcoVisionRequestOperativeMemoryFlipDirection[keyof typeof VarcoVisionRequestOperativeMemoryFlipDirection] | null;
+
+
+export const VarcoVisionRequestOperativeMemoryFlipDirection = {
+  long: 'long',
+  short: 'short',
+} as const;
+
+export type VarcoVisionRequestOperativeMemory = {
+  flipActive?: boolean;
+  /** @nullable */
+  flipDirection?: VarcoVisionRequestOperativeMemoryFlipDirection;
+  minImbalancePercent?: number;
+  preferPocOnReversal?: boolean;
+  reaccumRiskMultiplier?: number;
+  quarantinedCombos?: string[];
+};
+
+export type VarcoSetupPlanDirection = typeof VarcoSetupPlanDirection[keyof typeof VarcoSetupPlanDirection];
+
+
+export const VarcoSetupPlanDirection = {
+  long: 'long',
+  short: 'short',
+} as const;
+
+export type VarcoSetupPlanOrderType = typeof VarcoSetupPlanOrderType[keyof typeof VarcoSetupPlanOrderType];
+
+
+export const VarcoSetupPlanOrderType = {
+  limit: 'limit',
+  market: 'market',
+} as const;
+
+export type VarcoSetupPlanCycle = typeof VarcoSetupPlanCycle[keyof typeof VarcoSetupPlanCycle];
+
+
+export const VarcoSetupPlanCycle = {
+  up: 'up',
+  down: 'down',
+  end_up: 'end_up',
+  end_down: 'end_down',
+} as const;
+
+export type VarcoSetupPlanLiquidityContext = typeof VarcoSetupPlanLiquidityContext[keyof typeof VarcoSetupPlanLiquidityContext];
+
+
+export const VarcoSetupPlanLiquidityContext = {
+  compression: 'compression',
+  swept: 'swept',
+  intermediate: 'intermediate',
+} as const;
+
+export type VarcoSetupPlanZoneScenario = typeof VarcoSetupPlanZoneScenario[keyof typeof VarcoSetupPlanZoneScenario];
+
+
+export const VarcoSetupPlanZoneScenario = {
+  valid_zone: 'valid_zone',
+  no_zone: 'no_zone',
+  reaccum: 'reaccum',
+} as const;
+
+export type VarcoSetupPlanAreaType = typeof VarcoSetupPlanAreaType[keyof typeof VarcoSetupPlanAreaType];
+
+
+export const VarcoSetupPlanAreaType = {
+  history: 'history',
+  virgin: 'virgin',
+} as const;
+
+export type VarcoSetupPlanTriggerType = typeof VarcoSetupPlanTriggerType[keyof typeof VarcoSetupPlanTriggerType];
+
+
+export const VarcoSetupPlanTriggerType = {
+  TEST: 'TEST',
+  POC: 'POC',
+  JTC: 'JTC',
+  BTI: 'BTI',
+} as const;
+
+export interface VarcoSetupPlan {
+  direction: VarcoSetupPlanDirection;
+  orderType?: VarcoSetupPlanOrderType;
+  limitPrice?: number;
+  entryReason?: string;
+  invalidationReason?: string;
+  timeframe?: string;
+  schematicRef?: string;
+  entryPrice: number;
+  stopLossPrice: number;
+  breakEvenPrice: number;
+  breakEvenRule: string;
+  takeProfit1Price: number;
+  takeProfit1Rule: string;
+  takeProfit2Price: number;
+  takeProfit2Rule: string;
+  riskRewardRatio: number;
+  lotSize: number;
+  pipsRisk: number;
+  cycle?: VarcoSetupPlanCycle;
+  liquidityContext?: VarcoSetupPlanLiquidityContext;
+  zoneScenario?: VarcoSetupPlanZoneScenario;
+  areaType?: VarcoSetupPlanAreaType;
+  triggerType?: VarcoSetupPlanTriggerType;
+  imbalancePercent?: number;
+  oppositePoolPrice?: number;
+  oppositePoolLabel?: string;
+  sessionName?: string;
+  invalidationSwingPrice?: number;
+  wasReversal?: boolean;
+}
+
+export interface VarcoVisionRequest {
+  symbol: string;
+  interval?: string;
+  /** Base64 image data URL */
+  chartImage?: string;
+  candles: VarcoVisionCandle[];
+  /**
+     * @minimum 1
+     * @maximum 4
+     */
+  currentPhase?: number;
+  accountCapital?: number;
+  riskPercent?: number;
+  currentChecks?: VarcoVisionChecklistCurrent;
+  activeSetup?: VarcoSetupPlan;
+  enforceSessionWindows?: boolean;
+  operativeMemory?: VarcoVisionRequestOperativeMemory;
+}
+
+export type VarcoChecklistItemAuditTriggerType = typeof VarcoChecklistItemAuditTriggerType[keyof typeof VarcoChecklistItemAuditTriggerType];
+
+
+export const VarcoChecklistItemAuditTriggerType = {
+  TEST: 'TEST',
+  POC: 'POC',
+  JTC: 'JTC',
+  BTI: 'BTI',
+} as const;
+
+export interface VarcoChecklistItemAudit {
+  valid: boolean;
+  note: string;
+  triggerType?: VarcoChecklistItemAuditTriggerType;
+  recommendedLots?: number;
+  riskAmount?: number;
+}
+
+export interface VarcoChecklistAudit {
+  htfContext: VarcoChecklistItemAudit;
+  turningPoint: VarcoChecklistItemAudit;
+  ltfTrigger: VarcoChecklistItemAudit;
+  riskGuard: VarcoChecklistItemAudit;
+}
+
+export type VarcoProceduralStepTriggerType = typeof VarcoProceduralStepTriggerType[keyof typeof VarcoProceduralStepTriggerType];
+
+
+export const VarcoProceduralStepTriggerType = {
+  TEST: 'TEST',
+  POC: 'POC',
+  JTC: 'JTC',
+  BTI: 'BTI',
+} as const;
+
+export interface VarcoProceduralStep {
+  phase: number;
+  title: string;
+  valid: boolean;
+  note: string;
+  schematicId?: string;
+  triggerType?: VarcoProceduralStepTriggerType;
+}
+
+export type VarcoVisionResponseVerdict = typeof VarcoVisionResponseVerdict[keyof typeof VarcoVisionResponseVerdict];
+
+
+export const VarcoVisionResponseVerdict = {
+  SETUP_READY: 'SETUP_READY',
+  WAITING_TRIGGER: 'WAITING_TRIGGER',
+  INVALID_STRUCTURE: 'INVALID_STRUCTURE',
+  NO_ZONE: 'NO_ZONE',
+} as const;
+
+export interface VarcoVisionResponse {
+  verdict: VarcoVisionResponseVerdict;
+  summary: string;
+  confidenceScore: number;
+  executionPhase?: number;
+  proceduralSteps?: VarcoProceduralStep[];
+  checklistAudit: VarcoChecklistAudit;
+  setup?: VarcoSetupPlan | null;
+  doctrineAdvice: string;
+}
 
 export type ProcessMethodRulesToolsItem = typeof ProcessMethodRulesToolsItem[keyof typeof ProcessMethodRulesToolsItem];
 
@@ -3498,6 +3988,12 @@ export type DeleteBacktestSession200 = {
 
 export type DeleteBacktestTrade200 = {
   ok?: boolean;
+};
+
+export type UpdateBacktestChartPreferencesBody = {
+  /** @minimum 0 */
+  revision: number;
+  preferences: BacktestChartPreferences;
 };
 
 export type SearchUsersParams = {

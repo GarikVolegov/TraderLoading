@@ -4,7 +4,8 @@ import { hasExplicitCenterView, centerView, legacyCheckoutChannel, resolveWorksp
 assert.equal(updateWorkspaceQuery("?pair=EUR%2FUSD&t=trades&new=1", { t: "piano", new: null }), "?pair=EUR%2FUSD&t=piano");
 assert.equal(updateWorkspaceQuery("?t=piano", { t: null }), "");
 assert.equal(updateWorkspaceQuery("?vista=strumenti&layout=edit&pair=EURUSD", { vista: "strumenti", layout: null }), "?vista=strumenti&pair=EURUSD");
-assert.equal(resolveWorkspaceAlias("/routine", "?start=morning"), "/resources?start=morning&view=wellbeing");
+assert.equal(resolveWorkspaceAlias("/resources"), "/");
+assert.equal(resolveWorkspaceAlias("/routine"), null);
 assert.equal(resolveWorkspaceAlias("/broker", "?tab=history"), "/journal?tab=history&t=trades&panel=conti");
 assert.equal(resolveWorkspaceAlias("/news", "?pair=XAUUSD&article=example"), "/?pair=XAUUSD&article=example&vista=notizie");
 assert.equal(resolveWorkspaceAlias("/tornei"), "/chat?t=competizioni&vista=torneo");
@@ -20,8 +21,10 @@ for (const search of ["?channel=34", "?channel=-1&unlock=success", "?channel=34&
   assert.equal(resolveWorkspaceAlias("/", search), null, search);
 }
 
+assert.equal(resolveWorkspaceAlias("/", "?vista=mercati&pair=EURUSD"), "/?pair=EURUSD");
 assert.equal(hasExplicitCenterView(""), false);
-assert.equal(hasExplicitCenterView("?pair=EURUSD"), true);
+assert.equal(hasExplicitCenterView("?pair=EURUSD"), false);
 assert.equal(hasExplicitCenterView("?article=existing"), true);
 assert.equal(centerView("?article=existing"), "notizie");
+assert.equal(hasExplicitCenterView("?vista=notizie"), true);
 assert.equal(hasExplicitCenterView("?pair=EURUSD&marketDecisionId=existing"), false);

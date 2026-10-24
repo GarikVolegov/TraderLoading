@@ -1,3 +1,4 @@
+import { AdminSchoolRequestsPage } from "@/components/admin/AdminSchoolRequestsPage";
 import { Route, Switch } from "wouter";
 import { AdminAccessBoundary } from "@/components/admin/shared";
 import { AdminDashboardPage } from "@/components/admin/AdminDashboardPage";
@@ -11,11 +12,14 @@ import { AdminSupportPage } from "@/components/admin/AdminSupportPage";
 import { AdminTicketsPage } from "@/components/admin/AdminTicketsPage";
 import { AdminSystemPage } from "@/components/admin/AdminSystemPage";
 import { AdminSecurityPage } from "@/components/admin/AdminSecurityPage";
+import { AdminApplicationsPage } from "@/components/admin/AdminApplicationsPage";
 
 export default function AdminPage() {
   return (
     <AdminAccessBoundary>
       <Switch>
+        <Route path="/admin/scuole" component={AdminSchoolRequestsPage} />
+        <Route path="/admin/candidature" component={AdminApplicationsPage} />
         <Route path="/admin/users/:userId" component={AdminUserDetailPage} />
         <Route path="/admin/users" component={AdminUsersPage} />
         <Route path="/admin/trading" component={AdminTradingPage} />

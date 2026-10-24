@@ -1,3 +1,4 @@
+import backtestChartRouter from "./backtest-chart.js";
 import { Router, type IRouter } from "express";
 import healthRouter from "./health.js";
 import authRouter from "./auth.js";
@@ -39,12 +40,17 @@ import libraryRouter from "./library.js";
 import wikiRouter from "./wiki.js";
 import adminRouter from "./admin.js";
 import billingRouter from "./billing.js";
+import launchRouter from "./launch.js";
 import academyRouter from "./academy.js";
 import academyBillingRouter from "./academy-billing.js";
 import publicRouter from "./public.js";
 import supportRouter from "./support.js";
 import torneiRouter from "./tornei.js";
+import backtestTournamentsRouter from "./backtestTournaments.js";
 import reviewsRouter from "./reviews.js";
+import financialProfileRouter from "./financial-profile.js";
+import arsenalRouter from "./arsenal.js";
+import candidateApplicationsPublicRouter from "./candidateApplicationsPublic.js";
 import {
   ANONYMOUS_FALLBACK_PREFIXES,
   createProductionAuthGate,
@@ -62,6 +68,7 @@ router.use(authRouter);
 router.use(adminRouter);
 router.use(billingRouter);
 router.use(academyBillingRouter);
+router.use(launchRouter);
 router.use(academyRouter);
 router.use(supportRouter);
 router.use(accountRouter);
@@ -76,6 +83,7 @@ router.use(newsRouter);
 router.use(marketDecisionsRouter);
 router.use(traderProcessRouter);
 router.use(settingsRouter);
+router.use(backtestChartRouter);
 router.use(friendsRouter);
 router.use(chatRouter);
 router.use(calendarRouter);
@@ -95,6 +103,7 @@ router.use(communityReviewsRouter);
 router.use(referralRouter);
 router.use(payoutRouter);
 router.use(torneiRouter);
+router.use(backtestTournamentsRouter);
 router.use(reviewsRouter);
 router.use(milestonesRouter);
 router.use(accountBridgeRouter);
@@ -102,5 +111,8 @@ router.use(brokersRouter);
 router.use(routinesRouter);
 router.use(libraryRouter);
 router.use(wikiRouter);
+router.use(financialProfileRouter);
+router.use(arsenalRouter);
+router.use(candidateApplicationsPublicRouter);
 
 export default router;

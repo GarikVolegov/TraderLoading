@@ -42,7 +42,7 @@ export function ProcessVisual({ step }: { step: TourStep }) {
   return (
     <div className="landing-product-screen" data-scene={step}>
       <div className="landing-screen-header">
-        <span>TraderLoading</span>
+        <span>LIMEN</span>
         <span>{t(step === "test" ? "landing.pricing.pro" : "landing.pricing.free")}</span>
       </div>
       {step === "prepare" && (

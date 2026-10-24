@@ -65,9 +65,8 @@ assert.match(source, /className="flex flex-col h-full min-h-0 overflow-hidden re
 assert.match(source, /className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3"/);
 assert.match(source, /className="h-full min-h-0"/);
 assert.match(source, /className="min-h-0 min-w-0 flex-1 overflow-hidden"/);
-// The workspace reserves space for the visible local navigation and global bar.
-assert.match(source, /h-\[calc\(100dvh-var\(--safe-top\)-8\.8rem-var\(--bottom-nav-clearance\)\)\]/);
-assert.match(source, /sm:h-\[calc\(100dvh-var\(--safe-top\)-13rem-var\(--bottom-nav-clearance\)\)\]/);
+// The workspace reserves space for the visible local navigation and global bar via ViewportPanel.
+assert.match(source, /<ViewportPanel>/);
 assert.match(source, /function ClassificaTab\(\{ currentUserId \}/);
 assert.match(source, /const \[viewingProfile, setViewingProfile\] = useState<string \| null>\(null\);/);
 assert.match(source, /onClick=\{\(\) => canViewProfile && entry\.userId && setViewingProfile\(entry\.userId\)\}/);

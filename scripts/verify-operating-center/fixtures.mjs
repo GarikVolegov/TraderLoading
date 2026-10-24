@@ -72,6 +72,101 @@ export function createFixtures() {
     else if (path === '/news/preferences') data={keywords:[],profile:''};
     else if (path === '/news/feedback') data=[];
     else if (path === '/social/notifications/unread') data={count:0};
+    else if (path === '/academy/catalog') data = {
+      modules: [
+        {
+          id: 'preparazione',
+          title: "L'Ordine Giornaliero e il Custode della Soglia",
+          description: "Sessioni, calendario e allineamento sovrano prima del grafico.",
+          orderIndex: 0,
+        },
+      ],
+      syllabus: [],
+      lessons: [
+        {
+          id: 'les_1',
+          moduleId: 'preparazione',
+          title: '01. Introduzione alla Soglia Operativa',
+          description: 'Studio dei volumi e struttura di mercato.',
+          durationSeconds: 720,
+          accessLevel: 'free',
+          orderIndex: 0,
+          introductionSlot: 'book',
+        },
+      ],
+      access: { hasAccess: true, isTeacher: false },
+      progress: [{ lessonId: 'les_1', completedAt: now }],
+    };
+    else if (path === '/academy/billing') data = {
+      activeSubscription: { status: 'active', plan: 'standard' },
+      isTrial: false,
+    };
+    else if (path === '/trader-process' || path === '/process') data = {
+      userId: 'test_user_audit',
+      activeMethod: {
+        id: 'method_1',
+        userId: 'test_user_audit',
+        name: 'LIMEN Sovereign Flow (M15 Institutional)',
+        version: 1,
+        phase: 'apply',
+        active: true,
+        rules: {
+          markets: ['EUR/USD', 'GBP/USD'],
+          checklist: ['Confluenza D1/H4 confermata', 'Rottura e retest livello chiave', 'Risk/Reward >= 1:2'],
+          tools: ['markets', 'economic-calendar'],
+          riskPerTrade: 1,
+          maxDailyLoss: 2,
+          maxDailyTrades: 2,
+        },
+        protocol: {
+          minSamples: 30,
+          periodStart: now.slice(0, 10),
+          periodEnd: '',
+          minExpectancyR: 0.5,
+          maxDrawdownR: 3,
+          observationDays: 30,
+          minAdherencePct: 90,
+        },
+        createdAt: now,
+        updatedAt: now,
+      },
+      methods: [],
+      evidence: [],
+      methodDraft: null,
+      progress: { completed: 12, total: 30, expectancyR: 0.85, maxDrawdownR: 1.2, adherencePct: 95 },
+      progressByVersion: {},
+      guidance: { action: 'review_application', nextStep: 'Esegui il protocollo operativo secondo i 3 pilastri.' },
+    };
+    else if (path === '/backtest/sessions') data = [
+      {
+        id: 1,
+        userId: 'test_user_audit',
+        name: 'EURUSD Londra Breakout Q1',
+        pair: 'EUR/USD',
+        timeframe: 'M15',
+        strategy: 'Fair Value Gap + Order Block',
+        startDateTime: '2026-01-05T08:00:00Z',
+        createdAt: now,
+        stats: { total: 14, wins: 9, losses: 5, winRate: 64, totalPips: '+142.5', avgRR: '1.8' },
+      },
+    ];
+    else if (path === '/backtest/sessions/1/trades') data = [
+      {
+        id: 101,
+        sessionId: 1,
+        pair: 'EUR/USD',
+        direction: 'buy',
+        entryPrice: '1.08500',
+        exitPrice: '1.08850',
+        pips: 35,
+        result: 'win',
+        resultPips: 35,
+        pnl: 350,
+        rMultiple: 2.1,
+        tradeDate: now.slice(0, 10),
+        notes: 'Retest perfetto della sessione Londra.',
+      },
+    ];
     else if (['/missions','/milestones','/routines','/ideas','/goals','/calendar','/calendar/events','/quotes','/backtest','/library','/checkins'].includes(path)) data=[];
     else { state.unknown.add(path); status=503;data={error:'Unavailable in isolated audit fixture'}; }
     await route.fulfill({status,contentType:'application/json',body:JSON.stringify(data ?? null)});

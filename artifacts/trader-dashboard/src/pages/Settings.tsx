@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 
 import { useLocation, useSearch } from "wouter";
 import { PageLayout } from "@/components/PageLayout";
-import { PageHeader } from "@/components/PageHeader";
 import { ProfileWidget } from "@/components/ProfileWidget";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { BackgroundPresetsManager } from "@/components/BackgroundPresetsManager";
@@ -119,7 +118,7 @@ export default function Settings() {
       icon: <UserPlus className="w-6 h-6" />,
       label: t("settings.tile.profile"),
       subtitle: t("settings.tile.profile_sub"),
-      color: "text-primary",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
       glow: "group-hover:shadow-primary/20",
     },
     {
@@ -127,15 +126,15 @@ export default function Settings() {
       icon: <BarChart2 className="w-6 h-6" />,
       label: t("settings.tile.pairs"),
       subtitle: t("settings.tile.pairs_sub"),
-      color: "text-indigo-400",
-      glow: "group-hover:shadow-indigo-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "abbonamento",
       icon: <Star className="w-6 h-6" />,
       label: uiText("auto.ui.b776b1b8f3"),
       subtitle: uiText("auto.ui.986f7f7f05"),
-      color: "text-primary",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
       glow: "group-hover:shadow-primary/20",
     },
     {
@@ -143,24 +142,24 @@ export default function Settings() {
       icon: <Music className="w-6 h-6" />,
       label: t("settings.tile.audio"),
       subtitle: t("settings.tile.audio_sub"),
-      color: "text-blue-400",
-      glow: "group-hover:shadow-blue-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "aspetto",
       icon: <Sun className="w-6 h-6" />,
       label: t("settings.tile.appearance"),
       subtitle: t("settings.tile.appearance_sub"),
-      color: "text-yellow-400",
-      glow: "group-hover:shadow-yellow-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "notifiche",
       icon: <Bell className="w-6 h-6" />,
       label: t("settings.tile.notifications"),
       subtitle: t("settings.tile.notifications_sub"),
-      color: "text-orange-400",
-      glow: "group-hover:shadow-orange-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "sicurezza",
@@ -169,55 +168,55 @@ export default function Settings() {
       subtitle: isPinSet
         ? t("settings.tile.security_active")
         : t("settings.tile.security_inactive"),
-      color: "text-emerald-400",
-      glow: "group-hover:shadow-emerald-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "lingua",
       icon: <Globe className="w-6 h-6" />,
       label: t("settings.tile.language"),
       subtitle: `${LANGUAGES[language].flag} ${LANGUAGES[language].name}`,
-      color: "text-cyan-400",
-      glow: "group-hover:shadow-cyan-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "trading",
       icon: <TrendingUp className="w-6 h-6" />,
       label: t("settings.tile.trading"),
       subtitle: t("settings.tile.trading_sub"),
-      color: "text-violet-400",
-      glow: "group-hover:shadow-violet-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "missioni",
       icon: <Target className="w-6 h-6" />,
       label: t("settings.tile.missions"),
       subtitle: t("settings.tile.missions_sub"),
-      color: "text-rose-400",
-      glow: "group-hover:shadow-rose-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "citazioni",
       icon: <Quote className="w-6 h-6" />,
       label: t("settings.tile.quotes"),
       subtitle: t("settings.tile.quotes_sub"),
-      color: "text-amber-400",
-      glow: "group-hover:shadow-amber-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "checklist",
       icon: <CheckSquare className="w-6 h-6" />,
       label: t("settings.tile.checklist"),
       subtitle: t("settings.tile.checklist_sub"),
-      color: "text-teal-400",
-      glow: "group-hover:shadow-teal-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "biblioteca",
       icon: <Library className="w-6 h-6" />,
       label: t("settings.tile.library"),
       subtitle: t("settings.tile.library_sub"),
-      color: "text-primary",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
       glow: "group-hover:shadow-primary/20",
     },
     {
@@ -225,32 +224,32 @@ export default function Settings() {
       icon: <Trophy className="w-6 h-6" />,
       label: t("nav.milestones"),
       subtitle: uiText("auto.ui.082626517e"),
-      color: "text-yellow-400",
-      glow: "group-hover:shadow-yellow-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "supporto",
       icon: <HelpCircle className="w-6 h-6" />,
       label: t("settings.tile.support"),
       subtitle: t("settings.tile.support_sub"),
-      color: "text-sky-400",
-      glow: "group-hover:shadow-sky-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "aiuto",
       icon: <LifeBuoy className="w-6 h-6" />,
       label: uiText("auto.ui.3df4de1ddd"),
       subtitle: uiText("auto.ui.b2eaac0417"),
-      color: "text-purple-400",
-      glow: "group-hover:shadow-purple-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "termini",
       icon: <FileText className="w-6 h-6" />,
       label: uiText("auto.ui.173c92dc46"),
       subtitle: uiText("auto.ui.9ce5cd227f"),
-      color: "text-pink-400",
-      glow: "group-hover:shadow-pink-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
     {
       id: "account",
@@ -263,8 +262,8 @@ export default function Settings() {
       subtitle: isAuthenticated
         ? t("settings.tile.account_active")
         : t("settings.tile.account_inactive"),
-      color: "text-slate-400",
-      glow: "group-hover:shadow-slate-400/20",
+      color: "text-muted-foreground group-hover:text-primary transition-colors",
+      glow: "group-hover:shadow-primary/20",
     },
   ];
 
@@ -361,9 +360,8 @@ export default function Settings() {
 
   const activeTile = tiles.find(tile => tile.id === activeDesktopSection);
   return (
-    <PageLayout quiet>
-      <PageHeader title={t("settings.title")} subtitle={uiText("auto.ui.8d80245829")} />
-      <div className="mx-auto max-w-6xl space-y-4">
+    <PageLayout>
+      <div className="mx-auto max-w-6xl space-y-4 pb-12 pt-1">
         <div className="flex flex-wrap gap-3 text-sm">
           <Button variant="outline" onClick={() => navigate("/milestones")}>{t("workspace.path")}</Button>
           <Button variant="outline" onClick={() => navigate("/wiki?t=unlocked")}>{t("nav.wiki")}</Button>
@@ -374,25 +372,56 @@ export default function Settings() {
             {groups.map(group => <option key={group.key} value={group.key}>{t(`workspace.settings.${group.key}`)}</option>)}
           </select>
           <nav aria-label={t(`workspace.settings.${activeGroup.key}`)} className="flex flex-wrap gap-1">
-            {activeGroup.sections.map(id => <button key={id} type="button" onClick={() => selectSection(id)} aria-pressed={id === activeDesktopSection} className={`min-h-11 rounded-lg px-3 text-sm ${id === activeDesktopSection ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>{tiles.find(tile => tile.id === id)?.label}</button>)}
+            {activeGroup.sections.map(id => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => selectSection(id)}
+                aria-pressed={id === activeDesktopSection}
+                className={`min-h-11 rounded-lg px-3 text-sm font-medium transition-colors ${
+                  id === activeDesktopSection
+                    ? "bg-primary/15 text-primary border border-primary/30"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tiles.find(tile => tile.id === id)?.label}
+              </button>
+            ))}
           </nav>
         </div>
         <div className="flex items-start gap-6">
-          <nav aria-label={t("settings.title")} className="sticky top-20 hidden w-56 shrink-0 space-y-5 lg:block">
-            {groups.map(group => <section key={group.key}>
-              <h2 className="mb-1 px-3 text-xs font-semibold text-muted-foreground">{t(`workspace.settings.${group.key}`)}</h2>
-              {group.sections.map(id => {
-                const tile = tiles.find(item => item.id === id)!;
-                return <button key={id} type="button" onClick={() => selectSection(id)} aria-pressed={id === activeDesktopSection} className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm ${id === activeDesktopSection ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
-                  {React.cloneElement(tile.icon as React.ReactElement<{ className?: string }>, { className: "h-4 w-4 shrink-0" })}<span>{tile.label}</span>
-                </button>;
-              })}
-            </section>)}
+          <nav aria-label={t("settings.title")} className="sticky top-20 hidden w-56 shrink-0 space-y-5 lg:block max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
+            {groups.map(group => (
+              <section key={group.key}>
+                <h2 className="mb-1 px-3 text-xs font-semibold text-muted-foreground">{t(`workspace.settings.${group.key}`)}</h2>
+                {group.sections.map(id => {
+                  const tile = tiles.find(item => item.id === id)!;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => selectSection(id)}
+                      aria-pressed={id === activeDesktopSection}
+                      className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-all ${
+                        id === activeDesktopSection
+                          ? "bg-primary/15 text-primary font-bold border border-primary/30 shadow-sm"
+                          : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+                      }`}
+                    >
+                      {React.cloneElement(tile.icon as React.ReactElement<{ className?: string }>, { className: "h-4 w-4 shrink-0" })}
+                      <span>{tile.label}</span>
+                    </button>
+                  );
+                })}
+              </section>
+            ))}
           </nav>
-          <section className="min-w-0 flex-1 rounded-xl border border-border bg-card p-4 sm:p-6" aria-label={activeTile?.label}>
-            <h2 className="mb-1 text-lg font-semibold">{activeTile?.label}</h2>
+          <section className="min-w-0 flex-1 rounded-[6px] border border-border bg-card p-4 sm:p-6 min-h-[620px] transition-all" aria-label={activeTile?.label}>
+            <h2 className="mb-1 font-display text-lg font-bold uppercase tracking-wider text-foreground">{activeTile?.label}</h2>
             <p className="mb-6 text-sm text-muted-foreground">{activeTile?.subtitle}</p>
-            {tileContent[activeDesktopSection]}
+            <div className="min-h-[460px]">
+              {tileContent[activeDesktopSection]}
+            </div>
           </section>
         </div>
       </div>

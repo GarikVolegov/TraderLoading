@@ -13,6 +13,7 @@ import { attachNewsHubWebSocket } from "./services/newsHub/socketServer.js";
 import { attachNewsProviderSockets } from "./services/newsHub/providerSockets.js";
 import { startMarketIntelligenceScheduler } from "./services/marketIntelligence.js";
 import { attachSocialHubWebSocket } from "./services/socialHub/socketServer.js";
+import { attachBattleRoomWebSocket } from "./services/backtestTournaments/battleRoomSocket.js";
 import logger from "./lib/logger";
 import { backgroundTasksEnabled } from "./lib/localBackgroundTasks.js";
 import { assertRedisConfigured, closeSharedRedisClient } from "./lib/redisClient.js";
@@ -46,6 +47,7 @@ const accountBridgeSocket = attachAccountBridgeWebSocket(server);
 const brokerHubSocket = attachBrokerHubWebSocket(server);
 const newsHubSocket = attachNewsHubWebSocket(server, newsHubRuntime);
 const socialHubSocket = attachSocialHubWebSocket(server);
+const battleRoomSocket = attachBattleRoomWebSocket(server);
 let newsProviderSockets: ReturnType<typeof attachNewsProviderSockets> | null = null;
 let intelligenceScheduler: ReturnType<typeof startMarketIntelligenceScheduler> | null = null;
 
@@ -104,6 +106,7 @@ async function shutdown(reason: string, exitCode = 0): Promise<void> {
     brokerHubSocket.close(),
     newsHubSocket.close(),
     socialHubSocket.close(),
+    battleRoomSocket.close(),
     newsProviderSockets?.close(),
     intelligenceScheduler?.close(),
     sessionScheduler.close(),

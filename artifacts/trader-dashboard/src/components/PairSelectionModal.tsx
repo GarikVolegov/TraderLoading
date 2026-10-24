@@ -58,7 +58,7 @@ export function PairSelectionModal({
       setSelected(initialPairs);
       setSearch("");
     }
-  }, [open]);
+  }, [open, initialPairs]);
 
   // Auto-scroll chips to end when a new pair is added
   useEffect(() => {

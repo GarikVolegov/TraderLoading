@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useRoute } from "wouter";
 import { ChevronLeft, Inbox } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { SigilIcon } from "@/components/ui/SigilIcon";
 import {
   getGetSupportTicketThreadQueryKey,
   getGetSupportTicketsQueryKey,
@@ -71,9 +72,9 @@ function NewTicketForm() {
   };
 
   return (
-    <Card>
+    <Card className="border border-border/80 bg-card rounded-none sm:rounded-md">
       <CardContent className="space-y-3 p-4 sm:p-6">
-        <h3 className="text-lg font-bold">{t("support.new.heading")}</h3>
+        <h3 className="text-base font-bold font-display uppercase tracking-wider text-foreground">{t("support.new.heading")}</h3>
         <div className="space-y-1.5">
           <label className="text-xs uppercase tracking-wider text-muted-foreground">
             {t("support.field.subject")}
@@ -111,9 +112,9 @@ function TicketList() {
   const { data: tickets, isLoading, isError, refetch } = useGetSupportTickets();
 
   return (
-    <Card>
+    <Card className="border border-border/80 bg-card rounded-none sm:rounded-md">
       <CardContent className="space-y-3 p-4 sm:p-6">
-        <h3 className="text-lg font-bold">{t("support.list.heading")}</h3>
+        <h3 className="text-base font-bold font-display uppercase tracking-wider text-foreground">{t("support.list.heading")}</h3>
         {isLoading ? (
           <div className="flex justify-center py-6">
             <Spinner />
@@ -157,8 +158,8 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
   const isSupport = message.authorType === "support";
   return (
     <li
-      className={`rounded-lg border px-3 py-2 ${
-        isSupport ? "border-primary/30 bg-primary/5" : "border-border bg-background/40"
+      className={`rounded-md border px-3.5 py-2.5 ${
+        isSupport ? "border-primary/40 bg-primary/10" : "border-border/80 bg-[#121216]"
       }`}
     >
       <div className="mb-1 flex items-center justify-between gap-2">
@@ -212,10 +213,10 @@ function TicketThread({ id }: { id: number }) {
   }
 
   return (
-    <Card>
+    <Card className="border border-border/80 bg-card rounded-none sm:rounded-md">
       <CardContent className="space-y-4 p-4 sm:p-6">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="truncate text-lg font-bold">{data.ticket.subject}</h3>
+          <h3 className="truncate text-base font-bold font-display uppercase tracking-wider text-foreground">{data.ticket.subject}</h3>
           <StatusBadge status={data.ticket.status} />
         </div>
         <ul className="space-y-3">
@@ -251,7 +252,12 @@ export default function Support() {
 
   return (
     <PageLayout>
-      <PageHeader title={t("support.title")} subtitle={t("support.subtitle")} />
+      <PageHeader
+        eyebrow="COMUNICAZIONE // CANALE UFFICIALE"
+        sigil={<SigilIcon variant="threshold" size={16} />}
+        title={t("support.title")}
+        subtitle={t("support.subtitle")}
+      />
       {ticketId !== null ? (
         <div className="space-y-4">
           <Link

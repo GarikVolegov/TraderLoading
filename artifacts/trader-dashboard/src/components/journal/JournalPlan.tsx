@@ -19,24 +19,20 @@ export function JournalPlan({ ideasGoals }: { ideasGoals: ReactNode }) {
       focus = params.get("focus");
     const target =
       panel === "routine"
-        ? "/resources"
+        ? "/routine"
         : panel === "checklist"
           ? "/method"
           : focus === "missioni"
-            ? "/resources"
+            ? "/missions"
             : "/";
     const updates = {
       t: null,
       vista: null,
       panel: null,
       focus: null,
-      ...(panel === "routine"
-        ? { view: "wellbeing" }
-        : panel === "checklist"
-          ? { section: "checklist" }
-          : focus === "missioni"
-            ? { view: "missions" }
-            : {}),
+      ...(panel === "checklist"
+        ? { section: "checklist" }
+        : {}),
     };
     navigate(target + updateWorkspaceQuery(search, updates), { replace: true });
   }, [view, search, navigate]);

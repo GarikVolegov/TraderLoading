@@ -100,18 +100,18 @@ export function SeasonBanner({ season, progress, enrolled, enrolling, onEnroll }
                     minWidth: 58,
                     padding: "10px 8px",
                     borderRadius: "var(--tl-radius)",
-                    background: "hsl(222 47% 5% / 0.6)",
-                    border: "1px solid hsl(215 25% 27% / 0.5)",
+                    background: "rgba(10, 10, 12, 0.75)",
+                    border: "1px solid #26262E",
                   }}
                 >
                   <span style={{ fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 24, color: "var(--tl-fg)", lineHeight: 1 }}>{u.v}</span>
-                  <span style={{ fontFamily: "var(--tl-font-mono)", fontSize: "9.5px", letterSpacing: "0.1em", textTransform: "uppercase", color: "hsl(215 20% 56%)" }}>{u.l}</span>
+                  <span style={{ fontFamily: "var(--tl-font-mono)", fontSize: "9.5px", letterSpacing: "0.1em", textTransform: "uppercase", color: "#8E92A0" }}>{u.l}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "12px 16px", borderRadius: "var(--tl-radius)", background: "hsl(222 47% 5% / 0.6)", border: "1px solid hsl(45 96% 55% / 0.3)" }}>
-              <Crown size={17} color="hsl(45 96% 58%)" />
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "12px 16px", borderRadius: "var(--tl-radius)", background: "rgba(10, 10, 12, 0.75)", border: "1px solid rgba(197, 160, 89, 0.35)" }}>
+              <Crown size={17} color="#C5A059" />
               <span style={{ fontFamily: "var(--tl-font-mono)", fontSize: 14, fontWeight: 700, color: "var(--tl-fg)" }}>
                 {t("tornei.concludedOn", { date: endDate })}
               </span>
@@ -123,8 +123,8 @@ export function SeasonBanner({ season, progress, enrolled, enrolling, onEnroll }
       {/* progress timeline */}
       {season.status !== "upcoming" && (
         <div style={{ position: "relative", marginTop: 18 }}>
-          <div style={{ height: 7, borderRadius: 99, background: "hsl(222 47% 5% / 0.7)", border: "1px solid hsl(215 25% 27% / 0.4)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${Math.round(progress * 100)}%`, background: "linear-gradient(90deg, hsl(45 96% 55% / 0.8), hsl(var(--accent-jade)))" }} />
+          <div style={{ height: 7, borderRadius: 99, background: "#141418", border: "1px solid #26262E", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${Math.round(progress * 100)}%`, background: "linear-gradient(90deg, #9C772C, #C5A059)" }} />
           </div>
         </div>
       )}

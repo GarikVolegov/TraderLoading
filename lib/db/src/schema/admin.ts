@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
   serial,
@@ -114,6 +115,53 @@ export const stripeWebhookEventsTable = pgTable("stripe_webhook_events", {
     receivedAt: timestamp("received_at").notNull().defaultNow(),
 });
 
+export const candidateApplicationsTable = pgTable("candidate_applications", {
+  id: serial("id").primaryKey(),
+  requestKey: text("request_key").unique(),
+  candidateCode: text("candidate_code").notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  contactType: text("contact_type").notNull().default("whatsapp"),
+  contactHandle: text("contact_handle").notNull(),
+  situation: text("situation"),
+  horizon: text("horizon"),
+  obstacle: text("obstacle"),
+  commitment: text("commitment"),
+  planChosen: text("plan_chosen").notNull().default("direct_150"),
+  selectedServices: jsonb("selected_services").$type<string[]>().default(["base_protocol"]),
+  approvedServices: jsonb("approved_services").$type<string[]>().default(["base_protocol"]),
+  monthlyFeeCents: integer("monthly_fee_cents").notNull().default(0),
+  oneTimeFeeCents: integer("one_time_fee_cents").notNull().default(0),
+  currency: text("currency").notNull().default("EUR"),
+  referredBy: text("referred_by"),
+  status: text("status").notNull().default("in_valutazione"),
+  notes: text("notes"),
+  userId: text("user_id"),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+}, (table) => [
+  uniqueIndex("candidate_applications_code_unique").on(table.candidateCode),
+  index("candidate_applications_email_idx").on(table.email),
+  index("candidate_applications_status_idx").on(table.status),
+  index("candidate_applications_created_idx").on(table.createdAt),
+]);
+
+export const systemFeatureFlagsTable = pgTable("system_feature_flags", {
+  key: text("key").primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  description: text("description"),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
 export const insertAdminUserSchema = createInsertSchema(adminUsersTable).omit({
   id: true,
   createdAt: true,
@@ -143,6 +191,20 @@ export const insertAdminUserSubscriptionSchema = createInsertSchema(
   updatedAt: true,
 });
 
+export const insertCandidateApplicationSchema = createInsertSchema(
+  candidateApplicationsTable,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSystemFeatureFlagSchema = createInsertSchema(
+  systemFeatureFlagsTable,
+).omit({
+  updatedAt: true,
+});
+
 export type AdminRoleName = (typeof adminRoleNames)[number];
 export type AdminUser = typeof adminUsersTable.$inferSelect;
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
@@ -157,3 +219,12 @@ export type InsertAdminUserSubscription = z.infer<
 >;
 export type AdminAuditLog = typeof adminAuditLogsTable.$inferSelect;
 export type InsertAdminAuditLog = z.infer<typeof insertAdminAuditLogSchema>;
+export type CandidateApplicationRecord =
+  typeof candidateApplicationsTable.$inferSelect;
+export type InsertCandidateApplication = z.infer<
+  typeof insertCandidateApplicationSchema
+>;
+export type SystemFeatureFlag = typeof systemFeatureFlagsTable.$inferSelect;
+export type InsertSystemFeatureFlag = z.infer<
+  typeof insertSystemFeatureFlagSchema
+>;

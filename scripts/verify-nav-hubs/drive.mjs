@@ -59,12 +59,12 @@ const shot = (page, name) =>
 const DISMISS = [/^Accetta$/, /^Skip$/i, /^Dopo$/i, /^Salta$/i, /^Chiudi$/i, /Più tardi/i, /^Ho capito$/i];
 async function dismiss(page) {
   for (let p = 0; p < 6; p++) {
-    let acted = false;
+    let _acted = false;
     for (const re of DISMISS) {
       const btn = page.getByRole("button", { name: re }).first();
       if ((await btn.count()) && (await btn.isVisible().catch(() => false))) {
         await btn.click().catch(() => {});
-        acted = true;
+        _acted = true;
         await page.waitForTimeout(250);
       }
     }

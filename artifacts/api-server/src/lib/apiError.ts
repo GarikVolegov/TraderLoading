@@ -1,3 +1,4 @@
+import { LaunchError } from "./launchError.js";
 import multer from "multer";
 // Maps a thrown error to an HTTP response shape for the global Express handler.
 // Pure so it can be unit-tested without booting the app.
@@ -29,6 +30,7 @@ function isZodError(err: unknown): err is { name: string; issues: ZodLikeIssue[]
 }
 
 export function classifyApiError(err: unknown): ClassifiedError {
+  if (err instanceof LaunchError) return { status: err.status, body: { error: err.message }, capture: err.status >= 500 };
   if (err instanceof multer.MulterError) {
     const code = (err as Error & { code?: string }).code;
     return { status: code === "LIMIT_FILE_SIZE" ? 413 : 400, body: { error: "Invalid upload" }, capture: false };

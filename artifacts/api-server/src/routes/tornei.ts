@@ -28,7 +28,7 @@ import {
 } from "../services/tornei/store.js";
 import { checkEligibility } from "../services/tornei/eligibility.js";
 import { getMintProvider } from "../services/tornei/mint/provider.js";
-import { certificateIdFromParam, renderCertificateImage } from "../services/tornei/certificateImage.js";
+import { certificateIdFromParam, renderCertificateImage, renderCertificatePng } from "../services/tornei/certificateImage.js";
 
 const router: IRouter = Router();
 
@@ -82,6 +82,7 @@ function certDto(c: TournamentCertificate) {
   return {
     id: c.id,
     seasonLabel: c.seasonLabel,
+    userName: c.userName,
     tier: c.tier,
     edition: c.edition,
     rarity: c.rarity,
@@ -393,16 +394,50 @@ router.get("/tornei/certificates/:id/metadata", async (req: Request, res: Respon
     return;
   }
   res.json({
-    name: `TraderLoading ${cert.tier} · ${cert.seasonLabel}`,
-    description: `Certificato ${cert.rarity} del torneo TraderLoading — stagione ${cert.seasonLabel}.`,
-    image: `${appBaseUrl()}/api/tornei/certificates/${id}/image.svg`,
+    name: `LIMEN ${cert.tier.toUpperCase()} · ${cert.seasonLabel}`,
+    description: `Certificato ${cert.rarity} del torneo LIMEN — stagione ${cert.seasonLabel}. Rilasciato all'operatore ${cert.userName}.`,
+    image: `${appBaseUrl()}/api/tornei/certificates/${id}/image.png`,
+    external_url: `${appBaseUrl()}/tornei?cert=${id}`,
     attributes: [
+      { trait_type: "Trader", value: cert.userName },
       { trait_type: "Tier", value: cert.tier },
       { trait_type: "Edition", value: cert.edition },
       { trait_type: "Rarity", value: cert.rarity },
       { trait_type: "Season", value: cert.seasonLabel },
+      { trait_type: "Mint Status", value: cert.mintStatus },
+      ...(cert.tokenId ? [{ trait_type: "Token ID", value: cert.tokenId }] : []),
     ],
   });
+});
+
+router.get("/tornei/certificates/:id/image.png", async (req: Request, res: Response) => {
+  const id = certificateIdFromParam(req.params.id);
+  if (id === null) {
+    res.status(400).json({ error: "bad_id" });
+    return;
+  }
+  const [cert] = await db.select().from(tournamentCertificatesTable)
+    .where(eq(tournamentCertificatesTable.id, id)).limit(1);
+  if (!cert) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  try {
+    const pngBuffer = await renderCertificatePng({
+      id: cert.id,
+      tier: cert.tier,
+      userName: cert.userName,
+      seasonLabel: cert.seasonLabel,
+      verifyUrl: `${appBaseUrl()}/tornei?cert=${id}`,
+    });
+    res.set({
+      "Content-Type": "image/png",
+      "Cache-Control": "public, max-age=600",
+      "Content-Disposition": `inline; filename="limen-cert-${cert.tier}-${id}.png"`,
+    }).send(pngBuffer);
+  } catch (err) {
+    res.status(500).json({ error: "render_failed" });
+  }
 });
 
 router.get("/tornei/certificates/:id/image.svg", async (req: Request, res: Response) => {
@@ -423,6 +458,39 @@ router.get("/tornei/certificates/:id/image.svg", async (req: Request, res: Respo
     "X-Content-Type-Options": "nosniff",
     "Cache-Control": "public, max-age=300",
   }).send(renderCertificateImage(cert));
+});
+
+// ── GET /tornei/certificates/:id/verify (Dati pubblici per verifica QR Code) ──
+router.get("/tornei/certificates/:id/verify", async (req: Request, res: Response) => {
+  const id = certificateIdFromParam(req.params.id);
+  if (id === null) {
+    res.status(400).json({ error: "bad_id" });
+    return;
+  }
+  const [cert] = await db.select().from(tournamentCertificatesTable)
+    .where(eq(tournamentCertificatesTable.id, id)).limit(1);
+  if (!cert) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  res.json({
+    verified: true,
+    certificate: {
+      id: cert.id,
+      traderName: cert.userName,
+      tier: cert.tier,
+      edition: cert.edition,
+      rarity: cert.rarity,
+      seasonLabel: cert.seasonLabel,
+      mintStatus: cert.mintStatus,
+      contractAddress: cert.contractAddress,
+      tokenId: cert.tokenId,
+      txHash: cert.txHash,
+      mintedAt: cert.mintedAt,
+      createdAt: cert.createdAt,
+      imageUrl: `${appBaseUrl()}/api/tornei/certificates/${id}/image.png`,
+    },
+  });
 });
 
 export default router;

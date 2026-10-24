@@ -1,15 +1,15 @@
 import { hasExplicitCenterView } from "./workspaceNavigation";
-import { Sunrise, BookOpen, Route, Library, MessagesSquare, FlaskConical } from "lucide-react";
+import { Sunrise, BookOpen, Library, MessagesSquare, FlaskConical } from "lucide-react";
+import type { LimenEmblemVariant } from "@/components/ui/LimenPageEmblem";
 
 export const ROOT_ITEMS = [
-  { id: "today", href: "/", icon: Sunrise, labelKey: "process.nav.today" },
-  { id: "method", href: "/method", icon: Route, labelKey: "process.nav.method" },
-  { id: "journal", href: "/journal", icon: BookOpen, labelKey: "nav.journal" },
+  { id: "today", href: "/", icon: Sunrise, labelKey: "process.nav.today", emblemVariant: "il-varco" as LimenEmblemVariant },
+  { id: "journal", href: "/journal", icon: BookOpen, labelKey: "nav.journal", emblemVariant: "libro-della-verita" as LimenEmblemVariant },
+  { id: "backtest", href: "/backtest", icon: FlaskConical, labelKey: "nav.backtest", emblemVariant: "la-forgia" as LimenEmblemVariant },
 ] as const;
 export const SECONDARY_ITEMS = [
-  { id: "resources", href: "/resources", icon: Library, labelKey: "process.nav.resources" },
-  { id: "backtest", href: "/backtest", icon: FlaskConical, labelKey: "nav.backtest" },
-  { id: "social", href: "/chat", icon: MessagesSquare, labelKey: "process.nav.social" },
+  { id: "resources", href: "/resources", icon: Library, labelKey: "process.nav.resources", emblemVariant: "arsenale" as LimenEmblemVariant },
+  { id: "social", href: "/chat", icon: MessagesSquare, labelKey: "process.nav.social", emblemVariant: "fratellanza" as LimenEmblemVariant },
 ] as const;
 export const NAV_ITEMS = [...ROOT_ITEMS, ...SECONDARY_ITEMS] as const;
 
@@ -20,7 +20,7 @@ export function rootDestination(
   const [path, embeddedQuery = ""] = location.split("?");
   const params = new URLSearchParams(search || embeddedQuery);
   if (path === "/") return hasExplicitCenterView(params.toString()) ? "resources" : "today";
-  if (path === "/method" || path === "/checklist") return "method";
+  if (path === "/method" || path === "/checklist") return "today";
   if (path === "/tools" || path === "/backtest" || path.startsWith("/backtest/")) return "backtest";
   if (
     [
@@ -36,6 +36,7 @@ export function rootDestination(
       "/settings",
       "/support",
       "/dashboard/widgets",
+      "/patrimonio",
     ].includes(path)
   )
     return "resources";

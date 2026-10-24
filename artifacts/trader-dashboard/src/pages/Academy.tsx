@@ -1,42 +1,541 @@
-import { useState } from "react";
-import { Link, useSearch } from "wouter";
+import { useEffect, useState, useMemo } from "react";
+import { Link, useSearch, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Copy,
-  GraduationCap,
-  LockKeyhole,
   Play,
+  Shield,
+  CheckCircle2,
+  Download,
+  Copy,
+  Check,
+  BookOpen,
+  Layers,
+  ChevronRight,
+  ArrowRight,
+  AlertTriangle,
+  Lock,
+  FlaskConical,
+  Compass,
+  Award,
   Plus,
-  RefreshCw,
+  Terminal,
 } from "lucide-react";
+import { PageLayout } from "@/components/PageLayout";
+import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
+import { LimenServiceLockGate } from "@/components/candidacy/LimenServiceLockGate";
+import { SectionTabs, type SectionTab } from "@/components/SectionTabs";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ProcessField, ProcessFrame } from "@/components/process/ProcessUI";
+import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { academyText, type AcademyCopyKey } from "@/lib/academyCopy";
 import * as api from "@/lib/academyApi";
 import { validAcademyReferral } from "@/lib/academyReferral";
+
+
 import {
-  fetchDashboardLink,
-  fetchPayoutAccount,
-  payoutAccountKey,
-  startPayoutOnboarding,
-} from "@/lib/payoutApi";
-import {
-  ACADEMY_MODULES,
-  ACADEMY_SYLLABUS,
   type AcademySyllabusItem,
 } from "../../../../contracts/academy";
+import LandingPage from "./LandingPage";
+import { AcademyVideoUpload, ManagedLessonVideo } from "@/components/academy/AcademyVideoUpload";
+import { GeneralsBooksReader } from "@/components/academy/GeneralsBooksReader";
+import { getLimenSessionInfo } from "@/lib/limenSession";
+import { useGetProfile } from "@workspace/api-client-react";
 import "./academy.css";
+
+// ─── Canonical Master Data: I Canoni Operativi (Nomenclatura Sovrana LIMEN) ───
+
+export interface CanoneTransmission {
+  id: string;
+  code: string;
+  title: string;
+  duration: string;
+  timeframe: string;
+  summary: string;
+  keyDirectives: string[];
+  fatalErrors: string[];
+  isFreePreview: boolean;
+  videoSrc: string;
+  streamVideoId?: string | null;
+  videoEmbedUrl?: string | null;
+  forgiaHint: {
+    pair: string;
+    timeframe: string;
+    notes: string;
+  };
+}
+
+export interface CanoneGroup {
+  id: string;
+  roman: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  totalDuration: string;
+  transmissions: CanoneTransmission[];
+}
+
+export const CANONI_MASTER_DATA: CanoneGroup[] = [
+  {
+    id: "canone-0",
+    roman: "CANONE 0",
+    title: "L'Anatomia dell'Invalidazione",
+    subtitle: "La Meccanica del Prezzo e la Sopravvivenza Statistica",
+    timeframe: "M15 → M1",
+    totalDuration: "33 min · 2 trasmissioni",
+    transmissions: [
+      {
+        id: "c0-t1",
+        code: "0.1",
+        title: "Anatomia dello Sweep di Liquidità Istituzionale e Bias Direzionale",
+        duration: "18:42",
+        timeframe: "M15 / H1",
+        summary:
+          "Scomposizione chirurgica della presa di liquidità sopra i massimi e minimi di sessione. Perché i trader retail vengono sistematicamente intrappolati dai market maker e come identificare l'impronta reale del grande capitale.",
+        keyDirectives: [
+          "Lo sweep non è un'inversione garantita: è la condizione necessaria ma NON sufficiente per l'ingaggio.",
+          "Verificare sempre che lo sweep si manifesti all'interno della Kill-Zone temporale (London 08:00–10:30 UTC o NY 13:30–16:00 UTC).",
+          "Se il prezzo chiude con corpo candela solido oltre il livello, lo sweep è INVALIDATO (si tratta di espansione reale).",
+        ],
+        fatalErrors: [
+          "Inseguire il prezzo sul breakout impulsivo prima che la candela M15 si chiuda.",
+          "Entrare senza aver identificato chiaramente da dove è stata estratta la liquidità.",
+        ],
+        isFreePreview: true,
+        videoSrc: "/videos/limen-v2-act1.mp4",
+        forgiaHint: {
+          pair: "EURUSD",
+          timeframe: "M15",
+          notes: "Cerca lo sweep del PDH alle 09:15 UTC e verifica se la candela chiude all'interno del range.",
+        },
+      },
+      {
+        id: "c0-t2",
+        code: "0.2",
+        title: "La Regola di Invalidazione Matematica: Quando il Setup è Morto",
+        duration: "14:50",
+        timeframe: "M15 → M1",
+        summary:
+          "Criteri rigidi e oggettivi per abbandonare un'idea prima ancora di toccare lo Stop Loss. Come eliminare del tutto le speranze e i bias emotivi dai mercati finanziari.",
+        keyDirectives: [
+          "Invalidazione Temporale: se l'impulso atteso non si manifesta entro 3 candele M15 dopo il trigger M1, chiudere il trade a pareggio.",
+          "Invalidazione Strutturale: la violazione del minimo di swing precedente annulla istantaneamente il setup long.",
+          "Nessuna aggiunta su posizioni in perdita: mai mediare un'entrata contro-trend.",
+        ],
+        fatalErrors: [
+          "Spostare lo stop loss all'indietro per evitare di accettare l'errore di valutazione.",
+          "Restare a mercato dopo che la finestra temporale della Kill-Zone si è chiusa.",
+        ],
+        isFreePreview: true,
+        videoSrc: "/videos/limen-v2-act2.mp4",
+        forgiaHint: {
+          pair: "GBPUSD",
+          timeframe: "M5",
+          notes: "Identifica un setup invalidato entro 3 candele M15 e calcola il capitale preservato grazie all'uscita precoce.",
+        },
+      },
+    ],
+  },
+  {
+    id: "canone-1",
+    roman: "CANONE I",
+    title: "La Cartografia della Liquidità HTF",
+    subtitle: "Identificazione dei Punti di Interesse Reali (Daily · H4 · H1)",
+    timeframe: "Daily → H4 → H1",
+    totalDuration: "1h 45m · 4 trasmissioni",
+    transmissions: [
+      {
+        id: "c1-t1",
+        code: "I.1",
+        title: "Cartografia della Liquidità: BSL (Buy-Side) vs SSL (Sell-Side)",
+        duration: "24:10",
+        timeframe: "Daily / H4",
+        summary:
+          "Mappatura dei pool di ordini pendenti lasciati dagli operatori retail sopra i massimi e minimi di riferimento (PDH, PDL, PWH, PWL).",
+        keyDirectives: [
+          "Tracciare i livelli estremi del giorno e della settimana precedente prima dell'apertura europea.",
+          "Considerare il centro del range come mero rumore statistico privo di vantaggio asimmetrico.",
+        ],
+        fatalErrors: ["Cercare setup nel mezzo del range giornaliero."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act1.mp4",
+        forgiaHint: { pair: "EURUSD", timeframe: "H1", notes: "Mappa BSL/SSL della sessione asiatica." },
+      },
+      {
+        id: "c1-t2",
+        code: "I.2",
+        title: "Premium vs Discount Pricing: Il Filtro 50% Equilibrium",
+        duration: "28:30",
+        timeframe: "H4 / H1",
+        summary:
+          "Misurazione matematica dell'equilibrio del range. Divieto assoluto di acquisto in zona Premium e di vendita in zona Discount.",
+        keyDirectives: [
+          "Applicare il ritracciamento 50% dal minimo al massimo del macro-impulso.",
+          "Gli acquisti istituzionali si concentrano solo sotto il 50% dell'Equilibrium.",
+        ],
+        fatalErrors: ["Comprare vicino ai massimi credendo nella prosecuzione infinita."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act2.mp4",
+        forgiaHint: { pair: "XAUUSD", timeframe: "H4", notes: "Applica il filtro 50% sul range settimanale." },
+      },
+      {
+        id: "c1-t3",
+        code: "I.3",
+        title: "Order Block Istituzionali Validi vs Zone Mitigate",
+        duration: "26:15",
+        timeframe: "H1 / M15",
+        summary:
+          "Come distinguere una zona ancora carica di ordini algoritmici da un blocco già svuotato e riassorbito.",
+        keyDirectives: [
+          "Un Order Block è valido solo se ha generato un disequilibrio netto (FVG) e ha violato una struttura precedente.",
+          "Se il prezzo è già tornato al 50% dell'Order Block, la zona è MITIGATA e non va riutilizzata.",
+        ],
+        fatalErrors: ["Riutilizzare vecchi Order Block già testati più volte."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act3.mp4",
+        forgiaHint: { pair: "GBPUSD", timeframe: "H1", notes: "Identifica un blocco mitigato vs vergine." },
+      },
+      {
+        id: "c1-t4",
+        code: "I.4",
+        title: "Costruzione del Bias Giornaliero e Flusso di Liquidità",
+        duration: "26:05",
+        timeframe: "Daily",
+        summary:
+          "Dichiarazione scritta dello scenario operativo prima dell'apertura dei mercati per non cadere in balia delle oscillazioni intraday.",
+        keyDirectives: [
+          "Definire l'obiettivo di liquidità attrattiva (Draw on Liquidity) della sessione odierna.",
+          "Se il bias non è netto e confermato su Daily/H4, dichiarare la sessione di pura osservazione.",
+        ],
+        fatalErrors: ["Cambiare idea a metà sessione per assecondare candele al minuto."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act4.mp4",
+        forgiaHint: { pair: "EURUSD", timeframe: "Daily", notes: "Dichiara il Draw on Liquidity per 5 giorni consecutivi." },
+      },
+    ],
+  },
+  {
+    id: "canone-2",
+    roman: "CANONE II",
+    title: "Il Punto di Svolta (SMC & Order Flow)",
+    subtitle: "Filtri di Inversione e Cambio di Carattere ITF (M15 · H1)",
+    timeframe: "M15 → H1",
+    totalDuration: "1h 35m · 4 trasmissioni",
+    transmissions: [
+      {
+        id: "c2-t1",
+        code: "II.1",
+        title: "Fair Value Gap (FVG) e Disequilibri di Volume Istituzionale",
+        duration: "22:40",
+        timeframe: "M15",
+        summary:
+          "Rilevazione dei vuoti di liquidità lasciati dall'azione a senso unico dei market maker. Perché il prezzo ritorna a colmare l'inefficienza.",
+        keyDirectives: [
+          "Un FVG valido si compone di 3 candele con mancata sovrapposizione tra le ombre della 1ª e della 3ª.",
+          "Utilizzare la soglia mediana del gap (Consequent Encroachment) come livello primario di reazione.",
+        ],
+        fatalErrors: ["Considerare ogni piccolo spazio tra candele come FVG significativo."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-v2-act3.mp4",
+        forgiaHint: { pair: "NAS100", timeframe: "M15", notes: "Testa la reazione al Consequent Encroachment." },
+      },
+      {
+        id: "c2-t2",
+        code: "II.2",
+        title: "Rottura Strutturale vs Falso Breakout (MSS vs Liquidity Grab)",
+        duration: "25:15",
+        timeframe: "M15",
+        summary:
+          "Distinzione rigorosa tra una vera inversione di carattere (Market Structure Shift) e una banale esca per intrappolare il retail.",
+        keyDirectives: [
+          "Un MSS reale richiede chiusura netta con corpo candela oltre l'ultimo swing point interno.",
+          "La rottura deve essere accompagnata da una candela di Displacement con FVG a supporto.",
+        ],
+        fatalErrors: ["Entrare su semplice violazione dell'ombra (wick) senza chiusura solida."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-v2-act4.mp4",
+        forgiaHint: { pair: "EURUSD", timeframe: "M15", notes: "Confronta un falso breakout con un MSS confermato." },
+      },
+      {
+        id: "c2-t3",
+        code: "II.3",
+        title: "Kill-Zone Temporali: Sincronizzazione Londra e New York",
+        duration: "20:30",
+        timeframe: "Orari Rigidi",
+        summary:
+          "La scansione algoritmica degli orari. Perché il tempo batte il prezzo e come allineare la propria presenza unicamente durante le aperture.",
+        keyDirectives: [
+          "London Kill-Zone: 08:00 – 10:30 UTC.",
+          "New York Kill-Zone: 13:30 – 16:00 UTC.",
+          "Fuori da queste finestre l'operatività a mercato è SEVERAMENTE VIETATA.",
+        ],
+        fatalErrors: ["Operare durante la pausa pranzo europea o prima delle ore 08:00."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act1.mp4",
+        forgiaHint: { pair: "GBPUSD", timeframe: "M5", notes: "Evidenzia solo i movimenti nati dentro la Kill-Zone." },
+      },
+      {
+        id: "c2-t4",
+        code: "II.4",
+        title: "Algoritmo di Erogazione del Prezzo (IPDA) e OTE (Optimal Trade Entry)",
+        duration: "27:10",
+        timeframe: "M15 / M5",
+        summary:
+          "Misurazione dei livelli di sconto ottimali compresi tra il 61.8% e il 79% del ritracciamento per massimizzare il rendimento asimmetrico.",
+        keyDirectives: [
+          "Attendere il test del box OTE in confluenza con un FVG non mitigato.",
+          "Nessun ingresso prima che il ritracciamento abbia superato la soglia del 61.8%.",
+        ],
+        fatalErrors: ["Comprare a metà ritracciamento senza attendere il livello OTE."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act2.mp4",
+        forgiaHint: { pair: "EURUSD", timeframe: "M5", notes: "Trova 3 casi di OTE confluenti con FVG." },
+      },
+    ],
+  },
+  {
+    id: "canone-3",
+    roman: "CANONE III",
+    title: "Il Sigillo d'Azione (Trigger & Esecuzione)",
+    subtitle: "Convergenza al Minuto ed Esecuzione Chirurgica (M1 · M5)",
+    timeframe: "M1 → M5",
+    totalDuration: "1h 17m · 4 trasmissioni",
+    transmissions: [
+      {
+        id: "c3-t1",
+        code: "III.1",
+        title: "Ingresso Chirurgico su Rifiuto dell'Inefficienza M1",
+        duration: "19:50",
+        timeframe: "M1",
+        summary:
+          "Discesa sui timeframe al minuto solo dopo la validazione HTF e ITF. Riconoscimento del micro-sweep per ridurre il rischio a pochi pip.",
+        keyDirectives: [
+          "Non scendere mai su M1 se il contesto M15 non ha convalidato lo sweep e l'MSS.",
+          "L'ordine si piazza sul ritracciamento del primo micro-FVG nato dopo il trigger.",
+        ],
+        fatalErrors: ["Cercare setup su M1 senza allineamento con Daily e H1."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act3.mp4",
+        forgiaHint: { pair: "EURUSD", timeframe: "M1", notes: "Esegui il trigger M1 solo dopo conferma su M15." },
+      },
+      {
+        id: "c3-t2",
+        code: "III.2",
+        title: "Stop Loss Matematico: Posizionamento Oltre l'Ultimo Sweep",
+        duration: "17:25",
+        timeframe: "M1 / M5",
+        summary:
+          "Calcolo dell'invalidazione millimetrica: lo Stop Loss protegge l'ordine ponendosi oltre il massimo/minimo dello sweep istituzionale.",
+        keyDirectives: [
+          "Lo stop non è negoziabile: dista tra 2.5 e 5 pips oltre il livello di invalidazione.",
+          "Se il prezzo oltrepassa lo stop, la tesi operativa è fallace e va abbandonata senza rimpianti.",
+        ],
+        fatalErrors: ["Allargare lo stop loss durante il trade."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act4.mp4",
+        forgiaHint: { pair: "GBPUSD", timeframe: "M1", notes: "Calcola la dimensione della posizione per rischiare max 1%." },
+      },
+      {
+        id: "c3-t3",
+        code: "III.3",
+        title: "Rapporto Rischio/Rendimento (RR) Minimo 1:3 e Gestione Asimmetrica",
+        duration: "21:10",
+        timeframe: "Matematica Pura",
+        summary:
+          "Come strutturare l'operatività in modo che anche un win rate del 40% generi espansione patrimoniale solida e costante nel tempo.",
+        keyDirectives: [
+          "Rifiutare a priori qualunque trade con target inferiore a 3 volte il rischio iniziale (1:3 R).",
+          "Proteggere la posizione a Pareggio (Break Even) al raggiungimento del target intermedio 1:2 R.",
+        ],
+        fatalErrors: ["Accontentarsi di prendere 1:1 R per paura di veder ritracciare il prezzo."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-v2-act1.mp4",
+        forgiaHint: { pair: "NAS100", timeframe: "M5", notes: "Filtra solo setup con potenziale 1:3 R verificato." },
+      },
+      {
+        id: "c3-t4",
+        code: "III.4",
+        title: "Esecuzione a Mercato vs Ordini Limite: Eliminare lo Slippage",
+        duration: "18:45",
+        timeframe: "Esecuzione",
+        summary:
+          "Scelta tra ordini Limit e ordini Market. Come sfruttare la liquidità passiva per azzerare i costi impliciti e le commissioni di esecuzione.",
+        keyDirectives: [
+          "Prediligere ordini Limit impostati sul 50% del Fair Value Gap M1.",
+          "Evitare ingressi a mercato durante i primi 5 minuti di rilascio di notizie macro ad alto impatto.",
+        ],
+        fatalErrors: ["Cliccare market per FOMO durante una candela in forte accelerazione."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-v2-act2.mp4",
+        forgiaHint: { pair: "EURUSD", timeframe: "M1", notes: "Piazza un ordine limite sull'ingresso dell'inefficienza." },
+      },
+    ],
+  },
+  {
+    id: "canone-4",
+    roman: "CANONE IV",
+    title: "Il Governo della Posizione & Target Sovrano",
+    subtitle: "Dalla Presa di Profitto alla Difesa Rigorosa del Capitale",
+    timeframe: "Gestione Attiva",
+    totalDuration: "1h 29m · 4 trasmissioni",
+    transmissions: [
+      {
+        id: "c4-t1",
+        code: "IV.1",
+        title: "Strategia di Uscita Parziale e Break Even Meccanico",
+        duration: "23:15",
+        timeframe: "Regole Rigide",
+        summary:
+          "Sistematizzare la monetizzazione del profitto: incasso parziale al primo liquidity pool e de-risking immediato della restante posizione.",
+        keyDirectives: [
+          "Liquidare il 50% al raggiungimento di 1:2 R e spostare lo Stop Loss a Breakeven (+0 pips).",
+          "Lasciare correre il restante 50% verso il Target Sovrano senza più alcun rischio di perdita patrimoniale.",
+        ],
+        fatalErrors: ["Lasciare correre l'intera posizione senza prendere parziali su livelli chiave."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act1.mp4",
+        forgiaHint: { pair: "EURUSD", timeframe: "M15", notes: "Verifica l'esito di un trade gestito a Break Even." },
+      },
+      {
+        id: "c4-t2",
+        code: "IV.2",
+        title: "Target Sovrano: Liquidità Opposta e Livelli di Confluenza",
+        duration: "25:40",
+        timeframe: "H1 / Daily",
+        summary:
+          "Identificare l'esatto punto d'arrivo dove i compratori/venditori opposti dovranno ricoprirsi, garantendo la massima estensione del trade.",
+        keyDirectives: [
+          "Posizionare il Take Profit finale subito prima dell'opposto pool di Buy-Side o Sell-Side Liquidity.",
+          "Non pretendere di prendere l'ultimo pip di estensione: uscire con liquidità abbondante.",
+        ],
+        fatalErrors: ["Chiudere il trade prima del target per ansia da prestazione."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act2.mp4",
+        forgiaHint: { pair: "GBPUSD", timeframe: "H1", notes: "Traccia il target sull'estremo opposto del range." },
+      },
+      {
+        id: "c4-t3",
+        code: "IV.3",
+        title: "La Regola delle 3 Candele: Chiusura Anticipata per Mancanza di Momentum",
+        duration: "16:30",
+        timeframe: "M15",
+        summary:
+          "La salvaguardia del tempo: se il trade non sviluppa espansione entro 3 candele dal trigger, la probabilità volge contro l'operatore.",
+        keyDirectives: [
+          "Se dopo 45 minuti (3 candele M15) il prezzo ristagna nell'area di ingresso, chiudere la posizione.",
+          "Non accettare la congestione prolungata all'interno della Kill-Zone.",
+        ],
+        fatalErrors: ["Rimanere ore in stallo sperando che il mercato si muova."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act3.mp4",
+        forgiaHint: { pair: "EURUSD", timeframe: "M15", notes: "Conta le candele dall'ingresso e osserva il decadimento temporale." },
+      },
+      {
+        id: "c4-t4",
+        code: "IV.4",
+        title: "Psicologia del Rischio: Dominare la Paura di Perdere e l'Euforia",
+        duration: "24:20",
+        timeframe: "Assetto Interiore",
+        summary:
+          "La stoica accettazione dell'incertezza. Come separare il proprio valore personale dall'esito estemporaneo di un singolo trade.",
+        keyDirectives: [
+          "Accettare che una serie di 3 perdite rientra nella normale varianza statistica del protocollo.",
+          "Rispettare il massimo di 2 esecuzioni giornaliere: al secondo stop loss, spegnere la piattaforma.",
+        ],
+        fatalErrors: ["Fare revenge trading per recuperare una perdita subita nella sessione."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-act4.mp4",
+        forgiaHint: { pair: "TUTTI", timeframe: "Diario", notes: "Registra ogni emozione ne Il Libro della Verità." },
+      },
+    ],
+  },
+  {
+    id: "canone-5",
+    roman: "CANONE V",
+    title: "L'Arte del Duello & L'Arte dell'Assedio",
+    subtitle: "I Due Protocolli Operativi di LIMEN: Scalp ad Alta Frequenza e Swing Macro",
+    timeframe: "M1 vs Daily",
+    totalDuration: "1h 56m · 4 trasmissioni",
+    transmissions: [
+      {
+        id: "c5-t1",
+        code: "V.1",
+        title: "Protocollo Scalp: Duello ad Alta Frequenza in 45 Minuti di Kill-Zone",
+        duration: "31:10",
+        timeframe: "M1 / M5",
+        summary:
+          "La routine dell'affondo rapido: come operare esclusivamente nella prima ora di apertura, monetizzare e liberare la mente per il resto del giorno.",
+        keyDirectives: [
+          "Presenza attiva solo tra le 08:30 e le 09:30 UTC per Londra, o tra le 14:00 e le 15:00 UTC per New York.",
+          "Obiettivo: 1 sola operazione chirurgica ad alta precisione con rapporto minimo 1:3 R.",
+        ],
+        fatalErrors: ["Trattare lo scalp come un'attività da svolgere tutto il giorno davanti al monitor."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-v2-act1.mp4",
+        forgiaHint: { pair: "NAS100", timeframe: "M1", notes: "Applica il Protocollo Scalp tra le 15:30 e le 16:30 CET." },
+      },
+      {
+        id: "c5-t2",
+        code: "V.2",
+        title: "Protocollo Swing: L'Assedio Paziente dei Grandi Cicli Macro",
+        duration: "34:25",
+        timeframe: "Daily / H4",
+        summary:
+          "La padronanza della pazienza: posizionarsi sui grandi flussi settimanali e mensili senza subire il rumore intraday.",
+        keyDirectives: [
+          "Analisi solo a chiusura di candela H4 e Daily: 2 soli controlli al giorno da 10 minuti.",
+          "Target macro estesi fino a 1:8 R con posizioni gestite per giorni o settimane.",
+        ],
+        fatalErrors: ["Guardare il grafico al minuto mentre si è posizionati in un'operazione Swing."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-v2-act2.mp4",
+        forgiaHint: { pair: "EURUSD", timeframe: "Daily", notes: "Traccia la struttura macro dei minimi trimestrali." },
+      },
+      {
+        id: "c5-t3",
+        code: "V.3",
+        title: "Transizione tra i Protocolli: Come Scegliere in Base al Ciclo di Vita",
+        duration: "22:50",
+        timeframe: "Stile di Vita",
+        summary:
+          "Adattare il metodo al proprio stile di vita professionale e familiare, garantendo che il trading sia servitore e non padrone della propria esistenza.",
+        keyDirectives: [
+          "Chi lavora full-time deve adottare esclusivamente il Protocollo Swing o la sola Kill-Zone New York serale.",
+          "Non forzare mai sessioni di scalping quando la mente è affaticata o deconcentrata.",
+        ],
+        fatalErrors: ["Cercare di fare scalp sul telefono cellulare durante le ore lavorative."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-v2-act3.mp4",
+        forgiaHint: { pair: "TUTTI", timeframe: "Profilo", notes: "Compila l'allocazione temporale nelle impostazioni." },
+      },
+      {
+        id: "c5-t4",
+        code: "V.4",
+        title: "La Conclusione dell'Addestramento: Dalla Dottrina al Libro della Verità",
+        duration: "28:15",
+        timeframe: "Consacrazione",
+        summary:
+          "La sintesi finale: come trasferire ogni insegnamento all'interno del Diario Operativo e scalare i 5 Gradi di Ascesa per merito e integrità.",
+        keyDirectives: [
+          "Nessun grado superiore viene sbloccato senza il 100% di Indice di Integrità verificato.",
+          "La Dottrina è il faro; Il Libro della Verità è lo specchio del tuo valore reale.",
+        ],
+        fatalErrors: ["Dimenticare di registrare una sessione ne Il Libro della Verità."],
+        isFreePreview: false,
+        videoSrc: "/videos/limen-v2-act4.mp4",
+        forgiaHint: { pair: "TUTTI", timeframe: "Integrità", notes: "Mantieni 30 sessioni consecutive al 100% di integrità." },
+      },
+    ],
+  },
+];
 
 function useCopy() {
   const { language } = useLanguage();
   return (key: AcademyCopyKey) => academyText(language, key);
 }
+
 function useAction() {
   const client = useQueryClient();
   return useMutation({
@@ -45,741 +544,789 @@ function useAction() {
     meta: { suppressGlobalError: true },
   });
 }
-function ErrorNotice({ retry }: { retry?: () => void }) {
-  const c = useCopy();
-  return (
-    <div className="academy-notice" role="alert">
-      <p>{c("error")}</p>
-      {retry && (
-        <Button variant="outline" onClick={retry}>
-          {c("retry")}
-        </Button>
-      )}
-    </div>
-  );
-}
-function Money({ cents }: { cents: number }) {
-  const { language } = useLanguage();
-  return (
-    <>
-      {new Intl.NumberFormat(language, { style: "currency", currency: "EUR" }).format(cents / 100)}
-    </>
-  );
-}
-function AcademyDate({ value }: { value: string }) {
-  const { language } = useLanguage();
-  return <time dateTime={value}>{new Date(value).toLocaleDateString(language)}</time>;
-}
 
 export function AcademyWelcome() {
-  const c = useCopy();
-  const search = useSearch();
-  const ref = validAcademyReferral(new URLSearchParams(search).get("ref"));
-  const authQuery = `academy=1${ref ? `&academy_ref=${ref}` : ""}`;
-  return (
-    <main className="academy-public">
-      <div className="academy-workspace">
-        <header className="academy-public-nav">
-          <Link href="/">TraderLoadings</Link>
-          <Link className="academy-text-link" href={`/sign-in?${authQuery}`}>
-            {c("login")}
-            <ArrowRight size={16} />
-          </Link>
-        </header>
-        <section className="academy-hero">
-          <div className="academy-hero-copy">
-            <p className="academy-eyebrow">ACADEMY / SCALP & SWING</p>
-            <h1>{c("subtitle")}</h1>
-            <p>{c("intro")}</p>
-            <p className="academy-caption">{c("includes")}</p>
-          </div>
-          <div className="academy-price">
-            <GraduationCap size={28} aria-hidden />
-            <p className="academy-amount">
-              <Money cents={15000} />
-              <span> / {c("monthly")}</span>
-            </p>
-            <p className="academy-caption">{c("subscriptionNote")}</p>
-            <Link className="academy-public-cta" href={`/sign-up?${authQuery}`}>
-              {c("register")}
-              <ArrowRight size={16} />
-            </Link>
-            <p className="academy-caption">{c("welcomeNote")}</p>
-          </div>
-        </section>
-        <section className="academy-curriculum">
-          <h2>{c("syllabus")}</h2>
-          <p className="academy-caption">{c("outlinesNote")}</p>
-          {ACADEMY_MODULES.map((module, i) => (
-            <div key={module.id} className="academy-public-module" lang="it">
-              <span className="academy-module-number">{String(i + 1).padStart(2, "0")}</span>
-              <div>
-                <h3>{module.title}</h3>
-                <p className="academy-caption">{module.description}</p>
-              </div>
-            </div>
-          ))}
-        </section>
-        <section className="academy-panel">
-          <h2>{c("affiliate")}</h2>
-          <p>{c("affiliateIntro")}</p>
-          <strong>{c("freeAffiliate")}</strong>
-          <p className="academy-caption">{c("commissionRules")}</p>
-        </section>
-        <p className="academy-footnote">{c("risk")}</p>
-        <Link className="academy-text-link" href="/terms">
-          {c("terms")}
-        </Link>
-      </div>
-    </main>
-  );
+  return <LandingPage />;
 }
-function Status({ value }: { value: string }) {
-  const c = useCopy();
-  const labels: Record<string, AcademyCopyKey> = {
-    pending: "pending",
-    available: "available",
-    paid: "paid",
-    reversed: "reversed",
-    held: "pending",
-    processing: "pending",
-    transferred: "paid",
-    recovery_pending: "recovery",
-  };
-  const key = labels[value];
-  return <span className="academy-badge">{key ? c(key) : value}</span>;
-}
+
+// ─── Main Component: La Dottrina del Tempo ─────────────────────────────────────
 
 export default function Academy() {
-  const c = useCopy();
+  const _c = useCopy();
   const search = useSearch();
+  const [, navigate] = useLocation();
+  const { entitlements } = useLimenEntitlements();
+
+  if (!entitlements.doctrineOfTime) {
+    return (
+      <PageLayout>
+        <LimenServiceLockGate serviceId="doctrine_of_time" />
+      </PageLayout>
+    );
+  }
   const params = new URLSearchParams(search);
-  const ref = validAcademyReferral(params.get("ref"));
-  const tab = params.get("tab") ?? "course";
-  const lessonId = params.get("lesson");
-  const catalog = useQuery({ queryKey: api.academyKeys.catalog, queryFn: api.fetchAcademyCatalog });
-  const billing = useQuery({
+  const _ref = validAcademyReferral(params.get("ref"));
+  const tabParam = params.get("tab") ?? "canoni";
+  const lessonIdParam = params.get("lesson") ?? params.get("canone");
+
+  // Determine active tab cleanly
+  const activeTab = useMemo<"canoni" | "trattato" | "espansione" | "incisione">(() => {
+    if (tabParam === "trattato" || tabParam === "codex") return "trattato";
+    if (tabParam === "espansione" || tabParam === "affiliate") return "espansione";
+    if (tabParam === "incisione" || tabParam === "teacher") return "incisione";
+    return "canoni";
+  }, [tabParam]);
+
+  const handleTabChange = (nextTab: string) => {
+    const nextParams = new URLSearchParams(search);
+    nextParams.set("tab", nextTab);
+    if (nextTab !== "canoni") {
+      nextParams.delete("lesson");
+      nextParams.delete("canone");
+    }
+    navigate(`/academy?${nextParams.toString()}`);
+  };
+
+  // Queries for catalog and billing with safe defaults (zero blocking crash)
+  const catalogQuery = useQuery({
+    queryKey: api.academyKeys.catalog,
+    queryFn: api.fetchAcademyCatalog,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const billingQuery = useQuery({
     queryKey: api.academyKeys.billing,
     queryFn: api.fetchAcademyBilling,
-    staleTime: 0,
+    staleTime: 60_000,
+    retry: 1,
   });
-  const tabs = [
-    "course",
-    "affiliate",
-    ...(catalog.data?.access.isTeacher ? ["teacher"] : []),
-  ] as const;
-  return (
-    <ProcessFrame title="Academy" subtitle={c("subtitle")}>
-      <div className="academy-workspace">
-        <nav className="academy-tabs" aria-label="Academy">
-          {tabs.map((item) => (
-            <Link
-              key={item}
-              href={`/academy?tab=${item}${ref ? `&ref=${ref}` : ""}`}
-              aria-current={tab === item && !lessonId ? "page" : undefined}
-            >
-              {c(item as "course" | "affiliate" | "teacher")}
-            </Link>
-          ))}
-        </nav>
-        {(params.has("session_id") || params.get("checkout") === "success") &&
-          !billing.data?.active && (
-            <div className="academy-notice" role="status">
-              <p>{c("paymentReturn")}</p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  void billing.refetch();
-                  void catalog.refetch();
-                }}
-                disabled={billing.isFetching}
-              >
-                <RefreshCw size={15} />
-                {c("refresh")}
-              </Button>
-            </div>
-          )}
-        {catalog.isPending ? (
-          <p role="status">{c("loading")}</p>
-        ) : catalog.isError ? (
-          <ErrorNotice retry={() => void catalog.refetch()} />
-        ) : lessonId ? (
-          <LessonView key={lessonId} id={lessonId} />
-        ) : tab === "teacher" && catalog.data.access.isTeacher ? (
-          <TeacherStudio />
-        ) : tab === "affiliate" ? (
-          <AffiliatePanel
-            billing={billing.data}
-            billingError={billing.isError}
-            retry={() => void billing.refetch()}
-          />
-        ) : (
-          <Course
-            catalog={catalog.data}
-            billing={billing.data}
-            billingError={billing.isError}
-            retry={() => void billing.refetch()}
-          />
-        )}
-        <p className="academy-footnote">{c("risk")}</p>
-      </div>
-    </ProcessFrame>
-  );
-}
 
-function Course({
-  catalog,
-  billing,
-  billingError,
-  retry,
-}: {
-  catalog: api.AcademyCatalog;
-  billing?: api.AcademyBilling;
-  billingError: boolean;
-  retry: () => void;
-}) {
-  const c = useCopy();
-  const action = useAction();
-  const search = useSearch();
-  const referralCode = validAcademyReferral(new URLSearchParams(search).get("ref")) ?? undefined;
-  return (
-    <>
-      <section className="academy-hero">
-        <div className="academy-hero-copy">
-          <p className="academy-eyebrow">SCALP / SWING</p>
-          <h2>{c("subtitle")}</h2>
-          <p>{c("intro")}</p>
-          <p className="academy-caption">{c("includes")}</p>
-          <div className="academy-method" aria-hidden="true">
-            <span>
-              01
-              <br />
-              CONTESTO
-            </span>
-            <ArrowRight size={16} />
-            <span>
-              02
-              <br />
-              SCENARIO
-            </span>
-            <ArrowRight size={16} />
-            <span>
-              03
-              <br />
-              CONFERMA
-            </span>
-            <ArrowRight size={16} />
-            <span>
-              04
-              <br />
-              REVISIONE
-            </span>
-          </div>
-        </div>
-        <div className="academy-price">
-          <GraduationCap size={28} aria-hidden />
-          <p className="academy-eyebrow">TRADERLOADINGS ACADEMY</p>
-          <p className="academy-amount">
-            <Money cents={billing?.price.amountCents ?? 15000} />
-            <span> / {c("monthly")}</span>
-          </p>
-          {billingError ? (
-            <ErrorNotice retry={retry} />
-          ) : !billing ? (
-            <p role="status">{c("loading")}</p>
-          ) : billing.active ? (
-            <>
-              <p className="academy-active">
-                <Check size={16} />
-                {c("active")}
-              </p>
-              {billing.currentPeriodEnd && (
-                <p className="academy-caption">
-                  {c(billing.cancelAtPeriodEnd ? "until" : "nextRenewal")}{" "}
-                  <AcademyDate value={billing.currentPeriodEnd} />
-                </p>
-              )}
-              <Button
-                variant="outline"
-                disabled={action.isPending}
-                onClick={() =>
-                  action.mutate(() => api.changeAcademyRenewal(billing.cancelAtPeriodEnd))
-                }
-              >
-                {c(billing.cancelAtPeriodEnd ? "resume" : "cancel")}
-              </Button>
-            </>
-          ) : billing.checkoutAvailable ? (
-            <Button
-              disabled={action.isPending}
-              onClick={() =>
-                action.mutate(async () => {
-                  const result = await api.academyCheckout(referralCode);
-                  window.location.assign(api.stripeRedirectUrl(result.url));
-                })
-              }
-            >
-              {c("subscribe")}
-              <ArrowRight size={16} />
-            </Button>
-          ) : (
-            <p className="academy-caption">{c("unavailable")}</p>
-          )}
-          {action.isError && <ErrorNotice />}
-          <p className="academy-caption">{c("subscriptionNote")}</p>
-          <Link href="/terms" className="academy-text-link">
-            {c("terms")}
-          </Link>
-        </div>
-      </section>
-      <section className="academy-curriculum" lang="it">
-        <div className="academy-section-heading">
-          <div>
-            <p className="academy-eyebrow">08 MODULI / SCALP & SWING</p>
-            <h2>{c("syllabus")}</h2>
-          </div>
-          <span className="academy-badge">
-            {catalog.lessons.length} {c("published")}
+  const { data: profile } = useGetProfile();
+  const isTeacher = catalogQuery.data?.access.isTeacher ?? false;
+  const _hasProtocolAccess = billingQuery.data?.active ?? catalogQuery.data?.access.hasAccess ?? false;
+
+  // Active Session and Kill-Zone telemetry
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+  const _limenSession = useMemo(() => getLimenSessionInfo(now), [now]);
+
+  // Active Canone and transmission state
+  const [selectedCanoneId, setSelectedCanoneId] = useState<string>("canone-0");
+  const [selectedTransmissionId, setSelectedTransmissionId] = useState<string>("c0-t1");
+
+  // Sync from query params if specified
+  useEffect(() => {
+    if (lessonIdParam) {
+      for (const group of CANONI_MASTER_DATA) {
+        const found = group.transmissions.find(
+          (t) => t.id === lessonIdParam || t.code === lessonIdParam,
+        );
+        if (found) {
+          setSelectedCanoneId(group.id);
+          setSelectedTransmissionId(found.id);
+          break;
+        }
+      }
+    }
+  }, [lessonIdParam]);
+
+  // Selected transmission object
+  const activeTransmission = useMemo<CanoneTransmission>(() => {
+    const group = CANONI_MASTER_DATA.find((g) => g.id === selectedCanoneId) ?? CANONI_MASTER_DATA[0];
+    return (
+      group.transmissions.find((t) => t.id === selectedTransmissionId) ??
+      group.transmissions[0]
+    );
+  }, [selectedCanoneId, selectedTransmissionId]);
+
+  // Checklist "Il Filtro del Custode" state
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({
+    sessione: true,
+    sweep: true,
+    mss: false,
+    invalidazione: false,
+  });
+
+  const toggleChecklist = (key: string) => {
+    setChecklist((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleExportSigillo = () => {
+    const allChecked = Object.values(checklist).every(Boolean);
+    const text = `LIMEN PROTOCOL // LA DOTTRINA DEL TEMPO // IL FILTRO DEL CUSTODE
+Data CET: ${now.toLocaleDateString("it-IT")} ore ${now.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+Operatore: ${profile?.name ?? "Operatore Sovrano"} · Grado: ${profile?.level ?? 1}
+Canone di Riferimento: ${activeTransmission.code} — ${activeTransmission.title}
+
+1. FINESTRA TEMPORALE KILL-ZONE: ${checklist.sessione ? "VALIDATA (Sessione Consentita)" : "NON VERIFICATA (VIOLAZIONE)"}
+2. SWEEP DI LIQUIDITA HTF: ${checklist.sweep ? "RILEVATO & CONFERMATO" : "NON RILEVATO"}
+3. CAMBIO DI CARATTERE ITF (MSS): ${checklist.mss ? "CONFERMATO CON FVG" : "IN ATTESA"}
+4. INVALIDAZIONE MATEMATICA: ${checklist.invalidazione ? "DEFINITA & STOP RIGIDO" : "NON DICHIARATA"}
+
+STATO DEL SIGILLO: ${allChecked ? "● INGRESSO AUTORIZZATO DAL PROTOCOLLO" : "▲ ESECUZIONE SEVERAMENTE VIETATA"}
+
+REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzione a mercato è SEVERAMENTE VIETATA nel Limen Protocol.`;
+
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `limen-sigillo-${now.toISOString().slice(0, 10)}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Sigillo del Custode Esportato",
+      description: allChecked
+        ? "Tutti i 4 criteri risultano convalidati. Rispetta l'invalidazione matematica."
+        : "Attenzione: criteri incompleti. Esecuzione vietata dal protocollo.",
+    });
+  };
+
+  // Section tabs definition (3 sole sottosezioni chiare)
+  const sectionTabs: SectionTab[] = useMemo(
+    () => [
+      {
+        value: "canoni",
+        label: "01 · I CANONI OPERATIVI",
+        icon: <Layers className="h-4 w-4" />,
+      },
+      {
+        value: "trattato",
+        label: "02 · IL TRATTATO DEI GENERALI",
+        icon: <BookOpen className="h-4 w-4" />,
+      },
+      {
+        value: "espansione",
+        label: "03 · IL MANDATO D'ESPANSIONE",
+        icon: <Award className="h-4 w-4" />,
+        badge: (
+          <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold">
+            20%
           </span>
-        </div>
-        <p className="academy-caption">{c("outlinesNote")}</p>
-        {catalog.modules.map((module, index) => {
-          const lessons = catalog.lessons.filter((item) => item.moduleId === module.id);
-          const planned = catalog.syllabus.filter(
-            (item) =>
-              item.moduleId === module.id &&
-              !lessons.some((lesson) => lesson.syllabusId === item.id),
-          );
-          return (
-            <details
-              key={module.id}
-              className="academy-module"
-              open={index === 0 ? true : undefined}
-            >
-              <summary>
-                <span className="academy-module-number">{String(index + 1).padStart(2, "0")}</span>
-                <span>
-                  <strong>{module.title}</strong>
-                  <small>{module.description}</small>
-                </span>
-                <span className="academy-badge">
-                  {lessons.length}/{lessons.length + planned.length}
-                </span>
-              </summary>
-              <ul className="academy-lessons">
-                {lessons.map((lesson) => (
-                  <li key={lesson.id}>
-                    <span className="academy-lesson-icon">
-                      {catalog.progress.some((p) => p.lessonId === lesson.id && p.completedAt) ? (
-                        <Check size={17} />
-                      ) : (
-                        <Play size={17} />
-                      )}
-                    </span>
-                    <span className="academy-lesson-title">
-                      <strong>{lesson.title}</strong>
-                      <small>{lesson.description}</small>
-                    </span>
-                    {catalog.access.hasAccess ? (
-                      <Link
-                        className="academy-text-link"
-                        href={`/academy?lesson=${encodeURIComponent(lesson.id)}`}
-                      >
-                        {c("open")}
-                        <ArrowRight size={15} />
-                      </Link>
-                    ) : (
-                      <span className="academy-caption">
-                        <LockKeyhole size={14} aria-hidden />
-                        {c("locked")}
-                      </span>
-                    )}
-                  </li>
-                ))}
-                {planned.map((item) => (
-                  <li key={item.id} className="academy-planned">
-                    <span className="academy-lesson-icon">·</span>
-                    <span className="academy-lesson-title">{item.title}</span>
-                    <span className="academy-badge">{c("preparation")}</span>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          );
-        })}
-      </section>
-    </>
+        ),
+      },
+      ...(isTeacher
+        ? [
+            {
+              value: "incisione",
+              label: "BANCO D'INCISIONE",
+              icon: <Terminal className="h-4 w-4 text-primary" />,
+            },
+          ]
+        : []),
+    ],
+    [isTeacher],
   );
-}
 
-function LessonView({ id }: { id: string }) {
-  const c = useCopy();
-  const lesson = useQuery({
-    queryKey: api.academyKeys.lesson(id),
-    queryFn: () => api.fetchAcademyLesson(id),
-    retry: false,
-  });
   return (
-    <>
-      <Link className="academy-text-link" href="/academy">
-        <ArrowLeft size={16} />
-        {c("back")}
-      </Link>
-      {lesson.isPending ? (
-        <p role="status">{c("loading")}</p>
-      ) : lesson.isError ? (
-        <ErrorNotice retry={() => void lesson.refetch()} />
-      ) : (
-        <LessonContent key={lesson.data.lesson.id} detail={lesson.data} />
-      )}
-    </>
-  );
-}
-function LessonContent({ detail }: { detail: api.AcademyLessonDetail }) {
-  const c = useCopy();
-  const { lesson, progress } = detail;
-  const [response, setResponse] = useState(progress?.exerciseResponse ?? "");
-  const action = useAction();
-  return (
-    <article className="academy-lesson-page">
-      <header>
-        <p className="academy-eyebrow">
-          {ACADEMY_MODULES.find((m) => m.id === lesson.moduleId)?.title}
-        </p>
-        <h2>{lesson.title}</h2>
-        <p className="academy-caption">{lesson.description}</p>
-      </header>
-      {lesson.videoEmbedUrl && (
-        <iframe
-          className="academy-player"
-          src={lesson.videoEmbedUrl}
-          title={lesson.title}
-          allow="fullscreen; picture-in-picture; encrypted-media"
-          allowFullScreen
-          sandbox="allow-scripts allow-same-origin allow-presentation"
-          referrerPolicy="strict-origin-when-cross-origin"
-        />
-      )}
-      {lesson.bodyMarkdown && (
-        <div className="academy-prose" lang="it">
-          {lesson.bodyMarkdown}
-        </div>
-      )}
-      <section className="academy-panel">
-        <h3>{c("exercise")}</h3>
-        <p className="academy-prose" lang="it">
-          {lesson.exercisePrompt}
-        </p>
-        <ProcessField label={c("response")}>
-          <Textarea
-            rows={7}
-            maxLength={20000}
-            value={response}
-            onChange={(event) => {
-              setResponse(event.target.value);
-              action.reset();
-            }}
-          />
-        </ProcessField>
-        <div className="academy-actions">
-          <Button
-            variant="outline"
-            disabled={action.isPending}
-            onClick={() =>
-              action.mutate(() =>
-                api.saveAcademyProgress(lesson.id, { exerciseResponse: response }),
-              )
-            }
-          >
-            {c("saveDraft")}
-          </Button>
-          <Button
-            disabled={action.isPending || !response.trim()}
-            onClick={() =>
-              action.mutate(() =>
-                api.saveAcademyProgress(lesson.id, { exerciseResponse: response, submit: true }),
-              )
-            }
-          >
-            {c("submit")}
-          </Button>
-        </div>
-        {progress?.submittedAt && !progress.reviewedAt && (
-          <p className="academy-caption">{c("pendingReview")}</p>
-        )}
-        {progress?.feedback && (
-          <aside className="academy-feedback">
-            <h4>{c("feedback")}</h4>
-            <p className="academy-prose">{progress.feedback}</p>
-          </aside>
-        )}
-        <Button
-          variant="ghost"
-          disabled={action.isPending}
-          onClick={() =>
-            action.mutate(() =>
-              api.saveAcademyProgress(lesson.id, { completed: !progress?.completedAt }),
-            )
-          }
-        >
-          <Check size={16} />
-          {c(progress?.completedAt ? "reopen" : "finish")}
-        </Button>
-        {action.isError && <ErrorNotice />}
-        {action.isSuccess && (
-          <p role="status" className="academy-caption">
-            {c("saved")}
-          </p>
-        )}
-      </section>
-    </article>
-  );
-}
-
-function AffiliatePanel({
-  billing,
-  billingError,
-  retry,
-}: {
-  billing?: api.AcademyBilling;
-  billingError: boolean;
-  retry: () => void;
-}) {
-  const c = useCopy();
-  const [accepted, setAccepted] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const action = useAction();
-  const ledger = useQuery({
-    queryKey: api.academyKeys.commissions,
-    queryFn: api.fetchAcademyCommissions,
-    enabled: !!billing?.affiliate.enrolled,
-  });
-  const payout = useQuery({
-    queryKey: payoutAccountKey(),
-    queryFn: fetchPayoutAccount,
-    enabled: !!billing?.affiliate.enrolled,
-  });
-  if (billingError) return <ErrorNotice retry={retry} />;
-  if (!billing) return <p role="status">{c("loading")}</p>;
-  const link = billing.affiliate.link
-    ? new URL(billing.affiliate.link, window.location.origin).href
-    : "";
-  return (
-    <div className="academy-affiliate">
-      <section className="academy-panel">
-        <p className="academy-eyebrow">20% / {c("monthly")}</p>
-        <h2>{c("affiliate")}</h2>
-        <p>{c("affiliateIntro")}</p>
-        <strong>{c("freeAffiliate")}</strong>
-        <p className="academy-caption">{c("commissionRules")}</p>
-        {!billing.affiliate.enrolled ? (
-          <>
-            <label className="academy-checkbox">
-              <input
-                type="checkbox"
-                checked={accepted}
-                onChange={(event) => setAccepted(event.target.checked)}
-              />
-              <span>
-                {c("affiliateTerms")} <small>v. {billing.affiliate.termsVersion}</small>
-              </span>
-            </label>
-            <Button
-              disabled={!accepted || action.isPending}
-              onClick={() =>
-                action.mutate(() => api.enrollAcademyAffiliate(billing.affiliate.termsVersion))
-              }
-            >
-              {c("join")}
-            </Button>
-          </>
-        ) : (
-          <>
-            <ProcessField label={c("inviteLink")}>
-              <Input readOnly value={link} onFocus={(event) => event.target.select()} />
-            </ProcessField>
-            <Button
-              variant="outline"
-              disabled={!link || action.isPending}
-              onClick={() =>
-                action.mutate(async () => {
-                  await navigator.clipboard.writeText(link);
-                  setCopied(true);
-                })
-              }
-            >
-              <Copy size={16} />
-              {c(copied ? "copied" : "copy")}
-            </Button>
-          </>
-        )}
-        {action.isError && <ErrorNotice />}
-      </section>
-      {billing.affiliate.enrolled && (
-        <>
-          <div className="academy-totals">
-            {(
-              [
-                ["pending", billing.commissions.pendingCents],
-                ["available", billing.commissions.availableCents],
-                ["paid", billing.commissions.paidCents],
-              ] as const
-            ).map(([key, amount]) => (
-              <div key={key}>
-                <p className="academy-caption">{c(key)}</p>
-                <strong>
-                  <Money cents={amount} />
-                </strong>
-              </div>
-            ))}
+    <PageLayout quiet>
+      <div className="flex flex-col lg:h-full lg:min-h-0 lg:overflow-hidden pt-1 max-w-[1760px] w-full mx-auto">
+        {/* ─── BARRA DI NAVIGAZIONE COMPATTA (3 SEZIONI SOVRANE & PONTE FORGIA) ─── */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-2 shrink-0">
+          <div className="lg:hidden">
+            <SectionTabs
+              ariaLabel="Sezioni della Dottrina del Tempo"
+              items={sectionTabs}
+              value={activeTab}
+              onValueChange={handleTabChange}
+            />
           </div>
-          <section className="academy-panel">
-            <h3>{c("connect")}</h3>
-            <p className="academy-caption">{c("payoutHint")}</p>
-            {payout.isError ? (
-              <ErrorNotice retry={() => void payout.refetch()} />
-            ) : payout.data?.available ? (
-              <Button
-                variant="outline"
-                disabled={action.isPending}
-                onClick={() =>
-                  action.mutate(async () => {
-                    const result = await (payout.data?.payoutsEnabled
-                      ? fetchDashboardLink()
-                      : startPayoutOnboarding());
-                    window.location.assign(api.stripeRedirectUrl(result.url));
-                  })
-                }
-              >
-                {c(payout.data.payoutsEnabled ? "managePayout" : "connect")}
-                <ArrowRight size={15} />
-              </Button>
-            ) : null}
-          </section>
-          <section className="academy-panel">
-            <h3>{c("affiliate")}</h3>
-            {ledger.isPending ? (
-              <p role="status">{c("loading")}</p>
-            ) : ledger.isError ? (
-              <ErrorNotice retry={() => void ledger.refetch()} />
-            ) : !ledger.data.items.length ? (
-              <p className="academy-caption">{c("emptyCommissions")}</p>
-            ) : (
-              <ul className="academy-ledger">
-                {ledger.data.items.map((item) => (
-                  <li key={item.id}>
-                    <span>
-                      <AcademyDate value={item.createdAt} />
-                      <small>
-                        {c("available")}: <AcademyDate value={item.availableAt} />
-                      </small>
+          <div className="hidden lg:flex items-center gap-2.5">
+            <span className="h-2 w-2 rounded-full bg-[#C5A059] animate-pulse" />
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#C5A059]">
+              {activeTab === "canoni" && "01 · I CANONI OPERATIVI"}
+              {activeTab === "trattato" && "02 · IL TRATTATO DEI GENERALI"}
+              {activeTab === "espansione" && "03 · IL MANDATO D'ESPANSIONE"}
+              {activeTab === "incisione" && "BANCO D'INCISIONE"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <Link
+              href="/backtest"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs font-bold text-primary border border-primary/40 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+            >
+              <FlaskConical className="h-3.5 w-3.5" />
+              <span className="whitespace-nowrap">La Forgia del Passato</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {/* ─── SEZIONE 01: I CANONI OPERATIVI (VISORE TATTICO & CONSOLE DIDATTICA) ─── */}
+        {activeTab === "canoni" && (
+          <div className="limen-scroll-pane flex-1 min-h-0 space-y-6 pt-3 pb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Colonna Sinistra / Principale (Visore Tattico, Note & Filtro del Custode) */}
+            <div className="lg:col-span-8 space-y-6 min-w-0">
+              {/* Il Visore Tattico (Video Player) */}
+              <Card className="border-primary/40 bg-card overflow-hidden shadow-2xl">
+                <CardHeader className="p-4 border-b border-border/60 bg-gradient-to-r from-card via-background to-card flex flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="h-8 w-8 rounded-lg border border-primary/40 bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                      <Play className="h-4 w-4 fill-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] font-bold text-primary uppercase tracking-wider">
+                          IL VISORE TATTICO // TRASMISSIONE {activeTransmission.code}
+                        </span>
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          · {activeTransmission.timeframe}
+                        </span>
+                      </div>
+                      <h2 className="text-sm sm:text-base font-bold text-foreground truncate font-display">
+                        {activeTransmission.title}
+                      </h2>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-mono text-xs text-muted-foreground bg-background px-2.5 py-1 rounded border border-border">
+                      {activeTransmission.duration}
                     </span>
-                    <Status value={item.status} />
-                    <strong>
-                      <Money cents={Math.max(0, item.amountCents - item.reversedCents)} />
-                    </strong>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </>
-      )}
-    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0 bg-black aspect-video relative flex items-center justify-center overflow-hidden">
+                  {/* Player Rendering: Cloudflare Stream, Vimeo/YouTube Embed or Native Limen Cinematic */}
+                  {activeTransmission.streamVideoId ? (
+                    <ManagedLessonVideo
+                      id={activeTransmission.id}
+                      title={activeTransmission.title}
+                    />
+                  ) : activeTransmission.videoEmbedUrl ? (
+                    <iframe
+                      className="w-full h-full"
+                      src={activeTransmission.videoEmbedUrl}
+                      title={activeTransmission.title}
+                      allow="fullscreen; picture-in-picture; encrypted-media"
+                      allowFullScreen
+                      sandbox="allow-scripts allow-same-origin allow-presentation"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                    />
+                  ) : (
+                    <video
+                      controls
+                      playsInline
+                      className="w-full h-full object-cover"
+                      poster="/images/backgrounds/nero-ossidiana.webp"
+                      key={activeTransmission.videoSrc}
+                    >
+                      <source src={activeTransmission.videoSrc} type="video/mp4" />
+                      Il tuo browser non supporta la riproduzione video HTML5.
+                    </video>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* I Punti di Svolta del Canone & Sintesi Operativa */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="border-border bg-card/80 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-primary border-b border-border/50 pb-2">
+                    <Compass className="h-4 w-4" />
+                    <h3 className="font-mono text-xs font-bold uppercase tracking-wider">
+                      LE DIRETTIVE INVIOLABILI DEL CANONE
+                    </h3>
+                  </div>
+                  <ul className="space-y-2 text-xs text-foreground/90 leading-relaxed font-sans">
+                    {activeTransmission.keyDirectives.map((dir, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                        <span>{dir}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+
+                <Card className="border-border bg-card/80 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-destructive border-b border-border/50 pb-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <h3 className="font-mono text-xs font-bold uppercase tracking-wider">
+                      ERRORI FATALI DELLA MASSA RETAIL
+                    </h3>
+                  </div>
+                  <ul className="space-y-2 text-xs text-muted-foreground leading-relaxed font-sans">
+                    {activeTransmission.fatalErrors.map((err, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0 mt-1.5" />
+                        <span className="text-destructive/90">{err}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              </div>
+
+              {/* Il Filtro del Custode (Checklist Pre-Sessione Interattiva) */}
+              <Card className="border-primary/50 bg-card/90 shadow-xl p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-7 w-7 rounded border border-primary/40 bg-primary/10 flex items-center justify-center text-primary">
+                      <Shield className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-foreground">
+                        IL FILTRO DEL CUSTODE // 4 SIGILLI PRE-MERCATO
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        Tutti i 4 criteri devono risultare convalidati prima di inserire un qualunque ordine a mercato.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="font-mono text-xs border-primary/40 hover:bg-primary/10 text-primary"
+                    onClick={handleExportSigillo}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    Esporta Sigillo (.txt)
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleChecklist("sessione")}
+                    className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
+                      checklist.sessione
+                        ? "border-primary/60 bg-primary/10 text-foreground"
+                        : "border-border/80 bg-background/60 text-muted-foreground hover:border-border"
+                    }`}
+                  >
+                    <div
+                      className={`h-5 w-5 rounded border mt-0.5 flex items-center justify-center shrink-0 ${
+                        checklist.sessione
+                          ? "border-primary bg-primary text-black font-bold"
+                          : "border-border"
+                      }`}
+                    >
+                      {checklist.sessione && <Check className="h-3.5 w-3.5" />}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-mono text-xs font-bold block">
+                        I. FINESTRA KILL-ZONE
+                      </span>
+                      <span className="text-[11px] leading-tight block mt-0.5 text-muted-foreground">
+                        Orario attuale compreso tra 08:00–10:30 UTC o 13:30–16:00 UTC. Fuori finestra: vietato.
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleChecklist("sweep")}
+                    className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
+                      checklist.sweep
+                        ? "border-primary/60 bg-primary/10 text-foreground"
+                        : "border-border/80 bg-background/60 text-muted-foreground hover:border-border"
+                    }`}
+                  >
+                    <div
+                      className={`h-5 w-5 rounded border mt-0.5 flex items-center justify-center shrink-0 ${
+                        checklist.sweep
+                          ? "border-primary bg-primary text-black font-bold"
+                          : "border-border"
+                      }`}
+                    >
+                      {checklist.sweep && <Check className="h-3.5 w-3.5" />}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-mono text-xs font-bold block">
+                        II. SWEEP DI LIQUIDITÀ HTF
+                      </span>
+                      <span className="text-[11px] leading-tight block mt-0.5 text-muted-foreground">
+                        Presa secca dei massimi o minimi (PDH/PDL) senza chiusura candela solida oltre il livello.
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleChecklist("mss")}
+                    className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
+                      checklist.mss
+                        ? "border-primary/60 bg-primary/10 text-foreground"
+                        : "border-border/80 bg-background/60 text-muted-foreground hover:border-border"
+                    }`}
+                  >
+                    <div
+                      className={`h-5 w-5 rounded border mt-0.5 flex items-center justify-center shrink-0 ${
+                        checklist.mss
+                          ? "border-primary bg-primary text-black font-bold"
+                          : "border-border"
+                      }`}
+                    >
+                      {checklist.mss && <Check className="h-3.5 w-3.5" />}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-mono text-xs font-bold block">
+                        III. CAMBIO DI CARATTERE (MSS)
+                      </span>
+                      <span className="text-[11px] leading-tight block mt-0.5 text-muted-foreground">
+                        Rottura conclamata dello swing interno con candela di displacement e Fair Value Gap.
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleChecklist("invalidazione")}
+                    className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
+                      checklist.invalidazione
+                        ? "border-primary/60 bg-primary/10 text-foreground"
+                        : "border-border/80 bg-background/60 text-muted-foreground hover:border-border"
+                    }`}
+                  >
+                    <div
+                      className={`h-5 w-5 rounded border mt-0.5 flex items-center justify-center shrink-0 ${
+                        checklist.invalidazione
+                          ? "border-primary bg-primary text-black font-bold"
+                          : "border-border"
+                      }`}
+                    >
+                      {checklist.invalidazione && <Check className="h-3.5 w-3.5" />}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-mono text-xs font-bold block">
+                        IV. INVALIDAZIONE MATEMATICA
+                      </span>
+                      <span className="text-[11px] leading-tight block mt-0.5 text-muted-foreground">
+                        Stop Loss fisso precalcolato oltre la struttura e regola di uscita entro 3 candele M15.
+                      </span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Ponte Diretto con La Forgia del Passato */}
+                <div className="pt-2 border-t border-border/50 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-mono text-primary font-bold">CONSIGLIO FORGIA: </span>
+                    Testa questo Canone su {activeTransmission.forgiaHint.pair} ({activeTransmission.forgiaHint.timeframe}).
+                  </div>
+                  <Button
+                    size="sm"
+                    className="font-mono text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => navigate("/backtest")}
+                  >
+                    <FlaskConical className="h-3.5 w-3.5 mr-1.5" />
+                    Verifica Canone nella Forgia
+                  </Button>
+                </div>
+              </Card>
+            </div>
+
+            {/* Colonna Destra (Il Registro dei 6 Canoni con scrollbar interna) */}
+            <div className="lg:col-span-4 space-y-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-primary">
+                  REGISTRO DEI CANONI (0 — V)
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  6 CANONI · 22 TRASMISSIONI
+                </span>
+              </div>
+
+              <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+                {CANONI_MASTER_DATA.map((group) => {
+                  const isGroupActive = group.id === selectedCanoneId;
+                  return (
+                    <Card
+                      key={group.id}
+                      className={`border transition-all overflow-hidden ${
+                        isGroupActive
+                          ? "border-primary/60 bg-card shadow-lg"
+                          : "border-border/70 bg-card/60 hover:border-border"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCanoneId(group.id);
+                          setSelectedTransmissionId(group.transmissions[0].id);
+                        }}
+                        className="w-full p-3.5 text-left border-b border-border/40 bg-gradient-to-r from-card to-background/50 flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[10px] font-bold text-primary">
+                              {group.roman}
+                            </span>
+                            <span className="font-mono text-[9px] text-muted-foreground">
+                              · {group.timeframe}
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold uppercase tracking-wide text-foreground truncate font-display">
+                            {group.title}
+                          </h4>
+                        </div>
+                        <ChevronRight
+                          className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${
+                            isGroupActive ? "rotate-90 text-primary" : ""
+                          }`}
+                        />
+                      </button>
+
+                      <div className="p-1 space-y-1">
+                        {group.transmissions.map((t) => {
+                          const isTransmissionActive = t.id === selectedTransmissionId;
+                          return (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCanoneId(group.id);
+                                setSelectedTransmissionId(t.id);
+                              }}
+                              className={`w-full p-2.5 rounded text-left transition-colors flex items-center justify-between gap-2 ${
+                                isTransmissionActive
+                                  ? "bg-primary/15 text-foreground font-semibold border border-primary/40"
+                                  : "hover:bg-background/80 text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="font-mono text-[10px] font-bold shrink-0 text-primary">
+                                  {t.code}
+                                </span>
+                                <span className="text-xs truncate">{t.title}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="font-mono text-[9px] text-muted-foreground">
+                                  {t.duration}
+                                </span>
+                                {t.isFreePreview ? (
+                                  <span className="font-mono text-[8px] uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                    Libero
+                                  </span>
+                                ) : (
+                                  <Lock className="h-3 w-3 text-muted-foreground/60" />
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          </div>
+        )}
+
+        {/* ─── SEZIONE 02: IL TRATTATO DEI GENERALI (I TRE LIBRI DEI GENERALI) ─── */}
+        {activeTab === "trattato" && (
+          <div className="flex-1 min-h-0 flex flex-col justify-center pt-1 pb-1 lg:overflow-hidden">
+            <GeneralsBooksReader />
+          </div>
+        )}
+
+        {/* ─── SEZIONE 03: IL MANDATO D'ESPANSIONE (AFFILIAZIONE SOVRANA SINGLE-TIER) ─── */}
+        {activeTab === "espansione" && (
+          <div className="limen-scroll-pane flex-1 min-h-0 pt-3 pb-8">
+            <div className="space-y-6 max-w-4xl mx-auto">
+            <Card className="border-primary/50 bg-card p-6 shadow-2xl space-y-6">
+              <div className="space-y-2 border-b border-border/60 pb-4">
+                <span className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                  MANDATO D'ESPANSIONE // PATTO D'ONORE SINGLE-TIER
+                </span>
+                <h2 className="text-2xl font-bold font-display uppercase tracking-tight text-foreground">
+                  La Crescita dell'Ordine Sovrano
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Il Limen Protocol rifiuta categoricamente qualsiasi schema multilivello o piramidale.
+                  Il Mandato d'Espansione è un patto meritocratico ad <strong>1 solo livello diretto (Single-Tier)</strong>:
+                  ogni Operatore guidato tramite il tuo Codice di Chiamata ti riconosce il <strong>20% di royalty perenne (30 € / mese)</strong>.
+                </p>
+              </div>
+
+              {/* Barra dell'Esenzione Sovrana (5 Confratelli = Canone 0€) */}
+              {(() => {
+                const membersCount = billingQuery.data?.affiliate.activeGuidedMembersCount ?? 0;
+                const pct = Math.min(100, Math.round((membersCount / 5) * 100));
+                const royaltyEur = membersCount * 30;
+                const surplusEur = Math.max(0, (membersCount - 5) * 30);
+
+                return (
+                  <div className="rounded-xl border border-primary/40 bg-background/80 p-5 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-mono text-xs font-bold uppercase tracking-wider text-primary">
+                        PROGRESSO ESENZIONE TRIBUTO MENSILE (150 € / MESE)
+                      </span>
+                      <span className="font-mono text-xs text-foreground font-semibold">
+                        Royalty Attiva: <strong className="text-primary">{royaltyEur} € / mese</strong>
+                        {surplusEur > 0 ? ` (+${surplusEur} € Rendita Netta)` : ""}
+                      </span>
+                    </div>
+
+                    <div className="h-3 w-full overflow-hidden rounded-full border border-border bg-card">
+                      <div
+                        className="h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-500 shadow-[0_0_12px_rgba(197,160,89,0.5)]"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between text-xs text-muted-foreground pt-1">
+                      <span>
+                        Confratelli guidati: <strong className="text-foreground">{membersCount} / 5</strong> per l'esenzione totale dal tributo.
+                      </span>
+                      <span className="font-mono text-primary">
+                        {5 - membersCount > 0
+                          ? `Ancora ${5 - membersCount} per l'azzeramento canone`
+                          : "Esenzione Sovrana Raggiunta (Canone 0 €)"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Codice di Chiamata Box */}
+              {(() => {
+                const link = billingQuery.data?.affiliate.link
+                  ? new URL(billingQuery.data.affiliate.link, window.location.origin).href
+                  : `${window.location.origin}/welcome?ref=${profile?.id ?? "LIMEN"}`;
+
+                return (
+                  <div className="space-y-3">
+                    <label className="font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                      IL TUO CODICE DI CHIAMATA PERSONALE
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        readOnly
+                        value={link}
+                        className="font-mono text-xs bg-background text-foreground selection:bg-primary/30"
+                        onFocus={(e) => e.target.select()}
+                      />
+                      <Button
+                        variant="outline"
+                        className="font-mono text-xs font-bold border-primary/40 hover:bg-primary/10 text-primary shrink-0"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(link);
+                          toast({
+                            title: "Codice di Chiamata Copiato",
+                            description: "Condividi il tuo link unicamente con operatori dediti alla disciplina e al metodo.",
+                          });
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-1.5" />
+                        Copia Sigillo d'Invito
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Ogni nuovo operatore che accede tramite il tuo codice viene attribuito in modo permanente e matematico al tuo Dossier.
+                    </p>
+                  </div>
+                );
+              })()}
+
+              {/* Regola di Merito */}
+              <div className="rounded-lg border border-border/80 bg-background/40 p-4 text-xs text-muted-foreground space-y-1">
+                <span className="font-mono text-primary font-bold block uppercase tracking-wider">
+                  REQUISITO DI MERITO · GRADO II (IL CUSTODE DELLA REGOLA)
+                </span>
+                <p>
+                  Il Mandato d'Espansione è riservato agli Operatori che hanno dimostrato fedeltà al Codice
+                  con 30 sessioni consecutive al 100% di integrità ne <em>Il Libro della Verità</em>.
+                </p>
+              </div>
+            </Card>
+          </div>
+        </div>
+        )}
+
+        {/* ─── BANCO D'INCISIONE (GESTIONE AMMINISTRATORE / MAESTRO) ─── */}
+        {activeTab === "incisione" && isTeacher && (
+          <div className="limen-scroll-pane flex-1 min-h-0 pt-3 pb-8">
+            <div className="space-y-6">
+              <TeacherStudio />
+            </div>
+          </div>
+        )}
+      </div>
+    </PageLayout>
   );
 }
+
+// ─── Studio Docente: Il Banco d'Incisione (Per Utenti Insegnanti/Admin) ─────────
 
 function TeacherStudio() {
-  const c = useCopy();
+  const _c = useCopy();
   const lessons = useQuery({
     queryKey: api.academyKeys.teacher,
     queryFn: api.fetchAcademyTeacherLessons,
   });
-  const submissions = useQuery({
+  const _submissions = useQuery({
     queryKey: api.academyKeys.submissions,
     queryFn: api.fetchAcademySubmissions,
   });
   const [editing, setEditing] = useState<api.AcademyLesson | AcademySyllabusItem | "new" | null>(
     null,
   );
+
   return (
-    <div className="academy-studio">
-      <section className="academy-panel">
-        <div className="academy-section-heading">
-          <h2>{c("teacher")}</h2>
-          <Button onClick={() => setEditing("new")}>
-            <Plus size={16} />
-            {c("newLesson")}
-          </Button>
+    <Card className="border-primary/50 bg-card p-6 shadow-2xl space-y-6">
+      <div className="flex items-center justify-between border-b border-border/60 pb-3">
+        <div>
+          <span className="font-mono text-xs font-bold uppercase tracking-wider text-primary">
+            IL BANCO D'INCISIONE // AMMINISTRAZIONE
+          </span>
+          <h2 className="text-xl font-bold font-display uppercase tracking-tight text-foreground">
+            Gestione e Pubblicazione Canoni
+          </h2>
         </div>
-        <p className="academy-caption">{c("teacherNote")}</p>
-        {editing ? (
-          <LessonEditor
-            key={typeof editing === "string" ? editing : editing.id}
-            lesson={editing}
-            close={() => setEditing(null)}
-          />
-        ) : lessons.isPending ? (
-          <p role="status">{c("loading")}</p>
-        ) : lessons.isError ? (
-          <ErrorNotice retry={() => void lessons.refetch()} />
-        ) : (
-          <>
-            <ul className="academy-lessons">
-              {lessons.data.map((lesson) => (
-                <li key={lesson.id}>
-                  <span className="academy-lesson-title">
-                    <strong>{lesson.title}</strong>
-                    <small>{ACADEMY_MODULES.find((m) => m.id === lesson.moduleId)?.title}</small>
-                  </span>
-                  <span className="academy-badge">
-                    {c(lesson.published ? "published" : "draft")}
-                  </span>
-                  <Button variant="outline" onClick={() => setEditing(lesson)}>
-                    {c("edit")}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-            <details className="academy-outline-list">
-              <summary>{c("syllabus")} · 24</summary>
-              {ACADEMY_MODULES.map((module) => (
-                <div key={module.id}>
-                  <h3>{module.title}</h3>
-                  {ACADEMY_SYLLABUS.filter((item) => item.moduleId === module.id).map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setEditing(item)}
-                      className="academy-outline-button"
-                    >
-                      <span>{item.title}</span>
-                      <Plus size={16} aria-hidden />
-                    </button>
-                  ))}
+        <Button
+          size="sm"
+          className="font-mono text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+          onClick={() => setEditing("new")}
+        >
+          <Plus className="h-4 w-4 mr-1.5" />
+          Incidi Nuovo Canone
+        </Button>
+      </div>
+
+      {editing ? (
+        <LessonEditor
+          key={typeof editing === "string" ? editing : editing.id}
+          lesson={editing}
+          close={() => setEditing(null)}
+        />
+      ) : lessons.isPending ? (
+        <p className="font-mono text-xs text-muted-foreground">Caricamento trasmissioni…</p>
+      ) : (
+        <div className="space-y-3">
+          <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-foreground">
+            Canoni Pubblicati a Database
+          </h3>
+          <ul className="space-y-2">
+            {(lessons.data ?? []).map((lesson) => (
+              <li
+                key={lesson.id}
+                className="flex items-center justify-between p-3 rounded-lg border border-border bg-background"
+              >
+                <div>
+                  <strong className="text-sm font-semibold text-foreground block">
+                    {lesson.title}
+                  </strong>
+                  <small className="text-xs text-muted-foreground font-mono">
+                    {lesson.published ? "● PUBBLICATO" : "○ BOZZA"} · {lesson.accessLevel}
+                  </small>
                 </div>
-              ))}
-            </details>
-          </>
-        )}
-      </section>
-      <section className="academy-panel">
-        <h2>{c("submissions")}</h2>
-        {submissions.isPending ? (
-          <p role="status">{c("loading")}</p>
-        ) : submissions.isError ? (
-          <ErrorNotice retry={() => void submissions.refetch()} />
-        ) : !submissions.data.length ? (
-          <p className="academy-caption">{c("noSubmissions")}</p>
-        ) : (
-          submissions.data.map((item) => (
-            <Submission key={item.id + item.submittedAt} item={item} />
-          ))
-        )}
-      </section>
-      <PayoutReview />
-    </div>
+                <Button variant="outline" size="sm" onClick={() => setEditing(lesson)}>
+                  Modifica
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
   );
 }
+
 function LessonEditor({
   lesson,
   close,
@@ -787,7 +1334,7 @@ function LessonEditor({
   lesson: api.AcademyLesson | AcademySyllabusItem | "new";
   close: () => void;
 }) {
-  const c = useCopy();
+  const _c = useCopy();
   const existing = typeof lesson === "object" && "published" in lesson ? lesson : null;
   const outline = typeof lesson === "object" && "outline" in lesson ? lesson : null;
   const [form, setForm] = useState<api.AcademyLessonInput>({
@@ -796,41 +1343,23 @@ function LessonEditor({
     title: existing?.title ?? outline?.title ?? "",
     description: existing?.description ?? "",
     videoUrl: existing?.videoUrl ?? "",
+    streamVideoId: existing?.streamVideoId ?? null,
+    accessLevel: existing?.accessLevel ?? "protocol",
+    contentKind: existing?.contentKind ?? "lesson",
+    introductionSlot:
+      (existing?.introductionSlot as api.AcademyLessonInput["introductionSlot"]) ?? null,
     bodyMarkdown: existing?.bodyMarkdown ?? "",
     exercisePrompt: existing?.exercisePrompt ?? outline?.exercisePrompt ?? "",
     orderIndex: existing?.orderIndex ?? 0,
     published: existing?.published ?? false,
   });
   const action = useAction();
-  const field = (
-    key: "title" | "description" | "videoUrl" | "bodyMarkdown" | "exercisePrompt",
-    label: AcademyCopyKey,
-    multiline = false,
-  ) => (
-    <ProcessField label={c(label)}>
-      {multiline ? (
-        <Textarea
-          maxLength={key === "bodyMarkdown" ? 50000 : key === "description" ? 2000 : 10000}
-          rows={key === "bodyMarkdown" ? 8 : 3}
-          value={form[key] ?? ""}
-          onChange={(event) => setForm({ ...form, [key]: event.target.value })}
-        />
-      ) : (
-        <Input
-          required={key === "title" || (key === "videoUrl" && form.published)}
-          maxLength={key === "title" ? 180 : 2048}
-          type={key === "videoUrl" ? "url" : "text"}
-          value={form[key] ?? ""}
-          onChange={(event) => setForm({ ...form, [key]: event.target.value })}
-        />
-      )}
-    </ProcessField>
-  );
+
   return (
     <form
-      className="academy-editor"
-      onSubmit={(event) => {
-        event.preventDefault();
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
         action.mutate(async () => {
           await api.saveAcademyLesson(existing?.id ?? null, {
             ...form,
@@ -840,191 +1369,58 @@ function LessonEditor({
         });
       }}
     >
-      {outline && (
-        <div className="academy-notice">
-          <p>{outline.outline}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs font-mono uppercase text-muted-foreground block mb-1">
+            Titolo Canone
+          </label>
+          <Input
+            required
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+          />
         </div>
-      )}
-      <ProcessField label={c("module")}>
-        <select
-          className="academy-select"
-          value={form.moduleId}
-          onChange={(event) =>
-            setForm({
-              ...form,
-              moduleId: event.target.value as api.AcademyLessonInput["moduleId"],
-              syllabusId: null,
-            })
-          }
-        >
-          {ACADEMY_MODULES.map((module) => (
-            <option key={module.id} value={module.id}>
-              {module.title}
-            </option>
-          ))}
-        </select>
-      </ProcessField>
-      {field("title", "lessonTitle")}
-      {field("description", "description", true)}
-      {field("videoUrl", "video")}
-      {field("bodyMarkdown", "notes", true)}
-      {field("exercisePrompt", "prompt", true)}
-      <ProcessField label={c("order")}>
-        <Input
-          type="number"
-          min={0}
-          max={10000}
-          value={form.orderIndex}
-          onChange={(event) => setForm({ ...form, orderIndex: Number(event.target.value) })}
+        <div>
+          <label className="text-xs font-mono uppercase text-muted-foreground block mb-1">
+            Accesso
+          </label>
+          <select
+            className="w-full h-10 px-3 rounded-md border border-input bg-background font-mono text-xs"
+            value={form.accessLevel}
+            onChange={(e) => setForm({ ...form, accessLevel: e.target.value as "free" | "protocol" })}
+          >
+            <option value="protocol">Membro (Protocollo)</option>
+            <option value="free">Accesso Libero (Sandbox)</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-mono uppercase text-muted-foreground block mb-1">
+          Descrizione / Punti Chiave
+        </label>
+        <Textarea
+          rows={3}
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
-      </ProcessField>
-      <label className="academy-checkbox">
-        <input
-          type="checkbox"
-          checked={form.published}
-          onChange={(event) => setForm({ ...form, published: event.target.checked })}
+      </div>
+
+      <div className="pt-2">
+        <AcademyVideoUpload
+          currentId={form.streamVideoId ?? null}
+          onConfirm={(id) => setForm({ ...form, streamVideoId: id, videoUrl: null })}
         />
-        <span>{c("publish")}</span>
-      </label>
-      {action.isError && <ErrorNotice />}
-      <div className="academy-actions">
-        <Button type="submit" disabled={action.isPending}>
-          {c("save")}
+      </div>
+
+      <div className="flex items-center gap-2 pt-2">
+        <Button type="submit" disabled={action.isPending} className="font-mono text-xs font-bold">
+          Salva Canone
         </Button>
-        <Button type="button" variant="outline" disabled={action.isPending} onClick={close}>
-          {c("cancelEdit")}
+        <Button type="button" variant="outline" onClick={close} className="font-mono text-xs">
+          Annulla
         </Button>
       </div>
     </form>
-  );
-}
-function Submission({ item }: { item: api.AcademyTeacherSubmission }) {
-  const c = useCopy();
-  const [feedback, setFeedback] = useState(item.feedback);
-  const action = useAction();
-  return (
-    <article className="academy-submission">
-      <h3>{item.lessonTitle}</h3>
-      <p className="academy-caption">
-        {item.userId} · {item.submittedAt && <AcademyDate value={item.submittedAt} />}
-      </p>
-      <p className="academy-prose">{item.exerciseResponse}</p>
-      <ProcessField label={c("feedback")}>
-        <Textarea
-          maxLength={10000}
-          value={feedback}
-          onChange={(event) => {
-            setFeedback(event.target.value);
-            action.reset();
-          }}
-        />
-      </ProcessField>
-      <Button
-        variant="outline"
-        disabled={action.isPending || !feedback.trim()}
-        onClick={() =>
-          action.mutate(() => api.reviewAcademySubmission(item.id, feedback, item.submittedAt!))
-        }
-      >
-        {c("sendFeedback")}
-      </Button>
-      {action.isError && <ErrorNotice />}
-      {action.isSuccess && <p role="status">{c("saved")}</p>}
-    </article>
-  );
-}
-function PayoutReview() {
-  const c = useCopy();
-  const rows = useQuery({
-    queryKey: api.academyKeys.payouts,
-    queryFn: api.fetchAcademyPayouts,
-    retry: false,
-  });
-  const [selected, setSelected] = useState<string[]>([]);
-  const [confirmed, setConfirmed] = useState(false);
-  const [results, setResults] = useState<api.AcademyPayoutResult[]>([]);
-  const action = useAction();
-  const total =
-    rows.data?.items
-      .filter((row) => selected.includes(row.id))
-      .reduce((sum, row) => sum + Math.max(0, row.amountCents - row.reversedCents), 0) ?? 0;
-  return (
-    <section className="academy-panel">
-      <h2>{c("payoutReview")}</h2>
-      {results.length > 0 && (
-        <ul className="academy-ledger" role="status">
-          {results.map((result) => (
-            <li key={result.commissionId}>
-              <span>{result.commissionId}</span>
-              <span>{c(result.status === "processed" ? "processed" : "error")}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {rows.isPending ? (
-        <p role="status">{c("loading")}</p>
-      ) : rows.isError ? (
-        <ErrorNotice retry={() => void rows.refetch()} />
-      ) : !rows.data.items.length ? (
-        <p className="academy-caption">{c("emptyCommissions")}</p>
-      ) : (
-        <>
-          <ul className="academy-ledger">
-            {rows.data.items.map((row) => (
-              <li key={row.id}>
-                <label className="academy-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(row.id)}
-                    onChange={(event) => {
-                      setConfirmed(false);
-                      setSelected(
-                        event.target.checked
-                          ? [...selected, row.id]
-                          : selected.filter((id) => id !== row.id),
-                      );
-                    }}
-                  />
-                  <span>
-                    {row.affiliateUserId}
-                    <small>{row.id}</small>
-                  </span>
-                </label>
-                <Status value={row.status} />
-                <strong>
-                  <Money cents={Math.max(0, row.amountCents - row.reversedCents)} />
-                </strong>
-              </li>
-            ))}
-          </ul>
-          <p>
-            <Money cents={total} />
-          </p>
-          <label className="academy-checkbox">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(event) => setConfirmed(event.target.checked)}
-            />
-            <span>{c("payoutConfirm")}</span>
-          </label>
-          <Button
-            disabled={!confirmed || !selected.length || selected.length > 50 || action.isPending}
-            onClick={() =>
-              action.mutate(async () => {
-                const result = await api.payAcademyCommissions(selected);
-                setResults(result.items);
-                setSelected([]);
-                setConfirmed(false);
-              })
-            }
-          >
-            {c("payoutAction")}
-          </Button>
-        </>
-      )}
-      {action.isError && <ErrorNotice />}
-      {action.isSuccess && <p role="status">{c("saved")}</p>}
-    </section>
   );
 }

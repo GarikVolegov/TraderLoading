@@ -100,8 +100,31 @@ function getTwelveDataApiKey(): string {
 
 interface CachedData { data: CandlesResult; timestamp: number; }
 const cache = new Map<string, CachedData>();
+const MAX_MEMORY_CACHE_ENTRIES = 250;
 const contextInFlight = new Map<string, Promise<CandlesResult>>();
 const CACHE_TTL = 60 * 60 * 1000;
+
+function setMemoryCache(cacheKey: string, data: CachedData): void {
+  if (cache.has(cacheKey)) {
+    cache.delete(cacheKey);
+  } else if (cache.size >= MAX_MEMORY_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) cache.delete(oldestKey);
+  }
+  cache.set(cacheKey, data);
+}
+
+function getMemoryCache(key: string, allowExpired = false): CachedData | undefined {
+  const entry = cache.get(key);
+  if (!entry) return undefined;
+  if (!allowExpired && Date.now() - entry.timestamp >= CACHE_TTL) {
+    return undefined;
+  }
+  // Refresh LRU position
+  cache.delete(key);
+  cache.set(key, entry);
+  return entry;
+}
 
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume?: number };
 
@@ -706,7 +729,7 @@ async function fetchLiveCandles(
   const freshnessOK = (data: CandlesResult) => options.maxAgeMs === undefined ||
     (!data.stale && Number.isFinite(Date.parse(data.fetchedAt ?? "")) &&
       Date.now() - Date.parse(data.fetchedAt!) >= 0 && Date.now() - Date.parse(data.fetchedAt!) <= options.maxAgeMs);
-  const cached = cache.get(cacheKey);
+  const cached = getMemoryCache(cacheKey);
   if (
     cached &&
     freshnessOK(cached.data) &&
@@ -718,7 +741,7 @@ async function fetchLiveCandles(
 
   const distributedCached = await getJsonCache<CandlesResult>(cacheKey);
   if (distributedCached && freshnessOK(distributedCached) && (isPaged || distributedCached.candles.length >= requiredCached)) {
-    cache.set(cacheKey, { data: distributedCached, timestamp: Date.now() });
+    setMemoryCache(cacheKey, { data: distributedCached, timestamp: Date.now() });
     return distributedCached;
   }
 
@@ -753,7 +776,7 @@ async function fetchLiveCandles(
           ? paginateCandles(candles, options, intervalSecs)
           : { candles: latestWindowCandles(candles, options) };
       const responseData: CandlesResult = { symbol, interval, source: name.toLowerCase(), ...page, fetchedAt: new Date().toISOString(), stale: false };
-      cache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+      setMemoryCache(cacheKey, { data: responseData, timestamp: Date.now() });
       // Cursor pages: full pages are immutable (24h), short/tail pages may
       // still grow (60s) — mirrors the warehouse TTL rule.
       const ttl = isPaged
@@ -770,7 +793,7 @@ async function fetchLiveCandles(
     }
   }
 
-  const stale = cache.get(cacheKey);
+  const stale = getMemoryCache(cacheKey, true);
   if (stale && (isPaged || stale.data.candles.length >= requiredCached)) {
     console.log(`[candles] Serving stale cache for ${symbol} ${interval}`);
     return { ...stale.data, stale: true };

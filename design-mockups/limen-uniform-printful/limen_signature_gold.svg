@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600" fill="none">
+  <!-- LIMEN PROTOCOL // GOLDEN CHEST SIGNATURE -->
+  <!-- Target: Left Chest (4" x 2" / 10 x 5 cm) -->
+  <!-- Thread: Antique Gold (#C5A059) Satin Stitch -->
+  <text x="600" y="270" text-anchor="middle" font-family="'Snell Roundhand', 'Brush Script MT', cursive" font-size="165" font-weight="bold" fill="#C5A059">Limen</text>
+  <path d="M 380 340 C 520 385 680 335 810 360" stroke="#C5A059" stroke-width="7" stroke-linecap="round" fill="none" />
+  <polygon points="825,360 836,349 847,360 836,371" fill="#C5A059" />
+</svg>

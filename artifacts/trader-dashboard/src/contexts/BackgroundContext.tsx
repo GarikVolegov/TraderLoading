@@ -43,11 +43,11 @@ const CALENDAR_CURRENCY_LIST = [
 ];
 
 const FONT_MAP: Record<string, string> = {
-  inter: "'Fira Sans', sans-serif",
+  inter: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   jetbrains: "'JetBrains Mono', monospace",
-  roboto: "'Roboto', sans-serif",
-  "space-grotesk": "'Space Grotesk', monospace",
-  "ibm-plex": "'IBM Plex Sans', sans-serif",
+  roboto: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  "space-grotesk": "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  "ibm-plex": "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 };
 
 export const DEFAULT_TRADING_SESSIONS: TradingSessionConfig[] = [
@@ -178,7 +178,7 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
   }, [isMobile]);
 
   const [darkness, setDarkness] = useState(60);
-  const [fontChoice, setFontChoice] = useState("inter");
+  const [fontChoice, setFontChoice] = useState("space-grotesk");
   const [tradingSessions, setTradingSessions] = useState<
     TradingSessionConfig[]
   >(DEFAULT_TRADING_SESSIONS);
@@ -251,7 +251,7 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
   }, [settings, syncCalendarFromPairs]);
 
   useEffect(() => {
-    const family = FONT_MAP[fontChoice] || FONT_MAP.inter;
+    const family = FONT_MAP[fontChoice] || FONT_MAP["space-grotesk"];
     document.documentElement.style.setProperty("--font-sans", family);
     document.body.style.fontFamily = family;
   }, [fontChoice]);

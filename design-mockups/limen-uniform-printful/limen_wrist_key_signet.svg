@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800" fill="none">
+  <!-- LIMEN PROTOCOL // CUFF & WRIST OPERATIONAL SIGNET -->
+  <!-- "CLAVIS LIMINIS & STYLUS DISCIPLINAE" (La Chiave della Soglia e lo Stilo della Verità) -->
+  <!-- Target: Left Wrist Placement on Gildan 18500 (3" x 3" / 7.6 x 7.6 cm) -->
+  <!-- Threads: Antique Gold (#C5A059) & Pitch Black (#111111) -->
+  <!-- Heavy industrial embroidery strokes (>= 1.5mm) for tactile relief -->
+
+  <g transform="translate(400, 400)">
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 1. CORNICE A MEDAGLIONE OTTOGONALE ROMANO (Roman Coin / Signet)     -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Bordo esterno spesso in nero -->
+    <polygon points="0,-340 240,-240 340,0 240,240 0,340 -240,240 -340,0 -240,-240" fill="#111111" stroke="#C5A059" stroke-width="12" stroke-linejoin="round" />
+    
+    <!-- Profilo interno dorato con bordo perlinato (Roman Beaded Coin Rim) -->
+    <polygon points="0,-310 219,-219 310,0 219,219 0,310 -219,219 -310,0 -219,-219" fill="none" stroke="#C5A059" stroke-width="4" stroke-dasharray="14 10" />
+
+    <!-- Cerchio interno di campo scuro -->
+    <circle cx="0" cy="0" r="230" fill="#111111" stroke="#C5A059" stroke-width="6" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 2. LO STILO DELLA VERITÀ (Roman Stylus - Libro della Verità)        -->
+    <!-- Inclinato a -45° (in diagonale)                                   -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <g transform="rotate(-45)">
+      <!-- Asta dello stilo -->
+      <rect x="-8" y="-180" width="16" height="360" fill="#C5A059" rx="3" />
+      <line x1="0" y1="-170" x2="0" y2="170" stroke="#111111" stroke-width="4" stroke-linecap="round" />
+      <!-- Punta scrivente dello stilo (in basso) -->
+      <polygon points="0,210 12,180 -12,180" fill="#C5A059" stroke="#111111" stroke-width="2" />
+      <!-- Spatola / Eraser dello stilo romano (in alto) -->
+      <polygon points="-18,-180 18,-180 24,-205 -24,-205" fill="#C5A059" stroke="#111111" stroke-width="3" />
+      <circle cx="0" cy="-195" r="5" fill="#111111" />
+    </g>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 3. LA CHIAVE DELLA SOGLIA (Clavis Liminis)                         -->
+    <!-- Inclinata a +45° (incrociata con lo stilo)                         -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <g transform="rotate(45)">
+      <!-- Asta scanalata della chiave -->
+      <rect x="-10" y="-130" width="20" height="280" fill="#C5A059" stroke="#111111" stroke-width="4" rx="3" />
+      <line x1="0" y1="-120" x2="0" y2="140" stroke="#111111" stroke-width="4" stroke-linecap="round" />
+
+      <!-- Impugnatura / Bow della chiave: Il Rombo Sacro LIMEN -->
+      <polygon points="0,-215 55,-160 0,-105 -55,-160" fill="#C5A059" stroke="#111111" stroke-width="8" stroke-linejoin="round" />
+      <!-- Cuore forato dell'impugnatura -->
+      <polygon points="0,-190 28,-160 0,-130 -28,-160" fill="#111111" stroke="#C5A059" stroke-width="3" stroke-linejoin="round" />
+      <circle cx="0" cy="-160" r="6" fill="#C5A059" />
+
+      <!-- Mappa della chiave (Bit) a forma di portale architettonico -->
+      <path d="M 10 95 H 48 V 165 H 28 V 140 H 18 V 165 H 10 Z" fill="#C5A059" stroke="#111111" stroke-width="4" stroke-linejoin="round" />
+      <rect x="22" y="105" width="14" height="20" fill="#111111" rx="2" />
+    </g>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 4. IL NODO CENTRALE & IL MONOGRAMMA TL (Trans-Limen)                -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Medaglione d'intersezione centrale -->
+    <circle cx="0" cy="0" r="54" fill="#111111" stroke="#C5A059" stroke-width="7" />
+    <circle cx="0" cy="0" r="42" fill="#C5A059" />
+
+    <!-- Sigla monumentale TL sovrapposta nel centro -->
+    <text x="0" y="14" text-anchor="middle" font-family="'Times New Roman', 'Baskerville', serif" font-size="44" font-weight="bold" fill="#111111" letter-spacing="3">TL</text>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 5. MOTTI LATINI CIRCOLARI INCISI (Circular Arch Typography)        -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Corona d'alloro laterale ad arco -->
+    <g stroke="#C5A059" stroke-width="3" fill="#C5A059">
+      <!-- Foglie sinistra -->
+      <path d="M -170 -60 C -185 -40 -185 40 -170 60" fill="none" stroke-width="4" stroke-linecap="round" />
+      <circle cx="-180" cy="-40" r="5" />
+      <circle cx="-188" cy="0" r="5" />
+      <circle cx="-180" cy="40" r="5" />
+
+      <!-- Foglie destra -->
+      <path d="M 170 -60 C 185 -40 185 40 170 60" fill="none" stroke-width="4" stroke-linecap="round" />
+      <circle cx="180" cy="-40" r="5" />
+      <circle cx="188" cy="0" r="5" />
+      <circle cx="180" cy="40" r="5" />
+    </g>
+  </g>
+
+  <!-- TESTO SUPERIORE E INFERIORE CURVATO/ALLINEATO -->
+  <!-- TRANS LIMEN (in alto) -->
+  <text x="400" y="160" text-anchor="middle" font-family="'Times New Roman', 'Baskerville', serif" font-size="34" font-weight="bold" fill="#C5A059" letter-spacing="14">TRANS · LIMEN</text>
+
+  <!-- CLAVIS DISCIPLINAE (in basso) -->
+  <text x="400" y="665" text-anchor="middle" font-family="'Times New Roman', 'Georgia', serif" font-size="22" font-weight="bold" fill="#C5A059" letter-spacing="8">CLAVIS DISCIPLINAE</text>
+
+  <!-- ANNO ROMANO -->
+  <text x="400" y="700" text-anchor="middle" font-family="'Courier New', monospace" font-size="14" font-weight="bold" fill="#9CA3AF" letter-spacing="6">MMXXIV</text>
+</svg>

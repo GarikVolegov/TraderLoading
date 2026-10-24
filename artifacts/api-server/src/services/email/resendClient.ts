@@ -15,10 +15,7 @@ export interface EmailClient {
 }
 
 function defaultFrom(): string {
-  return (
-    process.env.EMAIL_FROM ||
-    "TraderLoading <assistenza@traderloading.com>"
-  );
+  return process.env.EMAIL_FROM || "LIMEN PROTOCOL <assistenza@traderloading.com>";
 }
 
 function ensureClient(): EmailClient | null {
@@ -51,20 +48,24 @@ export interface SendEmailInput {
   html: string;
   text: string;
   replyTo?: string;
+  idempotencyKey?: string;
 }
 
 export async function sendEmail(input: SendEmailInput): Promise<{ sent: boolean }> {
   const resolved = ensureClient();
   if (!resolved) return { sent: false };
   try {
-    const { error } = await resolved.client.emails.send({
-      from: resolved.from,
-      to: input.to,
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-      ...(input.replyTo ? { replyTo: input.replyTo } : {}),
-    });
+    const { error } = await resolved.client.emails.send(
+      {
+        from: resolved.from,
+        to: input.to,
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+        ...(input.replyTo ? { replyTo: input.replyTo } : {}),
+      },
+      input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined,
+    );
     if (error) {
       logger.error({ err: error }, "[email] invio fallito");
       return { sent: false };

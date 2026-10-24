@@ -32,7 +32,7 @@ export function TermsSection() {
         <FileText className="w-5 h-5 text-pink-400 mt-0.5 shrink-0" />
         <div>
           <p className="text-sm font-semibold text-foreground">
-            Termini di utilizzo · TraderLoading
+            Termini di utilizzo · LIMEN
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
             Ultimo aggiornamento: {TERMS_UPDATED}. Utilizzando l'app accetti i
@@ -44,7 +44,7 @@ export function TermsSection() {
       <div className="space-y-6">
         <TermsBlock title={uiText("auto.ui.ab1929adc0")}>
           <p>
-            TraderLoading è uno strumento di supporto alla disciplina e
+            LIMEN è uno strumento di supporto alla disciplina e
             all'organizzazione personale per trader. Non fornisce consigli
             finanziari, segnali di trading o raccomandazioni di investimento di
             alcun tipo.
@@ -119,7 +119,7 @@ export function TermsSection() {
           <p>
             Tutti i contenuti dell'app (interfaccia, testi, grafica, logiche di
             gamification, contenuti formativi della Biblioteca) sono di
-            proprietà esclusiva di TraderLoading. È vietata la riproduzione,
+            proprietà esclusiva di LIMEN. È vietata la riproduzione,
             copia o ridistribuzione senza autorizzazione scritta.
           </p>
           <p>
@@ -164,7 +164,7 @@ export function TermsSection() {
 
       <div className="pt-2 border-t border-border/30 text-center">
         <p className="text-xs text-muted-foreground/50 font-mono">
-          TraderLoading · Termini v1.0 · Aggiornato il {TERMS_UPDATED}
+          LIMEN · Termini v1.0 · Aggiornato il {TERMS_UPDATED}
         </p>
       </div>
     </div>

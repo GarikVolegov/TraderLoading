@@ -182,7 +182,7 @@ export function SupportSection() {
           </a>
 
           <a
-            href="mailto:assistenza@traderloading.com?subject=Feedback%20TraderLoading"
+            href="mailto:assistenza@traderloading.com?subject=Feedback%20LIMEN"
             className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"
           >
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -202,7 +202,7 @@ export function SupportSection() {
       {/* Version info */}
       <div className="pt-2 border-t border-border/30 text-center">
         <p className="text-xs text-muted-foreground/50 font-mono">
-          TraderLoading · v1.0 · Fatto con ♥ per i trader disciplinati
+          LIMEN · v1.0 · Fatto con ♥ per i trader disciplinati
         </p>
       </div>
     </div>

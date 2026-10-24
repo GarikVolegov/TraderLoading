@@ -9,6 +9,9 @@ assert.match(src, /event\.type === "charge\.dispute\.created" \|\| event\.type =
 assert.match(src, /revokeStripeProForCustomer/);
 // Revocation must not touch manual/internal (tornei) entitlements.
 assert.match(src, /row\.source !== "stripe" \|\| row\.manualOverride/);
+// Channel unlock and channel sub refunds/disputes revoke channel entitlement, not platform Pro.
+assert.match(src, /pi\?\.metadata\?\.type === "channel_unlock"/);
+assert.match(src, /pi\?\.metadata\?\.type === "channel_sub"/);
 // currentPeriodEnd + invoice subscription id read the pinned-API locations.
 assert.match(src, /subscriptionCurrentPeriodEnd\(subscription\)/);
 assert.match(src, /invoiceSubscriptionId\(invoice\)/);

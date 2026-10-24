@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- LIMEN Sovereign Threshold Silhouette for Safari Pinned & Compact Tabs -->
+  <!-- Pediment Roof -->
+  <polygon points="256,40 430,132 82,132" fill="#000000"/>
+  <!-- Entablature Beam -->
+  <rect x="76" y="132" width="360" height="24" rx="3" fill="#000000"/>
+  <rect x="92" y="166" width="328" height="18" fill="#000000"/>
+  <!-- Left Pillars -->
+  <rect x="110" y="194" width="28" height="210" rx="2" fill="#000000"/>
+  <rect x="148" y="194" width="28" height="210" rx="2" fill="#000000"/>
+  <rect x="98" y="404" width="88" height="52" rx="4" fill="#000000"/>
+  <!-- Right Pillars -->
+  <rect x="336" y="194" width="28" height="210" rx="2" fill="#000000"/>
+  <rect x="374" y="194" width="28" height="210" rx="2" fill="#000000"/>
+  <rect x="326" y="404" width="88" height="52" rx="4" fill="#000000"/>
+  <!-- Arch Vault -->
+  <path d="M184,404 V276 A72,72 0 0,1 328,276 V404 H296 V276 A40,40 0 0,0 216,276 V404 Z" fill="#000000"/>
+  <!-- Keystone -->
+  <polygon points="244,194 268,194 274,228 238,228" fill="#000000"/>
+  <!-- Ground Threshold Sill -->
+  <rect x="70" y="456" width="372" height="22" rx="4" fill="#000000"/>
+  <!-- Center Singularity Diamond -->
+  <polygon points="256,260 286,308 256,356 226,308" fill="#000000"/>
+</svg>

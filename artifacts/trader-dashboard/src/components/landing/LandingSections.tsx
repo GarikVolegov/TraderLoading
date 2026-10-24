@@ -8,7 +8,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
-  Rocket,
+  Crown,
   Star,
   Users,
   BookOpenCheck,
@@ -296,11 +296,11 @@ export function LandingComparison() {
   const products = [
     {
       id: "ours",
-      name: "TraderLoading",
+      name: "LIMEN",
       plan: "landing.pricing.pro",
       amount: 7,
       currency: "€",
-      Icon: Rocket,
+      Icon: Crown,
       source: null,
     },
     {
@@ -634,7 +634,7 @@ export function LandingFooter() {
             <ArrowUp size={17} aria-hidden="true" />
           </a>
           <p className="landing-copyright">
-            © {new Date().getFullYear()} TraderLoading. {t("landing.footer.rights")}
+            © {new Date().getFullYear()} LIMEN PROTOCOL. {t("landing.footer.rights")}
           </p>
         </div>
       </div>

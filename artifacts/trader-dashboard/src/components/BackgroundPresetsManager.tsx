@@ -19,9 +19,28 @@ export function BackgroundPresetsManager() {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const isPresetActive = (preset: BackgroundPreset) => {
+    if (preset.id === "nero-ossidiana") {
+      return (
+        !activeBackgroundUrl ||
+        activeBackgroundUrl === preset.url ||
+        activeBackgroundUrl === "/images/backgrounds/desktop/nero-ossidiana.webp" ||
+        activeBackgroundUrl === "/images/backgrounds/mobile/nero-ossidiana.webp"
+      );
+    }
+    return activeBackgroundUrl === preset.url;
+  };
+
   const handleSelectPreset = (preset: BackgroundPreset) => {
-    setActiveBackgroundForDevice(preset.url);
-    updateSettings({ data: device === "mobile" ? { backgroundUrlMobile: preset.url } : { backgroundUrlDesktop: preset.url } });
+    // Il preset 'nero-ossidiana' azzera l'immagine a null: l'app visualizza il suo nero puro originale
+    const nextUrl = preset.id === "nero-ossidiana" ? null : preset.url;
+    setActiveBackgroundForDevice(nextUrl);
+    updateSettings({
+      data:
+        device === "mobile"
+          ? { backgroundUrlMobile: nextUrl }
+          : { backgroundUrlDesktop: nextUrl },
+    });
   };
 
   const handleUploadCustom = async (file: File) => {
@@ -57,9 +76,15 @@ export function BackgroundPresetsManager() {
     const updated = customBackgrounds.filter((p) => p.id !== id);
     setCustomBackgrounds(updated);
     if (removed && activeBackgroundUrl === removed.url) {
-      const fallback = backgroundPresets.find((p) => p.isDefault)?.url ?? null;
+      // Fallback al nero puro predefinito
+      const fallback = null;
       setActiveBackgroundForDevice(fallback);
-      updateSettings({ data: device === "mobile" ? { backgroundUrlMobile: fallback } : { backgroundUrlDesktop: fallback } });
+      updateSettings({
+        data:
+          device === "mobile"
+            ? { backgroundUrlMobile: fallback }
+            : { backgroundUrlDesktop: fallback },
+      });
     }
     qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() });
     toast({ description: t("background.presets.removed") });
@@ -75,37 +100,56 @@ export function BackgroundPresetsManager() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {backgroundPresets.map(preset => (
-            <div
-              key={preset.id}
-              onClick={() => handleSelectPreset(preset)}
-              className={`relative rounded-lg overflow-hidden cursor-pointer ${device === "mobile" ? "aspect-9/16" : "aspect-video"} border-2 transition-all group ${
-                activeBackgroundUrl === preset.url
-                  ? "border-primary/60 ring-2 ring-primary/20"
-                  : "border-border hover:border-primary/40"
-              }`}
-            >
-              <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex flex-col items-center justify-between p-2 opacity-0 group-hover:opacity-100">
-                <span className="text-xs text-white font-medium">{preset.name}</span>
-                {!preset.isDefault && (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemovePreset(preset.id);
-                    }}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                )}
+          {backgroundPresets.map((preset) => {
+            const isActive = isPresetActive(preset);
+            return (
+              <div
+                key={preset.id}
+                onClick={() => handleSelectPreset(preset)}
+                className={`relative rounded-lg overflow-hidden cursor-pointer ${
+                  device === "mobile" ? "aspect-9/16" : "aspect-video"
+                } border-2 transition-all group ${
+                  isActive
+                    ? "border-primary ring-2 ring-primary/25 shadow-lg shadow-black/40"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <img
+                  src={preset.url}
+                  alt={preset.name}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent flex flex-col justify-between p-2 pointer-events-none">
+                  <div className="flex justify-between items-start w-full">
+                    {isActive ? (
+                      <span className="bg-primary text-primary-foreground font-semibold text-[10px] tracking-wide uppercase px-1.5 py-0.5 rounded shadow-sm">
+                        {t("background.presets.active")}
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+                    {!preset.isDefault && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-6 w-6 p-0 pointer-events-auto shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemovePreset(preset.id);
+                        }}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <span className="text-xs text-white/95 font-medium truncate drop-shadow-sm">
+                    {preset.name}
+                  </span>
+                </div>
               </div>
-              {activeBackgroundUrl === preset.url && (
-                <div className="absolute top-1 right-1 bg-primary/80 text-white text-xs px-2 py-1 rounded">{t("background.presets.active")}</div>
-              )}
-            </div>
-          ))}
+            );
+          })}
 
           {canAddCustomBackground && (
             <div

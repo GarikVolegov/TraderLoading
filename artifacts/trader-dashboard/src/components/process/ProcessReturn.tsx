@@ -8,7 +8,7 @@ export function ProcessReturn() {
   const { data } = useTraderProcess();
   const cockpit = Boolean(
     data?.session?.plan?.guidance?.cockpit ||
-    data?.activeMethod?.rules.setup.startsWith("Cockpit ·"),
+    data?.activeMethod?.rules?.setup?.startsWith("Cockpit ·"),
   );
   if (new URLSearchParams(search).get("processReturn") !== "1") return null;
   return (

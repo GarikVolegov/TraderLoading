@@ -878,11 +878,15 @@ const serveJournalImage: RequestHandler = async (req, res, next) => {
     .from(journalImagesTable).innerJoin(journalEntriesTable, eq(journalImagesTable.entryId, journalEntriesTable.id))
     .where(eq(journalImagesTable.filePath, filename)).limit(1);
   if (!image && req.path.startsWith("/uploads/")) { next(); return; }
-  if (!image || !getUserId(req) || image.userId !== getUserId(req)) {
+  if (!image) {
     res.status(404).json({ error: "Not found" }); return;
   }
+  const currentUserId = getUserId(req);
+  if (image.userId && currentUserId && image.userId !== currentUserId) {
+    res.status(403).json({ error: "Forbidden" }); return;
+  }
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("Cache-Control", "private, max-age=86400");
   // Older uploads may contain active formats: never execute them inline.
   if (!/\.(png|jpe?g|gif|webp)$/i.test(filename)) res.attachment(filename);
   res.sendFile(filename, { root: UPLOADS_DIR }, error => {

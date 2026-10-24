@@ -1,6 +1,6 @@
 export type ChatTab = "conversazioni" | "social" | "competizioni";
 export type ConversationFilter = "all" | "private" | "community";
-export type CompetitionView = "xp" | "torneo" | "percorso";
+export type CompetitionView = "xp" | "torneo" | "percorso" | "battaglie";
 
 /** Legacy tab links remain readable while new navigation uses three spaces. */
 export function parseChatTab(search: string): ChatTab {
@@ -27,7 +27,9 @@ export function parseSocialLocation(search: string) {
     : communityId || params.get("t") === "comunita" ? "community"
     : rawFilter === "private" || rawFilter === "community" ? rawFilter : "all";
   const rawView = params.get("vista");
+  const rawSub = params.get("sub");
   const competitionView: CompetitionView = params.get("t") === "classifica" ? "xp"
+    : rawSub === "backtest" || rawView === "battaglie" ? "battaglie"
     : rawView === "xp" || rawView === "percorso" ? rawView : "torneo";
   return {
     tab, peerId, communityId, channelId, filter, competitionView,

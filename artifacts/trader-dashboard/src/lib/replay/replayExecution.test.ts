@@ -47,4 +47,70 @@ const controller = new AbortController();
 async function* abortedHistory() { controller.abort(); yield [bar(120, 68, 72)]; }
 await assert.rejects(simulateReplayExecution({ pages: abortedHistory(), position, pendingOrder: null, symbol: "USOIL", targetTime: 240, rules, signal: controller.signal }), /aborted/i);
 assert.equal(position.bestPips, 0);
+
+// Multi-position execution: two positions (one stopped, one survives)
+const p1 = openPosition({ id: "pos-1", direction: "buy", entryPrice: 70, entryTime: 120, slPips: 20, tpPips: 40, lots: 0.5, riskAmount: 100, symbol: "USOIL" });
+const p2 = openPosition({ id: "pos-2", direction: "buy", entryPrice: 70, entryTime: 120, slPips: 50, tpPips: 100, lots: 0.2, riskAmount: 100, symbol: "USOIL" });
+const multiResult = await simulateReplayExecution({ pages: history(), positions: [p1, p2], symbol: "USOIL", targetTime: 14400, rules });
+assert.equal(multiResult.exits.length, 1);
+assert.equal(multiResult.exits[0].exitReason, "sl");
+assert.equal(multiResult.positions.length, 1, "p2 survived because its wider SL was not hit");
+assert.equal(multiResult.positions[0].id, "pos-2");
+
+// Fallback candles check: when M1 stream is empty, pending orders fill against fallbackCandles
+async function* emptyPages() { /* yields nothing */ }
+const pendingFallbackOrder: PendingOrder = {
+  id: "ord-fallback",
+  direction: "buy",
+  kind: "limit",
+  price: 69.5,
+  placedTime: 100,
+  slPips: 20,
+  tpPips: 60,
+  lots: 1,
+  riskAmount: 100,
+};
+const fallbackCandle: ReplayCandle = { time: 160, open: 70, high: 70.2, low: 69.2, close: 69.8 };
+const fallbackResult = await simulateReplayExecution({
+  pages: emptyPages(),
+  fallbackCandles: [fallbackCandle],
+  pendingOrders: [pendingFallbackOrder],
+  symbol: "USOIL",
+  targetTime: 180,
+  rules,
+});
+assert.equal(fallbackResult.positions.length, 1, "pending order filled via fallback candle");
+assert.equal(fallbackResult.pendingOrders.length, 0, "no remaining pending orders");
+assert.equal(fallbackResult.event?.kind, "fill");
+
+// Auto-cancellation test: Pending Sell Limit order cancelled when price reaches Take Profit without retest
+const sellLimitOrder: PendingOrder = {
+  id: "ord-missed-sell",
+  direction: "sell",
+  kind: "limit",
+  price: 72.0, // resting above
+  takeProfit: 68.0, // target below
+  stopLoss: 73.0,
+  placedTime: 100,
+  slPips: 10,
+  tpPips: 40,
+  lots: 1,
+  riskAmount: 100,
+};
+
+// Candle drops straight from 70.0 to 67.5 (hits TP at 68.0, never bounces up to 72.0)
+const missedCandle: ReplayCandle = { time: 160, open: 70.0, high: 70.5, low: 67.5, close: 67.8 };
+const missedResult = await simulateReplayExecution({
+  pages: emptyPages(),
+  fallbackCandles: [missedCandle],
+  pendingOrders: [sellLimitOrder],
+  symbol: "USOIL",
+  targetTime: 180,
+  rules,
+});
+
+assert.equal(missedResult.pendingOrders.length, 0, "pending order cancelled because TP reached before retest");
+assert.equal(missedResult.positions.length, 0, "no position opened");
+assert.equal(missedResult.event?.kind, "cancel_tp", "event kind is cancel_tp");
+
 console.log("replayExecution checks passed");

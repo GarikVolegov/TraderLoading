@@ -1699,6 +1699,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/PaymentRequiredError"
 
+  /settings/backtest-chart:
+    get:
+      operationId: getBacktestChartPreferences
+      tags: [settings]
+      summary: Read the authenticated user's chart preferences
+      responses:
+        "200":
+          description: Current account revision; preferences are null before the first save
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacktestChartSnapshot"
+        "401":
+          description: Authentication required
+        "503":
+          description: Preferences temporarily unavailable
+    put:
+      operationId: updateBacktestChartPreferences
+      tags: [settings]
+      summary: Save account chart preferences if the revision matches
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [revision, preferences]
+              properties:
+                revision:
+                  type: integer
+                  minimum: 0
+                preferences:
+                  $ref: "#/components/schemas/BacktestChartPreferences"
+      responses:
+        "200":
+          description: Saved preferences and incremented revision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacktestChartSnapshot"
+        "409":
+          description: Another device saved first; returns the current server snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacktestChartSnapshot"
+        "400":
+          description: Invalid chart preferences
+        "401":
+          description: Authentication required
+        "413":
+          description: Preferences exceed the size limit
+        "503":
+          description: Save temporarily unavailable
+
   /settings:
     get:
       operationId: getUserSettings
@@ -2427,6 +2482,29 @@ paths:
         "409":
           description: Period is not due or a different review has already been confirmed
 
+  /process/vision-sentinel:
+    post:
+      tags: [process]
+      operationId: analyzeVarcoVision
+      summary: Scans the Varco chart canvas and candle structure to audit checklist and project trade setups
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VarcoVisionRequest"
+      responses:
+        "200":
+          description: Visual AI setup analysis and checklist audit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VarcoVisionResponse"
+        "400":
+          description: Invalid chart or candle data
+        "401":
+          description: Authentication required
+
 components:
   parameters:
     AuthorizationSessionHeader:
@@ -2445,6 +2523,232 @@ components:
         type: string
 
   schemas:
+    BacktestChartSnapshot:
+      type: object
+      required: [revision, preferences]
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        preferences:
+          anyOf:
+            - $ref: "#/components/schemas/BacktestChartPreferences"
+            - type: "null"
+    BacktestChartPreferences:
+      type: object
+      required: [version, settings, favoriteTools, favoriteColors, templates, toolbarPosition]
+      properties:
+        version:
+          type: integer
+          enum: [1]
+        settings:
+          $ref: "#/components/schemas/BacktestChartSettings"
+        favoriteTools:
+          type: array
+          maxItems: 12
+          uniqueItems: true
+          items:
+            type: string
+            enum: [cursor, trend, ray, arrow, hline, vline, rect, fib, ruler, longPosition, shortPosition, text]
+        favoriteColors:
+          type: array
+          maxItems: 24
+          items:
+            type: string
+            maxLength: 64
+        templates:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            required: [id, name, settings, indicators]
+            properties:
+              id:
+                type: string
+                minLength: 1
+                maxLength: 100
+              name:
+                type: string
+                minLength: 1
+                maxLength: 80
+              settings:
+                $ref: "#/components/schemas/BacktestChartSettings"
+              indicators:
+                type: array
+                maxItems: 40
+                items:
+                  $ref: "#/components/schemas/BacktestChartIndicator"
+        toolbarPosition:
+          type: object
+          required: [x, y]
+          properties:
+            x:
+              type: number
+              minimum: 0
+              maximum: 20000
+            y:
+              type: number
+              minimum: 0
+              maximum: 20000
+    BacktestChartIndicator:
+      type: object
+      required: [id, type, on, color]
+      properties:
+        id:
+          type: string
+          maxLength: 100
+        type:
+          type: string
+          enum: [ema, sma, wma, bb, vwap, rsi, macd, atr, stoch, volume, custom]
+        on:
+          type: boolean
+        color:
+          type: string
+        period:
+          type: number
+        mult:
+          type: number
+        fast:
+          type: number
+        slow:
+          type: number
+        signal:
+          type: number
+        k:
+          type: number
+        d:
+          type: number
+        source:
+          type: string
+          enum: [close, open, high, low, hl2, ohlc4]
+        ma:
+          type: string
+          enum: [ema, sma, wma, none]
+        formula:
+          type: string
+          maxLength: 2000
+        name:
+          type: string
+          maxLength: 100
+        pane:
+          type: string
+          enum: [price, sub, volume]
+    BacktestChartSettings:
+      type: object
+      description: Portable appearance and drawing defaults; excludes execution costs, ticket inputs, replay state and trades. Field definitions are shared in contracts/backtestChart.ts.
+      additionalProperties: false
+      properties:
+        showSessions:
+          type: boolean
+        magnet:
+          type: boolean
+        showTradesOnChart:
+          type: boolean
+        candleBordersVisible:
+          type: boolean
+        candleWicksVisible:
+          type: boolean
+        showVertGrid:
+          type: boolean
+        showHorzGrid:
+          type: boolean
+        showWatermark:
+          type: boolean
+        showOhlcLegend:
+          type: boolean
+        showBarChange:
+          type: boolean
+        showLastPriceLine:
+          type: boolean
+        showHighLowLines:
+          type: boolean
+        toolColor:
+          type: string
+          maxLength: 64
+        candleUpColor:
+          type: string
+          maxLength: 64
+        candleDownColor:
+          type: string
+          maxLength: 64
+        wickUpColor:
+          type: string
+          maxLength: 64
+        wickDownColor:
+          type: string
+          maxLength: 64
+        borderUpColor:
+          type: string
+          maxLength: 64
+        borderDownColor:
+          type: string
+          maxLength: 64
+        lineColor:
+          type: string
+          maxLength: 64
+        areaTopColor:
+          type: string
+          maxLength: 64
+        areaBottomColor:
+          type: string
+          maxLength: 64
+        chartBgColor1:
+          type: string
+          maxLength: 64
+        chartBgColor2:
+          type: string
+          maxLength: 64
+        gridColor:
+          type: string
+          maxLength: 64
+        crosshairColor:
+          type: string
+          maxLength: 64
+        textColor:
+          type: string
+          maxLength: 64
+        axisColor:
+          type: string
+          maxLength: 64
+        volumeUpColor:
+          type: string
+          maxLength: 64
+        volumeDownColor:
+          type: string
+          maxLength: 64
+        chartType:
+          type: string
+          enum: [candles, heikin, bars, line, area]
+        chartBgType:
+          type: string
+          enum: [solid, gradient]
+        tradeLineMode:
+          type: string
+          enum: [hover_or_latest, all, none]
+        gridStyle:
+          type: string
+          enum: [solid, dashed, dotted]
+        crosshairStyle:
+          type: string
+          enum: [solid, dashed, dotted]
+        priceScaleMode:
+          type: string
+          enum: [normal, logarithmic, percentage]
+        visibleTools:
+          type: object
+          additionalProperties:
+            type: boolean
+        toolWidth:
+          type: integer
+          minimum: 1
+          maximum: 8
+        watermarkText:
+          type: string
+          maxLength: 120
+        watermarkOpacity:
+          type: number
+          minimum: 0
+          maximum: 1
     ProcessExecutionEnvironment:
       type: string
       enum: [simulation, real, unknown]
@@ -2576,6 +2880,219 @@ components:
             reviewedAt:
               type: string
               format: date-time
+    VarcoVisionCandle:
+      type: object
+      required: [time, open, high, low, close]
+      properties:
+        time:
+          type: number
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        volume:
+          type: number
+    VarcoVisionChecklistCurrent:
+      type: object
+      properties:
+        htfContext:
+          type: boolean
+        turningPoint:
+          type: boolean
+        ltfTrigger:
+          type: boolean
+        riskGuard:
+          type: boolean
+    VarcoVisionRequest:
+      type: object
+      required: [symbol, candles]
+      properties:
+        symbol:
+          type: string
+        interval:
+          type: string
+        chartImage:
+          type: string
+          description: Base64 image data URL
+        candles:
+          type: array
+          items:
+            $ref: "#/components/schemas/VarcoVisionCandle"
+        currentPhase:
+          type: integer
+          minimum: 1
+          maximum: 4
+        accountCapital:
+          type: number
+        riskPercent:
+          type: number
+        currentChecks:
+          $ref: "#/components/schemas/VarcoVisionChecklistCurrent"
+        activeSetup:
+          $ref: "#/components/schemas/VarcoSetupPlan"
+        enforceSessionWindows:
+          type: boolean
+        operativeMemory:
+          type: object
+          properties:
+            flipActive:
+              type: boolean
+            flipDirection:
+              type: string
+              enum: [long, short]
+              nullable: true
+            minImbalancePercent:
+              type: number
+            preferPocOnReversal:
+              type: boolean
+            reaccumRiskMultiplier:
+              type: number
+            quarantinedCombos:
+              type: array
+              items:
+                type: string
+    VarcoChecklistItemAudit:
+      type: object
+      required: [valid, note]
+      properties:
+        valid:
+          type: boolean
+        note:
+          type: string
+        triggerType:
+          type: string
+          enum: [TEST, POC, JTC, BTI]
+        recommendedLots:
+          type: number
+        riskAmount:
+          type: number
+    VarcoChecklistAudit:
+      type: object
+      required: [htfContext, turningPoint, ltfTrigger, riskGuard]
+      properties:
+        htfContext:
+          $ref: "#/components/schemas/VarcoChecklistItemAudit"
+        turningPoint:
+          $ref: "#/components/schemas/VarcoChecklistItemAudit"
+        ltfTrigger:
+          $ref: "#/components/schemas/VarcoChecklistItemAudit"
+        riskGuard:
+          $ref: "#/components/schemas/VarcoChecklistItemAudit"
+    VarcoSetupPlan:
+      type: object
+      required: [direction, entryPrice, stopLossPrice, breakEvenPrice, breakEvenRule, takeProfit1Price, takeProfit1Rule, takeProfit2Price, takeProfit2Rule, riskRewardRatio, lotSize, pipsRisk]
+      properties:
+        direction:
+          type: string
+          enum: [long, short]
+        orderType:
+          type: string
+          enum: [limit, market]
+        limitPrice:
+          type: number
+        entryReason:
+          type: string
+        invalidationReason:
+          type: string
+        timeframe:
+          type: string
+        schematicRef:
+          type: string
+        entryPrice:
+          type: number
+        stopLossPrice:
+          type: number
+        breakEvenPrice:
+          type: number
+        breakEvenRule:
+          type: string
+        takeProfit1Price:
+          type: number
+        takeProfit1Rule:
+          type: string
+        takeProfit2Price:
+          type: number
+        takeProfit2Rule:
+          type: string
+        riskRewardRatio:
+          type: number
+        lotSize:
+          type: number
+        pipsRisk:
+          type: number
+        cycle:
+          type: string
+          enum: [up, down, end_up, end_down]
+        liquidityContext:
+          type: string
+          enum: [compression, swept, intermediate]
+        zoneScenario:
+          type: string
+          enum: [valid_zone, no_zone, reaccum]
+        areaType:
+          type: string
+          enum: [history, virgin]
+        triggerType:
+          type: string
+          enum: [TEST, POC, JTC, BTI]
+        imbalancePercent:
+          type: number
+        oppositePoolPrice:
+          type: number
+        oppositePoolLabel:
+          type: string
+        sessionName:
+          type: string
+        invalidationSwingPrice:
+          type: number
+        wasReversal:
+          type: boolean
+    VarcoProceduralStep:
+      type: object
+      required: [phase, title, valid, note]
+      properties:
+        phase:
+          type: integer
+        title:
+          type: string
+        valid:
+          type: boolean
+        note:
+          type: string
+        schematicId:
+          type: string
+        triggerType:
+          type: string
+          enum: [TEST, POC, JTC, BTI]
+    VarcoVisionResponse:
+      type: object
+      required: [verdict, summary, confidenceScore, checklistAudit, doctrineAdvice]
+      properties:
+        verdict:
+          type: string
+          enum: [SETUP_READY, WAITING_TRIGGER, INVALID_STRUCTURE, NO_ZONE]
+        summary:
+          type: string
+        confidenceScore:
+          type: number
+        executionPhase:
+          type: integer
+        proceduralSteps:
+          type: array
+          items:
+            $ref: "#/components/schemas/VarcoProceduralStep"
+        checklistAudit:
+          $ref: "#/components/schemas/VarcoChecklistAudit"
+        setup:
+          oneOf:
+            - $ref: "#/components/schemas/VarcoSetupPlan"
+            - type: "null"
+        doctrineAdvice:
+          type: string
     ProcessMethodRules:
       type: object
       properties:

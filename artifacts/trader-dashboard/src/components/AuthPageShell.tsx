@@ -46,32 +46,33 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
   ];
 
   const toggleBase =
-    "rounded-lg py-2 text-center text-sm font-semibold transition-colors";
+    "rounded-md py-2 text-center text-xs font-mono font-bold tracking-wider uppercase transition-all";
   const toggleActive =
-    "bg-primary text-primary-foreground shadow-[0_0_18px_hsl(var(--primary)/0.25)]";
-  const toggleIdle = "text-muted-foreground hover:text-foreground";
+    "bg-[#C5A059] text-[#0A0A0C] shadow-[0_0_15px_rgba(197,160,89,0.3)]";
+  const toggleIdle = "text-[#8E8E98] hover:text-[#F4F4F6]";
 
   return (
     <main
       className="relative flex min-h-[100dvh] items-center overflow-hidden px-4 py-6 text-foreground sm:px-6 lg:px-10"
-      style={{ backgroundColor: "hsl(224 71% 4%)" }}
+      style={{ backgroundColor: "#0A0A0C" }}
+      data-brand="LIMEN"
     >
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(70% 55% at 22% 12%, hsl(var(--primary) / 0.16), transparent 60%)," +
-            "radial-gradient(55% 50% at 88% 92%, hsl(217 91% 60% / 0.12), transparent 65%)," +
-            "linear-gradient(180deg, hsl(224 71% 5%) 0%, hsl(224 64% 3%) 100%)",
+            "radial-gradient(70% 55% at 22% 12%, rgba(197,160,89,0.10), transparent 60%)," +
+            "radial-gradient(55% 50% at 88% 92%, rgba(197,160,89,0.06), transparent 65%)," +
+            "linear-gradient(180deg, #0A0A0C 0%, #121216 100%)",
         }}
       >
         <div
           className="absolute inset-0"
           style={{
             backgroundImage:
-              "linear-gradient(hsl(var(--border) / 0.07) 1px, transparent 1px)," +
-              "linear-gradient(90deg, hsl(var(--border) / 0.06) 1px, transparent 1px)",
+              "linear-gradient(rgba(197,160,89,0.06) 1px, transparent 1px)," +
+              "linear-gradient(90deg, rgba(197,160,89,0.06) 1px, transparent 1px)",
             backgroundSize: "46px 46px",
             maskImage: "radial-gradient(100% 100% at 50% 0%, black, transparent 75%)",
             WebkitMaskImage: "radial-gradient(100% 100% at 50% 0%, black, transparent 75%)",
@@ -88,50 +89,51 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
         {/* Brand panel (hidden on mobile, per the design's @media max-width:880px) */}
         <section className="mx-auto hidden w-full max-w-xl flex-col gap-7 lg:flex">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-xl border border-primary/35 bg-primary/10 text-primary shadow-[0_0_24px_hsl(var(--primary)/0.12)]">
-              <Rocket className="h-5 w-5" aria-hidden="true" />
+            <div className="grid h-11 w-11 place-items-center rounded-lg border border-[#C5A059]/40 bg-[#141418] text-[#C5A059] shadow-[0_0_20px_rgba(197,160,89,0.2)] overflow-hidden">
+              <img src="/app-icon-192.png?v=20261021g" alt="LIMEN" className="h-full w-full object-cover" />
+              <Rocket className="hidden" aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="font-mono text-base font-bold tracking-tight text-foreground">TraderLoading</p>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/75">
+              <p className="font-display text-lg font-bold tracking-[0.2em] text-[#F4F4F6] uppercase">LIMEN</p>
+              <p className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[#C5A059]">
                 {t("auth.shell.brand.tagline")}
               </p>
             </div>
           </div>
 
           <div>
-            <span className="mb-3 inline-block text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
+            <span className="mb-3 inline-block font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#C5A059]">
               {eyebrow}
             </span>
-            <h1 className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text font-sans text-4xl font-extrabold leading-[1.1] tracking-tight text-transparent lg:text-5xl">
+            <h1 className="font-display text-3xl font-bold leading-[1.15] tracking-wide text-[#F4F4F6] lg:text-4xl">
               {title}
             </h1>
-            <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground">{body}</p>
+            <p className="mt-4 max-w-md text-base leading-relaxed text-[#8E8E98]">{body}</p>
           </div>
 
           <div className="flex flex-col gap-3.5">
             {trust.map(({ icon: Icon, title: rowTitle, desc }) => (
               <div key={rowTitle} className="flex items-start gap-3">
-                <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg border border-[#C5A059]/20 bg-[#141418] text-[#C5A059]">
                   <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{rowTitle}</p>
-                  <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{desc}</p>
+                  <p className="text-sm font-semibold text-[#F4F4F6]">{rowTitle}</p>
+                  <p className="mt-0.5 text-[13px] leading-snug text-[#8E8E98]">{desc}</p>
                 </div>
               </div>
             ))}
           </div>
 
           {rating && rating.count > 0 && (
-            <div className="flex items-center gap-2.5 border-t border-border/60 pt-4 text-[13px] text-muted-foreground">
-              <span className="inline-flex gap-0.5 text-warning">
+            <div className="flex items-center gap-2.5 border-t border-[#25252E] pt-4 text-[13px] text-[#8E8E98]">
+              <span className="inline-flex gap-0.5 text-[#C5A059]">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <Star key={i} className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
                 ))}
               </span>
               <span>
-                <strong className="font-mono font-bold text-foreground">{rating.average.toFixed(1)}/5</strong> ·{" "}
+                <strong className="font-mono font-bold text-[#F4F4F6]">{rating.average.toFixed(1)}/5</strong> ·{" "}
                 {rating.count} {t("auth.shell.social.reviews")}
               </span>
             </div>
@@ -140,8 +142,8 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
 
         {/* Form card */}
         <section className="mx-auto w-full max-w-[460px] lg:justify-self-end">
-          <div className="rounded-2xl border border-border/60 bg-card/90 p-4 shadow-[0_28px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-5">
-            <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-border/50 bg-secondary/40 p-1">
+          <div className="rounded-xl border border-[#C5A059]/30 bg-[#121216]/95 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:p-6">
+            <div className="mb-5 grid grid-cols-2 gap-1 rounded-lg border border-[#25252E] bg-[#0A0A0C] p-1">
               <Link href="/sign-in" className={`${toggleBase} ${isSignIn ? toggleActive : toggleIdle}`}>
                 {t("auth.toggle.signin")}
               </Link>
@@ -152,18 +154,18 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
 
             {children}
 
-            <p className="mt-4 text-center text-xs leading-5 text-muted-foreground/80">
+            <p className="mt-4 text-center text-xs leading-5 text-[#8E8E98]">
               {t("auth.shell.legal.intro")}{" "}
-              <Link href="/terms" className="font-semibold text-primary hover:text-primary/80">
+              <Link href="/terms" className="font-semibold text-[#C5A059] hover:underline">
                 {t("auth.shell.legal.terms")}
               </Link>{" "}
               ·{" "}
-              <Link href="/privacy" className="font-semibold text-primary hover:text-primary/80">
+              <Link href="/privacy" className="font-semibold text-[#C5A059] hover:underline">
                 {t("auth.shell.legal.privacy")}
               </Link>
             </p>
-            <p className="mt-3 flex items-center justify-center gap-1.5 border-t border-border/50 pt-3 text-center text-xs text-muted-foreground/80">
-              <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden="true" />
+            <p className="mt-3 flex items-center justify-center gap-1.5 border-t border-[#25252E] pt-3 text-center text-xs text-[#8E8E98]">
+              <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-[#C5A059]" aria-hidden="true" />
               {t("auth.shell.footer.secure")}
             </p>
           </div>

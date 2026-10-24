@@ -46,10 +46,17 @@ function TextChannelSession({
   const [reportedIds, setReportedIds] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messages = data?.messages ?? [];
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: reduceMotion ? "instant" : "smooth" });
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    if (reduceMotion) {
+      el.scrollTop = el.scrollHeight;
+    } else {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
   }, [messages.length, reduceMotion]);
 
   const sendMsg = async () => {
@@ -174,22 +181,22 @@ function TextChannelSession({
   }, []);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-0 px-4 border-b border-border shrink-0 bg-card/30">
+    <div className="flex flex-col h-full bg-[#07080B] text-slate-200">
+      <div className="flex items-center gap-0 px-4 border-b border-[#C5A059]/20 shrink-0 bg-[#0A0B10]">
         <button
           onClick={() => setActiveTab("chat")}
-          className={`flex items-center gap-1.5 px-3 py-3 text-xs font-semibold border-b-2 transition-all ${activeTab === "chat" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          className={`flex items-center gap-1.5 px-3 py-3 font-mono text-xs font-semibold border-b-2 transition-all ${activeTab === "chat" ? "border-[#C5A059] text-[#E8C56A]" : "border-transparent text-slate-400 hover:text-white"}`}
         >
-          <Hash className="w-3.5 h-3.5" /> {channel.name}
+          <Hash className="w-3.5 h-3.5 text-[#C5A059]" /> {channel.name}
         </button>
         <button
           onClick={() => setActiveTab("files")}
-          className={`flex items-center gap-1.5 px-3 py-3 text-xs font-semibold border-b-2 transition-all ${activeTab === "files" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          className={`flex items-center gap-1.5 px-3 py-3 font-mono text-xs font-semibold border-b-2 transition-all ${activeTab === "files" ? "border-[#C5A059] text-[#E8C56A]" : "border-transparent text-slate-400 hover:text-white"}`}
         >
-          <FolderOpen className="w-3.5 h-3.5" />
+          <FolderOpen className="w-3.5 h-3.5 text-[#C5A059]" />
           File
           {files.length > 0 && (
-            <span className="ml-1 bg-primary/20 text-primary rounded-full px-1.5 py-0.5 text-[10px]">
+            <span className="ml-1 bg-[#C5A059]/20 text-[#E8C56A] rounded-full px-1.5 py-0.5 text-[10px]">
               {files.length}
             </span>
           )}
@@ -198,7 +205,7 @@ function TextChannelSession({
 
       {activeTab === "chat" ? (
         <>
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
@@ -282,7 +289,7 @@ function TextChannelSession({
                               </p>
                             )}
                           </div>
-                          <div className="self-start flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
+                          <div className="self-start flex items-center gap-0.5 touch-actions opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
                             {(isMe || isOwnerOrAdmin) && (
                               <button
                                 onClick={() => deleteMessage(msg.id)}
@@ -317,18 +324,18 @@ function TextChannelSession({
             <div ref={bottomRef} />
           </div>
 
-          <div className="shrink-0 px-4 py-3 border-t border-border bg-card/20">
-            <div className="flex items-center gap-2 bg-secondary/30 border border-border rounded-xl px-3 py-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring">
+          <div className="shrink-0 px-4 py-3 border-t border-[#C5A059]/20 bg-[#0A0B10]">
+            <div className="flex items-center gap-2 bg-[#12131A] border border-[#C5A059]/25 rounded-xl px-3 py-2 focus-within:border-[#C5A059] focus-within:ring-1 focus-within:ring-[#C5A059]/30 transition-all">
               <button
                 type="button"
                 aria-label={uiText("auto.ui.2b269b1b68")}
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingFile}
                 title={uiText("auto.ui.2b269b1b68")}
-                className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-primary transition-colors shrink-0 disabled:opacity-40"
+                className="flex h-9 w-9 items-center justify-center text-slate-400 hover:text-[#E8C56A] hover:bg-[#C5A059]/10 rounded-lg transition-colors shrink-0 disabled:opacity-40"
               >
                 {uploadingFile ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin text-[#C5A059]" />
                 ) : (
                   <Paperclip className="w-4 h-4" />
                 )}
@@ -352,14 +359,14 @@ function TextChannelSession({
                   (e.preventDefault(), sendMsg())
                 }
                 placeholder={`Messaggio in #${channel.name}`}
-                className="min-h-11 flex-1 bg-transparent text-base focus:outline-none placeholder:text-muted-foreground min-w-0"
+                className="min-h-10 flex-1 bg-transparent text-sm focus:outline-none text-white placeholder:text-slate-500 min-w-0 font-sans"
               />
               <button
                 type="button"
                 onClick={sendMsg}
                 aria-label={uiText("chat.send")}
                 disabled={!text.trim() || sending}
-                className="w-11 h-11 rounded-lg bg-primary/20 hover:bg-primary/40 text-primary flex items-center justify-center disabled:opacity-40 transition-colors shrink-0"
+                className="w-9 h-9 rounded-lg bg-gradient-to-r from-[#C5A059] to-[#D4AF37] text-black font-bold flex items-center justify-center disabled:opacity-40 hover:brightness-110 shadow-sm transition-all shrink-0"
               >
                 {sending ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -450,7 +457,7 @@ function TextChannelSession({
                         type="button"
                         onClick={() => deleteFile(f.id)}
                         aria-label={uiText("common.delete")}
-                        className="w-7 h-7 rounded-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center transition-all"
+                        className="w-7 h-7 rounded-lg touch-actions opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

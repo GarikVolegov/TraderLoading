@@ -2490,6 +2490,719 @@ export const DeleteBacktestTradeResponse = zod.object({
 
 
 /**
+ * @summary Read the authenticated user's chart preferences
+ */
+export const getBacktestChartPreferencesResponseRevisionMin = 0;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsToolColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsCandleUpColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsCandleDownColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsWickUpColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsWickDownColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsBorderUpColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsBorderDownColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsLineColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsAreaTopColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsAreaBottomColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsChartBgColor1Max = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsChartBgColor2Max = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsGridColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsCrosshairColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsTextColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsAxisColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsVolumeUpColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsVolumeDownColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsToolWidthMax = 8;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkTextMax = 120;
+
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkOpacityMin = 0;
+export const getBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkOpacityMax = 1;
+
+export const getBacktestChartPreferencesResponsePreferencesOneFavoriteToolsMax = 12;
+
+export const getBacktestChartPreferencesResponsePreferencesOneFavoriteColorsItemMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneFavoriteColorsMax = 24;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemIdMax = 100;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemNameMax = 80;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsToolColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCandleUpColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCandleDownColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWickUpColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWickDownColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsBorderUpColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsBorderDownColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsLineColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAreaTopColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAreaBottomColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsChartBgColor1Max = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsChartBgColor2Max = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsGridColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCrosshairColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsTextColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAxisColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsVolumeUpColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsVolumeDownColorMax = 64;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsToolWidthMax = 8;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkTextMax = 120;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkOpacityMin = 0;
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkOpacityMax = 1;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemIdMax = 100;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemFormulaMax = 2000;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemNameMax = 100;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsMax = 40;
+
+export const getBacktestChartPreferencesResponsePreferencesOneTemplatesMax = 50;
+
+export const getBacktestChartPreferencesResponsePreferencesOneToolbarPositionXMin = 0;
+export const getBacktestChartPreferencesResponsePreferencesOneToolbarPositionXMax = 20000;
+
+export const getBacktestChartPreferencesResponsePreferencesOneToolbarPositionYMin = 0;
+export const getBacktestChartPreferencesResponsePreferencesOneToolbarPositionYMax = 20000;
+
+
+
+export const GetBacktestChartPreferencesResponse = zod.object({
+  "revision": zod.number().int().min(getBacktestChartPreferencesResponseRevisionMin),
+  "preferences": zod.union([zod.object({
+  "version": zod.literal(1),
+  "settings": zod.object({
+  "showSessions": zod.boolean().optional(),
+  "magnet": zod.boolean().optional(),
+  "showTradesOnChart": zod.boolean().optional(),
+  "candleBordersVisible": zod.boolean().optional(),
+  "candleWicksVisible": zod.boolean().optional(),
+  "showVertGrid": zod.boolean().optional(),
+  "showHorzGrid": zod.boolean().optional(),
+  "showWatermark": zod.boolean().optional(),
+  "showOhlcLegend": zod.boolean().optional(),
+  "showBarChange": zod.boolean().optional(),
+  "showLastPriceLine": zod.boolean().optional(),
+  "showHighLowLines": zod.boolean().optional(),
+  "toolColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsToolColorMax).optional(),
+  "candleUpColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsCandleUpColorMax).optional(),
+  "candleDownColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsCandleDownColorMax).optional(),
+  "wickUpColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsWickUpColorMax).optional(),
+  "wickDownColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsWickDownColorMax).optional(),
+  "borderUpColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsBorderUpColorMax).optional(),
+  "borderDownColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsBorderDownColorMax).optional(),
+  "lineColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsLineColorMax).optional(),
+  "areaTopColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsAreaTopColorMax).optional(),
+  "areaBottomColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsAreaBottomColorMax).optional(),
+  "chartBgColor1": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsChartBgColor1Max).optional(),
+  "chartBgColor2": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsChartBgColor2Max).optional(),
+  "gridColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsGridColorMax).optional(),
+  "crosshairColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsCrosshairColorMax).optional(),
+  "textColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsTextColorMax).optional(),
+  "axisColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsAxisColorMax).optional(),
+  "volumeUpColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsVolumeUpColorMax).optional(),
+  "volumeDownColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsVolumeDownColorMax).optional(),
+  "chartType": zod.enum(['candles', 'heikin', 'bars', 'line', 'area']).optional(),
+  "chartBgType": zod.enum(['solid', 'gradient']).optional(),
+  "tradeLineMode": zod.enum(['hover_or_latest', 'all', 'none']).optional(),
+  "gridStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "crosshairStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "priceScaleMode": zod.enum(['normal', 'logarithmic', 'percentage']).optional(),
+  "visibleTools": zod.record(zod.string(), zod.boolean()).optional(),
+  "toolWidth": zod.number().int().min(1).max(getBacktestChartPreferencesResponsePreferencesOneSettingsToolWidthMax).optional(),
+  "watermarkText": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkTextMax).optional(),
+  "watermarkOpacity": zod.number().min(getBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkOpacityMin).max(getBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkOpacityMax).optional()
+}).describe('Portable appearance and drawing defaults; excludes execution costs, ticket inputs, replay state and trades. Field definitions are shared in contracts/backtestChart.ts.'),
+  "favoriteTools": zod.array(zod.enum(['cursor', 'trend', 'ray', 'arrow', 'hline', 'vline', 'rect', 'fib', 'ruler', 'longPosition', 'shortPosition', 'text'])).max(getBacktestChartPreferencesResponsePreferencesOneFavoriteToolsMax),
+  "favoriteColors": zod.array(zod.string().max(getBacktestChartPreferencesResponsePreferencesOneFavoriteColorsItemMax)).max(getBacktestChartPreferencesResponsePreferencesOneFavoriteColorsMax),
+  "templates": zod.array(zod.object({
+  "id": zod.string().min(1).max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemIdMax),
+  "name": zod.string().min(1).max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemNameMax),
+  "settings": zod.object({
+  "showSessions": zod.boolean().optional(),
+  "magnet": zod.boolean().optional(),
+  "showTradesOnChart": zod.boolean().optional(),
+  "candleBordersVisible": zod.boolean().optional(),
+  "candleWicksVisible": zod.boolean().optional(),
+  "showVertGrid": zod.boolean().optional(),
+  "showHorzGrid": zod.boolean().optional(),
+  "showWatermark": zod.boolean().optional(),
+  "showOhlcLegend": zod.boolean().optional(),
+  "showBarChange": zod.boolean().optional(),
+  "showLastPriceLine": zod.boolean().optional(),
+  "showHighLowLines": zod.boolean().optional(),
+  "toolColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsToolColorMax).optional(),
+  "candleUpColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCandleUpColorMax).optional(),
+  "candleDownColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCandleDownColorMax).optional(),
+  "wickUpColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWickUpColorMax).optional(),
+  "wickDownColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWickDownColorMax).optional(),
+  "borderUpColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsBorderUpColorMax).optional(),
+  "borderDownColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsBorderDownColorMax).optional(),
+  "lineColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsLineColorMax).optional(),
+  "areaTopColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAreaTopColorMax).optional(),
+  "areaBottomColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAreaBottomColorMax).optional(),
+  "chartBgColor1": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsChartBgColor1Max).optional(),
+  "chartBgColor2": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsChartBgColor2Max).optional(),
+  "gridColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsGridColorMax).optional(),
+  "crosshairColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCrosshairColorMax).optional(),
+  "textColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsTextColorMax).optional(),
+  "axisColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAxisColorMax).optional(),
+  "volumeUpColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsVolumeUpColorMax).optional(),
+  "volumeDownColor": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsVolumeDownColorMax).optional(),
+  "chartType": zod.enum(['candles', 'heikin', 'bars', 'line', 'area']).optional(),
+  "chartBgType": zod.enum(['solid', 'gradient']).optional(),
+  "tradeLineMode": zod.enum(['hover_or_latest', 'all', 'none']).optional(),
+  "gridStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "crosshairStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "priceScaleMode": zod.enum(['normal', 'logarithmic', 'percentage']).optional(),
+  "visibleTools": zod.record(zod.string(), zod.boolean()).optional(),
+  "toolWidth": zod.number().int().min(1).max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsToolWidthMax).optional(),
+  "watermarkText": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkTextMax).optional(),
+  "watermarkOpacity": zod.number().min(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkOpacityMin).max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkOpacityMax).optional()
+}).describe('Portable appearance and drawing defaults; excludes execution costs, ticket inputs, replay state and trades. Field definitions are shared in contracts/backtestChart.ts.'),
+  "indicators": zod.array(zod.object({
+  "id": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemIdMax),
+  "type": zod.enum(['ema', 'sma', 'wma', 'bb', 'vwap', 'rsi', 'macd', 'atr', 'stoch', 'volume', 'custom']),
+  "on": zod.boolean(),
+  "color": zod.string(),
+  "period": zod.number().optional(),
+  "mult": zod.number().optional(),
+  "fast": zod.number().optional(),
+  "slow": zod.number().optional(),
+  "signal": zod.number().optional(),
+  "k": zod.number().optional(),
+  "d": zod.number().optional(),
+  "source": zod.enum(['close', 'open', 'high', 'low', 'hl2', 'ohlc4']).optional(),
+  "ma": zod.enum(['ema', 'sma', 'wma', 'none']).optional(),
+  "formula": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemFormulaMax).optional(),
+  "name": zod.string().max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemNameMax).optional(),
+  "pane": zod.enum(['price', 'sub', 'volume']).optional()
+})).max(getBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsMax)
+})).max(getBacktestChartPreferencesResponsePreferencesOneTemplatesMax),
+  "toolbarPosition": zod.object({
+  "x": zod.number().min(getBacktestChartPreferencesResponsePreferencesOneToolbarPositionXMin).max(getBacktestChartPreferencesResponsePreferencesOneToolbarPositionXMax),
+  "y": zod.number().min(getBacktestChartPreferencesResponsePreferencesOneToolbarPositionYMin).max(getBacktestChartPreferencesResponsePreferencesOneToolbarPositionYMax)
+})
+}),zod.null()])
+})
+
+
+/**
+ * @summary Save account chart preferences if the revision matches
+ */
+export const updateBacktestChartPreferencesBodyRevisionMin = 0;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsToolColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsCandleUpColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsCandleDownColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsWickUpColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsWickDownColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsBorderUpColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsBorderDownColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsLineColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsAreaTopColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsAreaBottomColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsChartBgColor1Max = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsChartBgColor2Max = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsGridColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsCrosshairColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsTextColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsAxisColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsVolumeUpColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsVolumeDownColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsToolWidthMax = 8;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsWatermarkTextMax = 120;
+
+export const updateBacktestChartPreferencesBodyPreferencesSettingsWatermarkOpacityMin = 0;
+export const updateBacktestChartPreferencesBodyPreferencesSettingsWatermarkOpacityMax = 1;
+
+export const updateBacktestChartPreferencesBodyPreferencesFavoriteToolsMax = 12;
+
+export const updateBacktestChartPreferencesBodyPreferencesFavoriteColorsItemMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesFavoriteColorsMax = 24;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemIdMax = 100;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemNameMax = 80;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsToolColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsCandleUpColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsCandleDownColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsWickUpColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsWickDownColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsBorderUpColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsBorderDownColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsLineColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsAreaTopColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsAreaBottomColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsChartBgColor1Max = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsChartBgColor2Max = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsGridColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsCrosshairColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsTextColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsAxisColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsVolumeUpColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsVolumeDownColorMax = 64;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsToolWidthMax = 8;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsWatermarkTextMax = 120;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsWatermarkOpacityMin = 0;
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsWatermarkOpacityMax = 1;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemIndicatorsItemIdMax = 100;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemIndicatorsItemFormulaMax = 2000;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemIndicatorsItemNameMax = 100;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesItemIndicatorsMax = 40;
+
+export const updateBacktestChartPreferencesBodyPreferencesTemplatesMax = 50;
+
+export const updateBacktestChartPreferencesBodyPreferencesToolbarPositionXMin = 0;
+export const updateBacktestChartPreferencesBodyPreferencesToolbarPositionXMax = 20000;
+
+export const updateBacktestChartPreferencesBodyPreferencesToolbarPositionYMin = 0;
+export const updateBacktestChartPreferencesBodyPreferencesToolbarPositionYMax = 20000;
+
+
+
+export const UpdateBacktestChartPreferencesBody = zod.object({
+  "revision": zod.number().int().min(updateBacktestChartPreferencesBodyRevisionMin),
+  "preferences": zod.object({
+  "version": zod.literal(1),
+  "settings": zod.object({
+  "showSessions": zod.boolean().optional(),
+  "magnet": zod.boolean().optional(),
+  "showTradesOnChart": zod.boolean().optional(),
+  "candleBordersVisible": zod.boolean().optional(),
+  "candleWicksVisible": zod.boolean().optional(),
+  "showVertGrid": zod.boolean().optional(),
+  "showHorzGrid": zod.boolean().optional(),
+  "showWatermark": zod.boolean().optional(),
+  "showOhlcLegend": zod.boolean().optional(),
+  "showBarChange": zod.boolean().optional(),
+  "showLastPriceLine": zod.boolean().optional(),
+  "showHighLowLines": zod.boolean().optional(),
+  "toolColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsToolColorMax).optional(),
+  "candleUpColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsCandleUpColorMax).optional(),
+  "candleDownColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsCandleDownColorMax).optional(),
+  "wickUpColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsWickUpColorMax).optional(),
+  "wickDownColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsWickDownColorMax).optional(),
+  "borderUpColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsBorderUpColorMax).optional(),
+  "borderDownColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsBorderDownColorMax).optional(),
+  "lineColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsLineColorMax).optional(),
+  "areaTopColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsAreaTopColorMax).optional(),
+  "areaBottomColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsAreaBottomColorMax).optional(),
+  "chartBgColor1": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsChartBgColor1Max).optional(),
+  "chartBgColor2": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsChartBgColor2Max).optional(),
+  "gridColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsGridColorMax).optional(),
+  "crosshairColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsCrosshairColorMax).optional(),
+  "textColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsTextColorMax).optional(),
+  "axisColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsAxisColorMax).optional(),
+  "volumeUpColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsVolumeUpColorMax).optional(),
+  "volumeDownColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsVolumeDownColorMax).optional(),
+  "chartType": zod.enum(['candles', 'heikin', 'bars', 'line', 'area']).optional(),
+  "chartBgType": zod.enum(['solid', 'gradient']).optional(),
+  "tradeLineMode": zod.enum(['hover_or_latest', 'all', 'none']).optional(),
+  "gridStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "crosshairStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "priceScaleMode": zod.enum(['normal', 'logarithmic', 'percentage']).optional(),
+  "visibleTools": zod.record(zod.string(), zod.boolean()).optional(),
+  "toolWidth": zod.number().int().min(1).max(updateBacktestChartPreferencesBodyPreferencesSettingsToolWidthMax).optional(),
+  "watermarkText": zod.string().max(updateBacktestChartPreferencesBodyPreferencesSettingsWatermarkTextMax).optional(),
+  "watermarkOpacity": zod.number().min(updateBacktestChartPreferencesBodyPreferencesSettingsWatermarkOpacityMin).max(updateBacktestChartPreferencesBodyPreferencesSettingsWatermarkOpacityMax).optional()
+}).describe('Portable appearance and drawing defaults; excludes execution costs, ticket inputs, replay state and trades. Field definitions are shared in contracts/backtestChart.ts.'),
+  "favoriteTools": zod.array(zod.enum(['cursor', 'trend', 'ray', 'arrow', 'hline', 'vline', 'rect', 'fib', 'ruler', 'longPosition', 'shortPosition', 'text'])).max(updateBacktestChartPreferencesBodyPreferencesFavoriteToolsMax),
+  "favoriteColors": zod.array(zod.string().max(updateBacktestChartPreferencesBodyPreferencesFavoriteColorsItemMax)).max(updateBacktestChartPreferencesBodyPreferencesFavoriteColorsMax),
+  "templates": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemIdMax),
+  "name": zod.string().min(1).max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemNameMax),
+  "settings": zod.object({
+  "showSessions": zod.boolean().optional(),
+  "magnet": zod.boolean().optional(),
+  "showTradesOnChart": zod.boolean().optional(),
+  "candleBordersVisible": zod.boolean().optional(),
+  "candleWicksVisible": zod.boolean().optional(),
+  "showVertGrid": zod.boolean().optional(),
+  "showHorzGrid": zod.boolean().optional(),
+  "showWatermark": zod.boolean().optional(),
+  "showOhlcLegend": zod.boolean().optional(),
+  "showBarChange": zod.boolean().optional(),
+  "showLastPriceLine": zod.boolean().optional(),
+  "showHighLowLines": zod.boolean().optional(),
+  "toolColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsToolColorMax).optional(),
+  "candleUpColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsCandleUpColorMax).optional(),
+  "candleDownColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsCandleDownColorMax).optional(),
+  "wickUpColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsWickUpColorMax).optional(),
+  "wickDownColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsWickDownColorMax).optional(),
+  "borderUpColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsBorderUpColorMax).optional(),
+  "borderDownColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsBorderDownColorMax).optional(),
+  "lineColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsLineColorMax).optional(),
+  "areaTopColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsAreaTopColorMax).optional(),
+  "areaBottomColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsAreaBottomColorMax).optional(),
+  "chartBgColor1": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsChartBgColor1Max).optional(),
+  "chartBgColor2": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsChartBgColor2Max).optional(),
+  "gridColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsGridColorMax).optional(),
+  "crosshairColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsCrosshairColorMax).optional(),
+  "textColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsTextColorMax).optional(),
+  "axisColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsAxisColorMax).optional(),
+  "volumeUpColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsVolumeUpColorMax).optional(),
+  "volumeDownColor": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsVolumeDownColorMax).optional(),
+  "chartType": zod.enum(['candles', 'heikin', 'bars', 'line', 'area']).optional(),
+  "chartBgType": zod.enum(['solid', 'gradient']).optional(),
+  "tradeLineMode": zod.enum(['hover_or_latest', 'all', 'none']).optional(),
+  "gridStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "crosshairStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "priceScaleMode": zod.enum(['normal', 'logarithmic', 'percentage']).optional(),
+  "visibleTools": zod.record(zod.string(), zod.boolean()).optional(),
+  "toolWidth": zod.number().int().min(1).max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsToolWidthMax).optional(),
+  "watermarkText": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsWatermarkTextMax).optional(),
+  "watermarkOpacity": zod.number().min(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsWatermarkOpacityMin).max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemSettingsWatermarkOpacityMax).optional()
+}).describe('Portable appearance and drawing defaults; excludes execution costs, ticket inputs, replay state and trades. Field definitions are shared in contracts/backtestChart.ts.'),
+  "indicators": zod.array(zod.object({
+  "id": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemIndicatorsItemIdMax),
+  "type": zod.enum(['ema', 'sma', 'wma', 'bb', 'vwap', 'rsi', 'macd', 'atr', 'stoch', 'volume', 'custom']),
+  "on": zod.boolean(),
+  "color": zod.string(),
+  "period": zod.number().optional(),
+  "mult": zod.number().optional(),
+  "fast": zod.number().optional(),
+  "slow": zod.number().optional(),
+  "signal": zod.number().optional(),
+  "k": zod.number().optional(),
+  "d": zod.number().optional(),
+  "source": zod.enum(['close', 'open', 'high', 'low', 'hl2', 'ohlc4']).optional(),
+  "ma": zod.enum(['ema', 'sma', 'wma', 'none']).optional(),
+  "formula": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemIndicatorsItemFormulaMax).optional(),
+  "name": zod.string().max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemIndicatorsItemNameMax).optional(),
+  "pane": zod.enum(['price', 'sub', 'volume']).optional()
+})).max(updateBacktestChartPreferencesBodyPreferencesTemplatesItemIndicatorsMax)
+})).max(updateBacktestChartPreferencesBodyPreferencesTemplatesMax),
+  "toolbarPosition": zod.object({
+  "x": zod.number().min(updateBacktestChartPreferencesBodyPreferencesToolbarPositionXMin).max(updateBacktestChartPreferencesBodyPreferencesToolbarPositionXMax),
+  "y": zod.number().min(updateBacktestChartPreferencesBodyPreferencesToolbarPositionYMin).max(updateBacktestChartPreferencesBodyPreferencesToolbarPositionYMax)
+})
+})
+})
+
+export const updateBacktestChartPreferencesResponseRevisionMin = 0;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsToolColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsCandleUpColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsCandleDownColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsWickUpColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsWickDownColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsBorderUpColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsBorderDownColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsLineColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsAreaTopColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsAreaBottomColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsChartBgColor1Max = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsChartBgColor2Max = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsGridColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsCrosshairColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsTextColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsAxisColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsVolumeUpColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsVolumeDownColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsToolWidthMax = 8;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkTextMax = 120;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkOpacityMin = 0;
+export const updateBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkOpacityMax = 1;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneFavoriteToolsMax = 12;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneFavoriteColorsItemMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneFavoriteColorsMax = 24;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemIdMax = 100;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemNameMax = 80;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsToolColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCandleUpColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCandleDownColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWickUpColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWickDownColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsBorderUpColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsBorderDownColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsLineColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAreaTopColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAreaBottomColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsChartBgColor1Max = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsChartBgColor2Max = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsGridColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCrosshairColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsTextColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAxisColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsVolumeUpColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsVolumeDownColorMax = 64;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsToolWidthMax = 8;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkTextMax = 120;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkOpacityMin = 0;
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkOpacityMax = 1;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemIdMax = 100;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemFormulaMax = 2000;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemNameMax = 100;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsMax = 40;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneTemplatesMax = 50;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneToolbarPositionXMin = 0;
+export const updateBacktestChartPreferencesResponsePreferencesOneToolbarPositionXMax = 20000;
+
+export const updateBacktestChartPreferencesResponsePreferencesOneToolbarPositionYMin = 0;
+export const updateBacktestChartPreferencesResponsePreferencesOneToolbarPositionYMax = 20000;
+
+
+
+export const UpdateBacktestChartPreferencesResponse = zod.object({
+  "revision": zod.number().int().min(updateBacktestChartPreferencesResponseRevisionMin),
+  "preferences": zod.union([zod.object({
+  "version": zod.literal(1),
+  "settings": zod.object({
+  "showSessions": zod.boolean().optional(),
+  "magnet": zod.boolean().optional(),
+  "showTradesOnChart": zod.boolean().optional(),
+  "candleBordersVisible": zod.boolean().optional(),
+  "candleWicksVisible": zod.boolean().optional(),
+  "showVertGrid": zod.boolean().optional(),
+  "showHorzGrid": zod.boolean().optional(),
+  "showWatermark": zod.boolean().optional(),
+  "showOhlcLegend": zod.boolean().optional(),
+  "showBarChange": zod.boolean().optional(),
+  "showLastPriceLine": zod.boolean().optional(),
+  "showHighLowLines": zod.boolean().optional(),
+  "toolColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsToolColorMax).optional(),
+  "candleUpColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsCandleUpColorMax).optional(),
+  "candleDownColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsCandleDownColorMax).optional(),
+  "wickUpColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsWickUpColorMax).optional(),
+  "wickDownColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsWickDownColorMax).optional(),
+  "borderUpColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsBorderUpColorMax).optional(),
+  "borderDownColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsBorderDownColorMax).optional(),
+  "lineColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsLineColorMax).optional(),
+  "areaTopColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsAreaTopColorMax).optional(),
+  "areaBottomColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsAreaBottomColorMax).optional(),
+  "chartBgColor1": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsChartBgColor1Max).optional(),
+  "chartBgColor2": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsChartBgColor2Max).optional(),
+  "gridColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsGridColorMax).optional(),
+  "crosshairColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsCrosshairColorMax).optional(),
+  "textColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsTextColorMax).optional(),
+  "axisColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsAxisColorMax).optional(),
+  "volumeUpColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsVolumeUpColorMax).optional(),
+  "volumeDownColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsVolumeDownColorMax).optional(),
+  "chartType": zod.enum(['candles', 'heikin', 'bars', 'line', 'area']).optional(),
+  "chartBgType": zod.enum(['solid', 'gradient']).optional(),
+  "tradeLineMode": zod.enum(['hover_or_latest', 'all', 'none']).optional(),
+  "gridStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "crosshairStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "priceScaleMode": zod.enum(['normal', 'logarithmic', 'percentage']).optional(),
+  "visibleTools": zod.record(zod.string(), zod.boolean()).optional(),
+  "toolWidth": zod.number().int().min(1).max(updateBacktestChartPreferencesResponsePreferencesOneSettingsToolWidthMax).optional(),
+  "watermarkText": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkTextMax).optional(),
+  "watermarkOpacity": zod.number().min(updateBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkOpacityMin).max(updateBacktestChartPreferencesResponsePreferencesOneSettingsWatermarkOpacityMax).optional()
+}).describe('Portable appearance and drawing defaults; excludes execution costs, ticket inputs, replay state and trades. Field definitions are shared in contracts/backtestChart.ts.'),
+  "favoriteTools": zod.array(zod.enum(['cursor', 'trend', 'ray', 'arrow', 'hline', 'vline', 'rect', 'fib', 'ruler', 'longPosition', 'shortPosition', 'text'])).max(updateBacktestChartPreferencesResponsePreferencesOneFavoriteToolsMax),
+  "favoriteColors": zod.array(zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneFavoriteColorsItemMax)).max(updateBacktestChartPreferencesResponsePreferencesOneFavoriteColorsMax),
+  "templates": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemIdMax),
+  "name": zod.string().min(1).max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemNameMax),
+  "settings": zod.object({
+  "showSessions": zod.boolean().optional(),
+  "magnet": zod.boolean().optional(),
+  "showTradesOnChart": zod.boolean().optional(),
+  "candleBordersVisible": zod.boolean().optional(),
+  "candleWicksVisible": zod.boolean().optional(),
+  "showVertGrid": zod.boolean().optional(),
+  "showHorzGrid": zod.boolean().optional(),
+  "showWatermark": zod.boolean().optional(),
+  "showOhlcLegend": zod.boolean().optional(),
+  "showBarChange": zod.boolean().optional(),
+  "showLastPriceLine": zod.boolean().optional(),
+  "showHighLowLines": zod.boolean().optional(),
+  "toolColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsToolColorMax).optional(),
+  "candleUpColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCandleUpColorMax).optional(),
+  "candleDownColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCandleDownColorMax).optional(),
+  "wickUpColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWickUpColorMax).optional(),
+  "wickDownColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWickDownColorMax).optional(),
+  "borderUpColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsBorderUpColorMax).optional(),
+  "borderDownColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsBorderDownColorMax).optional(),
+  "lineColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsLineColorMax).optional(),
+  "areaTopColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAreaTopColorMax).optional(),
+  "areaBottomColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAreaBottomColorMax).optional(),
+  "chartBgColor1": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsChartBgColor1Max).optional(),
+  "chartBgColor2": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsChartBgColor2Max).optional(),
+  "gridColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsGridColorMax).optional(),
+  "crosshairColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsCrosshairColorMax).optional(),
+  "textColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsTextColorMax).optional(),
+  "axisColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsAxisColorMax).optional(),
+  "volumeUpColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsVolumeUpColorMax).optional(),
+  "volumeDownColor": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsVolumeDownColorMax).optional(),
+  "chartType": zod.enum(['candles', 'heikin', 'bars', 'line', 'area']).optional(),
+  "chartBgType": zod.enum(['solid', 'gradient']).optional(),
+  "tradeLineMode": zod.enum(['hover_or_latest', 'all', 'none']).optional(),
+  "gridStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "crosshairStyle": zod.enum(['solid', 'dashed', 'dotted']).optional(),
+  "priceScaleMode": zod.enum(['normal', 'logarithmic', 'percentage']).optional(),
+  "visibleTools": zod.record(zod.string(), zod.boolean()).optional(),
+  "toolWidth": zod.number().int().min(1).max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsToolWidthMax).optional(),
+  "watermarkText": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkTextMax).optional(),
+  "watermarkOpacity": zod.number().min(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkOpacityMin).max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemSettingsWatermarkOpacityMax).optional()
+}).describe('Portable appearance and drawing defaults; excludes execution costs, ticket inputs, replay state and trades. Field definitions are shared in contracts/backtestChart.ts.'),
+  "indicators": zod.array(zod.object({
+  "id": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemIdMax),
+  "type": zod.enum(['ema', 'sma', 'wma', 'bb', 'vwap', 'rsi', 'macd', 'atr', 'stoch', 'volume', 'custom']),
+  "on": zod.boolean(),
+  "color": zod.string(),
+  "period": zod.number().optional(),
+  "mult": zod.number().optional(),
+  "fast": zod.number().optional(),
+  "slow": zod.number().optional(),
+  "signal": zod.number().optional(),
+  "k": zod.number().optional(),
+  "d": zod.number().optional(),
+  "source": zod.enum(['close', 'open', 'high', 'low', 'hl2', 'ohlc4']).optional(),
+  "ma": zod.enum(['ema', 'sma', 'wma', 'none']).optional(),
+  "formula": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemFormulaMax).optional(),
+  "name": zod.string().max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsItemNameMax).optional(),
+  "pane": zod.enum(['price', 'sub', 'volume']).optional()
+})).max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesItemIndicatorsMax)
+})).max(updateBacktestChartPreferencesResponsePreferencesOneTemplatesMax),
+  "toolbarPosition": zod.object({
+  "x": zod.number().min(updateBacktestChartPreferencesResponsePreferencesOneToolbarPositionXMin).max(updateBacktestChartPreferencesResponsePreferencesOneToolbarPositionXMax),
+  "y": zod.number().min(updateBacktestChartPreferencesResponsePreferencesOneToolbarPositionYMin).max(updateBacktestChartPreferencesResponsePreferencesOneToolbarPositionYMax)
+})
+}),zod.null()])
+})
+
+
+/**
  * @summary Get user settings
  */
 export const getUserSettingsResponseBackgroundDarknessMin = 0;
@@ -5152,5 +5865,153 @@ export const CreateProcessReviewResponse = zod.object({
 }),
   "reviewedAt": zod.date()
 }))
+
+
+/**
+ * @summary Scans the Varco chart canvas and candle structure to audit checklist and project trade setups
+ */
+export const analyzeVarcoVisionBodyCurrentPhaseMax = 4;
+
+
+
+export const AnalyzeVarcoVisionBody = zod.object({
+  "symbol": zod.string(),
+  "interval": zod.string().optional(),
+  "chartImage": zod.string().optional().describe('Base64 image data URL'),
+  "candles": zod.array(zod.object({
+  "time": zod.number(),
+  "open": zod.number(),
+  "high": zod.number(),
+  "low": zod.number(),
+  "close": zod.number(),
+  "volume": zod.number().optional()
+})),
+  "currentPhase": zod.number().int().min(1).max(analyzeVarcoVisionBodyCurrentPhaseMax).optional(),
+  "accountCapital": zod.number().optional(),
+  "riskPercent": zod.number().optional(),
+  "currentChecks": zod.object({
+  "htfContext": zod.boolean().optional(),
+  "turningPoint": zod.boolean().optional(),
+  "ltfTrigger": zod.boolean().optional(),
+  "riskGuard": zod.boolean().optional()
+}).optional(),
+  "activeSetup": zod.object({
+  "direction": zod.enum(['long', 'short']),
+  "orderType": zod.enum(['limit', 'market']).optional(),
+  "limitPrice": zod.number().optional(),
+  "entryReason": zod.string().optional(),
+  "invalidationReason": zod.string().optional(),
+  "timeframe": zod.string().optional(),
+  "schematicRef": zod.string().optional(),
+  "entryPrice": zod.number(),
+  "stopLossPrice": zod.number(),
+  "breakEvenPrice": zod.number(),
+  "breakEvenRule": zod.string(),
+  "takeProfit1Price": zod.number(),
+  "takeProfit1Rule": zod.string(),
+  "takeProfit2Price": zod.number(),
+  "takeProfit2Rule": zod.string(),
+  "riskRewardRatio": zod.number(),
+  "lotSize": zod.number(),
+  "pipsRisk": zod.number(),
+  "cycle": zod.enum(['up', 'down', 'end_up', 'end_down']).optional(),
+  "liquidityContext": zod.enum(['compression', 'swept', 'intermediate']).optional(),
+  "zoneScenario": zod.enum(['valid_zone', 'no_zone', 'reaccum']).optional(),
+  "areaType": zod.enum(['history', 'virgin']).optional(),
+  "triggerType": zod.enum(['TEST', 'POC', 'JTC', 'BTI']).optional(),
+  "imbalancePercent": zod.number().optional(),
+  "oppositePoolPrice": zod.number().optional(),
+  "oppositePoolLabel": zod.string().optional(),
+  "sessionName": zod.string().optional(),
+  "invalidationSwingPrice": zod.number().optional(),
+  "wasReversal": zod.boolean().optional()
+}).optional(),
+  "enforceSessionWindows": zod.boolean().optional(),
+  "operativeMemory": zod.object({
+  "flipActive": zod.boolean().optional(),
+  "flipDirection": zod.union([zod.literal('long'),zod.literal('short'),zod.literal(null)]).nullish(),
+  "minImbalancePercent": zod.number().optional(),
+  "preferPocOnReversal": zod.boolean().optional(),
+  "reaccumRiskMultiplier": zod.number().optional(),
+  "quarantinedCombos": zod.array(zod.string()).optional()
+}).optional()
+})
+
+export const AnalyzeVarcoVisionResponse = zod.object({
+  "verdict": zod.enum(['SETUP_READY', 'WAITING_TRIGGER', 'INVALID_STRUCTURE', 'NO_ZONE']),
+  "summary": zod.string(),
+  "confidenceScore": zod.number(),
+  "executionPhase": zod.number().int().optional(),
+  "proceduralSteps": zod.array(zod.object({
+  "phase": zod.number().int(),
+  "title": zod.string(),
+  "valid": zod.boolean(),
+  "note": zod.string(),
+  "schematicId": zod.string().optional(),
+  "triggerType": zod.enum(['TEST', 'POC', 'JTC', 'BTI']).optional()
+})).optional(),
+  "checklistAudit": zod.object({
+  "htfContext": zod.object({
+  "valid": zod.boolean(),
+  "note": zod.string(),
+  "triggerType": zod.enum(['TEST', 'POC', 'JTC', 'BTI']).optional(),
+  "recommendedLots": zod.number().optional(),
+  "riskAmount": zod.number().optional()
+}),
+  "turningPoint": zod.object({
+  "valid": zod.boolean(),
+  "note": zod.string(),
+  "triggerType": zod.enum(['TEST', 'POC', 'JTC', 'BTI']).optional(),
+  "recommendedLots": zod.number().optional(),
+  "riskAmount": zod.number().optional()
+}),
+  "ltfTrigger": zod.object({
+  "valid": zod.boolean(),
+  "note": zod.string(),
+  "triggerType": zod.enum(['TEST', 'POC', 'JTC', 'BTI']).optional(),
+  "recommendedLots": zod.number().optional(),
+  "riskAmount": zod.number().optional()
+}),
+  "riskGuard": zod.object({
+  "valid": zod.boolean(),
+  "note": zod.string(),
+  "triggerType": zod.enum(['TEST', 'POC', 'JTC', 'BTI']).optional(),
+  "recommendedLots": zod.number().optional(),
+  "riskAmount": zod.number().optional()
+})
+}),
+  "setup": zod.union([zod.object({
+  "direction": zod.enum(['long', 'short']),
+  "orderType": zod.enum(['limit', 'market']).optional(),
+  "limitPrice": zod.number().optional(),
+  "entryReason": zod.string().optional(),
+  "invalidationReason": zod.string().optional(),
+  "timeframe": zod.string().optional(),
+  "schematicRef": zod.string().optional(),
+  "entryPrice": zod.number(),
+  "stopLossPrice": zod.number(),
+  "breakEvenPrice": zod.number(),
+  "breakEvenRule": zod.string(),
+  "takeProfit1Price": zod.number(),
+  "takeProfit1Rule": zod.string(),
+  "takeProfit2Price": zod.number(),
+  "takeProfit2Rule": zod.string(),
+  "riskRewardRatio": zod.number(),
+  "lotSize": zod.number(),
+  "pipsRisk": zod.number(),
+  "cycle": zod.enum(['up', 'down', 'end_up', 'end_down']).optional(),
+  "liquidityContext": zod.enum(['compression', 'swept', 'intermediate']).optional(),
+  "zoneScenario": zod.enum(['valid_zone', 'no_zone', 'reaccum']).optional(),
+  "areaType": zod.enum(['history', 'virgin']).optional(),
+  "triggerType": zod.enum(['TEST', 'POC', 'JTC', 'BTI']).optional(),
+  "imbalancePercent": zod.number().optional(),
+  "oppositePoolPrice": zod.number().optional(),
+  "oppositePoolLabel": zod.string().optional(),
+  "sessionName": zod.string().optional(),
+  "invalidationSwingPrice": zod.number().optional(),
+  "wasReversal": zod.boolean().optional()
+}),zod.null()]).optional(),
+  "doctrineAdvice": zod.string()
+})
 
 

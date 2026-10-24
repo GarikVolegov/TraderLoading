@@ -58,3 +58,10 @@ export async function canPublishPlatformContent(userId: string): Promise<boolean
   if (storedRole) return false;
   return (process.env.PLATFORM_ADMIN_IDS || "").split(",").map(id => id.trim()).filter(Boolean).includes(userId);
 }
+
+/** Owner-only for LIMEN training. Staff permissions never imply ownership. */
+export async function isLimenOwner(userId: string): Promise<boolean> {
+  const ownerId = process.env.LIMEN_OWNER_USER_ID?.trim();
+  if (!ownerId || userId !== ownerId) return false;
+  return Boolean(await getAdminPrincipalForUser(userId));
+}

@@ -29,6 +29,7 @@ export const ADMIN_USER_STATUS_FILTERS: AdminUserStatusFilter[] = [
 export const ADMIN_SUBSCRIPTION_PLANS: AdminSubscriptionPlan[] = [
   "free",
   "pro",
+  "tributo_150",
 ];
 export const ADMIN_SUBSCRIPTION_STATUSES: AdminSubscriptionStatus[] = [
   "active",

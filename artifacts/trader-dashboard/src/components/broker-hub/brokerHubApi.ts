@@ -174,14 +174,21 @@ export type BrokerOrderResult = {
 };
 
 function defaultBrokerApiBase(): string {
+  if (typeof window !== "undefined") {
+    return "";
+  }
   const configured = import.meta.env.VITE_API_BASE as string | undefined;
   if (configured && configured.trim()) return configured;
-  return typeof window !== "undefined" ? window.location.origin : "";
+  return "";
 }
 
 export function createBrokerHubUrl(path: string, options: BrokerHubApiOptions = {}): string {
   const base = options.baseUrl ?? defaultBrokerApiBase();
-  return new URL(`/api${path}`, base).toString();
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (!base) {
+    return `/api${normalizedPath}`;
+  }
+  return new URL(`/api${normalizedPath}`, base).toString();
 }
 
 async function readJson<T>(response: Response, fallbackMessage = "Broker request failed"): Promise<T> {

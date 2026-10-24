@@ -31,6 +31,10 @@ export interface AcademyBilling {
     holdDays: number;
     code: string | null;
     link: string | null;
+    activeGuidedMembersCount?: number;
+    totalGuidedMembersCount?: number;
+    currentGradeNumber?: number;
+    expansionMandateUnlocked?: boolean;
   };
   commissions: {
     pendingCents: number;

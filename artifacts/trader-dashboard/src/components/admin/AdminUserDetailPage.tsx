@@ -8,8 +8,21 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { uiText } from "@/contexts/LanguageContext";
-import { getAdminUserDetail, reactivateAdminUser, revokeAdminUserSessions, suspendAdminUser, type AdminUserDetail } from "@/lib/adminApi";
-import { BookOpen, Database, FileText } from "lucide-react";
+import {
+  getAdminUserDetail,
+  reactivateAdminUser,
+  revokeAdminUserSessions,
+  suspendAdminUser,
+  updateAdminSubscription,
+  updateAdminUserProfile,
+  exportAdminUserData,
+  assignAdminRole,
+  revokeAdminRole,
+  type AdminUserDetail,
+  type AdminSubscriptionPlan,
+  type AdminRole,
+} from "@/lib/adminApi";
+import { BookOpen, Database, Download, FileText, Shield, Sparkles } from "lucide-react";
 import { formatAdminDate, statusVariant, AdminErrorState, AuditPreviewList } from "./shared";
 
 function useAdminUserIdFromRoute() {
@@ -17,14 +30,74 @@ function useAdminUserIdFromRoute() {
   return params?.userId ?? "";
 }
 
-function AdminUserDetailTabs({ detail }: { detail: AdminUserDetail }) {
+function AdminUserDetailTabs({ detail, onInvalidate }: { detail: AdminUserDetail; onInvalidate?: () => void }) {
   const user = detail.user;
   const counters = user.counters;
+  const qc = useQueryClient();
+
+  const [editXp, setEditXp] = useState(String(user.xp));
+  const [editLevel, setEditLevel] = useState(String(user.level));
+  const [editStreak, setEditStreak] = useState(String(user.streak));
+  const [selectedPlan, setSelectedPlan] = useState<AdminSubscriptionPlan>("free");
+  const [planReason, setPlanReason] = useState("Modifica manuale da console admin");
+  const [staffRole, setStaffRole] = useState<AdminRole>("support_agent");
+  const [governanceMsg, setGovernanceMsg] = useState<string | null>(null);
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    qc.invalidateQueries({ queryKey: ["admin", "subscriptions"] });
+    qc.invalidateQueries({ queryKey: ["admin", "roles"] });
+    if (onInvalidate) onInvalidate();
+  };
+
+  const updateProfileMutation = useMutation({
+    mutationFn: () =>
+      updateAdminUserProfile(user.userId ?? "", {
+        xp: Number(editXp),
+        level: Number(editLevel),
+        streak: Number(editStreak),
+        reason: "Aggiornamento manuale progressione",
+      }),
+    onSuccess: () => {
+      setGovernanceMsg("Progressione utente salvata.");
+      invalidate();
+    },
+  });
+
+  const updateSubMutation = useMutation({
+    mutationFn: () =>
+      updateAdminSubscription(user.userId ?? "", {
+        plan: selectedPlan,
+        status: "active",
+        reason: planReason,
+      }),
+    onSuccess: () => {
+      setGovernanceMsg(`Piano impostato a ${selectedPlan}.`);
+      invalidate();
+    },
+  });
+
+  const assignRoleMutation = useMutation({
+    mutationFn: () => assignAdminRole(user.userId ?? "", staffRole),
+    onSuccess: () => {
+      setGovernanceMsg(`Ruolo ${staffRole} assegnato.`);
+      invalidate();
+    },
+  });
+
+  const revokeRoleMutation = useMutation({
+    mutationFn: () => revokeAdminRole(user.userId ?? "", "Revoca da scheda utente"),
+    onSuccess: () => {
+      setGovernanceMsg("Ruolo staff rimosso.");
+      invalidate();
+    },
+  });
 
   return (
     <Tabs defaultValue="overview" className="space-y-4">
       <TabsList>
         <TabsTrigger value="overview">{uiText("auto.ui.0efc2e6be4")}</TabsTrigger>
+        <TabsTrigger value="governance">Governance & Piano</TabsTrigger>
         <TabsTrigger value="security">{uiText("auto.ui.f25ce1b8a3")}</TabsTrigger>
         <TabsTrigger value="trading">{uiText("auto.ui.49352196f6")}</TabsTrigger>
         <TabsTrigger value="audit">{uiText("auto.ui.fa1703dd78")}</TabsTrigger>
@@ -71,6 +144,166 @@ function AdminUserDetailTabs({ detail }: { detail: AdminUserDetail }) {
             </div>
           </dl>
         </section>
+      </TabsContent>
+      <TabsContent value="governance" className="space-y-4">
+        {governanceMsg && (
+          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-400">
+            {governanceMsg}
+          </div>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* OVERRIDE PIANO ABBONAMENTO */}
+          <section className="rounded-lg border border-border bg-card/80 p-4 space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" /> Override Piano Abbonamento
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Assegna manualmente il piano di accesso: Free, Pro o Tributo (€150/mese).
+            </p>
+            <div className="space-y-2">
+              <select
+                value={selectedPlan}
+                onChange={(e) => setSelectedPlan(e.target.value as AdminSubscriptionPlan)}
+                className="w-full min-h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="free">Free (Base)</option>
+                <option value="pro">Pro (Accesso Standard)</option>
+                <option value="tributo_150">Tributo (€150/mese) - Protocollo Completo</option>
+              </select>
+              <Input
+                value={planReason}
+                onChange={(e) => setPlanReason(e.target.value)}
+                placeholder="Motivo dell'assegnazione o note interne..."
+                className="text-xs"
+              />
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={updateSubMutation.isPending || !user.userId}
+                onClick={() => updateSubMutation.mutate()}
+              >
+                Aggiorna Piano Utente
+              </Button>
+            </div>
+          </section>
+
+          {/* PROGRESSIONE XP / LIVELLO */}
+          <section className="rounded-lg border border-border bg-card/80 p-4 space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Database className="h-4 w-4 text-primary" /> Modifica XP & Livello
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Riallinea manualmente la progressione e la continuità operativa.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[11px] text-muted-foreground">XP</label>
+                <Input
+                  type="number"
+                  value={editXp}
+                  onChange={(e) => setEditXp(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground">Livello</label>
+                <Input
+                  type="number"
+                  value={editLevel}
+                  onChange={(e) => setEditLevel(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground">Streak</label>
+                <Input
+                  type="number"
+                  value={editStreak}
+                  onChange={(e) => setEditStreak(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              disabled={updateProfileMutation.isPending || !user.userId}
+              onClick={() => updateProfileMutation.mutate()}
+            >
+              Salva Progressione
+            </Button>
+          </section>
+
+          {/* RUOLO STAFF ADMIN */}
+          <section className="rounded-lg border border-border bg-card/80 p-4 space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" /> Ruolo Amministrativo (Staff)
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Nomina questo utente operatore o amministratore della piattaforma.
+            </p>
+            <div className="space-y-2">
+              <select
+                value={staffRole}
+                onChange={(e) => setStaffRole(e.target.value as AdminRole)}
+                className="w-full min-h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="support_agent">support_agent (Supporto & Ticket)</option>
+                <option value="moderator">moderator (Moderatore Community/Recensioni)</option>
+                <option value="admin_operator">admin_operator (Operatore Gestionale)</option>
+                <option value="content_manager">content_manager (Gestione Contenuti)</option>
+                <option value="developer_ops">developer_ops (DevOps & Diagnostica)</option>
+                <option value="super_admin">super_admin (Accesso Completo Illimitato)</option>
+              </select>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  disabled={assignRoleMutation.isPending || !user.userId}
+                  onClick={() => assignRoleMutation.mutate()}
+                >
+                  Assegna Ruolo
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-rose-400"
+                  disabled={revokeRoleMutation.isPending || !user.userId}
+                  onClick={() => revokeRoleMutation.mutate()}
+                >
+                  Revoca
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          {/* EXPORT GDPR */}
+          <section className="rounded-lg border border-border bg-card/80 p-4 space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Download className="h-4 w-4 text-primary" /> Esportazione Dati Account (GDPR)
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Scarica il pacchetto JSON completo dei dati dell'utente (profilo, trade, journal, impostazioni).
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              disabled={!user.userId}
+              onClick={() => {
+                if (user.userId) {
+                  exportAdminUserData(user.userId).catch((err) => {
+                    setGovernanceMsg(`Errore export: ${err.message}`);
+                  });
+                }
+              }}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" /> Esporta Dati JSON
+            </Button>
+          </section>
+        </div>
       </TabsContent>
       <TabsContent value="security">
         <section className="rounded-lg border border-border bg-card/80 p-4">
@@ -222,7 +455,7 @@ export function AdminUserDetailPage() {
           </div>
         </div>
       </div>
-      <AdminUserDetailTabs detail={detail.data} />
+      <AdminUserDetailTabs detail={detail.data} onInvalidate={invalidate} />
     </div>
   );
 }

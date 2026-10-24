@@ -6,6 +6,7 @@
 // EMAIL_LIFECYCLE_ENABLED is truthy, so it can ship dark and be switched on after
 // verification. Mirrors ticketEmails.ts (test-exempt pure-glue over tested units).
 
+import { queueLaunchWelcome } from "./launchEmails.js";
 import { eq } from "drizzle-orm";
 import {
   db,
@@ -165,6 +166,10 @@ export async function runLifecycleEmails(now: Date = new Date()): Promise<Lifecy
   for (const candidate of candidates) {
     const kind = selectLifecycleEmail(candidate.state, now);
     if (!kind) continue;
+    if (kind === "welcome") {
+      await queueLaunchWelcome(candidate.state.userId);
+      continue;
+    }
     processed += 1;
     try {
       const email = await buildEmail(candidate, kind, now, baseUrl);

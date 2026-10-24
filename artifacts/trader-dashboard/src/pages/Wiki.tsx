@@ -5,7 +5,6 @@ import { useLocation, useSearch } from "wouter";
 import { useGetProfile } from "@workspace/api-client-react";
 import { Plus } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
-import { PageHeader } from "@/components/PageHeader";
 import { SectionTabs } from "@/components/SectionTabs";
 import { useBillingStatus } from "@/lib/billingApi";
 import { useArchiveCatalog } from "@/lib/useArchiveCatalog";
@@ -208,19 +207,16 @@ export default function Wiki() {
             </div>
           )}
 
-          <PageHeader
-            title={uiText("archive.title")}
-            subtitle={uiText("reorg.archive.subtitle")}
-            action={pro ?
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3 pt-1">
+            <SectionTabs value={tab} onValueChange={changeTab} ariaLabel={uiText("reorg.archive.tabs")}
+              items={[{ value: "all", label: uiText("reorg.archive.all") }, { value: "unlocked", label: uiText("reorg.archive.unlocked") }]} />
+            {pro && (
               <Button onClick={() => setAddOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 {uiText("archive.add")}
-              </Button> : undefined
-            }
-          />
-
-          <SectionTabs value={tab} onValueChange={changeTab} ariaLabel={uiText("reorg.archive.tabs")}
-            items={[{ value: "all", label: uiText("reorg.archive.all") }, { value: "unlocked", label: uiText("reorg.archive.unlocked") }]} />
+              </Button>
+            )}
+          </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>{uiText("reorg.archive.level", { level })}</span>
             {nextLevel && <span>{uiText("reorg.archive.next", { level: nextLevel })}</span>}

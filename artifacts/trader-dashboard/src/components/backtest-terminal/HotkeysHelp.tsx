@@ -38,6 +38,7 @@ export function HotkeysHelp({ onClose }: { onClose: () => void }) {
   const { titleId, panelProps } = useDialogA11y({ isOpen: true, onClose, panelRef });
   return (
     <div
+      className="btm-help-backdrop"
       role="presentation"
       style={{
         position: "absolute",
@@ -55,6 +56,8 @@ export function HotkeysHelp({ onClose }: { onClose: () => void }) {
         {...panelProps}
         onClick={(event) => event.stopPropagation()}
         style={{
+          maxHeight: "calc(var(--visual-viewport-height, 100dvh) - 24px)",
+          overflowY: "auto",
           width: 340,
           maxWidth: "90vw",
           borderRadius: 14,

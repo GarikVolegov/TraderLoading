@@ -184,10 +184,10 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
   }
 
   async function importProfileData(profile: BrokerAccountProfile, snapshot: BrokerSnapshot, connector: BrokerConnector): Promise<void> {
-    if (!isFxBlueProfile(profile) || snapshot.status !== "connected") return;
+    if (snapshot.status !== "connected") return;
     try {
       const deals = await connector.getDealsHistory();
-      await accountDataImporter({ profile, snapshot, deals });
+      await accountDataImporter({ profile, snapshot, deals: deals ?? [] });
     } catch (error) {
       console.error("[brokerHub] failed to import broker account data", error);
     }
@@ -233,7 +233,7 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
 
   function startAutoSync(profile: BrokerAccountProfile): void {
     if (closing) return;
-    if (!isFxBlueProfile(profile) || autoSyncIntervalMs <= 0 || syncTimers.has(profile.id)) return;
+    if (autoSyncIntervalMs <= 0 || syncTimers.has(profile.id)) return;
     const timer = setInterval(() => {
       trackAutoSync(profile.id, async () => {
         const currentProfile = await store.getProfile(profile.id);

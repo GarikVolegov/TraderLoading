@@ -45,11 +45,17 @@
   color: hsl(var(--primary-foreground));
   font-weight: 600;
 }
+.academy-workspace h1,
+.academy-workspace h2,
+.academy-public h1,
+.academy-public h2 {
+  font-family: var(--font-display, 'Cinzel', 'Cormorant Garamond', Georgia, serif);
+  letter-spacing: 0.03em;
+}
 .academy-workspace h2 {
   font-size: clamp(1.35rem, 2vw, 1.8rem);
   line-height: 1.25;
   font-weight: 650;
-  letter-spacing: -0.03em;
 }
 .academy-workspace h3 {
   font-size: 1rem;
@@ -65,21 +71,26 @@
 .academy-tabs a {
   padding: 0.9rem 1rem;
   min-height: 44px;
-  font-size: 0.9rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: hsl(var(--muted-foreground));
   border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
 }
 .academy-tabs a[aria-current] {
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--primary));
+  color: #C5A059;
+  border-color: #C5A059;
+  font-weight: 600;
 }
 .academy-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
-  border: 1px solid hsl(var(--border));
-  border-radius: 1rem;
+  border: 1px solid rgba(197, 160, 89, 0.25);
+  border-radius: 0.75rem;
   overflow: hidden;
-  background: hsl(var(--card));
+  background: #121216;
 }
 .academy-hero-copy {
   padding: clamp(1.5rem, 4vw, 3.5rem);
@@ -423,7 +434,7 @@
   aspect-ratio: 16 / 9;
   border: 1px solid hsl(var(--border));
   border-radius: 0.8rem;
-  background: #090b10;
+  background: hsl(var(--surface-0));
 }
 .academy-prose {
   white-space: pre-wrap;
@@ -495,4 +506,23 @@
   .academy-tabs a {
     padding-inline: 0.75rem;
   }
+}
+
+/* LIMEN editorial reading and persistent catalog */
+.limen-persistent-lessons{border:1px solid #d5b87840;border-radius:10px;overflow:hidden;background:#111315}
+.limen-persistent-lessons>li{padding:24px;gap:20px;min-height:120px}
+.limen-persistent-lessons .academy-module-number{color:#d5b878;font-family:Georgia,serif;font-size:28px}
+.limen-book-row .academy-module-number{display:grid;place-items:center;min-width:65px;height:90px;border:1px solid #d5b87860;background:linear-gradient(135deg,#373027,#111315);box-shadow:4px 3px 0 #29251e;border-radius:2px}
+.limen-protocol-offer{border-color:#d5b87860;background:linear-gradient(120deg,#d5b8780b,transparent);scroll-margin-top:100px}
+.academy-workspace .academy-prose{white-space:pre-wrap;font-size:16px;line-height:1.85;max-width:78ch}
+.academy-workspace input[type=file]{display:block;max-width:100%;padding:14px 0;font-size:14px}
+@media(max-width:600px){.limen-persistent-lessons>li{flex-wrap:wrap;padding:20px;gap:16px}.limen-persistent-lessons .academy-lesson-title{min-width:170px;flex:1}.limen-persistent-lessons>li>.academy-text-link{margin-left:auto}.academy-workspace .academy-tabs{flex-wrap:wrap}.academy-workspace .academy-actions{flex-wrap:wrap}}
+
+@media (max-width: 1023px) {
+  .academy-tabs { max-width:100%; overflow-x:auto; flex-wrap:nowrap; }
+  .academy-tabs a { flex-shrink:0; min-height:44px; }
+  .academy-module summary { min-height:56px; flex-wrap:wrap; }
+  .academy-lessons li { min-width:0; }
+  .academy-lesson-title { overflow-wrap:anywhere; }
+  .academy-hero-copy, .academy-price { min-width:0; }
 }

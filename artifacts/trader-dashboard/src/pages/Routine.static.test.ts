@@ -46,10 +46,14 @@ const navHubs = readFileSync(new URL("../lib/navHubs.ts", import.meta.url), "utf
 assert.doesNotMatch(app, /pages\/Zen|path="\/zen"/);
 assert.doesNotMatch(bottomNav, /href: "\/zen"/);
 const dashboard = readFileSync(new URL("./Dashboard.tsx", import.meta.url), "utf8");
+assert.doesNotMatch(dashboard, /pages\/Zen|"\/zen"/);
 assert.match(routinePage, /export function RoutineWorkspace/, "routine can be embedded in the daily plan");
 assert.match(routinePage, /getRoutineStartProgram\(search\)/, "URL start actions preserve guided programs");
 const aliases = readFileSync(new URL("../lib/workspaceNavigation.ts", import.meta.url), "utf8");
-assert.match(aliases, /"\/routine"/, "legacy routine links stay compatible");
+assert.ok(
+  app.includes('path="/routine"') || aliases.includes('"/routine"'),
+  "routine route or alias stays compatible",
+);
 assert.doesNotMatch(commandPalette, /zen\.title/);
 assert.doesNotMatch(navHubs, /ZEN_HUB|\/zen/);
 

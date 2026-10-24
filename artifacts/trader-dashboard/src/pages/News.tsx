@@ -314,7 +314,12 @@ function NewsDetailDialog({ article, pair, open, onOpenChange }: { article: Arti
         </DialogHeader>
 
         {article.imageUrl && (
-          <img src={article.imageUrl} alt="" className="w-full max-h-64 object-cover rounded-lg border border-border/40" />
+          <img
+            src={article.imageUrl}
+            alt=""
+            className="w-full max-h-64 object-cover rounded-lg border border-border/40"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
         )}
 
         <div className="space-y-4">

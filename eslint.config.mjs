@@ -31,6 +31,10 @@ export default tseslint.config(
       // intentional patterns like empty catch blocks and skip-destructuring).
       "design-ref/**",
       ".ds-sync/**",
+      // Standalone generation and scratch scripts
+      "index.ts",
+      "seedance.ts",
+      "scratch/**",
     ],
   },
 
@@ -116,10 +120,14 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
   },
 
-  // ── Test files: looser ───────────────────────────────────────────────────
+  // ── Test files & fixtures: looser ──────────────────────────────────────────
   {
-    files: ["**/*.test.{ts,tsx}", "**/*.static.test.{ts,mjs}"],
-    languageOptions: { globals: { ...globals.node } },
+    files: [
+      "**/*.test.{ts,tsx}",
+      "**/*.static.test.{ts,mjs}",
+      "scripts/verify-*/**/*.{js,ts,tsx,mjs}",
+    ],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-require-imports": "off",

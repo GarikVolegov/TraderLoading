@@ -1,0 +1,417 @@
+/* ─── Limen Proprietary Chart Luxury Dark Styling ───────────────────────────── */
+
+.limen-proprietary-chart {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #08080a;
+  color: #d1d4dc;
+  overflow: hidden;
+  user-select: none;
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+.limen-chart-header {
+  height: 38px;
+  min-height: 38px;
+  background: #0b0c10;
+  border-bottom: 1px solid #26262e;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  z-index: 20;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+/* ─── Price Scale Countdown Badge (Posizionato sull'asse del prezzo a destra) ─── */
+.limen-price-scale-countdown {
+  position: absolute;
+  right: 2px;
+  width: 54px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  user-select: none;
+  background: #08080a;
+  border: 1px solid rgba(197, 160, 89, 0.45);
+  color: #c5a059;
+}
+
+.limen-price-scale-countdown.is-up {
+  border-color: rgba(16, 185, 129, 0.55);
+  color: #34d399;
+}
+
+.limen-price-scale-countdown.is-down {
+  border-color: rgba(244, 63, 94, 0.55);
+  color: #fb7185;
+}
+
+.limen-countdown-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: limenPulseDot 1.4s ease-in-out infinite;
+}
+
+@keyframes limenPulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.75); }
+}
+
+.limen-chart-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ─── Left Toolbar (TradingView / FX Replay style) ────────────────────────── */
+.limen-chart-toolbar {
+  width: 44px;
+  min-width: 44px;
+  background: rgba(14, 15, 18, 0.95);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  gap: 6px;
+  z-index: 15;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.limen-tool-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8b8f9a;
+  transition: all 140ms cubic-bezier(0.2, 0, 0, 1);
+  cursor: pointer;
+}
+
+.limen-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4f4f5;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.limen-tool-btn.is-active {
+  background: rgba(212, 175, 55, 0.16);
+  color: #d4af37;
+  border-color: rgba(212, 175, 55, 0.5);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.2);
+}
+
+.limen-tool-btn.is-magnet-active {
+  background: rgba(212, 175, 55, 0.25);
+  border-color: #d4af37;
+  color: #d4af37;
+}
+
+.limen-tool-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.limen-toolbar-divider {
+  width: 22px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 4px 0;
+}
+
+/* ─── Canvas Viewport Area ─────────────────────────────────────────────────── */
+.limen-chart-viewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #08080a;
+}
+
+.limen-chart-canvas-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ─── Legend / OHLC Bar Overlay ───────────────────────────────────────────── */
+.limen-chart-ohlc-legend {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  pointer-events: none;
+  background: rgba(8, 8, 10, 0.7);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(4px);
+}
+
+.limen-chart-ohlc-legend .symbol-tag {
+  color: #d4af37;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.limen-chart-ohlc-legend .ohlc-values {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.limen-chart-ohlc-legend .val-item {
+  display: flex;
+  gap: 2px;
+}
+
+.limen-chart-ohlc-legend .val-label {
+  color: #71717a;
+}
+
+.limen-chart-ohlc-legend .val-num {
+  font-weight: 600;
+}
+
+.limen-chart-ohlc-legend .val-num.is-up {
+  color: #26a69a;
+}
+
+.limen-chart-ohlc-legend .val-num.is-down {
+  color: #ef5350;
+}
+
+/* ─── Auto Fair Value Gap (FVG) Overlay ────────────────────────────────────── */
+.limen-fvg-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.limen-fvg-box {
+  position: absolute;
+  border-radius: 2px;
+  transition: opacity 180ms ease;
+}
+
+.limen-fvg-box.is-bullish {
+  background: rgba(38, 166, 154, 0.12);
+  border: 1px solid rgba(38, 166, 154, 0.4);
+}
+
+.limen-fvg-box.is-bearish {
+  background: rgba(239, 83, 80, 0.12);
+  border: 1px solid rgba(239, 83, 80, 0.4);
+}
+
+.limen-fvg-label {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  font-size: 9px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.limen-fvg-box.is-bullish .limen-fvg-label {
+  color: #26a69a;
+  background: rgba(38, 166, 154, 0.2);
+}
+
+.limen-fvg-box.is-bearish .limen-fvg-label {
+  color: #ef5350;
+  background: rgba(239, 83, 80, 0.2);
+}
+
+/* ─── Hide Internal Replay Floating Boxes ────────────────────────────── */
+.limen-proprietary-chart .btm-drawing-workspace-controls {
+  display: none !important;
+}
+
+.limen-legend-gear {
+  margin-left: 6px;
+  background: transparent;
+  border: 0;
+  color: #71717a;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+  border-radius: 3px;
+  transition: color 120ms, background 120ms;
+}
+.limen-legend-gear:hover {
+  color: #f4f4f5;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── TradingView Pro Bottom Bar ────────────────────────────────────────── */
+.limen-bottom-bar {
+  height: 28px;
+  min-height: 28px;
+  background: #08080a;
+  border-top: 1px solid #26262e;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  color: #787b86;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.limen-bottom-ranges {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.limen-bottom-ranges button {
+  padding: 2px 7px;
+  border: 0;
+  background: transparent;
+  color: #787b86;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 120ms;
+}
+
+.limen-bottom-ranges button:hover {
+  color: #c5a059;
+  background: rgba(197, 160, 89, 0.08);
+}
+
+.limen-bottom-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.limen-bottom-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(197, 160, 89, 0.12);
+  border: 1px solid rgba(197, 160, 89, 0.4);
+  color: #c5a059;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.limen-bottom-clock {
+  font-size: 10.5px;
+  color: #a1a1aa;
+  font-variant-numeric: tabular-nums;
+}
+
+.limen-bottom-scales {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.limen-bottom-scales button {
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #787b86;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 120ms;
+}
+
+.limen-bottom-scales button:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.limen-bottom-scales button.is-active {
+  color: #c5a059;
+  background: rgba(197, 160, 89, 0.16);
+  border-color: rgba(197, 160, 89, 0.5);
+}
+
+/* ─── Zero TradingView Watermark / Attribution Logo ───────────────────────── */
+.limen-chart-canvas-container a,
+.limen-chart-canvas-container [class*="attribution"],
+.limen-chart-canvas-container svg[href*="tradingview"],
+.limen-chart-canvas-container a[href*="tradingview"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ─── Mobile Adjustments ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .limen-chart-toolbar {
+    width: 36px;
+    min-width: 36px;
+    padding: 4px 2px;
+    gap: 4px;
+  }
+  .limen-tool-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .limen-chart-header {
+    height: 38px;
+    padding: 4px 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .limen-chart-ohlc-legend {
+    font-size: 9px;
+    gap: 6px;
+    top: 6px;
+    left: 8px;
+  }
+}

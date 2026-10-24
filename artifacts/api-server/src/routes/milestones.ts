@@ -21,6 +21,10 @@ import { getUserId, getLevelName, computeLevel } from "./profile.js";
 import { resolveUploadPath } from "../lib/uploads.js";
 import { imageMatchesType } from "../lib/imageValidation.js";
 import { z } from "zod";
+import {
+  certificateIdFromParam,
+  renderMilestoneCertificateSvg,
+} from "../services/milestones/milestoneCertificateImage.js";
 
 const router: IRouter = Router();
 
@@ -301,6 +305,14 @@ router.get("/milestones/certificates/me", async (req, res) => {
           await db.insert(levelCertificatesTable).values(missing).onConflictDoNothing();
         }
       }
+
+      // Synchronize customized nickname to certificates
+      if (profile.name) {
+        await db
+          .update(levelCertificatesTable)
+          .set({ userName: profile.name, avatarUrl: profile.avatarUrl ?? null })
+          .where(eq(levelCertificatesTable.userId, userId));
+      }
     }
 
     const certs = await db
@@ -308,7 +320,12 @@ router.get("/milestones/certificates/me", async (req, res) => {
       .from(levelCertificatesTable)
       .where(eq(levelCertificatesTable.userId, userId))
       .orderBy(asc(levelCertificatesTable.level));
-    res.json(certs);
+
+    const mapped = certs.map((c) => ({
+      ...c,
+      userName: profile?.name || c.userName || "Operatore",
+    }));
+    res.json(mapped);
   } catch (err) {
     console.error("certificates/me error:", err);
     res.status(500).json({ error: "Errore interno" });
@@ -320,12 +337,23 @@ router.get("/milestones/certificates/user/:userId", async (req, res) => {
   const requesterId = requireAuth(req, res);
   if (!requesterId) return;
   try {
+    const [profile] = await db
+      .select({ name: profileTable.name })
+      .from(profileTable)
+      .where(eq(profileTable.userId, req.params.userId))
+      .limit(1);
+
     const certs = await db
       .select()
       .from(levelCertificatesTable)
       .where(eq(levelCertificatesTable.userId, req.params.userId))
       .orderBy(asc(levelCertificatesTable.level));
-    res.json(certs);
+
+    const mapped = certs.map((c) => ({
+      ...c,
+      userName: profile?.name || c.userName || "Operatore",
+    }));
+    res.json(mapped);
   } catch (err) {
     res.status(500).json({ error: "Errore interno" });
   }
@@ -335,6 +363,118 @@ router.get("/milestones/certificates/user/:userId", async (req, res) => {
 router.get("/milestones/admin/status", async (req, res) => {
   const userId = getUserId(req);
   res.json({ isAdmin: userId ? await isPlatformAdmin(userId) : false });
+});
+
+function appBaseUrl(): string {
+  return (process.env.APP_BASE_URL || process.env.PUBLIC_APP_URL || "").replace(/\/$/, "");
+}
+
+// ─── GET /milestones/certificates/:id/image.svg (Public SVG for wallets and download) ───
+router.get("/milestones/certificates/:id/image.svg", async (req: Request, res: Response) => {
+  const id = certificateIdFromParam(req.params.id);
+  if (id === null) {
+    res.status(400).json({ error: "bad_id" });
+    return;
+  }
+  const [cert] = await db
+    .select()
+    .from(levelCertificatesTable)
+    .where(eq(levelCertificatesTable.id, id))
+    .limit(1);
+  if (!cert) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  const [profile] = await db
+    .select({ name: profileTable.name })
+    .from(profileTable)
+    .where(eq(profileTable.userId, cert.userId))
+    .limit(1);
+
+  const queryGrade = req.query.grade ? Number(req.query.grade) : null;
+  const effectiveGrade = queryGrade && queryGrade >= 1 && queryGrade <= 5 ? queryGrade : cert.level;
+  const effectiveGradeName = typeof req.query.gradeName === "string" && req.query.gradeName.trim()
+    ? req.query.gradeName.trim()
+    : cert.levelName;
+  const effectiveUserName = typeof req.query.userName === "string" && req.query.userName.trim()
+    ? req.query.userName.trim()
+    : (profile?.name || cert.userName || "Operatore");
+
+  res.set({
+    "Content-Type": "image/svg+xml; charset=utf-8",
+    "Content-Security-Policy": "default-src 'none'; sandbox",
+    "X-Content-Type-Options": "nosniff",
+    "Cache-Control": "public, max-age=300",
+  }).send(renderMilestoneCertificateSvg({
+    ...cert,
+    level: effectiveGrade,
+    levelName: effectiveGradeName,
+    userName: effectiveUserName,
+  }));
+});
+
+// ─── GET /milestones/custom-certificate/image.svg (Public on-demand personalized certificate) ───
+router.get("/milestones/custom-certificate/image.svg", async (req: Request, res: Response) => {
+  const queryGrade = req.query.grade ? Number(req.query.grade) : 1;
+  const clampedGrade = Math.max(1, Math.min(5, Number.isFinite(queryGrade) ? queryGrade : 1));
+  const gradeName = typeof req.query.gradeName === "string" && req.query.gradeName.trim()
+    ? req.query.gradeName.trim()
+    : "";
+  const userName = typeof req.query.userName === "string" && req.query.userName.trim()
+    ? req.query.userName.trim()
+    : "Operatore";
+
+  res.set({
+    "Content-Type": "image/svg+xml; charset=utf-8",
+    "Content-Security-Policy": "default-src 'none'; sandbox",
+    "X-Content-Type-Options": "nosniff",
+    "Cache-Control": "public, max-age=300",
+  }).send(renderMilestoneCertificateSvg({
+    id: clampedGrade,
+    userId: "custom",
+    userName,
+    level: clampedGrade,
+    levelName: gradeName,
+    awardedAt: new Date(),
+  }));
+});
+
+// ─── GET /milestones/certificates/:id/metadata (ERC-721 JSON) ────────────────
+router.get("/milestones/certificates/:id/metadata", async (req: Request, res: Response) => {
+  const id = certificateIdFromParam(req.params.id);
+  if (id === null) {
+    res.status(400).json({ error: "bad_id" });
+    return;
+  }
+  const [cert] = await db
+    .select()
+    .from(levelCertificatesTable)
+    .where(eq(levelCertificatesTable.id, id))
+    .limit(1);
+  if (!cert) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  const [profile] = await db
+    .select({ name: profileTable.name })
+    .from(profileTable)
+    .where(eq(profileTable.userId, cert.userId))
+    .limit(1);
+  const effectiveUserName = profile?.name || cert.userName || "Operatore";
+
+  res.json({
+    name: `LIMEN Investitura · Grado ${cert.level} · ${cert.levelName}`,
+    description: `Certificato NFT di Investitura conferito all'Operatore ${effectiveUserName} per il raggiungimento di ${cert.levelName} sotto il protocollo LIMEN.`,
+    image: `${appBaseUrl()}/api/milestones/certificates/${id}/image.svg`,
+    attributes: [
+      { trait_type: "Grade", value: cert.level },
+      { trait_type: "Grade Name", value: cert.levelName },
+      { trait_type: "Operator", value: effectiveUserName },
+      { trait_type: "Protocol", value: "LIMEN PROTOCOL" },
+      { trait_type: "Standard", value: "Proof of Discipline" },
+      { trait_type: "Awarded At", value: cert.awardedAt ? new Date(cert.awardedAt).toISOString() : null },
+    ],
+  });
 });
 
 // ─── Internal: award certificate for a level ─────────────────────────────────

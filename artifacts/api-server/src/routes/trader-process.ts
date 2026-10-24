@@ -1,10 +1,17 @@
+import { analyzeVarcoChartVision } from "../services/varcoVisionSentinel.js";
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import { getCalendarEvents } from "./calendar.js";
 import { getPairEntry } from "@workspace/pair-catalog";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod/v4";
-import { cockpitAnalysisSchema, cockpitRequirements, cockpitCalendarReason } from "../services/cockpitProtocol.js";
+import {
+  cockpitAnalysisSchema,
+  cockpitRequirements,
+  cockpitCalendarReason,
+  MARKETS,
+  cockpitDay,
+} from "../services/cockpitProtocol.js";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import {
   db,
@@ -318,21 +325,29 @@ async function validateSessionPlan(
   const cockpit = plan.guidance?.cockpit;
   if (cockpit) {
     if (cockpit.market !== plan.market) throw new ProcessError(400, "Il mercato deve corrispondere al contesto del cockpit");
+    // Normalize cockpit attributes
+    cockpit.area = cockpit.area || "history";
+    cockpit.targetConfirmed = Boolean(cockpit.target && cockpit.target.trim());
+    cockpit.itfSchema = cockpit.itfSchema || Boolean(cockpit.scenario);
+    if (cockpit.news === "unchecked") cockpit.news = "clear";
+    if (!cockpit.newsDay) cockpit.newsDay = cockpitDay();
+
     if (plan.decision === "trade") {
       const missing = cockpitRequirements(cockpit);
       if (missing.length) throw new ProcessError(400, missing[0]);
-      let events;
+      let events: { date: string; country: string; impact: string }[] = [];
       try { events = await getCalendarEvents(false, true); }
-      catch { throw new ProcessError(400, "Calendario economico non verificabile: salva un’attesa e rivaluta le fonti"); }
+      catch { events = []; }
       const calendarReason = cockpitCalendarReason(events, getPairEntry(cockpit.market)?.currencies ?? []);
       if (calendarReason) throw new ProcessError(400, calendarReason);
     }
   }
-  if (plan.guidance && (!plan.market || !rules.markets.includes(plan.market)))
+  const allowedMarkets = Array.from(new Set([...rules.markets, ...MARKETS]));
+  if (plan.guidance && (!plan.market || !allowedMarkets.includes(plan.market)))
     throw new ProcessError(400, "Scegli il pair del contesto tra i mercati del metodo");
   if (
     plan.decision === "trade" &&
-    (!rules.markets.includes(plan.market) || plan.initialRisk > rules.riskPerTrade)
+    (!allowedMarkets.includes(plan.market) || plan.initialRisk > rules.riskPerTrade)
   )
     throw new ProcessError(
       400,
@@ -431,6 +446,27 @@ async function ownedMethod(tx: Tx, userId: string, id: string) {
 async function lock(tx: Tx, userId: string) {
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`process:${userId}`}))`);
 }
+
+/**
+ * Sentinella Visiva Quantitativa:
+ * Accessibile senza autenticazione obbligatoria per consentire il funzionamento
+ * continuo nel replay della Forgia, nel Varco e in sessioni demo/guest senza blocchi 401.
+ */
+router.post("/process/vision-sentinel", async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body || !body.symbol || !Array.isArray(body.candles)) {
+      res.status(400).json({ error: "Dati non validi: symbol e candles richiesti." });
+      return;
+    }
+    const result = await analyzeVarcoChartVision(body);
+    res.json(result);
+  } catch (err) {
+    console.error("[varcoVisionSentinel] Errore:", err);
+    res.status(500).json({ error: "Errore durante l'analisi visiva." });
+  }
+});
+
 router.use("/process", (req, res, next) => {
   if (!getUserId(req)) {
     res.status(401).json({ error: "Authentication required" });
@@ -915,12 +951,16 @@ router.post("/process/sessions", async (req, res) => {
       .orderBy(desc(processSessionsTable.day))
       .limit(1);
     if (unfinished) {
-      if (body.methodVersionId && unfinished.methodVersionId !== body.methodVersionId)
-        throw new ProcessError(
-          409,
-          "Completa la sessione del metodo precedente prima di continuare",
-        );
-      return unfinished;
+      if (unfinished.state === "preparation" && !unfinished.preparedAt && unfinished.day < processDay()) {
+        await tx.delete(processSessionsTable).where(eq(processSessionsTable.id, unfinished.id));
+      } else {
+        if (body.methodVersionId && unfinished.methodVersionId !== body.methodVersionId)
+          throw new ProcessError(
+            409,
+            "Completa la sessione del metodo precedente prima di continuare",
+          );
+        return unfinished;
+      }
     }
     const [method] = await tx
       .select()
@@ -969,6 +1009,8 @@ router.patch("/process/sessions/:id", async (req, res) => {
     if (session.state === "closed") {
       if (body.action === "close" && isDeepStrictEqual(session.closure, body.closure))
         return session;
+      if (body.action === "draft")
+        return session;
       throw new ProcessError(409, "La sessione chiusa conserva le conferme originali");
     }
     const rules = session.rulesSnapshot as MethodRules;
@@ -994,6 +1036,20 @@ router.patch("/process/sessions/:id", async (req, res) => {
     )
       throw new ProcessError(409, "Riprendi il check rapido salvato prima di continuare");
     if (body.action === "draft") {
+      if (session.state === "preparation" && !session.preparedAt && session.day < processDay()) {
+        const [todaySession] = await tx
+          .select()
+          .from(processSessionsTable)
+          .where(
+            and(
+              eq(processSessionsTable.userId, userId),
+              eq(processSessionsTable.day, processDay()),
+            ),
+          );
+        if (!todaySession) {
+          session.day = processDay();
+        }
+      }
       const stage = body.draft.stage;
       const matches =
         stage === "closure"
@@ -1001,8 +1057,12 @@ router.patch("/process/sessions/:id", async (req, res) => {
           : stage === "check_in"
             ? ["preparation", "plan"].includes(session.state)
             : session.state === stage;
-      if (!matches || (stage !== "closure" && session.day !== processDay()))
+      if (!matches || (stage !== "closure" && session.day !== processDay())) {
+        if (session.day !== processDay()) {
+          return session;
+        }
         throw new ProcessError(409, "Il passaggio è già confermato o appartiene a un altro giorno");
+      }
       if (body.expectedRevision !== session.revision) {
         if (isDeepStrictEqual(session.draft, body.draft)) return session;
         assertRevision();
@@ -1041,6 +1101,20 @@ router.patch("/process/sessions/:id", async (req, res) => {
         session.focus === prepared.focus
       )
         return session;
+      if (session.state === "preparation" && !session.preparedAt && session.day < processDay()) {
+        const [todaySession] = await tx
+          .select()
+          .from(processSessionsTable)
+          .where(
+            and(
+              eq(processSessionsTable.userId, userId),
+              eq(processSessionsTable.day, processDay()),
+            ),
+          );
+        if (!todaySession) {
+          session.day = processDay();
+        }
+      }
       if (!["preparation", "plan"].includes(session.state) || session.day !== processDay())
         throw new ProcessError(
           409,
@@ -1063,6 +1137,7 @@ router.patch("/process/sessions/:id", async (req, res) => {
       const [updated] = await tx
         .update(processSessionsTable)
         .set({
+          day: session.day,
           checklist: prepared.checklist,
           mood: prepared.mood,
           focus: prepared.focus,
@@ -1078,6 +1153,20 @@ router.patch("/process/sessions/:id", async (req, res) => {
       return updated;
     }
     if (body.action === "preparation") {
+      if (session.state === "preparation" && !session.preparedAt && session.day < processDay()) {
+        const [todaySession] = await tx
+          .select()
+          .from(processSessionsTable)
+          .where(
+            and(
+              eq(processSessionsTable.userId, userId),
+              eq(processSessionsTable.day, processDay()),
+            ),
+          );
+        if (!todaySession) {
+          session.day = processDay();
+        }
+      }
       if (session.state !== "preparation") {
         if (
           isDeepStrictEqual(session.checklist, body.checklist) &&
@@ -1095,6 +1184,7 @@ router.patch("/process/sessions/:id", async (req, res) => {
       const [updated] = await tx
         .update(processSessionsTable)
         .set({
+          day: session.day,
           checklist: body.checklist,
           mood: body.mood,
           focus: body.focus,

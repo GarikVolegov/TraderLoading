@@ -9,6 +9,7 @@ import { useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetBacktestTradesQueryKey,
+  getGetBacktestSessionsQueryKey,
   useCreateBacktestTrade,
   useGetBacktestSessions,
 } from "@workspace/api-client-react";
@@ -23,10 +24,11 @@ import { uiText } from "@/contexts/LanguageContext";
 import type { ClosedTrade } from "@/lib/replay/types";
 import { addProcessEvidence, traderProcessKey } from "@/lib/traderProcessApi";
 
-function TerminalWithPersistence({ session, onExit, methodVersionId }: {
+function TerminalWithPersistence({ session, onExit, methodVersionId, tournamentId }: {
   session: { id: number; name: string; pair: string; timeframe: string };
   onExit: () => void;
   methodVersionId?: string;
+  tournamentId?: number;
 }) {
   const qc = useQueryClient();
   const copy = useProcessCopy();
@@ -66,8 +68,8 @@ function TerminalWithPersistence({ session, onExit, methodVersionId }: {
             direction: trade.direction,
             entryPrice: trade.entryPrice.toFixed(5),
             exitPrice: trade.exitPrice.toFixed(5),
-            stopLoss: trade.stopLoss.toFixed(5),
-            takeProfit: trade.takeProfit.toFixed(5),
+            stopLoss: trade.stopLoss && trade.stopLoss > 0 ? trade.stopLoss.toFixed(5) : undefined,
+            takeProfit: trade.takeProfit && trade.takeProfit > 0 ? trade.takeProfit.toFixed(5) : undefined,
             lotSize: trade.lots.toFixed(2),
             result: trade.result,
             pips: trade.pips.toFixed(1),
@@ -95,6 +97,7 @@ function TerminalWithPersistence({ session, onExit, methodVersionId }: {
           /* storage may be unavailable; dedupe stays in-memory */
         }
         qc.invalidateQueries({ queryKey: getGetBacktestTradesQueryKey(session.id) });
+        qc.invalidateQueries({ queryKey: getGetBacktestSessionsQueryKey() });
       } catch {
         setFailedTrades(current => new Map(current).set(clientRequestId, trade));
       } finally {
@@ -105,6 +108,19 @@ function TerminalWithPersistence({ session, onExit, methodVersionId }: {
     [createTrade, qc, syncedKey, session.id, methodVersionId],
   );
 
+  useEffect(() => {
+    return () => {
+      qc.invalidateQueries({ queryKey: getGetBacktestTradesQueryKey(session.id) });
+      qc.invalidateQueries({ queryKey: getGetBacktestSessionsQueryKey() });
+    };
+  }, [qc, session.id]);
+
+  const handleExit = useCallback(() => {
+    qc.invalidateQueries({ queryKey: getGetBacktestTradesQueryKey(session.id) });
+    qc.invalidateQueries({ queryKey: getGetBacktestSessionsQueryKey() });
+    onExit();
+  }, [qc, session.id, onExit]);
+
   return (
     <BacktestTerminal
       key={sessionKey}
@@ -112,7 +128,8 @@ function TerminalWithPersistence({ session, onExit, methodVersionId }: {
       sessionName={session.name}
       symbol={session.pair}
       initialInterval={session.timeframe}
-      onExit={onExit}
+      onExit={handleExit}
+      tournamentId={tournamentId}
       onTradeClosed={persistTrade}
       persistenceStatus={failedTrades.size ? (
         <div className="btm-sync-status" role="alert">
@@ -129,11 +146,33 @@ function TerminalWithPersistence({ session, onExit, methodVersionId }: {
 export default function BacktestReplay({ params }: { params: { id: string } }) {
   const [, navigate] = useLocation();
   const search = useSearch();
-  const methodVersionId = new URLSearchParams(search).get("methodVersionId") || undefined;
-  const returnTo = methodVersionId ? "/method?section=evidence" : "/backtest";
-  const sessions = useGetBacktestSessions();
+  const searchParams = useMemo(() => new URLSearchParams(search), [search]);
+  const methodVersionId = searchParams.get("methodVersionId") || undefined;
+  const tournamentIdParam = searchParams.get("tournamentId");
+  const tournamentId = tournamentIdParam ? Number(tournamentIdParam) : undefined;
+  const fallbackPair = searchParams.get("pair");
+  const fallbackTimeframe = searchParams.get("timeframe");
+  const fallbackName = searchParams.get("name");
   const sessionId = Number.parseInt(params.id, 10);
-  const session = sessions.data?.find((candidate) => candidate.id === sessionId);
+  const returnTo = tournamentId
+    ? "/tornei?sub=backtest"
+    : methodVersionId
+      ? `/method?section=evidence${sessionId ? `&session=${sessionId}` : ""}`
+      : `/backtest${sessionId ? `?session=${sessionId}` : ""}`;
+  const sessions = useGetBacktestSessions();
+  const dbSession = sessions.data?.find((candidate) => candidate.id === sessionId);
+  const session = useMemo(() => {
+    if (dbSession) return dbSession;
+    if (!Number.isNaN(sessionId) && sessionId > 0 && (fallbackPair || tournamentId)) {
+      return {
+        id: sessionId,
+        name: fallbackName || "Sessione Arena della Forgia",
+        pair: fallbackPair || "XAU/USD",
+        timeframe: fallbackTimeframe || "M5",
+      };
+    }
+    return undefined;
+  }, [dbSession, sessionId, fallbackPair, fallbackTimeframe, fallbackName, tournamentId]);
 
   // The terminal covers the whole viewport: freeze the page scroll behind it.
   useEffect(() => {
@@ -154,14 +193,14 @@ export default function BacktestReplay({ params }: { params: { id: string } }) {
 
   // Unknown session (deleted or foreign id): back to the session grid.
   useEffect(() => {
-    if (sessions.isSuccess && !session) navigate(returnTo);
-  }, [sessions.isSuccess, session, navigate, returnTo]);
+    if (sessions.isSuccess && !sessions.isFetching && !session) navigate(returnTo);
+  }, [sessions.isSuccess, sessions.isFetching, session, navigate, returnTo]);
 
   if (!session) {
     return (
       <div className="btm-root">
         <div className="btm-center" style={{ position: "static", flex: 1 }}>
-          {sessions.isPending ? (
+          {sessions.isPending || sessions.isFetching ? (
             <div className="btm-spin" aria-hidden="true" />
           ) : (
             <span>{uiText("backtest_terminal.session_missing")}</span>
@@ -174,7 +213,7 @@ export default function BacktestReplay({ params }: { params: { id: string } }) {
   return (
     <div className="btm-root">
       <ProUpgradeGate feature="backtest" fillViewport>
-        <TerminalWithPersistence session={session} methodVersionId={methodVersionId} onExit={() => navigate(returnTo)} />
+        <TerminalWithPersistence session={session} methodVersionId={methodVersionId} tournamentId={tournamentId} onExit={() => navigate(returnTo)} />
       </ProUpgradeGate>
     </div>
   );

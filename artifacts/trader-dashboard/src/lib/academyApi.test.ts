@@ -11,9 +11,9 @@ assert.equal(validAcademyReferral("ac0123456789abcdef"), "AC0123456789ABCDEF");
 assert.equal(validAcademyReferral("https://other.test"), null);
 assert.equal(
   academyAuthDestination("academy=1&academy_ref=AC0123456789ABCDEF"),
-  "/academy?ref=AC0123456789ABCDEF",
+  "/academy?tab=introduction&ref=AC0123456789ABCDEF",
 );
-assert.equal(academyAuthDestination("academy=1&redirect_url=https://other.test"), "/academy");
+assert.equal(academyAuthDestination("academy=1&redirect_url=https://other.test"), "/academy?tab=introduction");
 assert.equal(academyAuthDestination("redirect_url=https://other.test"), null);
 for (const url of [
   "https://checkout.stripe.com/c/test",

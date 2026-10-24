@@ -20,9 +20,24 @@ export function useSessionDraft<T extends ProcessSessionDraft>(
 ) {
   const { userId } = useAuth();
   const client = useQueryClient();
-  const [value, setValue] = useState<T>(() =>
-    session?.draft?.stage === defaults.stage ? ({ ...defaults, ...session.draft } as T) : defaults,
-  );
+  const localDraftKey = `tl_session_draft_${defaults.stage}_${methodVersionId || "default"}`;
+  const [value, setValue] = useState<T>(() => {
+    if (session?.draft?.stage === defaults.stage && session.draft) {
+      return { ...defaults, ...session.draft } as T;
+    }
+    try {
+      const local = localStorage.getItem(localDraftKey);
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (parsed?.stage === defaults.stage) {
+          return { ...defaults, ...parsed } as T;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return defaults;
+  });
   const [status, setStatus] = useState<
     "idle" | "unsaved" | "saving" | "saved" | "error" | "conflict"
   >(session?.draft ? "saved" : "idle");
@@ -88,6 +103,8 @@ export function useSessionDraft<T extends ProcessSessionDraft>(
         if (blocked.current) throw new Error("Reload the saved session draft before continuing");
         const snapshot = current.current;
         if (snapshot.text === saved.current) return;
+        if (sessionRef.current?.state === "closed") return;
+        if (sessionRef.current?.day && sessionRef.current.day < new Date().toISOString().slice(0, 10)) return;
         pending.current++;
         if (mounted.current) {
           setStatus("saving");
@@ -104,6 +121,34 @@ export function useSessionDraft<T extends ProcessSessionDraft>(
           if (mounted.current)
             setStatus(current.current.text === saved.current ? "saved" : "unsaved");
         } catch (problem) {
+          const errStatus = (problem as { status?: number })?.status;
+          if (errStatus === 409) {
+            try {
+              const freshState = await fetchTraderProcess();
+              if (freshState.session && freshState.session.id === sessionRef.current?.id) {
+                sessionRef.current = freshState.session;
+                revision.current = freshState.session.revision;
+                const retried = await updateProcessSession({
+                  id: freshState.session.id,
+                  update: {
+                    action: "draft",
+                    expectedRevision: freshState.session.revision,
+                    draft: snapshot.value,
+                  },
+                });
+                revision.current = retried.revision;
+                saved.current = snapshot.text;
+                updateCache(retried);
+                if (mounted.current) {
+                  setStatus(current.current.text === saved.current ? "saved" : "unsaved");
+                  setError(null);
+                }
+                return;
+              }
+            } catch {
+              // fallback
+            }
+          }
           throw fail(problem);
         } finally {
           pending.current--;
@@ -131,6 +176,11 @@ export function useSessionDraft<T extends ProcessSessionDraft>(
           saved.current = current.current.text;
           blocked.current = true; // This form must not autosave into the next confirmed step.
           updateCache(updated);
+          try {
+            localStorage.removeItem(localDraftKey);
+          } catch {
+            // ignore
+          }
           if (mounted.current) setStatus("idle");
           return updated;
         } catch (problem) {
@@ -146,10 +196,11 @@ export function useSessionDraft<T extends ProcessSessionDraft>(
         .catch(() => undefined);
       return task;
     },
-    [flush, ensureSession, updateCache, fail],
+    [flush, ensureSession, updateCache, fail, localDraftKey],
   );
   useEffect(() => {
     if (text === saved.current) return;
+    if (sessionRef.current?.state === "closed") return;
     if (blocked.current) {
       setStatus("conflict");
       return;
@@ -166,28 +217,35 @@ export function useSessionDraft<T extends ProcessSessionDraft>(
   useEffect(() => {
     if (!session || session.revision <= revision.current || pending.current || confirmation.current)
       return;
+    // If local client has uncommitted edits, keep them and sync revision for next flush
     if (current.current.text !== saved.current) {
-      blocked.current = true;
-      setStatus("conflict");
+      revision.current = Math.max(revision.current, session.revision);
       return;
     }
     revision.current = session?.revision;
-    const received =
-      session?.draft?.stage === baseline.current.stage
-        ? ({ ...baseline.current, ...session.draft } as T)
-        : baseline.current;
-    const encoded = JSON.stringify(received);
-    saved.current = encoded;
-    current.current = { text: encoded, value: received };
-    setValue(received);
-    setStatus(session?.draft ? "saved" : "idle");
-  }, [session]);
+    // Only adopt received draft if it contains actual data for this stage
+    if (session?.draft?.stage === baseline.current.stage && session.draft != null) {
+      const received = { ...baseline.current, ...session.draft } as T;
+      const encoded = JSON.stringify(received);
+      saved.current = encoded;
+      current.current = { text: encoded, value: received };
+      setValue(received);
+      try {
+        localStorage.setItem(localDraftKey, encoded);
+      } catch {
+        // ignore
+      }
+      setStatus("saved");
+    }
+  }, [session, localDraftKey]);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       if (timer.current) clearTimeout(timer.current);
-      void flush().catch(() => undefined);
+      if (sessionRef.current?.state !== "closed") {
+        void flush().catch(() => undefined);
+      }
     };
   }, [flush]);
   const reload = async () => {
@@ -216,6 +274,11 @@ export function useSessionDraft<T extends ProcessSessionDraft>(
     saved.current = encoded;
     current.current = { text: encoded, value: received };
     setValue(received);
+    try {
+      localStorage.setItem(localDraftKey, encoded);
+    } catch {
+      // ignore
+    }
     setError(null);
     setStatus("saved");
   };
@@ -224,7 +287,12 @@ export function useSessionDraft<T extends ProcessSessionDraft>(
     const text = JSON.stringify(next);
     current.current = { text, value: next };
     setValue(next);
+    try {
+      localStorage.setItem(localDraftKey, text);
+    } catch {
+      // ignore
+    }
     if (text !== saved.current) setStatus(blocked.current ? "conflict" : "unsaved");
-  }, []);
+  }, [localDraftKey]);
   return { value, setValue: edit, status, error, flush, reload, confirm };
 }

@@ -25,11 +25,9 @@ import { parseProcessDateTime, processDateTimeInput } from "@/lib/processDateTim
 import {
   ProcessError,
   ProcessField,
-  ProcessFrame,
   ProcessLink,
   ProcessLoading,
   ProcessPanel,
-  PhaseRail,
   ProgressDetails,
   useProcessCopy,
 } from "@/components/process/ProcessUI";
@@ -38,6 +36,15 @@ import { ProcessNextAction } from "@/components/process/ProcessNextAction";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { journeyText } from "@/lib/processJourneyCopy";
 import { PREPARATION_TOOLS } from "@/lib/workspaceTools";
+import { useFinancialProfile } from "@/lib/financialProfileApi";
+import { useFreeTrial } from "@/lib/useFreeTrial";
+import { PageLayout } from "@/components/PageLayout";
+import { DailyOrderPulseHeader } from "@/components/daily-order/DailyOrderPulseHeader";
+import { DailyOrderQuickDock } from "@/components/daily-order/DailyOrderQuickDock";
+import { DailyOrderStages } from "@/components/daily-order/DailyOrderStageCard";
+import { DailyOrderMethodConsole } from "@/components/daily-order/DailyOrderMethodConsole";
+import { useRoutineStorage } from "@/hooks/useRoutineStorage";
+import { loadRoutineCompletions } from "@/pages/Routine.storage";
 
 type Draft = Record<string, string | boolean>;
 function methodDraft(method?: ProcessMethod | null): Draft {
@@ -76,6 +83,8 @@ export function MethodEditor({
   const journey = (key: Parameters<typeof journeyText>[1]) => journeyText(language, key);
   const { selectedPairs } = useBackground();
   const settings = useGetUserSettings();
+  const { data: finProfile } = useFinancialProfile();
+  const { isFreeTrial } = useFreeTrial();
   const checklist = useGetChecklist();
   const defaultChecklist = useRef(copy("defaultChecklist"));
   const checklistLoaded = useRef(Boolean(checklist.data));
@@ -260,6 +269,27 @@ export function MethodEditor({
           )}
           {step === 1 && (
             <>
+              {!isFreeTrial && finProfile && finProfile.tradingAllocation > 0 && (
+                <div className="mb-3 flex items-center justify-between rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 px-3 py-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#10B981]">
+                      Architettura Patrimoniale
+                    </span>
+                    <span className="text-muted-foreground">
+                      Capitale di Riferimento:
+                    </span>
+                    <strong className="font-mono text-foreground">
+                      {finProfile.tradingAllocation.toLocaleString("it-IT")} €
+                    </strong>
+                  </div>
+                  <Link
+                    href="/patrimonio"
+                    className="font-mono text-[10px] text-primary hover:underline"
+                  >
+                    Modifica
+                  </Link>
+                </div>
+              )}
               {field("currency", "currency")}
               <div className="process-form-grid">
                 {field("riskPerTrade", "riskPerTrade", "number", "0.000001")}
@@ -930,15 +960,28 @@ export default function Method() {
   const query = useTraderProcess();
   const search = useSearch();
   const [, navigate] = useLocation();
+  const { data: finProfile } = useFinancialProfile();
+  const { isFreeTrial } = useFreeTrial();
+  const storage = useRoutineStorage();
+  const completions = loadRoutineCompletions(storage);
+  const morningDone = completions.some(
+    (c) => c.template === "morning" && c.date === processDay(),
+  );
+
+  const searchParams = new URLSearchParams(search);
+  const requestedVersion = searchParams.get("version");
+  const defaultView = requestedVersion ? "method" : "flow";
+  const [activeView, setActiveView] = useState<"flow" | "method">(defaultView);
+
   const [editor, setEditor] = useState<{
     previous: ProcessMethod | null;
     useStored: boolean;
   } | null>(null);
+
   if (!query.data) return <ProcessLoading error={query.error} retry={() => void query.refetch()} />;
-  const state = query.data,
-    method =
-      state.methods.find((m) => m.id === new URLSearchParams(search).get("version")) ??
-      state.activeMethod;
+  const state = query.data;
+  const method =
+    state.methods.find((m) => m.id === requestedVersion) ?? state.activeMethod;
   const readOnly = Boolean(method && !method.active);
   const displayState = method
     ? {
@@ -947,60 +990,75 @@ export default function Method() {
         progress: state.progressByVersion[method.id] ?? state.progress,
       }
     : state;
-  const evidence = new URLSearchParams(search).get("section") === "evidence";
+  const evidence = searchParams.get("section") === "evidence";
+
   const finish = (created?: ProcessMethod) => {
     setEditor(null);
     navigate(
       created && !created.active ? `/method?version=${encodeURIComponent(created.id)}` : "/method",
     );
   };
-  const reviseId = new URLSearchParams(search).get("revise");
-  const revisionMethod = state.methods.find(item => item.id === reviseId);
-  const showEditor = editor || (revisionMethod ? { previous: revisionMethod, useStored: true } : !method ? { previous: null, useStored: true } : null);
+
+  const reviseId = searchParams.get("revise");
+  const revisionMethod = state.methods.find((item) => item.id === reviseId);
+  const showEditor =
+    editor ||
+    (revisionMethod
+      ? { previous: revisionMethod, useStored: true }
+      : !method
+        ? { previous: null, useStored: true }
+        : null);
+
   return (
-    <ProcessFrame
-      title={copy("method")}
-      subtitle={copy("methodIntro")}
-    >
-      <PhaseRail phase={displayState.progress.phase} />
-      {readOnly && (
-        <p role="status" className="text-sm text-muted-foreground">
-          {copy("inactiveVersionHint")}
-        </p>
-      )}
-      {showEditor ? (
-        <MethodEditor
-          key={`${query.userId}:${showEditor.previous?.id ?? "new"}`}
-          previous={showEditor.previous}
-          stored={state.methodDraft}
-          onDone={finish}
-          onCancel={() => {
-            setEditor(null);
-            navigate("/");
-          }}
+    <PageLayout quiet>
+      <main className="process-workspace limen-scroll-pane space-y-6 pb-16 max-w-7xl mx-auto px-3 sm:px-6">
+        {/* Header con orario live, sessione di mercato e switch di vista */}
+        <DailyOrderPulseHeader
+          state={displayState}
+          activeView={activeView}
+          onViewChange={setActiveView}
+          onNewVersion={() => setEditor({ previous: method, useStored: false })}
         />
-      ) : evidence && method && !readOnly ? (
-        <EvidenceEditor method={method} userId={query.userId} onDone={finish} onCancel={finish} />
-      ) : method ? (
-        <>
-          {state.methodDraft && (
-            <Button
-              variant="outline"
-              className="self-start"
-              onClick={() =>
-                setEditor({
-                  previous:
-                    state.methods.find((m) => m.id === state.methodDraft?.previousVersionId) ??
-                    null,
-                  useStored: true,
-                })
-              }
-            >
-              {copy("saved")} · {copy("continue")}
-            </Button>
-          )}
-          <MethodDetails
-            key={method.id}
+
+        {/* Quick Dock di comodità per accedere a tutte le sezioni dell'app */}
+        <DailyOrderQuickDock />
+
+        {readOnly && (
+          <p
+            role="status"
+            className="rounded-xl border border-amber-500/30 bg-amber-950/20 px-4 py-2.5 text-xs font-mono text-amber-300"
+          >
+            {copy("inactiveVersionHint")}
+          </p>
+        )}
+
+        {showEditor ? (
+          <MethodEditor
+            key={`${query.userId}:${showEditor.previous?.id ?? "new"}`}
+            previous={showEditor.previous}
+            stored={state.methodDraft}
+            onDone={finish}
+            onCancel={() => {
+              setEditor(null);
+              navigate("/");
+            }}
+          />
+        ) : evidence && method && !readOnly ? (
+          <EvidenceEditor
+            method={method}
+            userId={query.userId}
+            onDone={finish}
+            onCancel={finish}
+          />
+        ) : activeView === "flow" ? (
+          <DailyOrderStages
+            state={displayState}
+            method={method}
+            finProfile={isFreeTrial ? undefined : finProfile}
+            morningDone={morningDone}
+          />
+        ) : (
+          <DailyOrderMethodConsole
             state={displayState}
             readOnly={readOnly}
             onEdit={(previous) =>
@@ -1012,9 +1070,10 @@ export default function Method() {
                 useStored: Boolean(state.methodDraft),
               })
             }
+            onAddEvidence={() => navigate("/method?section=evidence")}
           />
-        </>
-      ) : null}
-    </ProcessFrame>
+        )}
+      </main>
+    </PageLayout>
   );
 }

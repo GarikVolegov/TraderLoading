@@ -155,7 +155,7 @@ function representativeMacroImageUrl(article: NewsArticle, index: number): strin
   const keywords = semanticImageKeywords(article).map((keyword) => encodeURIComponent(keyword));
   const query = keywords.length > 0 ? keywords.join(",") : "global,economy,markets";
   const lock = stableLock(`${article.title} ${article.summary}`, index);
-  return `https://loremflickr.com/800/400/${query}?lock=${lock}`;
+  return `/api/news/placeholder?keywords=${query}&sentiment=${encodeURIComponent(article.sentiment ?? "neutral")}&lock=${lock}`;
 }
 
 function uniqueMacroImageUrl(article: NewsArticle, index: number, seen: Set<string>): string {

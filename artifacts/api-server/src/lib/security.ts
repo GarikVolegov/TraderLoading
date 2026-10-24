@@ -197,6 +197,8 @@ export function createHelmetOptions(
         connectSrc: [
           "'self'",
           "https://api.stripe.com",
+          "https://upload.videodelivery.net",
+          "https://upload.cloudflarestream.com",
           "https://s3.tradingview.com",
           "https://*.tradingview.com",
           "wss://*.tradingview.com",
@@ -213,6 +215,7 @@ export function createHelmetOptions(
           "https://hooks.stripe.com",
           "https://www.youtube-nocookie.com",
           "https://player.vimeo.com",
+          "https://*.cloudflarestream.com",
           "https://challenges.cloudflare.com",
           "https://www.tradingview-widget.com",
           "https://s.tradingview.com",

@@ -663,16 +663,6 @@ export function createBrokersRouter(
         res.json({ intent: publicIntent(completed), profile, snapshot: connected.snapshot });
         return;
       }
-      const profileKind =
-        mode === "verified" && intent.providerKind
-          ? intent.providerKind
-          : mode === "credentials"
-            ? "metaapi-metatrader"
-            : mode === "advanced" && advancedPlatform === "mt5-vps"
-              ? "mt5-vps-bridge"
-              : mode === "advanced" && advancedPlatform === "api"
-                ? "ctrader-open-api"
-                : "demo";
       if (mode === "credentials") {
         const accountNumber = typeof req.body?.accountNumber === "string" ? req.body.accountNumber.trim() : "";
         const accountPassword = typeof req.body?.accountPassword === "string" ? req.body.accountPassword : "";

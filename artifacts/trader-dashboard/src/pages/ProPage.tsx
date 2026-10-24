@@ -80,15 +80,15 @@ export default function ProPage() {
 
   return (
     <PageLayout>
-      <div className="relative overflow-hidden rounded-3xl">
-        <div className="pointer-events-none absolute -top-40 left-1/2 h-[420px] w-[680px] -translate-x-1/2 rounded-full bg-primary/10 blur-[110px]" />
+      <div className="relative overflow-hidden rounded-[6px] border border-border/80 bg-[#0E0E12]">
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-[360px] w-[640px] -translate-x-1/2 rounded-full bg-[#C5A059]/8 blur-[100px]" />
 
         {/* ── Hero ── */}
-        <section className="relative px-4 pb-12 pt-10 text-center sm:pt-14">
+        <section className="relative px-4 pb-10 pt-8 text-center sm:pt-12">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary"
+            className="inline-flex items-center gap-2 rounded-[4px] border border-[#C5A059]/35 bg-[#C5A059]/10 px-3.5 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-[#C5A059]"
           >
             <Sparkles className="h-3.5 w-3.5" />
             {t("billing.pro_page.badge")}
@@ -97,10 +97,10 @@ export default function ProPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
-            className="mx-auto mt-5 max-w-2xl font-sans text-3xl font-extrabold tracking-tight sm:text-5xl"
+            className="mx-auto mt-5 max-w-2xl font-display text-3xl font-bold uppercase tracking-wider sm:text-5xl"
           >
             {t("billing.pro_page.headline_1")}{" "}
-            <span className="text-primary">
+            <span className="text-[#C5A059]">
               {t("billing.pro_page.headline_2")}
             </span>
           </motion.h1>
@@ -120,10 +120,10 @@ export default function ProPage() {
             className="mt-8"
           >
             {billing.isLoading ? (
-              <div className="mx-auto h-24 w-64 animate-pulse rounded-2xl bg-card/60" />
+              <div className="mx-auto h-24 w-64 animate-pulse rounded-[6px] bg-card/60" />
             ) : isPro ? (
               <div className="mx-auto max-w-md space-y-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary">
+                <div className="inline-flex items-center gap-2 rounded-[4px] border border-[#C5A059]/40 bg-[#C5A059]/10 px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.14em] text-[#C5A059]">
                   <BadgeCheck className="h-4 w-4" />
                   {t("billing.pro_page.already_pro")}
                 </div>
@@ -141,14 +141,14 @@ export default function ProPage() {
             ) : (
               <div className="space-y-3">
                 <p>
-                  <span className="text-4xl font-extrabold">{t("billing.price_amount")}</span>
-                  <span className="text-muted-foreground">{t("billing.per_month_suffix")}</span>
+                  <span className="font-mono text-4xl font-extrabold tabular-nums text-[#F4F4F6]">{t("billing.price_amount")}</span>
+                  <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{t("billing.per_month_suffix")}</span>
                 </p>
                 {checkoutAvailable ? (
                   <Button
                     type="button"
                     size="lg"
-                    className="px-10"
+                    className="px-10 font-mono text-xs font-bold uppercase tracking-[0.16em]"
                     onClick={() => setCheckoutOpen(true)}
                   >
                     <Crown className="mr-2 h-4 w-4" />
@@ -157,7 +157,7 @@ export default function ProPage() {
                 ) : (
                   <p className="text-sm text-muted-foreground">{t("billing.checkout_unavailable")}</p>
                 )}
-                <p className="text-xs text-muted-foreground">
+                <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
                   {t("billing.pro_page.stripe_secure")}
                 </p>
               </div>
@@ -170,19 +170,19 @@ export default function ProPage() {
           <div className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-3">
             {PRO_FEATURES.map(({ icon: Icon, titleKey, descKey, bulletKeys }, idx) => (
               <motion.div key={titleKey} {...sectionMotion} transition={{ delay: 0.08 * idx }}>
-                <Card className="h-full border-border/50 bg-card/50 backdrop-blur-sm transition-colors hover:border-primary/30">
+                <Card className="h-full rounded-[6px] border-border/80 bg-[#141418] transition-colors hover:border-[#C5A059]/40">
                   <CardContent className="space-y-4 p-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-                      <Icon className="h-6 w-6" />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-[4px] border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+                      <Icon className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold">{t(titleKey)}</h3>
+                      <h3 className="font-display text-base font-bold uppercase tracking-wider text-[#F4F4F6]">{t(titleKey)}</h3>
                       <p className="mt-1.5 text-sm text-muted-foreground">{t(descKey)}</p>
                     </div>
                     <ul className="space-y-1.5 text-sm">
                       {bulletKeys.map((b) => (
                         <li key={b} className="flex items-center gap-2 text-muted-foreground">
-                          <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          <Check className="h-3.5 w-3.5 shrink-0 text-[#C5A059]" />
                           {t(b)}
                         </li>
                       ))}
@@ -196,17 +196,17 @@ export default function ProPage() {
 
         {/* ── Confronto Free vs Pro ── */}
         <section className="relative px-4 pb-12">
-          <motion.h2 {...sectionMotion} className="mb-6 text-center font-sans text-2xl font-extrabold">
+          <motion.h2 {...sectionMotion} className="mb-6 text-center font-display text-2xl font-bold uppercase tracking-wider">
             {t("billing.pro_page.compare_title")}
           </motion.h2>
           <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-2">
             <motion.div {...sectionMotion}>
-              <Card className="h-full border-border/50 bg-card/40">
+              <Card className="h-full rounded-[6px] border-border/80 bg-[#141418]/80">
                 <CardContent className="space-y-4 p-6">
                   <div>
-                    <h3 className="text-lg font-bold">{t("billing.status.free")}</h3>
-                    <p className="text-2xl font-extrabold">
-                      {t("billing.pro_page.free_price")}<span className="text-sm font-normal text-muted-foreground">{t("billing.per_month_suffix")}</span>
+                    <h3 className="font-display text-base font-bold uppercase tracking-wider">{t("billing.status.free")}</h3>
+                    <p className="font-mono text-2xl font-extrabold tabular-nums">
+                      {t("billing.pro_page.free_price")}<span className="text-xs font-normal uppercase tracking-wider text-muted-foreground">{t("billing.per_month_suffix")}</span>
                     </p>
                   </div>
                   <ul className="space-y-2 text-sm">
@@ -227,27 +227,27 @@ export default function ProPage() {
               </Card>
             </motion.div>
             <motion.div {...sectionMotion} transition={{ delay: 0.08 }}>
-              <Card className="relative h-full border-primary/40 bg-card/60">
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
+              <Card className="relative h-full rounded-[6px] border-[#C5A059]/50 bg-[#141418]">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-[4px] bg-[#C5A059] px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#0A0A0C]">
                   {t("billing.pro_page.recommended")}
                 </span>
                 <CardContent className="space-y-4 p-6">
                   <div>
-                    <h3 className="flex items-center gap-2 text-lg font-bold">
-                      <Crown className="h-4 w-4 text-primary" />
+                    <h3 className="flex items-center gap-2 font-display text-base font-bold uppercase tracking-wider">
+                      <Crown className="h-4 w-4 text-[#C5A059]" />
                       {t("billing.pro_page.badge")}
                     </h3>
-                    <p className="text-2xl font-extrabold">
-                      {t("billing.price_amount")}<span className="text-sm font-normal text-muted-foreground">{t("billing.per_month_suffix")}</span>
+                    <p className="font-mono text-2xl font-extrabold tabular-nums">
+                      {t("billing.price_amount")}<span className="text-xs font-normal uppercase tracking-wider text-muted-foreground">{t("billing.per_month_suffix")}</span>
                     </p>
                   </div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                     {t("billing.pro_page.everything_plus")}
                   </p>
                   <ul className="space-y-2 text-sm">
                     {PRO_ONLY.map((f) => (
                       <li key={f} className="flex items-center gap-2 font-medium">
-                        <Check className="h-4 w-4 shrink-0 text-primary" />
+                        <Check className="h-4 w-4 shrink-0 text-[#C5A059]" />
                         {t(f)}
                       </li>
                     ))}
@@ -258,7 +258,7 @@ export default function ProPage() {
                       window, where checkoutAvailable's fail-open default would
                       otherwise show it regardless of real server config. */}
                   {!billing.isLoading && !isPro && checkoutAvailable && (
-                    <Button type="button" className="w-full" onClick={() => setCheckoutOpen(true)}>
+                    <Button type="button" className="w-full font-mono text-xs font-bold uppercase tracking-[0.16em]" onClick={() => setCheckoutOpen(true)}>
                       {t("billing.upgrade_cta")}
                     </Button>
                   )}

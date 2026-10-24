@@ -15,7 +15,7 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { title: "TraderLoading", body: event.data.text() };
+    payload = { title: "LIMEN", body: event.data.text() };
   }
 
   const { title, body, icon, badge, tag, data = {}, requireInteraction, vibrate, actions } = payload;
@@ -26,7 +26,7 @@ self.addEventListener("push", (event) => {
     body: body || "",
     icon: icon || `${APP_ORIGIN}/app-icon-192.png`,
     badge: badge || `${APP_ORIGIN}/app-icon-192.png`,
-    tag: tag || "traderloading-default",
+    tag: tag || "limen-default",
     renotify: !!tag,
     data: { ...data, url: scheduledCallUrl || data.url },
     vibrate: Array.isArray(vibrate) ? vibrate : [200, 100, 200],
@@ -34,7 +34,7 @@ self.addEventListener("push", (event) => {
     actions: Array.isArray(actions) ? actions : [],
   };
 
-  event.waitUntil(self.registration.showNotification(title || "TraderLoading", options));
+  event.waitUntil(self.registration.showNotification(title || "LIMEN", options));
 });
 
 self.addEventListener("notificationclick", (event) => {

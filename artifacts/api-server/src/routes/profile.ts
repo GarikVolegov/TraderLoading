@@ -11,38 +11,40 @@ import { eq, isNull, and, ne, sql, isNotNull, desc } from "drizzle-orm";
 import { resolveUploadPath } from "../lib/uploads.js";
 import { tradingDay } from "../lib/tradingTime.js";
 import { requireProFeature } from "../lib/billing.js";
+import { getOperatorIntegrityReport } from "../services/integrityEngine.js";
+import { canPublishPlatformContent as isPlatformAdmin } from "../lib/adminAuth.js";
 
 const router: IRouter = Router();
 
 const XP_PER_LEVEL = 500;
 
 const LEVEL_NAMES: Record<number, string> = {
-  1: "Novizio Consapevole",
-  2: "Apprendista Disciplinato",
-  3: "Osservatore Silenzioso",
-  4: "Analista in Formazione",
-  5: "Samurai della Pazienza",
-  6: "Cacciatore di Pattern",
-  7: "Guardiano del Risk",
-  8: "Maestro del Timeframe",
-  9: "Sentinella dei Mercati",
-  10: "Stratega dell'Incertezza",
-  11: "Architetto del Piano",
-  12: "Mente Antifrágile",
-  13: "Ombra del Mercato",
-  14: "Custode della Disciplina",
-  15: "Ninja della Liquidità",
-  16: "Alchimista delle Probabilità",
-  17: "Falco dello Smart Money",
-  18: "Sensei dell'Order Flow",
-  19: "Leggenda del Trading",
-  20: "Maestro Supremo",
+  1: "GRADO I — Il Neofita al Varco",
+  2: "GRADO I — Il Neofita al Varco",
+  3: "GRADO I — Il Neofita al Varco",
+  4: "GRADO II — Il Custode della Regola",
+  5: "GRADO II — Il Custode della Regola",
+  6: "GRADO II — Il Custode della Regola",
+  7: "GRADO II — Il Custode della Regola",
+  8: "GRADO III — L'Osservatore Sovrano",
+  9: "GRADO III — L'Osservatore Sovrano",
+  10: "GRADO III — L'Osservatore Sovrano",
+  11: "GRADO III — L'Osservatore Sovrano",
+  12: "GRADO III — L'Osservatore Sovrano",
+  13: "GRADO IV — L'Architetto del Reale",
+  14: "GRADO IV — L'Architetto del Reale",
+  15: "GRADO IV — L'Architetto del Reale",
+  16: "GRADO IV — L'Architetto del Reale",
+  17: "GRADO IV — L'Architetto del Reale",
+  18: "GRADO IV — L'Architetto del Reale",
+  19: "GRADO V — Il Fondatore d'Eredità",
+  20: "GRADO V — Il Fondatore d'Eredità",
 };
 
 function getLevelName(level: number): string {
   if (level in LEVEL_NAMES) return LEVEL_NAMES[level];
-  if (level > 20) return "Maestro Supremo";
-  return `Trader Livello ${level}`;
+  if (level > 20) return "GRADO V — Il Fondatore d'Eredità";
+  return "GRADO I — Il Neofita al Varco";
 }
 
 const AVATARS_DIR = resolveUploadPath("avatars");
@@ -340,6 +342,20 @@ router.post("/profile/avatar/generate", async (req, res) => {
   }
 });
 
+router.get("/profile/integrity", async (req, res) => {
+  const userId = getUserId(req);
+  const profile = await getOrCreateProfile(userId);
+  const { level } = computeLevel(profile.xp);
+  const isAdmin = userId ? await isPlatformAdmin(userId) : false;
+  const report = await getOperatorIntegrityReport({
+    userId,
+    legacyLevel: level,
+    streak: profile.streak,
+    isAdmin,
+  });
+  res.json(report);
+});
+
 router.get("/leaderboard", async (req, res) => {
   if (!(await requireProFeature(req, res, "leaderboard"))) return;
   const profiles = await db.select()
@@ -361,6 +377,118 @@ router.get("/leaderboard", async (req, res) => {
 
   const data = GetLeaderboardResponse.parse(leaderboard);
   res.json(data);
+});
+
+interface CachedIntegrityLeaderboard {
+  data: unknown[];
+  cachedAt: number;
+}
+
+let integrityLeaderboardCache: CachedIntegrityLeaderboard | null = null;
+let integrityLeaderboardInFlight: Promise<unknown[]> | null = null;
+const INTEGRITY_LEADERBOARD_TTL_MS = 60_000;
+
+async function computeIntegrityLeaderboard(): Promise<unknown[]> {
+  const profiles = await db
+    .select()
+    .from(profileTable)
+    .where(isNotNull(profileTable.userId))
+    .orderBy(desc(profileTable.xp))
+    .limit(60);
+
+  // Evaluate in chunks of 5 to prevent PostgreSQL connection pool exhaustion (max: 20)
+  const enriched: Array<{
+    userId: string | null;
+    name: string;
+    avatarUrl: string | null;
+    level: number;
+    xp: number;
+    streak: number;
+    grade: unknown;
+    integrityIndex: number;
+    consecutiveIntegralSessions: number;
+    consistencyScore: number;
+    avgRiskReward: number;
+    profitFactor: number;
+    recentViolationsCount: number;
+    driftDetected: boolean;
+    masteryScore: number;
+    winRate: number | null;
+  }> = [];
+
+  const CHUNK_SIZE = 5;
+  for (let i = 0; i < profiles.length; i += CHUNK_SIZE) {
+    const chunk = profiles.slice(i, i + CHUNK_SIZE);
+    const chunkResults = await Promise.all(
+      chunk.map(async (p) => {
+        const { level } = computeLevel(p.xp);
+        const report = await getOperatorIntegrityReport({
+          userId: p.userId ?? null,
+          legacyLevel: level,
+          streak: p.streak,
+        });
+        return {
+          userId: p.userId ?? null,
+          name: p.name,
+          avatarUrl: p.avatarUrl ?? null,
+          level,
+          xp: p.xp,
+          streak: p.streak,
+          grade: report.currentGrade,
+          integrityIndex: report.integrityIndex,
+          consecutiveIntegralSessions: report.consecutiveIntegralSessions,
+          consistencyScore: report.consistencyScore,
+          avgRiskReward: report.avgRiskReward,
+          profitFactor: report.profitFactor,
+          recentViolationsCount: report.recentViolationsCount,
+          driftDetected: report.driftDetected,
+          masteryScore: report.masteryScore,
+          winRate: report.winRate,
+        };
+      }),
+    );
+    enriched.push(...chunkResults);
+  }
+
+  enriched.sort((a, b) => {
+    if (b.masteryScore !== a.masteryScore) return b.masteryScore - a.masteryScore;
+    if (b.integrityIndex !== a.integrityIndex) return b.integrityIndex - a.integrityIndex;
+    return b.xp - a.xp;
+  });
+
+  return enriched.map((entry, idx) => ({
+    ...entry,
+    position: idx + 1,
+  }));
+}
+
+router.get("/leaderboard/integrity", async (req, res) => {
+  if (!(await requireProFeature(req, res, "leaderboard"))) return;
+
+  const now = Date.now();
+  if (integrityLeaderboardCache && now - integrityLeaderboardCache.cachedAt < INTEGRITY_LEADERBOARD_TTL_MS) {
+    res.json(integrityLeaderboardCache.data);
+    return;
+  }
+
+  if (!integrityLeaderboardInFlight) {
+    integrityLeaderboardInFlight = computeIntegrityLeaderboard()
+      .then((data) => {
+        integrityLeaderboardCache = { data, cachedAt: Date.now() };
+        return data;
+      })
+      .finally(() => {
+        integrityLeaderboardInFlight = null;
+      });
+  }
+
+  try {
+    const data = await integrityLeaderboardInFlight;
+    res.json(data);
+  } catch (err) {
+    console.error("[leaderboard/integrity] failed to generate leaderboard", err);
+    res.status(500).json({ error: "internal_error" });
+  }
 });
 
 export { getOrCreateProfile, computeLevel, getUserId, updateStreak, getLevelName };

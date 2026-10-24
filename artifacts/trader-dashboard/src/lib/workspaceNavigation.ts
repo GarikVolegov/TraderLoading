@@ -32,16 +32,19 @@ export function resolveWorkspaceAlias(path: string, search = ""): string | null 
   if (path === "/" && legacyCheckoutChannel(search)) {
     return `/chat${updateWorkspaceQuery(search, { t: "conversazioni", vista: null })}`;
   }
+  if (path === "/" && new URLSearchParams(search).get("vista") === "mercati") {
+    return `/${updateWorkspaceQuery(search, { vista: null })}`;
+  }
   const aliases: Record<string, [string, Record<string, string>]> = {
     "/news": ["/", { vista: "notizie" }],
     "/dashboard/widgets": ["/", { vista: "strumenti" }],
     "/library": ["/wiki", { t: "unlocked" }],
     "/tornei": ["/chat", { t: "competizioni", vista: "torneo" }],
     "/calendar": ["/journal", { t: "piano", vista: "agenda" }],
-    "/routine": ["/resources", { view: "wellbeing" }],
-    "/missions": ["/resources", { view: "missions" }],
+    "/resources": ["/", {}],
     "/clock": ["/", { vista: "strumenti", strumento: "sessioni" }],
-    "/checklist": ["/method", { section: "checklist" }],
+    "/method": ["/", {}],
+    "/checklist": ["/", {}],
     "/broker": ["/journal", { t: "trades", panel: "conti" }],
     "/tools": ["/backtest", {}],
   };
@@ -53,11 +56,10 @@ export function resolveWorkspaceAlias(path: string, search = ""): string | null 
 export function hasExplicitCenterView(search: string): boolean {
   const params = new URLSearchParams(search);
   return (
-    ["mercati", "notizie", "strumenti"].includes(params.get("vista") ?? "") ||
+    ["notizie", "strumenti"].includes(params.get("vista") ?? "") ||
     params.get("layout") === "edit" ||
     params.has("article") ||
-    (!params.has("marketDecisionId") &&
-      ["pair", "horizon", "strumento", "widget"].some((key) => params.has(key)))
+    ["strumento", "widget"].some((key) => params.has(key))
   );
 }
 

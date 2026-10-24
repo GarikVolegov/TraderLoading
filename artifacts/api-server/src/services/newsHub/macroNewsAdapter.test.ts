@@ -78,7 +78,7 @@ const missingImageMacro = macroNewsFromNewsHub({
   ],
 });
 const fallbackImage = missingImageMacro.articles[0]?.imageUrl ?? "";
-assert.match(fallbackImage, /^https:\/\/loremflickr\.com\/800\/400\//);
+assert.match(fallbackImage, /^\/api\/news\/placeholder\?/);
 assert.match(decodeURIComponent(fallbackImage), /trump|gold|agreement/i);
 assert.doesNotMatch(fallbackImage, /^data:image\/svg\+xml,/);
 

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" fill="none">
+  <!-- LIMEN PROTOCOL · CENTER CHEST EMBROIDERY PLUS -->
+  <!-- Target: Gildan 18500 Unisex Heavy Blend Hoodie (Sport Grey) -->
+  <!-- Printful Embroidery Plus Technique: up to 10" x 6" -->
+  <!-- Thread 1: Antique Gold (#C5A059) Satin/Tatami Stitch -->
+  <!-- Thread 2: Pitch Black (#111111) Dense Satin Stitch -->
+
+  <!-- CENTRAL GEOMETRIC PORTAL SIGIL -->
+  <g transform="translate(800, 310)">
+    <!-- Outer Sovereign Diamond -->
+    <polygon points="0,-150 150,0 0,150 -150,0" stroke="#C5A059" stroke-width="14" stroke-linejoin="round" />
+    
+    <!-- Inscribed Square / Sanctuary -->
+    <rect x="-85" y="-85" width="170" height="170" stroke="#111111" stroke-width="12" stroke-linejoin="round" />
+    
+    <!-- Central Celestial Axis -->
+    <line x1="0" y1="-190" x2="0" y2="-90" stroke="#C5A059" stroke-width="10" stroke-linecap="round" />
+    <line x1="0" y1="90" x2="0" y2="190" stroke="#C5A059" stroke-width="10" stroke-linecap="round" />
+    
+    <!-- Center Core Emblem -->
+    <circle cx="0" cy="0" r="22" fill="#C5A059" />
+    <circle cx="0" cy="0" r="9" fill="#111111" />
+    
+    <!-- Horizontal Guard Lines -->
+    <line x1="-220" y1="0" x2="-165" y2="0" stroke="#C5A059" stroke-width="6" stroke-linecap="round" />
+    <line x1="165" y1="0" x2="220" y2="0" stroke="#C5A059" stroke-width="6" stroke-linecap="round" />
+  </g>
+
+  <!-- LUXURY ROMAN WORDMARK -->
+  <g id="wordmark-limen" fill="#111111">
+    <text x="800" y="590" text-anchor="middle" font-family="'Cinzel', 'Copperplate', 'Times New Roman', serif" font-size="94" font-weight="700" letter-spacing="24">LIMEN</text>
+  </g>
+
+  <!-- PROTOCOL SUBTITLE -->
+  <g id="wordmark-protocol" fill="#C5A059">
+    <text x="800" y="660" text-anchor="middle" font-family="'Cinzel', 'Trajan Pro', 'Georgia', serif" font-size="28" font-weight="600" letter-spacing="14">· PROTOCOL ·</text>
+  </g>
+
+  <!-- PHILOSOPHICAL MOTTO & COORDINATES -->
+  <g id="metadata" fill="#4B5563">
+    <text x="800" y="720" text-anchor="middle" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="16" font-weight="600" letter-spacing="8">IL CODICE DELLA PRESENZA ED EREDITÀ  //  ZERO RUMORE COGNITIVO</text>
+  </g>
+</svg>

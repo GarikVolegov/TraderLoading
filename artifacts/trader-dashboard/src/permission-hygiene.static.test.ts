@@ -24,6 +24,7 @@ type ForbiddenPattern = (typeof FORBIDDEN_PATTERNS)[number];
 // or pattern here is a deliberate, reviewable act — see POLICY below.
 const PERMISSION_ALLOWLIST: Record<string, readonly ForbiddenPattern[]> = {
   "hooks/usePushNotifications.ts": [".requestPermission(", "pushManager.subscribe("],
+  "components/cockpit/CockpitNextSessionPlanner.tsx": [".requestPermission("],
   "components/social/MessaggiTab.tsx": ["getUserMedia("],
   "components/social/StoryViewer.tsx": ["getUserMedia("],
   "components/social/VoiceChannelView.tsx": ["getUserMedia("],

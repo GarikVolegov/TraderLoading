@@ -23,7 +23,7 @@ export function PercorsoView({ me, hall, enrolling, onEnroll, onCertClick }: Per
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--trn-gap,18px)" }}>
         <section className="trn-panel tl-rise" style={{ padding: "clamp(18px,2.4vw,24px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}>
-            <Target size={16} color="hsl(var(--accent-jade-soft))" strokeWidth={1.9} />
+            <Target size={16} color="#C5A059" strokeWidth={1.9} />
             <h3 style={{ margin: 0, fontSize: 15, color: "var(--tl-fg)" }}>{t("tornei.percorso.title")}</h3>
           </div>
 
@@ -42,7 +42,7 @@ export function PercorsoView({ me, hall, enrolling, onEnroll, onCertClick }: Per
                   { l: t("tornei.metric.r"), v: fmtR(standing.rCum) },
                   { l: t("tornei.metric.ts"), v: `${standing.discIndex}%` },
                 ].map((s, i) => (
-                  <div key={i} style={{ padding: 12, borderRadius: "var(--tl-radius)", background: "hsl(222 47% 5% / 0.5)", border: "1px solid hsl(215 25% 27% / 0.4)", textAlign: "center" }}>
+                  <div key={i} style={{ padding: 12, borderRadius: "var(--tl-radius)", background: "#0A0A0C", border: "1px solid #26262E", textAlign: "center" }}>
                     <p style={{ margin: 0, fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 18, color: "var(--tl-fg)" }}>{s.v}</p>
                     <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--tl-fg-muted)" }}>{s.l}</p>
                   </div>
@@ -75,6 +75,7 @@ export function PercorsoView({ me, hall, enrolling, onEnroll, onCertClick }: Per
                     edition={c.edition}
                     rarity={c.rarity}
                     seasonLabel={c.seasonLabel}
+                    userName={c.userName ?? undefined}
                     onClick={() => onCertClick(c)}
                   />
                 ))}

@@ -12,7 +12,7 @@ import { socialText } from "@/lib/i18n/reorganizationSocial";
 export function VoiceChannelView({
   channel,
   currentUserId,
-  currentUserName,
+  currentUserName: _currentUserName,
 }: {
   channel: ChannelType;
   currentUserId: string;
@@ -291,16 +291,13 @@ export function VoiceChannelView({
     setIsMuted(!enabled);
   };
 
-  const others = participants.filter((p) => p.userId !== currentUserId);
-  const meInChannel = participants.some((p) => p.userId === currentUserId);
-
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0 bg-card/30">
-        <Volume2 className="w-4 h-4 text-muted-foreground" />
-        <span className="font-semibold text-sm">{channel.name}</span>
+    <div className="flex flex-col h-full bg-[#07080B] text-slate-200">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#C5A059]/20 shrink-0 bg-[#0A0B10]">
+        <Volume2 className="w-4 h-4 text-[#C5A059]" />
+        <span className="font-mono text-sm font-bold text-white">{channel.name}</span>
         {participants.length > 0 && (
-          <span className="ml-auto text-xs text-muted-foreground bg-secondary/50 border border-border px-2 py-0.5 rounded-full">
+          <span className="ml-auto font-mono text-[11px] text-[#E8C56A] bg-[#C5A059]/10 border border-[#C5A059]/30 px-2 py-0.5 rounded-full">
             {participants.length} connessi
           </span>
         )}
@@ -308,34 +305,34 @@ export function VoiceChannelView({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {errorMessage && <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{errorMessage}</p>}
-        <div className="flex flex-col items-center justify-center min-h-[200px] gap-6">
+        <div className="flex flex-col items-center justify-center min-h-[220px] gap-6 py-6">
           <div
-            className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${inChannel ? "bg-primary/20 border-2 border-primary shadow-lg shadow-primary/20" : "bg-secondary/40 border-2 border-border"}`}
+            className={`w-28 h-28 rounded-full flex items-center justify-center transition-all ${inChannel ? "bg-[#C5A059]/20 border-2 border-[#C5A059] shadow-[0_0_30px_rgba(197,160,89,0.3)] animate-pulse" : "bg-[#12131A] border-2 border-[#C5A059]/30"}`}
           >
             <Headphones
-              className={`w-10 h-10 ${inChannel ? "text-primary" : "text-muted-foreground"}`}
+              className={`w-12 h-12 ${inChannel ? "text-[#E8C56A]" : "text-slate-500"}`}
             />
           </div>
 
           {!inChannel ? (
             <div className="text-center space-y-3">
-              <p className="font-semibold text-base">{channel.name}</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="font-display text-lg font-bold text-white">{channel.name}</p>
+              <p className="text-xs text-slate-400 font-sans">
                 {participants.length === 0
-                  ? "Nessuno ancora in questo canale"
-                  : `${participants.length} trader ${participants.length === 1 ? "connesso" : "connessi"}`}
+                  ? "Nessun operatore connesso al momento in questa frequenza"
+                  : `${participants.length} operatori connessi al concilio vocale`}
               </p>
               <button
                 onClick={joinChannel}
                 disabled={connecting}
-                className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors shadow-lg shadow-primary/20"
+                className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#C5A059] to-[#D4AF37] text-black rounded-xl font-mono text-xs font-bold uppercase tracking-wider hover:brightness-110 disabled:opacity-60 transition-all shadow-md shadow-[#C5A059]/20"
               >
                 {connecting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin text-black" />
                 ) : (
-                  <Volume2 className="w-4 h-4" />
+                  <Volume2 className="w-4 h-4 text-black" />
                 )}
-                {connecting ? "Connessione..." : "Entra nel canale"}
+                {connecting ? "Sintonizzazione..." : "Entra nel Concilio Vocale"}
               </button>
             </div>
           ) : (

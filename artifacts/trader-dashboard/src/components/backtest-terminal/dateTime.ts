@@ -14,9 +14,11 @@ export function parseUtcDateTimeInput(value: string): number | null {
   return Math.floor(millis / 1000);
 }
 
-export function formatUtcReplayTime(timestamp: number, locale: string): string {
+export function formatRomeReplayTime(timestamp: number, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
-    timeZone: "UTC", day: "2-digit", month: "short", year: "numeric",
+    timeZone: "Europe/Rome", day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).format(new Date(timestamp * 1000));
 }
+
+export const formatUtcReplayTime = formatRomeReplayTime;

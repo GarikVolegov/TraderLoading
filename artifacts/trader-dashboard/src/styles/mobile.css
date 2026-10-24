@@ -1,0 +1,161 @@
+/* Shared responsive contract. Page-specific layouts live beside their pages. */
+:root {
+  --visual-viewport-height: 100dvh;
+  --visual-viewport-top: 0px;
+}
+
+.app-page-content > *,
+.app-page :is(section, article, header, form),
+.admin-shell main {
+  min-width: 0;
+}
+
+.app-modal-panel h2,
+.app-dialog h2 {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1023px) {
+  html {
+    scroll-padding-top: calc(var(--app-header-offset) + 1rem);
+    scroll-padding-bottom: var(--bottom-nav-clearance);
+  }
+
+  /* The target grows without changing the visible icon or checkbox glyph. */
+  :is(button, [role="button"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]):not([data-touch-size="custom"]):not([role="switch"]):not([role="checkbox"]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="color"]) {
+    min-height: 44px;
+    font-size: 16px !important;
+    max-width: 100%;
+  }
+
+  :is(input, textarea, select, [contenteditable="true"]) {
+    scroll-margin-block: calc(var(--app-header-offset) + 1rem) calc(var(--bottom-nav-clearance) + 1rem);
+  }
+
+  .workspace-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+  .workspace-tab {
+    flex: 0 0 auto;
+    min-width: 72px;
+    white-space: nowrap;
+    font-size: 14px;
+  }
+  .limen-triad-mobile-tabs {
+    gap: 4px;
+  }
+  .limen-triad-mobile-tabs :is(button, a) {
+    min-width: 0;
+    min-height: 44px;
+    font-size: 12px;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+  }
+  .limen-col-header strong,
+  .limen-col-tag {
+    font-size: 11px;
+    letter-spacing: .04em;
+  }
+  .limen-bridge-link {
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .app-top-nav > div > div { gap: 6px; }
+  .app-top-nav button { flex-shrink: 0; }
+  .mobile-more-menu {
+    max-width: calc(100vw - 24px);
+    padding: 8px;
+  }
+  .mobile-more-menu [aria-current="page"] {
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / .12);
+  }
+
+  .app-modal-overlay {
+    top: var(--visual-viewport-top);
+    height: var(--visual-viewport-height);
+    bottom: auto;
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .app-modal-panel {
+    max-height: 100%;
+    border-radius: 16px;
+  }
+  .app-modal-panel > div:first-child {
+    padding: 8px 16px;
+  }
+  .app-modal-body { overflow-wrap: anywhere; }
+  .app-dialog {
+    top: calc(var(--visual-viewport-top) + 12px + env(safe-area-inset-top, 0px));
+    transform: translateX(-50%);
+    max-height: calc(var(--visual-viewport-height) - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+  .app-dialog > :is(h2, header, [class*="text-center"]) { padding-right: 36px; }
+  [data-radix-popper-content-wrapper] {
+    max-width: calc(100vw - 16px);
+  }
+  [data-keyboard-open] {
+    --bottom-nav-clearance: 1rem;
+  }
+  [data-keyboard-open] [data-mobile-navigation] { display: none; }
+  [data-keyboard-open] .chat-overview { display: none; }
+  [data-keyboard-open] .chat-page {
+    position: fixed;
+    inset-inline: 0;
+    top: var(--visual-viewport-top);
+    height: var(--visual-viewport-height);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .admin-shell { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .admin-shell > main > header { padding-top: env(safe-area-inset-top, 0px); }
+  .admin-shell > main > header > div { gap: 12px; flex-wrap: wrap; padding-block: 10px; }
+  .admin-shell > main > header > div > div { min-width: 0; flex: 1 1 150px; overflow-wrap: anywhere; }
+  .admin-user-cards { display: grid; gap: 12px; }
+}
+
+@media (min-width: 1024px) {
+  .admin-user-cards { display: none; }
+}
+
+@media (max-width: 479px) {
+  .app-page-content { padding-inline: 12px; }
+  .app-page h1 { overflow-wrap: anywhere; }
+  .app-page p { line-height: 1.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+.filter-panel summary::-webkit-details-marker { display: none; }
+.filter-panel[open] summary > svg:last-child { transform: rotate(180deg); }
+@media (max-width: 1023px) {
+  .app-sheet { top: var(--visual-viewport-top); height: var(--visual-viewport-height); width: min(100%, 28rem); padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .session-journal > div:first-child > div { flex-wrap: wrap; min-width: 0; }
+  .session-journal .session-filter-pills { font-size: 13px; }
+  .session-journal .grid > div { min-width: 0; }
+  .session-journal .grid > div > div:first-child { flex-wrap: wrap; gap: 4px; }
+  .session-journal > div:first-child a { min-height: 44px; height: auto; }
+}
+
+@media (max-width: 1023px) {
+  .touch-checkbox::before, .touch-switch::before { content:""; position:absolute; top:50%; left:50%; width:44px; height:44px; transform:translate(-50%,-50%); }
+  .app-toasts { top:calc(var(--visual-viewport-top) + var(--safe-top)); bottom:auto; max-height:calc(var(--visual-viewport-height) - var(--bottom-nav-clearance)); }
+  .cookie-consent { max-height:calc(var(--visual-viewport-height) - var(--app-header-offset) - var(--bottom-nav-clearance) - 16px); overflow-y:auto; }
+}
+@media (hover: none) {
+  .touch-actions { opacity:1; }
+}

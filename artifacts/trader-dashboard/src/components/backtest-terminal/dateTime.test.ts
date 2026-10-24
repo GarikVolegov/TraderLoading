@@ -15,5 +15,5 @@ assert.equal(parseUtcDateTimeInput("2026-01-01"), null);
 assert.equal(parseUtcDateTimeInput(""), null);
 assert.equal(utcDateTimeInput(null), "");
 assert.equal(utcDateTimeInput(Number.NaN), "");
-assert.match(formatUtcReplayTime(Date.parse("2026-10-09T23:30:00Z") / 1000, "en-GB"), /09 Oct 2026.*23:30/);
-console.log("Replay datetime UTC checks passed");
+assert.match(formatUtcReplayTime(Date.parse("2026-10-09T23:30:00Z") / 1000, "en-GB"), /10 Oct 2026.*01:30/);
+console.log("Replay datetime Europe/Rome checks passed");

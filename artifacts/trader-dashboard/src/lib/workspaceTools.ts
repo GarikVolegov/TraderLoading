@@ -149,7 +149,7 @@ export const WORKSPACE_TOOLS = [
   {
     id: "wellbeing",
     group: "support",
-    href: "/resources?view=wellbeing",
+    href: "/routine",
     labelKey: "process.resources.wellbeing",
     widgetId: "routine",
     keywords: "routine benessere breathing respirazione meditazione gratitudine concentrazione",
@@ -157,7 +157,7 @@ export const WORKSPACE_TOOLS = [
   {
     id: "missions",
     group: "support",
-    href: "/resources?view=missions",
+    href: "/missions",
     labelKey: "missions.title",
     widgetId: "missions",
     keywords: "missioni missions xp",

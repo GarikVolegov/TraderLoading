@@ -485,7 +485,7 @@ router.get("/social/stories", async (req, res) => {
       isOwn: uid === userId,
     }));
 
-    const sorted = result.sort((a, b) => (a.isOwn ? -1 : 1));
+    const sorted = result.sort((a, b) => (a.isOwn ? -1 : b.isOwn ? 1 : 0));
     res.json(sorted);
   } catch (err) {
     console.error("stories error:", err);

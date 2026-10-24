@@ -9,29 +9,34 @@ interface PageLayoutProps {
   /** Optional: removes the max-width constraint for full-bleed pages */
   fullWidth?: boolean;
   quiet?: boolean;
+  className?: string;
 }
 
 const pageVariants = {
-  hidden: { opacity: 0, y: 12 },
+  hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    y: 0,
     transition: {
-      duration: 0.32,
+      duration: 0.22,
       ease: [0.22, 1, 0.36, 1] as const,
+      staggerChildren: 0.03,
     },
   },
 };
 
-export function PageLayout({ children, fullWidth, quiet = false }: PageLayoutProps) {
+export function PageLayout({ children, fullWidth, quiet = false, className = "" }: PageLayoutProps) {
   const { activeBackgroundUrl, darkness } = useBackground();
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-background pb-[var(--bottom-nav-clearance)] pl-[var(--app-inset-left)]">
+    <div
+      className={`app-page ${className} relative min-h-dvh overflow-x-clip bg-background pb-[var(--bottom-nav-clearance)] pl-[var(--app-inset-left)] ${
+        quiet ? "lg:h-[100dvh] lg:overflow-hidden" : ""
+      }`}
+    >
       {/* ── Fixed background layer ─────────────────────────────────────── */}
       <div className={`fixed inset-0 z-0 pointer-events-none select-none ${quiet ? "opacity-[0.15]" : ""}`}>
-        {activeBackgroundUrl ? (
+        {activeBackgroundUrl && !activeBackgroundUrl.includes("nero-ossidiana") ? (
           <>
             <img
               src={activeBackgroundUrl}
@@ -49,10 +54,12 @@ export function PageLayout({ children, fullWidth, quiet = false }: PageLayoutPro
 
       {/* ── Main content ──────────────────────────────────────────────── */}
       <motion.div
-        className={`relative z-10 ${
-          fullWidth ? "w-full" : "mx-auto max-w-[1760px]"
-        } space-y-3 px-3 pt-[calc(var(--safe-top)+3.85rem)] sm:space-y-4 sm:px-5 lg:px-5 lg:pt-[calc(var(--safe-top)+3.65rem)] xl:px-7`}
-        variants={reduceMotion ? { visible: { opacity: 1, y: 0 } } : pageVariants}
+        className={`app-page-content relative z-10 ${
+          fullWidth ? "w-full" : "mx-auto max-w-[1840px]"
+        } ${
+          quiet ? "lg:flex lg:h-full lg:flex-col lg:overflow-hidden" : ""
+        } space-y-2.5 px-3 pt-[calc(var(--safe-top)+3.85rem)] sm:space-y-3 sm:px-5 lg:px-5 lg:pt-[calc(var(--safe-top)+3.65rem)] xl:px-6`}
+        variants={reduceMotion ? { visible: { opacity: 1 } } : pageVariants}
         initial={reduceMotion ? false : "hidden"}
         animate="visible"
       >

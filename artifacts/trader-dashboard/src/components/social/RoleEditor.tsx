@@ -9,7 +9,7 @@ import type { CommunityRole } from "./types";
 
 type Draft = { name: string; color: string; permissions: string[] };
 
-const DEFAULT_COLOR = "#51a488";
+const DEFAULT_COLOR = "#C5A059";
 
 export function RoleEditor({ communityId }: { communityId: number }) {
   const { t } = useLanguage();

@@ -94,6 +94,14 @@ export function StoryViewer({
   const totalInGroup = group?.stories.length ?? 1;
   const { titleId, panelProps } = useDialogA11y({ isOpen: Boolean(story), onClose, panelRef });
 
+  const advance = useCallback(() => {
+    if (storyIdx < totalInGroup - 1) setStoryIdx((s) => s + 1);
+    else if (groupIdx < groups.length - 1) {
+      setGroupIdx((g) => g + 1);
+      setStoryIdx(0);
+    } else onClose();
+  }, [storyIdx, totalInGroup, groupIdx, groups.length, onClose]);
+
   useEffect(() => {
     setProgress(0);
     clearInterval(intervalRef.current);
@@ -109,15 +117,7 @@ export function StoryViewer({
       });
     }, 100);
     return () => clearInterval(intervalRef.current);
-  }, [groupIdx, storyIdx, paused, showReply]);
-
-  const advance = () => {
-    if (storyIdx < totalInGroup - 1) setStoryIdx((s) => s + 1);
-    else if (groupIdx < groups.length - 1) {
-      setGroupIdx((g) => g + 1);
-      setStoryIdx(0);
-    } else onClose();
-  };
+  }, [groupIdx, storyIdx, paused, showReply, advance]);
 
   if (!story) return null;
   const timeLeft = story.expiresAt

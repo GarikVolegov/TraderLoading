@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { BookOpen, FlaskConical, Newspaper, Plus, Heart } from "lucide-react";
+import { BookOpen, FlaskConical, Newspaper, Plus, Heart, Gamepad2 } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -15,9 +15,9 @@ import { TOOL_GROUPS, WORKSPACE_TOOLS } from "@/lib/workspaceTools";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const rootKeywords: Record<(typeof ROOT_ITEMS)[number]["id"], string> = {
-  today: "home oggi today processo preparazione sessione",
-  method: "metodo method strategia protocollo verifica percorso",
-  journal: "journal diario trade",
+  today: "home oggi today varco processo preparazione sessione",
+  backtest: "backtest forgia passato replay simulazione verifica",
+  journal: "journal diario libro verità trade",
 };
 const PAGES = ROOT_ITEMS.map((item) => ({ ...item, keywords: rootKeywords[item.id] }));
 
@@ -58,6 +58,13 @@ export function CommandPalette() {
           >
             <Plus className="mr-2" />
             {t("command.new_trade")}
+          </CommandItem>
+          <CommandItem
+            keywords={["decompressione", "gioco", "distacco", "bull", "runner", "pausa", "relax", "3d"]}
+            onSelect={() => go("/decompressione")}
+          >
+            <Gamepad2 className="mr-2 text-[#C5A059]" />
+            <span>Camera di Decompressione (Gioco 3D)</span>
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />

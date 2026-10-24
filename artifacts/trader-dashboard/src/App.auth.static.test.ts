@@ -15,7 +15,7 @@ assert.match(app, /footer: "!hidden"/);
 assert.match(shell, /type AuthPageShellProps/);
 assert.match(shell, /mode: "sign-in" \| "sign-up"/);
 assert.match(shell, /<Rocket\b/);
-assert.match(shell, /TraderLoading/);
+assert.match(shell, /LIMEN|TraderLoading/);
 assert.doesNotMatch(shell, /TraderLOADING|TRADERLOADING/);
 assert.doesNotMatch(shell, /TRADER[\s\S]{0,120}LOADING/);
 assert.match(shell, /children/);

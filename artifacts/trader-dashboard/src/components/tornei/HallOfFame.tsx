@@ -33,14 +33,14 @@ export function HallOfFame({ entries }: { entries: TorneiHallEntry[] }) {
                 >
                   {e.champion ?? t("tornei.hall.no_champion")}
                 </p>
-                <p style={{ margin: "2px 0 0", fontFamily: "var(--tl-font-mono)", fontSize: 11, color: "hsl(215 20% 58%)" }}>
+                <p style={{ margin: "2px 0 0", fontFamily: "var(--tl-font-mono)", fontSize: 11, color: "#8E92A0" }}>
                   {e.seasonLabel} · {formatRangeDate(e.startsAt, language)} — {formatRangeDate(e.endsAt, language)}
                 </p>
               </div>
               {e.champion && (
                 <div style={{ textAlign: "right", flex: "none" }}>
                   <p style={{ margin: 0, fontFamily: "var(--tl-font-mono)", fontWeight: 700, fontSize: 14, color: "hsl(var(--success))" }}>{fmtR(e.rCum)}</p>
-                  <p style={{ margin: "2px 0 0", fontFamily: "var(--tl-font-mono)", fontSize: 10, color: "hsl(215 20% 58%)" }}>{t("tornei.metric.ts")} {e.discIndex ?? "—"}%</p>
+                  <p style={{ margin: "2px 0 0", fontFamily: "var(--tl-font-mono)", fontSize: 10, color: "#8E92A0" }}>{t("tornei.metric.ts")} {e.discIndex ?? "—"}%</p>
                 </div>
               )}
             </div>

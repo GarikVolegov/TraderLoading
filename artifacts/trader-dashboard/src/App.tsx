@@ -1,3 +1,4 @@
+import { useMobileViewport } from "./hooks/use-mobile-viewport";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Switch, Route, Redirect, useLocation, useSearch, Router as WouterRouter } from "wouter";
 import { hasExplicitCenterView, resolveWorkspaceAlias } from "./lib/workspaceNavigation";
@@ -38,7 +39,14 @@ import { ScheduledCallRuntime } from "./components/ScheduledCallRuntime";
 import { PinLockScreen } from "./components/PinLockScreen";
 import { TopNav } from "./components/TopNav";
 import { BottomNav } from "./components/BottomNav";
-import { hasStoredLanguagePreference, LANGUAGES, useLanguage } from "./contexts/LanguageContext";
+import { ThresholdOfSelectionModal } from "./components/onboarding/ThresholdOfSelectionModal";
+import {
+  getBrowserLanguage,
+  getStoredLanguagePreference,
+  hasStoredLanguagePreference,
+  LANGUAGES,
+  useLanguage,
+} from "./contexts/LanguageContext";
 import type { Language } from "./lib/i18n";
 import {
   SEO_PAGE_KEYS,
@@ -53,8 +61,8 @@ const Dashboard = lazy(() => import("./pages/OperatingDashboard"));
 const Today = lazy(() => import("./pages/Today"));
 const Academy = lazy(() => import("./pages/Academy"));
 const AcademyWelcome = lazy(() => import("./pages/Academy").then(module => ({ default: module.AcademyWelcome })));
-const Method = lazy(() => import("./pages/Method"));
-const Resources = lazy(() => import("./pages/Resources"));
+const Routine = lazy(() => import("./pages/Routine"));
+const Missions = lazy(() => import("./pages/Missions"));
 const Journal = lazy(() => import("./pages/Journal"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Support = lazy(() => import("./pages/Support"));
@@ -71,6 +79,9 @@ const Admin = lazy(() => import("./pages/Admin"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const Styleguide = lazy(() => import("@/components/ui/styleguide/Styleguide"));
 const SeoArticlePage = lazy(() => import("./pages/seo/SeoArticlePage"));
+const Protocollo = lazy(() => import("./pages/ProtocolloPage"));
+const FinancialArchitecture = lazy(() => import("./pages/FinancialArchitecture"));
+const DecompressionPage = lazy(() => import("./pages/DecompressionPage"));
 
 // Public marketing languages served under a /{lang} URL prefix (English lives
 // at the root and is the x-default).
@@ -146,16 +157,16 @@ const clerkAppearance = {
     socialButtonsVariant: "blockButton" as const,
   },
   variables: {
-    colorPrimary: "#51a488",
-    colorForeground: "#f8fafc",
-    colorMutedForeground: "#94a3b8",
+    colorPrimary: "#C5A059",
+    colorForeground: "#F4F4F6",
+    colorMutedForeground: "#8E8E99",
     colorDanger: "#ef4444",
-    colorBackground: "#07111f",
-    colorInput: "#0d1527",
-    colorInputForeground: "#f8fafc",
-    colorNeutral: "#334155",
-    fontFamily: "'Fira Sans', sans-serif",
-    borderRadius: "0.75rem",
+    colorBackground: "#0A0A0C",
+    colorInput: "#141418",
+    colorInputForeground: "#F4F4F6",
+    colorNeutral: "#26262E",
+    fontFamily: "'Space Grotesk', -apple-system, sans-serif",
+    borderRadius: "0.5rem",
   },
   elements: {
     rootBox: "w-full flex justify-center",
@@ -163,25 +174,25 @@ const clerkAppearance = {
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!hidden",
     header: "!hidden",
-    headerTitle: "text-[#f8fafc] font-bold font-mono",
-    headerSubtitle: "text-[#94a3b8]",
-    socialButtonsBlockButtonText: "text-[#f8fafc] font-semibold",
-    formFieldLabel: "text-[#f8fafc] font-semibold",
-    footerActionLink: "text-[#51a488] hover:text-[#7cb6a3] font-semibold",
-    footerActionText: "text-[#94a3b8]",
-    dividerText: "text-[#94a3b8]",
-    identityPreviewEditButton: "text-[#51a488]",
-    formFieldSuccessText: "text-[#51a488]",
-    alertText: "text-[#f8fafc]",
+    headerTitle: "text-[#F4F4F6] font-bold font-mono tracking-wider",
+    headerSubtitle: "text-[#8E8E99]",
+    socialButtonsBlockButtonText: "text-[#F4F4F6] font-semibold",
+    formFieldLabel: "text-[#F4F4F6] font-semibold text-xs tracking-wide",
+    footerActionLink: "text-[#C5A059] hover:text-[#D6B575] font-semibold",
+    footerActionText: "text-[#8E8E99]",
+    dividerText: "text-[#8E8E99]",
+    identityPreviewEditButton: "text-[#C5A059]",
+    formFieldSuccessText: "text-[#C5A059]",
+    alertText: "text-[#F4F4F6]",
     logoBox: "!hidden",
     logoImage: "h-11 w-11 rounded-lg",
-    socialButtonsBlockButton: "!border-[#334155] hover:!border-[#51a488]/50 !bg-[#0d1527]/70 !rounded-xl backdrop-blur",
-    formButtonPrimary: "!bg-[#51a488] !text-[#031a0d] hover:!bg-[#7cb6a3] font-bold !rounded-xl !shadow-[0_10px_22px_rgba(81,164,136,0.18)]",
-    formFieldInput: "!bg-[#0d1527]/70 !border-[#334155] !text-[#f8fafc] focus:!border-[#51a488] focus:!ring-1 focus:!ring-[#51a488]/40 !rounded-xl",
-    footerAction: "!bg-[#06101d]",
-    dividerLine: "!bg-[#334155]/70",
+    socialButtonsBlockButton: "!border-[#26262E] hover:!border-[#C5A059]/50 !bg-[#141418]/90 !rounded-xl backdrop-blur transition-all",
+    formButtonPrimary: "!bg-[#C5A059] !text-[#0A0A0C] hover:!bg-[#D6B575] font-bold !rounded-xl !shadow-[0_4px_16px_rgba(197,160,89,0.25)] transition-all",
+    formFieldInput: "!bg-[#141418]/90 !border-[#26262E] !text-[#F4F4F6] focus:!border-[#C5A059] focus:!ring-1 focus:!ring-[#C5A059]/40 !rounded-xl",
+    footerAction: "!bg-[#0A0A0C]",
+    dividerLine: "!bg-[#26262E]",
     alert: "!bg-[#1f0d12] !border-[#ef4444]/35 !rounded-xl",
-    otpCodeFieldInput: "!bg-[#0d1527]/70 !border-[#334155] !text-[#f8fafc] focus:!border-[#51a488] !rounded-xl",
+    otpCodeFieldInput: "!bg-[#141418]/90 !border-[#26262E] !text-[#F4F4F6] focus:!border-[#C5A059] !rounded-xl",
     formFieldRow: "",
     main: "",
   },
@@ -271,11 +282,12 @@ function ClerkQueryClientCacheInvalidator() {
 
 /* ── Page transition — entrance only, no exit to avoid crash ─────────────── */
 const pageTransition = {
-  initial: { opacity: 0, y: 12 },
+  initial: { opacity: 0, y: 6, scale: 0.998 },
   animate: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const },
+    scale: 1,
+    transition: { duration: 0.24, ease: [0.16, 1, 0.3, 1] as const },
   },
 };
 
@@ -296,32 +308,38 @@ function LanguageServerSync() {
     // sovrascriveva la preferenza salvata su un device nuovo.
     if (!settings.isSuccess && !settings.isError) return;
 
+    const storedPreference = getStoredLanguagePreference();
+    const effectiveClientLang = storedPreference ?? language;
+
     if (!decidedRef.current) {
       decidedRef.current = true;
       const decision = decideLanguageSync<Language>({
         serverLanguage: settings.data?.language ?? null,
-        clientLanguage: language,
-        hasExplicitLocalChoice: hasStoredLanguagePreference(),
+        clientLanguage: effectiveClientLang,
+        hasExplicitLocalChoice: storedPreference != null,
         supported: Object.keys(LANGUAGES),
       });
       if (decision.action === "adopt") {
         lastSyncedRef.current = decision.language;
-        setLanguage(decision.language);
+        setLanguage(decision.language, true);
         return;
       }
       if (decision.action === "none") {
-        lastSyncedRef.current = language;
+        lastSyncedRef.current = effectiveClientLang;
         return;
       }
     }
 
+    // Only sync to server if this device has an explicit user choice, avoiding cross-device browser override
+    if (!hasStoredLanguagePreference()) return;
+
     // A settings save already updates the query before applying the local choice.
     // Avoid sending a duplicate PUT from this bootstrap synchronizer.
-    if (settings.data?.language === language) { lastSyncedRef.current = language; return; }
-    if (lastSyncedRef.current === language) return;
-    lastSyncedRef.current = language;
+    if (settings.data?.language === effectiveClientLang) { lastSyncedRef.current = effectiveClientLang; return; }
+    if (lastSyncedRef.current === effectiveClientLang) return;
+    lastSyncedRef.current = effectiveClientLang;
     updateSettings.mutate(
-      { data: { language } },
+      { data: { language: effectiveClientLang } },
       { onSuccess: () => qc.invalidateQueries({ queryKey: getGetUserSettingsQueryKey() }) },
     );
   }, [settings.isSuccess, settings.isError, settings.data, language, qc, updateSettings, setLanguage]);
@@ -352,6 +370,9 @@ function HomeRoute() {
 
 function AppRouter() {
   const [location] = useLocation();
+  const search = useSearch();
+  const isHomeScenario = location === "/" && hasExplicitCenterView(search);
+  const transitionKey = isHomeScenario ? "/?scenario" : location;
 
   // Entrance-only page transition. No AnimatePresence: there is no exit
   // animation, so AnimatePresence served no purpose — and its sync mode kept the
@@ -360,13 +381,15 @@ function AppRouter() {
   // keyed motion.div directly unmounts the old page immediately while still
   // playing the entrance animation on each route change.
   return (
-    <motion.div key={location} {...pageTransition}>
+    <motion.div key={transitionKey} {...pageTransition}>
       <Suspense fallback={<PageFallback />}>
         <Switch>
           <Route path="/" component={HomeRoute} />
-          <Route path="/method" component={Method} />
+          <Route path="/method" component={WorkspaceAlias} />
           <Route path="/academy" component={Academy} />
-          <Route path="/resources" component={Resources} />
+          <Route path="/resources">
+            {() => <Redirect to="/" />}
+          </Route>
           <Route path="/dashboard/widgets" component={WorkspaceAlias} />
           <Route path="/journal" component={Journal} />
           <Route path="/checklist" component={WorkspaceAlias} />
@@ -378,8 +401,8 @@ function AppRouter() {
           <Route path="/wiki" component={Wiki} />
           <Route path="/milestones" component={Milestones} />
           <Route path="/library" component={WorkspaceAlias} />
-          <Route path="/routine" component={WorkspaceAlias} />
-          <Route path="/missions" component={WorkspaceAlias} />
+          <Route path="/routine" component={Routine} />
+          <Route path="/missions" component={Missions} />
           <Route path="/tornei" component={WorkspaceAlias} />
           <Route path="/clock" component={WorkspaceAlias} />
           <Route path="/calendar" component={WorkspaceAlias} />
@@ -389,6 +412,11 @@ function AppRouter() {
           <Route path="/settings" component={Settings} />
           <Route path="/support" component={Support} />
           <Route path="/support/:id" component={Support} />
+          <Route path="/protocollo" component={Protocollo} />
+          <Route path="/sandbox" component={Protocollo} />
+          <Route path="/patrimonio" component={FinancialArchitecture} />
+          <Route path="/decompressione" component={DecompressionPage} />
+          <Route path="/distacco" component={DecompressionPage} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
@@ -398,9 +426,6 @@ function AppRouter() {
 
 function AuthenticatedShell() {
   const [location] = useLocation();
-  const shellSearch = useSearch();
-  const shellParams = new URLSearchParams(shellSearch);
-  const cockpit = location === "/" && !hasExplicitCenterView(shellSearch) && shellParams.get("process") !== "legacy" && !shellParams.has("marketDecisionId");
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   if (location.startsWith("/admin")) {
@@ -417,6 +442,7 @@ function AuthenticatedShell() {
       {/* Global overlays — never unmounted during page transitions */}
       <PinLockScreen />
       <LoadingScreen />
+      <ThresholdOfSelectionModal />
       <GoalReminders />
       <DailyAlarmNotifier />
       <ScheduledCallRuntime />
@@ -426,8 +452,9 @@ function AuthenticatedShell() {
       <CommandPalette />
       <SignUpConversionTracker />
 
-      {/* Global nav — always mounted, unaffected by page transitions */}
-      {!cockpit && <><TopNav /><BottomNav /></>}
+      {/* Unified LIMEN navigation — always mounted across all authenticated routes */}
+      <TopNav />
+      <BottomNav />
 
       {/* Animated page content */}
       <AppRouter />
@@ -449,18 +476,18 @@ function AuthTimeoutScreen() {
         justifyContent: "center",
         gap: "1.25rem",
         padding: "1.5rem",
-        background: "#07111f",
-        color: "#f8fafc",
-        fontFamily: "'Fira Sans', system-ui, -apple-system, sans-serif",
+        background: "#0A0A0C",
+        color: "#F4F4F6",
+        fontFamily: "'Space Grotesk', system-ui, -apple-system, sans-serif",
         textAlign: "center",
       }}
     >
       <div style={{ fontSize: "2.5rem", lineHeight: 1 }}>⏳</div>
-      <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>
-        Trouble loading
+      <h1 style={{ margin: 0, fontSize: "1.75rem", fontWeight: 700, fontFamily: "'Cinzel', serif", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        Caricamento Lento
       </h1>
-      <p style={{ margin: 0, maxWidth: "32rem", color: "#94a3b8", lineHeight: 1.5 }}>
-        Sign-in is taking longer than expected. Check your connection and reload.
+      <p style={{ margin: 0, maxWidth: "32rem", color: "#8E8E99", lineHeight: 1.6, fontSize: "0.95rem" }}>
+        L'inizializzazione della sessione protetta sta richiedendo più tempo del previsto. Verifica la connessione e ricarica.
       </p>
       <button
         type="button"
@@ -469,14 +496,17 @@ function AuthTimeoutScreen() {
           cursor: "pointer",
           border: "none",
           borderRadius: "0.5rem",
-          padding: "0.75rem 1.5rem",
+          padding: "0.75rem 1.75rem",
           fontWeight: 700,
-          fontSize: "1rem",
-          background: "#51a488",
-          color: "#031a0d",
+          fontSize: "0.95rem",
+          background: "#C5A059",
+          color: "#0A0A0C",
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          boxShadow: "0 4px 16px rgba(197, 160, 89, 0.25)",
         }}
       >
-        Reload
+        Ricarica
       </button>
     </div>
   );
@@ -491,22 +521,31 @@ function AppShell() {
   // unreachable), surface an actionable screen rather than an indefinite black
   // placeholder — the "tutto nero" symptom is precisely isLoaded stuck false.
   useEffect(() => {
-    if (isLoaded || location === "/") return;
+    if (isLoaded) return;
     const timer = window.setTimeout(() => setAuthTimedOut(true), 12000);
     return () => window.clearTimeout(timer);
-  }, [isLoaded, location]);
-
-  // Keep the same public component while auth initializes and after sign-out,
-  // so loading Clerk doesn't reset a visitor's demonstration or analytics.
-  // Signed-in root visitors still enter their workspace once auth loads.
-  if (location === "/" && !isSignedIn) return <MarketingLanding lang="en" />;
-  if (location === "/academy" && !isSignedIn) return <Suspense fallback={<PageFallback />}><AcademyWelcome /></Suspense>;
+  }, [isLoaded]);
 
   if (!isLoaded) {
+    if (authTimedOut && location === "/") {
+      return (
+        <Suspense fallback={<PageFallback />}>
+          <LandingPage />
+        </Suspense>
+      );
+    }
     return authTimedOut ? (
       <AuthTimeoutScreen />
     ) : (
       <div className="min-h-screen bg-[hsl(224,71%,4%)]" />
+    );
+  }
+
+  if (location === "/academy" && !isSignedIn) {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <AcademyWelcome />
+      </Suspense>
     );
   }
 
@@ -537,20 +576,19 @@ function ClerkConfigErrorScreen() {
         justifyContent: "center",
         gap: "1.25rem",
         padding: "1.5rem",
-        background: "#07111f",
-        color: "#f8fafc",
-        fontFamily: "'Fira Sans', system-ui, -apple-system, sans-serif",
+        background: "#0A0A0C",
+        color: "#F4F4F6",
+        fontFamily: "'Space Grotesk', system-ui, -apple-system, sans-serif",
         textAlign: "center",
       }}
     >
       <div style={{ fontSize: "2.5rem", lineHeight: 1 }}>🔑</div>
-      <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>
-        Authentication is not configured
+      <h1 style={{ margin: 0, fontSize: "1.75rem", fontWeight: 700, fontFamily: "'Cinzel', serif", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        Autenticazione Non Configurata
       </h1>
-      <p style={{ margin: 0, maxWidth: "34rem", color: "#94a3b8", lineHeight: 1.5 }}>
-        This build is missing a valid Clerk publishable key, so sign-in cannot
-        load. Set <code>VITE_CLERK_PUBLISHABLE_KEY</code> at build time (for the
-        AWS image, pass it as a <code>--build-arg</code>) and redeploy.
+      <p style={{ margin: 0, maxWidth: "34rem", color: "#8E8E99", lineHeight: 1.6, fontSize: "0.95rem" }}>
+        Questa build richiede la chiave pubblica Clerk per inizializzare l'accesso protetto al protocollo.
+        Configura <code>VITE_CLERK_PUBLISHABLE_KEY</code> nell'ambiente per procedere.
       </p>
     </div>
   );
@@ -565,6 +603,10 @@ function MarketingPage({ lang, page }: { lang: Language; page: SeoPageKey }) {
   const { setLanguage } = useLanguage();
   useEffect(() => {
     setLanguage(lang, false);
+    return () => {
+      const preferred = getStoredLanguagePreference() ?? getBrowserLanguage();
+      setLanguage(preferred, false);
+    };
   }, [lang, setLanguage]);
   return (
     <Suspense fallback={<PageFallback />}>
@@ -577,6 +619,10 @@ function MarketingLanding({ lang }: { lang: Language }) {
   const { setLanguage } = useLanguage();
   useEffect(() => {
     setLanguage(lang, false);
+    return () => {
+      const preferred = getStoredLanguagePreference() ?? getBrowserLanguage();
+      setLanguage(preferred, false);
+    };
   }, [lang, setLanguage]);
   return (
     <Suspense fallback={<PageFallback />}>
@@ -637,6 +683,20 @@ function ClerkProviderWithRoutes() {
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/terms" component={TermsPage} />
+          <Route path="/protocollo">
+            {() => (
+              <Suspense fallback={<PageFallback />}>
+                <Protocollo />
+              </Suspense>
+            )}
+          </Route>
+          <Route path="/sandbox">
+            {() => (
+              <Suspense fallback={<PageFallback />}>
+                <Protocollo />
+              </Suspense>
+            )}
+          </Route>
           {/* Internal design-system reference: dev-only, never reachable in a
               production build (finding: was publicly reachable at /styleguide). */}
           {import.meta.env.DEV && <Route path="/styleguide" component={Styleguide} />}
@@ -665,6 +725,7 @@ function ScrollToTop() {
 }
 
 function App() {
+  useMobileViewport();
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

@@ -398,6 +398,29 @@ export function TradingSettings() {
           </Button>
         </div>
 
+        <div className="rounded-xl border border-border/50 bg-card/40 backdrop-blur-sm p-4 space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-medium text-foreground">
+                Divisore Dimensione Lotti
+              </h4>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Valore base utilizzato dal calcolatore lotti per la stima della size operativa (predefinito: {DEFAULT_LOT_DIVISOR}).
+              </p>
+            </div>
+            <div className="w-32">
+              <Input
+                type="number"
+                min={1}
+                step={10}
+                value={localDivisor}
+                onChange={(e) => handleDivisorChange(e.target.value)}
+                className="h-9 text-right font-mono"
+              />
+            </div>
+          </div>
+        </div>
+
         <Button
           variant="outline"
           className="w-full rounded-lg"

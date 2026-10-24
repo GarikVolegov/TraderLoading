@@ -46,6 +46,16 @@ const position: OpenPosition = {
 const drawings: ReplayDrawing[] = [
   { id: "d1", kind: "hline", price: 1.15, color: "#3b82f6", width: 2 },
   { id: "d2", kind: "trend", a: { time: 100, price: 1.1 }, b: { time: 200, price: 1.2 }, color: "#f59e0b", width: 1 },
+  { id: "d3", kind: "ray", a: { time: 150, price: 1.12 }, b: { time: 250, price: 1.22 }, color: "#10b981", width: 2 },
+  { id: "d4", kind: "arrow", a: { time: 180, price: 1.14 }, b: { time: 220, price: 1.18 }, color: "#ec4899", width: 2 },
+  { id: "d5", kind: "vline", time: 190, color: "#8b5cf6", width: 1 },
+  { id: "d6", kind: "hray", at: { time: 195, price: 1.16 }, color: "#22d3ee", width: 2 },
+  { id: "d7", kind: "arrowUp", at: { time: 196, price: 1.13 }, color: "#089981", width: 2, text: "Buy" },
+  { id: "d8", kind: "arrowDown", at: { time: 198, price: 1.19 }, color: "#f23645", width: 2, text: "Sell" },
+  { id: "d9", kind: "path", points: [{ time: 120, price: 1.11 }, { time: 160, price: 1.15 }, { time: 210, price: 1.13 }], color: "#a855f7", width: 2 },
+  { id: "d10", kind: "highlighter", points: [{ time: 130, price: 1.12 }, { time: 170, price: 1.14 }], color: "#eab308", width: 4 },
+  { id: "d11", kind: "frvp", a: { time: 100, price: 1.1 }, b: { time: 220, price: 1.2 }, color: "#3b82f6", width: 2 },
+  { id: "d12", kind: "rect", a: { time: 100, price: 1.1 }, b: { time: 200, price: 1.2 }, color: "#3b82f6", width: 1, showMidline: true, extendRight: true, fillOpacity: 0.25 },
 ];
 
 const draft: TerminalStateDraft = {
@@ -87,6 +97,11 @@ assert.deepEqual(parsed?.drawings, drawings);
 assert.deepEqual(parsed?.ticket, draft.ticket);
 assert.equal(parsed?.settings.chartType, "heikin");
 assert.equal(parsed?.settings.magnet, false);
+assert.equal(parsed?.settings.showTradesOnChart, true);
+assert.equal(parsed?.settings.tradeLineMode, "hover_or_latest");
+assert.equal(parsed?.settings.candleUpColor, "#c5a059");
+assert.equal(parsed?.settings.showOhlcLegend, true);
+assert.equal(parsed?.settings.priceScaleMode, "normal");
 assert.equal(parsed?.initialBalance, 10_000);
 assert.equal(parsed?.indicators.length, 3);
 

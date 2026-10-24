@@ -74,7 +74,7 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
         aria-valuetext={`${Math.round(engine.progress * 100)}%`}
         style={{ "--btm-progress": `${engine.progress * 100}%` } as React.CSSProperties} />
       <div className="btm-clock" aria-live="off">
-        <span className="btm-clock-time">{engine.replayTime != null ? formatUtcReplayTime(engine.replayTime, terminalLocale(language)) : "—"} <span className="btm-timezone">{uiText("backtest_terminal.timezone_utc")}</span></span>
+        <span className="btm-clock-time">{engine.replayTime != null ? formatUtcReplayTime(engine.replayTime, terminalLocale(language)) : "—"} <span className="btm-timezone">CET</span></span>
         <span className="btm-clock-count">{engine.appending || engine.executing ? uiText("backtest_terminal.loading_history") : uiText("backtest_terminal.candle_counter", { current: Math.min(engine.cursor + 1, engine.candles.length), total: engine.candles.length })}</span>
       </div>
       <div className="btm-jump-anchor">

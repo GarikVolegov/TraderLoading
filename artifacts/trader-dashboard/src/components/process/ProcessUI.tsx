@@ -1,4 +1,11 @@
-import { cloneElement, isValidElement, type ReactNode, useId, useRef, useEffect } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  type ReactNode,
+  useId,
+  useRef,
+  useEffect,
+} from "react";
 import { Check, ArrowRight, Circle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { PageLayout } from "@/components/PageLayout";
@@ -27,10 +34,10 @@ export function ProcessFrame({
   const copy = useProcessCopy();
   return (
     <PageLayout quiet>
-      <main className="process-workspace">
+      <main className="process-workspace limen-scroll-pane">
         <header className={`process-heading${visualStage ? " process-heading-immersive" : ""}`}>
           <div className="process-heading-copy">
-            <p className="process-eyebrow">TraderLoading / {title}</p>
+            <p className="process-eyebrow">{`${copy("path")} // CICLO OPERATIVO`}</p>
             <h1>{title}</h1>
             <p>{subtitle}</p>
           </div>

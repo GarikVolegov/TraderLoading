@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800" fill="none">
+  <!-- LIMEN PROTOCOL · CHEST EMBROIDERY SPECIFICATION -->
+  <!-- Target: Gildan 18500 Unisex Heavy Blend Hoodie (Sport Grey) -->
+  <!-- Thread 1: Antique Gold (#C5A059) Satin/Tatami Stitch -->
+  <!-- Thread 2: Pitch Black (#111111) Satin Stitch -->
+
+  <!-- BASE PLINTH (THRESHOLD) -->
+  <line x1="200" y1="500" x2="600" y2="500" stroke="#111111" stroke-width="12" stroke-linecap="round" />
+  <line x1="240" y1="520" x2="560" y2="520" stroke="#C5A059" stroke-width="8" stroke-linecap="round" />
+
+  <!-- OUTER SANCTUARY PORTAL ARCH -->
+  <path d="M230 500V290L400 130L570 290V500" stroke="#111111" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- TRANSOM LINTEL BEAM -->
+  <line x1="210" y1="290" x2="590" y2="290" stroke="#C5A059" stroke-width="10" stroke-linecap="round" />
+
+  <!-- INNER SANCTUM ARCH -->
+  <path d="M305 500V380L400 325L495 380V500" stroke="#111111" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- CELESTIAL AXIS OF DISCIPLINE -->
+  <line x1="400" y1="130" x2="400" y2="320" stroke="#C5A059" stroke-width="9" stroke-linecap="round" />
+
+  <!-- CENTRAL KEYSTONE RHOMBUS -->
+  <polygon points="400,365 446,410 400,455 354,410" fill="#C5A059" stroke="#111111" stroke-width="3" />
+  <circle cx="400" cy="410" r="11" fill="#111111" />
+
+  <!-- SATELLITE ACCENT DOTS -->
+  <circle cx="230" cy="290" r="5" fill="#C5A059" />
+  <circle cx="570" cy="290" r="5" fill="#C5A059" />
+
+  <!-- TYPOGRAPHY: LIMEN -->
+  <g id="wordmark-limen" fill="#111111">
+    <text x="400" y="605" text-anchor="middle" font-family="'Cinzel', 'Copperplate', 'Times New Roman', serif" font-size="62" font-weight="700" letter-spacing="18">LIMEN</text>
+  </g>
+
+  <!-- SUBTITLE: PROTOCOL -->
+  <g id="wordmark-protocol" fill="#C5A059">
+    <text x="400" y="655" text-anchor="middle" font-family="'Cinzel', 'Trajan Pro', 'Georgia', serif" font-size="22" font-weight="600" letter-spacing="10">· PROTOCOL ·</text>
+  </g>
+
+  <!-- MOTTO: SOGLIA OPERATIVA -->
+  <g id="motto" fill="#4B5563">
+    <text x="400" y="695" text-anchor="middle" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="14" font-weight="600" letter-spacing="5">SOGLIA OPERATIVA // MMXXIV</text>
+  </g>
+</svg>

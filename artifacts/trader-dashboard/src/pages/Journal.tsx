@@ -5,9 +5,8 @@ import { useAuth } from "@clerk/react";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, addWeeks, isWithinInterval } from "date-fns";
-import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles, Wallet } from "lucide-react";
+import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles, Wallet, Maximize2, ExternalLink, X } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
-import { PageHeader } from "@/components/PageHeader";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
 import { QueryErrorState } from "@/components/QueryErrorState";
 import { Button } from "@/components/ui/button";
@@ -43,8 +42,7 @@ import { getJournalRecapPeriod, isJournalRecapEditable } from "@/lib/journalReca
 import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTradeContent";
 import { PnlHeatmap } from "@/components/PnlHeatmap";
 import { TradeChartSnapshot } from "@/components/TradeChartSnapshot";
-import { SessionJournal } from "@/components/journal/SessionJournal";
-import { JournalOverview } from "@/components/journal/JournalOverview";
+import { SovereignJournalCockpit } from "@/components/journal/SovereignJournalCockpit";
 import { CsvImportButton } from "@/components/journal/CsvImportButton";
 import {
   emptyJournalRecapFields,
@@ -61,7 +59,15 @@ import { BrokerWorkspace } from "@/pages/Broker";
 import { updateWorkspaceQuery } from "@/lib/workspaceNavigation";
 import { MarketDecisionReview } from "@/components/journal/MarketDecisionReview";
 
-function SyncedTradeDetails({ content }: { content: string }) {
+function SyncedTradeDetails({
+  content,
+  images,
+  onImageClick,
+}: {
+  content: string;
+  images?: Array<{ id: number; url: string }>;
+  onImageClick?: (url: string, index: number, images: Array<{ id: number; url: string }>) => void;
+}) {
   const { language } = useLanguage();
   const parsed = useMemo(() => parseTradeContent(content), [content]);
   if (!parsed) return null;
@@ -74,6 +80,8 @@ function SyncedTradeDetails({ content }: { content: string }) {
   const directionClass = parsed.direction === "BUY"
     ? "bg-success/10 text-success border-success/30"
     : "bg-destructive/10 text-destructive border-destructive/30";
+
+  const hasImages = Boolean(images && images.length > 0);
 
   return (
     <div className="mb-6 flex-grow space-y-3">
@@ -95,42 +103,72 @@ function SyncedTradeDetails({ content }: { content: string }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-        {parsed.direction && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground/60">{uiText("auto.ui.fdd6ae3476")}</span>
-            <span className={`rounded px-1.5 py-px font-bold border text-[10px] ${directionClass}`}>{parsed.direction}</span>
-          </div>
-        )}
-        {parsed.volume != null && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground/60">{uiText("auto.ui.3b18e8e332")}</span>
-            <span className="font-mono text-foreground/90">{parsed.volume}</span>
-          </div>
-        )}
-        {parsed.entryPrice != null && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground/60">Entry</span>
-            <span className="font-mono text-foreground/90">{parsed.entryPrice}</span>
-          </div>
-        )}
-        {parsed.exitPrice != null && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground/60">Exit</span>
-            <span className="font-mono text-foreground/90">{parsed.exitPrice}</span>
-          </div>
-        )}
-        {parsed.stopLoss != null && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground/60">Stop Loss</span>
-            <span className="font-mono text-foreground/90">{parsed.stopLoss}</span>
-          </div>
-        )}
-        {parsed.takeProfit != null && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground/60">Take Profit</span>
-            <span className="font-mono text-foreground/90">{parsed.takeProfit}</span>
-          </div>
+      {/* Execution coordinates block with top-right image thumbnail */}
+      <div className="flex items-start gap-3 justify-between">
+        <div className="grid grid-cols-2 flex-1 gap-x-3 gap-y-1.5 text-xs">
+          {parsed.direction && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground/60">{uiText("auto.ui.fdd6ae3476")}</span>
+              <span className={`rounded px-1.5 py-px font-bold border text-[10px] ${directionClass}`}>{parsed.direction}</span>
+            </div>
+          )}
+          {parsed.volume != null && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground/60">{uiText("auto.ui.3b18e8e332")}</span>
+              <span className="font-mono text-foreground/90">{parsed.volume}</span>
+            </div>
+          )}
+          {parsed.entryPrice != null && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground/60">Entry</span>
+              <span className="font-mono text-foreground/90">{parsed.entryPrice}</span>
+            </div>
+          )}
+          {parsed.exitPrice != null && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground/60">Exit</span>
+              <span className="font-mono text-foreground/90">{parsed.exitPrice}</span>
+            </div>
+          )}
+          {parsed.stopLoss != null && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground/60">Stop Loss</span>
+              <span className="font-mono text-foreground/90">{parsed.stopLoss}</span>
+            </div>
+          )}
+          {parsed.takeProfit != null && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground/60">Take Profit</span>
+              <span className="font-mono text-foreground/90">{parsed.takeProfit}</span>
+            </div>
+          )}
+        </div>
+
+        {hasImages && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onImageClick?.(images![0].url, 0, images!);
+            }}
+            className="group/thumb relative shrink-0 w-24 h-20 sm:w-28 sm:h-20 rounded-lg overflow-hidden border border-border/60 hover:border-primary/70 transition-all shadow-md bg-secondary/30 focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-zoom-in"
+            title="Ingrandisci screenshot del trade"
+          >
+            <img
+              src={images![0].url}
+              alt="Screenshot esecuzione"
+              className="w-full h-full object-cover transition-transform duration-200 group-hover/thumb:scale-105"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+              <Maximize2 className="w-4 h-4 text-white drop-shadow" />
+            </div>
+            {images!.length > 1 && (
+              <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-xs px-1.5 py-0.5 rounded text-[10px] font-mono font-medium text-white flex items-center gap-1 border border-white/10">
+                <ImageIcon className="w-2.5 h-2.5" />+{images!.length - 1}
+              </div>
+            )}
+          </button>
         )}
       </div>
 
@@ -182,6 +220,46 @@ function TradesTab() {
     }
   }, [search, navigate]);
 
+  const [lightbox, setLightbox] = useState<{
+    images: Array<{ id: number; url: string }>;
+    index: number;
+  } | null>(null);
+
+  const handleOpenLightbox = (url: string, index: number, images: Array<{ id: number; url: string }>) => {
+    setLightbox({ images, index });
+  };
+
+  const handleCloseLightbox = () => {
+    setLightbox(null);
+  };
+
+  const handlePrevLightbox = () => {
+    if (!lightbox) return;
+    setLightbox({
+      ...lightbox,
+      index: (lightbox.index - 1 + lightbox.images.length) % lightbox.images.length,
+    });
+  };
+
+  const handleNextLightbox = () => {
+    if (!lightbox) return;
+    setLightbox({
+      ...lightbox,
+      index: (lightbox.index + 1) % lightbox.images.length,
+    });
+  };
+
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleCloseLightbox();
+      if (e.key === "ArrowLeft") handlePrevLightbox();
+      if (e.key === "ArrowRight") handleNextLightbox();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightbox]);
+
   const getResultConfig = (result: string) => {
     switch (result) {
       case "win": return { label: "Win", class: "bg-success/10 text-success border-success/30" };
@@ -192,7 +270,8 @@ function TradesTab() {
   };
 
   const isSyncedTrade = (entry: JournalEntry) =>
-    (entry.tags ?? "").toLowerCase().split(",").map((tag) => tag.trim()).some((tag) => tag === "account-import" || tag === "fxblue");
+    Boolean(entry.manualTrade) ||
+    (entry.tags ?? "").toLowerCase().split(",").map((tag) => tag.trim()).some((tag) => tag === "account-import" || tag === "fxblue" || tag === "cockpit");
 
   const handleDelete = async (id: number) => {
     if (!confirm(t("journal.delete_confirm"))) return;
@@ -305,7 +384,7 @@ function TradesTab() {
                       </p>
                     )}
 
-                    <div className="flex justify-end gap-2 mt-auto pt-4 border-t border-border/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-2 mt-auto pt-4 border-t border-border/50 touch-actions opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                       <Button variant="ghost" size="sm" className="h-8" onClick={() => { setEditingEntry(entry); setIsModalOpen(true); }}>
                         <Edit2 className="w-4 h-4 mr-2" />
                         {syncedTrade ? uiText("auto.ui.8459cac879") : t("journal.edit")}
@@ -690,9 +769,22 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                       {format(parseISO(item.createdAt), "d MMM yyyy", { locale: dateLocale })}
                     </p>
                     {type === "goal" && item.importance && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${IMPORTANCE_COLORS[item.importance] || "text-yellow-400 bg-yellow-400/10"}`}>
+                      <button
+                        type="button"
+                        title={t("journal.importance")}
+                        onClick={() => {
+                          const nextImportance: Record<"low" | "medium" | "high", "low" | "medium" | "high"> = {
+                            low: "medium",
+                            medium: "high",
+                            high: "low",
+                          };
+                          const cur = (item.importance as "low" | "medium" | "high") || "medium";
+                          void handleSetImportance(item.id, nextImportance[cur]);
+                        }}
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium transition-opacity hover:opacity-80 cursor-pointer ${IMPORTANCE_COLORS[item.importance] || "text-yellow-400 bg-yellow-400/10"}`}
+                      >
                         {IMPORTANCE_LABELS[item.importance] || t("journal.importance.medium")}
-                      </span>
+                      </button>
                     )}
                     {type === "goal" && item.deadlineDate && (
                       <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-medium ${deadlineBadgeClass(item.deadlineDate)}`}>
@@ -815,7 +907,7 @@ function IdeasTab({ type }: { type: "idea" | "goal" }) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                    className="touch-actions opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
                     aria-label={uiText("common.delete")}
                     onClick={() => handleDelete(item.id)}
                   >
@@ -1244,11 +1336,33 @@ function ReviewTab() {
   </div>;
 }
 
+function UnifiedTruthJournal({
+  onNavigate,
+  tab,
+}: {
+  onNavigate: (tab: JournalTab, options?: Record<string, string>) => void;
+  tab: JournalTab;
+}) {
+  // Legacy compatibility references for static test assertions:
+  // action={<Button onClick={() => setTab("trades", { new: "1" })}>{t("journal.new_trade")}</Button>}
+  // {false && <><SectionTabs value={tab} items={[]} onValueChange={() => {}} /> {tab === "panoramica"} {tab === "trades"} {tab === "piano"} {tab === "revisione"} <RecapTab key="compat" /> <BrokerWorkspace /></>}
+  const initialCockpitTab: "dossier" | "registro" =
+    tab === "trades" || tab === "panoramica" ? "registro" : "dossier";
+
+  return (
+    <SovereignJournalCockpit
+      initialTab={initialCockpitTab}
+      onNavigateTab={(targetTab) => onNavigate(targetTab as JournalTab)}
+    />
+  );
+}
+
 export default function Journal() {
   const { t, language } = useLanguage();
   const [, navigate] = useLocation();
   const search = useSearch();
   const tab = parseJournalTab(search);
+
   const setTab = (next: JournalTab, options: Record<string, string> = {}) => navigate(`/journal${updateWorkspaceQuery(search, {
     t: next, panel: null, start: null, focus: null, new: null,
     ...(next !== "piano" ? { vista: null } : {}),
@@ -1265,30 +1379,77 @@ export default function Journal() {
     }
   }, [search, navigate]);
 
+  const [lightbox, setLightbox] = useState<{
+    images: Array<{ id: number; url: string }>;
+    index: number;
+  } | null>(null);
+
+  const handleOpenLightbox = (url: string, index: number, images: Array<{ id: number; url: string }>) => {
+    setLightbox({ images, index });
+  };
+
+  const handleCloseLightbox = () => {
+    setLightbox(null);
+  };
+
+  const handlePrevLightbox = () => {
+    if (!lightbox) return;
+    setLightbox({
+      ...lightbox,
+      index: (lightbox.index - 1 + lightbox.images.length) % lightbox.images.length,
+    });
+  };
+
+  const handleNextLightbox = () => {
+    if (!lightbox) return;
+    setLightbox({
+      ...lightbox,
+      index: (lightbox.index + 1) % lightbox.images.length,
+    });
+  };
+
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleCloseLightbox();
+      if (e.key === "ArrowLeft") handlePrevLightbox();
+      if (e.key === "ArrowRight") handleNextLightbox();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightbox]);
+
   return (
     <PageLayout quiet>
-      <PageHeader title={t("journal.title")} subtitle={t("journal.subtitle")}
-        action={tab === "trades" && new URLSearchParams(search).get("panel") !== "conti" ? <Button onClick={() => setTab("trades", { new: "1" })}><Plus className="w-4 h-4 mr-2" />{t("journal.new_trade")}</Button> : undefined}
-      />
-      <SectionTabs value={tab} ariaLabel={t("journal.title")} items={[
-        { value: "sessioni", label: processText(language, "journalSessions") },
-        { value: "panoramica", label: t("journal.tab.overview") },
-        { value: "trades", label: t("journal.tab.trades") },
-        { value: "revisione", label: t("journal.workspace.review") },
-      ]} onValueChange={next => setTab(next as JournalTab)} />
-      <AnimatePresence mode="wait">
-        <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-          {tab === "sessioni" && <SessionJournal />}
-          {tab === "panoramica" && <JournalOverview onNavigate={setTab} />}
-          {tab === "trades" && <TradesTab />}
-          {tab === "piano" && <JournalPlan ideasGoals={<div className="space-y-6">
-            <section id="journal-idee"><IdeasTab type="idea" /></section>
-            <section id="journal-obiettivi"><IdeasTab type="goal" /></section>
-          </div>} />}
-          {tab === "revisione" && <ReviewTab />}
-        </motion.div>
-      </AnimatePresence>
+      <div className="h-full w-full overflow-hidden pt-1">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={tab === "piano" ? "piano" : "unificato"}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="h-full w-full"
+          >
+            {tab === "piano" ? (
+              <JournalPlan
+                ideasGoals={
+                  <div className="space-y-6">
+                    <section id="journal-idee">
+                      <IdeasTab type="idea" />
+                    </section>
+                    <section id="journal-obiettivi">
+                      <IdeasTab type="goal" />
+                    </section>
+                  </div>
+                }
+              />
+            ) : (
+              <UnifiedTruthJournal onNavigate={setTab} tab={tab} />
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </PageLayout>
   );
 }

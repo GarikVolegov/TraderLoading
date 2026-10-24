@@ -3,7 +3,7 @@
 // cards with params, colors, placement, custom formula) and Strumenti (chart
 // type, default drawing color/width, magnet, rail visibility).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, Trash2, X } from "lucide-react";
+import { HelpCircle, Plus, Search, Star, Trash2, X } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
 import { useEscapeToClose } from "./HotkeysHelp";
 import { FormulaError, parseFormula } from "@/lib/replay/formulaParser";
@@ -18,13 +18,12 @@ import {
   type IndicatorSource,
   type IndicatorType,
 } from "@/lib/replay/indicatorCatalog";
-import {
-  createChartTemplateStorageKey,
-  parseChartTemplates,
-  serializeChartTemplates,
-} from "@/lib/replay/terminalPersistence";
-import type { ChartType } from "@/lib/replay/types";
-import { DRAWING_TOOLS } from "./toolRailModel";
+import { DEFAULT_TERMINAL_SETTINGS } from "@/lib/replay/terminalPersistence";
+import { DEFAULT_FAVORITE_TOOLS, pickChartSettings } from "../../../../../contracts/backtestChart";
+import { ChartAppearanceSettings } from "./ChartAppearanceSettings";
+import { ColorControl } from "./ColorControl";
+import "./chart-workspace.css";
+import { DRAWING_TOOLS, type DrawingToolId } from "./toolRailModel";
 import type { ReplayEngine } from "./useReplayEngine";
 
 const ADDABLE_TYPES: IndicatorType[] = [
@@ -43,7 +42,6 @@ const ADDABLE_TYPES: IndicatorType[] = [
 
 const SOURCES: IndicatorSource[] = ["close", "open", "high", "low", "hl2", "ohlc4"];
 const MAS: IndicatorMa[] = ["ema", "sma", "wma", "none"];
-const CHART_TYPES: ChartType[] = ["candles", "heikin", "line"];
 
 function formulaErrorKey(error: FormulaError): string {
   return `backtest_terminal.formula.${error.code}`;
@@ -90,10 +88,14 @@ function IndicatorCard({
   config,
   onChange,
   onRemove,
+  favoriteColors,
+  onFavoriteColorsChange,
 }: {
   config: IndicatorConfig;
   onChange: (next: IndicatorConfig) => void;
   onRemove: () => void;
+  favoriteColors: string[];
+  onFavoriteColorsChange: (colors: string[]) => void;
 }) {
   const meta = INDICATOR_META[config.type];
   const pane = indicatorPane(config);
@@ -205,6 +207,7 @@ function IndicatorCard({
         </div>
       )}
 
+      {config.type !== "volume" && <ColorControl label={uiText("backtest_terminal.color")} value={config.color} onChange={color => onChange({ ...config, color })} favorites={favoriteColors} onFavoritesChange={onFavoriteColorsChange} />}
       {config.type !== "volume" && (
         <div className="btm-swatches" role="group" aria-label={uiText("backtest_terminal.color")}>
           {INDICATOR_SWATCHES.map((swatch) => (
@@ -228,100 +231,37 @@ function IndicatorCard({
 
 /** Saved chart templates (indicators + settings), global across sessions. */
 function ChartTemplates({ engine }: { engine: ReplayEngine }) {
-  const [templates, setTemplates] = useState(() => {
-    try {
-      return parseChartTemplates(window.localStorage.getItem(createChartTemplateStorageKey()));
-    } catch {
-      return {};
-    }
-  });
+  const { chartPreferences } = engine;
+  const templates = chartPreferences.preferences.templates;
   const [name, setName] = useState("");
-
-  const persist = (next: ReturnType<typeof parseChartTemplates>) => {
-    setTemplates(next);
-    try {
-      window.localStorage.setItem(createChartTemplateStorageKey(), serializeChartTemplates(next));
-    } catch {
-      /* storage unavailable */
-    }
-  };
-
-  const saveCurrent = () => {
-    const trimmed = name.trim();
-    if (trimmed === "") return;
-    persist({ ...templates, [trimmed]: { indicators: engine.indicators, settings: engine.settings } });
-    setName("");
-  };
-
-  const names = Object.keys(templates).sort();
-
-  return (
-    <div className="btm-field">
-      <span className="btm-field-label">{uiText("backtest_terminal.templates")}</span>
-      {names.map((templateName) => (
-        <div key={templateName} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <span style={{ flex: 1, fontSize: 12.5 }}>{templateName}</span>
-          <button
-            type="button"
-            className="btm-toggle"
-            data-on="true"
-            onClick={() => {
-              engine.setIndicators(templates[templateName].indicators.map((config) => ({ ...config })));
-              engine.setSettings({ ...templates[templateName].settings });
-            }}
-          >
-            {uiText("backtest_terminal.template_apply")}
-          </button>
-          <button
-            type="button"
-            className="btm-trash"
-            onClick={() => {
-              const next = { ...templates };
-              delete next[templateName];
-              persist(next);
-            }}
-            title={uiText("backtest_terminal.template_delete")}
-            aria-label={uiText("backtest_terminal.template_delete")}
-          >
-            <Trash2 size={13} />
-          </button>
-        </div>
-      ))}
-      <div style={{ display: "flex", gap: 6 }}>
-        <input
-          className="btm-input"
-          value={name}
-          placeholder={uiText("backtest_terminal.template_name")}
-          onChange={(event) => setName(event.target.value)}
-          aria-label={uiText("backtest_terminal.template_name")}
-        />
-        <button
-          type="button"
-          className="btm-toggle"
-          data-on="true"
-          style={{ flexShrink: 0 }}
-          disabled={name.trim() === ""}
-          onClick={saveCurrent}
-        >
-          {uiText("backtest_terminal.template_save")}
-        </button>
-      </div>
-    </div>
-  );
+  const [editing, setEditing] = useState<string | null>(null);
+  const [rename, setRename] = useState("");
+  const updateTemplates = (next: typeof templates) => chartPreferences.update(previous => ({ ...previous, templates: next }));
+  return <div className="btm-template-workspace">
+    <p className="btm-muted">{["Salva aspetto, indicatori e impostazioni dei disegni. Le operazioni e i costi della simulazione restano nella sessione."].map(text => text)}</p>
+    <div className="btm-template-save"><input className="btm-input" value={name} maxLength={80} placeholder={uiText("backtest_terminal.template_name")} aria-label={uiText("backtest_terminal.template_name")} onChange={e => setName(e.target.value)} /><button type="button" className="btm-toggle" data-on="true" disabled={!name.trim() || templates.length >= 50} onClick={() => { updateTemplates([...templates, { id: crypto.randomUUID(), name: name.trim(), settings: pickChartSettings(engine.settings), indicators: engine.indicators.map(config => ({ ...config })) }]); setName(""); }}>{uiText("backtest_terminal.template_save")}</button></div>
+    <span className="btm-muted">{[templates.length].map(count => `${count} / 50 template`)}</span>
+    {templates.map(template => <div className="btm-template-row" key={template.id}>
+      {editing === template.id ? <form className="btm-template-rename" onSubmit={event => { event.preventDefault(); if (!rename.trim()) return; updateTemplates(templates.map(item => item.id === template.id ? { ...item, name: rename.trim() } : item)); setEditing(null); }}><input className="btm-input" autoFocus maxLength={80} aria-label="Nuovo nome template" value={rename} onChange={e => setRename(e.target.value)} /><button className="btm-toggle" type="submit" disabled={!rename.trim()}>Salva</button><button className="btm-toggle" type="button" onClick={() => setEditing(null)}>Annulla</button></form> : <><strong>{template.name}</strong><button type="button" className="btm-toggle" onClick={() => { engine.setIndicators(template.indicators.map(config => ({ ...config }))); engine.setSettings({ ...engine.settings, ...pickChartSettings(template.settings) }); }}>{uiText("backtest_terminal.template_apply")}</button><button type="button" className="btm-toggle" onClick={() => { setEditing(template.id); setRename(template.name); }}>Rinomina</button></>}
+      <button type="button" className="btm-trash" aria-label={`${uiText("backtest_terminal.template_delete")} ${template.name}`} onClick={() => updateTemplates(templates.filter(item => item.id !== template.id))}><Trash2 size={14} /></button>
+    </div>)}
+  </div>;
 }
 
 export function TerminalSettingsDialog({
   engine,
-  initialTab = "indicators",
+  initialTab = "chart",
   initialIndicatorId,
   onClose,
+  onOpenKnowledge,
 }: {
   engine: ReplayEngine;
-  initialTab?: "indicators" | "tools";
+  initialTab?: "chart" | "indicators" | "tools" | "templates";
   initialIndicatorId?: string;
   onClose: () => void;
+  onOpenKnowledge?: (tool: DrawingToolId) => void;
 }) {
-  const [tab, setTab] = useState<"indicators" | "tools">(initialTab);
+  const [tab, setTab] = useState<"chart" | "indicators" | "tools" | "templates">(initialTab);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | undefined>(initialIndicatorId ?? engine.indicators[0]?.id);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -370,23 +310,27 @@ export function TerminalSettingsDialog({
         }}
       >
         <div className="btm-modal-head">
-          <h2 className="btm-modal-title">{uiText(tab === "indicators" ? "backtest_terminal.indicators" : "backtest_terminal.tools_tab")}</h2>
+          <h2 className="btm-modal-title">{uiText("backtest_terminal.settings")}</h2>
           <button type="button" className="btm-iconbtn" onClick={onClose} aria-label={uiText("backtest_terminal.close")}>
             <X size={15} />
           </button>
         </div>
 
-        <div className="btm-tabs" role="tablist">
-          <button type="button" role="tab" aria-selected={tab === "indicators"} data-active={tab === "indicators"} onClick={() => setTab("indicators")}>
-            {uiText("backtest_terminal.indicators")}
-          </button>
-          <button type="button" role="tab" aria-selected={tab === "tools"} data-active={tab === "tools"} onClick={() => setTab("tools")}>
-            {uiText("backtest_terminal.tools_tab")}
-          </button>
+        <div className="btm-tabs btm-workspace-tabs" role="tablist" aria-label={uiText("backtest_terminal.chart_settings")}>
+          {([ ["chart", "Aspetto"], ["tools", "Strumenti"], ["indicators", "Indicatori"], ["templates", "Template"] ] as const).map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} data-active={tab === id} onClick={() => setTab(id)}>{label}</button>)}
+        </div>
+        <div className="btm-sync-status" role="status">
+          {{ loading: "Caricamento preferenze…", saved: "Preferenze sincronizzate", saving: "Salvataggio…", offline: "Offline · modifiche conservate su questo dispositivo", pending: "Modifiche in attesa", error: "Sincronizzazione non riuscita · modifiche conservate", conflict: "Le preferenze sono state modificate su un altro dispositivo", local: "Preferenze salvate su questo dispositivo" }[engine.chartPreferences.status]}
+          {engine.chartPreferences.status === "conflict" && <><button type="button" className="btm-toggle" onClick={() => engine.chartPreferences.resolveConflict("local")}>Mantieni le mie</button><button type="button" className="btm-toggle" onClick={() => engine.chartPreferences.resolveConflict("remote")}>Usa quelle online</button></>}
+          {(engine.chartPreferences.status === "error" || engine.chartPreferences.status === "offline") && <button type="button" className="btm-toggle" onClick={() => engine.chartPreferences.retry()}>Riprova</button>}
         </div>
 
         <div className="btm-modal-body">
-          {tab === "indicators" ? (
+          {tab === "chart" ? (
+            <ChartAppearanceSettings engine={engine} />
+          ) : tab === "templates" ? (
+            <ChartTemplates engine={engine} />
+          ) : tab === "indicators" ? (
             <div className="btm-indicator-workspace">
               <aside className="btm-indicator-catalog">
                 <label className="btm-indicator-search">
@@ -417,6 +361,8 @@ export function TerminalSettingsDialog({
                 {selected ? (
                 <IndicatorCard
                   key={selected.id}
+                  favoriteColors={engine.chartPreferences.preferences.favoriteColors}
+                  onFavoriteColorsChange={favoriteColors => engine.chartPreferences.update(previous => ({ ...previous, favoriteColors }))}
                   config={selected}
                   onChange={(next) => setIndicators(indicators.map((item) => (item.id === next.id ? next : item)))}
                   onRemove={() => setIndicators(indicators.filter((item) => item.id !== selected.id))}
@@ -426,22 +372,8 @@ export function TerminalSettingsDialog({
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
-              <div className="btm-field">
-                <span className="btm-field-label">{uiText("backtest_terminal.chart_type")}</span>
-                <div className="btm-segmented">
-                  {CHART_TYPES.map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      data-active={settings.chartType === type}
-                      onClick={() => setSettings({ ...settings, chartType: type })}
-                    >
-                      {uiText(`backtest_terminal.chart_type.${type}`)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
+              <div className="btm-section-head"><h3>Impostazioni degli strumenti</h3><button type="button" className="btm-text-button" onClick={() => setSettings({ ...settings, toolColor: DEFAULT_TERMINAL_SETTINGS.toolColor, toolWidth: DEFAULT_TERMINAL_SETTINGS.toolWidth, magnet: DEFAULT_TERMINAL_SETTINGS.magnet, visibleTools: {} })}>Ripristina sezione</button></div>
+              <ColorControl label={uiText("backtest_terminal.tool_color")} value={settings.toolColor} onChange={toolColor => setSettings({ ...settings, toolColor })} favorites={engine.chartPreferences.preferences.favoriteColors} onFavoritesChange={favoriteColors => engine.chartPreferences.update(previous => ({ ...previous, favoriteColors }))} />
               <div className="btm-field">
                 <span className="btm-field-label">{uiText("backtest_terminal.tool_color")}</span>
                 <div className="btm-swatches">
@@ -469,7 +401,7 @@ export function TerminalSettingsDialog({
                   <input
                     type="range"
                     min={1}
-                    max={4}
+                    max={8}
                     step={1}
                     value={settings.toolWidth}
                     onChange={(event) => setSettings({ ...settings, toolWidth: Number.parseInt(event.target.value, 10) })}
@@ -492,6 +424,32 @@ export function TerminalSettingsDialog({
               </div>
 
               <div className="btm-field">
+                <span className="btm-field-label">{uiText("backtest_terminal.stay_in_drawing_mode")}</span>
+                <button
+                  type="button"
+                  className="btm-toggle"
+                  data-on={Boolean(settings.stayInDrawingMode)}
+                  style={{ alignSelf: "flex-start" }}
+                  onClick={() => setSettings({ ...settings, stayInDrawingMode: !settings.stayInDrawingMode })}
+                >
+                  {uiText(settings.stayInDrawingMode ? "backtest_terminal.ind_on" : "backtest_terminal.ind_off")}
+                </button>
+              </div>
+
+              <div className="btm-field">
+                <span className="btm-field-label">{uiText("backtest_terminal.show_favorite_toolbar")}</span>
+                <button
+                  type="button"
+                  className="btm-toggle"
+                  data-on={settings.showFavoriteToolbar !== false}
+                  style={{ alignSelf: "flex-start" }}
+                  onClick={() => setSettings({ ...settings, showFavoriteToolbar: settings.showFavoriteToolbar === false })}
+                >
+                  {uiText(settings.showFavoriteToolbar !== false ? "backtest_terminal.ind_on" : "backtest_terminal.ind_off")}
+                </button>
+              </div>
+
+              <div className="btm-field">
                 <span className="btm-field-label">{uiText("backtest_terminal.session_opens")}</span>
                 <button
                   type="button"
@@ -502,6 +460,37 @@ export function TerminalSettingsDialog({
                 >
                   {uiText(settings.showSessions ? "backtest_terminal.ind_on" : "backtest_terminal.ind_off")}
                 </button>
+              </div>
+
+              <div className="btm-field">
+                <span className="btm-field-label">{uiText("backtest_terminal.trades_on_chart")}</span>
+                <button
+                  type="button"
+                  className="btm-toggle"
+                  data-on={settings.showTradesOnChart !== false}
+                  style={{ alignSelf: "flex-start" }}
+                  onClick={() =>
+                    setSettings({ ...settings, showTradesOnChart: settings.showTradesOnChart === false })
+                  }
+                >
+                  {uiText(settings.showTradesOnChart !== false ? "backtest_terminal.ind_on" : "backtest_terminal.ind_off")}
+                </button>
+              </div>
+
+              <div className="btm-field">
+                <span className="btm-field-label">{uiText("backtest_terminal.trade_lines_mode")}</span>
+                <div className="btm-segmented">
+                  {(["hover_or_latest", "all", "none"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      data-active={(settings.tradeLineMode ?? "hover_or_latest") === mode}
+                      onClick={() => setSettings({ ...settings, tradeLineMode: mode })}
+                    >
+                      {uiText(`backtest_terminal.trade_lines_${mode}`)}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
@@ -535,16 +524,24 @@ export function TerminalSettingsDialog({
                 </div>
               </div>
 
-              <ChartTemplates engine={engine} />
+
 
               <div className="btm-field">
-                <span className="btm-field-label">{uiText("backtest_terminal.visible_tools")}</span>
+                <div className="btm-section-head">
+                  <span className="btm-field-label">{uiText("backtest_terminal.visible_tools")}</span>
+                  <button
+                    type="button"
+                    className="btm-text-button"
+                    onClick={() => engine.chartPreferences.update(previous => ({ ...previous, favoriteTools: [...DEFAULT_FAVORITE_TOOLS] }))}
+                  >
+                    {uiText("backtest_terminal.reset_favorite_tools")}
+                  </button>
+                </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                   {DRAWING_TOOLS.map((tool) => {
                     const visible = settings.visibleTools[tool.id] !== false;
                     return (
-                      <button
-                        key={tool.id}
+                      <span key={tool.id} className="btm-tool-preference"><button
                         type="button"
                         className="btm-toggle"
                         data-on={visible}
@@ -556,7 +553,7 @@ export function TerminalSettingsDialog({
                         }
                       >
                         {uiText(tool.labelKey)}
-                      </button>
+                      </button>{onOpenKnowledge && <button type="button" className="btm-iconbtn" title={`Spiegazione: ${uiText(tool.labelKey)}`} aria-label={`Spiegazione: ${uiText(tool.labelKey)}`} onClick={() => onOpenKnowledge(tool.id)}><HelpCircle size={13} /></button>}{tool.id !== "cursor" && <button type="button" className="btm-iconbtn" aria-label={`Preferito: ${uiText(tool.labelKey)}`} aria-pressed={engine.chartPreferences.preferences.favoriteTools.includes(tool.id)} onClick={() => engine.chartPreferences.update(previous => ({ ...previous, favoriteTools: previous.favoriteTools.includes(tool.id) ? previous.favoriteTools.filter(id => id !== tool.id) : [...previous.favoriteTools, tool.id] }))}><Star size={14} fill={engine.chartPreferences.preferences.favoriteTools.includes(tool.id) ? "currentColor" : "none"} /></button>}</span>
                     );
                   })}
                 </div>

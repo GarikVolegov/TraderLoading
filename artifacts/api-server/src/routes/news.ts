@@ -242,13 +242,8 @@ async function fetchRSSNews(pairCurrencies: string[], pairsStr: string): Promise
 function buildNewsImageUrl(keywords: string[] | undefined, sentiment: string | null, index = 0): string {
   const lock = (index * 37 + 1) % 1000 || 1;
   const kws = (keywords ?? []).filter(Boolean).slice(0, 3);
-  if (kws.length > 0) {
-    return `https://loremflickr.com/800/400/${kws.join(",")}?lock=${lock}`;
-  }
-  const sentMap: Record<string, string> = {
-    bullish: "growth,economy,finance", bearish: "recession,economy,finance", neutral: "economy,finance,market",
-  };
-  return `https://loremflickr.com/800/400/${sentMap[sentiment ?? ""] ?? "economy,finance,market"}?lock=${lock}`;
+  const q = kws.length > 0 ? kws.join(",") : (sentiment ?? "macro,finance");
+  return `/api/news/placeholder?keywords=${encodeURIComponent(q)}&sentiment=${encodeURIComponent(sentiment ?? "neutral")}&lock=${lock}`;
 }
 
 // ─── Translation (RSS fallback) ───────────────────────────────────────────────
@@ -427,7 +422,7 @@ function enrichHeuristically(
   });
 }
 
-function heuristicAgentSummary(articles: NewsArticle[], formattedPairs: string, lang: string): string {
+function heuristicAgentSummary(articles: NewsArticle[], _formattedPairs: string, _lang: string): string {
   // A digest of actual selected headlines, without inventing a generic macro narrative.
   return articles.filter(a => (a.impactScore ?? 0) >= 7).slice(0, 3).map(a => a.title).join(" · ");
 }
@@ -606,13 +601,25 @@ const NEWS_BUILD_CANDIDATE_LIMIT = 90;
 // Bump when the snapshot payload shape/ordering changes so stored snapshots
 // from older builds are not served (v6: original-text enrichment, hard-noise +
 // clickbait exclusions, per-language near-duplicate dedupe).
-const NEWS_ASSET_CACHE_VERSION = "pair-event-evidence-v13";
+const NEWS_ASSET_CACHE_VERSION = "pair-event-evidence-v14";
 
 export function newsCacheKey(input: { pairs?: string; lang?: string }): { cacheKey: string; pairsStr: string; lang: string } {
   const pairsStr = [...new Set((input.pairs ?? "").split(",").map(p=>p.replace(/\//g, "").trim().toUpperCase()).filter(Boolean))].sort().join(",");
   const lang = sanitizeNewsLang(input.lang);
   const baseCacheKey = pairsStr || "all";
   return { cacheKey: `${NEWS_ASSET_CACHE_VERSION}:${baseCacheKey}:${lang}`, pairsStr, lang };
+}
+
+function sanitizeNewsArticleImages(articles: NewsArticle[]): NewsArticle[] {
+  return (articles ?? []).map((article, index) => {
+    if (!article.imageUrl || article.imageUrl.includes("loremflickr.com")) {
+      return {
+        ...article,
+        imageUrl: buildNewsImageUrl(article.affectedPairs ?? article.primaryAssets, article.sentiment, index),
+      };
+    }
+    return article;
+  });
 }
 
 // Resolve to `fallback` if `promise` has not settled within `ms`. The underlying
@@ -645,7 +652,12 @@ async function readNewsSnapshot(cacheKey: string): Promise<{ payload: NewsRespon
     const row = rows[0];
     if (!row) return null;
     const updatedAt = row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt as unknown as string);
-    return { payload: row.payload as NewsResponse, updatedAt };
+    const rawPayload = row.payload as NewsResponse;
+    const payload: NewsResponse = {
+      ...rawPayload,
+      articles: sanitizeNewsArticleImages(rawPayload.articles ?? []),
+    };
+    return { payload, updatedAt };
   } catch (err) {
     console.warn("[news] snapshot read skipped:", err instanceof Error ? err.message : err);
     return null;
@@ -833,9 +845,11 @@ function revalidateNews(cacheKey: string, pairsStr: string, lang: string): Promi
 }
 
 export function refreshNewsEvidence(payload: NewsResponse, pairs: string): NewsResponse {
-  const articles = applyNewsFreshness(payload.articles, { freshnessWindowHours: payload.freshnessWindowHours ?? newsFreshnessWindowHours() })
-    .filter(article => !isHardNoiseNews(article))
-    .map(article => ({ ...article, qualityScore: computeNewsQualityScore(article), curationScore: scoreCuratedNewsArticle(article, { pairs }).score }));
+  const articles = sanitizeNewsArticleImages(
+    applyNewsFreshness(payload.articles, { freshnessWindowHours: payload.freshnessWindowHours ?? newsFreshnessWindowHours() })
+      .filter(article => !isHardNoiseNews(article))
+      .map(article => ({ ...article, qualityScore: computeNewsQualityScore(article), curationScore: scoreCuratedNewsArticle(article, { pairs }).score }))
+  );
   return { ...payload, articles, freshArticlesCount: articles.filter(a => !a.isFallback).length,
     fallbackArticlesCount: articles.filter(a => a.isFallback).length };
 }
@@ -996,6 +1010,38 @@ router.post("/news/feedback", async (req, res) => {
     console.error("[news] feedback write:", err);
     res.status(500).json({ error: "Errore interno" });
   }
+});
+
+router.get("/news/placeholder", (req, res) => {
+  const sentiment = ((req.query.sentiment as string) || "neutral").toLowerCase();
+  const rawKeywords = (req.query.keywords as string) || (req.query.query as string) || "MARKET INTEL";
+  const displayLabel = sentiment === "bullish" ? "BULLISH FLOW" : sentiment === "bearish" ? "BEARISH FLOW" : "MACRO RADAR";
+  const accentColor = sentiment === "bullish" ? "#10B981" : sentiment === "bearish" ? "#EF4444" : "#C5A059";
+  const sanitizedTitle = rawKeywords.slice(0, 42).replace(/[<>&"']/g, "").toUpperCase();
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400" fill="none">
+    <rect width="800" height="400" fill="#0A0B0E"/>
+    <defs>
+      <linearGradient id="gridGrad" x1="0" y1="0" x2="800" y2="400" gradientUnits="userSpaceOnUse">
+        <stop stop-color="${accentColor}" stop-opacity="0.12"/>
+        <stop offset="1" stop-color="#0A0B0E" stop-opacity="0.95"/>
+      </linearGradient>
+      <pattern id="matrixPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="${accentColor}" stroke-opacity="0.06" stroke-width="1"/>
+      </pattern>
+    </defs>
+    <rect width="800" height="400" fill="url(#gridGrad)"/>
+    <rect width="800" height="400" fill="url(#matrixPattern)"/>
+    <circle cx="400" cy="200" r="140" stroke="${accentColor}" stroke-opacity="0.18" stroke-dasharray="4 8" stroke-width="1.5"/>
+    <path d="M 100 290 Q 240 210, 400 230 T 700 130" fill="none" stroke="${accentColor}" stroke-width="2.5" stroke-opacity="0.65"/>
+    <text x="400" y="180" text-anchor="middle" fill="${accentColor}" font-family="monospace" font-size="12" font-weight="700" letter-spacing="3">${displayLabel}</text>
+    <text x="400" y="222" text-anchor="middle" fill="#F1F5F9" font-family="sans-serif" font-size="20" font-weight="700" letter-spacing="1">${sanitizedTitle}</text>
+    <text x="400" y="365" text-anchor="middle" fill="#64748B" font-family="monospace" font-size="9.5" letter-spacing="2">LIMEN PROTOCOL // OPERATING INTELLIGENCE</text>
+  </svg>`;
+
+  res.setHeader("Content-Type", "image/svg+xml");
+  res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+  res.send(svg);
 });
 
 router.get("/news", async (req, res) => {

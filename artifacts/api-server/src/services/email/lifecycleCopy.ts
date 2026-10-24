@@ -44,9 +44,9 @@ const COPY: Record<LifecycleLanguage, LifecycleCopy> = {
   it: {
     greeting: "Ciao,",
     footer:
-      "Ricevi questa email perche hai un account TraderLoading. Gestisci le preferenze email nelle impostazioni.",
+      "Ricevi questa email perche hai un account LIMEN. Gestisci le preferenze email nelle impostazioni.",
     welcome: {
-      subject: "Benvenuto su TraderLoading",
+      subject: "Benvenuto su LIMEN",
       title: "Benvenuto a bordo",
       intro: "Il tuo account e pronto. Ecco come iniziare col piede giusto.",
       body: "Registra il tuo primo trade nel diario, collega un broker per la sincronizzazione automatica e tieni d'occhio la disciplina con il coach.",
@@ -68,7 +68,7 @@ const COPY: Record<LifecycleLanguage, LifecycleCopy> = {
       },
     },
     winback: {
-      subject: "Ci manchi su TraderLoading",
+      subject: "Ci manchi su LIMEN",
       title: "Riprendi da dove avevi lasciato",
       intro: (idleDays) =>
         `Sono passati ${idleDays} giorni dal tuo ultimo accesso. Il tuo diario e i tuoi progressi ti aspettano.`,
@@ -78,9 +78,9 @@ const COPY: Record<LifecycleLanguage, LifecycleCopy> = {
   en: {
     greeting: "Hi,",
     footer:
-      "You received this email because you have a TraderLoading account. Manage email preferences in settings.",
+      "You received this email because you have a LIMEN account. Manage email preferences in settings.",
     welcome: {
-      subject: "Welcome to TraderLoading",
+      subject: "Welcome to LIMEN",
       title: "Welcome aboard",
       intro: "Your account is ready. Here is how to get off to a strong start.",
       body: "Log your first trade in the journal, connect a broker for automatic sync, and keep an eye on discipline with the coach.",
@@ -102,7 +102,7 @@ const COPY: Record<LifecycleLanguage, LifecycleCopy> = {
       },
     },
     winback: {
-      subject: "We miss you at TraderLoading",
+      subject: "We miss you at LIMEN",
       title: "Pick up where you left off",
       intro: (idleDays) =>
         `It has been ${idleDays} days since your last visit. Your journal and progress are waiting for you.`,
@@ -112,9 +112,9 @@ const COPY: Record<LifecycleLanguage, LifecycleCopy> = {
   es: {
     greeting: "Hola,",
     footer:
-      "Recibes este correo porque tienes una cuenta en TraderLoading. Gestiona las preferencias de correo en los ajustes.",
+      "Recibes este correo porque tienes una cuenta en LIMEN. Gestiona las preferencias de correo en los ajustes.",
     welcome: {
-      subject: "Bienvenido a TraderLoading",
+      subject: "Bienvenido a LIMEN",
       title: "Bienvenido a bordo",
       intro: "Tu cuenta esta lista. Asi puedes empezar con buen pie.",
       body: "Registra tu primer trade en el diario, conecta un broker para la sincronizacion automatica y vigila la disciplina con el coach.",
@@ -136,7 +136,7 @@ const COPY: Record<LifecycleLanguage, LifecycleCopy> = {
       },
     },
     winback: {
-      subject: "Te echamos de menos en TraderLoading",
+      subject: "Te echamos de menos en LIMEN",
       title: "Retoma donde lo dejaste",
       intro: (idleDays) =>
         `Han pasado ${idleDays} dias desde tu ultima visita. Tu diario y tu progreso te esperan.`,
@@ -146,9 +146,9 @@ const COPY: Record<LifecycleLanguage, LifecycleCopy> = {
   fr: {
     greeting: "Bonjour,",
     footer:
-      "Vous recevez cet email car vous avez un compte TraderLoading. Gerez les preferences email dans les parametres.",
+      "Vous recevez cet email car vous avez un compte LIMEN. Gerez les preferences email dans les parametres.",
     welcome: {
-      subject: "Bienvenue sur TraderLoading",
+      subject: "Bienvenue sur LIMEN",
       title: "Bienvenue a bord",
       intro: "Votre compte est pret. Voici comment bien demarrer.",
       body: "Enregistrez votre premier trade dans le journal, connectez un broker pour la synchronisation automatique et surveillez la discipline avec le coach.",
@@ -170,7 +170,7 @@ const COPY: Record<LifecycleLanguage, LifecycleCopy> = {
       },
     },
     winback: {
-      subject: "Vous nous manquez sur TraderLoading",
+      subject: "Vous nous manquez sur LIMEN",
       title: "Reprenez la ou vous vous etes arrete",
       intro: (idleDays) =>
         `Cela fait ${idleDays} jours depuis votre derniere visite. Votre journal et vos progres vous attendent.`,
@@ -180,9 +180,9 @@ const COPY: Record<LifecycleLanguage, LifecycleCopy> = {
   de: {
     greeting: "Hallo,",
     footer:
-      "Du erhaeltst diese E-Mail, weil du ein TraderLoading-Konto hast. Verwalte die E-Mail-Einstellungen in den Einstellungen.",
+      "Du erhaeltst diese E-Mail, weil du ein LIMEN-Konto hast. Verwalte die E-Mail-Einstellungen in den Einstellungen.",
     welcome: {
-      subject: "Willkommen bei TraderLoading",
+      subject: "Willkommen bei LIMEN",
       title: "Willkommen an Bord",
       intro: "Dein Konto ist bereit. So startest du optimal.",
       body: "Trage deinen ersten Trade ins Journal ein, verbinde einen Broker fuer die automatische Synchronisierung und behalte die Disziplin mit dem Coach im Blick.",
@@ -204,7 +204,7 @@ const COPY: Record<LifecycleLanguage, LifecycleCopy> = {
       },
     },
     winback: {
-      subject: "Wir vermissen dich bei TraderLoading",
+      subject: "Wir vermissen dich bei LIMEN",
       title: "Mach dort weiter, wo du aufgehoert hast",
       intro: (idleDays) =>
         `Es ist ${idleDays} Tage her seit deinem letzten Besuch. Dein Journal und deine Fortschritte warten auf dich.`,

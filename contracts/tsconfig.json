@@ -10,6 +10,15 @@
   "include": [
     "trader-process.ts",
     "cockpit.ts",
-    "academy.ts"
+    "academy.ts",
+    "limenGrades.ts",
+    "limenLexicon.ts",
+    "limenServices.ts",
+    "financialArchitecture.ts",
+    "financialBenchmarks.ts",
+    "financialTimingEngine.ts",
+    "arsenalProducts.ts",
+    "backtestChart.ts",
+    "limenServices.ts"
   ]
 }

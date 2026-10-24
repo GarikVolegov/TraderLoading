@@ -1,3 +1,4 @@
+import { pickChartSettings } from "../../../../../contracts/backtestChart";
 // ─── Terminal state persistence (localStorage, v3; reads v2) ──────────────────
 // Per-session replay state: cursor, indicators, drawings, order-ticket inputs,
 // tool settings, account and trades. Versioned and symbol-guarded like the v1
@@ -17,12 +18,17 @@ export interface TerminalTicket {
   breakevenAtR: number | null;
   /** Trailing-stop distance in pips (null = off). */
   trailingPips: number | null;
+  /** Automatically recalculate lot size to maintain target risk when dragging/modifying stop loss. */
+  adaptRiskOnSlMove?: boolean;
 }
 
 export interface TerminalSettings {
   chartType: ChartType;
   showSessions: boolean;
   magnet: boolean;
+  stayInDrawingMode?: boolean;
+  showFavoriteToolbar?: boolean;
+  rightOffsetBars?: number;
   toolColor: string;
   toolWidth: number;
   /** Rail visibility per drawing tool id (missing = visible). */
@@ -31,26 +37,108 @@ export interface TerminalSettings {
   spreadPips: number;
   /** Round-turn commission per lot, in account currency. */
   commissionPerLot: number;
+  /** Whether to show closed trade markers/executions on the chart (default: true). */
+  showTradesOnChart?: boolean;
+  /** Mode for trade connector dashed lines: 'hover_or_latest' (clean) | 'all' | 'none' (default: 'hover_or_latest'). */
+  tradeLineMode?: "hover_or_latest" | "all" | "none";
+
+  // ── TradingView Pro Chart Customization ──────────────────────────────────
+  candleBordersVisible?: boolean;
+  candleWicksVisible?: boolean;
+  textColor?: string;
+  axisColor?: string;
+  volumeUpColor?: string;
+  volumeDownColor?: string;
+  candleUpColor?: string;
+  candleDownColor?: string;
+  wickUpColor?: string;
+  wickDownColor?: string;
+  borderUpColor?: string;
+  borderDownColor?: string;
+  lineColor?: string;
+  areaTopColor?: string;
+  areaBottomColor?: string;
+
+  chartBgType?: "solid" | "gradient";
+  chartBgColor1?: string;
+  chartBgColor2?: string;
+  showVertGrid?: boolean;
+  showHorzGrid?: boolean;
+  gridColor?: string;
+  gridStyle?: "solid" | "dashed" | "dotted";
+  crosshairColor?: string;
+  crosshairStyle?: "solid" | "dashed" | "dotted";
+
+  showWatermark?: boolean;
+  watermarkText?: string;
+  watermarkOpacity?: number;
+
+  priceScaleMode?: "normal" | "logarithmic" | "percentage";
+  showOhlcLegend?: boolean;
+  showBarChange?: boolean;
+  showLastPriceLine?: boolean;
+  showHighLowLines?: boolean;
 }
 
 export const DEFAULT_TICKET: TerminalTicket = {
   riskMode: "percent",
   riskValue: 1,
-  slPips: 20,
-  tpPips: 40,
+  slPips: 25,
+  tpPips: 75,
   breakevenAtR: null,
   trailingPips: null,
+  adaptRiskOnSlMove: true,
 };
 
 export const DEFAULT_TERMINAL_SETTINGS: TerminalSettings = {
   chartType: "candles",
   showSessions: false,
   magnet: true,
-  toolColor: "#3b82f6",
+  stayInDrawingMode: false,
+  showFavoriteToolbar: true,
+  rightOffsetBars: 12,
+  toolColor: "#c5a059",
   toolWidth: 2,
   visibleTools: {},
   spreadPips: 0,
   commissionPerLot: 0,
+  showTradesOnChart: true,
+  tradeLineMode: "hover_or_latest",
+
+  candleBordersVisible: true,
+  candleWicksVisible: true,
+  textColor: "#f4f4f6",
+  axisColor: "#26262e",
+  volumeUpColor: "rgba(197, 160, 89, 0.4)",
+  volumeDownColor: "rgba(224, 86, 102, 0.4)",
+  candleUpColor: "#c5a059",
+  candleDownColor: "#e05666",
+  wickUpColor: "#c5a059",
+  wickDownColor: "#e05666",
+  borderUpColor: "#c5a059",
+  borderDownColor: "#e05666",
+  lineColor: "#c5a059",
+  areaTopColor: "rgba(197, 160, 89, 0.35)",
+  areaBottomColor: "rgba(197, 160, 89, 0.0)",
+
+  chartBgType: "solid",
+  chartBgColor1: "#08080a",
+  chartBgColor2: "#0e1015",
+  showVertGrid: true,
+  showHorzGrid: true,
+  gridColor: "rgba(197, 160, 89, 0.04)",
+  crosshairColor: "rgba(197, 160, 89, 0.6)",
+  crosshairStyle: "dashed",
+
+  showWatermark: true,
+  watermarkText: "",
+  watermarkOpacity: 0.05,
+
+  priceScaleMode: "normal",
+  showOhlcLegend: true,
+  showBarChange: true,
+  showLastPriceLine: true,
+  showHighLowLines: false,
 };
 
 export interface TerminalStateDraft {
@@ -66,6 +154,8 @@ export interface TerminalStateDraft {
   trades: ClosedTrade[];
   openPosition: OpenPosition | null;
   pendingOrder: PendingOrder | null;
+  openPositions?: OpenPosition[];
+  pendingOrders?: PendingOrder[];
   ticket: TerminalTicket;
   settings: TerminalSettings;
   initialBalance: number;
@@ -148,14 +238,37 @@ function isDrawing(value: unknown): value is ReplayDrawing {
   if (!drawing || typeof drawing.id !== "string") return false;
   switch (drawing.kind) {
     case "trend":
+    case "ray":
+    case "infoline":
+    case "parallelChannel":
+    case "arrow":
     case "rect":
     case "fib":
+    case "frvp":
+    case "priceRange":
+    case "dateRange":
       return isDrawingPoint(drawing.a) && isDrawingPoint(drawing.b) && typeof drawing.color === "string";
     case "ruler":
       return isDrawingPoint(drawing.a) && isDrawingPoint(drawing.b);
+    case "hray":
+    case "arrowUp":
+    case "arrowDown":
+    case "avwap":
+      return isDrawingPoint(drawing.at) && typeof drawing.color === "string";
+    case "path":
+    case "highlighter":
+      return (
+        Array.isArray(drawing.points) &&
+        drawing.points.length >= 2 &&
+        drawing.points.every(isDrawingPoint) &&
+        typeof drawing.color === "string"
+      );
     case "hline":
       return isFiniteNumber(drawing.price) && typeof drawing.color === "string";
+    case "vline":
+      return isFiniteNumber(drawing.time) && typeof drawing.color === "string";
     case "text":
+    case "callout":
       return isDrawingPoint(drawing.at) && typeof drawing.text === "string";
     case "position":
       return (
@@ -199,7 +312,7 @@ function isIndicator(value: unknown): value is IndicatorConfig {
 function parseTicket(value: unknown): TerminalTicket {
   const ticket = value as Partial<TerminalTicket> | null;
   if (!ticket) return { ...DEFAULT_TICKET };
-  return {
+  const out: TerminalTicket = {
     riskMode: ticket.riskMode === "fixed" ? "fixed" : "percent",
     riskValue: isFiniteNumber(ticket.riskValue) ? ticket.riskValue : DEFAULT_TICKET.riskValue,
     slPips: isFiniteNumber(ticket.slPips) ? ticket.slPips : DEFAULT_TICKET.slPips,
@@ -207,6 +320,10 @@ function parseTicket(value: unknown): TerminalTicket {
     breakevenAtR: isFiniteNumber(ticket.breakevenAtR) && ticket.breakevenAtR > 0 ? ticket.breakevenAtR : null,
     trailingPips: isFiniteNumber(ticket.trailingPips) && ticket.trailingPips > 0 ? ticket.trailingPips : null,
   };
+  if (typeof ticket.adaptRiskOnSlMove === "boolean") {
+    out.adaptRiskOnSlMove = ticket.adaptRiskOnSlMove;
+  }
+  return out;
 }
 
 // ── named ticket profiles (Scalper Mode) — global, not per-session ──────────
@@ -269,39 +386,35 @@ export function parseChartTemplates(raw: string | null): Record<string, ChartTem
 }
 
 function parseSettings(value: unknown): TerminalSettings {
-  const settings = value as Partial<TerminalSettings> | null;
-  if (!settings) return { ...DEFAULT_TERMINAL_SETTINGS };
-  const chartType: ChartType =
-    settings.chartType === "heikin" || settings.chartType === "line" ? settings.chartType : "candles";
-  const visibleTools: Record<string, boolean> = {};
-  if (settings.visibleTools && typeof settings.visibleTools === "object") {
-    for (const [key, visible] of Object.entries(settings.visibleTools)) {
-      if (typeof visible === "boolean") visibleTools[key] = visible;
-    }
-  }
+  const settings = value && typeof value === "object" ? value as Partial<TerminalSettings> : {};
   return {
-    chartType,
-    showSessions: settings.showSessions === true,
-    magnet: settings.magnet !== false,
-    toolColor: typeof settings.toolColor === "string" ? settings.toolColor : DEFAULT_TERMINAL_SETTINGS.toolColor,
-    toolWidth: isFiniteNumber(settings.toolWidth)
-      ? Math.min(4, Math.max(1, settings.toolWidth))
-      : DEFAULT_TERMINAL_SETTINGS.toolWidth,
-    visibleTools,
+    ...pickChartSettings(settings),
     spreadPips: isFiniteNumber(settings.spreadPips) && settings.spreadPips > 0 ? settings.spreadPips : 0,
-    commissionPerLot:
-      isFiniteNumber(settings.commissionPerLot) && settings.commissionPerLot > 0 ? settings.commissionPerLot : 0,
+    commissionPerLot: isFiniteNumber(settings.commissionPerLot) && settings.commissionPerLot > 0 ? settings.commissionPerLot : 0,
   };
 }
 
 export function serializeTerminalState(draft: TerminalStateDraft): string {
+  const openPositions = Array.isArray(draft.openPositions)
+    ? draft.openPositions.filter(isOpenPosition)
+    : draft.openPosition && isOpenPosition(draft.openPosition)
+      ? [draft.openPosition]
+      : [];
+  const pendingOrders = Array.isArray(draft.pendingOrders)
+    ? draft.pendingOrders.filter(isPendingOrder)
+    : draft.pendingOrder && isPendingOrder(draft.pendingOrder)
+      ? [draft.pendingOrder]
+      : [];
+
   const state: PersistedTerminalState = {
     ...draft,
     trades: draft.trades.filter(isClosedTrade),
     drawings: draft.drawings.filter(isDrawing),
     indicators: draft.indicators.filter(isIndicator),
-    openPosition: draft.openPosition && isOpenPosition(draft.openPosition) ? draft.openPosition : null,
-    pendingOrder: draft.pendingOrder && isPendingOrder(draft.pendingOrder) ? draft.pendingOrder : null,
+    openPosition: openPositions[0] ?? null,
+    pendingOrder: pendingOrders[0] ?? null,
+    openPositions,
+    pendingOrders,
     replayTime: draft.replayTime ?? migrateReplayTime(draft.cursorTime, getReplayIntervalSeconds(draft.interval)),
     startTime: draft.startTime ?? null,
     version: 3,
@@ -317,6 +430,30 @@ export function parseTerminalState(raw: string | null, symbol: string): Persiste
     if (data.version !== 3 && data.version !== 2) return null;
     if (data.symbol !== symbol) return null;
     if (typeof data.interval !== "string") return null;
+
+    const singleOpenPosition = data.openPosition && isOpenPosition(data.openPosition) ? data.openPosition : null;
+    const singlePendingOrder = data.pendingOrder && isPendingOrder(data.pendingOrder) ? data.pendingOrder : null;
+
+    let openPositions: OpenPosition[] = [];
+    if (Array.isArray(data.openPositions)) {
+      openPositions = data.openPositions.filter(isOpenPosition);
+      if (data.openPosition !== undefined && !singleOpenPosition) {
+        openPositions = [];
+      }
+    } else if (singleOpenPosition) {
+      openPositions = [singleOpenPosition];
+    }
+
+    let pendingOrders: PendingOrder[] = [];
+    if (Array.isArray(data.pendingOrders)) {
+      pendingOrders = data.pendingOrders.filter(isPendingOrder);
+      if (data.pendingOrder !== undefined && !singlePendingOrder) {
+        pendingOrders = [];
+      }
+    } else if (singlePendingOrder) {
+      pendingOrders = [singlePendingOrder];
+    }
+
     return {
       version: 3,
       symbol: data.symbol,
@@ -329,8 +466,10 @@ export function parseTerminalState(raw: string | null, symbol: string): Persiste
       indicators: Array.isArray(data.indicators) ? data.indicators.filter(isIndicator) : [],
       drawings: Array.isArray(data.drawings) ? data.drawings.filter(isDrawing) : [],
       trades: Array.isArray(data.trades) ? data.trades.filter(isClosedTrade) : [],
-      openPosition: data.openPosition && isOpenPosition(data.openPosition) ? data.openPosition : null,
-      pendingOrder: data.pendingOrder && isPendingOrder(data.pendingOrder) ? data.pendingOrder : null,
+      openPosition: openPositions[0] ?? null,
+      pendingOrder: pendingOrders[0] ?? null,
+      openPositions,
+      pendingOrders,
       ticket: parseTicket(data.ticket),
       settings: parseSettings(data.settings),
       initialBalance: isFiniteNumber(data.initialBalance) ? data.initialBalance : 10_000,

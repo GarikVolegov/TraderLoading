@@ -275,13 +275,25 @@ router.get("/tools/volatility", async (req, res) => {
   }
 
   // Cache miss: kick off a background refresh and serve the best we have now.
-  void ensureVolatilityWarm(pair);
+  const warmPromise = ensureVolatilityWarm(pair);
   const stale =
     volatilityLastGood.get(pair) ?? (await getJsonCache<VolatilitySnapshot>(volatilityStaleKey(pair)));
   if (stale) {
     res.json(volatilityResponse(stale, true));
     return;
   }
+
+  // If cold start without stale data, wait briefly for initial fetch
+  await Promise.race([warmPromise, new Promise((resolve) => setTimeout(resolve, 1500))]);
+  const current =
+    volatilityLastGood.get(pair) ??
+    (await getJsonCache<VolatilitySnapshot>(volatilityFreshKey(pair))) ??
+    (await getJsonCache<VolatilitySnapshot>(volatilityStaleKey(pair)));
+  if (current) {
+    res.json(volatilityResponse(current, false));
+    return;
+  }
+
   res.status(503).json({ error: "Dati di volatilita in aggiornamento", status: "unavailable", source: null, fetchedAt: null, observedAt: null, observationStart: null, timeframe: "D1" });
 });
 
@@ -470,9 +482,9 @@ function buildMacroImageKeywords(keywords: string[] | undefined, currency: strin
 
 function buildMacroImageUrl(keywords: string[] | undefined, currency: string, index = 0, context = ""): string {
   const kws = buildMacroImageKeywords(keywords, currency, context).map((keyword) => encodeURIComponent(keyword));
-  const query = kws.length > 0 ? kws.join(",") : "global,economy,markets";
+  const query = kws.length > 0 ? kws.join(",") : `${currency},global,economy`;
   const lock = stableImageLock(context || `${currency} macro news`, index);
-  return `https://loremflickr.com/800/400/${query}?lock=${lock}`;
+  return `/api/news/placeholder?keywords=${encodeURIComponent(query)}&sentiment=neutral&lock=${lock}`;
 }
 
 function uniqueMacroToolImageUrl(
@@ -555,7 +567,7 @@ const LANG_NAMES: Record<string, string> = {
   it: "italiano", en: "inglese", es: "spagnolo", fr: "francese", de: "tedesco",
 };
 
-async function fetchMacroNewsGroq(currencyLabel: string, currenciesRaw = "", lang = "it"): Promise<MacroNewsResult> {
+async function _fetchMacroNewsGroq(currencyLabel: string, currenciesRaw = "", lang = "it"): Promise<MacroNewsResult> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("GROQ_API_KEY not set");
 
@@ -659,7 +671,7 @@ Rispondi SOLO con questo JSON (summary in ${langName}):
   };
 }
 
-async function fetchMacroNewsPerplexity(currencyLabel: string, lang = "it"): Promise<MacroNewsResult> {
+async function _fetchMacroNewsPerplexity(currencyLabel: string, lang = "it"): Promise<MacroNewsResult> {
   const apiKey = process.env.PERPLEXITY_API_KEY;
   if (!apiKey) throw new Error("PERPLEXITY_API_KEY not set");
 

@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { COMMUNITY_EMOJIS } from "./constants";
 import type { CommunityDetail } from "./types";
 
-const DEFAULT_ACCENT = "#51a488";
+const DEFAULT_ACCENT = "#C5A059";
 
 export function CommunityGeneralSettings({ detail }: { detail: CommunityDetail }) {
   const { t } = useLanguage();

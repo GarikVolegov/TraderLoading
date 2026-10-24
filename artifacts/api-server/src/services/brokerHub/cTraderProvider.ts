@@ -420,7 +420,7 @@ export function createCTraderProvider(options: CTraderProviderOptions = {}) {
         }),
         [CTRADER_PAYLOAD_TYPES.RECONCILE_RES],
       );
-      const caps = capabilities(trader.accessRights);
+      const _caps = capabilities(trader.accessRights);
       return {
         profileId: input.profileId,
         status: "connected",

@@ -4,7 +4,16 @@ import { RiskGuardPanel } from "@/components/RiskGuardPanel";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
-import { LineChart, Activity, Sparkles, List, TrendingUp, ArrowRight } from "lucide-react";
+import {
+  LineChart,
+  Activity,
+  Sparkles,
+  List,
+  TrendingUp,
+  ArrowRight,
+  ChevronDown,
+  Sliders,
+} from "lucide-react";
 import {
   useGetJournalEdge,
   getGetJournalEdgeQueryKey,
@@ -32,6 +41,7 @@ function fmtR(v: number | null): string {
   if (v === null) return "—";
   return `${v > 0 ? "+" : ""}${v.toFixed(1)}R`;
 }
+
 function clampPct(v: number): number {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
@@ -106,21 +116,25 @@ export function JournalOverview({
       l: t("journal.overview.edge_expectancy"),
       v: fmtR(overall?.expectancyR ?? null),
       pct: clampPct((overall?.expectancyR ?? 0) * 100),
+      isPositive: (overall?.expectancyR ?? 0) >= 0,
     },
     {
       l: t("journal.overview.edge_payoff"),
       v: payoff === null ? "—" : payoff.toFixed(1),
       pct: clampPct((payoff ?? 0) * 33),
+      isPositive: (payoff ?? 0) >= 1,
     },
     {
       l: t("journal.overview.edge_discipline"),
       v: disciplinePct === null ? "—" : `${clampPct(disciplinePct)}%`,
       pct: clampPct(disciplinePct ?? 0),
+      isPositive: (disciplinePct ?? 0) >= 80,
     },
     {
       l: t("journal.overview.edge_revenge"),
       v: String(revenge),
-      pct: revenge === 0 ? 4 : Math.min(100, revenge * 20),
+      pct: revenge === 0 ? 0 : Math.min(100, revenge * 20),
+      isPositive: revenge === 0,
     },
   ];
 
@@ -135,41 +149,62 @@ export function JournalOverview({
     : [];
 
   return (
-    <div className="space-y-4">
-      {/* KPI tiles */}
-      <p className="text-sm text-muted-foreground">
-        {processText(language, "legacyAnalytics")}{" "}
-        <Link href="/method" className="text-primary underline underline-offset-4">
-          {t("process.nav.method")}
-        </Link>
-      </p>
+    <div className="space-y-6">
+      {/* ── 1. ARCHITETTURA DI CONTESTO LIMEN ── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-[#0E0F14]/90 p-4 sm:p-5 backdrop-blur-md">
+        <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(197,160,89,0.08)_0%,transparent_75%)] pointer-events-none" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="space-y-1">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-[#C5A059]">
+              {"IL LIBRO DELLA VERITÀ // TRAIETTORIA MATEMATICA"}
+            </span>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              {processText(language, "legacyAnalytics")}{" "}
+              <Link href="/method" className="text-[#C5A059] underline underline-offset-4">
+                {t("process.nav.method")}
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 2. CUSTODE DELLA DISCIPLINA LIVE ── */}
       <RiskGuardPanel />
+
+      {/* ── 3. LE 4 FONDAMENTA IMMUTABILI (KPIs MONUMENTALI) ── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           label={t("journal.overview.kpi_total")}
           value={overall ? String(overall.closedTrades) : "—"}
+          subtitle={edge?.rCoverage ? `${edge.rCoverage.withR} R · ${edge.rCoverage.withoutR} raw` : undefined}
           size="lg"
+          className="border-[#C5A059]/30 bg-[#0E0F14]/90 shadow-[0_0_15px_rgba(197,160,89,0.05)] hover:border-[#C5A059]/50"
         />
         <StatTile
           label={t("journal.overview.kpi_winrate")}
           value={overall?.winRate != null ? `${overall.winRate}%` : "—"}
           tone="success"
           size="lg"
+          className="border-[#C5A059]/30 bg-[#0E0F14]/90 shadow-[0_0_15px_rgba(197,160,89,0.05)] hover:border-[#C5A059]/50"
         />
         <StatTile
           label={`${t("journal.overview.kpi_net")} · ${processText(language, "estimated")}`}
           value={fmtR(netR)}
           tone={netR === null || netR >= 0 ? "primary" : "destructive"}
           size="lg"
+          className="border-[#C5A059]/30 bg-[#0E0F14]/90 shadow-[0_0_15px_rgba(197,160,89,0.05)] hover:border-[#C5A059]/50"
         />
         <StatTile
           label={t("journal.overview.kpi_pf")}
           value={overall?.profitFactor != null ? overall.profitFactor.toFixed(1) : "—"}
+          tone={overall?.profitFactor != null && overall.profitFactor >= 1.5 ? "gold" : "default"}
           size="lg"
+          className="border-[#C5A059]/30 bg-[#0E0F14]/90 shadow-[0_0_15px_rgba(197,160,89,0.05)] hover:border-[#C5A059]/50"
         />
       </div>
+
       {overall && (
-        <p className="text-xs text-muted-foreground">
+        <p className="px-1 text-xs font-mono text-muted-foreground">
           {t("intelligence.r_coverage", {
             withR: edge?.rCoverage?.withR ?? 0,
             total: overall.closedTrades,
@@ -178,23 +213,29 @@ export function JournalOverview({
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      {/* ── 4. EQUITY CURVE MONTE CARLO & SCOMPOSIZIONE EDGE ── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         {/* Equity curve */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <LineChart className="h-4 w-4 text-primary" />
+        <Card className="relative overflow-hidden border border-border/70 bg-[#0E0F14]/90 shadow-[0_0_24px_rgba(0,0,0,0.35)] backdrop-blur-md">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#C5A059]/40 to-transparent" />
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+                <LineChart className="h-4 w-4" />
+              </div>
               <div>
-                <p className="text-sm font-semibold">{t("journal.overview.equity_title")}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="font-display text-sm font-bold uppercase tracking-tight text-foreground">
+                  {t("journal.overview.equity_title")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
                   {t("journal.overview.equity_subtitle")}
                 </p>
               </div>
             </div>
-            <Badge variant="secondary">
-              <TrendingUp className="mr-1 h-3 w-3" />
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/10 px-2.5 py-1 font-mono text-xs font-bold text-[#C5A059]">
+              <TrendingUp className="h-3 w-3" />
               {fmtR(netR)}
-            </Badge>
+            </div>
           </CardHeader>
           <CardContent className="pt-2">
             {rSamples.length ? (
@@ -204,46 +245,53 @@ export function JournalOverview({
                 projectionSteps={PROJECTION_STEPS}
               />
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <div className="py-12 text-center text-sm text-muted-foreground">
                 {t("intelligence.status.insufficient")}
-              </p>
+              </div>
             )}
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-0.5 w-3.5 rounded bg-[hsl(142_71%_45%)]" />
-                {t("journal.overview.legend_realized")}
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/30 pt-3 text-[11px] font-mono text-muted-foreground">
+              <span className="inline-flex items-center gap-2">
+                <span className="h-1.5 w-3 rounded-full bg-[#22C55E]" />
+                <span className="text-foreground/90 font-medium">{t("journal.overview.legend_realized")}</span>
               </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-3.5 rounded border border-[hsl(210_90%_62%/0.4)] bg-[hsl(210_90%_62%/0.22)]" />
-                {t("journal.overview.legend_band")}
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2.5 w-3.5 rounded border border-[#C5A059]/50 bg-[#C5A059]/20" />
+                <span>{t("journal.overview.legend_band")}</span>
               </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-0 w-3.5 border-t-2 border-dashed border-[hsl(210_90%_62%)]" />
-                {t("journal.overview.legend_median")}
+              <span className="inline-flex items-center gap-2">
+                <span className="h-0 w-3.5 border-t-2 border-dashed border-[#E5C378]" />
+                <span>{t("journal.overview.legend_median")}</span>
               </span>
             </div>
           </CardContent>
         </Card>
 
         {/* Edge breakdown */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-primary" />
+        <Card className="relative overflow-hidden border border-border/70 bg-[#0E0F14]/90 shadow-[0_0_24px_rgba(0,0,0,0.35)] backdrop-blur-md">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#C5A059]/40 to-transparent" />
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+                <Activity className="h-4 w-4" />
+              </div>
               <div>
-                <p className="text-sm font-semibold">{t("journal.overview.edge_title")}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="font-display text-sm font-bold uppercase tracking-tight text-foreground">
+                  {t("journal.overview.edge_title")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
                   {t("journal.overview.edge_subtitle")}
                 </p>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+          <CardContent className="space-y-4">
             {edgeBars.map((m) => (
-              <div key={m.l}>
-                <div className="mb-1.5 flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">{m.l}</span>
-                  <span className="font-mono font-bold">{m.v}</span>
+              <div key={m.l} className="space-y-1.5 rounded-lg border border-border/35 bg-[#14151B]/60 p-3">
+                <div className="flex items-baseline justify-between text-xs">
+                  <span className="font-semibold text-foreground/90">{m.l}</span>
+                  <span className={`font-mono text-sm font-bold ${m.isPositive ? "text-[#C5A059]" : "text-destructive"}`}>
+                    {m.v}
+                  </span>
                 </div>
                 <Progress value={m.pct} />
               </div>
@@ -252,127 +300,166 @@ export function JournalOverview({
         </Card>
       </div>
 
-      <details
-        open={analysisOpen}
-        onToggle={(event) => setAnalysisOpen(event.currentTarget.open)}
-        className="rounded-xl border border-border bg-card/50"
-      >
-        <summary className="cursor-pointer p-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-          {t("journal.workspace.analysis")}
-          <span className="mt-1 block text-xs font-normal text-muted-foreground">
-            {t("journal.workspace.analysis_desc")}
-          </span>
-        </summary>
+      {/* ── 5. LABORATORIO DIAGNOSTICO AVANZATO (ACCORDION ARCHITETTONICO) ── */}
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-[#0E0F14]/90 backdrop-blur-md shadow-md">
+        <button
+          type="button"
+          onClick={() => setAnalysisOpen(!analysisOpen)}
+          className="flex w-full items-center justify-between p-4 sm:p-5 text-left transition-colors hover:bg-secondary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#C5A059]/40 bg-[#C5A059]/10 text-[#C5A059]">
+              <Sliders className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#C5A059]">
+                  {"LABORATORIO DIAGNOSTICO LIMEN"}
+                </span>
+                <Badge variant="gold" className="text-[9px] uppercase">
+                  {"3 MODULI"}
+                </Badge>
+              </div>
+              <p className="font-display text-sm sm:text-base font-bold text-foreground">
+                {t("journal.workspace.analysis")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("journal.workspace.analysis_desc")}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`rounded-lg border border-border/60 bg-secondary/40 p-2 text-foreground transition-transform duration-300 ${analysisOpen ? "rotate-180" : ""}`}>
+              <ChevronDown className="h-4 w-4" />
+            </div>
+          </div>
+        </button>
+
         {analysisOpen && (
-          <div className="space-y-4 p-3 pt-0 sm:p-4 sm:pt-0">
+          <div className="border-t border-border/40 p-4 sm:p-6 space-y-5 bg-[#090A0D]/70 animate-in fade-in slide-in-from-top-2 duration-300">
             <EdgeQualityCard stats={edge?.stats} />
             <RiskOfRuinCard />
             <CorrelationCard />
           </div>
         )}
-      </details>
+      </div>
 
-      {/* 4-week recap */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <div>
-              <p className="text-sm font-semibold">{t("journal.overview.recap_title")}</p>
-              <p className="text-xs text-muted-foreground">
-                {t("journal.overview.recap_subtitle")}
-              </p>
+      {/* ── 6. RASSEGNA PERIODICA (4-WEEK RECAP) & ULTIME OPERAZIONI ── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* 4-week recap */}
+        <Card className="border border-border/70 bg-[#0E0F14]/90 backdrop-blur-md">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="font-display text-sm font-bold uppercase tracking-tight text-foreground">
+                  {t("journal.overview.recap_title")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("journal.overview.recap_subtitle")}
+                </p>
+              </div>
             </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => onNavigate("revisione", { kind: "four_week" })}
-          >
-            {t("journal.overview.recap_open")}
-            <ArrowRight className="ml-1 h-3 w-3" />
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {recapBlocks.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {recapBlocks.map((b) => (
-                <div key={b.k} className="rounded-lg border border-border/40 bg-secondary/30 p-3.5">
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-primary">
-                    {b.k}
-                  </p>
-                  <p className="text-[13px] leading-relaxed text-muted-foreground">{b.text}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 font-mono text-xs text-[#C5A059] hover:bg-[#C5A059]/10 hover:text-[#C5A059]"
+              onClick={() => onNavigate("revisione", { kind: "four_week" })}
+            >
+              {t("journal.overview.recap_open")}
+              <ArrowRight className="ml-1 h-3.5 w-3.5" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {recapBlocks.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {recapBlocks.map((b) => (
+                  <div key={b.k} className="rounded-xl border border-border/40 bg-[#14151B]/70 p-3.5">
+                    <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#C5A059]">
+                      {b.k}
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground line-clamp-3">{b.text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                {t("journal.overview.recap_empty")}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent trades */}
+        <Card className="border border-border/70 bg-[#0E0F14]/90 backdrop-blur-md">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+                <List className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="font-display text-sm font-bold uppercase tracking-tight text-foreground">
+                  {t("journal.overview.trades_title")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">{t("journal.overview.trades_subtitle")}</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 font-mono text-xs text-[#C5A059] hover:bg-[#C5A059]/10 hover:text-[#C5A059]"
+              onClick={() => onNavigate("trades")}
+            >
+              {t("journal.tab.trades")}
+              <ArrowRight className="ml-1 h-3.5 w-3.5" />
+            </Button>
+          </CardHeader>
+          {recentTrades.length > 0 ? (
+            <div className="divide-y divide-border/25">
+              {recentTrades.map((tr) => (
+                <div
+                  key={tr.id}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/20 transition-colors"
+                >
+                  <span className="w-20 shrink-0 font-mono text-xs font-bold text-foreground">{tr.pair}</span>
+                  {tr.dir && (
+                    <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+                      /buy|long/i.test(tr.dir) ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" : "bg-destructive/10 text-destructive border border-destructive/25"
+                    }`}>
+                      {tr.dir.toUpperCase()}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-foreground/90">{tr.note}</p>
+                    <p className="text-[10px] font-mono text-muted-foreground/60">
+                      {format(parseISO(tr.date), "d MMM yyyy", { locale: dateLocale })}
+                    </p>
+                  </div>
+                  <span
+                    className={`font-mono text-sm font-bold ${
+                      tr.result === "win"
+                        ? "text-emerald-400"
+                        : tr.result === "loss"
+                          ? "text-destructive"
+                          : "text-muted-foreground"
+                    }`}
+                  >
+                    {fmtR(tr.r)}
+                  </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {t("journal.overview.recap_empty")}
-            </p>
+            <CardContent>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                {t("journal.overview.trades_empty")}
+              </p>
+            </CardContent>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Recent trades */}
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <List className="h-4 w-4 text-primary" />
-          <div>
-            <p className="text-sm font-semibold">{t("journal.overview.trades_title")}</p>
-            <p className="text-xs text-muted-foreground">{t("journal.overview.trades_subtitle")}</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={() => onNavigate("trades")}
-          >
-            {t("journal.tab.trades")}
-            <ArrowRight className="ml-1 h-3 w-3" />
-          </Button>
-        </CardHeader>
-        {recentTrades.length > 0 ? (
-          <div>
-            {recentTrades.map((tr) => (
-              <div
-                key={tr.id}
-                className="flex items-center gap-3.5 border-t border-border/20 px-4 py-3"
-              >
-                <span className="w-20 shrink-0 font-mono text-sm font-bold">{tr.pair}</span>
-                {tr.dir && (
-                  <Badge variant={/long/i.test(tr.dir) ? "secondary" : "destructive"}>
-                    {tr.dir.toUpperCase()}
-                  </Badge>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px]">{tr.note}</p>
-                  <p className="text-[11px] text-muted-foreground/60">
-                    {format(parseISO(tr.date), "d MMM yyyy", { locale: dateLocale })}
-                  </p>
-                </div>
-                <span
-                  className={`font-mono text-base ${
-                    tr.result === "win"
-                      ? "text-success"
-                      : tr.result === "loss"
-                        ? "text-destructive"
-                        : "text-muted-foreground"
-                  }`}
-                >
-                  {fmtR(tr.r)}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <CardContent>
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {t("journal.overview.trades_empty")}
-            </p>
-          </CardContent>
-        )}
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

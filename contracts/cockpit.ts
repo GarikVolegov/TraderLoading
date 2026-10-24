@@ -24,6 +24,7 @@ export interface CockpitAnalysis {
   newsDay: string;
   notes: string;
 }
+export const MARKETS = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "NAS100", "SPX500", "BTCUSD", "ETHUSD"] as const;
 export const cockpitDay = (date = new Date()) =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Rome",
@@ -133,7 +134,9 @@ export function cockpitWindow(s: Pick<CockpitAnalysis, "mode" | "market">, date 
   const m =
     Number(parts.find((p) => p.type === "hour")?.value) * 60 +
     Number(parts.find((p) => p.type === "minute")?.value);
-  if (["Sat", "Sun"].includes(weekday) && !["BTCUSD", "ETHUSD"].includes(s.market))
+  if (["BTCUSD", "ETHUSD"].includes(s.market))
+    return { name: "Crypto 24/7", kind: "open", hours: "Mercato sempre attivo 24/7" };
+  if (["Sat", "Sun"].includes(weekday))
     return { name: "Weekend", kind: "closed", hours: "Preparazione della prossima settimana" };
   if (m < 480)
     return {
@@ -172,16 +175,20 @@ export function cockpitRequirements(s: CockpitAnalysis, date = new Date()): stri
     missing.push("Conferma la chiusura del ciclo ITF e la schematica LTF.");
   if (!s.trigger || !cockpitTriggers(s).includes(s.trigger))
     missing.push("Scegli un trigger consentito dallo scenario.");
-  if (!s.area || (s.area === "virgin" && !s.imbalance))
+  const area = s.area || "history";
+  if (area === "virgin" && !s.imbalance)
     missing.push("Verifica lo storico a sinistra e, in area vergine, lo sbilanciamento manuale.");
-  if (!s.target.trim() || !s.targetConfirmed)
-    missing.push("Identifica e conferma il pool di liquidità opposto.");
-  if (!["clear", "post"].includes(s.news) || s.newsDay !== cockpitDay(date))
+  if (!s.target || !s.target.trim())
+    missing.push("Identifica il pool di liquidità opposto.");
+  const newsVal = s.news === "unchecked" ? "clear" : s.news;
+  if (!["clear", "post"].includes(newsVal) || (s.newsDay && s.newsDay !== cockpitDay(date)))
     missing.push(
       "Rivedi il calendario: pre-news e controlli non aggiornati bloccano il piano di ingresso.",
     );
   const win = cockpitWindow(s, date);
-  if (["closed", "analysis"].includes(win.kind))
+  if (win.kind === "closed")
+    missing.push("Finestra di mercato chiusa: prepara lo scenario per la sessione successiva.");
+  if (win.kind === "analysis" && !s.impulseStarted)
     missing.push("Finestra di analisi: prepara lo scenario, senza nuovi ingressi.");
   if (win.kind === "asia" && !s.asiaConfirmed)
     missing.push("Asia: conferma le condizioni aggiuntive.");

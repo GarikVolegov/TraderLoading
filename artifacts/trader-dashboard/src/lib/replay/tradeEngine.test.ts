@@ -336,3 +336,61 @@ console.log("tradeEngine checks passed");
   assert.equal(stopless.hasStop, false);
   assert.equal(checkStopHit(stopless, bar({ open: 1.1, low: 1.05, high: 1.15 })), null);
 }
+
+// ── partialClosePosition & adaptPositionToStop & projectedLevelPnl ─────────
+{
+  const { partialClosePosition, adaptPositionToStop, projectedLevelPnl } = await import("./tradeEngine");
+  const pos = openPosition({
+    direction: "buy", entryPrice: 1.1000, entryTime: 1000,
+    slPips: 20, tpPips: 40, lots: 1.00, riskAmount: 200, symbol: "EURUSD",
+  });
+  assert.equal(pos.lots, 1.00);
+  assert.equal(pos.initialLots, 1.00);
+
+  // Take 50% partial at +20 pips (1.1020) with moveToBreakeven
+  const part50 = partialClosePosition(pos, {
+    fraction: 0.5,
+    exitPrice: 1.1020,
+    exitTime: 2000,
+    id: 99,
+    symbol: "EURUSD",
+    moveToBreakeven: true,
+  });
+
+  assert.equal(part50.closedTrade.lots, 0.50);
+  assert.equal(part50.closedTrade.pips, 20);
+  assert.equal(part50.closedTrade.profit, 100);
+  assert.equal(part50.closedTrade.isPartial, true);
+  assert.ok(part50.closedTrade.tags?.includes("partial"));
+  assert.ok(part50.closedTrade.tags?.includes("50%"));
+
+  assert.equal(part50.remainingPosition.lots, 0.50);
+  assert.equal(part50.remainingPosition.initialLots, 1.00);
+  assert.equal(part50.remainingPosition.stopLoss, 1.1000, "stop moved to breakeven");
+  assert.equal(part50.remainingPosition.realizedPartialProfit, 100);
+  assert.equal(part50.remainingPosition.partialCount, 1);
+
+  // Drag SL to 10 pips (1.0990) with adaptLots = true (target risk 100 EUR)
+  const adapted = adaptPositionToStop(part50.remainingPosition, 1.0990, {
+    symbol: "EURUSD",
+    targetRiskAmount: 100,
+    adaptLots: true,
+  });
+  assert.equal(adapted.slPips, 10);
+  assert.equal(adapted.lots, 1.00, "lots increased to 1.00 to preserve 100 EUR risk across 10 pips");
+
+  // Move SL to profit (1.1010) with adaptLots = true -> lots must NOT expand in profit
+  const inProfit = adaptPositionToStop(adapted, 1.1010, {
+    symbol: "EURUSD",
+    targetRiskAmount: 100,
+    adaptLots: true,
+  });
+  assert.equal(inProfit.lots, 1.00, "lots never inflate when stop is moved into profit");
+  assert.equal(inProfit.stopLoss, 1.1010);
+
+  // Projected level P&L
+  const tpProj = projectedLevelPnl(pos, 1.1040, "EURUSD");
+  assert.equal(tpProj.pips, 40);
+  assert.equal(tpProj.money, 400);
+  assert.equal(tpProj.rMultiple, 2);
+}

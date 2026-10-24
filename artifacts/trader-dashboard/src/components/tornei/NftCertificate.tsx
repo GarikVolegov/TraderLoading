@@ -1,12 +1,12 @@
-import { Crown, Medal, Award, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export type CertTier = "champion" | "podio" | "finisher";
 
-const SEAL_ICON: Record<CertTier, typeof Crown> = {
-  champion: Crown,
-  podio: Medal,
-  finisher: Award,
+export const CERT_IMAGES: Record<CertTier, string> = {
+  champion: "/images/tornei/cert-champion.jpg",
+  podio: "/images/tornei/cert-podio.jpg",
+  finisher: "/images/tornei/cert-finisher.jpg",
 };
 
 export interface NftCertificateProps {
@@ -15,24 +15,35 @@ export interface NftCertificateProps {
   edition: string;
   rarity: string;
   seasonLabel: string;
+  userName?: string;
   onClick?: () => void;
 }
 
-/** Carta certificato NFT olografica, portata dal design `templates/tornei`. */
-export function NftCertificate({ tier, title, edition, rarity, seasonLabel, onClick }: NftCertificateProps) {
+/** Carta certificato NFT con artwork imperiale Limen e sheen olografico. */
+export function NftCertificate({ tier, title, edition: _edition, rarity, seasonLabel, userName, onClick }: NftCertificateProps) {
   const { t } = useLanguage();
-  const Seal = SEAL_ICON[tier] ?? Award;
+  const imageSrc = CERT_IMAGES[tier] ?? CERT_IMAGES.finisher;
+
   return (
-    <button type="button" className={`trn-nft trn-nft-${tier}`} onClick={onClick}>
+    <button
+      type="button"
+      className={`trn-nft trn-nft-${tier}${onClick ? " trn-nft-interactive" : ""}`}
+      onClick={onClick}
+      aria-label={`${title} - ${seasonLabel}`}
+    >
       <div className="trn-nft-art">
+        <img
+          src={imageSrc}
+          alt={`${title} - ${seasonLabel}`}
+          className="trn-nft-img"
+          loading="lazy"
+        />
+        {userName && (
+          <div className="trn-nft-nameplate">
+            <span className="trn-nft-nameplate-text">{userName}</span>
+          </div>
+        )}
         <span className="trn-nft-sheen" />
-        <span className="trn-nft-eyebrow">{t("tornei.cert.eyebrow")}</span>
-        <span className="trn-nft-ed">{edition}</span>
-        <span className="trn-seal">
-          <Seal size={34} strokeWidth={1.6} />
-        </span>
-        <span className="trn-nft-title">{title}</span>
-        <span className="trn-nft-season">{t("tornei.season", { label: seasonLabel })}</span>
       </div>
       <div className="trn-nft-foot">
         <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>

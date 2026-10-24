@@ -18,6 +18,7 @@ export interface BillingStatus {
   // server-side). When false, upgrade CTAs show an honest notice instead of a
   // dialog that always 503s.
   checkoutAvailable?: boolean;
+  isTrial?: boolean;
 }
 
 export interface CheckoutSessionResponse {
@@ -89,4 +90,8 @@ export function resumeSubscription(options?: RelativeApiOptions): Promise<Billin
 
 export function fetchBillingInvoices(options?: RelativeApiOptions): Promise<BillingInvoicesResponse> {
   return apiJSON<BillingInvoicesResponse>("billing/invoices", undefined, options);
+}
+
+export function startTrial(options?: RelativeApiOptions): Promise<BillingStatus> {
+  return apiJSON<BillingStatus>("billing/trial", { method: "POST" }, options);
 }

@@ -52,7 +52,7 @@ function PrivacyContent() {
       <LegalBlock title={uiText("legal.privacy_contacts")}>
         <p>{t("legal.privacy.contact_intro")}</p>
         <a
-          href="mailto:assistenza@traderloading.com?subject=Privacy%20TraderLoading"
+          href="mailto:assistenza@traderloading.com?subject=Privacy%20LIMEN"
           className="inline-flex items-center gap-2 font-semibold text-primary hover:text-primary/80"
         >
           <Mail className="h-4 w-4" aria-hidden="true" />
@@ -82,7 +82,7 @@ function TermsContent() {
       <LegalBlock title={uiText("auto.ui.fc7746fb89")}>
         <p>{t("legal.terms.changes1")}</p>
         <a
-          href="mailto:assistenza@traderloading.com?subject=Supporto%20TraderLoading"
+          href="mailto:assistenza@traderloading.com?subject=Supporto%20LIMEN"
           className="inline-flex items-center gap-2 font-semibold text-primary hover:text-primary/80"
         >
           <Mail className="h-4 w-4" aria-hidden="true" />
@@ -117,7 +117,7 @@ export default function LegalPage({ kind }: LegalPageProps) {
           className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
         >
           <LockKeyhole className="h-4 w-4" aria-hidden="true" />
-          TraderLoading
+          LIMEN
         </Link>
 
         <header className="space-y-3 rounded-lg border border-primary/25 bg-primary/5 p-6">
@@ -127,9 +127,9 @@ export default function LegalPage({ kind }: LegalPageProps) {
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
-                TraderLoading
+                LIMEN PROTOCOL
               </p>
-              <h1 className="font-sans text-3xl font-extrabold">
+              <h1 className="font-display text-3xl font-bold tracking-tight">
                 {t(isPrivacy ? "legal.title.privacy" : "legal.title.terms")}
               </h1>
             </div>

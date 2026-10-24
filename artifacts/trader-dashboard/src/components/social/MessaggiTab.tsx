@@ -17,6 +17,7 @@ import { ICE_SERVERS } from "./constants";
 import { fmtDur, fileIcon } from "./format";
 import { Avatar } from "./Avatar";
 import { useMutualFollowers } from "./hooks";
+import { LimenPageEmblem } from "@/components/ui/LimenPageEmblem";
 import type { DecryptedMsg, SocialUser, CallSignal } from "./types";
 
 export function MessaggiTab({
@@ -50,6 +51,7 @@ export function MessaggiTab({
   const [showEmojiDM, setShowEmojiDM] = useState(false);
   const [dmImgUploading, setDmImgUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const msgInputRef = useRef<HTMLInputElement>(null);
   const dmFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -203,7 +205,13 @@ export function MessaggiTab({
   }, [messagesData?.messages, keyPair, friendPublicKeyData?.publicKeyJwk]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: reduceMotion ? "instant" : "smooth" });
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    if (reduceMotion) {
+      el.scrollTop = el.scrollHeight;
+    } else {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
   }, [decryptedMessages, reduceMotion]);
 
   // E2EE send helper
@@ -452,9 +460,10 @@ export function MessaggiTab({
   // non deve lasciare vivi microfono, RTCPeerConnection o timer.
   useEffect(() => {
     mountedRef.current = true;
+    const recordingEpoch = recordingEpochRef;
     return () => {
       mountedRef.current = false;
-      ++recordingEpochRef.current;
+      ++recordingEpoch.current;
       cleanupCall();
       const recorder = mediaRecorderRef.current;
       if (recorder) {
@@ -916,7 +925,7 @@ export function MessaggiTab({
       {callOverlay}
       {selectedFriend ? (
         <>
-          <div className="p-4 border-b border-border flex items-center gap-3 shrink-0">
+          <div className="p-3.5 border-b border-[#C5A059]/20 flex items-center gap-3 shrink-0 bg-[#0A0B10]">
             <button
               type="button"
               aria-label={uiText("common.back")}
@@ -925,21 +934,24 @@ export function MessaggiTab({
                 setSelectedFriend(null);
                 setMobileView("list");
               }}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-white/5 text-muted-foreground lg:hidden"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-white/5 text-slate-400 lg:hidden"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
-            <Avatar
-              name={selectedFriend.name}
-              avatarUrl={selectedFriend.avatarUrl}
-              size="md"
-            />
+            <div className="relative shrink-0">
+              <Avatar
+                name={selectedFriend.name}
+                avatarUrl={selectedFriend.avatarUrl}
+                size="md"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#10B981] border border-[#0A0B10]" />
+            </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">
+              <p className="font-display font-bold text-sm truncate text-white">
                 {selectedFriend.name}
               </p>
-              <p className="text-xs text-primary flex items-center gap-1">
-                <Shield className="w-3 h-3" /> {uiText("chat.encrypted_badge")}
+              <p className="font-mono text-[11px] text-[#E8C56A] flex items-center gap-1.5">
+                <Shield className="w-3 h-3 text-[#C5A059]" /> {uiText("chat.encrypted_badge")}
               </p>
             </div>
             {callState === "idle" && (
@@ -948,9 +960,9 @@ export function MessaggiTab({
                 aria-label={uiText("chat.voice_call")}
                 onClick={startCall}
                 title={uiText("auto.ui.99608682c6")}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#E8C56A] hover:bg-[#C5A059]/20 hover:border-[#C5A059]/60 transition-all"
               >
-                <Phone className="w-5 h-5" />
+                <Phone className="w-4 h-4" />
               </button>
             )}
             {callState === "incoming" && (
@@ -963,7 +975,7 @@ export function MessaggiTab({
             )}
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
+          <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
             {decryptedMessages.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm py-12">
                 <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -1106,7 +1118,7 @@ export function MessaggiTab({
                   e.key === "Enter" && !e.shiftKey && handleSendText()
                 }
                 placeholder={uiText("auto.ui.3e714ce7ae")}
-                className="min-h-11 min-w-0 flex-1 px-3 py-2.5 bg-card/50 border border-border rounded-xl text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                className="min-h-10 min-w-0 flex-1 px-3 py-2 bg-[#12131A] border border-[#C5A059]/25 rounded-xl text-sm text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:border-[#C5A059] focus-visible:ring-1 focus-visible:ring-[#C5A059]/30 transition-all font-sans"
                 disabled={isRecording || !!recordedBlob}
               />
               <button
@@ -1120,7 +1132,7 @@ export function MessaggiTab({
                   isRecording ||
                   !!recordedBlob
                 }
-                className="flex h-11 w-11 shrink-0 items-center justify-center bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                className="flex h-10 w-10 shrink-0 items-center justify-center bg-gradient-to-r from-[#C5A059] to-[#D4AF37] text-black font-bold rounded-xl hover:brightness-110 disabled:opacity-40 transition-all shadow-sm"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -1136,11 +1148,50 @@ export function MessaggiTab({
           </div>
         </>
       ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center text-muted-foreground space-y-3">
-            <MessageCircle className="w-16 h-16 mx-auto opacity-20" />
-            <p className="text-sm">{socialText(language, "empty")}</p>
-            <p className="text-xs">{socialText(language, "emptyHint")}</p>
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-[#090A0F] via-[#0B0C12] to-[#07080B] text-slate-200 select-none">
+          <div className="max-w-md w-full flex flex-col items-center space-y-4">
+            {/* Sigillo Architettonico LIMEN 2D */}
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 -m-3 rounded-2xl bg-[#C5A059]/10 blur-xl pointer-events-none" />
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-[#C5A059]/40 bg-gradient-to-b from-[#161822] to-[#0E1017] p-3 shadow-[0_0_25px_rgba(197,160,89,0.18)]">
+                <LimenPageEmblem
+                  variant="fratellanza"
+                  size={54}
+                  className="filter drop-shadow-[0_0_12px_rgba(212,175,55,0.6)]"
+                />
+              </div>
+            </div>
+
+            {/* Testata Solenne */}
+            <div className="space-y-1.5">
+              <h2 className="font-display text-2xl font-black uppercase tracking-wider text-[#F4F4F6]">
+                L&apos;Agorà dell&apos;Ordine
+              </h2>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+                Piazza d&apos;armi protetta e cifrata end-to-end. Confronto operativo tra pari: zero rumore, solo metodo e verifica oggettiva.
+              </p>
+            </div>
+
+            {/* Status Chips Standard LIMEN */}
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-1 font-mono text-[9px] uppercase font-bold tracking-wider">
+              <span className="inline-flex items-center gap-1.5 rounded border border-[#10b981]/30 bg-[#10b981]/10 px-2 py-0.5 text-[#10b981]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                Presidio Attivo
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 px-2 py-0.5 text-[#E8C56A]">
+                Cifratura E2EE
+              </span>
+            </div>
+
+            {/* Micro Prompt Operativo */}
+            <div className="w-full mt-2 rounded-lg border border-[#C5A059]/20 bg-[#10121A]/70 px-3.5 py-2.5 text-center text-xs font-mono text-slate-400">
+              <span className="text-[#E8C56A] font-semibold">
+                {socialText(language, "empty")}
+              </span>
+              <span className="block text-[11px] text-slate-500 mt-0.5">
+                {socialText(language, "emptyHint")}
+              </span>
+            </div>
           </div>
         </div>
       )}

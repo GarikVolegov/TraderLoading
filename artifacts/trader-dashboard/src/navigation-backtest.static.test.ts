@@ -16,7 +16,7 @@ assert.match(app, /<Route path="\/tools" component=\{WorkspaceAlias\} \/>/);
 assert.equal(existsSync(legacyToolsPage), false);
 
 const navigation = readFileSync(new URL("./lib/navHubs.ts", import.meta.url), "utf8");
-assert.match(navigation, /id: "method"[\s\S]*?href: "\/method"/);
+assert.match(navigation, /id: "backtest"[\s\S]*?href: "\/backtest"/);
 assert.equal(rootDestination("/backtest/42/replay"),"backtest");
 assert.doesNotMatch(bottomNav, /href: "\/tools"/);
 assert.equal((navigation.match(/href: "\/backtest"/g) ?? []).length, 1);

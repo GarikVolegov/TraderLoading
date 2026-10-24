@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cursorAtReplayTime, logicalIndexAtTime, revealAtReplayTime } from "./replayClock";
+import { cursorAtReplayTime, logicalIndexAtTime, revealAtReplayTime, timeAtLogicalIndex } from "./replayClock";
 import type { ReplayCandle } from "./types";
 
 const origin = Date.UTC(2022, 0, 3) / 1000;
@@ -27,4 +27,7 @@ assert.equal(cursorAtReplayTime(bars(60), origin + 60), 0, "exact boundary exclu
 assert.deepEqual(revealAtReplayTime(bars(3600), origin + 17 * 60, 3600, null), [], "missing partial never reveals complete future candle");
 assert.equal(logicalIndexAtTime(bars(3600), origin + 90 * 60, 3600), 1.5, "M1 drawings stay anchored on H1");
 assert.equal(logicalIndexAtTime([], origin, 3600), null);
+const shortSeries = bars(3600).slice(0, 10);
+assert.equal(timeAtLogicalIndex(shortSeries, 12, 3600), shortSeries[9].time + 3 * 3600, "future whitespace extrapolates time beyond last bar");
+assert.equal(timeAtLogicalIndex([], 5, 3600), null);
 console.log("replayClock checks passed");

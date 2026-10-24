@@ -17,6 +17,7 @@ function formatOptionalAdminDate(value: string | null): string {
 }
 
 function formatAdminSubscriptionPlan(plan: AdminSubscriptionPlan): string {
+  if (plan === "tributo_150") return "Tributo - 150€";
   return plan === "pro" ? "Pro - 7 euro" : "Free";
 }
 
@@ -326,7 +327,23 @@ export function AdminSubscriptionsPage() {
                           className="mt-2 h-8 text-xs"
                         />
                       </TableCell>
-                    <TableCell className="space-x-2 text-right">
+                    <TableCell className="space-x-1.5 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-primary/40 text-primary hover:bg-primary/10"
+                        disabled={
+                          subscriptionAction.isPending ||
+                          !rowReasonReady ||
+                          !row.userId
+                        }
+                        onClick={() =>
+                          row.userId &&
+                          submitSubscriptionUpdate(row.userId, "tributo_150", "active", null, effectiveReason)
+                        }
+                      >
+                        Tributo 150€
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"

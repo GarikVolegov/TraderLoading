@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800" fill="none">
+  <!-- LIMEN PROTOCOL // NUMISMATICA IMPERIALE D'ORDINE -->
+  <!-- "AUREUS LIMINIS" (L'Aureo Romano della Soglia & Porta Ianua) -->
+  <!-- Target: Left Outer Wrist Placement (4.5 cm / 1.8" diameter) -->
+  <!-- Threads: Antique Gold (#C5A059) & Deep Obsidian Black (#111111) -->
+  <!-- Fine-line & relief satin/tatami embroidery mapping -->
+
+  <g transform="translate(400, 400)">
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 1. TONDONE DEL CONIO ANTICO (Hand-Struck Hammered Coin Flan)       -->
+    <!-- Circonferenza organica e leggermente irregolare da battitura a mano-->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Bordo esterno spesso in oro martellato -->
+    <path d="M 0 -340 C 95 -342 195 -315 265 -245 C 335 -175 342 -80 340 0 C 338 90 320 185 245 260 C 170 335 85 342 0 340 C -85 338 -180 325 -250 250 C -320 175 -342 85 -340 0 C -338 -95 -315 -190 -245 -260 C -175 -330 -90 -338 0 -340 Z" fill="#C5A059" stroke="#111111" stroke-width="8" stroke-linejoin="round" />
+    
+    <!-- Campo interno incassato scuro (patina numismatica) -->
+    <path d="M 0 -315 C 88 -317 180 -292 245 -228 C 310 -163 317 -74 315 0 C 313 83 296 171 228 240 C 158 310 79 317 0 315 C -79 313 -167 301 -232 232 C -296 163 -317 79 -315 0 C -313 -88 -292 -176 -228 -240 C -163 -305 -83 -313 0 -315 Z" fill="#111111" stroke="#C5A059" stroke-width="4" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 2. PERLINATURA NUMISMATICA ROMANA (Beaded Border Rim)               -->
+    <!-- Anello di 36 perline coniate a rilievo tipiche delle monete d'oro  -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <g fill="#C5A059">
+      <!-- Perline posizionate radialmente su r = 290 -->
+      <!-- Quadrante 1 -->
+      <circle cx="0" cy="-290" r="5" />
+      <circle cx="50" cy="-285" r="5" />
+      <circle cx="100" cy="-272" r="5" />
+      <circle cx="145" cy="-250" r="5" />
+      <circle cx="190" cy="-220" r="5" />
+      <circle cx="225" cy="-180" r="5" />
+      <circle cx="255" cy="-135" r="5" />
+      <circle cx="275" cy="-90" r="5" />
+      <circle cx="285" cy="-45" r="5" />
+      <!-- Quadrante 2 -->
+      <circle cx="290" cy="0" r="5" />
+      <circle cx="285" cy="45" r="5" />
+      <circle cx="275" cy="90" r="5" />
+      <circle cx="255" cy="135" r="5" />
+      <circle cx="225" cy="180" r="5" />
+      <circle cx="190" cy="220" r="5" />
+      <circle cx="145" cy="250" r="5" />
+      <circle cx="100" cy="272" r="5" />
+      <circle cx="50" cy="285" r="5" />
+      <!-- Quadrante 3 -->
+      <circle cx="0" cy="290" r="5" />
+      <circle cx="-50" cy="285" r="5" />
+      <circle cx="-100" cy="272" r="5" />
+      <circle cx="-145" cy="250" r="5" />
+      <circle cx="-190" cy="220" r="5" />
+      <circle cx="-225" cy="180" r="5" />
+      <circle cx="-255" cy="135" r="5" />
+      <circle cx="-275" cy="90" r="5" />
+      <circle cx="-285" cy="45" r="5" />
+      <!-- Quadrante 4 -->
+      <circle cx="-290" cy="0" r="5" />
+      <circle cx="-285" cy="-45" r="5" />
+      <circle cx="-275" cy="-90" r="5" />
+      <circle cx="-255" cy="-135" r="5" />
+      <circle cx="-225" cy="-180" r="5" />
+      <circle cx="-190" cy="-220" r="5" />
+      <circle cx="-145" cy="-250" r="5" />
+      <circle cx="-100" cy="-272" r="5" />
+      <circle cx="-50" cy="-285" r="5" />
+    </g>
+
+    <!-- Cerchietto interno di battitura -->
+    <circle cx="0" cy="0" r="215" fill="none" stroke="#C5A059" stroke-width="3" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 3. IL TEMPIO DI GIANO E L'ARCO DELLA SOGLIA (Porta Ianua)          -->
+    <!-- Il leggendario conio dell'aureo imperiale con le porte chiuse       -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Basamento / Crepidoma dell'arco -->
+    <rect x="-140" y="125" width="280" height="16" fill="#C5A059" rx="2" stroke="#111111" stroke-width="2" />
+    <rect x="-155" y="141" width="310" height="18" fill="#111111" stroke="#C5A059" stroke-width="4" rx="2" />
+
+    <!-- I Due Pilastri Laterali con capitello -->
+    <!-- Pilastro sinistro -->
+    <rect x="-125" y="-60" width="38" height="185" fill="#C5A059" stroke="#111111" stroke-width="3" />
+    <line x1="-106" y1="-50" x2="-106" y2="120" stroke="#111111" stroke-width="4" stroke-linecap="round" />
+    <!-- Capitello pilastro sinistro -->
+    <rect x="-132" y="-76" width="52" height="16" fill="#C5A059" rx="2" stroke="#111111" stroke-width="2" />
+    <circle cx="-125" cy="-68" r="4" fill="#111111" />
+    <circle cx="-87" cy="-68" r="4" fill="#111111" />
+
+    <!-- Pilastro destro -->
+    <rect x="87" y="-60" width="38" height="185" fill="#C5A059" stroke="#111111" stroke-width="3" />
+    <line x1="106" y1="-50" x2="106" y2="120" stroke="#111111" stroke-width="4" stroke-linecap="round" />
+    <!-- Capitello pilastro destro -->
+    <rect x="80" y="-76" width="52" height="16" fill="#C5A059" rx="2" stroke="#111111" stroke-width="2" />
+    <circle cx="87" cy="-68" r="4" fill="#111111" />
+    <circle cx="125" cy="-68" r="4" fill="#111111" />
+
+    <!-- La Grande Volta ad Arco della Soglia (Archivolto a conci) -->
+    <path d="M -87 -60 A 87 87 0 0 1 87 -60" fill="none" stroke="#C5A059" stroke-width="22" stroke-linecap="butt" />
+    <path d="M -87 -60 A 87 87 0 0 1 87 -60" fill="none" stroke="#111111" stroke-width="4" />
+
+    <!-- Conci radiali scolpiti (Voussoirs romani) -->
+    <line x1="-68" y1="-115" x2="-54" y2="-92" stroke="#111111" stroke-width="3" />
+    <line x1="-40" y1="-138" x2="-32" y2="-116" stroke="#111111" stroke-width="3" />
+    <line x1="40" y1="-138" x2="32" y2="-116" stroke="#111111" stroke-width="3" />
+    <line x1="68" y1="-115" x2="54" y2="-92" stroke="#111111" stroke-width="3" />
+
+    <!-- LA CHIAVE DI VOLTA MONUMENTALE (Keystone Rombo LIMEN) -->
+    <polygon points="0,-175 25,-145 0,-115 -25,-145" fill="#C5A059" stroke="#111111" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="0" cy="-145" r="6" fill="#111111" />
+
+    <!-- Le Porte Chiuse della Soglia (Le ante del Tempio di Giano: Pax & Disciplina) -->
+    <!-- Anta Sinistra -->
+    <rect x="-82" y="-55" width="80" height="180" fill="#111111" stroke="#C5A059" stroke-width="4" />
+    <!-- Pannelli della porta sinistra -->
+    <rect x="-72" y="-40" width="60" height="42" fill="#111111" stroke="#C5A059" stroke-width="2" />
+    <circle cx="-42" cy="-19" r="4" fill="#C5A059" />
+    <rect x="-72" y="15" width="60" height="42" fill="#111111" stroke="#C5A059" stroke-width="2" />
+    <circle cx="-42" cy="36" r="4" fill="#C5A059" />
+    <rect x="-72" y="70" width="60" height="42" fill="#111111" stroke="#C5A059" stroke-width="2" />
+    <circle cx="-42" cy="91" r="4" fill="#C5A059" />
+
+    <!-- Anta Destra -->
+    <rect x="2" y="-55" width="80" height="180" fill="#111111" stroke="#C5A059" stroke-width="4" />
+    <!-- Pannelli della porta destra -->
+    <rect x="12" y="-40" width="60" height="42" fill="#111111" stroke="#C5A059" stroke-width="2" />
+    <circle cx="42" cy="-19" r="4" fill="#C5A059" />
+    <rect x="12" y="15" width="60" height="42" fill="#111111" stroke="#C5A059" stroke-width="2" />
+    <circle cx="42" cy="36" r="4" fill="#C5A059" />
+    <rect x="12" y="70" width="60" height="42" fill="#111111" stroke="#C5A059" stroke-width="2" />
+    <circle cx="42" cy="91" r="4" fill="#C5A059" />
+
+    <!-- Battente centrale dorato delle porte -->
+    <line x1="0" y1="-55" x2="0" y2="125" stroke="#C5A059" stroke-width="4" />
+    <!-- Anello da bussare / chiavistello centrale -->
+    <circle cx="0" cy="36" r="12" fill="#C5A059" stroke="#111111" stroke-width="3" />
+    <circle cx="0" cy="36" r="5" fill="#111111" />
+
+    <!-- Festone d'alloro sospeso sopra l'arco -->
+    <path d="M -110 -75 Q 0 -130 110 -75" stroke="#C5A059" stroke-width="5" fill="none" stroke-linecap="round" />
+    <path d="M -110 -75 Q 0 -115 110 -75" stroke="#C5A059" stroke-width="3" fill="none" />
+    <!-- Nastri del festone -->
+    <path d="M -110 -70 C -125 -60 -120 -40 -135 -30" stroke="#C5A059" stroke-width="3" fill="none" />
+    <path d="M 110 -70 C 125 -60 120 -40 135 -30" stroke="#C5A059" stroke-width="3" fill="none" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 4. LEGENDA NUMISMATICA CIRCOLARE (Curved Coin Epigraphy)            -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Arco Superiore: T · R · A · N · S · · · L · I · M · E · N -->
+    <g fill="#C5A059">
+      <!-- Lettere posizionate lungo l'arco di raggio 250 -->
+      <!-- T -->
+      <text transform="translate(-160, -195) rotate(-45)" font-family="'Times New Roman', serif" font-size="32" font-weight="bold">T</text>
+      <!-- Punto -->
+      <circle cx="-136" cy="-218" r="3" />
+      <!-- R -->
+      <text transform="translate(-120, -232) rotate(-32)" font-family="'Times New Roman', serif" font-size="32" font-weight="bold">R</text>
+      <!-- A -->
+      <text transform="translate(-80, -252) rotate(-20)" font-family="'Times New Roman', serif" font-size="32" font-weight="bold">A</text>
+      <!-- N -->
+      <text transform="translate(-36, -263) rotate(-8)" font-family="'Times New Roman', serif" font-size="32" font-weight="bold">N</text>
+      <!-- S -->
+      <text transform="translate(10, -264) rotate(4)" font-family="'Times New Roman', serif" font-size="32" font-weight="bold">S</text>
+      <!-- Punto mediano romboidale -->
+      <polygon points="46,-257 51,-252 46,-247 41,-252" />
+      <!-- L -->
+      <text transform="translate(68, -256) rotate(16)" font-family="'Times New Roman', serif" font-size="32" font-weight="bold">L</text>
+      <!-- I -->
+      <text transform="translate(108, -241) rotate(26)" font-family="'Times New Roman', serif" font-size="32" font-weight="bold">I</text>
+      <!-- M -->
+      <text transform="translate(128, -230) rotate(36)" font-family="'Times New Roman', serif" font-size="32" font-weight="bold">M</text>
+      <!-- E -->
+      <text transform="translate(170, -195) rotate(48)" font-family="'Times New Roman', serif" font-size="32" font-weight="bold">E</text>
+      <!-- N -->
+      <text transform="translate(202, -156) rotate(60)" font-family="'Times New Roman', serif" font-size="32" font-weight="bold">N</text>
+    </g>
+
+    <!-- Arco Inferiore (Esergo Numismatico): D I S C I P L I N A -->
+    <g fill="#C5A059">
+      <text x="0" y="200" text-anchor="middle" font-family="'Times New Roman', serif" font-size="22" font-weight="bold" letter-spacing="8">DISCIPLINA</text>
+      <text x="0" y="235" text-anchor="middle" font-family="'Courier New', monospace" font-size="14" font-weight="bold" fill="#9CA3AF" letter-spacing="6">IANVM CLVSIT</text>
+      <!-- Segno di zecca (Mint Mark romano): M · M · X · X · I · V -->
+      <text x="0" y="265" text-anchor="middle" font-family="'Times New Roman', serif" font-size="14" font-weight="bold" letter-spacing="4">MMXXIV</text>
+    </g>
+  </g>
+</svg>

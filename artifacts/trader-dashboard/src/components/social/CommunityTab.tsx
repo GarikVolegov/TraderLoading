@@ -145,7 +145,7 @@ export function CommunityTab({
         else setSelectedChannelId(first.id);
       }
     }
-  }, [communityDetail?.id, communityDetail?.channels?.length, selectedChannelId, embedded, isDesktop, onChannelChange]);
+  }, [communityDetail?.id, communityDetail?.channels?.length, selectedChannelId, communityDetail?.channels, embedded, isDesktop, onChannelChange]);
 
   const myCommunities = communities.filter((c) => c.isMember);
   const discoverCommunities = communities.filter((c) => !c.isMember);
@@ -254,11 +254,11 @@ export function CommunityTab({
 
   const channelPanel =
     selectedCommunityId && communityDetail ? (
-      <div className="flex flex-col h-full border-r border-border bg-card/30 w-full lg:w-52 shrink-0">
-        <div className="px-3 py-3 border-b border-border shrink-0">
+      <div className="flex flex-col h-full border-r border-[#C5A059]/25 bg-[#0A0B10] w-full lg:w-56 shrink-0 text-slate-200">
+        <div className="px-3 py-3 border-b border-[#C5A059]/20 shrink-0 bg-[#0E0F16]/60">
           {communityDetail.bannerUrl && (
             <div
-              className="h-14 -mx-3 -mt-3 mb-2 bg-cover bg-center"
+              className="h-14 -mx-3 -mt-3 mb-2 bg-cover bg-center border-b border-[#C5A059]/20"
               style={{ backgroundImage: `url(${communityDetail.bannerUrl})` }}
             />
           )}
@@ -267,32 +267,32 @@ export function CommunityTab({
               type="button"
               aria-label={socialText(language, "back")}
               onClick={() => embedded && onBack ? onBack() : setMobilePanel("communities")}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground lg:hidden"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-slate-400 hover:text-white lg:hidden"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <span className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center text-xl shrink-0">
+            <span className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center text-sm font-bold bg-[#12131A] border border-[#C5A059]/30 text-[#E8C56A] shrink-0">
               {communityDetail.avatarUrl ? (
                 <img src={communityDetail.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
-                communityDetail.iconEmoji
+                communityDetail.iconEmoji || (communityDetail.name ? communityDetail.name.charAt(0).toUpperCase() : "Ω")
               )}
             </span>
             <p
-              className="font-bold text-sm truncate"
+              className="font-bold text-sm truncate font-display text-white"
               style={communityDetail.accentColor ? { color: communityDetail.accentColor } : undefined}
             >
               {communityDetail.name}
             </p>
           </div>
           {communityDetail.description && (
-            <p className="text-[10px] text-muted-foreground leading-relaxed truncate">
+            <p className="text-[10px] text-slate-400 leading-relaxed truncate font-sans">
               {communityDetail.description}
             </p>
           )}
-          <div className="flex items-center gap-2 mt-1.5">
-            <Users className="w-3 h-3 text-muted-foreground" />
-            <span className="text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-2 mt-1.5 font-mono text-[10px] text-slate-400">
+            <Users className="w-3 h-3 text-[#C5A059]" />
+            <span>
               {uiText("auto.ui.edc243eae0", { count: communityDetail.memberCount })}
             </span>
           </div>
@@ -302,14 +302,14 @@ export function CommunityTab({
             className="flex items-center gap-1.5 mt-1.5 hover:opacity-80 transition-opacity"
           >
             <StarRating value={communityDetail.ratingAvg ?? 0} readOnly size={11} />
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[10px] font-mono text-slate-400">
               {t("community.review.count", { count: communityDetail.ratingCount ?? 0 })}
             </span>
           </button>
           {communityDetail.isMember && canOpenSettings && (
             <button
               onClick={() => setShowSettings(true)}
-              className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+              className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#E8C56A] text-xs font-semibold hover:bg-[#C5A059]/20 transition-all font-mono"
             >
               <Settings className="w-3.5 h-3.5" />
               {t("community.settings.manage")}
@@ -326,13 +326,13 @@ export function CommunityTab({
             return (
               <div key={type} className="mb-2">
                 <div className="flex items-center justify-between px-3 py-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  <p className="font-mono text-[9px] font-bold text-[#C5A059] uppercase tracking-widest">
                     {type === "text" ? uiText("auto.ui.db36ee74bb") : uiText("auto.ui.5cf4dba953")}
                   </p>
                   {canManageChannels && (
                     <button
                       onClick={() => setShowCreateChannel(true)}
-                      className="p-0.5 rounded hover:text-primary text-muted-foreground transition-colors"
+                      className="p-1 rounded text-slate-400 hover:text-[#E8C56A] hover:bg-[#C5A059]/10 transition-colors"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
@@ -343,22 +343,30 @@ export function CommunityTab({
                   return (
                   <div
                     key={ch.id}
-                    className={`group flex items-center rounded-lg mx-1 ${selectedChannelId === ch.id ? "bg-primary/10" : "hover:bg-secondary/40"}`}
+                    className={`group flex items-center rounded-lg mx-1 transition-all ${
+                      selectedChannelId === ch.id
+                        ? "bg-[#C5A059]/15 border-l-2 border-[#C5A059] shadow-sm"
+                        : "hover:bg-white/5"
+                    }`}
                     style={{ width: "calc(100% - 8px)" }}
                   >
                     <button
                       onClick={() => selectChannel(ch.id)}
-                      className={`flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 text-left transition-all ${selectedChannelId === ch.id ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`flex-1 min-w-0 flex items-center gap-2 px-2.5 py-1.5 text-left transition-all ${
+                        selectedChannelId === ch.id
+                          ? "text-[#E8C56A] font-semibold"
+                          : "text-slate-400 hover:text-white"
+                      }`}
                     >
                       {ch.type === "text" ? (
-                        <Hash className="w-3.5 h-3.5 shrink-0" />
+                        <Hash className="w-3.5 h-3.5 shrink-0 text-[#C5A059]" />
                       ) : (
-                        <Volume2 className="w-3.5 h-3.5 shrink-0" />
+                        <Volume2 className="w-3.5 h-3.5 shrink-0 text-[#C5A059]" />
                       )}
-                      <span className="text-xs font-medium truncate">{ch.name}</span>
-                      {ch.locked && <Lock className="w-3 h-3 shrink-0 opacity-70" />}
+                      <span className="text-xs font-medium truncate font-mono">{ch.name}</span>
+                      {ch.locked && <Lock className="w-3 h-3 shrink-0 text-[#C5A059]/80" />}
                       {isPaid && (
-                        <span className="ml-auto text-[10px] tabular-nums shrink-0">
+                        <span className="ml-auto font-mono text-[10px] text-[#C5A059] tabular-nums shrink-0">
                           {(ch.priceCents! / 100).toFixed(0)} {(ch.currency ?? "eur").toUpperCase()}
                         </span>
                       )}
@@ -368,7 +376,7 @@ export function CommunityTab({
                         type="button"
                         onClick={() => setPricingChannelId(ch.id)}
                         aria-label={t("channel.access.pricing_title")}
-                        className="p-1 mr-1 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-muted-foreground hover:text-foreground transition-opacity shrink-0"
+                        className="p-1 mr-1 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-slate-400 hover:text-[#E8C56A] transition-opacity shrink-0"
                       >
                         <Settings className="w-3 h-3" />
                       </button>
@@ -381,12 +389,12 @@ export function CommunityTab({
           })}
         </div>
 
-        <div className="px-3 py-2 border-t border-border shrink-0">
+        <div className="px-3 py-2 border-t border-[#C5A059]/20 bg-[#0E0F16]/60 shrink-0">
           {communityDetail.isMember ? (
             communityDetail.myRole !== "owner" ? (
               <button
                 onClick={() => leaveCommunity(communityDetail.id)}
-                className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors py-1.5 rounded-lg hover:bg-destructive/10"
+                className="w-full text-[11px] font-mono text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors py-1.5 rounded-lg border border-transparent hover:border-red-500/20"
               >
                 {uiText("auto.ui.b7cc70d51f")}
               </button>
@@ -401,7 +409,7 @@ export function CommunityTab({
           ) : (
             <button
               onClick={() => joinCommunity(communityDetail.id)}
-              className="w-full py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
+              className="w-full py-2 rounded-lg bg-gradient-to-r from-[#C5A059] to-[#D4AF37] text-black font-bold font-mono text-xs uppercase tracking-wider hover:brightness-110 shadow-sm transition-all"
             >
               {communityDetail.locked
                 ? communityDetail.joinRequestStatus === "rejected"

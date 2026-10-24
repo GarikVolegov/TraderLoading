@@ -118,6 +118,7 @@ async function cleanupWikiStorageFiles(
 
 async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
   await database.transaction(async (tx) => {
+    await tx.execute(sql`DELETE FROM backtest_chart_preferences WHERE user_id = ${userId}`);
     await tx.execute(sql`
       DELETE FROM post_comments
       WHERE user_id = ${userId}
@@ -269,6 +270,8 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
 
     await tx.execute(sql`DELETE FROM backtest_trades WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM backtest_sessions WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM backtest_tournament_entries WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM backtest_tribe_presets WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM broker_profile_store WHERE store_key LIKE 'backtest-trade:%' AND data->>'userId' = ${userId}`);
     await tx.execute(sql`DELETE FROM routine_completions WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM market_decisions WHERE user_id = ${userId}`);
@@ -283,6 +286,7 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`DELETE FROM quotes WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM push_subscriptions WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM user_settings WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM financial_profiles WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM login_access WHERE user_id = ${userId}`);
 
     // Personal archive (wiki): rows here; the binary files are removed
@@ -323,6 +327,8 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`UPDATE admin_user_status SET updated_by = NULL WHERE updated_by = ${userId}`);
     await tx.execute(sql`DELETE FROM admin_users WHERE user_id = ${userId}`);
     await tx.execute(sql`UPDATE admin_users SET created_by = NULL WHERE created_by = ${userId}`);
+    await tx.execute(sql`DELETE FROM candidate_applications WHERE user_id = ${userId}`);
+    await tx.execute(sql`UPDATE candidate_applications SET reviewed_by = NULL WHERE reviewed_by = ${userId}`);
     // Security audit trail is retained (legitimate interest / anti-fraud) but
     // its network PII is scrubbed for the erased actor.
     await tx.execute(sql`
@@ -334,12 +340,29 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`DELETE FROM referral_codes WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM referrals WHERE referrer_user_id = ${userId} OR referred_user_id = ${userId}`);
 
+    // Launch requests and queued mail must not outlive an erased account.
+    await tx.execute(sql`DELETE FROM launch_emails WHERE user_id = ${userId} OR lower(recipient) IN (SELECT lower(email) FROM users WHERE id = ${userId})`);
+    await tx.execute(sql`DELETE FROM school_requests WHERE lower(email) IN (SELECT lower(email) FROM users WHERE id = ${userId})`);
+    await tx.execute(sql`DELETE FROM candidate_applications WHERE lower(email) IN (SELECT lower(email) FROM users WHERE id = ${userId})`);
+
     // Lifecycle-email state (welcome/digest/win-back timestamps + opt-out).
     await tx.execute(sql`DELETE FROM email_lifecycle_state WHERE user_id = ${userId}`);
 
     // Creator Stripe Connect account link (marketplace): erase OUR copy. Stripe retains
     // its own account/transfer records for legal/tax.
     await tx.execute(sql`DELETE FROM creator_payout_accounts WHERE user_id = ${userId}`);
+
+    // Academy / La Dottrina del Tempo progress, affiliates, subscriptions, and attributions:
+    await tx.execute(sql`DELETE FROM academy_weekly_submissions WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM academy_progress WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM academy_affiliates WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM academy_subscriptions WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM academy_attributions WHERE buyer_user_id = ${userId} OR affiliate_user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM arsenal_orders WHERE user_id = ${userId}`);
+
+    // Academy commissions & payouts: financial records kept for tax/legal audit, but scrub user references
+    await tx.execute(sql`UPDATE academy_commissions SET buyer_user_id = 'deleted_user', affiliate_user_id = NULL WHERE buyer_user_id = ${userId} OR affiliate_user_id = ${userId}`);
+    await tx.execute(sql`UPDATE academy_payouts SET affiliate_user_id = 'deleted_user', requested_by = 'deleted_user' WHERE affiliate_user_id = ${userId} OR requested_by = ${userId}`);
 
     // Anonymize library authorship — created_by holds the (possibly deleted) author's id.
     // The curated content stays; only the PII link is scrubbed.

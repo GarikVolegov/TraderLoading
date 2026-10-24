@@ -9,6 +9,7 @@ const { classifyApiError } = await import("../lib/apiError.js");
 const { AcademyConflictError, AcademyValidationError } = await import("../services/academy.js");
 
 const lessonId = "fda37a99-34ba-48d5-a7f1-b5b674438229";
+const freeId = "678f842c-f140-4e31-9584-c73e9f6eacbf";
 const draftId = "678f842c-f140-4e31-9584-c73e9f6eacbe";
 const submissionId = "5ad54cef-59a6-4c3e-bd3e-1d21ed489cb1";
 const now = "2026-10-18T12:00:00.000Z";
@@ -34,6 +35,9 @@ app.use((req, _res, next) => {
   next();
 });
 app.use("/api", createAcademyRouter({
+  identity: async () => null,
+  welcome: async () => {},
+  playback: async () => ({ url: "https://customer-test.cloudflarestream.com/signed/iframe", expiresAt: now }),
   hasAccess: async userId => userId.startsWith("student"),
   isTeacher: async userId => userId === "teacher",
   // Deliberately return extra paid fields; the catalog must still redact them.
@@ -42,6 +46,7 @@ app.use("/api", createAcademyRouter({
   getLesson: async (id, includeDrafts) => {
     contentReads++;
     if (id === draftId) return includeDrafts ? { ...lesson, id, published: false } : null;
+    if (id === freeId) return { ...lesson, id: freeId, accessLevel: "free", streamVideoId: "a".repeat(32) };
     return id === lessonId ? lesson : null;
   },
   listProgress: async userId => { owners.push(userId); return [{ ...progress, exerciseResponse: `answer:${userId}` }]; },
@@ -97,12 +102,17 @@ try {
   for (const forbidden of ["videoUrl", "videoEmbedUrl", "bodyMarkdown", "exercisePrompt", "createdBy"]) {
     assert.equal(forbidden in catalog.lessons[0], false, `catalog leaked ${forbidden}`);
   }
-  assert.equal(owners.length, 0, "unsubscribed catalog must not query private progress");
+  assert.equal(owners.length, 1, "free users may load their own free progress, redacted by the catalog");
   assert.equal((await request(`/lessons/${lessonId}`, "free-user")).status, 403);
   assert.equal((await request(`/lessons/${lessonId}/progress`, "free-user", "PUT", { completed: true })).status, 403);
-  assert.equal(contentReads, 0, "deny paid content before reading it");
+  assert.equal(contentReads, 2, "authorization checks the persisted lesson access tier");
   assert.equal(writes.length, 0);
 
+  assert.equal((await request(`/lessons/${freeId}`, "free-user")).status, 200);
+  assert.equal((await request(`/lessons/${freeId}/progress`, "free-user", "PUT", { completed: true, exerciseResponse: "My free practice" })).status, 200);
+  assert.equal((await request(`/lessons/${freeId}/progress`, "free-user", "PUT", { submit: true, exerciseResponse: "My free practice" })).status, 403);
+  assert.equal((await request(`/lessons/${freeId}/playback`, "free-user")).status, 200);
+  assert.equal((await request(`/lessons/${lessonId}/playback`, "free-user")).status, 403);
   const studentCatalog = await (await request("/catalog", "student-a")).json() as AcademyCatalog;
   assert.deepEqual(studentCatalog.access, { hasAccess: true, isTeacher: false });
   assert.equal(studentCatalog.progress[0].exerciseResponse, "answer:student-a");

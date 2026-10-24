@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { uiText } from "@/contexts/LanguageContext";
 import { getAdminDashboard } from "@/lib/adminApi";
-import { Activity, AlertTriangle, BookOpen, Database, FileText, RefreshCw, Users } from "lucide-react";
+import { Activity, AlertTriangle, BookOpen, Database, FileText, RefreshCw, UserCheck, Users } from "lucide-react";
 import { AdminErrorState, AuditPreviewList } from "./shared";
 
 export function AdminDashboardPage() {
@@ -85,6 +85,14 @@ export function AdminDashboardPage() {
               detail="Account con blocco admin"
               icon={AlertTriangle}
             />
+            {metrics?.pendingApplications !== undefined && (
+              <AdminMetricCard
+                label="Candidature 150€"
+                value={metrics.pendingApplications}
+                detail="In attesa di valutazione"
+                icon={UserCheck}
+              />
+            )}
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">

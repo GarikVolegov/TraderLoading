@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800" fill="none">
+  <!-- LIMEN PROTOCOL // SLEEVE & WRIST MICRO-CREST -->
+  <!-- Target: Left Sleeve / Wrist placement on Gildan 18500 (3" x 3" / 7.6 x 7.6 cm) -->
+  <!-- Threads: Antique Gold (#C5A059) and Obsidian Black (#111111) -->
+  <!-- Heavy Stitch Thickness (well above 1.5mm) for sharp industrial embroidery visibility -->
+
+  <g transform="translate(400, 340)">
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 1. BASAMENTO CLASSICO (Stepped Stylobate Base)                     -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <rect x="-240" y="160" width="480" height="24" fill="#111111" rx="3" />
+    <line x1="-230" y1="150" x2="230" y2="150" stroke="#C5A059" stroke-width="8" stroke-linecap="round" />
+    <rect x="-200" y="130" width="400" height="22" fill="#C5A059" rx="2" />
+    <line x1="-205" y1="130" x2="205" y2="130" stroke="#111111" stroke-width="5" stroke-linecap="round" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 2. LE COLONNE SCANALATE (Columns & Capitals)                       -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Colonna Sinistra (x = -130) -->
+    <rect x="-152" y="110" width="44" height="20" fill="#111111" rx="2" />
+    <rect x="-146" y="-70" width="32" height="180" fill="#111111" rx="2" />
+    <line x1="-138" y1="-60" x2="-138" y2="100" stroke="#C5A059" stroke-width="5" stroke-linecap="round" />
+    <line x1="-130" y1="-65" x2="-130" y2="105" stroke="#C5A059" stroke-width="5" stroke-linecap="round" />
+    <line x1="-122" y1="-60" x2="-122" y2="100" stroke="#C5A059" stroke-width="5" stroke-linecap="round" />
+    <!-- Capitello dorato con volute -->
+    <rect x="-154" y="-88" width="48" height="18" fill="#C5A059" rx="3" />
+    <circle cx="-152" cy="-79" r="6" fill="#111111" />
+    <circle cx="-108" cy="-79" r="6" fill="#111111" />
+    <rect x="-158" y="-100" width="56" height="12" fill="#111111" rx="2" />
+
+    <!-- Colonna Destra (x = +130) -->
+    <rect x="108" y="110" width="44" height="20" fill="#111111" rx="2" />
+    <rect x="114" y="-70" width="32" height="180" fill="#111111" rx="2" />
+    <line x1="122" y1="-60" x2="122" y2="100" stroke="#C5A059" stroke-width="5" stroke-linecap="round" />
+    <line x1="130" y1="-65" x2="130" y2="105" stroke="#C5A059" stroke-width="5" stroke-linecap="round" />
+    <line x1="138" y1="-60" x2="138" y2="100" stroke="#C5A059" stroke-width="5" stroke-linecap="round" />
+    <!-- Capitello dorato con volute -->
+    <rect x="106" y="-88" width="48" height="18" fill="#C5A059" rx="3" />
+    <circle cx="108" cy="-79" r="6" fill="#111111" />
+    <circle cx="152" cy="-79" r="6" fill="#111111" />
+    <rect x="102" y="-100" width="56" height="12" fill="#111111" rx="2" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 3. IL VARCO DELLA SOGLIA & LA CHIAVE (Central Portal Archway)      -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Arco della porta interna -->
+    <path d="M -60 130 V 10 A 60 60 0 0 1 60 10 V 130" stroke="#111111" stroke-width="14" fill="none" stroke-linecap="round" />
+    <path d="M -45 130 V 10 A 45 45 0 0 1 45 10 V 130" stroke="#C5A059" stroke-width="6" fill="none" stroke-linecap="round" />
+
+    <!-- Asse zenitale centrale -->
+    <line x1="0" y1="-180" x2="0" y2="-45" stroke="#C5A059" stroke-width="6" stroke-linecap="round" />
+    <line x1="0" y1="45" x2="0" y2="130" stroke="#C5A059" stroke-width="6" stroke-linecap="round" />
+
+    <!-- CHIAVE DI VOLTA (Grande Rombo Centrale Dorato) -->
+    <polygon points="0,-36 36,0 0,36 -36,0" fill="#C5A059" stroke="#111111" stroke-width="6" stroke-linejoin="round" />
+    <circle cx="0" cy="0" r="12" fill="#111111" />
+    <circle cx="0" cy="0" r="5" fill="#C5A059" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 4. LA TRABEAZIONE (Entablature, Frieze, Dentils)                  -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <rect x="-190" y="-124" width="380" height="24" fill="#111111" rx="2" />
+    <line x1="-180" y1="-112" x2="180" y2="-112" stroke="#C5A059" stroke-width="4" stroke-linecap="round" />
+
+    <!-- Fregio con triglifi -->
+    <rect x="-182" y="-152" width="364" height="28" fill="#C5A059" rx="2" />
+    <rect x="-140" y="-150" width="16" height="24" fill="#111111" />
+    <rect x="-10" y="-150" width="20" height="24" fill="#111111" />
+    <circle cx="0" cy="-138" r="4" fill="#C5A059" />
+    <rect x="124" y="-150" width="16" height="24" fill="#111111" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 5. IL FRONTONE MONUMENTALE (Pediment, Tympanum & Acroterion)       -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <polygon points="0,-255 205,-152 -205,-152" fill="#111111" stroke="#C5A059" stroke-width="7" stroke-linejoin="round" />
+    <polygon points="0,-232 170,-160 -170,-160" fill="#C5A059" />
+
+    <!-- Medaglione centrale nel frontone -->
+    <circle cx="0" cy="-184" r="22" fill="#111111" stroke="#C5A059" stroke-width="3" />
+    <polygon points="0,-196 12,-184 0,-172 -12,-184" fill="#C5A059" />
+
+    <!-- Acroterio apicale al vertice -->
+    <polygon points="0,-280 14,-255 -14,-255" fill="#C5A059" stroke="#111111" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="0,-285" r="6" fill="#C5A059" stroke="#111111" stroke-width="2" />
+
+    <!-- Acroteri laterali angolari -->
+    <circle cx="-205" cy="-152" r="7" fill="#C5A059" stroke="#111111" stroke-width="2" />
+    <circle cx="205" cy="-152" r="7" fill="#C5A059" stroke="#111111" stroke-width="2" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 6. CORONA D'ALLORO BASE (Laurel Branches)                           -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <path d="M -210 170 C -265 140 -280 40 -260 -40" stroke="#C5A059" stroke-width="5" stroke-linecap="round" fill="none" />
+    <path d="M -225 150 C -245 135 -240 120 -220 135 Z" fill="#C5A059" />
+    <path d="M -250 105 C -275 90 -265 75 -240 90 Z" fill="#C5A059" />
+    <path d="M -265 50 C -290 40 -280 25 -255 35 Z" fill="#C5A059" />
+    <path d="M -260 -10 C -285 -20 -275 -35 -250 -20 Z" fill="#C5A059" />
+
+    <path d="M 210 170 C 265 140 280 40 260 -40" stroke="#C5A059" stroke-width="5" stroke-linecap="round" fill="none" />
+    <path d="M 225 150 C 245 135 240 120 220 135 Z" fill="#C5A059" />
+    <path d="M 250 105 C 275 90 265 75 240 90 Z" fill="#C5A059" />
+    <path d="M 265 50 C 290 40 280 25 255 35 Z" fill="#C5A059" />
+    <path d="M 260 -10 C 285 -20 275 -35 250 -20 Z" fill="#C5A059" />
+
+    <!-- Nastro centrale -->
+    <circle cx="0" cy="180" r="8" fill="#C5A059" stroke="#111111" stroke-width="3" />
+    <path d="M -16 186 C -8 194 0 190 0 180 C 0 190 8 194 16 186" stroke="#C5A059" stroke-width="4" stroke-linecap="round" fill="none" />
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 7. TIPOGRAFIA MONUMENTALE SCOLPITA: L · I · M · E · N               -->
+  <!-- Disegnata con font-family serif robusto e proporzioni visibili      -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <text x="400" y="605" text-anchor="middle" font-family="'Times New Roman', 'Baskerville', 'Georgia', serif" font-size="64" font-weight="bold" fill="#111111" letter-spacing="18">L · I · M · E · N</text>
+  <text x="400" y="655" text-anchor="middle" font-family="'Times New Roman', 'Georgia', serif" font-size="20" font-weight="bold" fill="#C5A059" letter-spacing="10">· PROTOCOL ·</text>
+
+  <!-- Linea di finitura -->
+  <line x1="260" y1="685" x2="540" y2="685" stroke="#C5A059" stroke-width="4" stroke-linecap="round" />
+  <circle cx="400" cy="685" r="5" fill="#C5A059" />
+</svg>

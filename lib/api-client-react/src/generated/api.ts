@@ -30,6 +30,7 @@ import type {
   AdvanceProcessMethodRequest,
   AuthUserEnvelope,
   AvatarResponse,
+  BacktestChartSnapshot,
   BacktestSession,
   BacktestTrade,
   BeginBrowserLoginParams,
@@ -124,6 +125,7 @@ import type {
   SupportTicketMessage,
   SupportTicketThread,
   UnreadCountResponse,
+  UpdateBacktestChartPreferencesBody,
   UpdateChecklistItemRequest,
   UpdateIdeaRequest,
   UpdateJournalEntryRequest,
@@ -140,6 +142,8 @@ import type {
   UserProfile,
   UserSearchResult,
   UserSettings,
+  VarcoVisionRequest,
+  VarcoVisionResponse,
   WikiFolder,
   WikiSource
 } from './api.schemas';
@@ -7667,6 +7671,195 @@ export const useDeleteBacktestTrade = <TError = ErrorType<PaymentRequiredError>,
       return useMutation(getDeleteBacktestTradeMutationOptions(options), queryClient);
     }
 
+export const getGetBacktestChartPreferencesUrl = () => {
+
+
+
+
+  return `/api/settings/backtest-chart`
+}
+
+/**
+ * @summary Read the authenticated user's chart preferences
+ */
+export const getBacktestChartPreferences = async ( options?: Parameters<typeof customFetch>[1]): Promise<BacktestChartSnapshot> => {
+
+  return customFetch<BacktestChartSnapshot>(getGetBacktestChartPreferencesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBacktestChartPreferencesQueryKey = () => {
+    return [
+    `/api/settings/backtest-chart`
+    ] as const;
+    }
+
+
+export const getGetBacktestChartPreferencesQueryOptions = <TData = Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBacktestChartPreferencesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBacktestChartPreferences>>> = ({ signal }) => getBacktestChartPreferences({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetBacktestChartPreferencesQueryResult = NonNullable<Awaited<ReturnType<typeof getBacktestChartPreferences>>>
+export type GetBacktestChartPreferencesQueryError = ErrorType<void>
+
+
+export function useGetBacktestChartPreferences<TData = Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBacktestChartPreferences>>,
+          TError,
+          Awaited<ReturnType<typeof getBacktestChartPreferences>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBacktestChartPreferences<TData = Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBacktestChartPreferences>>,
+          TError,
+          Awaited<ReturnType<typeof getBacktestChartPreferences>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBacktestChartPreferences<TData = Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read the authenticated user's chart preferences
+ */
+
+export function useGetBacktestChartPreferences<TData = Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBacktestChartPreferences>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetBacktestChartPreferencesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateBacktestChartPreferencesUrl = () => {
+
+
+
+
+  return `/api/settings/backtest-chart`
+}
+
+/**
+ * @summary Save account chart preferences if the revision matches
+ */
+export const updateBacktestChartPreferences = async (updateBacktestChartPreferencesBody: UpdateBacktestChartPreferencesBody, options?: Parameters<typeof customFetch>[1]): Promise<BacktestChartSnapshot> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BacktestChartSnapshot>(getUpdateBacktestChartPreferencesUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateBacktestChartPreferencesBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateBacktestChartPreferencesMutationKey = () => ['updateBacktestChartPreferences'] as const;
+
+export const getUpdateBacktestChartPreferencesMutationOptions = <TError = ErrorType<void | BacktestChartSnapshot>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBacktestChartPreferences>>, TError,UpdateBacktestChartPreferencesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBacktestChartPreferences>>, TError,UpdateBacktestChartPreferencesMutationVariables, TContext> => {
+
+const mutationKey = getUpdateBacktestChartPreferencesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBacktestChartPreferences>>, UpdateBacktestChartPreferencesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateBacktestChartPreferences(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBacktestChartPreferencesMutationResult = NonNullable<Awaited<ReturnType<typeof updateBacktestChartPreferences>>>
+    export type UpdateBacktestChartPreferencesMutationBody = BodyType<UpdateBacktestChartPreferencesBody>
+    export type UpdateBacktestChartPreferencesMutationError = ErrorType<void | BacktestChartSnapshot>
+    export type UpdateBacktestChartPreferencesMutationVariables = {data: BodyType<UpdateBacktestChartPreferencesBody>}
+
+    /**
+ * @summary Save account chart preferences if the revision matches
+ */
+export const useUpdateBacktestChartPreferences = <TError = ErrorType<void | BacktestChartSnapshot>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBacktestChartPreferences>>, TError,UpdateBacktestChartPreferencesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateBacktestChartPreferences>>,
+        TError,
+        UpdateBacktestChartPreferencesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateBacktestChartPreferencesMutationOptions(options), queryClient);
+    }
+
 export const getGetUserSettingsUrl = () => {
 
 
@@ -10428,5 +10621,93 @@ export const useCreateProcessReview = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreateProcessReviewMutationOptions(options), queryClient);
+    }
+
+export const getAnalyzeVarcoVisionUrl = () => {
+
+
+
+
+  return `/api/process/vision-sentinel`
+}
+
+/**
+ * @summary Scans the Varco chart canvas and candle structure to audit checklist and project trade setups
+ */
+export const analyzeVarcoVision = async (varcoVisionRequest: VarcoVisionRequest, options?: Parameters<typeof customFetch>[1]): Promise<VarcoVisionResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<VarcoVisionResponse>(getAnalyzeVarcoVisionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(varcoVisionRequest)
+  }
+);}
+
+
+
+
+
+export const getAnalyzeVarcoVisionMutationKey = () => ['analyzeVarcoVision'] as const;
+
+export const getAnalyzeVarcoVisionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeVarcoVision>>, TError,AnalyzeVarcoVisionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof analyzeVarcoVision>>, TError,AnalyzeVarcoVisionMutationVariables, TContext> => {
+
+const mutationKey = getAnalyzeVarcoVisionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof analyzeVarcoVision>>, AnalyzeVarcoVisionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  analyzeVarcoVision(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AnalyzeVarcoVisionMutationResult = NonNullable<Awaited<ReturnType<typeof analyzeVarcoVision>>>
+    export type AnalyzeVarcoVisionMutationBody = BodyType<VarcoVisionRequest>
+    export type AnalyzeVarcoVisionMutationError = ErrorType<void>
+    export type AnalyzeVarcoVisionMutationVariables = {data: BodyType<VarcoVisionRequest>}
+
+    /**
+ * @summary Scans the Varco chart canvas and candle structure to audit checklist and project trade setups
+ */
+export const useAnalyzeVarcoVision = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeVarcoVision>>, TError,AnalyzeVarcoVisionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof analyzeVarcoVision>>,
+        TError,
+        AnalyzeVarcoVisionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAnalyzeVarcoVisionMutationOptions(options), queryClient);
     }
 

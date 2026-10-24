@@ -25,15 +25,41 @@ const DATE_FNS_LOCALES: Record<Language, Locale> = {
 const STORAGE_KEY = "tl_language";
 
 /**
+ * Read the user's explicitly persisted language preference, if any.
+ * Returns null when the user has never explicitly picked a language or reset to auto.
+ */
+export function getStoredLanguagePreference(): Language | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY) as Language | null;
+    return stored && stored in LANGUAGES ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Whether this device has an explicit, persisted language choice. Used by the
  * server-sync logic to tell "user picked this" apart from "browser default".
  */
 export function hasStoredLanguagePreference(): boolean {
+  return getStoredLanguagePreference() != null;
+}
+
+export function getBrowserLanguage(): Language {
+  const browserLocales = [
+    ...(typeof navigator !== "undefined" && Array.isArray(navigator.languages) ? navigator.languages : []),
+    typeof navigator !== "undefined" ? navigator.language : undefined,
+  ];
+  return detectLanguageFromLocales(browserLocales) ?? "it";
+}
+
+export function resetToBrowserLanguage(): Language {
   try {
-    return localStorage.getItem(STORAGE_KEY) != null;
+    localStorage.removeItem(STORAGE_KEY);
   } catch {
-    return false;
+    // localStorage might be restricted
   }
+  return getBrowserLanguage();
 }
 
 // `import.meta.env` only exists under Vite; guard so module eval doesn't throw
@@ -47,12 +73,14 @@ let _activeDict: Record<string, string> = FALLBACK_DICT;
 
 interface LanguageContextValue {
   language: Language;
+  isAutoDetected: boolean;
   /**
    * Update the active language. Persists to localStorage by default; pass
    * `persist: false` when the language is driven by the URL prefix (e.g. a
    * /{lang} marketing route) so it doesn't overwrite the user's saved choice.
    */
   setLanguage: (lang: Language, persist?: boolean) => void;
+  resetToBrowserLanguage: () => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }
 
@@ -64,8 +92,8 @@ function getInitialLanguage(): Language {
   const fromPath = getLanguageFromPath(window.location.pathname, ROUTER_BASE);
   if (fromPath) return fromPath;
 
-  const stored = localStorage.getItem(STORAGE_KEY) as Language | null;
-  if (stored && stored in LANGUAGES) return stored;
+  const stored = getStoredLanguagePreference();
+  if (stored) return stored;
 
   const browserLocales = [
     ...(Array.isArray(navigator.languages) ? navigator.languages : []),
@@ -77,6 +105,7 @@ function getInitialLanguage(): Language {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLangState] = useState<Language>(getInitialLanguage);
+  const [isAutoDetected, setIsAutoDetected] = useState<boolean>(() => !hasStoredLanguagePreference());
   // Italian is bundled eagerly (fallback); other languages swap in as soon as
   // their lazy chunk arrives (~30 kB gzip — one round-trip on cold load).
   const [dict, setDict] = useState<Record<string, string>>(FALLBACK_DICT);
@@ -103,9 +132,41 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     };
   }, [language]);
 
+  // Dynamically follow browser language changes if not explicitly overridden by user
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleBrowserLanguageChange = () => {
+      if (!hasStoredLanguagePreference()) {
+        const nextLang = getBrowserLanguage();
+        setLangState(nextLang);
+        setIsAutoDetected(true);
+      }
+    };
+    window.addEventListener("languagechange", handleBrowserLanguageChange);
+    return () => window.removeEventListener("languagechange", handleBrowserLanguageChange);
+  }, []);
+
   const setLanguage = (lang: Language, persist = true) => {
-    if (persist) localStorage.setItem(STORAGE_KEY, lang);
+    if (persist) {
+      try {
+        localStorage.setItem(STORAGE_KEY, lang);
+        setIsAutoDetected(false);
+      } catch {
+        // localStorage might be restricted
+      }
+    }
     setLangState(lang);
+  };
+
+  const resetToBrowserLanguage = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      setIsAutoDetected(true);
+    } catch {
+      // localStorage might be restricted
+    }
+    const browserLang = getBrowserLanguage();
+    setLangState(browserLang);
   };
 
   const t = (key: string, vars?: Record<string, string | number>): string => {
@@ -119,7 +180,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, isAutoDetected, setLanguage, resetToBrowserLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );

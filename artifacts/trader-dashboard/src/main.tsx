@@ -4,6 +4,7 @@ import { RootErrorBoundary } from "./components/RootErrorBoundary";
 import { initObservability } from "./lib/observability";
 import { shouldReloadForPreloadError } from "./lib/preloadReload";
 import "./index.css";
+import "./styles/mobile.css";
 
 initObservability();
 

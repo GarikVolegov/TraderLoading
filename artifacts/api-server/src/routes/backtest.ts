@@ -10,7 +10,11 @@ import { calculateNetR } from "../../../../contracts/trader-process.js";
 const router: IRouter = Router();
 const numericInput = z.union([z.number(), z.string().trim().min(1)]).pipe(z.coerce.number().finite());
 const price = numericInput.pipe(z.number().positive().lt(1e7)).transform(String);
-const optionalPrice = price.nullable().optional();
+const optionalPrice = z.union([
+  z.null(),
+  z.literal(""),
+  numericInput.pipe(z.number().min(0).lt(1e7)).transform((val) => (val > 0 ? String(val) : null)),
+]).optional();
 const sessionInput = z.object({
   name: z.string().trim().min(1).max(200), pair: z.string().trim().min(1).max(32),
   timeframe: z.string().trim().min(1).max(16).optional(),

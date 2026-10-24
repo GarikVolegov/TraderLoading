@@ -4,20 +4,30 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  // @replit
-  // Whitespace-nowrap: Badges should never wrap.
-  "whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" +
-  " hover-elevate ",
+  "whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover-elevate",
   {
     variants: {
       variant: {
         default:
-          "bg-primary/10 text-primary border-primary/25",
+          "bg-primary/10 text-primary border-primary/30",
+        gold:
+          "bg-primary/15 text-primary border-primary/40 shadow-[0_0_12px_rgba(197,160,89,0.15)]",
         secondary:
-          "bg-white/5 text-muted-foreground border-white/10",
+          "bg-secondary/70 text-muted-foreground border-border/80",
         destructive:
-          "bg-destructive/10 text-destructive border-destructive/25",
-        outline: "text-foreground border [border-color:var(--badge-outline)]",
+          "bg-destructive/15 text-destructive border-destructive/35",
+        crimson:
+          "bg-[#8B1E1E]/20 text-[#ef4444] border-[#8B1E1E]/40 font-mono",
+        success:
+          "bg-success/15 text-success border-success/35",
+        warning:
+          "bg-warning/15 text-warning border-warning/35",
+        muted:
+          "bg-white/5 text-muted-foreground border-white/10",
+        outline:
+          "text-foreground border border-border",
+        brand:
+          "bg-primary text-primary-foreground border-primary font-bold shadow-sm",
       },
     },
     defaultVariants: {

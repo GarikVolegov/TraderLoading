@@ -26,14 +26,21 @@ export type AccountConnectionTestResult = {
 };
 
 function defaultAccountApiBase(): string {
+  if (typeof window !== "undefined") {
+    return "";
+  }
   const configured = import.meta.env.VITE_API_BASE as string | undefined;
   if (configured && configured.trim()) return configured;
-  return typeof window !== "undefined" ? window.location.origin : "";
+  return "";
 }
 
 export function createAccountConnectionUrl(path: string, options: AccountConnectionsApiOptions = {}): string {
   const base = options.baseUrl ?? defaultAccountApiBase();
-  return new URL(`/api${path}`, base).toString();
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (!base) {
+    return `/api${normalizedPath}`;
+  }
+  return new URL(`/api${normalizedPath}`, base).toString();
 }
 
 async function readJson<T>(response: Response, fallbackMessage: string): Promise<T> {

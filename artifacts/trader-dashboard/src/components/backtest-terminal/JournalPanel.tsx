@@ -312,9 +312,29 @@ export function JournalPanel({ engine }: { engine: ReplayEngine }) {
           <div className="btm-tradelist">
             {visibleTrades.map((trade) => {
               const directionColor = trade.direction === "buy" ? RESULT_COLOR.win : RESULT_COLOR.loss;
+              const formattedDate = new Date(trade.entryTime * 1000).toLocaleString(
+                language === "it" ? "it-IT" : "en-US",
+                { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" },
+              );
               return (
-                <div key={trade.id} className="btm-traderow" style={{ flexWrap: "wrap" }}>
-                  <div
+                <div
+                  key={trade.id}
+                  className="btm-traderow"
+                  data-hovered={engine.hoveredTradeId === trade.id}
+                  style={{
+                    flexWrap: "wrap",
+                    cursor: "pointer",
+                    borderColor: engine.hoveredTradeId === trade.id ? "var(--btm-acc)" : undefined,
+                    background: engine.hoveredTradeId === trade.id ? "color-mix(in srgb, var(--btm-acc) 10%, var(--btm-cbg))" : undefined,
+                  }}
+                  onPointerEnter={event => { if (event.pointerType === "mouse") engine.setHoveredTradeId(trade.id); }}
+                  onPointerLeave={event => { if (event.pointerType === "mouse") engine.setHoveredTradeId(null); }}
+                >
+                  <button
+                    type="button"
+                    aria-label={`${uiText("backtest_terminal.toggle_trades_on_chart")}: ${trade.id}`}
+                    aria-pressed={engine.hoveredTradeId === trade.id}
+                    onClick={() => engine.setHoveredTradeId(engine.hoveredTradeId === trade.id ? null : trade.id)}
                     className="btm-traderow-icon"
                     style={{
                       background: `color-mix(in srgb, ${directionColor} 14%, transparent)`,
@@ -322,30 +342,42 @@ export function JournalPanel({ engine }: { engine: ReplayEngine }) {
                     }}
                   >
                     {trade.direction === "buy" ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
-                  </div>
+                  </button>
                   <div className="btm-traderow-main">
-                    <span className="btm-traderow-prices">
-                      {formatPrice(trade.entryPrice, engine.symbol)} → {formatPrice(trade.exitPrice, engine.symbol)}
-                      {trade.exitReason !== "manual" && (
-                        <span style={{ marginLeft: 5, color: trade.exitReason === "tp" ? RESULT_COLOR.win : RESULT_COLOR.loss }}>
-                          {trade.exitReason.toUpperCase()}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: 6, marginBottom: 2 }}>
+                      <span style={{ fontWeight: 700, fontSize: 11, color: "var(--btm-fg)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <span>{`${uiText("backtest_terminal.trade_label")} #${trade.id}`}</span>
+                        <span style={{ color: directionColor }}>{trade.direction.toUpperCase()}</span>
+                        {trade.lots > 0 && <span style={{ color: "var(--btm-mut)", fontWeight: 500 }}>{`${trade.lots.toFixed(2)}l`}</span>}
+                        <span style={{ color: "var(--btm-mut)", fontSize: 10, fontWeight: 400 }}>· {formattedDate}</span>
+                      </span>
+                      <span className="btm-traderow-pl" style={{ color: RESULT_COLOR[trade.result], fontSize: 11 }}>
+                        {formatSignedMoney(trade.profit, language)}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", fontSize: 10 }}>
+                      <span className="btm-traderow-prices">
+                        {`${formatPrice(trade.entryPrice, engine.symbol)} → ${formatPrice(trade.exitPrice, engine.symbol)}`}
+                        <span style={{ marginLeft: 4, color: trade.pips >= 0 ? RESULT_COLOR.win : RESULT_COLOR.loss, fontWeight: 600 }}>
+                          {`(${trade.pips >= 0 ? "+" : ""}${trade.pips.toFixed(1)}p)`}
                         </span>
-                      )}
-                    </span>
-                    <span className="btm-traderow-pl" style={{ color: RESULT_COLOR[trade.result] }}>
-                      {formatSignedMoney(trade.profit, language)}
+                        {trade.exitReason !== "manual" && (
+                          <span style={{ marginLeft: 5, color: trade.exitReason === "tp" ? RESULT_COLOR.win : RESULT_COLOR.loss }}>
+                            {trade.exitReason.toUpperCase()}
+                          </span>
+                        )}
+                        {trade.isPartial && (
+                          <span style={{ marginLeft: 5, padding: "1px 4px", borderRadius: 3, background: "hsl(217 91% 60% / 0.18)", color: "hsl(217 91% 60%)", fontSize: 9, fontWeight: 700 }}>
+                            {uiText("backtest_terminal.partial_badge")}
+                          </span>
+                        )}
+                      </span>
                       {trade.rMultiple != null && (
-                        <span style={{ marginLeft: 6, color: "var(--btm-mut)", fontWeight: 400 }}>
-                          {trade.rMultiple > 0 ? "+" : ""}
-                          {trade.rMultiple.toFixed(2)}R
-                          {trade.maeR != null && trade.mfeR != null && (
-                            <span style={{ marginLeft: 5, fontSize: 10 }}>
-                              MAE −{trade.maeR.toFixed(1)} · MFE +{trade.mfeR.toFixed(1)}
-                            </span>
-                          )}
+                        <span style={{ color: "var(--btm-mut)", fontFamily: "var(--btm-mono)", fontWeight: 500 }}>
+                          {`${trade.rMultiple > 0 ? "+" : ""}${trade.rMultiple.toFixed(2)}R`}
                         </span>
                       )}
-                    </span>
+                    </div>
                   </div>
                   <span
                     className="btm-tag"

@@ -45,7 +45,7 @@ export function CalendarMissionsWidget() {
               const past = isPast(day) && !today;
 
               return (
-                <div key={i} className="flex flex-col gap-1.5">
+                <div key={i} className={`flex flex-col gap-1.5 ${past ? "opacity-60" : ""}`}>
                   <div className={`text-center text-[10px] sm:text-xs font-semibold pb-1 border-b ${
                     today
                       ? "text-primary border-primary/40"

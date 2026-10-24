@@ -6,6 +6,8 @@ import { readDesignColors } from "@/lib/designColors";
 // Sub-pane indicators and trade overlays are layered on in later phases.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AreaSeries,
+  BarSeries,
   CandlestickSeries,
   ColorType,
   createChart,
@@ -15,6 +17,7 @@ import {
   HistogramSeries,
   LineSeries,
   LineStyle,
+  PriceScaleMode,
   type IChartApi,
   type IPriceLine,
   type ISeriesApi,
@@ -24,15 +27,18 @@ import {
   type SeriesMarker,
   type Time,
 } from "lightweight-charts";
+import { Settings2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { computeIndicator } from "@/lib/replay/indicatorCatalog";
-import { cursorAtReplayTime, logicalIndexAtTime } from "@/lib/replay/replayClock";
+import { cursorAtReplayTime, logicalIndexAtTime, timeAtLogicalIndex } from "@/lib/replay/replayClock";
 import { toHeikinAshi } from "@/lib/replay/heikinAshi";
 import type { ReplayCandle } from "@/lib/replay/types";
 import { DrawingsOverlay } from "./DrawingsOverlay";
 import { formatPrice, priceDecimals, terminalLocale } from "./format";
 import { PositionOverlay, type ChartProjector } from "./PositionOverlay";
 import { SessionOpensOverlay } from "./SessionOpensOverlay";
+import { LimenAiSetupOverlay } from "../chart/LimenAiSetupOverlay";
+import type { VarcoSetupPlan } from "@workspace/api-client-react";
 import type { DrawingToolId } from "./toolRailModel";
 import type { ReplayEngine } from "./useReplayEngine";
 
@@ -49,20 +55,36 @@ const VISIBLE_BARS_ON_SEEK = 120;
 
 type PriceSeries =
   | { type: "candles"; series: ISeriesApi<"Candlestick"> }
-  | { type: "line"; series: ISeriesApi<"Line"> };
+  | { type: "bars"; series: ISeriesApi<"Bar"> }
+  | { type: "line"; series: ISeriesApi<"Line"> }
+  | { type: "area"; series: ISeriesApi<"Area"> };
 
 export function ReplayChart({
   engine,
   apiRef,
   activeTool = "cursor",
   onToolDone,
+  onOpenChartSettings,
+  onOpenKnowledge,
+  aiSetup,
+  showAiOverlay = true,
+  onUpdateAiSetup,
+  onAdoptAiSetup,
+  onToggleAiOverlay,
 }: {
   engine: ReplayEngine;
   apiRef?: React.MutableRefObject<ReplayChartApi | null>;
   activeTool?: DrawingToolId;
   onToolDone?: () => void;
+  onOpenChartSettings?: () => void;
+  onOpenKnowledge?: (tool: DrawingToolId) => void;
+  aiSetup?: VarcoSetupPlan | null;
+  showAiOverlay?: boolean;
+  onUpdateAiSetup?: (setup: VarcoSetupPlan) => void;
+  onAdoptAiSetup?: () => void;
+  onToggleAiOverlay?: () => void;
 }) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const priceSeriesRef = useRef<PriceSeries | null>(null);
@@ -75,7 +97,7 @@ export function ReplayChart({
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const [revision, setRevision] = useState(0);
   const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 });
-  // Bumped when the chart instance is recreated (e.g. language change): the
+  // Bumped when the chart instance is recreated: the
   // data/watermark/marker/price-line effects must re-run against the new chart
   // even though their own deps did not change.
   const [chartEpoch, setChartEpoch] = useState(0);
@@ -108,32 +130,55 @@ export function ReplayChart({
     const subSeries = subSeriesRef.current;
 
     const theme = readDesignColors();
+    const bg1 = settings.chartBgColor1 ?? theme.background;
+    const bg2 = settings.chartBgColor2 ?? theme.background;
+    const isGradient = settings.chartBgType === "gradient";
+    const gridColor = settings.gridColor ?? theme.panel;
+    const toLineStyle = (s?: string) =>
+      s === "solid" ? LineStyle.Solid : s === "dotted" ? LineStyle.Dotted : LineStyle.Dashed;
+
     const chart = createChart(container, {
       autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: theme.background },
-        textColor: theme.muted,
+        background: isGradient
+          ? { type: ColorType.VerticalGradient, topColor: bg1, bottomColor: bg2 }
+          : { type: ColorType.Solid, color: bg1 },
+        textColor: settings.textColor ?? theme.muted,
         fontFamily: getComputedStyle(container).fontFamily,
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: theme.panel },
-        horzLines: { color: theme.panel },
+        vertLines: { visible: settings.showVertGrid !== false, color: gridColor, style: toLineStyle(settings.gridStyle) },
+        horzLines: { visible: settings.showHorzGrid !== false, color: gridColor, style: toLineStyle(settings.gridStyle) },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: "rgba(148,163,184,0.4)", labelBackgroundColor: theme.border },
-        horzLine: { color: "rgba(148,163,184,0.4)", labelBackgroundColor: theme.border },
+        vertLine: {
+          color: settings.crosshairColor ?? "rgba(148,163,184,0.4)",
+          style: toLineStyle(settings.crosshairStyle),
+          labelBackgroundColor: theme.border,
+        },
+        horzLine: {
+          color: settings.crosshairColor ?? "rgba(148,163,184,0.4)",
+          style: toLineStyle(settings.crosshairStyle),
+          labelBackgroundColor: theme.border,
+        },
       },
       rightPriceScale: {
-        borderColor: "rgba(255,255,255,0.08)",
+        mode:
+          settings.priceScaleMode === "logarithmic"
+            ? PriceScaleMode.Logarithmic
+            : settings.priceScaleMode === "percentage"
+              ? PriceScaleMode.Percentage
+              : PriceScaleMode.Normal,
+        borderColor: settings.axisColor ?? "rgba(255,255,255,0.08)",
         scaleMargins: { top: 0.08, bottom: 0.12 },
       },
       timeScale: {
-        borderColor: "rgba(255,255,255,0.08)",
+        borderColor: settings.axisColor ?? "rgba(255,255,255,0.08)",
         timeVisible: true,
         secondsVisible: false,
-        rightOffset: 4,
+        rightOffset: settings.rightOffsetBars ?? 12,
         shiftVisibleRangeOnNewBar: true,
       },
       localization: {
@@ -141,7 +186,7 @@ export function ReplayChart({
         timeFormatter: (time: Time) => {
           if (typeof time !== "number") return String(time);
           return new Intl.DateTimeFormat(terminalLocale(language), {
-            timeZone: "UTC", day: "2-digit", month: "short", year: "numeric",
+            timeZone: "Europe/Rome", day: "2-digit", month: "short", year: "numeric",
             hour: "2-digit", minute: "2-digit", hour12: false,
           }).format(new Date(time * 1000));
         },
@@ -178,6 +223,7 @@ export function ReplayChart({
       bump();
       if (range && range.from < 50 && lastRenderRef.current.length > 0) historyLoaderRef.current();
     });
+    chart.timeScale().subscribeVisibleTimeRangeChange(bump);
     const resizeObserver = new ResizeObserver(() => {
       setOverlaySize({ width: container.clientWidth, height: container.clientHeight });
       bump();
@@ -186,78 +232,339 @@ export function ReplayChart({
     setOverlaySize({ width: container.clientWidth, height: container.clientHeight });
     setChartEpoch((epoch) => epoch + 1);
 
+    let animFrame: number | null = null;
+    const scheduleRevision = () => {
+      if (animFrame != null) return;
+      animFrame = requestAnimationFrame(() => {
+        animFrame = null;
+        bump();
+      });
+    };
+
+    container.addEventListener("pointerdown", scheduleRevision);
+    container.addEventListener("pointermove", scheduleRevision);
+    container.addEventListener("pointerup", scheduleRevision);
+    container.addEventListener("wheel", scheduleRevision, { passive: true });
+
     return () => {
+      container.removeEventListener("pointerdown", scheduleRevision);
+      container.removeEventListener("pointermove", scheduleRevision);
+      container.removeEventListener("pointerup", scheduleRevision);
+      container.removeEventListener("wheel", scheduleRevision);
+      if (animFrame != null) cancelAnimationFrame(animFrame);
       resizeObserver.disconnect();
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(bump);
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(bump);
       if (apiRef) apiRef.current = null;
       watermarkRef.current = null;
       priceSeriesRef.current = null;
       volumeSeriesRef.current = null;
       markersRef.current = null;
       priceLinesRef.current = [];
+      highLowLinesRef.current = { high: null, low: null };
       indicatorSeries.clear();
       subSeries.clear();
       lastRenderRef.current = { firstTime: null, lastTime: null, length: 0, chartType: "candles", lastValue: "" };
       chart.remove();
       chartRef.current = null;
     };
-  }, [language, apiRef]);
+    // Appearance and localization are applied in place by the effects below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiRef]);
+
+  // Localization does not need a new chart: preserve viewport, drawings and replay.
+  useEffect(() => {
+    chartRef.current?.applyOptions({
+      localization: {
+        locale: terminalLocale(language),
+        timeFormatter: (time: Time) => typeof time !== "number" ? String(time) :
+          new Intl.DateTimeFormat(terminalLocale(language), {
+            timeZone: "Europe/Rome", day: "2-digit", month: "short", year: "numeric",
+            hour: "2-digit", minute: "2-digit", hour12: false,
+          }).format(new Date(time * 1000)),
+      },
+    });
+  }, [language, chartEpoch]);
 
   // ── watermark (symbol + timeframe) ─────────────────────────────────────────
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
     watermarkRef.current?.detach();
+    if (settings.showWatermark === false) {
+      watermarkRef.current = null;
+      return;
+    }
+    const text = settings.watermarkText?.trim() || `${symbol}  ${interval}`;
+    const opacity = settings.watermarkOpacity ?? 0.05;
+    const baseHex = settings.textColor && /^#[\da-f]{6}/i.test(settings.textColor) ? settings.textColor.slice(1, 7) : "ffffff";
+    const wr = Number.parseInt(baseHex.slice(0, 2), 16) || 255;
+    const wg = Number.parseInt(baseHex.slice(2, 4), 16) || 255;
+    const wb = Number.parseInt(baseHex.slice(4, 6), 16) || 255;
     watermarkRef.current = createTextWatermark(chart.panes()[0], {
       horzAlign: "center",
       vertAlign: "center",
       lines: [
         {
-          text: `${symbol}  ${interval}`,
-          color: "rgba(255,255,255,0.05)",
+          text,
+          color: `rgba(${wr}, ${wg}, ${wb}, ${opacity})`,
           fontSize: 44,
           fontStyle: "bold",
         },
       ],
     });
-  }, [symbol, interval, chartEpoch]);
+  }, [symbol, interval, chartEpoch, settings.showWatermark, settings.watermarkText, settings.watermarkOpacity, settings.textColor]);
+
+  // ── dynamic chart layout & scale options ───────────────────────────────────
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const theme = readDesignColors();
+    const bg1 = settings.chartBgColor1 ?? theme.background;
+    const bg2 = settings.chartBgColor2 ?? theme.background;
+    const isGradient = settings.chartBgType === "gradient";
+    const gridColor = settings.gridColor ?? theme.panel;
+    const toLineStyle = (s?: string) =>
+      s === "solid" ? LineStyle.Solid : s === "dotted" ? LineStyle.Dotted : LineStyle.Dashed;
+
+    chart.applyOptions({
+      layout: {
+        background: isGradient
+          ? { type: ColorType.VerticalGradient, topColor: bg1, bottomColor: bg2 }
+          : { type: ColorType.Solid, color: bg1 },
+        textColor: settings.textColor ?? theme.muted,
+      },
+      timeScale: {
+        borderColor: settings.axisColor ?? "rgba(255,255,255,0.08)",
+        rightOffset: settings.rightOffsetBars ?? 12,
+      },
+      grid: {
+        vertLines: { visible: settings.showVertGrid !== false, color: gridColor, style: toLineStyle(settings.gridStyle) },
+        horzLines: { visible: settings.showHorzGrid !== false, color: gridColor, style: toLineStyle(settings.gridStyle) },
+      },
+      crosshair: {
+        vertLine: {
+          color: settings.crosshairColor ?? "rgba(148,163,184,0.4)",
+          style: toLineStyle(settings.crosshairStyle),
+          labelBackgroundColor: settings.axisColor ?? theme.border,
+        },
+        horzLine: {
+          color: settings.crosshairColor ?? "rgba(148,163,184,0.4)",
+          style: toLineStyle(settings.crosshairStyle),
+          labelBackgroundColor: settings.axisColor ?? theme.border,
+        },
+      },
+      rightPriceScale: {
+        borderColor: settings.axisColor ?? "rgba(255,255,255,0.08)",
+        mode:
+          settings.priceScaleMode === "logarithmic"
+            ? PriceScaleMode.Logarithmic
+            : settings.priceScaleMode === "percentage"
+              ? PriceScaleMode.Percentage
+              : PriceScaleMode.Normal,
+      },
+    });
+  }, [
+    chartEpoch,
+    settings.textColor,
+    settings.axisColor,
+    settings.rightOffsetBars,
+    settings.chartBgType,
+    settings.chartBgColor1,
+    settings.chartBgColor2,
+    settings.showVertGrid,
+    settings.showHorzGrid,
+    settings.gridColor,
+    settings.gridStyle,
+    settings.crosshairColor,
+    settings.crosshairStyle,
+    settings.priceScaleMode,
+  ]);
 
   // ── price series management (type swaps recreate the series) ──────────────
   const ensurePriceSeries = useCallback((): PriceSeries | null => {
     const chart = chartRef.current;
     if (!chart) return null;
-    const wanted = chartType === "line" ? "line" : "candles";
+    const wanted: "candles" | "bars" | "line" | "area" =
+      chartType === "line" ? "line" : chartType === "area" ? "area" : chartType === "bars" ? "bars" : "candles";
     const existing = priceSeriesRef.current;
     if (existing && existing.type === wanted) return existing;
-    if (existing) chart.removeSeries(existing.series);
+    if (existing) {
+      markersRef.current?.detach();
+      chart.removeSeries(existing.series);
+      highLowLinesRef.current = { high: null, low: null };
+    }
+
+    const precision = priceDecimals(symbol);
+    const minMove = 10 ** -precision;
+    const priceFormat = { type: "price" as const, precision, minMove };
+
+    const upColor = settings.candleUpColor ?? UP;
+    const downColor = settings.candleDownColor ?? DOWN;
+    const wickUpColor = settings.wickUpColor ?? upColor;
+    const wickDownColor = settings.wickDownColor ?? downColor;
+    const borderUpColor = settings.borderUpColor ?? upColor;
+    const borderDownColor = settings.borderDownColor ?? downColor;
+    const lineColor = settings.lineColor ?? "#3b82f6";
+    const areaTopColor = settings.areaTopColor ?? "rgba(59, 130, 246, 0.35)";
+    const areaBottomColor = settings.areaBottomColor ?? "rgba(59, 130, 246, 0.0)";
 
     if (wanted === "line") {
       const series = chart.addSeries(LineSeries, {
-        color: "#60a5fa",
+        color: lineColor,
         lineWidth: 2,
-        priceFormat: { type: "price", precision: priceDecimals(symbol), minMove: 10 ** -priceDecimals(symbol) },
+        priceFormat,
+        priceLineVisible: settings.showLastPriceLine !== false,
       });
       priceSeriesRef.current = { type: "line", series };
+    } else if (wanted === "area") {
+      const series = chart.addSeries(AreaSeries, {
+        lineColor,
+        topColor: areaTopColor,
+        bottomColor: areaBottomColor,
+        lineWidth: 2,
+        priceFormat,
+        priceLineVisible: settings.showLastPriceLine !== false,
+      });
+      priceSeriesRef.current = { type: "area", series };
+    } else if (wanted === "bars") {
+      const series = chart.addSeries(BarSeries, {
+        upColor,
+        downColor,
+        priceFormat,
+        priceLineVisible: settings.showLastPriceLine !== false,
+      });
+      priceSeriesRef.current = { type: "bars", series };
     } else {
       const series = chart.addSeries(CandlestickSeries, {
-        upColor: UP,
-        downColor: DOWN,
-        borderUpColor: UP,
-        borderDownColor: DOWN,
-        wickUpColor: UP,
-        wickDownColor: DOWN,
-        priceFormat: { type: "price", precision: priceDecimals(symbol), minMove: 10 ** -priceDecimals(symbol) },
+        upColor,
+        downColor,
+        borderUpColor,
+        borderDownColor,
+        borderVisible: settings.candleBordersVisible !== false,
+        wickVisible: settings.candleWicksVisible !== false,
+        wickUpColor,
+        wickDownColor,
+        priceFormat,
+        priceLineVisible: settings.showLastPriceLine !== false,
       });
       priceSeriesRef.current = { type: "candles", series };
     }
     // Markers and price lines are bound to the price series: rebind on swap.
     markersRef.current = createSeriesMarkers(priceSeriesRef.current.series);
     priceLinesRef.current = [];
+    // A retained viewport may emit no range event when the series is replaced.
+    // Reproject drawings against the new series instead of retaining its removed predecessor.
+    setRevision((value) => value + 1);
     return priceSeriesRef.current;
-  }, [chartType, symbol]);
+  }, [
+    chartType,
+    symbol,
+    settings.candleUpColor,
+    settings.candleDownColor,
+    settings.wickUpColor,
+    settings.wickDownColor,
+    settings.borderUpColor,
+    settings.borderDownColor,
+    settings.candleBordersVisible,
+    settings.candleWicksVisible,
+    settings.lineColor,
+    settings.areaTopColor,
+    settings.areaBottomColor,
+    settings.showLastPriceLine,
+  ]);
+
+  // ── dynamic series appearance updates ──────────────────────────────────────
+  useEffect(() => {
+    const price = priceSeriesRef.current;
+    if (!price) return;
+    const precision = priceDecimals(symbol);
+    price.series.applyOptions({ priceFormat: { type: "price", precision, minMove: 10 ** -precision } });
+    const upColor = settings.candleUpColor ?? UP;
+    const downColor = settings.candleDownColor ?? DOWN;
+    const wickUpColor = settings.wickUpColor ?? upColor;
+    const wickDownColor = settings.wickDownColor ?? downColor;
+    const borderUpColor = settings.borderUpColor ?? upColor;
+    const borderDownColor = settings.borderDownColor ?? downColor;
+    const lineColor = settings.lineColor ?? "#3b82f6";
+    const areaTopColor = settings.areaTopColor ?? "rgba(59, 130, 246, 0.35)";
+    const areaBottomColor = settings.areaBottomColor ?? "rgba(59, 130, 246, 0.0)";
+
+    if (price.type === "candles") {
+      price.series.applyOptions({
+        upColor,
+        downColor,
+        wickUpColor,
+        wickDownColor,
+        borderUpColor,
+        borderDownColor,
+        borderVisible: settings.candleBordersVisible !== false,
+        wickVisible: settings.candleWicksVisible !== false,
+        priceLineVisible: settings.showLastPriceLine !== false,
+      });
+    } else if (price.type === "bars") {
+      price.series.applyOptions({
+        upColor,
+        downColor,
+        priceLineVisible: settings.showLastPriceLine !== false,
+      });
+    } else if (price.type === "line") {
+      price.series.applyOptions({
+        color: lineColor,
+        priceLineVisible: settings.showLastPriceLine !== false,
+      });
+    } else if (price.type === "area") {
+      price.series.applyOptions({
+        lineColor,
+        topColor: areaTopColor,
+        bottomColor: areaBottomColor,
+        priceLineVisible: settings.showLastPriceLine !== false,
+      });
+    }
+  }, [
+    chartEpoch,
+    chartType,
+    symbol,
+    settings.candleUpColor,
+    settings.candleDownColor,
+    settings.wickUpColor,
+    settings.wickDownColor,
+    settings.borderUpColor,
+    settings.borderDownColor,
+    settings.candleBordersVisible,
+    settings.candleWicksVisible,
+    settings.lineColor,
+    settings.areaTopColor,
+    settings.areaBottomColor,
+    settings.showLastPriceLine,
+  ]);
+
+  // ── interactive OHLC status line / legend tracking ────────────────────────
+  const [hoverCandle, setHoverCandle] = useState<ReplayCandle | null>(null);
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const handler = (param: { time?: Time; point?: { x: number; y: number } }) => {
+      if (!param.point || !param.time) {
+        setHoverCandle(null);
+        return;
+      }
+      const t = typeof param.time === "number" ? param.time : null;
+      if (!t) {
+        setHoverCandle(null);
+        return;
+      }
+      const candle = displayCandles.find((c) => c.time === t);
+      setHoverCandle(candle ?? null);
+    };
+    chart.subscribeCrosshairMove(handler);
+    return () => chart.unsubscribeCrosshairMove(handler);
+  }, [displayCandles, chartEpoch]);
 
   // ── reveal: setData on seeks, update on single steps ───────────────────────
   useEffect(() => {
     const chart = chartRef.current;
+    const previousRange = chart?.timeScale().getVisibleLogicalRange();
     const price = ensurePriceSeries();
     if (!chart || !price) return;
 
@@ -283,17 +590,13 @@ export function ReplayChart({
     const firstTime = displayCandles.length > 0 ? displayCandles[0].time : null;
     const lastBar = displayCandles[displayCandles.length - 1];
     const lastValue = lastBar ? `${interval}:${lastBar.time}:${lastBar.open}:${lastBar.high}:${lastBar.low}:${lastBar.close}:${lastBar.volume}` : "";
-    // Same window, same cursor (e.g. a prefetch append behind the cursor or an
-    // unrelated re-render): the visible data is unchanged — never touch the
-    // series or the user's pan/zoom. (A just-toggled volume series still needs
-    // its first fill.)
     if (last.firstTime === firstTime && last.chartType === chartType && last.length === displayCandles.length && last.lastValue === lastValue) {
       if (volumeJustCreated && volumeSeriesRef.current) {
         volumeSeriesRef.current.setData(
           displayCandles.map((candle) => ({
             time: candle.time as Time,
             value: candle.volume ?? 0,
-            color: candle.close >= candle.open ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)",
+            color: candle.close >= candle.open ? (settings.volumeUpColor ?? "rgba(16,185,129,0.25)") : (settings.volumeDownColor ?? "rgba(239,68,68,0.25)"),
           })),
         );
       }
@@ -304,9 +607,10 @@ export function ReplayChart({
       last.chartType === chartType &&
       last.length > 0 &&
       displayCandles[last.length - 1]?.time === last.lastTime &&
-      displayCandles.length > last.length &&
-      displayCandles.length - last.length <= 3;
+      displayCandles.length >= last.length &&
+      displayCandles.length - last.length <= 10;
 
+    const isLineLike = price.type === "line" || price.type === "area";
     const toLinePoint = (candle: ReplayCandle) => ({ time: candle.time as Time, value: candle.close });
     const toCandlePoint = (candle: ReplayCandle) => ({
       time: candle.time as Time,
@@ -318,37 +622,116 @@ export function ReplayChart({
     const toVolumePoint = (candle: ReplayCandle) => ({
       time: candle.time as Time,
       value: candle.volume ?? 0,
-      color: candle.close >= candle.open ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)",
+      color: candle.close >= candle.open ? (settings.volumeUpColor ?? "rgba(16,185,129,0.25)") : (settings.volumeDownColor ?? "rgba(239,68,68,0.25)"),
     });
 
     if (isIncremental) {
-      // A previous forming candle may now be complete after a forward seek.
-      if (price.type === "line") price.series.update(toLinePoint(displayCandles[last.length - 1]));
-      else price.series.update(toCandlePoint(displayCandles[last.length - 1]));
-      volumeSeriesRef.current?.update(toVolumePoint(displayCandles[last.length - 1]));
+      const deltaBars = displayCandles.length - last.length;
+      const prevBar = displayCandles[last.length - 1];
+      if (isLineLike) price.series.update(toLinePoint(prevBar));
+      else price.series.update(toCandlePoint(prevBar));
+      volumeSeriesRef.current?.update(toVolumePoint(prevBar));
       for (let i = last.length; i < displayCandles.length; i++) {
-        if (price.type === "line") price.series.update(toLinePoint(displayCandles[i]));
-        else price.series.update(toCandlePoint(displayCandles[i]));
-        volumeSeriesRef.current?.update(toVolumePoint(displayCandles[i]));
+        const bar = displayCandles[i];
+        if (isLineLike) price.series.update(toLinePoint(bar));
+        else price.series.update(toCandlePoint(bar));
+        volumeSeriesRef.current?.update(toVolumePoint(bar));
+      }
+      // Auto-Follow Camera: scorre fluidamente in avanti preservando lo zoom dell'utente
+      if (previousRange && deltaBars > 0) {
+        const span = Math.max(20, previousRange.to - previousRange.from);
+        const rightOffset = settings.rightOffsetBars ?? 12;
+        const isNearRightEdge = previousRange.to >= last.length - 1 - span * 0.35;
+        if (engine.playing || isNearRightEdge) {
+          const targetTo = displayCandles.length - 1 + rightOffset;
+          chart.timeScale().setVisibleLogicalRange({
+            from: targetTo - span,
+            to: targetTo,
+          });
+        }
       }
     } else {
-      const previousRange = chart.timeScale().getVisibleLogicalRange();
       const addedBefore = displayCandles.length - last.length;
       const isPrepend = addedBefore > 0 && last.length > 0 && last.lastValue === lastValue &&
         displayCandles[addedBefore]?.time === last.firstTime;
-      if (price.type === "line") price.series.setData(displayCandles.map(toLinePoint));
+      if (isLineLike) price.series.setData(displayCandles.map(toLinePoint));
       else price.series.setData(displayCandles.map(toCandlePoint));
       volumeSeriesRef.current?.setData(showVolume ? displayCandles.map(toVolumePoint) : []);
       if (isPrepend && previousRange) {
         chart.timeScale().setVisibleLogicalRange({ from: previousRange.from + addedBefore, to: previousRange.to + addedBefore });
+      } else if (previousRange && last.length > 0 && last.firstTime === firstTime) {
+        const span = Math.max(20, previousRange.to - previousRange.from);
+        const rightOffset = settings.rightOffsetBars ?? 12;
+        const targetTo = displayCandles.length - 1 + rightOffset;
+        chart.timeScale().setVisibleLogicalRange(
+          engine.playing
+            ? { from: targetTo - span, to: targetTo }
+            : previousRange,
+        );
       } else if (displayCandles.length > 0) {
-        const to = displayCandles.length - 1 + 4;
+        const to = displayCandles.length - 1 + (settings.rightOffsetBars ?? 12);
         chart.timeScale().setVisibleLogicalRange({ from: to - VISIBLE_BARS_ON_SEEK, to });
       }
     }
 
     lastRenderRef.current = { firstTime, lastTime: lastBar?.time ?? null, length: displayCandles.length, chartType, lastValue };
-  }, [displayCandles, chartType, showVolume, ensurePriceSeries, chartEpoch, interval]);
+  }, [displayCandles, chartType, showVolume, ensurePriceSeries, chartEpoch, interval, settings.volumeUpColor, settings.volumeDownColor, engine.playing, settings.rightOffsetBars]);
+
+  useEffect(() => {
+    volumeSeriesRef.current?.setData(displayCandles.map((candle) => ({
+      time: candle.time as Time,
+      value: candle.volume ?? 0,
+      color: candle.close >= candle.open
+        ? (settings.volumeUpColor ?? "rgba(16,185,129,0.25)")
+        : (settings.volumeDownColor ?? "rgba(239,68,68,0.25)"),
+    })));
+    // Data updates are handled incrementally above. This effect recolors existing bars.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.volumeUpColor, settings.volumeDownColor, chartEpoch, showVolume]);
+
+  // ── session high / low price lines ─────────────────────────────────────────
+  const highLowLinesRef = useRef<{ high: IPriceLine | null; low: IPriceLine | null }>({ high: null, low: null });
+  useEffect(() => {
+    const price = priceSeriesRef.current;
+    if (!price) return;
+    if (highLowLinesRef.current.high) {
+      price.series.removePriceLine(highLowLinesRef.current.high);
+      highLowLinesRef.current.high = null;
+    }
+    if (highLowLinesRef.current.low) {
+      price.series.removePriceLine(highLowLinesRef.current.low);
+      highLowLinesRef.current.low = null;
+    }
+    if (settings.showHighLowLines && displayCandles.length > 0) {
+      let maxH = -Infinity;
+      let minL = Infinity;
+      const recent = displayCandles.slice(-120);
+      for (const bar of recent) {
+        if (bar.high > maxH) maxH = bar.high;
+        if (bar.low < minL) minL = bar.low;
+      }
+      if (maxH > -Infinity) {
+        highLowLinesRef.current.high = price.series.createPriceLine({
+          price: maxH,
+          color: "rgba(16, 185, 129, 0.7)",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: "HIGH",
+        });
+      }
+      if (minL < Infinity) {
+        highLowLinesRef.current.low = price.series.createPriceLine({
+          price: minL,
+          color: "rgba(239, 68, 68, 0.7)",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: "LOW",
+        });
+      }
+    }
+  }, [displayCandles, settings.showHighLowLines, chartEpoch, chartType]);
 
   // ── indicator overlays and sub-panes ───────────────────────────────────────
   // Price-pane lines live in pane 0 next to the candles; each active sub-pane
@@ -361,6 +744,7 @@ export function ReplayChart({
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
+    const savedRange = chart.timeScale().getVisibleLogicalRange();
     const registry = indicatorSeriesRef.current;
     const subRegistry = subSeriesRef.current;
     const activeIds = new Set<string>();
@@ -497,6 +881,9 @@ export function ReplayChart({
         subRegistry.delete(id);
       }
     }
+    if (savedRange) {
+      chart.timeScale().setVisibleLogicalRange(savedRange);
+    }
   }, [indicators, revealed, chartEpoch]);
 
   // ── closed-trade markers (entry arrows, exit dots) ─────────────────────────
@@ -504,12 +891,19 @@ export function ReplayChart({
   useEffect(() => {
     const markersApi = markersRef.current;
     if (!markersApi || lastRevealedTime == null) return;
+    if (settings.showTradesOnChart === false && engine.hoveredTradeId == null) {
+      markersApi.setMarkers([]);
+      return;
+    }
     const markers: SeriesMarker<Time>[] = [];
     const timeForExecution = (time: number) => {
       const index = cursorAtReplayTime(revealed, time);
       return index < 0 ? null : revealed[index].time;
     };
     for (const trade of engine.trades) {
+      const isHovered = engine.hoveredTradeId === trade.id;
+      if (settings.showTradesOnChart === false && !isHovered) continue;
+
       const entryBarTime = timeForExecution(trade.entryTime);
       const exitBarTime = timeForExecution(trade.exitTime);
       if (engine.replayTime != null && trade.entryTime <= engine.replayTime && entryBarTime != null) {
@@ -518,7 +912,8 @@ export function ReplayChart({
           position: trade.direction === "buy" ? "belowBar" : "aboveBar",
           color: trade.direction === "buy" ? UP : DOWN,
           shape: trade.direction === "buy" ? "arrowUp" : "arrowDown",
-          text: `${trade.direction === "buy" ? "▲" : "▼"} ${formatPrice(trade.entryPrice, symbol)}`,
+          text: isHovered ? `${trade.direction === "buy" ? "▲ BUY" : "▼ SELL"} ${formatPrice(trade.entryPrice, symbol)}` : undefined,
+          size: isHovered ? 2 : 1,
         });
       }
       if (engine.replayTime != null && trade.exitTime <= engine.replayTime && exitBarTime != null) {
@@ -527,13 +922,14 @@ export function ReplayChart({
           position: "aboveBar",
           color: trade.result === "win" ? UP : trade.result === "loss" ? DOWN : "#eab308",
           shape: "circle",
-          text: formatPrice(trade.exitPrice, symbol),
+          text: isHovered ? `${formatPrice(trade.exitPrice, symbol)} (${trade.profit >= 0 ? "+" : ""}${trade.profit.toFixed(0)}€)` : undefined,
+          size: isHovered ? 2 : 1,
         });
       }
     }
     markers.sort((a, b) => (a.time as number) - (b.time as number));
     markersApi.setMarkers(markers);
-  }, [engine.trades, engine.replayTime, revealed, lastRevealedTime, symbol, chartType, chartEpoch]);
+  }, [engine.trades, engine.replayTime, revealed, lastRevealedTime, symbol, chartType, chartEpoch, settings.showTradesOnChart, engine.hoveredTradeId]);
 
   // ── open-position price lines (entry / SL / TP on the price axis) ──────────
   useEffect(() => {
@@ -578,15 +974,17 @@ export function ReplayChart({
       priceForY: (y: number) => price.series.coordinateToPrice(y),
       timeForX: (x: number) => {
         const time = chart.timeScale().coordinateToTime(x);
-        return typeof time === "number" ? time : null;
+        if (typeof time === "number") return time;
+        const logical = chart.timeScale().coordinateToLogical(x);
+        return logical == null ? null : timeAtLogicalIndex(revealed, logical, engine.intervalSeconds);
       },
       width: overlaySize.width,
       height: overlaySize.height,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- revision invalidates chart coordinates after pan/zoom
-  }, [overlaySize, revision, revealed, engine.intervalSeconds]);
+  }, [overlaySize, revision, revealed, engine.intervalSeconds, chartEpoch, chartType]);
 
-  // Right-click = replay jump to the bar under the cursor (FX Replay behavior);
+  // Right-click = replay jump to the bar under the cursor;
   // the browser menu stays available on the rest of the terminal.
   const onContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
     const chart = chartRef.current;
@@ -598,9 +996,64 @@ export function ReplayChart({
     if (typeof time === "number") engine.seekToTime(time);
   };
 
+  const activeBar = hoverCandle ?? (displayCandles.length > 0 ? displayCandles[displayCandles.length - 1] : null);
+  const barChange = activeBar ? activeBar.close - activeBar.open : 0;
+  const barPercent = activeBar && activeBar.open !== 0 ? (barChange / activeBar.open) * 100 : 0;
+  const isUp = barChange >= 0;
+
   return (
     <>
-      <div ref={containerRef} className="btm-chart" data-testid="replay-chart" onContextMenu={onContextMenu} />
+      <div
+        ref={containerRef}
+        className="btm-chart"
+        data-testid="replay-chart"
+        onContextMenu={onContextMenu}
+        onDoubleClick={() => onOpenChartSettings?.()}
+      />
+      {settings.showOhlcLegend !== false && activeBar && (
+        <div className="btm-legend-bar" role="status">
+          <div className="btm-legend-symbol">
+            <span className="btm-legend-symbol-name">{symbol}</span>
+            <span className="btm-legend-interval">{interval}</span>
+            <span className="btm-legend-chart-type">{chartType.toUpperCase()}</span>
+          </div>
+          <div className="btm-legend-ohlc">
+            <span className="btm-legend-cell">
+              {"O "}<strong className={isUp ? "btm-legend-up" : "btm-legend-dn"}>{formatPrice(activeBar.open, symbol)}</strong>
+            </span>
+            <span className="btm-legend-cell">
+              {"H "}<strong className={isUp ? "btm-legend-up" : "btm-legend-dn"}>{formatPrice(activeBar.high, symbol)}</strong>
+            </span>
+            <span className="btm-legend-cell">
+              {"L "}<strong className={isUp ? "btm-legend-up" : "btm-legend-dn"}>{formatPrice(activeBar.low, symbol)}</strong>
+            </span>
+            <span className="btm-legend-cell">
+              {"C "}<strong className={isUp ? "btm-legend-up" : "btm-legend-dn"}>{formatPrice(activeBar.close, symbol)}</strong>
+            </span>
+            {settings.showBarChange !== false && (
+              <span className={`btm-legend-change ${isUp ? "btm-legend-up" : "btm-legend-dn"}`}>
+                {isUp ? "+" : ""}{formatPrice(barChange, symbol)} ({isUp ? "+" : ""}{barPercent.toFixed(2)}%)
+              </span>
+            )}
+            {activeBar.volume != null && activeBar.volume > 0 && (
+              <span className="btm-legend-cell btm-legend-vol">
+                {"Vol "}<strong>{activeBar.volume.toLocaleString()}</strong>
+              </span>
+            )}
+          </div>
+          {onOpenChartSettings && (
+            <button
+              type="button"
+              className="btm-legend-gear-btn"
+              onClick={onOpenChartSettings}
+              title={t("backtest_terminal.chart_settings_legend")}
+              aria-label={t("backtest_terminal.chart_settings_legend")}
+            >
+              <Settings2 size={13} />
+            </button>
+          )}
+        </div>
+      )}
       {projector && settings.showSessions && (
         <SessionOpensOverlay engine={engine} projector={projector} revision={revision} />
       )}
@@ -612,6 +1065,17 @@ export function ReplayChart({
           revision={revision}
           activeTool={activeTool}
           onToolDone={onToolDone ?? (() => undefined)}
+          onOpenKnowledge={onOpenKnowledge}
+        />
+      )}
+      {projector && showAiOverlay && aiSetup && (
+        <LimenAiSetupOverlay
+          setup={aiSetup}
+          projector={projector}
+          symbol={engine.symbol}
+          onUpdateSetup={onUpdateAiSetup}
+          onAdoptSetup={onAdoptAiSetup}
+          onClose={onToggleAiOverlay}
         />
       )}
     </>

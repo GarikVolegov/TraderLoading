@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -6,6 +7,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "glass";
   size?: "default" | "sm" | "lg" | "icon";
   isLoading?: boolean;
+  asChild?: boolean;
 }
 
 export function buttonVariants({
@@ -33,9 +35,10 @@ export function buttonVariants({
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", size = "default", isLoading, children, disabled, ...props }, ref) => {
+  ({ className, variant = "default", size = "default", isLoading, asChild = false, children, disabled, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
     return (
-      <button
+      <Comp
         ref={ref}
         className={cn(buttonVariants({ variant, size }), className)}
         disabled={isLoading || disabled}
@@ -43,7 +46,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
         {children}
-      </button>
+      </Comp>
     );
   }
 );

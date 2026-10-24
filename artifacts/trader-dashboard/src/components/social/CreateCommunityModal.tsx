@@ -10,7 +10,7 @@ import { COMMUNITY_EMOJIS } from "./constants";
 
 export function CreateCommunityModal({
   onClose,
-  currentUserId,
+  currentUserId: _currentUserId,
 }: {
   onClose: () => void;
   currentUserId: string;

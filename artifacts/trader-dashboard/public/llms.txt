@@ -20,7 +20,7 @@
 - **Risk and preparation tools**: position size calculator, pre-trade checklist,
   economic calendar, COT report, average daily range and volatility stats, market
   session clock.
-- **Backtesting**: chart replay on real historical candles (FX Replay style) with
+- **Backtesting**: chart replay on real historical candles (Limen Protocol) with
   per-session statistics.
 - **Discipline and psychology**: guided morning and evening routines, session emotional
   check-ins, mood-vs-performance win rate insights, breathing and meditation exercises,

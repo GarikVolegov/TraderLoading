@@ -6,35 +6,45 @@
   white-space: nowrap;
 }
 .tl-brand-symbol {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-md);
-  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--primary) / 0.45);
+  border-radius: var(--radius-sm);
+  background: #0d0d10;
   color: hsl(var(--primary));
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(197, 160, 89, 0.15);
+}
+.tl-brand-symbol-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .tl-brand-wordmark {
-  font-family: var(--font-sans);
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.55px;
-  line-height: 1.25;
+  font-family: var(--font-display, "Cinzel", serif);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1.15;
+  text-transform: uppercase;
 }
 .tl-brand-wordmark small {
   display: block;
-  margin-top: 4px;
+  margin-top: 3px;
   font-family: var(--font-mono);
   font-size: 8px;
-  font-weight: 400;
-  letter-spacing: 1.6px;
-  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  color: hsl(var(--primary));
 }
 @media (max-width: 400px) {
   .tl-brand-wordmark {
-    font-size: 16px;
+    font-size: 15px;
   }
   .tl-brand {
     gap: 8px;

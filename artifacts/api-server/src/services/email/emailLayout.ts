@@ -17,11 +17,13 @@ export const BRAND = {
   success: "#2ac075",
   danger: "#e64c4c",
   font: "'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-  productName: "TraderLoading",
+  productName: "LIMEN",
 } as const;
 
 export interface EmailLayoutOptions {
   title: string;
+  brandName?: string;
+  accentColor?: string;
   /** Already-safe HTML fragment for the body (escape user input before passing). */
   bodyHtml: string;
   ctaLabel?: string;
@@ -51,21 +53,21 @@ function stripBaseTrailingSlash(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, "");
 }
 
-function renderButton(label: string, url: string): string {
+function renderButton(label: string, url: string, accent: string = BRAND.jade): string {
   const safeUrl = escapeHtml(url);
   const safeLabel = escapeHtml(label);
   return `
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
                 <tr>
-                  <td align="center" bgcolor="${BRAND.jade}" style="border-radius:10px;">
+                  <td align="center" bgcolor="${accent}" style="border-radius:10px;">
                     <!--[if mso]>
-                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeUrl}" style="height:44px;v-text-anchor:middle;width:260px;" arcsize="22%" stroke="f" fillcolor="${BRAND.jade}">
+                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeUrl}" style="height:44px;v-text-anchor:middle;width:260px;" arcsize="22%" stroke="f" fillcolor="${accent}">
                     <w:anchorlock/>
                     <center style="color:${BRAND.bg};font-family:${BRAND.font};font-size:15px;font-weight:600;">${safeLabel}</center>
                     </v:roundrect>
                     <![endif]-->
                     <!--[if !mso]><!-- -->
-                    <a href="${safeUrl}" style="display:inline-block;padding:12px 28px;border-radius:10px;background:${BRAND.jade};color:${BRAND.bg};font-family:${BRAND.font};font-size:15px;font-weight:600;text-decoration:none;">${safeLabel}</a>
+                    <a href="${safeUrl}" style="display:inline-block;padding:12px 28px;border-radius:10px;background:${accent};color:${BRAND.bg};font-family:${BRAND.font};font-size:15px;font-weight:600;text-decoration:none;">${safeLabel}</a>
                     <!--<![endif]-->
                   </td>
                 </tr>
@@ -74,14 +76,16 @@ function renderButton(label: string, url: string): string {
 
 export function renderEmailLayout(opts: EmailLayoutOptions): string {
   const lang = opts.lang || "it";
+  const productName = opts.brandName || BRAND.productName;
+  const accent =
+    opts.accentColor && /^#[0-9a-f]{6}$/i.test(opts.accentColor) ? opts.accentColor : BRAND.jade;
   const base = stripBaseTrailingSlash(opts.baseUrl);
   const logo = `${base}/app-icon-192.png`;
   const preview = opts.previewText ? escapeHtml(opts.previewText) : "";
   const footer =
-    opts.footerText ||
-    `${BRAND.productName} — Trading journal, macro news & risk discipline`;
+    opts.footerText || `${productName} — Trading journal, macro news & risk discipline`;
   const button =
-    opts.ctaLabel && opts.ctaUrl ? renderButton(opts.ctaLabel, opts.ctaUrl) : "";
+    opts.ctaLabel && opts.ctaUrl ? renderButton(opts.ctaLabel, opts.ctaUrl, accent) : "";
 
   return `<!doctype html>
 <html lang="${escapeHtml(lang)}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -101,7 +105,7 @@ export function renderEmailLayout(opts: EmailLayoutOptions): string {
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:600px;max-width:600px;">
         <tr>
           <td align="left" style="padding:0 8px 20px;">
-            <img src="${logo}" width="40" height="40" alt="${BRAND.productName}" style="display:block;border:0;border-radius:9px;">
+            <img src="${logo}" width="40" height="40" alt="${escapeHtml(productName)}" style="display:block;border:0;border-radius:9px;">
           </td>
         </tr>
         <tr>
@@ -116,7 +120,7 @@ export function renderEmailLayout(opts: EmailLayoutOptions): string {
           <td style="padding:24px 8px 0;font-family:${BRAND.font};font-size:12px;line-height:1.5;color:${BRAND.muted};">
             ${escapeHtml(footer)}
             <br>
-            <span style="color:${BRAND.border};">© ${BRAND.productName}</span>
+            <span style="color:${BRAND.border};">© ${escapeHtml(productName)}</span>
           </td>
         </tr>
       </table>
@@ -138,10 +142,6 @@ export function renderText(opts: {
   if (opts.ctaUrl) {
     lines.push("", `${opts.ctaLabel ? `${opts.ctaLabel}: ` : ""}${opts.ctaUrl}`);
   }
-  lines.push(
-    "",
-    "—",
-    opts.footerText || `${BRAND.productName}`,
-  );
+  lines.push("", "—", opts.footerText || `${BRAND.productName}`);
   return lines.join("\n");
 }

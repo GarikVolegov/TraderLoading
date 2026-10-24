@@ -27,8 +27,8 @@ assert.match(
 );
 assert.match(
   css,
-  /@media\s*\(min-width:\s*1024px\)[\s\S]*--app-inset-left:\s*13rem/,
-  "lg override: content shifts 13rem (208px) for the labelled global sidebar",
+  /@media\s*\(min-width:\s*1024px\)[\s\S]*--app-inset-left:\s*18\.5rem/,
+  "lg override: content shifts 18.5rem (296px) for the labelled global sidebar",
 );
 assert.match(
   css,
@@ -59,23 +59,16 @@ assert.doesNotMatch(
   "PageLayout must not keep the old magic-number clearance",
 );
 
-// ── Task 3: Chat height is token-based, not a raw dvh magic number ───────
+// ── Task 3: conversations measure available space rather than assuming header height ──
 const chat = fs.readFileSync("src/pages/Chat.tsx", "utf8");
-assert.match(
-  chat,
-  /calc\(100dvh\s*-\s*var\(--safe-top\)\s*-\s*13rem\s*-\s*var\(--bottom-nav-clearance\)\)/,
-  "Chat desktop scroll region reserves local tabs and subtracts notch/clearance tokens",
-);
-assert.match(chat, /calc\(100dvh-var\(--safe-top\)-8\.8rem-var\(--bottom-nav-clearance\)\)/,
-  "Chat mobile scroll region uses its own visible-tab budget");
+const viewportPanel = fs.readFileSync("src/components/ViewportPanel.tsx", "utf8");
+assert.match(chat, /<ViewportPanel>/, "Conversations use the measured viewport container");
+assert.match(viewportPanel, /visualViewport/, "Visible area accounts for the software keyboard");
+assert.match(viewportPanel, /getBoundingClientRect/, "Actual header position determines available space");
+assert.match(viewportPanel, /paddingBottom/, "Measured height reserves shared navigation clearance");
 const bottomNav = fs.readFileSync("src/components/BottomNav.tsx", "utf8");
 assert.match(bottomNav, /w-\[var\(--app-inset-left\)\]/,
   "desktop navigation and content use the same sidebar-width token");
-assert.doesNotMatch(
-  chat,
-  /100dvh\s*-\s*180px/,
-  "Chat must not keep the old fixed 180px viewport math",
-);
 
 // ── Task 4: CookieConsent sits above the bar, offset for the sidebar ─────
 const cookie = fs.readFileSync("src/components/CookieConsentPopup.tsx", "utf8");
@@ -118,6 +111,8 @@ const ALLOWLIST = new Set([
   "src/components/ui/drawer.tsx",          // overlay primitive
   "src/components/ui/toast.tsx",           // toast viewport
   "src/components/social/StoryViewer.tsx", // full-screen story overlay
+  "src/components/academy/GeneralsBooksReader.tsx", // full-screen book reader overlay
+  "src/components/decompression/DecompressionChamberModal.tsx", // full-screen decompression suite overlay
 ]);
 
 function walk(dir: string, out: string[]): void {

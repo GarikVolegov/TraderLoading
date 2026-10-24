@@ -6,5 +6,5 @@ export function academyAuthDestination(search: string): string | null {
   const params = new URLSearchParams(search);
   if (params.get("academy") !== "1") return null;
   const code = validAcademyReferral(params.get("academy_ref"));
-  return code ? `/academy?ref=${code}` : "/academy";
+  return code ? `/academy?tab=introduction&ref=${code}` : "/academy?tab=introduction";
 }

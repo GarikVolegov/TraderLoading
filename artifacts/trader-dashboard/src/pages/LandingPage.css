@@ -1,14 +1,14 @@
 .landing-page {
   --landing-header-height: 78px;
-  --landing-bg: hsl(var(--background));
-  --landing-surface: hsl(var(--card));
-  --landing-raised: hsl(var(--secondary));
-  --landing-ink: hsl(var(--foreground));
-  --landing-muted: hsl(var(--muted-foreground));
-  --landing-green: hsl(var(--primary));
-  --landing-line: hsl(var(--border));
-  --landing-loss: hsl(var(--destructive));
-  --landing-warning: hsl(var(--warning));
+  --landing-bg: #0A0A0C;
+  --landing-surface: #141418;
+  --landing-raised: #1C1C22;
+  --landing-ink: #F4F4F6;
+  --landing-muted: #8E8E98;
+  --landing-green: #C5A059;
+  --landing-line: rgba(197, 160, 89, 0.2);
+  --landing-loss: #8B1E1E;
+  --landing-warning: #C5A059;
   background: var(--landing-bg);
   color: var(--landing-ink);
   font-family: var(--font-sans);
@@ -26,20 +26,20 @@
 .landing-page h1,
 .landing-page h2,
 .landing-page h3 {
-  font-family: var(--font-sans);
+  font-family: var(--font-display, 'Cinzel', 'Cormorant Garamond', Georgia, serif);
   font-weight: 700;
-  letter-spacing: -0.015em;
-  line-height: 1.12;
+  letter-spacing: 0.03em;
+  line-height: 1.18;
 }
-.landing-page h1 {
-  font-size: clamp(38px, 4.5vw, 64px);
+.landing-page h1:not(.landing-hero-title) {
+  font-size: clamp(34px, 4.2vw, 56px);
   font-weight: 600;
 }
 .landing-page h2 {
-  font-size: clamp(30px, 3.8vw, 48px);
+  font-size: clamp(28px, 3.5vw, 42px);
 }
 .landing-page h3 {
-  font-size: 24px;
+  font-size: 22px;
 }
 .landing-page p {
   margin: 0;
@@ -155,7 +155,7 @@
   border: 0;
   border-bottom: 1px solid var(--landing-line);
   border-radius: 0;
-  background: hsl(var(--background) / .97);
+  background: rgba(9, 10, 15, 0.95);
   backdrop-filter: blur(12px);
   box-shadow: none;
 }
@@ -420,13 +420,10 @@
   top: 12px;
 }
 .landing-hero {
-  padding-top: calc(var(--landing-header-height) + 52px);
+  padding-top: calc(var(--landing-header-height) + 40px);
   padding-bottom: 80px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  justify-items: stretch;
-  gap: 48px;
-  align-items: center;
+  display: block;
+  width: 100%;
 }
 .landing-hero-copy {
   width: 100%;
@@ -2130,3 +2127,228 @@
 .landing-footer, .landing-mission, .landing-closing { text-align:center; }
 @media(max-width:900px) { .landing-hero { grid-template-columns:1fr; max-width:720px; } .landing-cockpit-preview { width:100%; } .landing-hero h1 { font-size:clamp(38px,7vw,58px); } }
 @media(max-width:600px) { .landing-header-inner { padding-inline:16px; } .landing-hero { padding-top:calc(var(--landing-header-height) + 40px); padding-bottom:48px; gap:32px; } .landing-preview-body { min-height:280px; } .landing-preview-bar { padding:12px; } .landing-preview-process { padding:16px 10px; } .landing-preview-step { gap:6px; font-size:10px; } .landing-preview-bar small { font-size:9px; } .landing-section { padding-block:56px; } }
+
+/* ==========================================================================
+   Limen Antigravity / Floating Micro-Animations
+   ========================================================================== */
+@keyframes limen-antigravity {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes limen-antigravity-badge {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-limen-float {
+  animation: limen-antigravity 5.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-limen-badge-float {
+  animation: limen-antigravity-badge 5.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-limen-float,
+  .animate-limen-badge-float {
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   LIMEN MONUMENTAL HERO SECTION STYLES & ATMOSPHERE
+   ========================================================================== */
+
+.font-cinzel {
+  font-family: var(--font-display, 'Cinzel', 'Cormorant Garamond', Georgia, serif);
+}
+
+.font-cormorant {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.landing-hero-title {
+  font-family: var(--font-display, 'Cinzel', 'Cormorant Garamond', Georgia, serif) !important;
+  letter-spacing: 0.04em;
+  line-height: 1.22;
+  text-wrap: balance;
+}
+
+@media (min-width: 640px) {
+  .landing-hero-title {
+    letter-spacing: 0.06em;
+    line-height: 1.26;
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-hero-title {
+    letter-spacing: 0.07em;
+    line-height: 1.28;
+  }
+}
+
+.hero-gold-gradient {
+  background: linear-gradient(135deg, #C5A059 0%, #F5E5C9 30%, #FFFFFF 48%, #E0B865 65%, #A87D2B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+  filter: drop-shadow(0 0 24px rgba(197, 160, 89, 0.45));
+}
+
+.hero-gold-btn {
+  background: linear-gradient(180deg, #E6C87C 0%, #C5A059 45%, #9E7A32 100%);
+  box-shadow: 0 0 35px rgba(197, 160, 89, 0.4),
+              0 6px 18px rgba(0, 0, 0, 0.6),
+              inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-gold-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  transition: none;
+}
+
+.hero-gold-btn:hover {
+  background: linear-gradient(180deg, #F0D590 0%, #D4AF37 45%, #AD8638 100%);
+  box-shadow: 0 0 50px rgba(212, 175, 55, 0.65),
+              0 8px 24px rgba(0, 0, 0, 0.7),
+              inset 0 1px 1px rgba(255, 255, 255, 0.7);
+  transform: translateY(-1.5px);
+}
+
+.hero-gold-btn:hover::after {
+  left: 150%;
+  transition: left 0.75s ease-in-out;
+}
+
+.hero-obsidian-btn {
+  background: rgba(14, 14, 18, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(197, 160, 89, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-obsidian-btn:hover {
+  background: rgba(22, 22, 28, 0.95);
+  border-color: rgba(197, 160, 89, 0.7);
+  box-shadow: 0 0 30px rgba(197, 160, 89, 0.25),
+              0 6px 25px rgba(0, 0, 0, 0.6),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+  transform: translateY(-1.5px);
+}
+
+@keyframes hero-sacred-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes hero-sacred-pulse {
+  0%, 100% {
+    opacity: 0.05;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.085;
+    transform: translate(-50%, -50%) scale(1.025);
+  }
+}
+
+@keyframes hero-zenith-breathe {
+  0%, 100% {
+    opacity: 0.75;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translateX(-50%) scale(1.04);
+  }
+}
+
+.animate-sacred-spin {
+  animation: hero-sacred-spin 260s linear infinite;
+  transform-origin: center center;
+}
+
+.animate-sacred-pulse {
+  animation: hero-sacred-pulse 10s ease-in-out infinite;
+}
+
+.animate-zenith-breathe {
+  animation: hero-zenith-breathe 8s ease-in-out infinite;
+}
+
+@keyframes hero-float-dust {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translate(12px, -18px);
+    opacity: 0.8;
+  }
+}
+
+.animate-dust-1 { animation: hero-float-dust 8s ease-in-out infinite; }
+.animate-dust-2 { animation: hero-float-dust 12s ease-in-out infinite 2s; }
+.animate-dust-3 { animation: hero-float-dust 10s ease-in-out infinite 4s; }
+.animate-dust-4 { animation: hero-float-dust 14s ease-in-out infinite 1s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sacred-spin,
+  .animate-sacred-pulse,
+  .animate-zenith-breathe,
+  .animate-dust-1,
+  .animate-dust-2,
+  .animate-dust-3,
+  .animate-dust-4 {
+    animation: none !important;
+  }
+}
+
+
+/* Public pages share the app's touch and safe-area guarantees. */
+@media (max-width: 1023px) {
+  .landing-header { padding-top:env(safe-area-inset-top, 0px); }
+  .landing-header-inner { min-width:0; gap:8px; }
+  .landing-header-inner > * { min-width:0; }
+  .landing-page :is(a.landing-button, .landing-nav a, summary) { min-height:44px; }
+  .landing-page :is(h1,h2,h3) { overflow-wrap:anywhere; }
+  .landing-page :is(video,iframe) { max-width:100%; }
+  .landing-page .landing-section { scroll-margin-top:calc(var(--landing-header-height) + env(safe-area-inset-top, 0px)); }
+}
+@media (max-width: 479px) {
+  .landing-hero h1 { font-size:clamp(32px,9vw,43px); }
+  .landing-preview-bar { flex-wrap:wrap; gap:8px; }
+  .landing-preview-step { min-width:0; }
+  .landing-preview-step span { overflow-wrap:anywhere; }
+}

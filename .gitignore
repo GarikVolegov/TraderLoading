@@ -71,3 +71,11 @@ auto/logs/
 auto/reports/
 auto/.lock
 auto/STOP
+
+# Scratch & temporary artifacts
+scratch/
+scratch_*.png
+temp_production/
+__pycache__/
+*.pyc
+seedance.ts

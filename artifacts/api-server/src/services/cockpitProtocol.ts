@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
-import { COCKPIT_VERSION, cockpitRequirements } from "../../../../contracts/cockpit.js";
-export { cockpitRequirements };
+import { COCKPIT_VERSION, cockpitRequirements, MARKETS, cockpitDay } from "../../../../contracts/cockpit.js";
+export { cockpitRequirements, MARKETS, cockpitDay };
 export const cockpitAnalysisSchema = z
   .object({
     version: z.literal(COCKPIT_VERSION),

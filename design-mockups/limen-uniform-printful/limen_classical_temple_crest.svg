@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" width="1200" height="1200">
+  <!-- LIMEN PROTOCOL // TEMPLUM DISCIPLINAE // SOGLIA SOVRANA -->
+  <!-- Classical Architectural Temple & Keystone Crest -->
+  <!-- Inline Attributes for universal compatibility with Printful embroidery & SVG engines -->
+
+  <g transform="translate(600, 410)">
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 1. BASAMENTO A 3 LIVELLI (Crepidoma & Stylobate)                  -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Gradino inferiore 1 -->
+    <rect x="-320" y="220" width="640" height="22" fill="#111111" rx="2" />
+    <line x1="-310" y1="210" x2="310" y2="210" stroke="#C5A059" stroke-width="6" stroke-linecap="round" />
+
+    <!-- Gradino intermedio 2 -->
+    <rect x="-280" y="194" width="560" height="18" fill="#111111" rx="2" />
+
+    <!-- Stylobate superiore 3 -->
+    <rect x="-250" y="170" width="500" height="24" fill="#C5A059" rx="2" />
+    <line x1="-260" y1="170" x2="260" y2="170" stroke="#111111" stroke-width="4" stroke-linecap="round" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 2. LE QUATTRO COLONNE SCANALATE (Classical Fluted Columns)         -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <!-- COLONNA 1: Esterna Sinistra (x = -200) -->
+    <rect x="-222" y="150" width="44" height="20" fill="#111111" rx="3" />
+    <rect x="-218" y="140" width="36" height="10" fill="#C5A059" rx="2" />
+    <rect x="-214" y="-120" width="28" height="260" fill="#111111" />
+    <line x1="-206" y1="-110" x2="-206" y2="135" stroke="#C5A059" stroke-width="4" stroke-linecap="round" />
+    <line x1="-200" y1="-115" x2="-200" y2="140" stroke="#C5A059" stroke-width="4" stroke-linecap="round" />
+    <line x1="-194" y1="-110" x2="-194" y2="135" stroke="#C5A059" stroke-width="4" stroke-linecap="round" />
+    <rect x="-220" y="-136" width="40" height="16" fill="#C5A059" rx="3" />
+    <circle cx="-218" cy="-128" r="6" fill="#111111" />
+    <circle cx="-182" cy="-128" r="6" fill="#111111" />
+    <rect x="-224" y="-148" width="48" height="12" fill="#111111" rx="2" />
+
+    <!-- COLONNA 2: Interna Sinistra (x = -100) -->
+    <rect x="-120" y="150" width="40" height="20" fill="#111111" rx="3" />
+    <rect x="-116" y="140" width="32" height="10" fill="#C5A059" rx="2" />
+    <rect x="-112" y="-120" width="24" height="260" fill="#111111" />
+    <line x1="-105" y1="-110" x2="-105" y2="135" stroke="#C5A059" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="-100" y1="-115" x2="-100" y2="140" stroke="#C5A059" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="-95" y1="-110" x2="-95" y2="135" stroke="#C5A059" stroke-width="3.5" stroke-linecap="round" />
+    <rect x="-118" y="-136" width="36" height="16" fill="#C5A059" rx="3" />
+    <circle cx="-116" cy="-128" r="5" fill="#111111" />
+    <circle cx="-84" cy="-128" r="5" fill="#111111" />
+    <rect x="-122" y="-148" width="44" height="12" fill="#111111" rx="2" />
+
+    <!-- COLONNA 3: Interna Destra (x = +100) -->
+    <rect x="80" y="150" width="40" height="20" fill="#111111" rx="3" />
+    <rect x="84" y="140" width="32" height="10" fill="#C5A059" rx="2" />
+    <rect x="88" y="-120" width="24" height="260" fill="#111111" />
+    <line x1="95" y1="-110" x2="95" y2="135" stroke="#C5A059" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="100" y1="-115" x2="100" y2="140" stroke="#C5A059" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="105" y1="-110" x2="105" y2="135" stroke="#C5A059" stroke-width="3.5" stroke-linecap="round" />
+    <rect x="82" y="-136" width="36" height="16" fill="#C5A059" rx="3" />
+    <circle cx="84" cy="-128" r="5" fill="#111111" />
+    <circle cx="116" cy="-128" r="5" fill="#111111" />
+    <rect x="78" y="-148" width="44" height="12" fill="#111111" rx="2" />
+
+    <!-- COLONNA 4: Esterna Destra (x = +200) -->
+    <rect x="178" y="150" width="44" height="20" fill="#111111" rx="3" />
+    <rect x="182" y="140" width="36" height="10" fill="#C5A059" rx="2" />
+    <rect x="186" y="-120" width="28" height="260" fill="#111111" />
+    <line x1="194" y1="-110" x2="194" y2="135" stroke="#C5A059" stroke-width="4" stroke-linecap="round" />
+    <line x1="200" y1="-115" x2="200" y2="140" stroke="#C5A059" stroke-width="4" stroke-linecap="round" />
+    <line x1="206" y1="-110" x2="206" y2="135" stroke="#C5A059" stroke-width="4" stroke-linecap="round" />
+    <rect x="180" y="-136" width="40" height="16" fill="#C5A059" rx="3" />
+    <circle cx="182" cy="-128" r="6" fill="#111111" />
+    <circle cx="218" cy="-128" r="6" fill="#111111" />
+    <rect x="176" y="-148" width="48" height="12" fill="#111111" rx="2" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 3. IL VARCO DELLA SOGLIA E LA CHIAVE DI VOLTA (Archway & Keystone) -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Arco a tutto sesto nero -->
+    <path d="M -68 170 V 0 A 68 68 0 0 1 68 0 V 170" stroke="#111111" stroke-width="12" fill="none" stroke-linecap="round" />
+    <!-- Profilo interno dorato dell'arco -->
+    <path d="M -54 170 V 0 A 54 54 0 0 1 54 0 V 170" stroke="#C5A059" stroke-width="4" fill="none" stroke-linecap="round" />
+
+    <!-- Asse zenitale di disciplina -->
+    <line x1="0" y1="-280" x2="0" y2="-52" stroke="#C5A059" stroke-width="5" stroke-linecap="round" />
+    <line x1="0" y1="52" x2="0" y2="170" stroke="#C5A059" stroke-width="5" stroke-linecap="round" />
+
+    <!-- LA CHIAVE DI VOLTA SACRA (Rombo Centrale) -->
+    <polygon points="0,-45 36,0 0,45 -36,0" fill="#C5A059" stroke="#111111" stroke-width="5" stroke-linejoin="round" />
+    <circle cx="0" cy="0" r="13" fill="#111111" />
+    <circle cx="0" cy="0" r="5" fill="#C5A059" />
+
+    <!-- Raggi della Chiave di Volta -->
+    <line x1="-26" y1="-26" x2="-40" y2="-40" stroke="#C5A059" stroke-width="3" stroke-linecap="round" />
+    <line x1="26" y1="-26" x2="40" y2="-40" stroke="#C5A059" stroke-width="3" stroke-linecap="round" />
+    <line x1="-26" y1="26" x2="-40" y2="40" stroke="#C5A059" stroke-width="3" stroke-linecap="round" />
+    <line x1="26" y1="26" x2="40" y2="40" stroke="#C5A059" stroke-width="3" stroke-linecap="round" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 4. LA TRABEAZIONE (Entablature, Frieze, Dentils)                  -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Architrave inferiore -->
+    <rect x="-244" y="-170" width="488" height="22" fill="#111111" rx="2" />
+    <line x1="-236" y1="-159" x2="236" y2="-159" stroke="#C5A059" stroke-width="3" stroke-linecap="round" />
+
+    <!-- Fregio dorico con triglifi -->
+    <rect x="-238" y="-200" width="476" height="30" fill="#C5A059" rx="2" />
+    <rect x="-185" y="-198" width="16" height="26" fill="#111111" />
+    <rect x="-95" y="-198" width="16" height="26" fill="#111111" />
+    <!-- Triglifo centrale con sigillo -->
+    <rect x="-10" y="-198" width="20" height="26" fill="#111111" />
+    <circle cx="0" cy="-185" r="4" fill="#C5A059" />
+    <rect x="79" y="-198" width="16" height="26" fill="#111111" />
+    <rect x="169" y="-198" width="16" height="26" fill="#111111" />
+
+    <!-- Cornice a dentelli -->
+    <rect x="-252" y="-214" width="504" height="14" fill="#111111" rx="2" />
+    <g fill="#C5A059">
+      <rect x="-220" y="-212" width="8" height="10" />
+      <rect x="-180" y="-212" width="8" height="10" />
+      <rect x="-140" y="-212" width="8" height="10" />
+      <rect x="-100" y="-212" width="8" height="10" />
+      <rect x="-60" y="-212" width="8" height="10" />
+      <rect x="-20" y="-212" width="8" height="10" />
+      <rect x="12" y="-212" width="8" height="10" />
+      <rect x="52" y="-212" width="8" height="10" />
+      <rect x="92" y="-212" width="8" height="10" />
+      <rect x="132" y="-212" width="8" height="10" />
+      <rect x="172" y="-212" width="8" height="10" />
+      <rect x="212" y="-212" width="8" height="10" />
+    </g>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 5. IL FRONTONE MONUMENTALE (Pediment, Tympanum, Acroterion)        -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Cornice triangolare esterna nera -->
+    <polygon points="0,-325 260,-214 -260,-214" fill="#111111" stroke="#C5A059" stroke-width="6" stroke-linejoin="round" />
+    <!-- Timpano interno dorato -->
+    <polygon points="0,-302 220,-222 -220,-222" fill="#C5A059" />
+
+    <!-- Medaglione centrale del timpano -->
+    <circle cx="0" cy="-250" r="26" fill="#111111" stroke="#C5A059" stroke-width="3" />
+    <polygon points="0,-265 15,-250 0,-235 -15,-250" fill="#C5A059" />
+    <circle cx="0" cy="-250" r="4" fill="#111111" />
+
+    <!-- Acroterio apicale (Vertice) -->
+    <polygon points="0,-350 15,-325 -15,-325" fill="#C5A059" stroke="#111111" stroke-width="3" stroke-linejoin="round" />
+    <circle cx="0" cy="-356" r="6" fill="#C5A059" stroke="#111111" stroke-width="2" />
+
+    <!-- Acroteri laterali angolari -->
+    <circle cx="-260" cy="-214" r="7" fill="#C5A059" stroke="#111111" stroke-width="2" />
+    <circle cx="260" cy="-214" r="7" fill="#C5A059" stroke="#111111" stroke-width="2" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 6. CORONA D'ALLORO ARALDICA (Laurel Wreath Frame)                   -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Ramo Sinistro -->
+    <path d="M -270 230 C -340 190 -360 60 -330 -50" fill="none" stroke="#C5A059" stroke-width="4" stroke-linecap="round" />
+    <path d="M -290 210 C -315 190 -310 175 -285 190 Z" fill="#C5A059" />
+    <path d="M -320 160 C -350 145 -340 130 -310 145 Z" fill="#C5A059" />
+    <path d="M -340 100 C -370 90 -360 70 -330 85 Z" fill="#C5A059" />
+    <path d="M -350 35 C -380 30 -370 10 -340 25 Z" fill="#C5A059" />
+    <path d="M -340 -30 C -370 -40 -355 -60 -330 -40 Z" fill="#C5A059" />
+
+    <!-- Ramo Destro -->
+    <path d="M 270 230 C 340 190 360 60 330 -50" fill="none" stroke="#C5A059" stroke-width="4" stroke-linecap="round" />
+    <path d="M 290 210 C 315 190 310 175 285 190 Z" fill="#C5A059" />
+    <path d="M 320 160 C 350 145 340 130 310 145 Z" fill="#C5A059" />
+    <path d="M 340 100 C 370 90 360 70 330 85 Z" fill="#C5A059" />
+    <path d="M 350 35 C 380 30 370 10 340 25 Z" fill="#C5A059" />
+    <path d="M 340 -30 C 370 -40 355 -60 330 -40 Z" fill="#C5A059" />
+
+    <!-- Nastro centrale inferiore dei rami -->
+    <circle cx="0" cy="240" r="9" fill="#C5A059" stroke="#111111" stroke-width="3" />
+    <path d="M -18 247 C -9 257 0 253 0 240 C 0 253 9 257 18 247" stroke="#C5A059" stroke-width="4" fill="none" stroke-linecap="round" />
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- 7. TIPOGRAFIA SCOLPITA ROMANA                                       -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- L · I · M · E · N -->
+  <text x="600" y="740" text-anchor="middle" font-family="'Times New Roman', 'Baskerville', serif" font-size="78" font-weight="bold" fill="#111111" letter-spacing="22">L · I · M · E · N</text>
+
+  <!-- TEMPLUM DISCIPLINAE // PROTOCOL -->
+  <text x="600" y="795" text-anchor="middle" font-family="'Times New Roman', 'Georgia', serif" font-size="24" font-weight="bold" fill="#C5A059" letter-spacing="12">TEMPLUM DISCIPLINAE</text>
+
+  <!-- MOTTO DELLA SOGLIA -->
+  <text x="600" y="835" text-anchor="middle" font-family="'Courier New', monospace" font-size="15" font-weight="bold" fill="#374151" letter-spacing="6">ORDINE DELLA SOGLIA  //  MMXXIV</text>
+
+  <!-- Linea ornamentale dorata -->
+  <line x1="430" y1="860" x2="770" y2="860" stroke="#C5A059" stroke-width="3" stroke-linecap="round" />
+  <circle cx="600" cy="860" r="4" fill="#C5A059" />
+</svg>

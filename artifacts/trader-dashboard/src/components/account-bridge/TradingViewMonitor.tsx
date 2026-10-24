@@ -70,7 +70,7 @@ export function TradingViewMonitor({ brokerSymbol }: { brokerSymbol?: string }) 
     if (window.TradingView) {
       renderWidget();
       return () => {
-        if (containerRef.current) containerRef.current.innerHTML = "";
+        if (container) container.innerHTML = "";
       };
     }
 
@@ -83,7 +83,7 @@ export function TradingViewMonitor({ brokerSymbol }: { brokerSymbol?: string }) 
 
     return () => {
       script.remove();
-      if (containerRef.current) containerRef.current.innerHTML = "";
+      if (container) container.innerHTML = "";
     };
   }, [selectedSymbol, prefs.timeframe]);
 

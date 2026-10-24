@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1200" width="800" height="1200" fill="none">
+  <!-- LIMEN PROTOCOL // PLACCA ARCHITETTONICA D'ORDINE // PANTALONE SARTORIALE -->
+  <!-- "INSIGNIA CARDINIS ET DECUMANI" -->
+  <!-- Progettato per estrusione 3D PBR in Blender & Ricamo Alta Definizione Madeira Classic Gold -->
+
+  <defs>
+    <!-- Gradiente Oro Metallico Satinato Madeira -->
+    <linearGradient id="goldSatin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDF3CD" />
+      <stop offset="25%" stop-color="#E5C378" />
+      <stop offset="50%" stop-color="#C5A059" />
+      <stop offset="75%" stop-color="#9C772C" />
+      <stop offset="100%" stop-color="#D4AF37" />
+    </linearGradient>
+
+    <linearGradient id="goldPure" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFF5D6" />
+      <stop offset="40%" stop-color="#C5A059" />
+      <stop offset="100%" stop-color="#7A5A1B" />
+    </linearGradient>
+  </defs>
+
+  <g id="placca-imperiale-ordo">
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 1. BORDO ESTERNO ARCHITETTONICO A DOPPIO PUNTO RASO                -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Cornice esterna con angoli smussati a 45 gradi -->
+    <path d="M 90 70 L 710 70 L 750 110 L 750 1090 L 710 1130 L 90 1130 L 50 1090 L 50 110 Z"
+          stroke="url(#goldSatin)" stroke-width="10" stroke-linejoin="round" fill="none" />
+
+    <!-- Filetto interno parallelo -->
+    <path d="M 105 85 L 695 85 L 735 125 L 735 1075 L 695 1115 L 105 1115 L 65 1075 L 65 125 Z"
+          stroke="#C5A059" stroke-width="4" stroke-linejoin="round" fill="none" />
+
+    <!-- Borchie d'angolo numismatiche a rilievo (4 angoli) -->
+    <circle cx="95" cy="115" r="9" fill="url(#goldPure)" stroke="#141418" stroke-width="3" />
+    <circle cx="705" cy="115" r="9" fill="url(#goldPure)" stroke="#141418" stroke-width="3" />
+    <circle cx="95" cy="1085" r="9" fill="url(#goldPure)" stroke="#141418" stroke-width="3" />
+    <circle cx="705" cy="1085" r="9" fill="url(#goldPure)" stroke="#141418" stroke-width="3" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 2. ARCHITRAVE SUPERIORE CON FRONTESPIZIO & PORTA IANUA             -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Timpano / Frontone Triangolare Superiore -->
+    <polygon points="400,120 620,185 180,185" fill="url(#goldSatin)" stroke="#141418" stroke-width="4" />
+    <polygon points="400,138 580,180 220,180" fill="#141418" stroke="#C5A059" stroke-width="3" />
+    
+    <!-- Singolarità a Diamante nel Timpano -->
+    <polygon points="400,148 414,162 400,176 386,162" fill="url(#goldPure)" />
+    <circle cx="400" cy="162" r="3.5" fill="#141418" />
+
+    <!-- Trabeazione Superiore con Scrittura Lapidaria -->
+    <rect x="160" y="195" width="480" height="38" rx="4" fill="url(#goldSatin)" stroke="#141418" stroke-width="3" />
+    <text x="400" y="221" fill="#141418" font-family="'Cinzel', 'Times New Roman', serif" font-size="20" font-weight="900" letter-spacing="7" text-anchor="middle">LIMEN PROTOCOL</text>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 3. PILASTRI CLASSICI LATERALI CON SCANALATURE & CAPITELLI          -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Capitelli Corinzi (Sinistro e Destro) -->
+    <rect x="145" y="240" width="55" height="16" rx="2" fill="url(#goldPure)" stroke="#141418" stroke-width="3" />
+    <rect x="600" y="240" width="55" height="16" rx="2" fill="url(#goldPure)" stroke="#141418" stroke-width="3" />
+
+    <!-- Fusti delle Colonne con 3 Scanalature Verticali Ciascuna -->
+    <!-- Colonna Sinistra -->
+    <rect x="150" y="260" width="45" height="520" fill="url(#goldSatin)" stroke="#141418" stroke-width="3" />
+    <line x1="160" y1="270" x2="160" y2="770" stroke="#141418" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="172.5" y1="270" x2="172.5" y2="770" stroke="#141418" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="185" y1="270" x2="185" y2="770" stroke="#141418" stroke-width="3.5" stroke-linecap="round" />
+
+    <!-- Colonna Destra -->
+    <rect x="605" y="260" width="45" height="520" fill="url(#goldSatin)" stroke="#141418" stroke-width="3" />
+    <line x1="615" y1="270" x2="615" y2="770" stroke="#141418" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="627.5" y1="270" x2="627.5" y2="770" stroke="#141418" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="640" y1="270" x2="640" y2="770" stroke="#141418" stroke-width="3.5" stroke-linecap="round" />
+
+    <!-- Basi Attiche delle Colonne -->
+    <rect x="145" y="785" width="55" height="18" rx="2" fill="url(#goldPure)" stroke="#141418" stroke-width="3" />
+    <rect x="600" y="785" width="55" height="18" rx="2" fill="url(#goldPure)" stroke="#141418" stroke-width="3" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 4. IL QUADRANTE CENTRALE: CARDO & DECUMANUS AUREO                  -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Arco a Tutto Sesto della Porta Ianua (Spessore pieno a rilievo) -->
+    <path d="M 230 460 V 380 A 170 170 0 0 1 570 380 V 460"
+          stroke="url(#goldSatin)" stroke-width="12" fill="none" stroke-linecap="square" />
+    <path d="M 246 460 V 380 A 154 154 0 0 1 554 380 V 460"
+          stroke="#141418" stroke-width="3" fill="none" />
+
+    <!-- ASSE VERTICALE DEL CARDO MAXIMUS -->
+    <line x1="400" y1="250" x2="400" y2="760" stroke="url(#goldSatin)" stroke-width="9" stroke-linecap="round" />
+    <line x1="400" y1="250" x2="400" y2="760" stroke="#141418" stroke-width="3" stroke-linecap="round" />
+
+    <!-- ASSE ORIZZONTALE DEL DECUMANUS MAXIMUS -->
+    <line x1="210" y1="510" x2="590" y2="510" stroke="url(#goldSatin)" stroke-width="9" stroke-linecap="round" />
+    <line x1="210" y1="510" x2="590" y2="510" stroke="#141418" stroke-width="3" stroke-linecap="round" />
+
+    <!-- NODO CENTRALE: SOGLIA DEL DISCEPOLO (Limen Nexus) -->
+    <!-- Medaglione aureo a doppio anello -->
+    <circle cx="400" cy="510" r="76" fill="url(#goldSatin)" stroke="#141418" stroke-width="5" />
+    <circle cx="400" cy="510" r="64" fill="#141418" stroke="url(#goldPure)" stroke-width="3" />
+    <circle cx="400" cy="510" r="38" fill="url(#goldSatin)" />
+    <circle cx="400" cy="510" r="30" fill="#141418" />
+
+    <!-- Singolarità Centrale a Diamante con Raggi Cardinali -->
+    <polygon points="400,488 418,510 400,532 382,510" fill="url(#goldPure)" />
+    <circle cx="400" cy="510" r="5" fill="#141418" />
+
+    <!-- Punti Cardinali d'Allineamento (Nord, Sud, Est, Ovest) -->
+    <circle cx="400" cy="442" r="4.5" fill="url(#goldPure)" />
+    <circle cx="400" cy="578" r="4.5" fill="url(#goldPure)" />
+    <circle cx="332" cy="510" r="4.5" fill="url(#goldPure)" />
+    <circle cx="468" cy="510" r="4.5" fill="url(#goldPure)" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 5. I CINQUE GRADI ARCHITETTONICI ROMANI (I - V)                    -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Grado V (Apex) -->
+    <rect x="250" y="300" width="80" height="26" rx="4" fill="url(#goldSatin)" stroke="#141418" stroke-width="2.5" />
+    <text x="290" y="318" fill="#141418" font-family="'Cinzel', 'Times New Roman', serif" font-size="14" font-weight="900" text-anchor="middle">V · APEX</text>
+
+    <!-- Grado IV (Ordo) -->
+    <rect x="470" y="300" width="80" height="26" rx="4" fill="url(#goldSatin)" stroke="#141418" stroke-width="2.5" />
+    <text x="510" y="318" fill="#141418" font-family="'Cinzel', 'Times New Roman', serif" font-size="14" font-weight="900" text-anchor="middle">IV · ORDO</text>
+
+    <!-- Grado III (Constantia) -->
+    <rect x="240" y="670" width="115" height="26" rx="4" fill="url(#goldSatin)" stroke="#141418" stroke-width="2.5" />
+    <text x="297.5" y="688" fill="#141418" font-family="'Cinzel', 'Times New Roman', serif" font-size="13" font-weight="900" text-anchor="middle">III · CONSTANTIA</text>
+
+    <!-- Grado II (Regula) -->
+    <rect x="445" y="670" width="115" height="26" rx="4" fill="url(#goldSatin)" stroke="#141418" stroke-width="2.5" />
+    <text x="502.5" y="688" fill="#141418" font-family="'Cinzel', 'Times New Roman', serif" font-size="13" font-weight="900" text-anchor="middle">II · REGULA</text>
+
+    <!-- Grado I (Limen / Soglia) -->
+    <rect x="330" y="730" width="140" height="28" rx="4" fill="url(#goldSatin)" stroke="#141418" stroke-width="2.5" />
+    <text x="400" y="749" fill="#141418" font-family="'Cinzel', 'Times New Roman', serif" font-size="14" font-weight="900" text-anchor="middle">I · LIMEN (VARCO)</text>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- 6. FASCIONE INFERIORE: EPIGRAFE SACRA & CANONE GEOMETRICO          -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Cartiglio Lapidario Orizzontale -->
+    <rect x="130" y="825" width="540" height="48" rx="5" fill="url(#goldSatin)" stroke="#141418" stroke-width="4" />
+    <text x="400" y="856" fill="#141418" font-family="'Cinzel', 'Times New Roman', serif" font-size="18" font-weight="900" letter-spacing="5" text-anchor="middle">CARDO ET DECUMANUS</text>
+
+    <!-- Motto Filosofico d'Ordine Lapidario -->
+    <rect x="160" y="890" width="480" height="34" rx="4" fill="#141418" stroke="url(#goldSatin)" stroke-width="3" />
+    <text x="400" y="913" fill="url(#goldPure)" font-family="'Cinzel', 'Times New Roman', serif" font-size="14" font-weight="700" letter-spacing="4" text-anchor="middle">ORDO · CONSTANTIA · REGULA</text>
+
+    <!-- Micro-graduazioni agrimensore romane alla base -->
+    <g stroke="url(#goldSatin)" stroke-width="3.5" stroke-linecap="round">
+      <line x1="220" y1="950" x2="580" y2="950" stroke-width="4" />
+      <line x1="250" y1="940" x2="250" y2="960" />
+      <line x1="300" y1="943" x2="300" y2="957" stroke-width="2" />
+      <line x1="350" y1="943" x2="350" y2="957" stroke-width="2" />
+      <line x1="400" y1="935" x2="400" y2="965" stroke-width="4.5" />
+      <line x1="450" y1="943" x2="450" y2="957" stroke-width="2" />
+      <line x1="500" y1="943" x2="500" y2="957" stroke-width="2" />
+      <line x1="550" y1="940" x2="550" y2="960" />
+    </g>
+
+    <!-- Sigillo Rotondo Numismatico alla Base -->
+    <circle cx="400" cy="1020" r="32" fill="url(#goldSatin)" stroke="#141418" stroke-width="4" />
+    <circle cx="400" cy="1020" r="26" fill="#141418" stroke="url(#goldPure)" stroke-width="2" />
+    <polygon points="400,1002 414,1020 400,1038 386,1020" fill="url(#goldPure)" />
+    <circle cx="400" cy="1020" r="4" fill="#141418" />
+  </g>
+</svg>

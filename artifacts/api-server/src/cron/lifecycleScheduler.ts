@@ -3,6 +3,7 @@
 // EMAIL_LIFECYCLE_ENABLED) vive dentro runLifecycleEmails, quindi di default è
 // un no-op finché l'utente non lo abilita. Modellato su torneiScheduler.
 
+import { dispatchLaunchEmails } from "../services/email/launchEmails.js";
 import cron, { type ScheduledTask } from "node-cron";
 import { runLifecycleEmails } from "../services/email/lifecycleEmails.js";
 import { reportJobError } from "../lib/observability.js";
@@ -15,9 +16,14 @@ export function startLifecycleScheduler(): { close(): Promise<void> } {
     runLifecycleEmails().catch((err) => reportJobError(err, { job: "email-lifecycle" }));
   });
 
+  const launchTask = cron.schedule("* * * * *", () => {
+    dispatchLaunchEmails().catch((err) => reportJobError(err, { job: "launch-emails" }));
+  });
+
   return {
     async close(): Promise<void> {
       task.stop();
+      launchTask.stop();
     },
   };
 }

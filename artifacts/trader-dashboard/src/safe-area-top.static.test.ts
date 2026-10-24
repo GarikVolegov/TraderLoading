@@ -32,14 +32,12 @@ assert.match(
   "PageLayout lg top padding must fold in --safe-top",
 );
 
-// Chat scroll region subtracts --safe-top so it never overflows under the header.
+// Chat scroll region uses ViewportPanel to dynamically compute available space while subtracting safe area and navigation.
 assert.match(
   chat,
-  /sm:h-\[calc\(100dvh-var\(--safe-top\)-13rem-var\(--bottom-nav-clearance\)\)\]/,
-  "Chat sm height reserves the header, title and visible local tabs while subtracting the notch",
+  /<ViewportPanel>/,
+  "Chat uses ViewportPanel to reserve space without static magic formulas",
 );
-assert.match(chat, /h-\[calc\(100dvh-var\(--safe-top\)-8\.8rem-var\(--bottom-nav-clearance\)\)\]/,
-  "Chat mobile height reserves local tabs even when PageHeader is hidden");
 
 // A 44px tab plus padding/border must fit below the header without taking space
 // from the composer. Keep these budgets tied to the actual viewport formulas.

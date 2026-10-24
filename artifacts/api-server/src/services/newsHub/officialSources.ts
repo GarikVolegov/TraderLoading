@@ -145,7 +145,15 @@ export async function enrichOfficialSources<T extends NewsArticle>(articles: T[]
 /** NZ provides a canonical OCR page rather than a dependable RSS endpoint. */
 export async function fetchRbnzPolicyArticle(fetcher: typeof fetch = fetch): Promise<(NewsArticle & { rawEvidenceText:string })[]> {
   const url = "https://www.rbnz.govt.nz/monetary-policy/about-monetary-policy/the-official-cash-rate";
-  const response = await fetcher(url,{redirect:"error",signal:AbortSignal.timeout(8000)});
+  const response = await fetcher(url, {
+    redirect: "error",
+    signal: AbortSignal.timeout(8000),
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    },
+  });
   if(!response.ok) throw new Error(`RBNZ HTTP ${response.status}`);
   const html = await readBoundedNewsResponse(response);
   const text = extractOfficialArticleText(html,url);

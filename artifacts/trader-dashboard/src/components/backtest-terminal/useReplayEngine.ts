@@ -1,3 +1,6 @@
+import { useChartPreferences } from "./useChartPreferences";
+import { pickChartSettings } from "../../../../../contracts/backtestChart";
+import { DRAWINGS_SYNC_EVENT, loadChartDrawings, saveChartDrawings } from "@/lib/chart/drawingStorage";
 // ─── Replay engine hook ──────────────────────────────────────────────────────
 // The terminal's single stateful orchestrator: candle window, replay cursor,
 // play loop, timeframe switching (close-time anchored, like ChartReplay), the
@@ -12,7 +15,7 @@ import { getPipMultiplier } from "@/lib/pipMultiplier";
 import { buildAccountState } from "@/lib/replay/accountTracker";
 import { defaultIndicators, type IndicatorConfig } from "@/lib/replay/indicatorCatalog";
 import { computeJournalStats } from "@/lib/replay/journalStats";
-import { computeLots, riskAmountFor, riskRewardRatio } from "@/lib/replay/lotSizing";
+import { computeLots, pipSize, riskAmountFor, riskRewardRatio } from "@/lib/replay/lotSizing";
 import {
   clampCursor,
   cursorFraction,
@@ -21,8 +24,10 @@ import {
   stepCursor,
 } from "@/lib/replay/replayCursor";
 import {
+  adaptPositionToStop,
   closePosition,
   openPosition,
+  partialClosePosition,
   positionPips,
   unrealizedProfit,
 } from "@/lib/replay/tradeEngine";
@@ -96,22 +101,104 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [trades, setTrades] = useState<ClosedTrade[]>(restored?.trades ?? []);
-  const [position, setPosition] = useState<OpenPosition | null>(restored?.openPosition ?? null);
-  const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(restored?.pendingOrder ?? null);
+  const initialPositions = restored?.openPositions?.length
+    ? restored.openPositions
+    : restored?.openPosition
+      ? [restored.openPosition]
+      : [];
+  const initialPendingOrders = restored?.pendingOrders?.length
+    ? restored.pendingOrders
+    : restored?.pendingOrder
+      ? [restored.pendingOrder]
+      : [];
+
+  const [positions, setPositions] = useState<OpenPosition[]>(initialPositions);
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(initialPendingOrders);
+  const [selectedPositionId, setSelectedPositionId] = useState<string | null>(initialPositions[0]?.id ?? null);
+  const [pickingOrderPrice, setPickingOrderPrice] = useState(false);
+  const [pickedPrice, setPickedPrice] = useState<number | null>(null);
+
+  const positionsRef = useRef<OpenPosition[]>(positions);
+  const pendingOrdersRef = useRef<PendingOrder[]>(pendingOrders);
+  useEffect(() => { positionsRef.current = positions; }, [positions]);
+  useEffect(() => { pendingOrdersRef.current = pendingOrders; }, [pendingOrders]);
+
+  const position = positions[0] ?? null;
+  const pendingOrder = pendingOrders[0] ?? null;
+  const positionRef = useRef<OpenPosition | null>(position);
+  const pendingRef = useRef<PendingOrder | null>(pendingOrder);
+  useEffect(() => { positionRef.current = positions[0] ?? null; }, [positions]);
+  useEffect(() => { pendingRef.current = pendingOrders[0] ?? null; }, [pendingOrders]);
+
+  const setPosition = useCallback((pos: OpenPosition | null) => {
+    if (!pos) {
+      setPositions([]);
+      positionsRef.current = [];
+    } else {
+      setPositions([pos]);
+      positionsRef.current = [pos];
+    }
+  }, []);
+
+  const setPendingOrder = useCallback((ord: PendingOrder | null) => {
+    if (!ord) {
+      setPendingOrders([]);
+      pendingOrdersRef.current = [];
+    } else {
+      setPendingOrders([ord]);
+      pendingOrdersRef.current = [ord];
+    }
+  }, []);
+
   const [ticket, setTicket] = useState<TerminalTicket>(restored?.ticket ?? { ...DEFAULT_TICKET });
-  const [settings, setSettings] = useState<TerminalSettings>(
+  const [sessionSettings, setSessionSettings] = useState<TerminalSettings>(
     restored?.settings ?? { ...DEFAULT_TERMINAL_SETTINGS },
   );
+  const chartPreferences = useChartPreferences(sessionSettings);
+  const settings = useMemo<TerminalSettings>(() => ({ ...sessionSettings, ...chartPreferences.preferences.settings }), [sessionSettings, chartPreferences.preferences.settings]);
+  const updateChartPreferences = chartPreferences.update;
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const setSettings = useCallback((value: TerminalSettings | ((previous: TerminalSettings) => TerminalSettings)) => {
+    const next = typeof value === "function" ? value(settingsRef.current) : value;
+    settingsRef.current = next;
+    setSessionSettings((previous) => ({ ...previous, spreadPips: next.spreadPips, commissionPerLot: next.commissionPerLot }));
+    updateChartPreferences((previous) => ({ ...previous, settings: pickChartSettings(next) }));
+  }, [updateChartPreferences]);
   const [indicators, setIndicators] = useState<IndicatorConfig[]>(
     restored?.indicators ?? defaultIndicators(),
   );
-  const [drawings, setDrawings] = useState<ReplayDrawing[]>(restored?.drawings ?? []);
+  const [drawings, setDrawingsState] = useState<ReplayDrawing[]>(() => {
+    if (restored?.drawings && restored.drawings.length > 0) return restored.drawings;
+    return loadChartDrawings(normalizedSymbol);
+  });
+  const setDrawings = useCallback(
+    (update: ReplayDrawing[] | ((prev: ReplayDrawing[]) => ReplayDrawing[])) => {
+      setDrawingsState((prev) => {
+        const next = typeof update === "function" ? update(prev) : update;
+        saveChartDrawings(normalizedSymbol, next);
+        return next;
+      });
+    },
+    [normalizedSymbol],
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onDrawingsSync = (event: Event) => {
+      const detail = (event as CustomEvent<{ symbol?: string; drawings?: ReplayDrawing[] }>).detail;
+      if (!detail || detail.symbol !== normalizedSymbol || !Array.isArray(detail.drawings)) return;
+      setDrawingsState((prev) => (prev === detail.drawings ? prev : detail.drawings!));
+    };
+    window.addEventListener(DRAWINGS_SYNC_EVENT, onDrawingsSync);
+    return () => window.removeEventListener(DRAWINGS_SYNC_EVENT, onDrawingsSync);
+  }, [normalizedSymbol]);
+  const [hoveredTradeId, setHoveredTradeId] = useState<number | null>(null);
   // Transient event feedback (order filled, stopped out, target hit); the shell
   // renders it as a brief banner and it self-clears.
-  const [notice, setNotice] = useState<{ id: number; kind: "fill" | "sl" | "tp"; price: number } | null>(null);
+  const [notice, setNotice] = useState<{ id: number; kind: "fill" | "sl" | "tp" | "cancel_tp" | "cancel_sl"; price: number } | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeIdRef = useRef(0);
-  const pushNotice = useCallback((kind: "fill" | "sl" | "tp", price: number) => {
+  const pushNotice = useCallback((kind: "fill" | "sl" | "tp" | "cancel_tp" | "cancel_sl", price: number) => {
     noticeIdRef.current += 1;
     setNotice({ id: noticeIdRef.current, kind, price });
     if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
@@ -128,29 +215,17 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const window_ = useCandleWindow(normalizedSymbol, interval, anchorTime, requestId);
   const { candles, ensureAhead } = window_;
 
-  // Trade ids are epoch-seconds-seeded and monotonic: they never collide with
-  // ids from earlier runs (or the retired ChartReplay's 1..N sequence), so the
-  // saved-to-DB dedupe set can't silently swallow new trades after a
-  // delete+reload or a legacy carry-over.
+  // Trade ids are human-meaningful sequential numbers (1, 2, 3...)
   const tradeIdRef = useRef(
-    Math.max(
-      restored?.trades.reduce((max, trade) => Math.max(max, trade.id), 0) ?? 0,
-      Math.floor(Date.now() / 1000),
-    ),
+    restored?.trades && restored.trades.length > 0
+      ? Math.max(0, ...restored.trades.filter((t) => typeof t.id === "number" && t.id < 1000000).map((t) => t.id))
+      : 0,
   );
   const replayTimeRef = useRef(replayTime);
   useEffect(() => { replayTimeRef.current = replayTime; }, [replayTime]);
   useEffect(() => () => executionControllerRef.current?.abort(), []);
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const positionRef = useRef<OpenPosition | null>(position);
-  const pendingRef = useRef<PendingOrder | null>(pendingOrder);
-  useEffect(() => {
-    pendingRef.current = pendingOrder;
-  }, [pendingOrder]);
   const cursorRef = useRef(cursor);
-  useEffect(() => {
-    positionRef.current = position;
-  }, [position]);
   useEffect(() => {
     cursorRef.current = cursor;
   }, [cursor]);
@@ -212,10 +287,26 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     }
   }, [candles, cursorReady, replayTime]);
 
+  const totalOpenProfit = useMemo(() => {
+    if (currentPrice <= 0 || positions.length === 0) return 0;
+    const profit = positions.reduce((sum, pos) => sum + unrealizedProfit(pos, currentPrice, normalizedSymbol), 0);
+    return Math.round(profit * 100) / 100;
+  }, [positions, currentPrice, normalizedSymbol]);
+
+  const totalOpenPips = useMemo(() => {
+    if (currentPrice <= 0 || positions.length === 0) return 0;
+    if (positions.length === 1) return positionPips(positions[0], currentPrice, normalizedSymbol);
+    const pips = positions.reduce((sum, pos) => sum + positionPips(pos, currentPrice, normalizedSymbol), 0);
+    return Math.round(pips * 10) / 10;
+  }, [positions, currentPrice, normalizedSymbol]);
+
+  const totalExposureLots = useMemo(() => {
+    return Math.round(positions.reduce((sum, pos) => sum + pos.lots, 0) * 100) / 100;
+  }, [positions]);
+
   const account = useMemo(() => {
-    const openProfit = position && currentPrice > 0 ? unrealizedProfit(position, currentPrice, normalizedSymbol) : 0;
-    return buildAccountState(restored?.initialBalance ?? INITIAL_BALANCE, trades, openProfit);
-  }, [position, currentPrice, normalizedSymbol, trades, restored?.initialBalance]);
+    return buildAccountState(restored?.initialBalance ?? INITIAL_BALANCE, trades, totalOpenProfit);
+  }, [trades, totalOpenProfit, restored?.initialBalance]);
 
   const stats = useMemo(() => computeJournalStats(trades), [trades]);
 
@@ -229,16 +320,10 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     costsRef.current = { spreadPips: settings.spreadPips, commissionPerLot: settings.commissionPerLot };
   }, [settings.spreadPips, settings.commissionPerLot]);
 
-  const closeAt = useCallback(
-    (exitPrice: number, exitTime: number, exitReason: "sl" | "tp" | "manual") => {
-      // Side effects live OUTSIDE the state updater (updaters may re-run under
-      // StrictMode/rebasing); positionRef mirrors state synchronously enough
-      // for the transport/hotkey call sites.
-      const current = positionRef.current;
-      if (!current) return;
-      positionRef.current = null;
+  const closePositionDirect = useCallback(
+    (targetPos: OpenPosition, exitPrice: number, exitTime: number, exitReason: "sl" | "tp" | "manual") => {
       tradeIdRef.current += 1;
-      const closed = closePosition(current, {
+      const closed = closePosition(targetPos, {
         exitPrice,
         exitTime,
         exitReason,
@@ -247,10 +332,22 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
         costs: costsRef.current,
       });
       closed.syncId = crypto.randomUUID();
-      setPosition(null);
       setTrades((old) => [closed, ...old]);
+      return closed;
     },
     [normalizedSymbol],
+  );
+
+  const closeAt = useCallback(
+    (exitPrice: number, exitTime: number, exitReason: "sl" | "tp" | "manual") => {
+      const current = positionsRef.current[0];
+      if (!current) return;
+      closePositionDirect(current, exitPrice, exitTime, exitReason);
+      const nextPositions = positionsRef.current.slice(1);
+      positionsRef.current = nextPositions;
+      setPositions(nextPositions);
+    },
+    [closePositionDirect],
   );
 
   const stop = useCallback(() => {
@@ -266,29 +363,47 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     const from = replayTimeRef.current;
     if (from == null || targetTime <= from || executingRef.current || !cursorReady) return false;
     let finalTime = targetTime;
-    if (positionRef.current || pendingRef.current) {
+    if (positionsRef.current.length > 0 || pendingOrdersRef.current.length > 0) {
       executingRef.current = true;
       setExecuting(true);
       setExecutionError(null);
       const controller = new AbortController();
       executionControllerRef.current = controller;
       try {
+        const targetCandles = candles.filter((c) => c.time >= from && c.time <= targetTime);
         const result = await simulateReplayExecution({
           pages: iterateReplayExecutionCandles(normalizedSymbol, from, targetTime, { signal: controller.signal }),
-          position: positionRef.current,
-          pendingOrder: pendingRef.current,
+          fallbackCandles: targetCandles.length > 0 ? targetCandles : (currentBar ? [currentBar] : []),
+          positions: positionsRef.current,
+          pendingOrders: pendingOrdersRef.current,
+          position: positionsRef.current[0] ?? null,
+          pendingOrder: pendingOrdersRef.current[0] ?? null,
           symbol: normalizedSymbol,
           targetTime,
           rules: { breakevenAtR: ticket.breakevenAtR, trailingPips: ticket.trailingPips },
           signal: controller.signal,
         });
-        finalTime = result.finalTime;
-        positionRef.current = result.position;
-        pendingRef.current = result.pendingOrder;
-        setPosition(result.position);
-        setPendingOrder(result.pendingOrder);
-        if (result.event) pushNotice(result.event.kind, result.event.price);
-        if (result.exit) { closeAt(result.exit.exitPrice, finalTime, result.exit.exitReason); stop(); }
+        const exitTimestamp = result.finalTime;
+        // Manteniamo l'avanzamento fluido fino a targetTime così il replay continuo non si blocca a metà candela
+        finalTime = targetTime;
+        const newPositions = result.positions ?? (result.position ? [result.position] : []);
+        const newPendingOrders = result.pendingOrders ?? (result.pendingOrder ? [result.pendingOrder] : []);
+        positionsRef.current = newPositions;
+        pendingOrdersRef.current = newPendingOrders;
+        setPositions(newPositions);
+        setPendingOrders(newPendingOrders);
+
+        if (result.event) {
+          pushNotice(result.event.kind, result.event.price);
+        }
+
+        if (result.exits && result.exits.length > 0) {
+          for (const exit of result.exits) {
+            closePositionDirect(exit.position, exit.exitPrice, exit.exitTime ?? exitTimestamp, exit.exitReason);
+          }
+        } else if (result.exit) {
+          closeAt(result.exit.exitPrice, exitTimestamp, result.exit.exitReason);
+        }
       } catch (error) {
         if (!controller.signal.aborted) {
           setExecutionError(error instanceof Error ? error.message : String(error));
@@ -329,7 +444,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
 
   /** Never rewind an open trade or pending order into market data it already consumed. */
   const minCursorIndex = useCallback((): number => {
-    if (positionRef.current || pendingRef.current) return cursorRef.current;
+    if (positionsRef.current.length > 0 || pendingOrdersRef.current.length > 0) return cursorRef.current;
     return 0;
   }, []);
 
@@ -387,10 +502,10 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     executingRef.current = false;
     setExecuting(false);
     setExecutionError(null);
-    setPosition(null);
-    positionRef.current = null;
-    setPendingOrder(null);
-    pendingRef.current = null;
+    setPositions([]);
+    positionsRef.current = [];
+    setPendingOrders([]);
+    pendingOrdersRef.current = [];
     const time = Math.floor(timestamp / 60) * 60;
     setCursorReady(false);
     setStartTime(time);
@@ -474,9 +589,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
 
   const buy = useCallback(
     (direction: TradeDirection = "buy") => {
-      // Reject while a position OR a resting order exists (the B/S hotkeys reach
-      // here even when the ticket hides the buttons behind the pending card).
-      if (positionRef.current || pendingRef.current || !currentBar || !cursorReady || executingRef.current || lots <= 0) return;
+      if (!currentBar || !cursorReady || executingRef.current || lots <= 0) return;
       const opened = openPosition({
         direction,
         entryPrice: currentBar.close,
@@ -487,77 +600,268 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
         riskAmount,
         symbol: normalizedSymbol,
       });
-      positionRef.current = opened;
-      setPosition(opened);
+      const nextPositions = [...positionsRef.current, opened];
+      positionsRef.current = nextPositions;
+      positionRef.current = nextPositions[0] ?? null;
+      setPositions(nextPositions);
+      setSelectedPositionId(opened.id ?? null);
     },
     [currentBar, cursorReady, lots, normalizedSymbol, riskAmount, ticket.slPips, ticket.tpPips],
   );
 
   const sell = useCallback(() => buy("sell"), [buy]);
 
-  /**
-   * Place a resting limit/stop order at `price`. Only one order (and no open
-   * position) at a time. The kind (limit vs stop) is inferred from where the
-   * price sits relative to the current close, matching broker conventions:
-   * buy below = limit / buy above = stop, and mirrored for sell.
-   */
   const placeOrder = useCallback(
-    (direction: TradeDirection, price: number) => {
-      if (positionRef.current || pendingRef.current || !currentBar || !cursorReady || executingRef.current || lots <= 0) return;
+    (
+      direction: TradeDirection,
+      price: number,
+      options?: { slPips?: number; tpPips?: number; lots?: number; riskAmount?: number },
+    ) => {
+      if (!currentBar || !cursorReady || executingRef.current) return;
       if (!Number.isFinite(price) || price <= 0) return;
-      const below = price < currentBar.close;
-      const kind: "limit" | "stop" = direction === "buy" ? (below ? "limit" : "stop") : below ? "stop" : "limit";
-      const order = {
+      const orderLots = options?.lots ?? lots;
+      if (orderLots <= 0) return;
+      const orderSlPips = options?.slPips ?? ticket.slPips;
+      const orderTpPips = options?.tpPips ?? ticket.tpPips;
+      const orderRiskAmount = options?.riskAmount ?? riskAmount;
+      // Nel protocollo LIMEN tutti i pendenti sono esclusivamente ordini LIMIT (su sconto o premium).
+      // Gli ordini Stop breakout non vengono mai usati.
+      const kind: "limit" = "limit";
+      const size = pipSize(normalizedSymbol);
+      const sign = direction === "buy" ? 1 : -1;
+      const order: PendingOrder = {
+        id: `ord-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         direction,
         kind,
         price,
-        slPips: ticket.slPips,
-        tpPips: ticket.tpPips,
-        lots,
-        riskAmount,
+        stopLoss: orderSlPips > 0 ? price - sign * orderSlPips * size : undefined,
+        takeProfit: orderTpPips > 0 ? price + sign * orderTpPips * size : undefined,
+        slPips: orderSlPips,
+        tpPips: orderTpPips,
+        lots: orderLots,
+        riskAmount: orderRiskAmount,
         placedTime: replayTimeRef.current ?? currentBar.time,
       };
-      pendingRef.current = order;
-      setPendingOrder(order);
+      const nextPending = [...pendingOrdersRef.current, order];
+      pendingOrdersRef.current = nextPending;
+      pendingRef.current = nextPending[0] ?? null;
+      setPendingOrders(nextPending);
     },
-    [currentBar, cursorReady, lots, riskAmount, ticket.slPips, ticket.tpPips],
+    [currentBar, cursorReady, lots, normalizedSymbol, riskAmount, ticket.slPips, ticket.tpPips],
   );
 
-  const cancelOrder = useCallback(() => {
-    // The X hotkey can fire while a transport fetch is in flight. Abort the
-    // staged move so it cannot resurrect an order the user just cancelled.
-    executionControllerRef.current?.abort();
-    stop();
+  const executeDrawingOrder = useCallback(
+    (drawing: {
+      direction?: TradeDirection;
+      orderType?: "limit" | "market";
+      entry: { price: number; time: number };
+      slPrice: number;
+      tpPrice: number;
+    }) => {
+      if (!currentBar || !cursorReady || executingRef.current) return;
+      const dir: TradeDirection = drawing.direction ?? (drawing.tpPrice > drawing.entry.price ? "buy" : "sell");
+      const multiplier = getPipMultiplier(normalizedSymbol);
+      const slPips = Math.max(1, Math.round(Math.abs(drawing.entry.price - drawing.slPrice) * multiplier * 10) / 10);
+      const tpPips = Math.max(1, Math.round(Math.abs(drawing.tpPrice - drawing.entry.price) * multiplier * 10) / 10);
+      const drawingLots = computeLots({ riskAmount, slPips, symbol: normalizedSymbol });
+      if (drawingLots <= 0) return;
+
+      const pip = 1 / multiplier;
+      const explicitLimit = drawing.orderType === "limit";
+      const explicitMarket = drawing.orderType === "market";
+      // Precision tolerance: 1.5 pips or 0.02% of current price
+      const priceTolerance = Math.max(1.5 * pip, currentBar.close * 0.0002);
+
+      // In LIMEN:
+      // Se il prezzo corrente ha già raggiunto o oltrepassato il livello del Limit (sconto per Buy, premium per Sell),
+      // entra direttamente a Mercato. Altrimenti resta come Buy Limit o Sell Limit in attesa del ritracciamento.
+      const isAlreadyAtOrPastLimit =
+        dir === "buy"
+          ? drawing.entry.price >= currentBar.close - priceTolerance
+          : drawing.entry.price <= currentBar.close + priceTolerance;
+
+      const isMarket = explicitMarket || (!explicitLimit && Math.abs(drawing.entry.price - currentBar.close) <= priceTolerance) || isAlreadyAtOrPastLimit;
+      if (isMarket) {
+        const opened = openPosition({
+          direction: dir,
+          entryPrice: currentBar.close,
+          entryTime: replayTimeRef.current ?? currentBar.time,
+          slPips,
+          tpPips,
+          lots: drawingLots,
+          riskAmount,
+          symbol: normalizedSymbol,
+        });
+        const nextPositions = [...positionsRef.current, opened];
+        positionsRef.current = nextPositions;
+        positionRef.current = nextPositions[0] ?? null;
+        setPositions(nextPositions);
+        setSelectedPositionId(opened.id ?? null);
+      } else {
+        placeOrder(dir, drawing.entry.price, { slPips, tpPips, lots: drawingLots, riskAmount });
+      }
+    },
+    [currentBar, cursorReady, normalizedSymbol, placeOrder, riskAmount],
+  );
+
+  const cancelOrder = useCallback((orderId?: string) => {
+    const nextPending = orderId
+      ? pendingOrdersRef.current.filter((o) => o.id !== orderId)
+      : [];
+    pendingOrdersRef.current = nextPending;
+    pendingRef.current = nextPending[0] ?? null;
+    setPendingOrders(nextPending);
+  }, []);
+
+  const cancelAllOrders = useCallback(() => {
+    pendingOrdersRef.current = [];
     pendingRef.current = null;
-    setPendingOrder(null);
-  }, [stop]);
+    setPendingOrders([]);
+  }, []);
+
+  const closePositionById = useCallback(
+    (positionId: string, exitPrice?: number) => {
+      if (!currentBar || executingRef.current || !cursorReady) return;
+      const targetPos = positionsRef.current.find((p) => p.id === positionId) ?? positionsRef.current[0];
+      if (!targetPos) return;
+
+      closePositionDirect(targetPos, exitPrice ?? currentBar.close, replayTimeRef.current ?? currentBar.time, "manual");
+      const nextPositions = positionsRef.current.filter((p) => p.id !== targetPos.id);
+      positionsRef.current = nextPositions;
+      positionRef.current = nextPositions[0] ?? null;
+      setPositions(nextPositions);
+    },
+    [closePositionDirect, currentBar, cursorReady],
+  );
+
+  const closeAllPositions = useCallback(() => {
+    if (!currentBar || executingRef.current || !cursorReady) return;
+    const currentPositions = positionsRef.current;
+    if (currentPositions.length === 0) return;
+
+    for (const pos of currentPositions) {
+      closePositionDirect(pos, currentBar.close, replayTimeRef.current ?? currentBar.time, "manual");
+    }
+    positionsRef.current = [];
+    positionRef.current = null;
+    setPositions([]);
+  }, [closePositionDirect, currentBar, cursorReady]);
 
   const closeMarket = useCallback(() => {
-    if (!positionRef.current || !currentBar || executingRef.current || !cursorReady) return;
-    closeAt(currentBar.close, replayTimeRef.current ?? currentBar.time, "manual");
-  }, [closeAt, currentBar, cursorReady]);
+    if (positionsRef.current.length === 0 || !currentBar || executingRef.current || !cursorReady) return;
+    closePositionById(selectedPositionId ?? positionsRef.current[0]?.id ?? "");
+  }, [closePositionById, currentBar, cursorReady, selectedPositionId]);
+
+  const partialClose = useCallback(
+    (positionId: string, fraction: number, moveToBreakeven?: boolean) => {
+      if (!currentBar || executingRef.current || !cursorReady) return;
+      const currentPositions = positionsRef.current;
+      const targetPos = currentPositions.find((p) => p.id === positionId) ?? currentPositions[0];
+      if (!targetPos) return;
+
+      tradeIdRef.current += 1;
+      const result = partialClosePosition(targetPos, {
+        fraction,
+        exitPrice: currentBar.close,
+        exitTime: replayTimeRef.current ?? currentBar.time,
+        id: tradeIdRef.current,
+        symbol: normalizedSymbol,
+        costs: costsRef.current,
+        moveToBreakeven,
+      });
+
+      result.closedTrade.syncId = crypto.randomUUID();
+      setTrades((old) => [result.closedTrade, ...old]);
+
+      let nextPositions: OpenPosition[];
+      if (result.remainingPosition.lots <= 0.005) {
+        nextPositions = currentPositions.filter((p) => p.id !== targetPos.id);
+      } else {
+        nextPositions = currentPositions.map((p) => (p.id === targetPos.id ? result.remainingPosition : p));
+      }
+
+      positionsRef.current = nextPositions;
+      positionRef.current = nextPositions[0] ?? null;
+      setPositions(nextPositions);
+    },
+    [currentBar, cursorReady, normalizedSymbol],
+  );
+
+  const moveToBreakeven = useCallback((positionId: string) => {
+    const nextPositions = positionsRef.current.map((pos) => {
+      if (pos.id !== positionId) return pos;
+      return {
+        ...pos,
+        stopLoss: pos.entryPrice,
+        slPips: 0,
+        breakevenApplied: true,
+        hasStop: true,
+      };
+    });
+    positionsRef.current = nextPositions;
+    positionRef.current = nextPositions[0] ?? null;
+    setPositions(nextPositions);
+  }, []);
+
+  const moveAllToBreakeven = useCallback(() => {
+    const nextPositions = positionsRef.current.map((pos) => ({
+      ...pos,
+      stopLoss: pos.entryPrice,
+      slPips: 0,
+      breakevenApplied: true,
+      hasStop: true,
+    }));
+    positionsRef.current = nextPositions;
+    positionRef.current = nextPositions[0] ?? null;
+    setPositions(nextPositions);
+  }, []);
+
+  const rebalancePositionRisk = useCallback(
+    (positionId: string, nextStopLoss: number) => {
+      const nextPositions = positionsRef.current.map((pos) => {
+        if (pos.id !== positionId) return pos;
+        return adaptPositionToStop(pos, nextStopLoss, {
+          symbol: normalizedSymbol,
+          adaptLots: true,
+          targetRiskAmount: pos.riskAmount,
+        });
+      });
+      positionsRef.current = nextPositions;
+      positionRef.current = nextPositions[0] ?? null;
+      setPositions(nextPositions);
+    },
+    [normalizedSymbol],
+  );
 
   const updatePositionLevels = useCallback(
-    (levels: { stopLoss?: number; takeProfit?: number; entryPrice?: number }) => {
+    (levels: { stopLoss?: number; takeProfit?: number; entryPrice?: number }, positionId?: string) => {
       if (executingRef.current || !cursorReady) return;
-      // Re-derive the pip distances so R:R, the hit checks' guards and the
-      // closed trade's R multiple track the dragged lines, not the original
-      // ticket values.
       const multiplier = getPipMultiplier(normalizedSymbol);
       const roundPips = (value: number) => Math.round(value * 10) / 10;
-      setPosition((current) => {
-        if (!current) return current;
-        const next = { ...current, ...levels };
-        // Magnitudes (the stop stays armed via hasStop even when dragged to the
-        // profit side of entry, where the signed distance would go negative).
-        next.slPips = roundPips(Math.abs((next.entryPrice - next.stopLoss) * multiplier));
-        next.tpPips = roundPips(Math.abs((next.takeProfit - next.entryPrice) * multiplier));
-        next.hasStop = true;
-        positionRef.current = next;
+      const targetId = positionId ?? selectedPositionId ?? positionsRef.current[0]?.id;
+
+      const nextPositions = positionsRef.current.map((pos) => {
+        if (pos.id !== targetId && positionsRef.current.length > 1) return pos;
+        let next = { ...pos, ...levels };
+        if (levels.stopLoss != null && ticket.adaptRiskOnSlMove) {
+          next = adaptPositionToStop(next, levels.stopLoss, {
+            symbol: normalizedSymbol,
+            adaptLots: true,
+            targetRiskAmount: pos.riskAmount,
+          });
+        } else {
+          next.slPips = roundPips(Math.abs((next.entryPrice - next.stopLoss) * multiplier));
+          next.tpPips = roundPips(Math.abs((next.takeProfit - next.entryPrice) * multiplier));
+          next.hasStop = true;
+        }
         return next;
       });
+
+      positionsRef.current = nextPositions;
+      positionRef.current = nextPositions[0] ?? null;
+      setPositions(nextPositions);
     },
-    [normalizedSymbol, cursorReady],
+    [cursorReady, normalizedSymbol, selectedPositionId, ticket.adaptRiskOnSlMove],
   );
 
   const deleteTrade = useCallback((id: number) => {
@@ -583,8 +887,10 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
           indicators,
           drawings,
           trades,
-          openPosition: position,
-          pendingOrder,
+          openPosition: positions[0] ?? null,
+          pendingOrder: pendingOrders[0] ?? null,
+          openPositions: positions,
+          pendingOrders,
           ticket,
           settings,
           initialBalance: restored?.initialBalance ?? INITIAL_BALANCE,
@@ -610,15 +916,12 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     indicators,
     drawings,
     trades,
-    position,
-    pendingOrder,
+    positions,
+    pendingOrders,
     ticket,
     settings,
     restored?.initialBalance,
   ]);
-
-  const openProfit = position && currentPrice > 0 ? unrealizedProfit(position, currentPrice, normalizedSymbol) : 0;
-  const openPips = position && currentPrice > 0 ? positionPips(position, currentPrice, normalizedSymbol) : 0;
 
   return {
     symbol: normalizedSymbol,
@@ -646,8 +949,19 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     trades,
     position,
     pendingOrder,
-    openProfit,
-    openPips,
+    positions,
+    setPositions,
+    pendingOrders,
+    setPendingOrders,
+    selectedPositionId,
+    setSelectedPositionId,
+    pickingOrderPrice,
+    setPickingOrderPrice,
+    pickedPrice,
+    setPickedPrice,
+    totalExposureLots,
+    openProfit: totalOpenProfit,
+    openPips: totalOpenPips,
     account,
     stats,
     ticket,
@@ -657,6 +971,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     rr,
     settings,
     setSettings,
+    chartPreferences,
     indicators,
     setIndicators,
     drawings,
@@ -678,11 +993,21 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     buy: () => buy("buy"),
     sell,
     placeOrder,
+    executeDrawingOrder,
+    partialClose,
+    moveToBreakeven,
+    moveAllToBreakeven,
+    rebalancePositionRisk,
+    closePositionById,
+    closeAllPositions,
     cancelOrder,
+    cancelAllOrders,
     closeMarket,
     updatePositionLevels,
     deleteTrade,
     setTradeTags,
+    hoveredTradeId,
+    setHoveredTradeId,
   };
 }
 

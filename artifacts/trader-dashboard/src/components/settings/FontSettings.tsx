@@ -13,22 +13,20 @@ import {
 } from "@workspace/api-client-react";
 
 const FONT_OPTIONS = [
-  { value: "inter", label: "Fira Sans", sample: "font-['Fira_Sans']" },
-  {
-    value: "jetbrains",
-    label: "JetBrains Mono",
-    sample: "font-['JetBrains_Mono']",
-  },
-  { value: "roboto", label: "Roboto", sample: "font-['Roboto']" },
   {
     value: "space-grotesk",
-    label: "Space Grotesk",
+    label: "Space Grotesk (Predefinito LIMEN)",
     sample: "font-['Space_Grotesk']",
   },
   {
-    value: "ibm-plex",
-    label: "IBM Plex Sans",
-    sample: "font-['IBM_Plex_Sans']",
+    value: "jetbrains",
+    label: "JetBrains Mono (Dati & Terminale)",
+    sample: "font-['JetBrains_Mono']",
+  },
+  {
+    value: "inter",
+    label: "Architettura Tecnica (Standard)",
+    sample: "font-['Space_Grotesk']",
   },
 ] as const satisfies readonly {
   value: UpdateUserSettingsRequestFontChoice;

@@ -1,7 +1,124 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#51a488" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-  <!-- Brand rocket (jade #51a488 = --primary). Transparent background: adapts to any tab/surface. -->
-  <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-  <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-  <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
-  <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background stone gradient -->
+    <radialGradient id="bgGlow" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#141419"/>
+      <stop offset="60%" stop-color="#0A0A0C"/>
+      <stop offset="100%" stop-color="#040405"/>
+    </radialGradient>
+
+    <!-- Rich Imperial Gold Gradients -->
+    <linearGradient id="goldLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDF2C8"/>
+      <stop offset="25%" stop-color="#E2C267"/>
+      <stop offset="60%" stop-color="#C5A059"/>
+      <stop offset="85%" stop-color="#916F22"/>
+      <stop offset="100%" stop-color="#543F0F"/>
+    </linearGradient>
+
+    <linearGradient id="goldHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFF8E0"/>
+      <stop offset="40%" stop-color="#D8B568"/>
+      <stop offset="75%" stop-color="#B28C38"/>
+      <stop offset="100%" stop-color="#684E14"/>
+    </linearGradient>
+
+    <linearGradient id="goldDeep" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#C5A059"/>
+      <stop offset="50%" stop-color="#8E6E24"/>
+      <stop offset="100%" stop-color="#3D2C06"/>
+    </linearGradient>
+
+    <linearGradient id="goldColumn" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6B5014"/>
+      <stop offset="20%" stop-color="#D8B568"/>
+      <stop offset="50%" stop-color="#F9E8B2"/>
+      <stop offset="80%" stop-color="#C5A059"/>
+      <stop offset="100%" stop-color="#523B0A"/>
+    </linearGradient>
+
+    <!-- Central Singularity Diamond Gradients -->
+    <linearGradient id="diamondWhite" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#FFF8E0"/>
+      <stop offset="100%" stop-color="#D4AF37"/>
+    </linearGradient>
+
+    <radialGradient id="diamondAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="25%" stop-color="#F3E0A2" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#C5A059" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#C5A059" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="plinthGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.95"/>
+    </filter>
+  </defs>
+
+  <!-- Obsidian Plinth Squircle -->
+  <rect width="512" height="512" rx="108" fill="url(#bgGlow)"/>
+  <rect x="14" y="14" width="484" height="484" rx="98" fill="none" stroke="url(#goldLight)" stroke-width="2.5" stroke-opacity="0.35"/>
+  <rect x="22" y="22" width="468" height="468" rx="90" fill="none" stroke="#000000" stroke-width="2" stroke-opacity="0.75"/>
+
+  <!-- Sovereign Architectural Gate / Portal (IL VARCO) -->
+  <g filter="url(#plinthGlow)">
+    <!-- Triangular Pediment (Apex Temple Roof) -->
+    <polygon points="256,58 402,132 110,132" fill="url(#goldLight)"/>
+    <polygon points="256,72 388,132 124,132" fill="url(#goldDeep)"/>
+    <!-- Tympanum Relief -->
+    <path d="M256,88 L272,126 L240,126 Z" fill="url(#goldHighlight)" opacity="0.8"/>
+
+    <!-- Pediment Cornice & Dentils Base -->
+    <rect x="104" y="132" width="304" height="14" rx="2" fill="url(#goldHighlight)"/>
+    <rect x="116" y="146" width="280" height="18" fill="url(#goldLight)"/>
+    <!-- Architrave Frieze -->
+    <rect x="122" y="164" width="268" height="14" fill="url(#goldDeep)"/>
+    <rect x="114" y="178" width="284" height="10" rx="1" fill="url(#goldHighlight)"/>
+
+    <!-- Left Fluted Column Pair -->
+    <rect x="130" y="188" width="26" height="20" rx="2" fill="url(#goldLight)"/>
+    <rect x="162" y="188" width="26" height="20" rx="2" fill="url(#goldLight)"/>
+    <rect x="133" y="208" width="20" height="174" fill="url(#goldColumn)"/>
+    <rect x="165" y="208" width="20" height="174" fill="url(#goldColumn)"/>
+    <!-- Column Fluting Lines -->
+    <line x1="143" y1="208" x2="143" y2="382" stroke="#5E430C" stroke-width="2"/>
+    <line x1="175" y1="208" x2="175" y2="382" stroke="#5E430C" stroke-width="2"/>
+    <!-- Left Base Plinths -->
+    <rect x="128" y="382" width="30" height="18" fill="url(#goldLight)"/>
+    <rect x="160" y="382" width="30" height="18" fill="url(#goldLight)"/>
+    <rect x="120" y="400" width="80" height="42" rx="3" fill="url(#goldDeep)"/>
+    <rect x="114" y="442" width="92" height="16" rx="2" fill="url(#goldHighlight)"/>
+
+    <!-- Right Fluted Column Pair -->
+    <rect x="326" y="188" width="26" height="20" rx="2" fill="url(#goldLight)"/>
+    <rect x="358" y="188" width="26" height="20" rx="2" fill="url(#goldLight)"/>
+    <rect x="329" y="208" width="20" height="174" fill="url(#goldColumn)"/>
+    <rect x="361" y="208" width="20" height="174" fill="url(#goldColumn)"/>
+    <!-- Column Fluting Lines -->
+    <line x1="339" y1="208" x2="339" y2="382" stroke="#5E430C" stroke-width="2"/>
+    <line x1="371" y1="208" x2="371" y2="382" stroke="#5E430C" stroke-width="2"/>
+    <!-- Right Base Plinths -->
+    <rect x="324" y="382" width="30" height="18" fill="url(#goldLight)"/>
+    <rect x="356" y="382" width="30" height="18" fill="url(#goldLight)"/>
+    <rect x="312" y="400" width="80" height="42" rx="3" fill="url(#goldDeep)"/>
+    <rect x="306" y="442" width="92" height="16" rx="2" fill="url(#goldHighlight)"/>
+
+    <!-- Roman Arch Barrel Vault (The Great Threshold) -->
+    <path d="M190,442 V282 A66,66 0 0,1 322,282 V442" fill="none" stroke="url(#goldHighlight)" stroke-width="28"/>
+    <!-- Inner Portal Cavity / Dark Void -->
+    <path d="M204,442 V282 A52,52 0 0,1 308,282 V442 Z" fill="#020204"/>
+
+    <!-- Keystone (Serraglia dell'Arco) -->
+    <polygon points="247,210 265,210 270,240 242,240" fill="url(#goldLight)"/>
+
+    <!-- Ground Threshold Sill (Limen Inferum) -->
+    <rect x="100" y="458" width="312" height="18" rx="3" fill="url(#goldHighlight)"/>
+    <line x1="104" y1="462" x2="408" y2="462" stroke="#FFF2B8" stroke-width="2" opacity="0.6"/>
+  </g>
+
+  <!-- Luminous Diamond Singularity (Floating in the Portal) -->
+  <circle cx="256" cy="308" r="82" fill="url(#diamondAura)"/>
+  <polygon points="256,256 288,308 256,360 224,308" fill="url(#diamondWhite)" filter="url(#plinthGlow)"/>
+  <polygon points="256,270 278,308 256,346 234,308" fill="#FFFFFF"/>
 </svg>

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Crown, Medal, Award, User } from "lucide-react";
 import { motion } from "framer-motion";
@@ -48,7 +47,6 @@ function PositionBadge({ position }: { position: number }) {
 }
 
 export function LeaderboardWidget() {
-  const [, navigate] = useLocation();
   const billing = useBillingStatus();
 
   // Skeleton solo al primo caricamento: nei refetch in background si rende dai

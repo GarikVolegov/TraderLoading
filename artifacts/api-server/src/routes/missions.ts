@@ -130,7 +130,7 @@ router.post("/missions/:id/complete", async (req, res) => {
   if (!completion) { res.status(400).json({ error: "Mission already completed" }); return; }
   const { updatedMission, newStreak, finalXp } = completion;
 
-  const { level, xpToNextLevel } = computeLevel(finalXp);
+  const { level } = computeLevel(finalXp);
   const levelUp = level > oldLevel;
 
   if (levelUp && userId) {

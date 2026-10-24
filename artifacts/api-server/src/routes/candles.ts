@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { getCandles, getCandlesMeta, isSupportedSymbol, SUPPORTED_SYMBOLS } from "../services/candles.js";
 import { INTERVAL_SECONDS } from "../services/candleRegistry.js";
 import { ReplayHistoryError } from "../services/replayHistory.js";
+import { TradingViewBridge } from "../services/tradingViewBridge.js";
 
 const router: IRouter = Router();
 
@@ -26,10 +27,24 @@ function validStartDate(value: string): boolean {
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
+function normalizeInterval(value: unknown): string {
+  if (typeof value !== "string") return "H1";
+  const u = value.trim().toUpperCase();
+  if (u === "60" || u === "1H") return "H1";
+  if (u === "240" || u === "4H") return "H4";
+  if (u === "15") return "M15";
+  if (u === "5") return "M5";
+  if (u === "1") return "M1";
+  if (u === "30") return "M30";
+  if (u === "D" || u === "1D") return "D1";
+  if (u === "W" || u === "1W") return "W1";
+  return u;
+}
+
 router.get("/backtest/candles", async (req, res) => {
   if (!isValidSymbolInput(req.query.symbol)) { res.status(400).json({ error: "Invalid symbol" }); return; }
   const symbol = normalizeSymbol(req.query.symbol);
-  const interval = (req.query.interval as string) || "H1";
+  const interval = normalizeInterval(req.query.interval);
   const startDate = typeof req.query.startDate === "string" ? req.query.startDate : undefined;
   const from = parseUnixParam(req.query.from);
   const to = parseUnixParam(req.query.to);
@@ -88,6 +103,45 @@ router.get("/backtest/candles/meta", async (req, res) => {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(502).json({ error: msg });
   }
+});
+
+router.get("/candles/live", (req, res) => {
+  const symbol = normalizeSymbol(req.query.symbol);
+  const interval = normalizeInterval(req.query.interval);
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  if (typeof (res as any).flushHeaders === "function") {
+    (res as any).flushHeaders();
+  }
+
+  const bridge = TradingViewBridge.getInstance();
+  bridge.subscribeSymbol(symbol, interval);
+
+  const latest = bridge.getLatestTick(symbol, interval);
+  if (latest) {
+    res.write(`data: ${JSON.stringify(latest)}\n\n`);
+  } else {
+    res.write(`data: ${JSON.stringify({ status: "connected", symbol, interval })}\n\n`);
+  }
+
+  const onTick = (tick: any) => {
+    if (tick.symbol === symbol && tick.interval === interval) {
+      res.write(`data: ${JSON.stringify(tick)}\n\n`);
+    }
+  };
+
+  bridge.on("tick", onTick);
+
+  const ping = setInterval(() => {
+    res.write(": ping\n\n");
+  }, 15000);
+
+  req.on("close", () => {
+    clearInterval(ping);
+    bridge.off("tick", onTick);
+  });
 });
 
 export default router;

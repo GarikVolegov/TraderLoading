@@ -105,9 +105,25 @@ export async function loadProcessState(tx: Tx, userId: string): Promise<ProcessS
   const sessions = (
     await tx.select().from(processSessionsTable).where(eq(processSessionsTable.userId, userId))
   ).map(sessionDTO);
+  const unstartedPast = sessions.filter(
+    (s) => s.state === "preparation" && !s.preparedAt && s.day < processDay(),
+  );
+  if (unstartedPast.length > 0) {
+    await tx
+      .delete(processSessionsTable)
+      .where(
+        inArray(
+          processSessionsTable.id,
+          unstartedPast.map((s) => s.id),
+        ),
+      );
+  }
+  const validSessions = sessions.filter(
+    (s) => !(s.state === "preparation" && !s.preparedAt && s.day < processDay()),
+  );
   const session =
-    sessions.find((s) => s.day === processDay()) ??
-    sessions.filter((s) => s.state !== "closed").sort((a, b) => b.day.localeCompare(a.day))[0] ??
+    validSessions.find((s) => s.day === processDay()) ??
+    validSessions.filter((s) => s.state !== "closed").sort((a, b) => b.day.localeCompare(a.day))[0] ??
     null;
   const evidence = (
     await tx

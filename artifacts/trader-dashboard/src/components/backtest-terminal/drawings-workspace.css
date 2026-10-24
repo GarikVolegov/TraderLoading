@@ -1,0 +1,215 @@
+/* ─── Core Drawing & Position SVG Overlays (Unified Varco + Forgia) ─── */
+.btm-drawoverlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  overflow: visible;
+}
+
+.btm-posoverlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 8;
+  overflow: visible;
+}
+.btm-posoverlay .btm-handle {
+  pointer-events: auto;
+  cursor: ns-resize;
+}
+
+.btm-drawing-workspace-controls { position: absolute; right: 64px; top: 12px; z-index: 15; display: flex; gap: 3px; padding: 3px 6px; border: 1px solid rgba(197, 160, 89, 0.25); border-radius: 8px; background: rgba(13, 15, 20, 0.92); backdrop-filter: blur(8px); box-shadow: 0 4px 16px rgba(0,0,0,0.6); }
+.btm-drawing-workspace-controls button, .btm-drawing-objects button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 28px; min-height: 30px; padding: 5px; background: transparent; color: var(--btm-text, #d6dbe5); border: 0; border-radius: 4px; cursor: pointer; }
+.btm-drawing-workspace-controls button:hover, .btm-drawing-objects button:hover { background: #80808025; }
+.btm-drawing-workspace-controls button:disabled { opacity: .3; cursor: default; }
+.btm-drawing-objects { position: absolute; right: 64px; top: 84px; z-index: 9; width: min(290px, calc(100% - 80px)); max-height: 50%; overflow: auto; padding: 10px; border-radius: 8px; border: 1px solid var(--btm-border, #343b47); background: var(--btm-panel, #171b23); color: var(--btm-text, #d6dbe5); font-size: 11px; box-shadow: 0 6px 24px #0004; }
+.btm-drawing-objects > div { display: flex; border-radius: 4px; }
+.btm-drawing-objects > div[data-selected=true] { background: #3b82f629; }
+.btm-drawing-objects > div > button:first-child { flex: 1; justify-content: flex-start; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.btm-drawing-handle { cursor: crosshair; touch-action: none; }
+.btm-draw-toolbar { max-width: calc(100% - 24px); flex-wrap: wrap; }
+.btm-draw-toolbar select, .btm-draw-toolbar input:not([type=color]):not([type=range]) { border: 1px solid var(--btm-border, #343b47); border-radius: 4px; padding: 3px 5px; background: var(--btm-panel, #171b23); color: var(--btm-text, #d6dbe5); max-width: 130px; font-size: 11px; }
+.btm-draw-toolbar input[type=number] { width: 48px; }
+.btm-draw-toolbar input[type=color] { width: 27px; height: 25px; padding: 1px; border: 0; background: transparent; }
+.btm-draw-toolbar label { display: flex; align-items: center; gap: 4px; font-size: 10px; }
+.btm-draw-toolbar input[type=range] { width: 65px; }
+@media (pointer: coarse) { .btm-drawing-workspace-controls button, .btm-drawing-objects button, .btm-draw-toolbar button { min-width: 36px; min-height: 36px; } }
+.btm-draw-toolbar {
+  position: absolute;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 8px;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  border: 1px solid rgba(197, 160, 89, 0.35);
+  border-radius: 9px;
+  background: rgba(13, 15, 20, 0.95);
+  backdrop-filter: blur(14px);
+  color: #f4f4f6;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.85), 0 0 12px rgba(197, 160, 89, 0.12);
+  user-select: none;
+}
+.btm-draw-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  background: transparent;
+  border: none;
+  cursor: grab;
+  color: #c5a059;
+  border-radius: 4px;
+}
+.btm-draw-grip:hover {
+  background: rgba(197, 160, 89, 0.15);
+  color: #f3d88c;
+}
+.btm-draw-grip:active {
+  cursor: grabbing;
+}
+.btm-draw-swatches, .btm-draw-widths { display: flex; align-items: center; gap: 3px; }
+.btm-draw-swatch { width: 16px; height: 16px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+.btm-draw-swatch[data-active=true] { border-color: #c5a059; box-shadow: 0 0 6px rgba(197, 160, 89, 0.5); }
+.btm-draw-width-btn, .btm-draw-action-btn { min-height: 26px; display: inline-flex; align-items: center; justify-content: center; padding: 4px 6px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: inherit; font-size: 10px; cursor: pointer; transition: all 0.12s ease; }
+.btm-draw-width-btn[data-active=true], .btm-draw-action-btn[aria-pressed=true] { background: rgba(197, 160, 89, 0.22); color: #e8c56a; border-color: rgba(197, 160, 89, 0.45); }
+.btm-draw-width-btn:hover, .btm-draw-action-btn:hover { background: rgba(197, 160, 89, 0.12); color: #f3d88c; }
+.btm-draw-delete-btn { color: #ef5350; }
+.btm-draw-delete-btn:hover { background: rgba(239, 68, 68, 0.18); color: #fca5a5; }
+
+/* ── LIMEN Context Menu (TradingView Precision Luxury) ────────────────────── */
+.limen-context-menu {
+  min-width: 210px;
+  background: rgba(13, 15, 20, 0.96);
+  border: 1px solid rgba(197, 160, 89, 0.35);
+  border-radius: 9px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.88), 0 0 15px rgba(197, 160, 89, 0.12);
+  backdrop-filter: blur(14px);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  user-select: none;
+  z-index: 100;
+}
+.limen-cm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px 4px;
+}
+.limen-cm-title {
+  font-family: var(--btm-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #c5a059;
+}
+.limen-cm-divider {
+  height: 1px;
+  background: rgba(197, 160, 89, 0.16);
+  margin: 3px 0;
+}
+.limen-cm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  text-align: left;
+  width: 100%;
+}
+.limen-cm-item:hover {
+  background: rgba(197, 160, 89, 0.15);
+  color: #f3d88c;
+}
+.limen-cm-item.limen-cm-gold {
+  color: #e8c56a;
+  font-weight: 600;
+  background: rgba(197, 160, 89, 0.1);
+}
+.limen-cm-item.limen-cm-gold:hover {
+  background: rgba(197, 160, 89, 0.25);
+  color: #ffffff;
+}
+.limen-cm-item.limen-cm-danger {
+  color: #ef4444;
+}
+.limen-cm-item.limen-cm-danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+.limen-cm-shortcut {
+  margin-left: auto;
+  font-family: var(--btm-mono, monospace);
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+}
+.btm-drawoverlay line[stroke="rgba(0,0,0,0)"], .btm-drawoverlay rect[pointer-events="auto"], .btm-drawoverlay text[pointer-events="auto"] { touch-action: none; }
+.btm-drawing-hint { position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 7; padding: 6px 12px; border-radius: 6px; background: var(--btm-panel, #171b23); color: var(--btm-text, #d6dbe5); opacity: .85; font-size: 10px; pointer-events: none; white-space: nowrap; }
+
+/* ── DrawingPropertiesModal (4-Tab TradingView Modal LIMEN Luxury) ────────── */
+.dpm-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(0, 0, 0, 0.82); backdrop-filter: blur(6px); padding: 16px; }
+.dpm-modal { width: min(500px, 100%); max-height: min(650px, 90vh); display: flex; flex-direction: column; border-radius: 12px; border: 1px solid rgba(197, 160, 89, 0.35); background: #0e0f14; color: #f4f4f6; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.9); overflow: hidden; font-size: 13px; }
+.dpm-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid #26262e; background: #0b0c10; }
+.dpm-title { margin: 0; font-size: 17px; font-weight: 700; color: #f4f4f6; letter-spacing: -0.01em; }
+.dpm-close-btn { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #94a3b8; cursor: pointer; }
+.dpm-close-btn:hover { background: #26262e; color: #ffffff; }
+.dpm-tabs { display: flex; gap: 20px; padding: 0 20px; border-bottom: 1px solid #26262e; background: #0b0c10; }
+.dpm-tab { position: relative; padding: 10px 2px 12px; border: 0; background: transparent; color: #94a3b8; font-size: 13px; font-weight: 600; cursor: pointer; transition: color 0.15s; }
+.dpm-tab:hover { color: #f4f4f6; }
+.dpm-tab[data-active="true"] { color: #c5a059; font-weight: 700; }
+.dpm-tab[data-active="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: #c5a059; }
+.dpm-body { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; background: #0e0f14; }
+.dpm-section, .dpm-vis-list { display: flex; flex-direction: column; gap: 12px; }
+.dpm-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #c5a059; text-transform: uppercase; margin-top: 4px; }
+.dpm-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; }
+.dpm-row-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dpm-check-label { display: inline-flex; align-items: center; gap: 8px; color: #f4f4f6; font-size: 13px; cursor: pointer; user-select: none; }
+.dpm-check-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: #c5a059; cursor: pointer; }
+.dpm-input, .dpm-select { height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #26262e; background: #14151c; color: #f4f4f6; font-size: 13px; }
+.dpm-input-num { width: 88px; font-family: var(--btm-mono, monospace); }
+.dpm-color { width: 32px; height: 30px; padding: 2px; border-radius: 6px; border: 1px solid #26262e; background: #14151c; cursor: pointer; }
+.dpm-fib-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.dpm-fib-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 6px; background: #14151c; border: 1px solid #26262e; }
+.dpm-coord-card { padding: 12px 14px; border-radius: 8px; border: 1px solid #26262e; background: #14151c; display: flex; flex-direction: column; gap: 10px; }
+.dpm-coord-meta { margin: 0; font-size: 11px; color: #a1a1aa; font-family: var(--btm-mono, monospace); }
+.dpm-vis-row { display: grid; grid-template-columns: 115px 1fr; align-items: center; gap: 12px; min-height: 30px; }
+.dpm-vis-range { display: flex; align-items: center; gap: 8px; }
+.dpm-vis-num { width: 52px; height: 28px; padding: 0 6px; border-radius: 5px; border: 1px solid #26262e; background: #14151c; color: #f4f4f6; font-size: 12px; text-align: center; font-family: var(--btm-mono, monospace); }
+.dpm-vis-sliders { flex: 1; display: flex; gap: 6px; align-items: center; }
+.dpm-vis-sliders input[type="range"] { flex: 1; accent-color: #c5a059; cursor: pointer; }
+.dpm-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-top: 1px solid #26262e; background: #0b0c10; }
+.dpm-template-wrap { position: relative; }
+.dpm-template-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 6px; border: 1px solid #26262e; background: transparent; color: #f4f4f6; font-size: 13px; cursor: pointer; }
+.dpm-template-btn:hover { border-color: #c5a059; color: #c5a059; }
+.dpm-template-menu { position: absolute; left: 0; bottom: calc(100% + 8px); width: 250px; padding: 8px; border-radius: 8px; border: 1px solid #26262e; background: #14151c; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75); display: flex; flex-direction: column; gap: 6px; z-index: 10; }
+.dpm-template-save-row { display: flex; gap: 6px; }
+.dpm-template-save-row .dpm-input { flex: 1; min-width: 0; height: 30px; font-size: 12px; }
+.dpm-template-item { display: flex; align-items: center; gap: 4px; }
+.dpm-template-apply, .dpm-template-reset { flex: 1; text-align: left; padding: 6px 8px; border: 0; border-radius: 5px; background: transparent; color: #f4f4f6; font-size: 12px; cursor: pointer; }
+.dpm-template-apply:hover, .dpm-template-reset:hover { background: rgba(197, 160, 89, 0.16); color: #c5a059; }
+.dpm-template-del { width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 5px; background: transparent; color: #ef5350; cursor: pointer; }
+.dpm-footer-actions { display: flex; align-items: center; gap: 8px; }
+.dpm-btn-cancel { height: 34px; padding: 0 16px; border-radius: 6px; border: 1px solid #26262e; background: transparent; color: #f4f4f6; font-size: 13px; font-weight: 500; cursor: pointer; }
+.dpm-btn-cancel:hover { background: #161822; }
+.dpm-btn-ok, .dpm-btn-primary { height: 34px; padding: 0 20px; border-radius: 6px; border: 0; background: #c5a059; color: #000000; font-size: 13px; font-weight: 700; cursor: pointer; }
+.dpm-btn-ok:hover, .dpm-btn-primary:hover { background: #d4af37; box-shadow: 0 0 12px rgba(212, 175, 55, 0.4); }
+

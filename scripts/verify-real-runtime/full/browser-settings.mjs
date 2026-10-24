@@ -12,7 +12,7 @@ const req=createRequire(root+'artifacts/trader-dashboard/package.json');
 const USER_A='verify.settings+clerk_test@example.com';
 const attemptId=run.runId+'-'+Date.now();
 const out=run.output+'/browser-settings-'+(process.argv[2]||'after');mkdirSync(out,{recursive:true});
-const report={runId:run.runId,mode:'production frontend + production API + Clerk Development',checks:[],pages:[],errors:[],failures:[]};
+const report={runId:run.runId,attemptId,mode:'production frontend + production API + Clerk Development',checks:[],pages:[],errors:[],failures:[]};
 const browser=await chromium.launch({headless:true,executablePath:req('puppeteer').executablePath()});
 const db=await connect();const uid=await ensureTestUser(USER_A),uidB=await ensureTestUser(USER_B);
 for(const id of [uid,uidB])await db.query("INSERT INTO admin_user_subscriptions(user_id,plan,status,reason) VALUES($1,'pro','active','Isolated browser audit') ON CONFLICT(user_id) DO UPDATE SET plan='pro',status='active'",[id]);

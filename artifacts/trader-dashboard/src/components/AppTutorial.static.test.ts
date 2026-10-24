@@ -8,7 +8,7 @@ const appSource = fs.readFileSync("src/App.tsx", "utf8");
 const settingsSource = readSettingsFeatureSource();
 
 assert.doesNotMatch(appSource, /<AppTutorialWrapper|<PairOnboardingWrapper|<SessionCheckinModal|<ChecklistSetupModal/);
-assert.match(appSource, /pages\/Method/);
+assert.match(appSource, /pages\/Backtest/);
 
 assert.equal(fs.existsSync("src/components/AppTutorialWrapper.tsx"), true);
 assert.equal(fs.existsSync("src/components/AppTutorialWizard.tsx"), true);

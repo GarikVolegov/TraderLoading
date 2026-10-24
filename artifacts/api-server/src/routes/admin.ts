@@ -1,3 +1,5 @@
+import { LaunchError } from "../lib/launchError.js";
+import { admitCandidate, updateCandidateApprovedServices } from "../services/launchApplications.js";
 import { listClerkSessions, revokeClerkSessions } from "../services/sessionRevocation.js";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
@@ -5,9 +7,13 @@ import {
   adminAuditLogsTable,
   adminUserSubscriptionsTable,
   adminUserStatusTable,
+  adminUsersTable,
+  adminRoleNames,
+  type AdminRoleName,
   backtestSessionsTable,
   backtestTradesTable,
   brokerProfileStoreTable,
+  candidateApplicationsTable,
   communitiesTable,
   communityMessagesTable,
   db,
@@ -24,13 +30,15 @@ import {
   sessionsTable,
   supportTicketMessagesTable,
   supportTicketsTable,
+  systemFeatureFlagsTable,
   testimonialsTable,
   usersTable,
 } from "@workspace/db";
 import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { requireAdmin } from "../lib/adminAuth.js";
-import { ADMIN_PERMISSIONS_BY_ROLE } from "../lib/adminPermissions.js";
+import { ADMIN_PERMISSIONS_BY_ROLE, getBootstrapAdminIds } from "../lib/adminPermissions.js";
 import { writeAdminAudit } from "../services/adminAudit.js";
+import { exportAccountData } from "../services/accountExport.js";
 import { logger } from "../lib/logger.js";
 import {
   isSupportStatus,
@@ -55,7 +63,7 @@ export function parseAdminLimit(value: unknown, fallback: number): number {
 }
 
 export type AdminStatusFilter = "all" | "active" | "suspended" | "banned";
-export type AdminSubscriptionPlan = "free" | "pro";
+export type AdminSubscriptionPlan = "free" | "pro" | "tributo_150";
 export type AdminSubscriptionStatus =
   | "active"
   | "trialing"
@@ -65,6 +73,7 @@ export type AdminSubscriptionStatus =
 const ADMIN_SUBSCRIPTION_PLANS: AdminSubscriptionPlan[] = [
   "free",
   "pro",
+  "tributo_150",
 ];
 
 const ADMIN_SUBSCRIPTION_STATUSES: AdminSubscriptionStatus[] = [
@@ -204,6 +213,7 @@ router.get("/admin/dashboard", requireAdmin("dashboard.read"), async (_req, res)
     [{ value: journalToday }],
     [{ value: backtestsToday }],
     [{ value: suspendedUsers }],
+    [{ value: pendingApplications }],
     recentAudit,
   ] = await Promise.all([
     db.select({ value: count() }).from(profileTable),
@@ -228,6 +238,10 @@ router.get("/admin/dashboard", requireAdmin("dashboard.read"), async (_req, res)
       .from(adminUserStatusTable)
       .where(eq(adminUserStatusTable.status, "suspended")),
     db
+      .select({ value: count() })
+      .from(candidateApplicationsTable)
+      .where(eq(candidateApplicationsTable.status, "in_valutazione")),
+    db
       .select({
         id: adminAuditLogsTable.id,
         actorUserId: adminAuditLogsTable.actorUserId,
@@ -249,8 +263,19 @@ router.get("/admin/dashboard", requireAdmin("dashboard.read"), async (_req, res)
       journalToday,
       backtestsToday,
       suspendedUsers,
+      pendingApplications,
     },
     urgentActions: [
+      ...(pendingApplications > 0
+        ? [
+            {
+              id: "pending-applications",
+              label: "Candidature Tributo in attesa",
+              count: pendingApplications,
+              href: "/admin/candidature",
+            },
+          ]
+        : []),
       {
         id: "suspended-users",
         label: "Utenti sospesi",
@@ -1334,6 +1359,494 @@ router.get("/admin/audit", requireAdmin("security.audit.read"), async (req, res)
     .limit(limit);
 
   res.json({ audit: rows });
+});
+
+// ─── CANDIDATE APPLICATIONS (TRIBUTO 150€/MESE) ──────────────────────────────
+router.get("/admin/candidate-applications", requireAdmin("users.read"), async (req, res) => {
+  const status = String(req.query.status ?? "all").trim();
+  const search = normalizeAdminSearch(req.query.q);
+  const limit = parseAdminLimit(req.query.limit, 25);
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+
+  const filters = [];
+  if (status !== "all" && ["in_valutazione", "respinto", "contattato"].includes(status)) {
+    filters.push(eq(candidateApplicationsTable.status, status));
+  }
+  if (search) {
+    filters.push(
+      or(
+        ilike(candidateApplicationsTable.name, `%${search}%`),
+        ilike(candidateApplicationsTable.email, `%${search}%`),
+        ilike(candidateApplicationsTable.candidateCode, `%${search}%`),
+        ilike(candidateApplicationsTable.contactHandle, `%${search}%`),
+      ),
+    );
+  }
+
+  const [applications, [{ value: total }], [{ value: pendingCount }], [{ value: admittedCount }]] = await Promise.all([
+    db
+      .select()
+      .from(candidateApplicationsTable)
+      .where(filters.length > 0 ? and(...filters) : undefined)
+      .orderBy(desc(candidateApplicationsTable.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ value: count() })
+      .from(candidateApplicationsTable)
+      .where(filters.length > 0 ? and(...filters) : undefined),
+    db
+      .select({ value: count() })
+      .from(candidateApplicationsTable)
+      .where(eq(candidateApplicationsTable.status, "in_valutazione")),
+    db
+      .select({ value: count() })
+      .from(candidateApplicationsTable)
+      .where(eq(candidateApplicationsTable.status, "ammesso")),
+  ]);
+
+  res.json({
+    applications,
+    total,
+    pendingCount,
+    admittedCount,
+    limit,
+    offset,
+  });
+});
+
+router.patch("/admin/candidate-applications/:id/status", requireAdmin("users.read"), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    res.status(400).json({ error: "ID candidatura non valido" });
+    return;
+  }
+  const status = String(req.body.status ?? "").trim();
+  const notes = req.body.notes !== undefined ? String(req.body.notes).trim() : undefined;
+  if (!["in_valutazione", "respinto", "contattato"].includes(status)) {
+    res.status(400).json({ error: "Stato candidatura non valido" });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(candidateApplicationsTable)
+    .where(eq(candidateApplicationsTable.id, id))
+    .limit(1);
+
+  if (!existing) {
+    res.status(404).json({ error: "Candidatura non trovata" });
+    return;
+  }
+
+  if (existing.status === "ammesso") throw new LaunchError("Il posto ammesso resta riservato al gruppo iniziale. Non è modificabile da questa azione.", 409);
+
+  const [updated] = await db
+    .update(candidateApplicationsTable)
+    .set({
+      status,
+      notes: notes !== undefined ? notes : existing.notes,
+      reviewedBy: req.admin!.userId,
+      reviewedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(candidateApplicationsTable.id, id))
+    .returning();
+
+  await writeAdminAudit({
+    req,
+    admin: req.admin!,
+    action: "candidate.status_update",
+    targetType: "candidate_application",
+    targetId: String(id),
+    reason: notes || `Stato candidatura aggiornato a ${status}`,
+    before: existing,
+    after: updated,
+  });
+
+  res.json({ ok: true, application: updated });
+});
+
+router.post("/admin/candidate-applications/:id/admit", requireAdmin("billing.subscriptions.write"), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    res.status(400).json({ error: "ID candidatura non valido" });
+    return;
+  }
+
+  const approvedServices = Array.isArray(req.body.approvedServices)
+    ? (req.body.approvedServices as string[])
+    : undefined;
+
+  const result = await admitCandidate(
+    id,
+    req.admin!.userId,
+    String(req.body.notes ?? "").trim().slice(0, 4000),
+    approvedServices,
+  );
+  await writeAdminAudit({
+    req,
+    admin: req.admin!,
+    action: "candidate.admit_member",
+    targetType: "candidate_application",
+    targetId: String(id),
+    reason: "Ammissione candidatura e attivazione servizi approvati",
+    before: result.before,
+    after: result.application,
+  });
+  res.json({ ok: true, application: result.application, subscription: null, targetUserId: result.application.userId });
+});
+
+router.patch("/admin/candidate-applications/:id/services", requireAdmin("billing.subscriptions.write"), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    res.status(400).json({ error: "ID candidatura non valido" });
+    return;
+  }
+  const approvedServices = Array.isArray(req.body.approvedServices)
+    ? (req.body.approvedServices as string[])
+    : ["base_protocol"];
+  const notes = typeof req.body.notes === "string" ? req.body.notes.trim() : undefined;
+  const result = await updateCandidateApprovedServices(id, req.admin!.userId, approvedServices, notes);
+  await writeAdminAudit({
+    req,
+    admin: req.admin!,
+    action: "candidate.update_services",
+    targetType: "candidate_application",
+    targetId: String(id),
+    reason: notes || `Servizi approvati aggiornati: ${approvedServices.join(", ")}`,
+    before: result.before,
+    after: result.application,
+  });
+  res.json({ ok: true, application: result.application });
+});
+
+// ─── ADMIN ROLES MANAGEMENT (STAFF) ──────────────────────────────────────────
+router.get("/admin/roles", requireAdmin("security.audit.read"), async (_req, res) => {
+  const bootstrapIds = Array.from(getBootstrapAdminIds());
+  const dbAdmins = await db
+    .select({
+      id: adminUsersTable.id,
+      userId: adminUsersTable.userId,
+      role: adminUsersTable.role,
+      status: adminUsersTable.status,
+      createdBy: adminUsersTable.createdBy,
+      createdAt: adminUsersTable.createdAt,
+      updatedAt: adminUsersTable.updatedAt,
+      userName: profileTable.name,
+    })
+    .from(adminUsersTable)
+    .leftJoin(profileTable, eq(adminUsersTable.userId, profileTable.userId))
+    .orderBy(desc(adminUsersTable.createdAt));
+
+  res.json({
+    roles: dbAdmins,
+    bootstrapUserIds: bootstrapIds,
+    availableRoles: adminRoleNames,
+  });
+});
+
+router.post("/admin/roles/assign", requireAdmin("security.roles.write"), async (req, res) => {
+  const targetUserId = String(req.body.userId ?? "").trim();
+  const role = String(req.body.role ?? "").trim();
+
+  if (!targetUserId) {
+    res.status(400).json({ error: "userId obbligatorio" });
+    return;
+  }
+  if (!adminRoleNames.includes(role as AdminRoleName)) {
+    res.status(400).json({ error: `Ruolo non valido. Valori ammessi: ${adminRoleNames.join(", ")}` });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(adminUsersTable)
+    .where(eq(adminUsersTable.userId, targetUserId))
+    .limit(1);
+
+  let updatedAdmin;
+  if (existing) {
+    [updatedAdmin] = await db
+      .update(adminUsersTable)
+      .set({
+        role,
+        status: "active",
+        createdBy: req.admin!.userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(adminUsersTable.userId, targetUserId))
+      .returning();
+  } else {
+    [updatedAdmin] = await db
+      .insert(adminUsersTable)
+      .values({
+        userId: targetUserId,
+        role,
+        status: "active",
+        createdBy: req.admin!.userId,
+      })
+      .returning();
+  }
+
+  await writeAdminAudit({
+    req,
+    admin: req.admin!,
+    action: "admin.role_assign",
+    targetType: "admin_user",
+    targetId: targetUserId,
+    reason: `Ruolo impostato a ${role}`,
+    before: existing ?? null,
+    after: updatedAdmin,
+  });
+
+  res.json({ ok: true, admin: updatedAdmin });
+});
+
+router.post("/admin/roles/revoke", requireAdmin("security.roles.write"), async (req, res) => {
+  const targetUserId = String(req.body.userId ?? "").trim();
+  const reason = String(req.body.reason ?? "").trim();
+
+  if (!targetUserId) {
+    res.status(400).json({ error: "userId obbligatorio" });
+    return;
+  }
+
+  const bootstrapIds = getBootstrapAdminIds();
+  if (bootstrapIds.has(targetUserId)) {
+    res.status(403).json({ error: "Non puoi revocare un super admin configurato via bootstrap env" });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(adminUsersTable)
+    .where(eq(adminUsersTable.userId, targetUserId))
+    .limit(1);
+
+  if (!existing) {
+    res.status(404).json({ error: "Ruolo admin non trovato per questo utente" });
+    return;
+  }
+
+  const [updatedAdmin] = await db
+    .update(adminUsersTable)
+    .set({
+      status: "disabled",
+      updatedAt: new Date(),
+    })
+    .where(eq(adminUsersTable.userId, targetUserId))
+    .returning();
+
+  await writeAdminAudit({
+    req,
+    admin: req.admin!,
+    action: "admin.role_revoke",
+    targetType: "admin_user",
+    targetId: targetUserId,
+    reason: reason || "Ruolo admin disattivato",
+    before: existing,
+    after: updatedAdmin,
+  });
+
+  res.json({ ok: true, admin: updatedAdmin });
+});
+
+// ─── USER PROFILE EDIT & GDPR EXPORT ─────────────────────────────────────────
+router.patch("/admin/users/:userId/profile", requireAdmin("users.suspend"), async (req, res) => {
+  const targetUserId = String(req.params.userId ?? "").trim();
+  if (!targetUserId) {
+    res.status(400).json({ error: "userId non valido" });
+    return;
+  }
+
+  const [existingProfile] = await db
+    .select()
+    .from(profileTable)
+    .where(eq(profileTable.userId, targetUserId))
+    .limit(1);
+
+  if (!existingProfile) {
+    res.status(404).json({ error: "Profilo non trovato" });
+    return;
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (req.body.xp !== undefined && Number.isFinite(Number(req.body.xp))) {
+    updates.xp = Math.max(0, Math.floor(Number(req.body.xp)));
+  }
+  if (req.body.level !== undefined && Number.isFinite(Number(req.body.level))) {
+    updates.level = Math.max(1, Math.floor(Number(req.body.level)));
+  }
+  if (req.body.streak !== undefined && Number.isFinite(Number(req.body.streak))) {
+    updates.streak = Math.max(0, Math.floor(Number(req.body.streak)));
+  }
+  if (req.body.name !== undefined && String(req.body.name).trim()) {
+    updates.name = String(req.body.name).trim();
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "Nessun campo valido da aggiornare" });
+    return;
+  }
+
+  updates.updatedAt = new Date();
+
+  const [updatedProfile] = await db
+    .update(profileTable)
+    .set(updates)
+    .where(eq(profileTable.userId, targetUserId))
+    .returning();
+
+  await writeAdminAudit({
+    req,
+    admin: req.admin!,
+    action: "user.profile_update",
+    targetType: "profile",
+    targetId: targetUserId,
+    reason: req.body.reason ? String(req.body.reason) : "Aggiornamento profilo da console admin",
+    before: existingProfile,
+    after: updatedProfile,
+  });
+
+  res.json({ ok: true, profile: updatedProfile });
+});
+
+router.get("/admin/users/:userId/export", requireAdmin("users.export_data"), async (req, res) => {
+  const targetUserId = String(req.params.userId ?? "").trim();
+  if (!targetUserId) {
+    res.status(400).json({ error: "userId non valido" });
+    return;
+  }
+
+  try {
+    const data = await exportAccountData(targetUserId);
+
+    await writeAdminAudit({
+      req,
+      admin: req.admin!,
+      action: "users.export_data",
+      targetType: "user",
+      targetId: targetUserId,
+      reason: "Esportazione dati GDPR utente da console admin",
+    });
+
+    res.setHeader("Content-Disposition", `attachment; filename="export-${targetUserId}.json"`);
+    res.json(data);
+  } catch (error) {
+    logger.error({ err: error, targetUserId }, "Export dati admin fallito");
+    res.status(500).json({ error: "Errore durante l'esportazione dati" });
+  }
+});
+
+// ─── SYSTEM FEATURE FLAGS (INTERACTIVE) ──────────────────────────────────────
+router.get("/admin/system/flags", requireAdmin("dashboard.read"), async (_req, res) => {
+  const flags = await db.select().from(systemFeatureFlagsTable).orderBy(asc(systemFeatureFlagsTable.key));
+  res.json({ flags });
+});
+
+router.post("/admin/system/flags/:key/toggle", requireAdmin("system.feature_flags.write"), async (req, res) => {
+  const key = String(req.params.key ?? "").trim();
+  if (!key) {
+    res.status(400).json({ error: "Key flag non valida" });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(systemFeatureFlagsTable)
+    .where(eq(systemFeatureFlagsTable.key, key))
+    .limit(1);
+
+  const newEnabled = req.body.enabled !== undefined ? Boolean(req.body.enabled) : (existing ? !existing.enabled : true);
+
+  let updatedFlag;
+  if (existing) {
+    [updatedFlag] = await db
+      .update(systemFeatureFlagsTable)
+      .set({
+        enabled: newEnabled,
+        updatedBy: req.admin!.userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(systemFeatureFlagsTable.key, key))
+      .returning();
+  } else {
+    [updatedFlag] = await db
+      .insert(systemFeatureFlagsTable)
+      .values({
+        key,
+        enabled: newEnabled,
+        description: req.body.description ? String(req.body.description) : null,
+        updatedBy: req.admin!.userId,
+      })
+      .returning();
+  }
+
+  await writeAdminAudit({
+    req,
+    admin: req.admin!,
+    action: "system.flag_toggle",
+    targetType: "system_feature_flag",
+    targetId: key,
+    reason: `Flag ${key} impostato a ${newEnabled}`,
+    before: existing ?? null,
+    after: updatedFlag,
+  });
+
+  res.json({ ok: true, flag: updatedFlag });
+});
+
+// ─── TRADING & BROKER DIAGNOSTICS & SYNC ─────────────────────────────────────
+router.get("/admin/trading/diagnostics", requireAdmin("trading.read"), async (_req, res) => {
+  const storeRows = await db
+    .select()
+    .from(brokerProfileStoreTable)
+    .limit(10);
+
+  const profiles: Array<Record<string, unknown>> = [];
+  for (const row of storeRows) {
+    const list = row.data as { profiles?: Array<Record<string, unknown>> };
+    if (Array.isArray(list?.profiles)) {
+      profiles.push(...list.profiles);
+    }
+  }
+
+  const recentTrades = await db
+    .select({
+      id: accountTradesTable.id,
+      ticket: accountTradesTable.ticket,
+      source: accountTradesTable.source,
+      symbol: accountTradesTable.symbol,
+      status: accountTradesTable.status,
+      userId: accountTradesTable.userId,
+      createdAt: accountTradesTable.createdAt,
+    })
+    .from(accountTradesTable)
+    .orderBy(desc(accountTradesTable.createdAt))
+    .limit(20);
+
+  res.json({
+    profiles,
+    recentTrades,
+    totalProfiles: profiles.length,
+  });
+});
+
+router.post("/admin/trading/retry-sync", requireAdmin("trading.retry_sync"), async (req, res) => {
+  const profileId = req.body.profileId ? String(req.body.profileId).trim() : undefined;
+  const targetUserId = req.body.userId ? String(req.body.userId).trim() : undefined;
+
+  await writeAdminAudit({
+    req,
+    admin: req.admin!,
+    action: "trading.retry_sync",
+    targetType: "broker_profile",
+    targetId: profileId ?? targetUserId ?? "all",
+    reason: "Forzatura re-sync da console admin",
+  });
+
+  res.json({ ok: true, message: "Richiesta di re-sync accodata con successo", profileId, targetUserId });
 });
 
 export default router;

@@ -52,7 +52,7 @@ export function WelcomeNotification() {
     };
 
     void deliverBrowserNotification({
-      title: "TraderLoading",
+      title: "LIMEN",
       body: lines.join("\n"),
       tag: "welcome-summary",
       showToast,

@@ -13,21 +13,21 @@ export interface BackgroundPreset {
 export const MAX_CUSTOM_PER_DEVICE = 2;
 
 export const DEFAULT_BACKGROUNDS_DESKTOP: BackgroundPreset[] = [
-  { id: "nyc-skyline", name: "NYC Skyline", url: "/images/backgrounds/desktop/nyc-skyline.webp", isDefault: true, device: "desktop" },
-  { id: "dubai-skyline", name: "Dubai", url: "/images/backgrounds/desktop/dubai-skyline.webp", isDefault: true, device: "desktop" },
-  { id: "molten-gold", name: "Molten Gold", url: "/images/backgrounds/desktop/molten-gold.webp", isDefault: true, device: "desktop" },
-  { id: "jade-wave", name: "Jade Wave", url: "/images/backgrounds/desktop/jade-wave.webp", isDefault: true, device: "desktop" },
-  { id: "mountain-dawn", name: "Mountain Dawn", url: "/images/backgrounds/desktop/mountain-dawn.webp", isDefault: true, device: "desktop" },
-  { id: "luxury-watch", name: "Luxury", url: "/images/backgrounds/desktop/luxury-watch.webp", isDefault: true, device: "desktop" },
+  { id: "nero-ossidiana", name: "Nero Ossidiana", url: "/images/backgrounds/desktop/nero-ossidiana.webp", isDefault: true, device: "desktop" },
+  { id: "ordo-geometrico", name: "Ordo Geometrico", url: "/images/backgrounds/desktop/ordo-geometrico.webp", isDefault: true, device: "desktop" },
+  { id: "aureus-noir", name: "Aureus Noir", url: "/images/backgrounds/desktop/aureus-noir.webp", isDefault: true, device: "desktop" },
+  { id: "cyber-matrix", name: "Cyber Matrix", url: "/images/backgrounds/desktop/cyber-matrix.webp", isDefault: true, device: "desktop" },
+  { id: "nocturne-city", name: "Financial Nocturne", url: "/images/backgrounds/desktop/nocturne-city.webp", isDefault: true, device: "desktop" },
+  { id: "pietra-antracite", name: "Pietra Antracite", url: "/images/backgrounds/desktop/pietra-antracite.webp", isDefault: true, device: "desktop" },
 ];
 
 export const DEFAULT_BACKGROUNDS_MOBILE: BackgroundPreset[] = [
-  { id: "singapore-marina", name: "Singapore", url: "/images/backgrounds/mobile/singapore-marina.webp", isDefault: true, device: "mobile" },
-  { id: "hongkong-towers", name: "Hong Kong", url: "/images/backgrounds/mobile/hongkong-towers.webp", isDefault: true, device: "mobile" },
-  { id: "jade-gradient", name: "Jade", url: "/images/backgrounds/mobile/jade-gradient.webp", isDefault: true, device: "mobile" },
-  { id: "gold-bokeh", name: "Gold", url: "/images/backgrounds/mobile/gold-bokeh.webp", isDefault: true, device: "mobile" },
-  { id: "forest-path", name: "Forest", url: "/images/backgrounds/mobile/forest-path.webp", isDefault: true, device: "mobile" },
-  { id: "ocean-calm", name: "Ocean", url: "/images/backgrounds/mobile/ocean-calm.webp", isDefault: true, device: "mobile" },
+  { id: "nero-ossidiana", name: "Nero Ossidiana", url: "/images/backgrounds/mobile/nero-ossidiana.webp", isDefault: true, device: "mobile" },
+  { id: "ordo-geometrico", name: "Ordo Geometrico", url: "/images/backgrounds/mobile/ordo-geometrico.webp", isDefault: true, device: "mobile" },
+  { id: "aureus-noir", name: "Aureus Noir", url: "/images/backgrounds/mobile/aureus-noir.webp", isDefault: true, device: "mobile" },
+  { id: "cyber-matrix", name: "Cyber Matrix", url: "/images/backgrounds/mobile/cyber-matrix.webp", isDefault: true, device: "mobile" },
+  { id: "nocturne-city", name: "Financial Nocturne", url: "/images/backgrounds/mobile/nocturne-city.webp", isDefault: true, device: "mobile" },
+  { id: "pietra-antracite", name: "Pietra Antracite", url: "/images/backgrounds/mobile/pietra-antracite.webp", isDefault: true, device: "mobile" },
 ];
 
 const LEGACY_KEY = "tl_background_presets";

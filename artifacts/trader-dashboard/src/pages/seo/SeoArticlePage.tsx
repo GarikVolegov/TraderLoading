@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ArrowRight, Check, Rocket } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Seo } from "@/components/Seo";
 import {
@@ -73,9 +73,9 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
   const jsonLd: JsonLd[] = [breadcrumbJsonLd(t("seo.nav.home"), eyebrow, page, language)];
   if (faqItems.length) jsonLd.push(faqJsonLd(language, faqItems));
   if (page === "pricing") {
-    jsonLd.push(pricingProductJsonLd("TraderLoading", t(`${base}.intro`), canonical));
+    jsonLd.push(pricingProductJsonLd("LIMEN", t(`${base}.intro`), canonical));
   } else if (TOPIC_PAGES.has(page)) {
-    jsonLd.push(softwareAppJsonLd(`TraderLoading — ${eyebrow}`, t(`${base}.intro`), canonical, language));
+    jsonLd.push(softwareAppJsonLd(`LIMEN — ${eyebrow}`, t(`${base}.intro`), canonical, language));
   }
 
   return (
@@ -95,10 +95,10 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
       <header className="border-b border-border/40">
         <nav className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
           <Link href={landingPath(language)} className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/35 bg-primary/15 text-primary">
-              <Rocket className="h-4 w-4" aria-hidden="true" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#C5A059]/40 bg-[#121216] text-[#C5A059] shadow-[0_0_12px_rgba(197,160,89,0.18)] overflow-hidden">
+              <img src="/app-icon-192.png?v=20261021g" alt="LIMEN" className="w-full h-full object-cover" />
             </span>
-            <span className="font-mono text-base font-bold">TraderLoading</span>
+            <span className="font-serif tracking-[0.2em] text-base font-bold uppercase">LIMEN</span>
           </Link>
           <div className="flex items-center gap-2 text-sm">
             <Link

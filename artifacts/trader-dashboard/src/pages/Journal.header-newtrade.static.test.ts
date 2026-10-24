@@ -1,14 +1,14 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
 
-// "Nuovo Trade" lives in the page header (mockup TopBar). Clicking it deep-links
+// "Nuovo Trade" lives in the streamlined journal toolbar. Clicking it deep-links
 // to /journal?t=trades&new=1, and TradesTab opens the modal from a URL-driven
 // (useSearch-keyed) effect so it works from any tab — not a mount-only read of
 // window.location.
 const src = fs.readFileSync("src/pages/Journal.tsx", "utf8");
 
-// The header exposes the "Nuovo Trade" action that deep-links into the Trades tab.
-assert.match(src, /action=\{/, "PageHeader must receive an action slot");
+// The toolbar exposes the "Nuovo Trade" action that deep-links into the Trades tab.
+assert.match(src, /action=\{/, "The journal workspace must receive an action slot");
 assert.match(src, /setTab\("trades", \{ new: "1" \}\)/,
   "the header action opens a new trade using the URL");
 assert.equal((src.match(/t\("journal\.new_trade"\)/g) ?? []).length, 1,

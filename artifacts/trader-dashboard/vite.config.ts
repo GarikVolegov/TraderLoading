@@ -13,10 +13,38 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+import fs from "fs";
+
 const basePath = process.env.BASE_PATH ?? "/";
 const apiTarget = process.env.VITE_API_BASE ?? "http://127.0.0.1:3001";
 
-const clerkPublishableKey = process.env.VITE_CLERK_PUBLISHABLE_KEY ?? "";
+function resolveClerkKey(): string {
+  if (process.env.VITE_CLERK_PUBLISHABLE_KEY) {
+    return process.env.VITE_CLERK_PUBLISHABLE_KEY.trim();
+  }
+  const candidateUrls = [
+    new URL(".env.local", import.meta.url),
+    new URL("../../.env.local", import.meta.url),
+  ];
+  for (const candidate of candidateUrls) {
+    if (fs.existsSync(candidate)) {
+      try {
+        const content = fs.readFileSync(candidate, "utf8");
+        const match = content.match(/^(?:export\s+)?VITE_CLERK_PUBLISHABLE_KEY\s*=\s*([^\s#]+)/m);
+        if (match && match[1]) {
+          const key = match[1].trim().replace(/^["']|["']$/g, "");
+          process.env.VITE_CLERK_PUBLISHABLE_KEY = key;
+          return key;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+  }
+  return "";
+}
+
+const clerkPublishableKey = resolveClerkKey();
 const allowMissingClerkKey = process.env.ALLOW_MISSING_CLERK_KEY === "1";
 
 function isValidClerkKey(key: string): boolean {

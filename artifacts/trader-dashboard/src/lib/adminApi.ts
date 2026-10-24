@@ -28,6 +28,7 @@ export interface AdminDashboard {
     journalToday: number;
     backtestsToday: number;
     suspendedUsers: number;
+    pendingApplications?: number;
   };
   urgentActions: Array<{
     id: string;
@@ -187,7 +188,7 @@ export interface AdminSystemOverview {
   }>;
 }
 
-export type AdminSubscriptionPlan = "free" | "pro";
+export type AdminSubscriptionPlan = "free" | "pro" | "tributo_150";
 export type AdminSubscriptionStatus =
   | "active"
   | "trialing"
@@ -449,5 +450,232 @@ export function reactivateAdminUser(userId: string, reason: string) {
   return postAdminUserAction<{ success: true }>(
     `/admin/users/${encodeURIComponent(userId)}/reactivate`,
     reason,
+  );
+}
+
+// ─── CANDIDATE APPLICATIONS (TRIBUTO 150€/MESE) ──────────────────────────────
+export interface CandidateApplicationItem {
+  id: number;
+  candidateCode: string;
+  name: string;
+  email: string;
+  contactType: "whatsapp" | "telegram";
+  contactHandle: string;
+  situation: string | null;
+  horizon: string | null;
+  obstacle: string | null;
+  commitment: string | null;
+  planChosen: string;
+  selectedServices?: string[] | null;
+  approvedServices?: string[] | null;
+  monthlyFeeCents?: number | null;
+  oneTimeFeeCents?: number | null;
+  currency?: string | null;
+  referredBy: string | null;
+  status: "in_valutazione" | "ammesso" | "respinto" | "contattato";
+  notes: string | null;
+  userId: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminCandidateApplicationsResponse {
+  applications: CandidateApplicationItem[];
+  total: number;
+  pendingCount: number;
+  admittedCount: number;
+  limit: number;
+  offset: number;
+}
+
+export function getAdminCandidateApplications(
+  params: { status?: string; q?: string; limit?: number; offset?: number } = {},
+) {
+  const search = new URLSearchParams();
+  if (params.status) search.set("status", params.status);
+  if (params.q) search.set("q", params.q);
+  if (params.limit) search.set("limit", String(params.limit));
+  if (params.offset) search.set("offset", String(params.offset));
+
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+  return apiJSON<AdminCandidateApplicationsResponse>(
+    `/admin/candidate-applications${suffix}`,
+  );
+}
+
+export function updateAdminCandidateStatus(
+  id: number,
+  status: "in_valutazione" | "ammesso" | "respinto" | "contattato",
+  notes?: string,
+) {
+  return apiJSON<{ ok: true; application: CandidateApplicationItem }>(
+    `/admin/candidate-applications/${encodeURIComponent(String(id))}/status`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, notes }),
+    },
+  );
+}
+
+export function admitAdminCandidate(
+  id: number,
+  payload: { userId?: string; notes?: string; approvedServices?: string[] } = {},
+) {
+  return apiJSON<{
+    ok: true;
+    application: CandidateApplicationItem;
+    subscription: AdminSubscriptionRow | null;
+    targetUserId: string | null;
+  }>(
+    `/admin/candidate-applications/${encodeURIComponent(String(id))}/admit`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function updateAdminCandidateServices(
+  id: number,
+  approvedServices: string[],
+  notes?: string,
+) {
+  return apiJSON<{
+    ok: true;
+    application: CandidateApplicationItem;
+  }>(
+    `/admin/candidate-applications/${encodeURIComponent(String(id))}/services`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approvedServices, notes }),
+    },
+  );
+}
+
+// ─── ADMIN STAFF ROLES ───────────────────────────────────────────────────────
+export interface AdminRoleItem {
+  id: number;
+  userId: string;
+  role: AdminRole;
+  status: string;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  userName: string | null;
+}
+
+export function getAdminRoles() {
+  return apiJSON<{
+    roles: AdminRoleItem[];
+    bootstrapUserIds: string[];
+    availableRoles: AdminRole[];
+  }>("/admin/roles");
+}
+
+export function assignAdminRole(userId: string, role: AdminRole) {
+  return apiJSON<{ ok: true; admin: AdminRoleItem }>("/admin/roles/assign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, role }),
+  });
+}
+
+export function revokeAdminRole(userId: string, reason?: string) {
+  return apiJSON<{ ok: true; admin: AdminRoleItem }>("/admin/roles/revoke", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, reason }),
+  });
+}
+
+// ─── USER PROFILE GOVERNANCE & GDPR ──────────────────────────────────────────
+export function updateAdminUserProfile(
+  userId: string,
+  updates: { xp?: number; level?: number; streak?: number; name?: string; reason?: string },
+) {
+  return apiJSON<{ ok: true; profile: unknown }>(
+    `/admin/users/${encodeURIComponent(userId)}/profile`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    },
+  );
+}
+
+export async function exportAdminUserData(userId: string): Promise<void> {
+  const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/export`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`Errore export: ${res.statusText}`);
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `export-user-${userId}.json`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}
+
+// ─── SYSTEM FEATURE FLAGS ────────────────────────────────────────────────────
+export interface AdminSystemFlag {
+  key: string;
+  enabled: boolean;
+  description: string | null;
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
+export function getAdminSystemFlags() {
+  return apiJSON<{ flags: AdminSystemFlag[] }>("/admin/system/flags");
+}
+
+export function toggleAdminSystemFlag(key: string, enabled?: boolean) {
+  return apiJSON<{ ok: true; flag: AdminSystemFlag }>(
+    `/admin/system/flags/${encodeURIComponent(key)}/toggle`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(enabled !== undefined ? { enabled } : {}),
+    },
+  );
+}
+
+// ─── TRADING & BROKER DIAGNOSTICS & SYNC ─────────────────────────────────────
+export interface AdminTradingDiagnostics {
+  profiles: Array<Record<string, unknown>>;
+  recentTrades: Array<{
+    id: number;
+    ticket: string;
+    source: string;
+    symbol: string;
+    status: string;
+    userId: string;
+    createdAt: string;
+  }>;
+  totalProfiles: number;
+}
+
+export function getAdminTradingDiagnostics() {
+  return apiJSON<AdminTradingDiagnostics>("/admin/trading/diagnostics");
+}
+
+export function retryAdminTradingSync(profileId?: string, userId?: string) {
+  return apiJSON<{ ok: true; message: string; profileId?: string; targetUserId?: string }>(
+    "/admin/trading/retry-sync",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profileId, userId }),
+    },
   );
 }

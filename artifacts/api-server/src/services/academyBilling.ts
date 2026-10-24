@@ -1,3 +1,4 @@
+import { isCandidateAdmitted } from "./launchApplications.js";
 import { randomUUID, createHash } from "node:crypto";
 import type Stripe from "stripe";
 import { and, eq, isNotNull, sql } from "drizzle-orm";
@@ -10,6 +11,7 @@ import {
 import { createStripeClient } from "../lib/billing.js";
 import { getAdminPrincipalForUser } from "../lib/adminAuth.js";
 import { hasAdminPermission } from "../lib/adminPermissions.js";
+import { getOperatorIntegrityReport } from "./integrityEngine.js";
 
 export const ACADEMY_TERMS_VERSION = "2026-10-17";
 export const ACADEMY_PRICE_CENTS = 15000;
@@ -67,8 +69,11 @@ export async function hasAcademyAccess(userId: string): Promise<boolean> {
 export async function academyCheckoutAvailable(): Promise<boolean> {
   const config = getAcademyConfig();
   if (!config.configured || !config.salesEnabled) return false;
+  const free = await db.select({ slot: academyLessonsTable.introductionSlot }).from(academyLessonsTable)
+    .where(and(eq(academyLessonsTable.published, true), eq(academyLessonsTable.accessLevel, "free")));
+  if (!["book", "chapter0", "lesson1", "lesson2"].every(slot => free.some(lesson => lesson.slot === slot))) return false;
   const [lesson] = await db.select({ id: academyLessonsTable.id }).from(academyLessonsTable)
-    .where(and(eq(academyLessonsTable.published, true), isNotNull(academyLessonsTable.videoUrl), sql`length(trim(${academyLessonsTable.videoUrl})) > 0`)).limit(1);
+    .where(and(eq(academyLessonsTable.published, true), eq(academyLessonsTable.accessLevel, "protocol"), sql`(${academyLessonsTable.streamVideoId} IS NOT NULL OR length(trim(${academyLessonsTable.videoUrl})) > 0)`)).limit(1);
   if (!lesson) return false;
   try { return isAcademyPrice(await stripeClient().prices.retrieve(config.priceId!)); } catch { return false; }
 }
@@ -102,12 +107,71 @@ export async function getAcademyCommissions(userId: string) {
   })) };
 }
 
-export async function getAcademyBillingStatus(userId: string) {
-  const [subscription, affiliateRows, list, checkoutAvailable, admin] = await Promise.all([
+export interface AcademyBillingStatus {
+  active: boolean;
+  status: string;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  salesEnabled: boolean;
+  checkoutAvailable: boolean;
+  canManage: boolean;
+  canCancel: boolean;
+  canResume: boolean;
+  canManagePayouts: boolean;
+  price: { amountCents: number; currency: string; interval: string };
+  affiliate: {
+    enrolled: boolean;
+    termsVersion: string;
+    rateBps: number;
+    holdDays: number;
+    code: string | null;
+    link: string | null;
+    activeGuidedMembersCount?: number;
+    totalGuidedMembersCount?: number;
+    currentGradeNumber?: number;
+    expansionMandateUnlocked?: boolean;
+  };
+  commissions: {
+    pendingCents: number;
+    availableCents: number;
+    paidCents: number;
+    currency: string;
+  };
+}
+
+export async function getAcademyBillingStatus(userId: string): Promise<AcademyBillingStatus> {
+  const [subscription, affiliateRows, list, checkoutAvailable, admin, guidedRows] = await Promise.all([
     getAcademySubscription(userId), db.select().from(affiliates).where(eq(affiliates.userId, userId)).limit(1),
     getAcademyCommissions(userId), academyCheckoutAvailable(), getAdminPrincipalForUser(userId),
+    db
+      .select({
+        buyerUserId: attributions.buyerUserId,
+        status: subscriptions.status,
+        paidThrough: subscriptions.paidThrough,
+        paymentRevoked: subscriptions.paymentRevoked,
+      })
+      .from(attributions)
+      .leftJoin(subscriptions, eq(subscriptions.userId, attributions.buyerUserId))
+      .where(eq(attributions.affiliateUserId, userId)),
   ]);
+  let currentGradeNumber = 1;
+  try {
+    const integrity = await getOperatorIntegrityReport({ userId, isAdmin: !!admin });
+    currentGradeNumber = integrity.currentGrade.grade;
+  } catch {
+    currentGradeNumber = 1;
+  }
   const affiliate = affiliateRows.at(0);
+  const isAdmin = !!admin;
+  const activeGuidedMembersCount = guidedRows.filter(row =>
+    isAcademyEntitled(
+      row.status
+        ? { status: row.status, paidThrough: row.paidThrough, paymentRevoked: row.paymentRevoked ?? false }
+        : null,
+    ),
+  ).length;
+  const totalGuidedMembersCount = guidedRows.length;
+  const expansionMandateUnlocked = Boolean(affiliate) || isAdmin || currentGradeNumber >= 2;
   const canManage = !!subscription?.stripeSubscriptionId && !["canceled", "incomplete_expired"].includes(subscription.status);
   const totals = { pendingCents: 0, availableCents: 0, paidCents: 0, currency: "eur" };
   for (const row of list.items) {
@@ -120,16 +184,28 @@ export async function getAcademyBillingStatus(userId: string) {
     active: isAcademyEntitled(subscription), status: subscription?.paymentRevoked ? "payment_revoked" : subscription?.status ?? "none",
     currentPeriodEnd: subscription?.paidThrough?.toISOString() ?? subscription?.currentPeriodEnd?.toISOString() ?? null,
     cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
-    salesEnabled: getAcademyConfig().salesEnabled, checkoutAvailable: checkoutAvailable && !canManage,
+    salesEnabled: getAcademyConfig().salesEnabled, checkoutAvailable: checkoutAvailable && !canManage && await isCandidateAdmitted(userId),
     canManage, canCancel: canManage && !subscription?.cancelAtPeriodEnd, canResume: canManage && !!subscription?.cancelAtPeriodEnd,
     canManagePayouts: !!admin && hasAdminPermission(admin.role, "billing.subscriptions.write"),
     price: { amountCents: ACADEMY_PRICE_CENTS, currency: "eur", interval: "month" },
-    affiliate: { enrolled: !!affiliate, termsVersion: ACADEMY_TERMS_VERSION, rateBps: ACADEMY_RATE_BPS, holdDays: ACADEMY_HOLD_DAYS,
-      code: affiliate?.code ?? null, link: affiliate ? `/academy?ref=${affiliate.code}` : null }, commissions: totals,
+    affiliate: {
+      enrolled: !!affiliate,
+      termsVersion: ACADEMY_TERMS_VERSION,
+      rateBps: ACADEMY_RATE_BPS,
+      holdDays: ACADEMY_HOLD_DAYS,
+      code: affiliate?.code ?? null,
+      link: affiliate ? `/academy?ref=${affiliate.code}` : null,
+      activeGuidedMembersCount,
+      totalGuidedMembersCount,
+      currentGradeNumber,
+      expansionMandateUnlocked,
+    },
+    commissions: totals,
   };
 }
 
 export async function createAcademyCheckout(user: { id: string; email?: string | null }, referralCode?: string) {
+  if (!await isCandidateAdmitted(user.id)) throw error("academy_admission_required", 403);
   if (!await academyCheckoutAvailable()) throw error("academy_sales_unavailable", 503);
   const stripe = stripeClient();
   const config = getAcademyConfig();

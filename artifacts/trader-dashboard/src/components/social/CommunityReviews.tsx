@@ -25,7 +25,7 @@ export function CommunityReviews({ detail }: { detail: CommunityDetail }) {
       setRating(data.myReview.rating);
       setText(data.myReview.text);
     }
-  }, [data?.myReview?.id]);
+  }, [data?.myReview]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["communityReviews", detail.id] });

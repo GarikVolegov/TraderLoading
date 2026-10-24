@@ -54,6 +54,7 @@ export interface TorneiPrize {
 export interface TorneiCertificate {
   id: number;
   seasonLabel: string;
+  userName?: string | null;
   tier: string;
   edition: string;
   rarity: string;

@@ -4,7 +4,7 @@
 // target, so a bar that spans both counts as a loss (conservative — without
 // lower-timeframe data the intra-bar order is unknowable).
 import { getPipMultiplier } from "../pipMultiplier";
-import { pipSize, pipValuePerLot } from "./lotSizing";
+import { computeLots, pipSize, pipValuePerLot } from "./lotSizing";
 import { calculateNetR } from "../../../../../contracts/trader-process";
 import type {
   ClosedTrade,
@@ -16,6 +16,7 @@ import type {
 } from "./types";
 
 export function openPosition(input: {
+  id?: string;
   direction: TradeDirection;
   entryPrice: number;
   entryTime: number;
@@ -25,16 +26,18 @@ export function openPosition(input: {
   riskAmount: number;
   symbol: string;
 }): OpenPosition {
-  const { direction, entryPrice, entryTime, slPips, tpPips, lots, riskAmount, symbol } = input;
+  const { id, direction, entryPrice, entryTime, slPips, tpPips, lots, riskAmount, symbol } = input;
   const size = pipSize(symbol);
   const sign = direction === "buy" ? 1 : -1;
   return {
+    id: id ?? `pos-${entryTime}-${Math.floor(Math.random() * 10000)}`,
     direction,
     entryPrice,
     entryTime,
     stopLoss: entryPrice - sign * slPips * size,
     takeProfit: entryPrice + sign * tpPips * size,
     lots,
+    initialLots: lots,
     riskAmount,
     initialRiskAmount: slPips > 0 ? slPips * pipValuePerLot(symbol) * lots : 0,
     slPips,
@@ -44,6 +47,8 @@ export function openPosition(input: {
     bestPips: 0,
     worstPips: 0,
     breakevenApplied: false,
+    realizedPartialProfit: 0,
+    partialCount: 0,
   };
 }
 
@@ -66,6 +71,43 @@ export function checkPendingFill(order: PendingOrder, bar: ReplayCandle): number
   return null;
 }
 
+export type PendingCancellationReason = "target_reached" | "invalidation_reached";
+
+/**
+ * Valuta se un ordine pendente Limit deve essere automaticamente cancellato
+ * prima dell'esecuzione:
+ * 1. "target_reached" (Missed Move): il prezzo ha raggiunto il Take Profit senza ritracciare
+ *    sul livello Limit (l'espansione è già avvenuta senza di noi).
+ * 2. "invalidation_reached": il prezzo ha sfondato lo Stop Loss di invalidazione
+ *    prima di toccare l'entry, negando la premessa strutturale.
+ */
+export function checkPendingCancellation(
+  order: PendingOrder,
+  bar: ReplayCandle,
+): PendingCancellationReason | null {
+  if (order.kind !== "limit") return null;
+
+  if (order.direction === "buy") {
+    // Buy Limit: resting sotto il prezzo. TP è sopra, SL è sotto.
+    if (order.takeProfit != null && bar.high >= order.takeProfit) {
+      return "target_reached";
+    }
+    if (order.stopLoss != null && bar.low <= order.stopLoss) {
+      return "invalidation_reached";
+    }
+  } else {
+    // Sell Limit: resting sopra il prezzo. TP è sotto, SL è sopra.
+    if (order.takeProfit != null && bar.low <= order.takeProfit) {
+      return "target_reached";
+    }
+    if (order.stopLoss != null && bar.high >= order.stopLoss) {
+      return "invalidation_reached";
+    }
+  }
+
+  return null;
+}
+
 /** Turn a filled pending order into an open position anchored to the fill bar. */
 export function fillPendingOrder(
   order: PendingOrder,
@@ -74,6 +116,7 @@ export function fillPendingOrder(
   symbol: string,
 ): OpenPosition {
   return openPosition({
+    id: order.id,
     direction: order.direction,
     entryPrice: fillPrice,
     entryTime: fillTime,
@@ -257,4 +300,153 @@ export function closePosition(
     maeR: initialRisk > 0 ? round2(Math.max(0, -(position.worstPips ?? 0)) / initialRisk) : null,
     mfeR: initialRisk > 0 ? round2(Math.max(0, position.bestPips ?? 0) / initialRisk) : null,
   };
+}
+
+export interface PartialCloseResult {
+  remainingPosition: OpenPosition;
+  closedTrade: ClosedTrade;
+}
+
+/**
+ * Scale out of a position by closing a fraction (e.g. 0.25, 0.50, 0.75) or a specific lot size.
+ * Realizes the closed portion proportionally and maintains mathematically exact residual risk.
+ */
+export function partialClosePosition(
+  position: OpenPosition,
+  options: {
+    fraction?: number;
+    lots?: number;
+    exitPrice: number;
+    exitTime: number;
+    id: number;
+    symbol: string;
+    costs?: TradeCosts;
+    moveToBreakeven?: boolean;
+  },
+): PartialCloseResult {
+  const round2 = (val: number) => Math.round(val * 100) / 100;
+  const currentLots = position.lots;
+  let lotsToClose = options.lots != null
+    ? Math.min(currentLots, Math.max(0.01, round2(options.lots)))
+    : options.fraction != null
+      ? Math.min(currentLots, Math.max(0.01, round2(currentLots * options.fraction)))
+      : round2(currentLots * 0.5);
+
+  if (lotsToClose >= currentLots) {
+    lotsToClose = currentLots;
+  }
+  const ratio = Math.min(1, lotsToClose / currentLots);
+  const remainingLots = round2(Math.max(0, currentLots - lotsToClose));
+
+  const totalMonetaryRisk = position.initialRiskAmount ?? (position.slPips * pipValuePerLot(options.symbol) * currentLots);
+  const closedRiskAmount = round2(totalMonetaryRisk * ratio);
+  const remainingRiskAmount = round2(Math.max(0, totalMonetaryRisk - closedRiskAmount));
+
+  // Closed portion trade
+  const closedPositionStub: OpenPosition = {
+    ...position,
+    lots: lotsToClose,
+    riskAmount: round2(position.riskAmount * ratio),
+    initialRiskAmount: closedRiskAmount,
+  };
+  const closedTrade = closePosition(closedPositionStub, {
+    exitPrice: options.exitPrice,
+    exitTime: options.exitTime,
+    exitReason: "manual",
+    id: options.id,
+    symbol: options.symbol,
+    costs: options.costs,
+  });
+  closedTrade.positionId = position.id;
+  closedTrade.isPartial = true;
+  const percentTag = `${Math.round(ratio * 100)}%`;
+  closedTrade.tags = [...(position.direction ? [`partial`, percentTag] : [])];
+
+  // Remaining position
+  const nextStopLoss = options.moveToBreakeven
+    ? position.direction === "buy" ? Math.max(position.stopLoss, position.entryPrice) : Math.min(position.stopLoss, position.entryPrice)
+    : position.stopLoss;
+  const multiplier = getPipMultiplier(options.symbol);
+  const nextSlPips = roundPips(Math.abs((position.entryPrice - nextStopLoss) * multiplier));
+
+  const remainingPosition: OpenPosition = {
+    ...position,
+    lots: remainingLots,
+    initialLots: position.initialLots ?? currentLots,
+    riskAmount: round2(position.riskAmount * (1 - ratio)),
+    initialRiskAmount: remainingRiskAmount,
+    stopLoss: nextStopLoss,
+    slPips: nextSlPips,
+    hasStop: position.hasStop,
+    breakevenApplied: Boolean(position.breakevenApplied || (options.moveToBreakeven && nextStopLoss === position.entryPrice)),
+    realizedPartialProfit: round2((position.realizedPartialProfit ?? 0) + closedTrade.profit),
+    partialCount: (position.partialCount ?? 0) + 1,
+  };
+
+  return { remainingPosition, closedTrade };
+}
+
+/**
+ * Adapt a position when dragging/editing its Stop Loss:
+ * - If adaptLots is true and the stop is on the adverse (loss) side of entry,
+ *   recalculates lots to maintain target risk constant.
+ * - If the stop is at/beyond breakeven (profit lock), lots are kept fixed and stop is armed.
+ */
+export function adaptPositionToStop(
+  position: OpenPosition,
+  nextStopLoss: number,
+  options: {
+    symbol: string;
+    targetRiskAmount?: number;
+    adaptLots?: boolean;
+  },
+): OpenPosition {
+  const multiplier = getPipMultiplier(options.symbol);
+  const nextSlPips = roundPips(Math.abs((position.entryPrice - nextStopLoss) * multiplier));
+  const isLossSide = position.direction === "buy" ? nextStopLoss < position.entryPrice : nextStopLoss > position.entryPrice;
+  const round2 = (val: number) => Math.round(val * 100) / 100;
+
+  let lots = position.lots;
+  let initialRiskAmount = position.initialRiskAmount;
+  let riskAmount = position.riskAmount;
+  let initialSlPips = position.initialSlPips ?? position.slPips;
+
+  const targetRisk = options.targetRiskAmount ?? (position.riskAmount > 0 ? position.riskAmount : (position.initialRiskAmount ?? 100));
+
+  if (options.adaptLots && isLossSide && nextSlPips > 0) {
+    lots = Math.max(0.01, computeLots({ riskAmount: targetRisk, slPips: nextSlPips, symbol: options.symbol }));
+    initialRiskAmount = round2(nextSlPips * pipValuePerLot(options.symbol) * lots);
+    riskAmount = targetRisk;
+    initialSlPips = nextSlPips;
+  }
+
+  return {
+    ...position,
+    stopLoss: nextStopLoss,
+    slPips: nextSlPips,
+    lots,
+    riskAmount,
+    initialRiskAmount,
+    initialSlPips,
+    hasStop: true,
+  };
+}
+
+/**
+ * Compute the projected P&L in pips, monetary amount, and R multiple if price reaches targetPrice.
+ */
+export function projectedLevelPnl(
+  position: OpenPosition,
+  targetPrice: number,
+  symbol: string,
+  costs?: TradeCosts,
+): { pips: number; money: number; rMultiple: number | null } {
+  const pips = positionPips(position, targetPrice, symbol);
+  const pipValue = pipValuePerLot(symbol);
+  const gross = pips * pipValue * position.lots;
+  const cost = tradeCost(costs, position.lots, symbol);
+  const money = Math.round((gross - cost) * 100) / 100;
+  const risk = position.initialRiskAmount ?? (position.initialSlPips ? position.initialSlPips * pipValue * position.lots : null);
+  const rMultiple = risk && risk > 0 ? Math.round((money / risk) * 100) / 100 : null;
+  return { pips, money, rMultiple };
 }

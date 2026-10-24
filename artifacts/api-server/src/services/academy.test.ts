@@ -55,7 +55,7 @@ assert.throws(() => buildAcademyLessonWrite({ videoUrl: null }, published, now),
 assert.throws(() => buildAcademyLessonWrite({ moduleId: "swing" }, published, now), /scaletta/);
 assert.equal(buildAcademyLessonWrite({ published: false, videoUrl: null }, published, now).publishedAt, null);
 assert.equal(buildAcademyLessonWrite({ moduleId: "swing", syllabusId: "swing-1" }, published, now).moduleId, "swing");
-assert.deepEqual(Object.keys(academyLessonMetadata(published)).sort(), ["description", "id", "moduleId", "orderIndex", "publishedAt", "syllabusId", "title"]);
+assert.deepEqual(Object.keys(academyLessonMetadata(published)).sort(), ["accessLevel", "contentKind", "description", "id", "introductionSlot", "moduleId", "orderIndex", "publishedAt", "syllabusId", "title"]);
 
 const progress = {
   id: "progress", userId: "student", lessonId: published.id, completedAt: earlier,
@@ -90,3 +90,8 @@ assert.equal(academyFeedbackInput.safeParse({ feedback: "Good", submittedAt: "in
 assert.equal(academyFeedbackInput.safeParse({ feedback: "Good", submittedAt: now.toISOString() }).success, true);
 
 console.log("academy video, publication, metadata and progress checks passed");
+
+assert.equal(buildAcademyLessonWrite({ moduleId: "preparazione", title: "Book", contentKind: "book", bodyMarkdown: "Introduction", published: true, accessLevel: "free" }).accessLevel, "free");
+assert.throws(() => buildAcademyLessonWrite({ moduleId: "preparazione", title: "Empty book", contentKind: "book", published: true }), /Completa il libro/);
+assert.equal(buildAcademyLessonWrite({ moduleId: "preparazione", title: "Video", streamVideoId: "a".repeat(32), published: true }).streamVideoId, "a".repeat(32));
+assert.equal(buildAcademyLessonWrite({ moduleId: "preparazione", title: "Default" }).accessLevel, "protocol");

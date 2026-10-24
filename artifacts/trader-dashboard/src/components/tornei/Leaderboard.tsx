@@ -24,7 +24,7 @@ export function Leaderboard({ board, total, metric, onMetric }: LeaderboardProps
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 13 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           <h3 style={{ margin: 0, fontSize: 15, color: "var(--tl-fg)" }}>{t("tornei.board.title")}</h3>
-          <span style={{ fontFamily: "var(--tl-font-mono)", fontSize: 11, color: "hsl(215 20% 58%)" }}>· {t("tornei.board.players", { n: String(total) })}</span>
+          <span style={{ fontFamily: "var(--tl-font-mono)", fontSize: 11, color: "#8E92A0" }}>· {t("tornei.board.players", { n: String(total) })}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
           <span className="tl-section-label trn-hide-sm">{t("tornei.board.sortBy")}</span>
@@ -41,7 +41,7 @@ export function Leaderboard({ board, total, metric, onMetric }: LeaderboardProps
         </div>
       </div>
 
-      <div className="trn-lbhead" style={{ padding: "0 16px 9px", fontFamily: "var(--tl-font-mono)", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "hsl(215 20% 54%)" }}>
+      <div className="trn-lbhead" style={{ padding: "0 16px 9px", fontFamily: "var(--tl-font-mono)", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#8E92A0" }}>
         <span>{t("tornei.col.rank")}</span>
         <span>{t("tornei.col.trader")}</span>
         <span className="trn-hide-sm" style={{ textAlign: "right" }}>{t("tornei.col.rcum")}</span>
@@ -73,7 +73,7 @@ export function Leaderboard({ board, total, metric, onMetric }: LeaderboardProps
                     <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontWeight: 600, fontSize: 14, color: "var(--tl-fg)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.displayName}</span>
                       {r.me && (
-                        <span style={{ fontFamily: "var(--tl-font-mono)", fontSize: 9, letterSpacing: "0.08em", padding: "1px 6px", borderRadius: 5, background: "hsl(var(--accent-jade) / 0.18)", color: "hsl(var(--accent-jade-soft))", flex: "none" }}>{t("tornei.you")}</span>
+                        <span style={{ fontFamily: "var(--tl-font-mono)", fontSize: 9, letterSpacing: "0.08em", padding: "1px 6px", borderRadius: 4, background: "rgba(197, 160, 89, 0.18)", color: "#C5A059", border: "1px solid rgba(197, 160, 89, 0.35)", flex: "none" }}>{t("tornei.you")}</span>
                       )}
                     </span>
                     <span className={`trn-divtag trn-d-${r.division}`} style={{ marginTop: 3 }}>{divisionLabel(r.division, t)}</span>

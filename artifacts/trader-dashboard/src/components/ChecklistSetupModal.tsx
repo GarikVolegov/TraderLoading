@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronDown, ChevronRight, Check, ShieldCheck } from "lucide-react";
+import { X, ChevronDown, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCreateChecklistItem, useGetChecklist, getGetChecklistQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { uiText } from "@/contexts/LanguageContext";
 import { useBackground } from "@/contexts/BackgroundContext";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { SigilIcon, type SigilVariant } from "@/components/ui/SigilIcon";
 
 interface ConfirmationItem {
   id: string;
@@ -15,7 +16,7 @@ interface ConfirmationItem {
 }
 interface ConfirmationCategory {
   id: string;
-  emoji: string;
+  sigil: SigilVariant;
   label: string;
   description: string;
   items: ConfirmationItem[];
@@ -24,7 +25,7 @@ interface ConfirmationCategory {
 const CONFIRMATION_CATEGORIES: ConfirmationCategory[] = [
   {
     id: "mtf",
-    emoji: "📈",
+    sigil: "threshold",
     label: "Analisi Multi-Timeframe",
     description: "Confluenza tra timeframe diversi",
     items: [
@@ -36,7 +37,7 @@ const CONFIRMATION_CATEGORIES: ConfirmationCategory[] = [
   },
   {
     id: "entry",
-    emoji: "🎯",
+    sigil: "action-seal",
     label: "Segnale d'Entrata",
     description: "Conferme tecniche per il trigger",
     items: [
@@ -48,7 +49,7 @@ const CONFIRMATION_CATEGORIES: ConfirmationCategory[] = [
   },
   {
     id: "risk",
-    emoji: "⚖️",
+    sigil: "keeper",
     label: "Risk Management",
     description: "Gestione del rischio verificata",
     items: [
@@ -60,7 +61,7 @@ const CONFIRMATION_CATEGORIES: ConfirmationCategory[] = [
   },
   {
     id: "market",
-    emoji: "🌍",
+    sigil: "daily-order",
     label: "Condizioni di Mercato",
     description: "Contesto macro e liquidità",
     items: [
@@ -72,7 +73,7 @@ const CONFIRMATION_CATEGORIES: ConfirmationCategory[] = [
   },
   {
     id: "mindset",
-    emoji: "🧠",
+    sigil: "pivot",
     label: "Disciplina & Mindset",
     description: "Stato mentale e rispetto del piano",
     items: [
@@ -202,23 +203,23 @@ export function ChecklistSetupModal() {
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
-            className="relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl focus:outline-none"
+            className="relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-[#C5A059]/40 bg-[#0F0F13] text-[#F4F4F6] shadow-[0_0_50px_rgba(0,0,0,0.85)] focus:outline-none"
           >
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between px-5 py-4 border-b border-border">
+            <div className="flex shrink-0 items-center justify-between px-5 py-4 border-b border-[#252530]">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-primary/15">
-                  <ShieldCheck className="w-5 h-5 text-primary" />
+                <div className="p-2 rounded-lg bg-[#141418] border border-[#C5A059]/40 text-[#C5A059]">
+                  <SigilIcon variant="threshold" size={18} className="text-[#C5A059]" />
                 </div>
                 <div>
-                  <p id={titleId} className="font-bold text-sm leading-tight">{uiText("auto.ui.7d079ed9b3")}</p>
-                  <p className="text-[10px] text-muted-foreground">{uiText("auto.ui.6092d086e4")}</p>
+                  <p id={titleId} className="font-serif font-bold text-sm leading-tight text-[#F4F4F6]">{uiText("auto.ui.7d079ed9b3")}</p>
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-[#C5A059]/80">{uiText("auto.ui.6092d086e4")}</p>
                 </div>
               </div>
               <button
                 onClick={dismiss}
                 aria-label={uiText("common.close")}
-                className="text-muted-foreground hover:text-foreground p-1"
+                className="text-[#8E8E98] hover:text-[#F4F4F6] p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -234,32 +235,34 @@ export function ChecklistSetupModal() {
                   className="flex min-h-0 flex-1 flex-col"
                 >
                   <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
-                    <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 space-y-1.5">
-                      <p className="text-sm font-semibold text-primary">{uiText("checklist_setup.what_title")}</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {uiText("checklist_setup.what_body_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.validation_gate")}</span> {uiText("checklist_setup.what_body_after")}
+                    <div className="rounded-lg bg-[#141418] border border-[#C5A059]/25 p-3.5 space-y-1.5">
+                      <p className="text-xs font-mono font-bold uppercase tracking-wider text-[#C5A059]">{uiText("checklist_setup.what_title")}</p>
+                      <p className="text-xs text-[#8E8E98] leading-relaxed">
+                        {uiText("checklist_setup.what_body_before")} <span className="text-[#F4F4F6] font-medium">{uiText("checklist_setup.validation_gate")}</span> {uiText("checklist_setup.what_body_after")}
                       </p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {uiText("checklist_setup.review_before")} <span className="text-foreground font-medium">{uiText("checklist_setup.trade_not_ready")}</span>.
+                      <p className="text-xs text-[#8E8E98] leading-relaxed">
+                        {uiText("checklist_setup.review_before")} <span className="text-[#F4F4F6] font-medium">{uiText("checklist_setup.trade_not_ready")}</span>.
                       </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       {CONFIRMATION_CATEGORIES.map((cat) => (
-                        <div key={cat.id} className="rounded-xl border border-border bg-secondary/30 p-2.5">
-                          <p className="text-base mb-0.5">{cat.emoji}</p>
-                          <p className="text-xs font-semibold text-foreground leading-tight">{cat.label}</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{cat.description}</p>
+                        <div key={cat.id} className="rounded-lg border border-[#252530] bg-[#141418]/80 p-2.5 flex flex-col justify-between">
+                          <div className="mb-1.5 text-[#C5A059]">
+                            <SigilIcon variant={cat.sigil} size={16} />
+                          </div>
+                          <p className="text-xs font-semibold text-[#F4F4F6] leading-tight">{cat.label}</p>
+                          <p className="text-[10px] text-[#8E8E98] mt-0.5">{cat.description}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 gap-2 border-t border-border p-4">
-                    <Button onClick={() => setStep("pick")} className="flex-1">
+                  <div className="flex shrink-0 gap-2 border-t border-[#252530] p-4 bg-[#0A0A0C]/40">
+                    <Button onClick={() => setStep("pick")} className="flex-1 bg-[#C5A059] hover:bg-[#D4AF37] text-[#0A0A0C] font-mono font-bold text-xs uppercase tracking-wider">
                       {uiText("checklist_setup.choose_cta")}
                     </Button>
-                    <Button onClick={dismiss} variant="outline" className="flex-1">
+                    <Button onClick={dismiss} variant="outline" className="flex-1 border-[#2A2A35] font-mono text-xs uppercase tracking-wider text-[#8E8E98] hover:text-[#F4F4F6]">
                       {uiText("checklist_setup.later")}
                     </Button>
                   </div>
@@ -272,7 +275,7 @@ export function ChecklistSetupModal() {
                   exit={{ opacity: 0, x: 10 }}
                   className="flex min-h-0 flex-1 flex-col"
                 >
-                  <div className="overflow-y-auto flex-1 divide-y divide-border/40">
+                  <div className="overflow-y-auto flex-1 divide-y divide-[#252530]">
                     {CONFIRMATION_CATEGORIES.map((cat) => {
                       const isOpen = expandedCat === cat.id;
                       const selectedCount = cat.items.filter((i) => selectedIds.has(i.id)).length;
@@ -281,22 +284,24 @@ export function ChecklistSetupModal() {
                         <div key={cat.id}>
                           <button
                             onClick={() => setExpandedCat(isOpen ? null : cat.id)}
-                            className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/30 transition-colors text-left"
+                            className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[#141418] transition-colors text-left"
                           >
-                            <span className="text-lg w-6 shrink-0">{cat.emoji}</span>
+                            <span className="w-5 shrink-0 text-[#C5A059] flex items-center justify-center">
+                              <SigilIcon variant={cat.sigil} size={16} />
+                            </span>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold">{cat.label}</p>
-                              <p className="text-[10px] text-muted-foreground">{cat.description}</p>
+                              <p className="text-sm font-semibold text-[#F4F4F6]">{cat.label}</p>
+                              <p className="text-[10px] text-[#8E8E98]">{cat.description}</p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               {selectedCount > 0 && (
-                                <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                                <span className="text-[10px] font-mono font-bold text-[#C5A059] bg-[#C5A059]/10 border border-[#C5A059]/30 px-1.5 py-0.5 rounded">
                                   {selectedCount}/{cat.items.length}
                                 </span>
                               )}
                               <button
                                 onClick={(e) => { e.stopPropagation(); toggleCategory(cat); }}
-                                className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition-all ${
+                                className={`text-[10px] font-mono font-semibold px-2 py-1 rounded border transition-all ${
                                   allSel
                                     ? "border-primary/40 bg-primary/10 text-primary"
                                     : "border-border text-muted-foreground hover:border-primary/30"

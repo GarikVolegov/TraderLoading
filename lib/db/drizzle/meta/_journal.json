@@ -323,6 +323,48 @@
       "when": 1792255901000,
       "tag": "0045_academy_content",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1792255902000,
+      "tag": "0046_financial_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1792500000000,
+      "tag": "0047_admin_applications_and_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1792500001000,
+      "tag": "0048_limen_launch",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1792500002000,
+      "tag": "0049_backtest_chart_preferences",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792615000000,
+      "tag": "0050_backtest_tournaments",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1792700000000,
+      "tag": "0051_candidate_services_modular",
+      "breakpoints": true
     }
   ]
 }

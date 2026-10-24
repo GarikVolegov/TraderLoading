@@ -31,3 +31,10 @@ export * from "./traderProcess";
 export * from "./academy";
 
 export * from "./academyBilling";
+export * from "./financialProfile";
+export * from "./arsenalOrders";
+
+export * from "./launch";
+
+export * from "./backtestChart";
+export * from "./backtestTournament";

@@ -367,7 +367,7 @@ function Operation({
       <SessionDraftStatus {...draft} retry={draft.flush} />
       <div className="flex flex-wrap gap-3">
         <ProcessLink
-          href={processToolHref("/resources", {
+          href={processToolHref("/?vista=strumenti", {
             pair: session.plan?.market,
             methodVersionId: session.methodVersionId,
             fromProcess: true,
@@ -377,7 +377,7 @@ function Operation({
           {copy("allTools")}
         </ProcessLink>
         <ProcessLink
-          href={processToolHref("/resources?view=wellbeing", { fromProcess: true })}
+          href={processToolHref("/routine", { fromProcess: true })}
           beforeNavigate={draft.flush}
         >
           {copy("waitPause")}

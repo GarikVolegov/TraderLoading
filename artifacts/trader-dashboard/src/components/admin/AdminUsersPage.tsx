@@ -1,3 +1,4 @@
+import { FilterPanel } from "@/components/FilterPanel";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -38,6 +39,7 @@ export function AdminUsersPage() {
         </div>
         <Badge variant="outline">{rows.length} risultati</Badge>
       </div>
+      <FilterPanel active={Boolean(query.trim()) || status !== "all"}>
       <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/80 p-4 md:flex-row">
         <div className="relative flex-1">
           <Search
@@ -65,13 +67,28 @@ export function AdminUsersPage() {
         </select>
       </div>
 
+      </FilterPanel>
       {users.isError ? (
         <AdminErrorState
           title={uiText("auto.ui.dd9b118f73")}
           description="La ricerca utenti non ha risposto correttamente."
         />
       ) : (
-        <section className="overflow-hidden rounded-lg border border-border bg-card/80">
+        <>
+        <div className="admin-user-cards">
+          {users.isLoading ? Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-36" />) : rows.map((user: AdminUserRow) => (
+            <article key={user.profileId} className="min-w-0 space-y-3 rounded-lg border border-border bg-card p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0"><p className="break-words font-semibold">{user.name}</p><p className="break-all text-sm text-muted-foreground">{user.email}</p></div>
+                <Badge variant={statusVariant(user.status)}>{user.status}</Badge>
+              </div>
+              <div className="flex flex-wrap gap-3 text-sm"><span>{uiText("common.level")} {user.level}</span><span>{user.xp} XP</span></div>
+              <Button variant="outline" className="w-full" disabled={!user.userId} onClick={() => user.userId && setLocation(`/admin/users/${user.userId}`)}>{uiText("archive.open")}</Button>
+            </article>
+          ))}
+          {!users.isLoading && rows.length === 0 && <p className="p-4 text-sm text-muted-foreground">{uiText("auto.ui.f4b60ba9f9")}</p>}
+        </div>
+        <section className="hidden overflow-hidden rounded-lg border border-border bg-card/80 lg:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -131,6 +148,7 @@ export function AdminUsersPage() {
             </div>
           )}
         </section>
+        </>
       )}
     </div>
   );

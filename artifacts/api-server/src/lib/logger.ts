@@ -70,15 +70,15 @@ export const logger = new Proxy(baseLogger, {
 
     return (...args: unknown[]) => {
       const ctx = requestContext.getStore();
-      if (!ctx) return (method as Function).apply(target, args);
+      if (!ctx) return Reflect.apply(method, target, args);
 
       // Inietta il contesto nel primo argomento (merge-object) se è già un oggetto,
       // altrimenti crea un wrapper {requestId, msg}.
       const [first, ...rest] = args;
       if (first && typeof first === "object" && !Array.isArray(first)) {
-        return (method as Function).apply(target, [{ ...ctx, ...(first as object) }, ...rest]);
+        return Reflect.apply(method, target, [{ ...ctx, ...(first as object) }, ...rest]);
       }
-      return (method as Function).apply(target, [{ ...ctx }, first, ...rest]);
+      return Reflect.apply(method, target, [{ ...ctx }, first, ...rest]);
     };
   },
 });

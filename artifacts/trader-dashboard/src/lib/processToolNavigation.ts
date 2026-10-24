@@ -7,9 +7,9 @@ export function processToolHref(
   if (url.origin !== "https://workspace.invalid")
     throw new Error("Internal tool destination required");
   if (context.fromProcess) url.searchParams.set("processReturn", "1");
-  if (context.pair && (url.pathname === "/" || url.pathname === "/resources"))
+  if (context.pair && url.pathname === "/")
     url.searchParams.set("pair", context.pair);
-  if (context.methodVersionId && ["/backtest", "/resources"].includes(url.pathname))
+  if (context.methodVersionId && url.pathname === "/backtest")
     url.searchParams.set("methodVersionId", context.methodVersionId);
   return url.pathname + url.search + url.hash;
 }

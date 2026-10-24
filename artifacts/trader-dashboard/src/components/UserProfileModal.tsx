@@ -48,7 +48,7 @@ function Avatar({ name, avatarUrl, size = "md" }: { name: string; avatarUrl?: st
 
 export function UserProfileModal({
   userId,
-  currentUserId,
+  currentUserId: _currentUserId,
   onClose,
   onStartChat,
 }: {
