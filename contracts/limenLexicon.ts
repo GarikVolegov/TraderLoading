@@ -1,7 +1,7 @@
 /**
- * LIMEN PROTOCOL (TL: Trans-Limen) — Global Lexicon & Lore Constants
+ * AUREUS PROTOCOL (AUREUS OS) — Global Lexicon & Lore Constants
  *
- * Official terminology remapping from legacy TraderLoading to LIMEN.
+ * Official terminology remapping from legacy TraderLoading and LIMEN to AUREUS.
  * Tone: Solemn, philosophical-operational, stoic, surgical, elite architectural order.
  */
 
@@ -13,10 +13,10 @@ export interface LimenModuleDefinition {
   readonly subtitle: string;
 }
 
-export const LIMEN_BRAND = {
-  name: "LIMEN",
-  protocolName: "LIMEN PROTOCOL",
-  internalCode: "TL: Trans-Limen",
+export const AUREUS_BRAND = {
+  name: "AUREUS",
+  protocolName: "AUREUS PROTOCOL",
+  internalCode: "AP: Aureus Protocol",
   motto: "Il Codice della Presenza e dell'Eredità",
   operatorTitle: "Operatore",
   initiateTitle: "Iniziato",
@@ -25,12 +25,14 @@ export const LIMEN_BRAND = {
   thresholdTerm: "Il Varco",
 } as const;
 
+export const LIMEN_BRAND = AUREUS_BRAND;
+
 export const LIMEN_LEXICON: Record<string, LimenModuleDefinition> = {
   brand: {
     id: "brand",
     legacyLabel: "TraderLoading",
-    officialTitle: "LIMEN",
-    shortTitle: "LIMEN",
+    officialTitle: "AUREUS",
+    shortTitle: "AUREUS",
     subtitle: "Il Codice della Presenza e dell'Eredità",
   },
   dashboard: {
@@ -140,14 +142,14 @@ export const LIMEN_LEXICON: Record<string, LimenModuleDefinition> = {
   },
 } as const;
 
-export const LIMEN_MANIFESTO = {
+export const AUREUS_MANIFESTO = {
   gateTitle: "LA SOGLIA DI SELEZIONE",
   manifestoHeader: "Il Manifesto: Il Codice della Presenza e dell'Eredità",
-  manifestoSubheader: "TL: TRANS-LIMEN — SISTEMA OPERATIVO DI DISCIPLINA, PADRONANZA MENTALE ED EREDITÀ",
+  manifestoSubheader: "AUREUS PROTOCOL — SISTEMA OPERATIVO DI DISCIPLINA, PADRONANZA MENTALE ED EREDITÀ",
   paragraphs: [
     "Nel mercato, come nell'esistenza, l'umanità si divide in due sole categorie: coloro che vivono nella Deriva e coloro che scelgono di attraversare Il Varco.",
     "Chi abita la Deriva reagisce agli impulsi, cerca il colpo di fortuna, cede all'emotività e diventa inevitabilmente carburante e liquidità per il sistema. Non possiede un metodo: è posseduto dalle proprie debolezze.",
-    "LIMEN non è un'applicazione per scommettitori retail. È un Ordine operativo progettato per trasformare l'Iniziato in Architetto attraverso una regola chirurgica: L'Ordine Giornaliero, il filtro spietato de Il Custode della Soglia e la rendicontazione assoluta ne Il Libro della Verità.",
+    "AUREUS non è un'applicazione per scommettitori retail. È un Ordine operativo progettato per trasformare l'Iniziato in Architetto attraverso una regola chirurgica: L'Ordine Giornaliero, il filtro spietato de Il Custode della Soglia e la rendicontazione assoluta ne Il Libro della Verità.",
     "Qui il rango non si acquista. I 5 Gradi di Ascesa si conquistano esclusivamente tramite il tuo Indice di Integrità: la fedeltà quotidiana alla parola data a te stesso.",
   ],
   pillars: [
@@ -165,6 +167,8 @@ export const LIMEN_MANIFESTO = {
     },
   ],
   pactDeclaration:
-    "Consapevole che il mercato è uno specchio morale che punisce l'assenza di governo interiore, dichiaro di sottopormi volontariamente al protocollo LIMEN.",
+    "Consapevole che il mercato è uno specchio morale che punisce l'assenza di governo interiore, dichiaro di sottopormi volontariamente al protocollo AUREUS.",
   pactButtonLabel: "Accetto la Regola. Esco dalla Deriva.",
 } as const;
+
+export const LIMEN_MANIFESTO = AUREUS_MANIFESTO;

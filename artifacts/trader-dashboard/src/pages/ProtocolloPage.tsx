@@ -13,5 +13,5 @@ export default function ProtocolloPage() {
         replace: true,
       });
   }, [isSignedIn, location, navigate]);
-  return isSignedIn ? <p role="status">Apertura del percorso LIMEN…</p> : <LandingPage />;
+  return isSignedIn ? <p role="status">Apertura del percorso AUREUS…</p> : <LandingPage />;
 }

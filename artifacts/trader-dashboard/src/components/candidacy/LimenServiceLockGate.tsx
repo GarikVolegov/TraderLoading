@@ -16,27 +16,27 @@ interface LimenServiceLockGateProps {
 const SERVICE_META = {
   forge_of_the_past: {
     title: "La Forgia del Passato (Banco di Forgiatura)",
-    priceBadge: "+10 €/mese",
+    priceBadge: "Esclusiva Prime Persone · 10 €/mese o 100 €/anno",
     description:
-      "Modulo di addestramento nell'ombra e simulatore replay candela per candela. Richiede l'attivazione della Forgia nella dotazione di protocollo.",
+      "Modulo di addestramento nell'ombra e simulatore replay candela per candela. Incluso insieme all'Architettura Patrimoniale nel Piano Esclusivo Prime Persone.",
   },
   financial_architecture: {
     title: "Architettura Patrimoniale & Fondamenta di Rischio",
-    priceBadge: "+10 €/mese",
+    priceBadge: "Esclusiva Prime Persone · 10 €/mese o 100 €/anno",
     description:
-      "Modulo di gestione del capitale e barriere matematiche di drawdown. Richiede l'inclusione dell'Architettura Patrimoniale nella dotazione.",
+      "Modulo di gestione del capitale e barriere matematiche di drawdown. Incluso insieme alla Forgia del Passato nel Piano Esclusivo Prime Persone.",
   },
   doctrine_of_time: {
     title: "La Dottrina del Tempo & Finestra Operativa",
-    priceBadge: "+170 €",
+    priceBadge: "Progetto Completo · 150 €/mese o 1.500 €/anno",
     description:
-      "Accademia video d'Ordine, studio dei cicli orari bancari e canoni operativi d'assedio. Modulo accessibile su abilitazione dedicata.",
+      "Accademia video d'Ordine, studio dei cicli orari bancari, Finestra Operativa e Concilio della Domenica. Richiede l'abilitazione al Progetto Completo.",
   },
   quarterly_tournaments: {
     title: "Le Prove del Fuoco (Tornei Trimestrali)",
-    priceBadge: "Fase Avanzata d'Onore",
+    priceBadge: "Progetto Completo · Fase Avanzata d'Onore",
     description:
-      "I Tornei Trimestrali sono competizioni ad alto rigore riservate a gradi avanzati e non sono inclusi nella dotazione iniziale del Varco.",
+      "I Tornei Trimestrali sono competizioni ad alto rigore riservate al Progetto Completo e ai gradi avanzati dell'Ordine.",
   },
 } as const;
 

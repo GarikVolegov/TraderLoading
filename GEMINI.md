@@ -1,6 +1,6 @@
-# GEMINI.md — Contesto Operativo & Regole Inviolabili LIMEN
+# GEMINI.md — Contesto Operativo & Regole Inviolabili AUREUS
 
-> Questo file è caricato all'avvio di ogni sessione e definisce il quadro operativo e di design di **LIMEN** (Protocollo TL: Trans-Limen).
+> Questo file è caricato all'avvio di ogni sessione e definisce il quadro operativo e di design di **AUREUS** (Protocollo Aureus / AUREUS PROTOCOL).
 
 ---
 
@@ -21,7 +21,7 @@ Ogni modifica all'interfaccia utente, aggiunta di componenti, modali, testi o se
 5. **Divieto Assoluto di Tag Brutti o Tecnici**:
    - Vietati tag di debug come `"DB"`, `"ORVAL"`, `"TEST"`, `"MOCK"`, `"SCHEMA"`.
    - Solo status chip raffinate nei toni oro, smeraldo, rubino e ardesia.
-6. **Brand LIMEN & Lessico Solenne**:
+6. **Brand AUREUS & Lessico Solenne**:
    - Linguaggio stoico, monastico, architettonico.
    - Usare sempre: *La Forgia del Passato*, *Le Prove del Fuoco (Arene)*, *Il Libro della Verità*, *Il Custode della Soglia*, *L'Ordine Giornaliero*, *La Gerarchia dell'Integrità*, *Dossier dell'Operatore*, *L'Iniziato / L'Operatore / L'Architetto*.
    - Nessun termine da gambling o gaming retail.

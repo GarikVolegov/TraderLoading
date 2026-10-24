@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Check, Globe } from "lucide-react";
+import { Check, Globe, Sparkles } from "lucide-react";
 import { useUpdateUserSettings, getGetUserSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -48,84 +48,103 @@ export function LanguageSettings() {
   const detectedBrowserName = LANGUAGES[currentBrowserCode]?.name ?? currentBrowserCode;
 
   return (
-    <div className="space-y-4" aria-busy={updateMutation.isPending}>
-      <p className="text-sm text-muted-foreground">
-        {t("settings.language.select")}
-      </p>
-
-      {/* Opzione 1: Rilevamento automatico dal browser */}
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => void handleSelectAuto()}
-          disabled={updateMutation.isPending}
-          className={`flex w-full items-center justify-between px-4 py-3.5 rounded-xl border transition-all text-left ${
-            isAutoDetected
-              ? "border-primary bg-primary/10 text-primary shadow-sm"
-              : "border-border hover:border-primary/40 hover:bg-secondary/50"
-          }`}
-        >
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-background/80 text-primary">
-              <Globe className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold">{t("settings.language.auto")}</p>
-                <span className="rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
-                  {detectedBrowserName}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {t("settings.language.auto_desc")}
-              </p>
-            </div>
+    <div className="rounded-2xl border border-[#C5A059]/25 bg-[#0d0f14] p-5 sm:p-6 space-y-5 shadow-xl shadow-black/40" aria-busy={updateMutation.isPending}>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#C5A059]/15 pb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+            <Globe className="w-4 h-4" />
           </div>
-          {isAutoDetected && <Check className="w-4 h-4 text-primary shrink-0" />}
-        </button>
+          <div>
+            <h3 className="font-display text-sm font-bold uppercase tracking-wider text-[#F4F4F6]">
+              Lingua del Protocollo
+            </h3>
+            <p className="text-xs font-mono text-muted-foreground/80">
+              {t("settings.language.select")}
+            </p>
+          </div>
+        </div>
+
+        <span className="inline-flex items-center gap-1.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 px-2.5 py-1 font-mono text-[10px] uppercase font-bold tracking-wider text-[#E8C56A] self-start sm:self-center">
+          <span>{LANGUAGES[language].flag} {LANGUAGES[language].name}</span>
+        </span>
       </div>
 
-      <div className="relative py-1">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border/60" />
+      {/* Auto browser detection button */}
+      <button
+        type="button"
+        onClick={() => void handleSelectAuto()}
+        disabled={updateMutation.isPending}
+        className={`flex w-full items-center justify-between p-4 rounded-xl border transition-all text-left ${
+          isAutoDetected
+            ? "border-[#C5A059]/60 bg-[#C5A059]/15 text-[#E8C56A] shadow-[0_0_15px_rgba(197,160,89,0.1)]"
+            : "border-[#26262E] bg-[#07080b] hover:border-[#C5A059]/35 hover:bg-[#11131c]"
+        }`}
+      >
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#C5A059]/30 bg-[#11131c] text-[#C5A059]">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-display text-xs font-bold uppercase tracking-wider text-[#F4F4F6]">
+                {t("settings.language.auto")}
+              </span>
+              <span className="rounded border border-[#C5A059]/30 bg-[#07080b] px-2 py-0.5 font-mono text-[10px] font-bold text-[#E8C56A]">
+                {detectedBrowserName}
+              </span>
+            </div>
+            <p className="text-xs font-mono text-muted-foreground/80 mt-0.5">
+              {t("settings.language.auto_desc")}
+            </p>
+          </div>
+        </div>
+        {isAutoDetected && <Check className="w-4 h-4 text-[#E8C56A] shrink-0" />}
+      </button>
+
+      <div className="border-t border-[#C5A059]/15 pt-2">
+        <label className="text-[10px] font-mono uppercase tracking-widest text-[#C5A059]/75 block mb-2 px-1">
+          Seleziona Idioma Manualmente
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {(
+            Object.entries(LANGUAGES) as [
+              Language,
+              (typeof LANGUAGES)[Language],
+            ][]
+          ).map(([code, lang]) => {
+            const isExplicitlyActive = !isAutoDetected && language === code;
+            return (
+              <button
+                key={code}
+                type="button"
+                onClick={() => void handleSelect(code)}
+                disabled={updateMutation.isPending}
+                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all text-left ${
+                  isExplicitlyActive
+                    ? "border-[#C5A059] bg-[#C5A059]/15 text-[#E8C56A] shadow-[0_0_15px_rgba(197,160,89,0.12)]"
+                    : "border-[#26262E] bg-[#07080b] hover:border-[#C5A059]/35 hover:bg-[#11131c]"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{lang.flag}</span>
+                  <div>
+                    <span className="font-display text-xs font-bold text-[#F4F4F6] block">
+                      {lang.name}
+                    </span>
+                    <span className="font-mono text-[11px] text-muted-foreground/75 block">
+                      {lang.label}
+                    </span>
+                  </div>
+                </div>
+                {isExplicitlyActive && <Check className="w-4 h-4 text-[#E8C56A] shrink-0" />}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Lingue fisse manuali */}
-      <div className="grid grid-cols-1 gap-2">
-        {(
-          Object.entries(LANGUAGES) as [
-            Language,
-            (typeof LANGUAGES)[Language],
-          ][]
-        ).map(([code, lang]) => {
-          const isExplicitlyActive = !isAutoDetected && language === code;
-          return (
-            <button
-              key={code}
-              type="button"
-              onClick={() => void handleSelect(code)}
-              disabled={updateMutation.isPending}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                isExplicitlyActive
-                  ? "border-primary bg-primary/10 text-primary shadow-sm"
-                  : "border-border hover:border-primary/40 hover:bg-secondary/50"
-              }`}
-            >
-              <div className="flex items-center gap-3.5">
-                <span className="text-2xl">{lang.flag}</span>
-                <div>
-                  <p className="text-sm font-medium">{lang.name}</p>
-                  <p className="text-xs text-muted-foreground">{lang.label}</p>
-                </div>
-              </div>
-              {isExplicitlyActive && <Check className="w-4 h-4 text-primary" />}
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="text-xs text-muted-foreground text-center pt-2">
+      <p className="text-[11px] font-mono text-muted-foreground/50 text-center pt-2">
         {t("settings.language.notice")}
       </p>
     </div>

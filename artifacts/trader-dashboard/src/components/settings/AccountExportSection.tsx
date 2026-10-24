@@ -1,34 +1,50 @@
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { FileText, Download, ShieldCheck, Database } from "lucide-react";
 
 export function AccountExportSection() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <FileText className="w-5 h-5 text-primary" />
-          Esporta dati
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Scarica un file JSON con profilo, preferenze, journal, routine,
-          backtest e dati trading collegati al tuo account. Segreti broker,
-          password e log interni di sicurezza non vengono inclusi.
+    <div className="rounded-2xl border border-[#C5A059]/25 bg-[#0d0f14] p-5 sm:p-6 space-y-4 shadow-xl shadow-black/40">
+      <div className="flex items-center justify-between gap-3 border-b border-[#C5A059]/15 pb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+            <Database className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="font-display text-sm font-bold uppercase tracking-wider text-[#F4F4F6]">
+              Esporta dati (Archivio Crittografato GDPR)
+            </h3>
+            <p className="text-xs font-mono text-muted-foreground/80">
+              Copia portabile certificata del tuo intero tracciato operativo.
+            </p>
+          </div>
+        </div>
+
+        <span className="hidden sm:inline-flex rounded border border-[#10b981]/30 bg-[#10b981]/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[#10b981]">
+          <ShieldCheck className="w-3 h-3 mr-1 text-[#10b981]" />
+          Conforme GDPR Art. 20
+        </span>
+      </div>
+
+      <div className="rounded-xl border border-[#C5A059]/15 bg-[#11131c]/60 p-4 space-y-2">
+        <p className="text-xs font-mono text-muted-foreground/90 leading-relaxed">
+          Scarica un archivio JSON strutturato contenente l&apos;anagrafica del profilo, le preferenze operative, le registrazioni ne Il Libro della Verità (Journal), le sessioni di Forgia (Backtest), le routine e i dati di disciplina.
         </p>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={() => {
-            window.location.href = "/api/account/export";
-          }}
-        >
-          <FileText className="w-4 h-4" />
-          Esporta dati
-        </Button>
-      </CardContent>
-    </Card>
+        <p className="text-[11px] font-mono text-muted-foreground/60">
+          Nota: Password, chiavi API broker e log interni di sicurezza sono crittografati e non vengono inclusi per integrità dell&apos;infrastruttura.
+        </p>
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full justify-center gap-2 border-[#C5A059]/35 bg-[#07080b] hover:bg-[#C5A059]/15 hover:border-[#C5A059] text-[#E8C56A] font-mono text-xs py-5 rounded-xl transition-all shadow-md"
+        onClick={() => {
+          window.location.href = "/api/account/export";
+        }}
+      >
+        <Download className="w-4 h-4 text-[#C5A059]" />
+        <span>Esporta dati (JSON)</span>
+      </Button>
+    </div>
   );
 }

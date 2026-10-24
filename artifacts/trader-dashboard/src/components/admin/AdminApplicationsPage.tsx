@@ -386,10 +386,20 @@ export function AdminApplicationsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        {renderServiceBadges(app.selectedServices)}
-                        <div className="font-mono text-[11px] font-bold text-[#E8C56A] whitespace-nowrap">
-                          {(app.monthlyFeeCents ?? 0) > 0 ? `${(app.monthlyFeeCents ?? 0) / 100} €/m` : "Base 0€"}
-                          {(app.oneTimeFeeCents ?? 0) > 0 ? ` + ${(app.oneTimeFeeCents ?? 0) / 100} €` : ""}
+                        {renderServiceBadges(app.approvedServices ?? app.selectedServices)}
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 text-[#E8C56A] whitespace-nowrap">
+                            {app.billingCycle === "yearly" ? "Annuale" : "Mensile"}
+                          </span>
+                          <span className="font-mono text-[11px] font-bold text-[#E8C56A] whitespace-nowrap">
+                            {app.billingCycle === "yearly"
+                              ? (app.yearlyFeeCents ?? 0) > 0
+                                ? `${(app.yearlyFeeCents ?? 0) / 100} €/anno`
+                                : "Base 0€"
+                              : (app.monthlyFeeCents ?? 0) > 0
+                                ? `${(app.monthlyFeeCents ?? 0) / 100} €/mese`
+                                : "Base 0€"}
+                          </span>
                         </div>
                       </div>
                     </TableCell>
@@ -474,7 +484,14 @@ export function AdminApplicationsPage() {
                 <div>
                   <span className="text-muted-foreground">Piano selezionato:</span>{" "}
                   <span className="font-semibold text-primary">
-                    {selectedApp.planChosen === "direct_150" ? "Tributo €150/mese" : selectedApp.planChosen}
+                    {selectedApp.planChosen === "founders_10"
+                      ? "Esclusiva Prime Persone (10€/m · 100€/a)"
+                      : selectedApp.planChosen === "complete_150" || selectedApp.planChosen === "direct_150"
+                        ? "Progetto Completo (150€/m · 1.500€/a)"
+                        : selectedApp.planChosen === "base_free"
+                          ? "Soglia Base Inclusa (0€)"
+                          : selectedApp.planChosen}{" "}
+                    ({selectedApp.billingCycle === "yearly" ? "Cadenza Annuale" : "Cadenza Mensile"})
                   </span>
                 </div>
                 <div>
@@ -516,20 +533,53 @@ export function AdminApplicationsPage() {
 
               {/* SELEZIONE SERVIZI DA ATTIVARE / SBLOCCARE */}
               <div className="space-y-3 rounded-md border border-[#C5A059]/40 bg-[#07080b]/70 p-3.5 text-xs">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h4 className="font-mono text-xs font-bold uppercase tracking-wider text-[#C5A059]">
                     Configurazione Servizi da Sbloccare
                   </h4>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    Seleziona i moduli abilitati per questo operatore
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setApprovedServicesDraft(["base_protocol"])}
+                      className="rounded border border-[#C5A059]/30 bg-[#11131c] px-2 py-0.5 font-mono text-[10px] font-bold text-[#94a3b8] hover:border-[#C5A059] hover:text-white transition-colors whitespace-nowrap"
+                    >
+                      Soglia Base (0€)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setApprovedServicesDraft([
+                          "base_protocol",
+                          "forge_of_the_past",
+                          "financial_architecture",
+                        ])
+                      }
+                      className="rounded border border-[#10b981]/40 bg-[#10b981]/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[#10b981] hover:bg-[#10b981]/20 transition-colors whitespace-nowrap"
+                    >
+                      Prime Persone 10€ (Forgia + Patrimonio)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setApprovedServicesDraft([
+                          "base_protocol",
+                          "forge_of_the_past",
+                          "financial_architecture",
+                          "doctrine_of_time",
+                        ])
+                      }
+                      className="rounded border border-[#C5A059]/50 bg-[#C5A059]/15 px-2 py-0.5 font-mono text-[10px] font-bold text-[#E8C56A] hover:bg-[#C5A059]/25 transition-colors whitespace-nowrap"
+                    >
+                      Progetto Completo 150€ (Tutto)
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <label className="flex items-center gap-2 p-2.5 rounded border border-[#C5A059]/40 bg-[#11131c] cursor-default">
                     <input type="checkbox" checked disabled className="accent-[#C5A059] h-4 w-4" />
                     <div className="min-w-0">
-                      <p className="font-mono text-xs font-semibold text-white">Dotazione Base</p>
+                      <p className="font-mono text-xs font-semibold text-white">Dotazione Base (0 €)</p>
                       <p className="text-[10px] text-muted-foreground">Varco, Diario, Fratellanza, Gradi (no tornei)</p>
                     </div>
                   </label>
@@ -548,7 +598,7 @@ export function AdminApplicationsPage() {
                       className="accent-[#C5A059] h-4 w-4"
                     />
                     <div className="min-w-0">
-                      <p className="font-mono text-xs font-semibold text-white">La Forgia (+10 €/m)</p>
+                      <p className="font-mono text-xs font-semibold text-white">La Forgia (Prime Persone 10€/m · 100€/a)</p>
                       <p className="text-[10px] text-muted-foreground">Banco di Forgiatura & Replay storico</p>
                     </div>
                   </label>
@@ -567,7 +617,7 @@ export function AdminApplicationsPage() {
                       className="accent-[#C5A059] h-4 w-4"
                     />
                     <div className="min-w-0">
-                      <p className="font-mono text-xs font-semibold text-white">Architettura Patrimoniale (+10 €/m)</p>
+                      <p className="font-mono text-xs font-semibold text-white">Architettura Patrimoniale (Inclusa nel Piano 10€)</p>
                       <p className="text-[10px] text-muted-foreground">Fondamenta di rischio & Radar drawdown</p>
                     </div>
                   </label>
@@ -586,8 +636,8 @@ export function AdminApplicationsPage() {
                       className="accent-[#C5A059] h-4 w-4"
                     />
                     <div className="min-w-0">
-                      <p className="font-mono text-xs font-semibold text-white">La Dottrina del Tempo (+170 €)</p>
-                      <p className="text-[10px] text-muted-foreground">Accademia video & Finestra operativa</p>
+                      <p className="font-mono text-xs font-semibold text-white">Dottrina del Tempo & Finestra (Completo 150€/m · 1500€/a)</p>
+                      <p className="text-[10px] text-muted-foreground">Accademia video, Finestra operativa & Tornei</p>
                     </div>
                   </label>
                 </div>

@@ -12,6 +12,7 @@ import { queueLaunchEmail } from "./email/launchEmails.js";
 import {
   calculateLimenServicesPricing,
   resolveLimenEntitlements,
+  type LimenBillingCycle,
   type LimenEntitlementsMap,
 } from "../../../../contracts/limenServices.js";
 import { getAdminPrincipalForUser } from "../lib/adminAuth.js";
@@ -28,6 +29,7 @@ export async function createCandidate(
     obstacle?: string;
     commitment?: string;
     planChosen?: string;
+    billingCycle?: LimenBillingCycle;
     referredBy?: string | null;
     selectedServices?: string[];
   },
@@ -52,7 +54,9 @@ export async function createCandidate(
         ? Array.from(new Set(["base_protocol", ...input.selectedServices]))
         : ["base_protocol"];
 
-    const pricing = calculateLimenServicesPricing(selectedServices);
+    const billingCycle: LimenBillingCycle =
+      input.billingCycle === "yearly" ? "yearly" : "monthly";
+    const pricing = calculateLimenServicesPricing(selectedServices, billingCycle);
 
     const [record] = await tx
       .insert(applications)
@@ -66,11 +70,13 @@ export async function createCandidate(
         horizon: input.horizon,
         obstacle: input.obstacle,
         commitment: input.commitment,
-        planChosen: input.planChosen ?? "direct_150",
+        planChosen: input.planChosen ?? pricing.tierId,
+        billingCycle,
         referredBy: input.referredBy,
         selectedServices,
         approvedServices: selectedServices,
         monthlyFeeCents: pricing.monthlyFeeCents,
+        yearlyFeeCents: pricing.yearlyFeeCents,
         oneTimeFeeCents: pricing.oneTimeFeeCents,
         currency: "EUR",
         candidateCode,
@@ -103,8 +109,10 @@ export async function createCandidate(
     return {
       candidateCode,
       status: record.status,
+      billingCycle: record.billingCycle,
       selectedServices: record.selectedServices,
       monthlyFeeCents: record.monthlyFeeCents,
+      yearlyFeeCents: record.yearlyFeeCents,
       oneTimeFeeCents: record.oneTimeFeeCents,
     };
   });
@@ -199,6 +207,7 @@ export async function updateCandidateApprovedServices(
   reviewer: string,
   approvedServices: string[],
   notes?: string,
+  billingCycle?: LimenBillingCycle,
 ) {
   return db.transaction(async (tx) => {
     const [existing] = await tx
@@ -208,11 +217,18 @@ export async function updateCandidateApprovedServices(
       .for("update");
     if (!existing) throw new LaunchError("Candidatura non trovata.", 404);
 
-    const finalApprovedServices = Array.from(new Set(["base_protocol", ...approvedServices]));
+    const cycle: LimenBillingCycle =
+      billingCycle ?? (existing.billingCycle === "yearly" ? "yearly" : "monthly");
+    const pricing = calculateLimenServicesPricing(approvedServices, cycle);
+
     const [updated] = await tx
       .update(applications)
       .set({
-        approvedServices: finalApprovedServices,
+        approvedServices: [...pricing.selectedIds],
+        billingCycle: cycle,
+        monthlyFeeCents: pricing.monthlyFeeCents,
+        yearlyFeeCents: pricing.yearlyFeeCents,
+        oneTimeFeeCents: pricing.oneTimeFeeCents,
         reviewedBy: reviewer,
         notes: notes ?? existing.notes,
         updatedAt: new Date(),
@@ -231,9 +247,11 @@ export async function getCandidateEntitlementsForUser(
   hasApplication: boolean;
   candidateCode: string | null;
   status: string;
+  billingCycle: LimenBillingCycle;
   selectedServices: string[];
   approvedServices: string[];
   monthlyFeeCents: number;
+  yearlyFeeCents: number;
   oneTimeFeeCents: number;
   entitlements: LimenEntitlementsMap;
 }> {
@@ -261,9 +279,11 @@ export async function getCandidateEntitlementsForUser(
       hasApplication: true,
       candidateCode: "ADMIN",
       status: "ammesso",
+      billingCycle: "monthly",
       selectedServices: ["base_protocol", "forge_of_the_past", "financial_architecture", "doctrine_of_time"],
       approvedServices: ["base_protocol", "forge_of_the_past", "financial_architecture", "doctrine_of_time"],
       monthlyFeeCents: 0,
+      yearlyFeeCents: 0,
       oneTimeFeeCents: 0,
       entitlements: resolveLimenEntitlements({ isAdmin: true }),
     };
@@ -316,9 +336,11 @@ export async function getCandidateEntitlementsForUser(
       hasApplication: false,
       candidateCode: null,
       status: "nessuna",
+      billingCycle: "monthly",
       selectedServices: ["base_protocol"],
       approvedServices: ["base_protocol"],
       monthlyFeeCents: 0,
+      yearlyFeeCents: 0,
       oneTimeFeeCents: 0,
       entitlements: resolveLimenEntitlements({ status: "nessuna", approvedServices: [] }),
     };
@@ -326,14 +348,17 @@ export async function getCandidateEntitlementsForUser(
 
   const selectedServices = (application.selectedServices as string[] | null) ?? ["base_protocol"];
   const approvedServices = (application.approvedServices as string[] | null) ?? ["base_protocol"];
+  const billingCycle: LimenBillingCycle = application.billingCycle === "yearly" ? "yearly" : "monthly";
 
   return {
     hasApplication: true,
     candidateCode: application.candidateCode,
     status: application.status,
+    billingCycle,
     selectedServices,
     approvedServices,
     monthlyFeeCents: application.monthlyFeeCents ?? 0,
+    yearlyFeeCents: application.yearlyFeeCents ?? 0,
     oneTimeFeeCents: application.oneTimeFeeCents ?? 0,
     entitlements: resolveLimenEntitlements({
       status: application.status,

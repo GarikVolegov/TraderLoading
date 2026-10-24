@@ -1,15 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiJSON } from "@/lib/apiFetch";
-import type { LimenEntitlementsMap } from "../../../../contracts/limenServices";
+import type { LimenBillingCycle, LimenEntitlementsMap } from "../../../../contracts/limenServices";
 
 export interface LimenEntitlementsResponse {
   ok: boolean;
   hasApplication: boolean;
   candidateCode: string | null;
   status: "in_valutazione" | "ammesso" | "respinto" | "contattato" | "nessuna";
+  billingCycle?: LimenBillingCycle;
   selectedServices: string[];
   approvedServices: string[];
   monthlyFeeCents: number;
+  yearlyFeeCents?: number;
   oneTimeFeeCents: number;
   entitlements: LimenEntitlementsMap;
 }
@@ -69,6 +71,7 @@ export function useLimenEntitlements() {
       isAdmin: true,
       entitlements: ALL_UNLOCKED_ENTITLEMENTS,
       status: "ammesso" as const,
+      billingCycle: "monthly" as LimenBillingCycle,
       candidateCode: data?.candidateCode ?? "ADMIN",
       selectedServices: [
         "base_protocol",
@@ -83,6 +86,7 @@ export function useLimenEntitlements() {
         "doctrine_of_time",
       ],
       monthlyFeeCents: 0,
+      yearlyFeeCents: 0,
       oneTimeFeeCents: 0,
       isAdmitted: true,
       isPending: false,
@@ -101,10 +105,12 @@ export function useLimenEntitlements() {
     isAdmin: false,
     entitlements,
     status,
+    billingCycle: (data?.billingCycle ?? "monthly") as LimenBillingCycle,
     candidateCode: data?.candidateCode ?? null,
     selectedServices: data?.selectedServices ?? ["base_protocol"],
     approvedServices: data?.approvedServices ?? ["base_protocol"],
     monthlyFeeCents: data?.monthlyFeeCents ?? 0,
+    yearlyFeeCents: data?.yearlyFeeCents ?? 0,
     oneTimeFeeCents: data?.oneTimeFeeCents ?? 0,
     isAdmitted,
     isPending,

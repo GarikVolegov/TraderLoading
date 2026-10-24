@@ -466,9 +466,11 @@ export interface CandidateApplicationItem {
   obstacle: string | null;
   commitment: string | null;
   planChosen: string;
+  billingCycle?: "monthly" | "yearly" | null;
   selectedServices?: string[] | null;
   approvedServices?: string[] | null;
   monthlyFeeCents?: number | null;
+  yearlyFeeCents?: number | null;
   oneTimeFeeCents?: number | null;
   currency?: string | null;
   referredBy: string | null;
@@ -543,6 +545,7 @@ export function updateAdminCandidateServices(
   id: number,
   approvedServices: string[],
   notes?: string,
+  billingCycle?: "monthly" | "yearly",
 ) {
   return apiJSON<{
     ok: true;
@@ -552,7 +555,7 @@ export function updateAdminCandidateServices(
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approvedServices, notes }),
+      body: JSON.stringify({ approvedServices, notes, billingCycle }),
     },
   );
 }

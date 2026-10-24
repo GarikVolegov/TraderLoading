@@ -21,7 +21,10 @@ export const candidateApplicationInputSchema = z.object({
   horizon: z.string().trim().max(500).optional(),
   obstacle: z.string().trim().max(500).optional(),
   commitment: z.string().trim().max(500).optional(),
-  planChosen: z.enum(["direct_150", "modular_protocol"]).optional(),
+  planChosen: z
+    .enum(["direct_150", "modular_protocol", "founders_10", "complete_150", "base_free"])
+    .optional(),
+  billingCycle: z.enum(["monthly", "yearly"]).default("monthly"),
   selectedServices: z.array(z.string()).optional(),
   referredBy: z.string().trim().max(50).nullable().optional(),
 });

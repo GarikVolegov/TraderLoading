@@ -1,5 +1,5 @@
 /**
- * LIMEN PROTOCOL — "I 5 Gradi di Ascesa" & Indice di Integrità Engine
+ * AUREUS PROTOCOL — "I 5 Gradi di Ascesa" & Indice di Integrità Engine
  *
  * Replaces generic video-game XP levels with 5 merit-gated Initiatic Grades.
  * Advancement is governed by the Indice di Integrità (%), consecutive integral
@@ -104,7 +104,7 @@ export const LIMEN_GRADES: readonly LimenGradeDefinition[] = [
     minIntegrityPct: 92,
     requiredProfitFactor: 1.5,
     unlockedPrivileges: [
-      "Sblocco completo «LIMEN B2B / Rete Imprenditoriale» (Segnalazione e chiusura contratti)",
+      "Sblocco completo «AUREUS B2B / Rete Imprenditoriale» (Segnalazione e chiusura contratti)",
       "Diritto di acquisizione capi esclusivi de «L'Uniforme» (Grado IV)",
       "Rango di Garante Seniore ne La Fratellanza",
     ],
@@ -122,13 +122,15 @@ export const LIMEN_GRADES: readonly LimenGradeDefinition[] = [
     minIntegrityPct: 95,
     adminOnly: true,
     unlockedPrivileges: [
-      "Membro della Cerchia Interna LIMEN",
+      "Membro della Cerchia Interna AUREUS",
       "Sovranità operativa su tutte le divisioni dell'Ecosistema",
       "Diritto di nomina e revisione nel Concilio della Domenica",
     ],
     sigilId: "sigil-grade-5",
   },
 ] as const;
+
+export const AUREUS_GRADES = LIMEN_GRADES;
 
 export interface LimenIntegritySnapshot {
   /** 0 - 100 percentage of sessions respecting L'Ordine Giornaliero, Custode della Soglia, and Libro della Verità without overtrading */

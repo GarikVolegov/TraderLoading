@@ -11,8 +11,8 @@ export interface LimenLogoProps {
 }
 
 /**
- * LIMEN PROTOCOL // CICLO OPERATIVO
- * Bespoke Architectural Emblem and Wordmark for LIMEN.
+ * AUREUS PROTOCOL // CICLO OPERATIVO
+ * Bespoke Architectural Emblem and Wordmark for AUREUS.
  */
 export function LimenLogo({
   size = 22,
@@ -31,13 +31,13 @@ export function LimenLogo({
           symbolClassName,
         )}
       >
-        <img src="/app-icon-192.png?v=20261021g" alt="LIMEN" className="w-full h-full object-cover" />
+        <img src="/app-icon-192.png?v=20261021g" alt="AUREUS" className="w-full h-full object-cover" />
       </div>
 
       {showWordmark && (
         <div className={cn("flex flex-col whitespace-nowrap", wordmarkClassName)}>
           <span className="font-serif tracking-[0.25em] font-black text-xl text-[#F4F4F6] group-hover:text-[#C5A059] transition-colors uppercase leading-none">
-            LIMEN
+            AUREUS
           </span>
           {subtitle && (
             <span className="font-mono text-[9px] tracking-[0.22em] text-[#C5A059] uppercase leading-none mt-1 whitespace-nowrap">
@@ -49,3 +49,5 @@ export function LimenLogo({
     </div>
   );
 }
+
+export const AureusLogo = LimenLogo;

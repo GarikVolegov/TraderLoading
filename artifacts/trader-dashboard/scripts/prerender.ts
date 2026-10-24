@@ -110,7 +110,8 @@ async function main() {
         // Keep the SPA fallback immutable during capture. sirv caches its
         // original Content-Length; overwriting index.html mid-run truncates
         // later responses before #root and causes React error #299.
-        snapshots.set(outFile, `<!DOCTYPE html>\n${html}`);
+        const outputHtml = html.startsWith("<!DOCTYPE") ? html : `<!DOCTYPE html>\n${html}`;
+        snapshots.set(outFile, outputHtml);
         done += 1;
       } catch (err) {
         console.error(`prerender: ${path} — ${(err as Error).message}`);

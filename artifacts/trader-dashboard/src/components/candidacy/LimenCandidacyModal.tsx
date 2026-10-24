@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -16,8 +16,11 @@ import { getStoredStealthReferral } from "@/lib/stealthTracking";
 import { trackEvent } from "@/lib/analytics";
 import {
   LIMEN_SERVICES,
+  LIMEN_TIERS,
   calculateLimenServicesPricing,
+  type LimenBillingCycle,
   type LimenServiceId,
+  type LimenTierId,
 } from "../../../../../contracts/limenServices";
 import {
   ShieldCheck,
@@ -27,7 +30,6 @@ import {
   Check,
   ChevronRight,
   Sparkles,
-  Lock,
 } from "lucide-react";
 import { SigilIcon } from "@/components/ui/SigilIcon";
 
@@ -35,12 +37,21 @@ interface LimenCandidacyModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultEmail?: string;
+  defaultBillingCycle?: LimenBillingCycle;
+  defaultTierId?: LimenTierId;
+}
+
+function getServicesForTier(tierId: LimenTierId): LimenServiceId[] {
+  const tier = LIMEN_TIERS.find((t) => t.id === tierId);
+  return tier ? [...tier.includedServices] : ["base_protocol"];
 }
 
 export function LimenCandidacyModal({
   isOpen,
   onClose,
   defaultEmail = "",
+  defaultBillingCycle = "monthly",
+  defaultTierId = "founders_10",
 }: LimenCandidacyModalProps) {
   const qc = useQueryClient();
   const requestKey = useRef<string | null>(null);
@@ -49,10 +60,17 @@ export function LimenCandidacyModal({
   const [error, setError] = useState("");
   const formUid = useId();
 
-  // Selected services state: base_protocol is always active
-  const [selectedServices, setSelectedServices] = useState<LimenServiceId[]>([
-    "base_protocol",
-  ]);
+  const [billingCycle, setBillingCycle] = useState<LimenBillingCycle>(defaultBillingCycle);
+  const [selectedServices, setSelectedServices] = useState<LimenServiceId[]>(() =>
+    getServicesForTier(defaultTierId),
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setBillingCycle(defaultBillingCycle);
+      setSelectedServices(getServicesForTier(defaultTierId));
+    }
+  }, [isOpen, defaultBillingCycle, defaultTierId]);
 
   const [record, setRecord] = useState<{
     candidateCode: string;
@@ -60,14 +78,32 @@ export function LimenCandidacyModal({
     selectedServices?: string[];
   } | null>(null);
 
-  const toggleService = (id: LimenServiceId) => {
-    if (id === "base_protocol") return; // Base cannot be deselected
-    setSelectedServices((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
+  const selectTier = (tierId: LimenTierId) => {
+    setSelectedServices(getServicesForTier(tierId));
   };
 
-  const pricing = calculateLimenServicesPricing(selectedServices);
+  const toggleService = (id: LimenServiceId) => {
+    if (id === "base_protocol") return; // Base cannot be deselected
+    if (id === "doctrine_of_time") {
+      setSelectedServices((prev) =>
+        prev.includes("doctrine_of_time")
+          ? ["base_protocol", "forge_of_the_past", "financial_architecture"]
+          : ["base_protocol", "forge_of_the_past", "financial_architecture", "doctrine_of_time"],
+      );
+      return;
+    }
+    // Toggling either forge_of_the_past or financial_architecture toggles the 10€ Prime Persone bundle
+    setSelectedServices((prev) => {
+      const hasFounders =
+        prev.includes("forge_of_the_past") || prev.includes("financial_architecture");
+      if (hasFounders && !prev.includes("doctrine_of_time")) {
+        return ["base_protocol"];
+      }
+      return ["base_protocol", "forge_of_the_past", "financial_architecture"];
+    });
+  };
+
+  const pricing = calculateLimenServicesPricing(selectedServices, billingCycle);
 
   const getServiceIcon = (id: LimenServiceId) => {
     switch (id) {
@@ -189,8 +225,9 @@ export function LimenCandidacyModal({
                     situation: form.get("situation"),
                     obstacle: form.get("obstacle"),
                     commitment: form.get("commitment"),
-                    planChosen: "modular_protocol",
-                    selectedServices,
+                    planChosen: pricing.tierId,
+                    billingCycle,
+                    selectedServices: pricing.selectedIds,
                     requestKey: requestKey.current,
                     referredBy: getStoredStealthReferral(),
                   }),
@@ -216,26 +253,106 @@ export function LimenCandidacyModal({
             }}
           >
             {/* SELEZIONE DEI SERVIZI D'ORDINE */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-[#C5A059]">
-                  1. Configura la tua Dotazione di Protocollo
+                  1. Configura Piano e Cadenza di Protocollo
                 </span>
-                <span className="font-mono text-[10px] text-[#94a3b8]">
-                  Tocca le card per aggiungere servizi
-                </span>
+
+                {/* Toggle Mensile / Annuale */}
+                <div className="inline-flex items-center rounded-md border border-[#C5A059]/35 bg-[#07080b] p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setBillingCycle("monthly")}
+                    className={`rounded px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                      billingCycle === "monthly"
+                        ? "bg-[#C5A059] text-[#07080b]"
+                        : "text-[#94a3b8] hover:text-[#F4F4F6]"
+                    }`}
+                  >
+                    Cadenza Mensile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBillingCycle("yearly")}
+                    className={`rounded px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                      billingCycle === "yearly"
+                        ? "bg-[#C5A059] text-[#07080b]"
+                        : "text-[#94a3b8] hover:text-[#F4F4F6]"
+                    }`}
+                  >
+                    Annuale · 2 Mesi Omaggio
+                  </button>
+                </div>
               </div>
 
+              {/* Selettore Rapido dei 3 Piani */}
+              <div className="grid gap-2.5 sm:grid-cols-3">
+                {LIMEN_TIERS.map((tier) => {
+                  const isActiveTier = pricing.tierId === tier.id;
+                  const priceLabel =
+                    billingCycle === "yearly" ? tier.yearlyDisplay : tier.monthlyDisplay;
+
+                  return (
+                    <button
+                      key={tier.id}
+                      type="button"
+                      onClick={() => selectTier(tier.id)}
+                      className={`flex flex-col justify-between rounded-lg border p-3 text-left transition-all ${
+                        isActiveTier
+                          ? "border-[#E8C56A] bg-[#161822] shadow-[0_0_16px_rgba(197,160,89,0.18)] ring-1 ring-[#E8C56A]/50"
+                          : "border-[#C5A059]/20 bg-[#11131c] hover:border-[#C5A059]/45"
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className="rounded border border-[#C5A059]/35 bg-[#C5A059]/15 px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
+                            {tier.badge}
+                          </span>
+                          <div
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                              isActiveTier
+                                ? "border-[#C5A059] bg-[#C5A059] text-[#07080b]"
+                                : "border-[#475569] bg-[#07080b]"
+                            }`}
+                          >
+                            {isActiveTier && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                          </div>
+                        </div>
+                        <p className="font-mono text-xs font-bold text-[#F4F4F6] leading-tight">
+                          {tier.title}
+                        </p>
+                      </div>
+                      <div className="mt-2.5 border-t border-[#C5A059]/15 pt-2 flex items-baseline justify-between gap-1">
+                        <span className="font-mono text-xs font-bold text-[#E8C56A] whitespace-nowrap">
+                          {priceLabel}
+                        </span>
+                        {billingCycle === "yearly" && tier.yearlySavingsEur > 0 && (
+                          <span className="font-mono text-[9px] text-[#10b981] whitespace-nowrap">
+                            Risparmi {tier.yearlySavingsEur}€
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Dettaglio Moduli Inclusi */}
               <div className="grid gap-3 sm:grid-cols-2">
                 {LIMEN_SERVICES.map((service) => {
-                  const isSelected = selectedServices.includes(service.id);
+                  const isSelected = pricing.selectedIds.includes(service.id);
                   const isBase = service.id === "base_protocol";
+                  const badgePrice =
+                    billingCycle === "yearly"
+                      ? service.priceYearlyDisplay
+                      : service.priceDisplay;
 
                   return (
                     <div
                       key={service.id}
                       onClick={() => toggleService(service.id)}
-                      className={`relative flex flex-col justify-between rounded-lg border p-4 transition-all select-none ${
+                      className={`relative flex flex-col justify-between rounded-lg border p-3.5 transition-all select-none ${
                         isBase
                           ? "border-[#C5A059]/60 bg-[#161822] cursor-default ring-1 ring-[#C5A059]/30"
                           : isSelected
@@ -246,11 +363,11 @@ export function LimenCandidacyModal({
                       {/* Header Card */}
                       <div className="space-y-2">
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-7 w-7 items-center justify-center rounded border border-[#C5A059]/30 bg-[#07080b]">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-[#C5A059]/30 bg-[#07080b]">
                               {getServiceIcon(service.id)}
                             </span>
-                            <div>
+                            <div className="min-w-0">
                               <h4 className="font-mono text-xs font-bold text-[#F4F4F6] tracking-tight">
                                 {service.shortTitle}
                               </h4>
@@ -262,9 +379,9 @@ export function LimenCandidacyModal({
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <span
-                              className={`font-mono text-xs font-bold px-2 py-0.5 rounded whitespace-nowrap ${
+                              className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${
                                 isBase
                                   ? "bg-[#10b981]/15 border border-[#10b981]/30 text-[#10b981]"
                                   : isSelected
@@ -272,7 +389,7 @@ export function LimenCandidacyModal({
                                     : "bg-[#07080b] border border-[#26262E] text-[#94a3b8]"
                               }`}
                             >
-                              {service.priceDisplay}
+                              {badgePrice}
                             </span>
                             <div
                               className={`flex h-4 w-4 items-center justify-center rounded border ${
@@ -292,13 +409,13 @@ export function LimenCandidacyModal({
                       </div>
 
                       {/* Feature Bullets */}
-                      <div className="mt-3 space-y-1 border-t border-[#C5A059]/15 pt-2.5">
+                      <div className="mt-2.5 space-y-1 border-t border-[#C5A059]/15 pt-2">
                         {service.features.map((feature, idx) => (
                           <div
                             key={idx}
                             className="flex items-center gap-1.5 text-[10.5px] text-[#D0D0D8]"
                           >
-                            <span className="h-1 w-1 rounded-full bg-[#C5A059]" />
+                            <span className="h-1 w-1 shrink-0 rounded-full bg-[#C5A059]" />
                             <span className="truncate">{feature}</span>
                           </div>
                         ))}
@@ -313,25 +430,20 @@ export function LimenCandidacyModal({
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-[#C5A059]" />
                   <span className="font-mono text-xs uppercase tracking-wider text-[#94a3b8]">
-                    Quota Dotazione Calcolata:
+                    Piano Selezionato:
+                  </span>
+                  <span className="font-mono text-xs font-bold text-[#F4F4F6]">
+                    {pricing.tierTitle}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 font-mono text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[#94a3b8]">Mensile:</span>
-                    <span className="font-bold text-[#E8C56A] whitespace-nowrap">
-                      {pricing.monthlyFeeCents > 0
-                        ? pricing.monthlyDisplay
-                        : "0 €/mese (Base)"}
+                  <span className="font-bold text-[#E8C56A] whitespace-nowrap">
+                    {pricing.activeDisplay}
+                  </span>
+                  {billingCycle === "yearly" && pricing.yearlySavingsEur > 0 && (
+                    <span className="rounded border border-[#10b981]/35 bg-[#10b981]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#10b981] whitespace-nowrap">
+                      Risparmi {pricing.yearlySavingsEur} € · 2 Mesi Omaggio
                     </span>
-                  </div>
-                  {pricing.oneTimeFeeCents > 0 && (
-                    <div className="flex items-center gap-1.5 border-l border-[#26262E] pl-3">
-                      <span className="text-[#94a3b8]">Una Tantum:</span>
-                      <span className="font-bold text-[#E8C56A] whitespace-nowrap">
-                        {pricing.oneTimeDisplay}
-                      </span>
-                    </div>
                   )}
                 </div>
               </div>

@@ -1,24 +1,24 @@
 ---
-description: Linee guida inviolabili di design, layout, spazi, tipografia, assenza di muri di testo e brand narrative per LIMEN
+description: Linee guida inviolabili di design, layout, spazi, tipografia, assenza di muri di testo e brand narrative per AUREUS
 trigger: always_on
 ---
 
-# LIMEN PROTOCOL (TL: Trans-Limen) — Regole Inviolabili di Design, Spazi e Narrazione
+# AUREUS PROTOCOL (AUREUS OS) — Regole Inviolabili di Design, Spazi e Narrazione
 
 > **REGOLA GENERALE PER QUALSIASI AGENTE O SVILUPPATORE**:
 > Ogni volta che si aggiunge, modifica o rifattorizza un componente, una vista, un testo o uno strumento nell'applicazione, questo documento costituisce il **contratto inviolabile** da rispettare. Nessuna feature può essere rilasciata in violazione di queste regole.
 
 ---
 
-## 1. Identità del Brand & Narrazione Solenne (Ethos LIMEN)
+## 1. Identità del Brand & Narrazione Solenne (Ethos AUREUS)
 
-LIMEN non è una piattaforma di scommesse retail, né un videogioco arcade con punti XP. È un **Ordine Operativo e Spirituale** basato sul *Codice della Presenza e dell'Eredità*: rigore matematico, disciplina monastica, architettura sovrana ed esecuzione priva di esitazione.
+AUREUS non è una piattaforma di scommesse retail, né un videogioco arcade con punti XP. È un **Ordine Operativo e Spirituale** basato sul *Codice della Presenza e dell'Eredità*: rigore matematico, disciplina monastica, architettura sovrana ed esecuzione priva di esitazione.
 
 ### A. Tono di Voce & Lessico Ufficiale
 - **Tono**: Solenne, stoico, chirurgico, nobile, austero, architettonico.
 - **Tabella di Corrispondenza Termini (Inviolabile)**:
 
-| Termine Vietato (Retail / Gaming / Generico) | Termine Obbligatorio LIMEN |
+| Termine Vietato (Retail / Gaming / Generico) | Termine Obbligatorio AUREUS |
 | :--- | :--- |
 | Backtest / Simulatore generico | **La Forgia del Passato** / **Banco di Forgiatura** |
 | Tornei / Match / Gare / Partite | **Le Prove del Fuoco** / **Arene della Disciplina** |
@@ -125,7 +125,7 @@ L'applicazione utilizza un tema **Nero Ossidiana & Oro Imperiale (Aureus)** arri
    - È tassativamente vietato renderizzare badge con nomi di tabelle, database o stringhe tecniche grezze (es. `"DB"`, `"ORVAL"`, `"SCHEMA"`, `"MOCK"`, `"LOCAL"`, `"TEST"`).
    - È vietato usare pillole grigie anonime prive di padding o con stili non curati.
 2. **Formato Ufficiale dei Tag / Status Chips**:
-   Ogni chip o badge deve rispettare lo standard aristocrazia LIMEN:
+   Ogni chip o badge deve rispettare lo standard aristocrazia AUREUS:
    - Font: `font-mono text-[9px] uppercase font-bold tracking-wider`.
    - Padding: `px-1.5 py-0.5 rounded`.
    - Bordo e sfondo coordinati (es. `bg-[#C5A059]/15 border border-[#C5A059]/35 text-[#E8C56A]`).
@@ -153,5 +153,5 @@ Prima di dichiarare completata qualsiasi modifica o aggiunta all'interfaccia:
 - [ ] **3. Troncamenti**: C'è qualche `..` antiestetico su nomi, titoli o sfide? (Risolto con layout flessibile ed elastico).
 - [ ] **4. Line-Wrap**: Qualche numero è finito a capo separato dalla sua unità (`%`, `$`, `Trade`)? (Risolto con `whitespace-nowrap`).
 - [ ] **5. Viewport & Header**: Il titolo e la barra superiore sono completamente visibili senza clipping?
-- [ ] **6. Tag & Badges**: Sono spariti tutti i tag di debug e le chip hanno lo stile imperiale LIMEN?
-- [ ] **7. Lessico di Brand**: I termini usati rispettano la tabella LIMEN (nessun gergo gambling o gaming arcade)?
+- [ ] **6. Tag & Badges**: Sono spariti tutti i tag di debug e le chip hanno lo stile imperiale AUREUS?
+- [ ] **7. Lessico di Brand**: I termini usati rispettano la tabella AUREUS (nessun gergo gambling o gaming arcade)?

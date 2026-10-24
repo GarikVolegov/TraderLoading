@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { X, Plus, BarChart2 } from "lucide-react";
+import { X, Plus, BarChart2, Coins } from "lucide-react";
 import { useSavePairs } from "@/hooks/useSavePairs";
 import { uiText } from "@/contexts/LanguageContext";
 import { useBackground } from "@/contexts/BackgroundContext";
@@ -18,91 +17,95 @@ export function PairPreferencesSettings() {
     const newPairs = selectedPairs.filter((p) => p !== symbol);
     if (newPairs.length === 0) {
       toast({
-        description: "Devi avere almeno un pair selezionato.",
+        description: "Devi mantenere almeno un asset monitorato.",
         variant: "destructive",
       });
       return;
     }
-    if (await save(newPairs)) toast({ description: "Pair rimosso." });
+    if (await save(newPairs)) toast({ description: "Asset rimosso dalla selezione." });
   };
 
   const handleConfirm = async (pairs: string[]) => {
     if (await save(pairs)) {
       setShowModal(false);
-      toast({ description: "Pair aggiornati." });
+      toast({ description: "Asset eletti aggiornati con successo." });
     }
   };
 
   return (
     <>
-      <Card className="overflow-hidden">
-        {/* Card header with count badge */}
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <div className="p-1.5 rounded-lg bg-indigo-500/15 shrink-0">
-                <BarChart2 className="w-4 h-4 text-indigo-400" />
-              </div>
-              Pair Preferiti
-            </CardTitle>
-            {selectedPairs.length > 0 && (
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
-                {selectedPairs.length} attivi
-              </span>
-            )}
+      <div className="rounded-2xl border border-[#C5A059]/25 bg-[#0d0f14] p-5 sm:p-6 space-y-5 shadow-xl shadow-black/40">
+        {/* Header with counter badge */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#C5A059]/15 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#C5A059]">
+              <Coins className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-display text-sm font-bold uppercase tracking-wider text-[#F4F4F6]">
+                Asset & Mercati Eletti
+              </h3>
+              <p className="text-xs font-mono text-muted-foreground/80">
+                Strumenti primari utilizzati in tutto il cockpit (News, Journal, Forgia e Analisi).
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Usati in tutta la dashboard: news, journal, calcolatori e analisi.
-          </p>
-        </CardHeader>
 
-        <CardContent className="space-y-3 pt-0">
-          {failed && !showModal && <p role="alert" className="text-sm text-destructive">{uiText("pairs.save_error")}</p>}
-          {/* Pair chips grid */}
-          {selectedPairs.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {selectedPairs.map((sym) => (
-                <span
-                  key={sym}
-                  className="inline-flex items-center gap-2 pl-3 pr-1 py-1.5 rounded-xl text-xs font-mono font-bold bg-primary/10 text-primary border border-primary/25 min-h-[36px]"
-                >
-                  {getPairLabel(sym)}
-                  <button
-                    disabled={saving}
-                    onClick={() => removePair(sym)}
-                    aria-label={`Rimuovi ${sym}`}
-                    className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-destructive/15 hover:text-destructive transition-colors ml-0.5"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-6 rounded-xl border border-dashed border-border/50 bg-secondary/20 text-center gap-2">
-              <BarChart2 className="w-8 h-8 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground/60">
-                Nessun pair selezionato
-              </p>
-              <p className="text-xs text-muted-foreground/40">
-                Aggiungine almeno uno per personalizzare la dashboard
-              </p>
-            </div>
+          {selectedPairs.length > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 px-2.5 py-1 font-mono text-[10px] uppercase font-bold tracking-wider text-[#E8C56A] self-start sm:self-center">
+              <span>{selectedPairs.length} {selectedPairs.length === 1 ? "Asset Attivo" : "Asset Attivi"}</span>
+            </span>
           )}
+        </div>
 
-          {/* CTA button */}
-          <button
-            disabled={saving}
-            onClick={() => setShowModal(true)}
-            className="w-full flex items-center justify-center gap-2 h-11 rounded-xl border border-dashed border-primary/30 text-sm font-medium text-primary hover:bg-primary/8 hover:border-primary/50 active:scale-[0.98] transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            {selectedPairs.length > 0
-              ? "Modifica pair selezionati"
-              : "Scegli i tuoi pair"}
-          </button>
-        </CardContent>
-      </Card>
+        {failed && !showModal && (
+          <p role="alert" className="text-xs font-mono text-[#ef4444] bg-[#ef4444]/10 p-2.5 rounded-lg border border-[#ef4444]/30">
+            {uiText("pairs.save_error")}
+          </p>
+        )}
+
+        {/* Pair chips grid */}
+        {selectedPairs.length > 0 ? (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {selectedPairs.map((sym) => (
+              <span
+                key={sym}
+                className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl text-xs font-mono font-bold bg-[#07080b] text-[#E8C56A] border border-[#C5A059]/35 min-h-[36px] shadow-sm"
+              >
+                <span>{getPairLabel(sym)}</span>
+                <button
+                  disabled={saving}
+                  onClick={() => removePair(sym)}
+                  aria-label={`Rimuovi ${sym}`}
+                  className="w-5 h-5 rounded-md flex items-center justify-center text-muted-foreground/60 hover:bg-[#ef4444]/20 hover:text-[#ef4444] transition-colors ml-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 rounded-xl border border-dashed border-[#C5A059]/25 bg-[#07080b]/60 text-center gap-2">
+            <BarChart2 className="w-8 h-8 text-[#C5A059]/40" />
+            <p className="text-xs font-mono text-muted-foreground">
+              Nessun asset primario configurato
+            </p>
+            <p className="text-[11px] font-mono text-muted-foreground/60">
+              Seleziona gli asset che intendi presenziare quotidianamente.
+            </p>
+          </div>
+        )}
+
+        {/* Action button */}
+        <button
+          disabled={saving}
+          onClick={() => setShowModal(true)}
+          className="w-full flex items-center justify-center gap-2 h-11 rounded-xl border border-dashed border-[#C5A059]/40 bg-[#07080b] text-xs font-mono font-semibold text-[#E8C56A] hover:bg-[#C5A059]/10 hover:border-[#C5A059] active:scale-[0.99] transition-all shadow-sm"
+        >
+          <Plus className="w-4 h-4 text-[#C5A059]" />
+          <span>{selectedPairs.length > 0 ? "Modifica Asset Selezionati" : "Configura i Tuoi Mercati"}</span>
+        </button>
+      </div>
 
       <PairSelectionModal
         open={showModal}
@@ -116,5 +119,3 @@ export function PairPreferencesSettings() {
     </>
   );
 }
-
-// ─── Rewards Library Section ─────────────────────────────────────────────────

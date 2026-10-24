@@ -1,8 +1,10 @@
 /**
- * LIMEN PROTOCOL (TL: Trans-Limen) — Official Services & Candidacy Catalog
+ * LIMEN PROTOCOL (TL: Trans-Limen) — Official Services, Tiers & Candidacy Catalog
  *
- * Defines the initial base entitlement and modular add-on services with their
- * official prices, descriptions, and feature lists.
+ * Defines:
+ * 1. Soglia Iniziale Base (0 €): Il Varco, Libro della Verità, Fratellanza (senza Tornei Trimestrali), 5 Gradi di Ascesa.
+ * 2. Offerta Esclusiva Prime Persone (10 €/mese · 100 €/anno): Pacchetto Base + La Forgia del Passato + Architettura Patrimoniale.
+ * 3. Progetto Completo (150 €/mese · 1.500 €/anno): Tutto il pacchetto + La Dottrina del Tempo (Formazione completa) + Finestra Operativa + Prove del Fuoco.
  */
 
 export type LimenServiceId =
@@ -11,7 +13,11 @@ export type LimenServiceId =
   | "financial_architecture"
   | "doctrine_of_time";
 
-export type LimenPriceType = "included" | "monthly" | "one_time";
+export type LimenBillingCycle = "monthly" | "yearly";
+
+export type LimenTierId = "base_free" | "founders_10" | "complete_150";
+
+export type LimenPriceType = "included" | "founders_bundle" | "complete_bundle";
 
 export interface LimenServiceItem {
   readonly id: LimenServiceId;
@@ -22,11 +28,108 @@ export interface LimenServiceItem {
   readonly priceType: LimenPriceType;
   readonly priceAmountEur: number;
   readonly priceAmountCents: number;
+  readonly priceYearlyAmountEur: number;
+  readonly priceYearlyAmountCents: number;
   readonly priceDisplay: string;
+  readonly priceYearlyDisplay: string;
   readonly isIncludedInBase: boolean;
   readonly routePath: string;
+  readonly badgeLabel: string;
   readonly features: readonly string[];
 }
+
+export interface LimenTierDefinition {
+  readonly id: LimenTierId;
+  readonly title: string;
+  readonly badge: string;
+  readonly subtitle: string;
+  readonly monthlyEur: number;
+  readonly monthlyCents: number;
+  readonly yearlyEur: number;
+  readonly yearlyCents: number;
+  readonly monthlyDisplay: string;
+  readonly yearlyDisplay: string;
+  readonly yearlyMonthlyEquivalentDisplay: string;
+  readonly yearlySavingsEur: number;
+  readonly includedServices: readonly LimenServiceId[];
+  readonly features: readonly string[];
+}
+
+export const LIMEN_TIERS: readonly LimenTierDefinition[] = [
+  {
+    id: "base_free",
+    title: "Soglia Iniziale di Base",
+    badge: "ACCESSO BASE INCLUSO",
+    subtitle: "Accesso immediato ai pilastri operativi fondamentali alla presentazione della candidatura.",
+    monthlyEur: 0,
+    monthlyCents: 0,
+    yearlyEur: 0,
+    yearlyCents: 0,
+    monthlyDisplay: "0 € / mese",
+    yearlyDisplay: "0 € / anno",
+    yearlyMonthlyEquivalentDisplay: "Incluso nel Varco",
+    yearlySavingsEur: 0,
+    includedServices: ["base_protocol"],
+    features: [
+      "Il Varco (Centro di Comando decisionale)",
+      "Il Libro della Verità (Registro cronologico scelte)",
+      "La Fratellanza (Agorà dell'Ordine, esclusi Tornei Trimestrali)",
+      "I 5 Gradi di Ascesa (Indice di Integrità e progressione)",
+    ],
+  },
+  {
+    id: "founders_10",
+    title: "Dotazione Operativa · Esclusiva Prime Persone",
+    badge: "PREZZO ESCLUSIVO PRIME PERSONE",
+    subtitle: "Tariffa riservata ai primi operatori ammessi: sblocca il pacchetto base unito a La Forgia del Passato e all'Architettura Patrimoniale.",
+    monthlyEur: 10,
+    monthlyCents: 1000,
+    yearlyEur: 100,
+    yearlyCents: 10000,
+    monthlyDisplay: "10 € / mese",
+    yearlyDisplay: "100 € / anno",
+    yearlyMonthlyEquivalentDisplay: "~8,33 €/mese · 2 Mesi in Omaggio",
+    yearlySavingsEur: 20,
+    includedServices: [
+      "base_protocol",
+      "forge_of_the_past",
+      "financial_architecture",
+    ],
+    features: [
+      "Tutta la Soglia Iniziale Base (Varco, Libro Verità, Fratellanza, 5 Gradi)",
+      "La Forgia del Passato: Simulatore storico candela per candela senza limiti",
+      "Architettura Patrimoniale: Gestione rischio, drawdown e allocazione",
+      "Prezzo bloccato esclusivo 10€ per le prime persone ammesse",
+    ],
+  },
+  {
+    id: "complete_150",
+    title: "Progetto Completo · Formazione & Finestra Operativa",
+    badge: "ACCESSO COMPLETO AL PROTOCOLLO",
+    subtitle: "L'intero ecosistema d'Ordine: strumenti di forgiatura, gestione patrimoniale, La Dottrina del Tempo (Formazione completa) e la Finestra Operativa.",
+    monthlyEur: 150,
+    monthlyCents: 15000,
+    yearlyEur: 1500,
+    yearlyCents: 150000,
+    monthlyDisplay: "150 € / mese",
+    yearlyDisplay: "1.500 € / anno",
+    yearlyMonthlyEquivalentDisplay: "125 €/mese · Risparmi 300 € (2 Mesi Omaggio)",
+    yearlySavingsEur: 300,
+    includedServices: [
+      "base_protocol",
+      "forge_of_the_past",
+      "financial_architecture",
+      "doctrine_of_time",
+    ],
+    features: [
+      "Dotazione Operativa Completa (Varco, Libro Verità, Forgia, Patrimonio)",
+      "La Dottrina del Tempo: Percorso completo di formazione Assedio & Duello",
+      "La Finestra Operativa: Sincronizzazione oraria liquidità istituzionale",
+      "Il Concilio della Domenica: Rito live settimanale a mercati chiusi",
+      "Diritto alle Prove del Fuoco (Tornei Trimestrali) e Mandato 20%",
+    ],
+  },
+] as const;
 
 export const LIMEN_SERVICES: readonly LimenServiceItem[] = [
   {
@@ -38,9 +141,13 @@ export const LIMEN_SERVICES: readonly LimenServiceItem[] = [
     priceType: "included",
     priceAmountEur: 0,
     priceAmountCents: 0,
-    priceDisplay: "Incluso",
+    priceYearlyAmountEur: 0,
+    priceYearlyAmountCents: 0,
+    priceDisplay: "Incluso (0 €)",
+    priceYearlyDisplay: "Incluso (0 €)",
     isIncludedInBase: true,
     routePath: "/",
+    badgeLabel: "INCLUSO DI DIRITTO",
     features: [
       "Il Varco (Centro di Comando decisionale)",
       "Il Libro della Verità (Trading Journal & Registro scelte)",
@@ -53,17 +160,21 @@ export const LIMEN_SERVICES: readonly LimenServiceItem[] = [
     category: "addon",
     title: "La Forgia del Passato (Banco di Forgiatura)",
     shortTitle: "Banco di Forgiatura",
-    subtitle: "Simulatore candela per candela e archivio storico per affilare l'esecuzione.",
-    priceType: "monthly",
+    subtitle: "Simulatore candela per candela e archivio storico per affilare l'esecuzione. Incluso nell'offerta Prime Persone da 10€.",
+    priceType: "founders_bundle",
     priceAmountEur: 10,
     priceAmountCents: 1000,
-    priceDisplay: "+10 €/mese",
+    priceYearlyAmountEur: 100,
+    priceYearlyAmountCents: 10000,
+    priceDisplay: "Incluso nel Piano 10 €/m",
+    priceYearlyDisplay: "Incluso nel Piano 100 €/a",
     isIncludedInBase: false,
     routePath: "/backtest",
+    badgeLabel: "ESCLUSIVA PRIME PERSONE · 10€",
     features: [
       "Replay storico candela per candela tick-by-tick",
       "Banco di Forgiatura con statistiche R:R avanzate",
-      "Nessun vincolo sul numero di simulazioni storiche",
+      "Incluso insieme all'Architettura Patrimoniale a 10 €/mese",
     ],
   },
   {
@@ -71,89 +182,124 @@ export const LIMEN_SERVICES: readonly LimenServiceItem[] = [
     category: "addon",
     title: "Architettura Patrimoniale",
     shortTitle: "Architettura Patrimoniale",
-    subtitle: "Le Fondamenta di Rischio: drawdown sostenibile e barriere di protezione.",
-    priceType: "monthly",
+    subtitle: "Le Fondamenta di Rischio: drawdown sostenibile e barriere di protezione. Inclusa nell'offerta Prime Persone da 10€.",
+    priceType: "founders_bundle",
     priceAmountEur: 10,
     priceAmountCents: 1000,
-    priceDisplay: "+10 €/mese",
+    priceYearlyAmountEur: 100,
+    priceYearlyAmountCents: 10000,
+    priceDisplay: "Inclusa nel Piano 10 €/m",
+    priceYearlyDisplay: "Inclusa nel Piano 100 €/a",
     isIncludedInBase: false,
     routePath: "/patrimonio",
+    badgeLabel: "ESCLUSIVA PRIME PERSONE · 10€",
     features: [
       "Calcolo matematico della tolleranza di perdita",
       "Separazione tra capitale operativo e riserva d'assedio",
-      "Radar di rischio patrimoniale e metriche di conservazione",
+      "Inclusa insieme a La Forgia del Passato a 10 €/mese",
     ],
   },
   {
     id: "doctrine_of_time",
     category: "addon",
     title: "La Dottrina del Tempo & Finestra Operativa",
-    shortTitle: "La Dottrina del Tempo",
-    subtitle: "L'Arte dell'Assedio (Swing) e del Duello (Scalp). Video accademia e timing di liquidità.",
-    priceType: "one_time",
-    priceAmountEur: 170,
-    priceAmountCents: 17000,
-    priceDisplay: "+170 €",
+    shortTitle: "Formazione & Finestra Operativa",
+    subtitle: "Il progetto completo di formazione (Assedio & Duello), Finestra Operativa bancaria e Concilio settimanale.",
+    priceType: "complete_bundle",
+    priceAmountEur: 150,
+    priceAmountCents: 15000,
+    priceYearlyAmountEur: 1500,
+    priceYearlyAmountCents: 150000,
+    priceDisplay: "Progetto Completo 150 €/m",
+    priceYearlyDisplay: "Progetto Completo 1.500 €/a",
     isIncludedInBase: false,
     routePath: "/academy",
+    badgeLabel: "PROGETTO COMPLETO · 150€",
     features: [
-      "Accesso completo all'Accademia video LIMEN",
-      "Canoni dell'Assedio e del Duello",
-      "Sincronizzazione oraria sulle finestre di liquidità bancaria",
+      "Accesso completo a La Dottrina del Tempo (Formazione video)",
+      "Finestra Operativa sincronizzata sulle sessioni bancarie",
+      "Include Forgia del Passato, Architettura Patrimoniale e Prove del Fuoco",
     ],
   },
 ] as const;
 
 export interface LimenPricingBreakdown {
+  readonly tierId: LimenTierId;
+  readonly tierTitle: string;
+  readonly billingCycle: LimenBillingCycle;
+  readonly selectedIds: readonly LimenServiceId[];
   readonly monthlyFeeCents: number;
+  readonly yearlyFeeCents: number;
   readonly oneTimeFeeCents: number;
+  readonly activeFeeCents: number;
   readonly monthlyDisplay: string;
+  readonly yearlyDisplay: string;
   readonly oneTimeDisplay: string;
+  readonly activeDisplay: string;
   readonly formattedSummary: string;
+  readonly yearlySavingsEur: number;
 }
 
+/**
+ * Computes pricing according to the official LIMEN tier structure:
+ * - Only `base_protocol` -> 0 €
+ * - `forge_of_the_past` and/or `financial_architecture` (without `doctrine_of_time`) ->
+ *   Exclusive First Members rate: 10 €/month or 100 €/year (includes both Forge & Financial Architecture).
+ * - `doctrine_of_time` selected -> Complete Project (Formazione + Finestra Operativa + Forge + Financial Architecture):
+ *   150 €/month or 1.500 €/year.
+ */
 export function calculateLimenServicesPricing(
   selectedIds: readonly string[],
+  billingCycle: LimenBillingCycle = "monthly",
 ): LimenPricingBreakdown {
   const set = new Set(selectedIds);
-  // Base protocol is always implicitly included
   set.add("base_protocol");
 
-  let monthlyFeeCents = 0;
-  let oneTimeFeeCents = 0;
+  const hasDoctrine = set.has("doctrine_of_time");
+  const hasFoundersAddon =
+    set.has("forge_of_the_past") || set.has("financial_architecture");
 
-  for (const service of LIMEN_SERVICES) {
-    if (set.has(service.id)) {
-      if (service.priceType === "monthly") {
-        monthlyFeeCents += service.priceAmountCents;
-      } else if (service.priceType === "one_time") {
-        oneTimeFeeCents += service.priceAmountCents;
-      }
-    }
-  }
-
-  const monthlyEur = monthlyFeeCents / 100;
-  const oneTimeEur = oneTimeFeeCents / 100;
-
-  const monthlyDisplay = `${monthlyEur} €/mese`;
-  const oneTimeDisplay = `${oneTimeEur} €`;
-
-  const parts: string[] = [];
-  if (monthlyFeeCents > 0) {
-    parts.push(monthlyDisplay);
+  let tier: LimenTierDefinition;
+  if (hasDoctrine) {
+    tier = LIMEN_TIERS[2]; // complete_150
+  } else if (hasFoundersAddon) {
+    tier = LIMEN_TIERS[1]; // founders_10
   } else {
-    parts.push("0 €/mese (Base)");
+    tier = LIMEN_TIERS[0]; // base_free
   }
-  if (oneTimeFeeCents > 0) {
-    parts.push(`+ ${oneTimeDisplay} una tantum`);
+
+  const monthlyFeeCents = tier.monthlyCents;
+  const yearlyFeeCents = tier.yearlyCents;
+  const oneTimeFeeCents = 0;
+
+  const isYearly = billingCycle === "yearly";
+  const activeFeeCents = isYearly ? yearlyFeeCents : monthlyFeeCents;
+  const activeDisplay = isYearly ? tier.yearlyDisplay : tier.monthlyDisplay;
+
+  let formattedSummary: string;
+  if (tier.id === "base_free") {
+    formattedSummary = "0 € (Soglia Base Inclusa)";
+  } else if (isYearly) {
+    formattedSummary = `${tier.yearlyDisplay} (${tier.title})`;
+  } else {
+    formattedSummary = `${tier.monthlyDisplay} (${tier.title})`;
   }
 
   return {
+    tierId: tier.id,
+    tierTitle: tier.title,
+    billingCycle,
+    selectedIds: tier.includedServices,
     monthlyFeeCents,
+    yearlyFeeCents,
     oneTimeFeeCents,
-    monthlyDisplay,
-    oneTimeDisplay,
-    formattedSummary: parts.join(" "),
+    activeFeeCents,
+    monthlyDisplay: tier.monthlyDisplay,
+    yearlyDisplay: tier.yearlyDisplay,
+    oneTimeDisplay: "0 €",
+    activeDisplay,
+    formattedSummary,
+    yearlySavingsEur: tier.yearlySavingsEur,
   };
 }
 
@@ -170,9 +316,7 @@ export interface LimenEntitlementsMap {
 
 /**
  * Derives operational module entitlements based on candidate application status
- * and approved services. The initial base package (Varco, Libro della Verità,
- * Fratellanza, 5 Gradi) is granted immediately to all applicants, while Quarterly
- * Tournaments are strictly excluded from the initial base tier.
+ * and approved services.
  */
 export function resolveLimenEntitlements(params: {
   isAdmin?: boolean;
@@ -198,16 +342,22 @@ export function resolveLimenEntitlements(params: {
     bookOfTruth: true,
     brotherhood: true,
     fiveGrades: true,
-    quarterlyTournaments: false, // Explicitly locked in the initial base package
   };
 
   const isAdmitted = params.status === "ammesso" || params.status === "attivo";
   const approved = new Set(params.approvedServices ?? []);
 
+  const hasDoctrine = isAdmitted && approved.has("doctrine_of_time");
+  const hasForge =
+    isAdmitted && (approved.has("forge_of_the_past") || hasDoctrine);
+  const hasFinancialArch =
+    isAdmitted && (approved.has("financial_architecture") || hasDoctrine);
+
   return {
     ...baseEntitlements,
-    forgeOfThePast: isAdmitted && approved.has("forge_of_the_past"),
-    financialArchitecture: isAdmitted && approved.has("financial_architecture"),
-    doctrineOfTime: isAdmitted && approved.has("doctrine_of_time"),
+    quarterlyTournaments: hasDoctrine,
+    forgeOfThePast: hasForge,
+    financialArchitecture: hasFinancialArch,
+    doctrineOfTime: hasDoctrine,
   };
 }

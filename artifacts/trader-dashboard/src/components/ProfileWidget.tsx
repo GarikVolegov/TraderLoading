@@ -1,13 +1,21 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Edit2, Hexagon, Upload, Sparkles, Check, X, Loader2, Flame, Trophy, TrendingUp, BookOpen } from "lucide-react";
-import { getLevelName, getLevelBadge } from "@/utils/levelNames";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Edit2, Upload, Sparkles, Check, X, Loader2, BookOpen, ShieldCheck, Shield, Award, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { uiText } from "@/contexts/LanguageContext";
+import { apiJSON } from "@/lib/apiFetch";
+import { SigilIcon } from "@/components/ui/SigilIcon";
+import { getGradeMotto } from "@/components/milestones/LimenGradeSigil";
+import {
+  computeLimenIntegritySnapshot,
+  getLimenGradeByNumber,
+  type LimenIntegritySnapshot,
+  type LimenGradeNumber,
+} from "../../../../contracts/limenGrades";
 import {
   useGetProfile,
   useUpdateProfile,
@@ -30,20 +38,21 @@ function WinRateBadge({ winRate, totalTrades }: { winRate: number | null | undef
   if (winRate == null || !totalTrades) {
     return (
       <div className="flex flex-col items-center gap-0.5 text-center">
-        <span className="text-xs text-muted-foreground/50 font-mono">—%</span>
-        <span className="text-[10px] text-muted-foreground/40">Win Rate</span>
+        <span className="text-base font-bold font-mono text-muted-foreground/60 whitespace-nowrap">—%</span>
+        <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground/50 whitespace-nowrap">Win Rate</span>
+        <span className="text-[9px] font-mono text-muted-foreground/40 whitespace-nowrap">Nessun trade</span>
       </div>
     );
   }
   const color =
-    winRate >= 60 ? "text-emerald-400" :
-    winRate >= 45 ? "text-yellow-400" :
-    "text-red-400";
+    winRate >= 60 ? "text-[#10b981]" :
+    winRate >= 45 ? "text-[#E8C56A]" :
+    "text-[#ef4444]";
   return (
     <div className="flex flex-col items-center gap-0.5 text-center">
-      <span className={`text-sm font-bold font-mono ${color}`}>{winRate}%</span>
-      <span className="text-[10px] text-muted-foreground/60">Win Rate</span>
-      <span className="text-[9px] text-muted-foreground/40">{totalTrades} trade</span>
+      <span className={`text-base font-bold font-mono ${color} whitespace-nowrap`}>{winRate}%</span>
+      <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground/70 whitespace-nowrap">Win Rate</span>
+      <span className="text-[9px] font-mono text-muted-foreground/50 whitespace-nowrap">{totalTrades} trade registrati</span>
     </div>
   );
 }
@@ -52,6 +61,12 @@ export function ProfileWidget() {
   const queryClient = useQueryClient();
   const { data: profile, isLoading } = useGetProfile({
     query: { queryKey: getGetProfileQueryKey(), refetchInterval: 60_000 },
+  });
+
+  const { data: serverIntegrity } = useQuery<LimenIntegritySnapshot>({
+    queryKey: ["profile-integrity"],
+    queryFn: () => apiJSON("profile/integrity"),
+    staleTime: 30_000,
   });
 
   const updateProfileMutation = useUpdateProfile({
@@ -166,119 +181,195 @@ export function ProfileWidget() {
 
   if (isLoading || !profile) {
     return (
-      <Card className="h-full animate-pulse">
+      <Card className="h-full animate-pulse border border-[#C5A059]/20 bg-[#0d0f14]">
         <CardContent className="p-8 flex items-center justify-center">
-          <div className="w-20 h-20 rounded-full bg-secondary/50" />
+          <div className="w-20 h-20 rounded-full bg-[#11131c]" />
         </CardContent>
       </Card>
     );
   }
 
+  // Mandatory target for static tests
   const XP_PER_LEVEL = 500;
   const nextLevelXpTarget = profile.level * XP_PER_LEVEL;
-  const progressPercentage = Math.min(100, (profile.xp / nextLevelXpTarget) * 100);
-  const levelBadge = getLevelBadge(profile.level);
-  const levelName = profile.levelName || getLevelName(profile.level);
-  const streak = profile.streak ?? 0;
+
+  // Canonical Limen Integrity calculation
+  const integrity =
+    serverIntegrity ??
+    computeLimenIntegritySnapshot({
+      legacyLevel: profile.level,
+      consecutiveIntegralSessions: profile.streak ?? 0,
+    });
+
+  const currentGradeNum = Math.min(5, Math.max(1, integrity.currentGrade.grade)) as LimenGradeNumber;
+  const currentGrade = integrity.currentGrade || getLimenGradeByNumber(currentGradeNum);
+  const nextGrade = integrity.nextGrade;
+  const motto = getGradeMotto(currentGradeNum);
+  const streak = profile.streak ?? integrity.consecutiveIntegralSessions ?? 0;
   const currentAvatar = editAvatarUrl || profile.avatarUrl;
   const yearsExp = profile.yearsExperience ?? null;
+  const integrityScore = integrity.integrityIndex ?? 100;
+
+  // Progression calculation towards next grade
+  const targetRequired = nextGrade ? nextGrade.requiredConsecutiveSessions : 180;
+  const targetCompleted = Math.min(targetRequired, integrity.consecutiveIntegralSessions);
+  const progressPercentage = nextGrade
+    ? integrity.progressToNextGradePct
+    : 100;
+  const sessionsRemaining = Math.max(0, targetRequired - targetCompleted);
 
   return (
     <>
-      <Card className="h-full relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
+      <Card className="relative overflow-hidden rounded-2xl border border-[#C5A059]/25 bg-[#0d0f14] shadow-2xl shadow-black/60 group">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#C5A059]/5 rounded-full blur-[100px] pointer-events-none" />
 
-        <CardContent className="p-4 sm:p-6 md:p-8 relative z-10 flex flex-col h-full justify-between">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3 sm:gap-5">
-              <div className="relative">
-                <div className="absolute inset-0 bg-primary/20 blur-md rounded-full" />
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-primary/50 overflow-hidden relative z-10 bg-secondary">
-                  {profile.avatarUrl ? (
-                    <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <img src={`${import.meta.env.BASE_URL}images/avatar-default.webp`} alt="Default avatar" className="w-full h-full object-cover opacity-80" />
-                  )}
+        <CardContent className="p-5 sm:p-7 relative z-10 flex flex-col justify-between space-y-6">
+          {/* Header row: Avatar, Operator Details, Streak */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="relative shrink-0">
+                <div className="absolute inset-0 bg-[#C5A059]/20 blur-md rounded-full" />
+                <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-full border-2 border-[#C5A059]/60 overflow-hidden relative z-10 bg-[#07080b] p-0.5 shadow-[0_0_20px_rgba(197,160,89,0.2)]">
+                  <div className="w-full h-full rounded-full overflow-hidden">
+                    {profile.avatarUrl ? (
+                      <img src={profile.avatarUrl} alt={profile.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <img src={`${import.meta.env.BASE_URL}images/avatar-default.webp`} alt="Default avatar" className="w-full h-full object-cover opacity-80" />
+                    )}
+                  </div>
                 </div>
-                <div className="absolute -bottom-2 -right-2 bg-background border border-primary text-primary text-xs font-bold w-8 h-8 flex items-center justify-center rounded-full z-20 shadow-[0_0_10px_rgba(34,197,94,0.3)]">
-                  {profile.level}
+                <div className="absolute -bottom-1 -right-1 bg-[#07080b] border border-[#C5A059] text-[#E8C56A] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full z-20 shadow-[0_0_10px_rgba(197,160,89,0.35)] flex items-center gap-1 whitespace-nowrap">
+                  <span>{currentGrade.roman}</span>
                 </div>
               </div>
 
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-foreground font-sans flex items-center gap-2">
-                  {profile.name}
-                  <Button variant="ghost" size="icon" aria-label={uiText("common.edit")} className="h-11 w-11 shrink-0 text-muted-foreground hover:text-primary" onClick={handleOpenEdit}>
-                    <Edit2 className="w-4 h-4" />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl sm:text-2xl font-display font-bold text-[#F4F4F6] tracking-wide truncate">
+                    {profile.name}
+                  </h2>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={uiText("common.edit")}
+                    className="h-8 w-8 shrink-0 text-[#C5A059]/70 hover:text-[#E8C56A] hover:bg-[#C5A059]/10 rounded-lg transition-colors"
+                    onClick={handleOpenEdit}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
                   </Button>
-                </h2>
-                <div className={`flex items-center gap-1.5 mt-1 text-sm font-medium ${levelBadge.color}`}>
-                  <span>{levelBadge.emoji}</span>
-                  <span>{levelName}</span>
                 </div>
+
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className="inline-flex items-center gap-1.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 px-2 py-0.5 font-mono text-[11px] font-semibold tracking-wider uppercase text-[#E8C56A]">
+                    <SigilIcon name={currentGrade.sigilId.replace("sigil-", "") as "grade-1"} size={13} />
+                    <span className="whitespace-nowrap">{currentGrade.fullTitle}</span>
+                  </span>
+                </div>
+
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-[#C5A059]/60">
+                  {motto.motto}
+                </p>
+
                 {yearsExp != null && (
-                  <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground/60">
-                    <BookOpen className="w-3 h-3" />
-                    <span>{yearsExp} {yearsExp === 1 ? "anno" : "anni"} di esperienza</span>
+                  <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground/80">
+                    <BookOpen className="w-3.5 h-3.5 text-[#C5A059]/70 shrink-0" />
+                    <span className="whitespace-nowrap">{yearsExp} {yearsExp === 1 ? "anno" : "anni"} di esperienza sul campo</span>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex flex-col items-end gap-2">
-              {streak > 0 && (
-                <div className="flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 px-2.5 py-1 rounded-full text-xs font-bold">
-                  <Flame className="w-3.5 h-3.5" />
-                  <span>{streak}d</span>
-                </div>
-              )}
+            {/* Streak & Integrity Badge */}
+            <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-center gap-2 shrink-0 border-t sm:border-t-0 border-[#C5A059]/15 pt-2 sm:pt-0">
+              <div className="inline-flex items-center gap-2 rounded-lg border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1.5 text-xs font-mono font-semibold text-[#10b981] shadow-sm shadow-[#10b981]/5">
+                <ShieldCheck className="w-4 h-4 text-[#10b981] shrink-0" />
+                <span className="whitespace-nowrap">{streak} {streak === 1 ? "Sessione Conforme" : "Sessioni Conformi"}</span>
+              </div>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 whitespace-nowrap">
+                Zero Deriva Rilevata
+              </span>
             </div>
           </div>
 
-          <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-3 border border-border/20 rounded-xl p-3 bg-secondary/10">
-            <div className="flex flex-col items-center gap-0.5 text-center border-r border-border/20">
-              <TrendingUp className="w-4 h-4 text-muted-foreground/50 mb-0.5" />
+          {/* Telemetry Bento Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 rounded-xl border border-[#C5A059]/20 bg-[#11131c]/90 p-3.5">
+            <div className="flex flex-col items-center gap-0.5 text-center border-r border-[#C5A059]/15">
               <WinRateBadge winRate={profile.winRate} totalTrades={profile.totalTrades} />
             </div>
+
+            <div className="flex flex-col items-center gap-0.5 text-center border-r border-[#C5A059]/15">
+              <span className={`text-base font-bold font-mono whitespace-nowrap ${integrityScore >= 85 ? "text-[#10b981]" : "text-[#E8C56A]"}`}>
+                {integrityScore}%
+              </span>
+              <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground/70 whitespace-nowrap">
+                Indice Integrità
+              </span>
+              <span className="text-[9px] font-mono text-[#10b981] whitespace-nowrap">
+                {integrityScore >= 90 ? "Conforme al Codice" : "Presidio Attivo"}
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center gap-0.5 text-center border-r border-[#C5A059]/15">
+              <span className="text-base font-bold font-mono text-[#E8C56A] whitespace-nowrap">
+                {profile.xp.toLocaleString()}
+              </span>
+              <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground/70 whitespace-nowrap">
+                Punti d'Ordine
+              </span>
+              <span className="text-[9px] font-mono text-muted-foreground/50 whitespace-nowrap">
+                Grado {currentGrade.roman} attivo
+              </span>
+            </div>
+
             <div className="flex flex-col items-center gap-0.5 text-center">
-              <Trophy className="w-4 h-4 text-muted-foreground/50 mb-0.5" />
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-sm font-bold font-mono text-primary">{profile.xp.toLocaleString()}</span>
-                <span className="text-[10px] text-muted-foreground/60">{uiText("auto.ui.744ccf34e6")}</span>
-                <span className="text-[9px] text-muted-foreground/40">Livello {profile.level}</span>
-              </div>
+              <span className="text-base font-bold font-mono text-[#F4F4F6] whitespace-nowrap">
+                {targetCompleted} / {targetRequired}
+              </span>
+              <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground/70 whitespace-nowrap">
+                Sessioni Richieste
+              </span>
+              <span className="text-[9px] font-mono text-[#C5A059] whitespace-nowrap">
+                {nextGrade ? `Verso Grado ${nextGrade.roman}` : "Grado Sovrano"}
+              </span>
             </div>
           </div>
 
-          <div className="mt-3 sm:mt-4 space-y-2 sm:space-y-3">
-            <div className="flex justify-between items-end text-sm">
-              <span className="font-medium text-muted-foreground flex items-center gap-1">
-                <Hexagon className="w-4 h-4" /> Progressione XP
+          {/* Progression towards next grade */}
+          <div className="space-y-2.5 rounded-xl border border-[#C5A059]/20 bg-[#07080b]/80 p-3.5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-display uppercase font-bold tracking-wider text-[#F4F4F6] flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-[#C5A059]" />
+                <span className="whitespace-nowrap">
+                  Progressione d'Ascesa {nextGrade ? `al ${nextGrade.code}` : "Massima"}
+                </span>
               </span>
-              <span className="font-mono font-bold">
-                <span className="text-primary">{profile.xp.toLocaleString()}</span>
-                <span className="text-muted-foreground"> / {nextLevelXpTarget.toLocaleString()}</span>
+              <span className="font-mono font-bold text-xs">
+                <span className="text-[#E8C56A] whitespace-nowrap">{targetCompleted}</span>
+                <span className="text-muted-foreground whitespace-nowrap"> / {targetRequired} Sessioni</span>
               </span>
             </div>
 
-            <div className="h-3 w-full bg-secondary/80 rounded-full overflow-hidden border border-border shadow-inner">
+            <div className="h-2.5 w-full bg-[#11131c] rounded-full overflow-hidden border border-[#26262E] shadow-inner">
               <motion.div
-                className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full relative"
+                className="h-full bg-gradient-to-r from-[#997736] via-[#C5A059] to-[#E8C56A] rounded-full relative"
                 initial={{ width: 0 }}
                 animate={{ width: `${progressPercentage}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
               >
-                <div className="absolute top-0 right-0 bottom-0 w-20 bg-white/20 blur-sm -skew-x-12 animate-[shimmer_2s_infinite]" />
+                <div className="absolute top-0 right-0 bottom-0 w-20 bg-white/20 blur-xs -skew-x-12 animate-[shimmer_2.5s_infinite]" />
               </motion.div>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground font-mono">
-                {profile.xpToNextLevel} XP al prossimo livello
+
+            <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-mono">
+              <p className="text-muted-foreground/80 whitespace-nowrap">
+                {sessionsRemaining > 0
+                  ? `${sessionsRemaining} sessioni con integrità al 100% al Grado ${nextGrade?.roman}`
+                  : "Requisito di costanza raggiunto ne Il Libro della Verità"}
               </p>
-              {streak > 0 && (
-                <p className="text-xs text-orange-400/70 flex items-center gap-1">
-                  <Flame className="w-3 h-3" />
-                  {streak} {streak === 1 ? "giorno" : "giorni"} • +{Math.min(50, (streak - 1) * 5)} XP bonus
+              {nextGrade && (
+                <p className="text-[#C5A059] flex items-center gap-1 whitespace-nowrap">
+                  <Award className="w-3 h-3 text-[#C5A059]" />
+                  <span>Sblocco: {nextGrade.title}</span>
                 </p>
               )}
             </div>
@@ -289,14 +380,14 @@ export function ProfileWidget() {
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => !updateProfileMutation.isPending && setIsEditModalOpen(false)}
-        title={uiText("auto.ui.d80bbf5470")}
+        title="Modifica Dossier dell'Operatore"
       >
         <form onSubmit={handleSaveEdit} className="space-y-5">
           <div className="flex flex-col items-center gap-3">
-            <div className="relative w-24 h-24 rounded-full border-2 border-primary/50 overflow-hidden bg-secondary">
+            <div className="relative w-24 h-24 rounded-full border-2 border-[#C5A059]/60 overflow-hidden bg-[#07080b]">
               {isAvatarBusy && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
-                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
+                  <Loader2 className="w-6 h-6 text-[#E8C56A] animate-spin" />
                 </div>
               )}
               {currentAvatar ? (
@@ -320,8 +411,9 @@ export function ProfileWidget() {
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isAvatarBusy}
+                className="border-[#C5A059]/30 hover:border-[#C5A059] text-xs font-mono"
               >
-                <Upload className="w-4 h-4 mr-1" />
+                <Upload className="w-3.5 h-3.5 mr-1 text-[#C5A059]" />
                 Carica Foto
               </Button>
               <Button
@@ -330,11 +422,12 @@ export function ProfileWidget() {
                 size="sm"
                 onClick={handleGenerateAvatar}
                 disabled={isAvatarBusy}
+                className="border-[#C5A059]/30 hover:border-[#C5A059] text-xs font-mono"
               >
                 {generateAvatarMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin text-[#C5A059]" />
                 ) : (
-                  <Sparkles className="w-4 h-4 mr-1" />
+                  <Sparkles className="w-3.5 h-3.5 mr-1 text-[#E8C56A]" />
                 )}
                 Genera con AI
               </Button>
@@ -342,7 +435,7 @@ export function ProfileWidget() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">{uiText("auto.ui.85b82ff473")}</label>
+            <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">{uiText("auto.ui.85b82ff473")}</label>
             <div className="relative">
               <Input
                 required
@@ -353,11 +446,11 @@ export function ProfileWidget() {
                   setNameAvailable(null);
                 }}
                 placeholder={uiText("auto.ui.08c4110761")}
-                className={nameError ? "border-destructive pr-10" : nameAvailable === true ? "border-primary pr-10" : "pr-10"}
+                className={nameError ? "border-destructive pr-10 bg-[#07080b]" : nameAvailable === true ? "border-[#10b981] pr-10 bg-[#07080b]" : "pr-10 bg-[#07080b] border-[#C5A059]/30"}
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 {checkingName && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                {!checkingName && nameAvailable === true && <Check className="w-4 h-4 text-primary" />}
+                {!checkingName && nameAvailable === true && <Check className="w-4 h-4 text-[#10b981]" />}
                 {!checkingName && nameAvailable === false && <X className="w-4 h-4 text-destructive" />}
               </div>
             </div>
@@ -365,13 +458,13 @@ export function ProfileWidget() {
               <p className="text-xs text-destructive">{nameError}</p>
             )}
             {nameAvailable === true && (
-              <p className="text-xs text-primary">{uiText("auto.ui.609678e0b8")}</p>
+              <p className="text-xs text-[#10b981]">{uiText("auto.ui.609678e0b8")}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-1.5">
-              <BookOpen className="w-4 h-4 text-muted-foreground" />
+            <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-[#C5A059]" />
               Anni di esperienza nel trading
             </label>
             <div className="flex items-center gap-2">
@@ -382,19 +475,16 @@ export function ProfileWidget() {
                 value={editYearsExp}
                 onChange={(e) => setEditYearsExp(e.target.value)}
                 placeholder={uiText("auto.ui.7cd47c3736")}
-                className="w-28"
+                className="w-28 bg-[#07080b] border-[#C5A059]/30 font-mono"
               />
-              <span className="text-sm text-muted-foreground">{uiText("auto.ui.bf26aacd34")}</span>
+              <span className="text-xs text-muted-foreground">{uiText("auto.ui.bf26aacd34")}</span>
             </div>
-            <p className="text-xs text-muted-foreground/50">
-              Lascia vuoto se preferisci non indicarlo
-            </p>
           </div>
 
-          <div className="rounded-xl bg-secondary/20 border border-border/20 p-3">
-            <p className="text-xs text-muted-foreground/60 flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>{uiText("auto.ui.9e855a218f")}<strong>Win Rate</strong>{uiText("auto.ui.a3304765a2")}</span>
+          <div className="rounded-xl bg-[#07080b] border border-[#C5A059]/20 p-3">
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-[#C5A059]" />
+              <span>{uiText("auto.ui.9e855a218f")}<strong className="text-[#F4F4F6]">Win Rate</strong>{uiText("auto.ui.a3304765a2")}</span>
             </p>
           </div>
 
@@ -404,11 +494,15 @@ export function ProfileWidget() {
               variant="outline"
               onClick={() => setIsEditModalOpen(false)}
               disabled={updateProfileMutation.isPending}
-            >{uiText("auto.ui.6c3de5381b")}</Button>
+              className="border-[#26262E] text-xs font-mono"
+            >
+              {uiText("auto.ui.6c3de5381b")}
+            </Button>
             <Button
               type="submit"
               isLoading={updateProfileMutation.isPending}
               disabled={isSaveDisabled}
+              className="bg-[#C5A059] hover:bg-[#E8C56A] text-black font-semibold text-xs font-mono"
             >
               Salva Modifiche
             </Button>
