@@ -93,14 +93,6 @@ export default function FinancialArchitecture() {
   const [, setLocation] = useLocation();
   const { entitlements } = useLimenEntitlements();
 
-  if (!entitlements.financialArchitecture) {
-    return (
-      <PageLayout>
-        <LimenServiceLockGate serviceId="financial_architecture" />
-      </PageLayout>
-    );
-  }
-
   const { isFreeTrial, remainingTime } = useFreeTrial();
   const { data: remoteProfile, isLoading: _isLoading } = useFinancialProfile();
   const updateMutation = useUpdateFinancialProfile();
@@ -622,6 +614,15 @@ export default function FinancialArchitecture() {
       ? Math.min(100, (monthlyPAC / profile.externalStableIncome) * 100)
       : 0;
 
+  // Service lock gate for Limen Protocol
+  if (!entitlements.financialArchitecture) {
+    return (
+      <PageLayout>
+        <LimenServiceLockGate serviceId="financial_architecture" />
+      </PageLayout>
+    );
+  }
+
   // Free trial gate screen
   if (isFreeTrial) {
     return (
@@ -686,6 +687,15 @@ export default function FinancialArchitecture() {
         toolId={activeDossierToolId}
         isOpen={activeDossierToolId !== null}
         onClose={() => setActiveDossierToolId(null)}
+      />
+
+      {/* ─── MODALE COMPENDIO DOTTRINA FISCALE (ITALIA 🇮🇹) ─── */}
+      <TaxDoctrineModal
+        isOpen={isTaxModalOpen}
+        onClose={() => setIsTaxModalOpen(false)}
+        taxCountry={profile.taxCountry || "IT"}
+        taxRegime={profile.taxRegime || "DICHIARATIVO"}
+        onSelectRegime={(regime) => updateBaseParam({ taxRegime: regime })}
       />
 
       {/* ─── COCKPIT AD ALTA DENSITÀ A 3 COLONNE (NESSUNA TESTATA, ZERO VUOTI, 100% UTILIZZO DELLO SPAZIO) ─── */}
@@ -1244,7 +1254,7 @@ export default function FinancialArchitecture() {
               pacMonthlyEuro={pacEquity}
               color="#10b981"
               tone="emerald"
-              badgeTag="26% CAPGAIN • UCITS ACC"
+              badgeTag="CRESCITA (COMPOUNDING) • 26%"
               timingSignal={formatCompactRegime(equityTiming.regimeLabel)}
               timingScore={equityTiming.score}
               derivedMetricLabel="CAGR Atteso"
@@ -1266,7 +1276,7 @@ export default function FinancialArchitecture() {
               pacMonthlyEuro={pacDividends}
               color="#C5A059"
               tone="gold"
-              badgeTag="26% NETTO FRONTIERA"
+              badgeTag="RENDITA (CASHFLOW) • 26%"
               timingSignal={formatCompactRegime(dividendTiming.regimeLabel)}
               timingScore={dividendTiming.score}
               derivedMetricLabel="Rendimento Totale"
@@ -1391,23 +1401,53 @@ export default function FinancialArchitecture() {
                   </div>
                 </div>
 
-                {/* Selettore Pillole Orizzonte Temporale & Donut */}
+                {/* Selettore Pillole Orizzonte Temporale, Toggle Lordo/Netto & Donut */}
                 <div className="flex items-center justify-between gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowPillarsBreakdown(!showPillarsBreakdown)}
-                    title="Mostra / Nascondi Donut dei 5 Pilastri"
-                    className={`px-2 py-0.5 rounded border text-[10px] font-mono font-bold transition-all ${
-                      showPillarsBreakdown
-                        ? "bg-[#C5A059]/20 border-[#C5A059] text-[#E8C56A]"
-                        : "border-border/60 text-slate-400 hover:text-foreground"
-                    }`}
-                  >
-                    <PieChart className="h-2.5 w-2.5 inline mr-1" />
-                    Donut Pilastri
-                  </button>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowPillarsBreakdown(!showPillarsBreakdown)}
+                      title="Mostra / Nascondi Donut dei 5 Pilastri"
+                      className={`px-2 py-0.5 rounded border text-[10px] font-mono font-bold transition-all ${
+                        showPillarsBreakdown
+                          ? "bg-[#C5A059]/20 border-[#C5A059] text-[#E8C56A]"
+                          : "border-border/60 text-slate-400 hover:text-foreground"
+                      }`}
+                    >
+                      <PieChart className="h-2.5 w-2.5 inline mr-1" />
+                      Donut
+                    </button>
 
-                  <div className="flex items-center gap-0.5 bg-[#07080b] p-0.5 rounded border border-border/70 font-mono text-[10px]">
+                    {/* Toggle LORDO vs NETTO POST-TAX */}
+                    <div className="flex items-center gap-0.5 bg-[#07080b] p-0.5 rounded border border-border/70 font-mono text-[9px]">
+                      <button
+                        type="button"
+                        onClick={() => updateBaseParam({ showNetOfTax: false })}
+                        className={`px-1.5 py-0.5 rounded transition-all font-bold whitespace-nowrap ${
+                          profile.showNetOfTax === false
+                            ? "bg-slate-700 text-white shadow-sm"
+                            : "text-slate-400 hover:text-foreground"
+                        }`}
+                        title="Calcolo Lordo Nominale (senza detrazione fiscale)"
+                      >
+                        LORDO
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateBaseParam({ showNetOfTax: true })}
+                        className={`px-1.5 py-0.5 rounded transition-all font-bold whitespace-nowrap ${
+                          profile.showNetOfTax !== false
+                            ? "bg-emerald-950 text-emerald-300 border border-emerald-500/50 shadow-[0_0_6px_rgba(16,185,129,0.3)]"
+                            : "text-slate-400 hover:text-foreground"
+                        }`}
+                        title="Calcolo Netto Post-Tax (al netto di imposta 26% e bollo/IVAFE 0.20%)"
+                      >
+                        NETTO 🇮🇹
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-0.5 bg-[#07080b] p-0.5 rounded border border-border/70 font-mono text-[10px] shrink-0">
                     {[1, 3, 5, 10, 20].map((yr) => (
                       <button
                         key={yr}
@@ -1440,25 +1480,25 @@ export default function FinancialArchitecture() {
                   <div className="grid grid-cols-3 gap-2 text-center shrink-0">
                     <div className="rounded-lg border border-[#C5A059]/35 bg-[#C5A059]/10 p-2 font-mono">
                       <span className="text-[10px] uppercase text-slate-400 font-bold block truncate">
-                        NetWorth +{selectedHorizon}A
+                        {profile.showNetOfTax !== false ? "NetWorth Netto 🇮🇹" : "NetWorth Lordo"} +{selectedHorizon}A
                       </span>
                       <span className="text-sm sm:text-base font-black text-[#E8C56A] whitespace-nowrap block mt-0.5">
                         {wealthProjections.endProjectedNetWorth.toLocaleString("it-IT")} €
                       </span>
                       <span className="text-[10px] text-emerald-400 font-bold block whitespace-nowrap">
-                        +{wealthProjections.totalGainPct.toFixed(1)}%
+                        +{wealthProjections.totalGainPct.toFixed(1)}% {profile.showNetOfTax !== false ? "netto" : "lordo"}
                       </span>
                     </div>
 
                     <div className="rounded-lg border border-border/80 bg-[#07080b]/80 p-2 font-mono">
                       <span className="text-[10px] uppercase text-slate-400 font-bold block truncate">
-                        Rendita Passiva
+                        {profile.showNetOfTax !== false ? "Rendita Netta" : "Rendita Lorda"}
                       </span>
                       <span className="text-sm sm:text-base font-black text-foreground whitespace-nowrap block mt-0.5">
                         +{wealthProjections.totalMonthlyPassiveCashflowEnd.toLocaleString("it-IT")} €/m
                       </span>
                       <span className="text-[9.5px] text-slate-400 block whitespace-nowrap">
-                        (Div + Staking)
+                        {profile.showNetOfTax !== false ? "(Post-Tax 26%)" : "(Lordo)"}
                       </span>
                     </div>
 
@@ -1483,6 +1523,32 @@ export default function FinancialArchitecture() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Micro-Card Telemetria Drag Fiscale Stimato */}
+                  {wealthProjections.taxDragEuro > 0 && (
+                    <div className="rounded-lg border border-[#C5A059]/30 bg-[#07080b]/80 px-2.5 py-1.5 flex items-center justify-between font-mono text-[9.5px] shrink-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Scale className="h-3 w-3 text-[#C5A059] shrink-0" />
+                        <span className="text-slate-300 font-semibold truncate">
+                          Drag Fiscale (+{selectedHorizon}A):
+                        </span>
+                        <ToolInfoTrigger
+                          toolId="taxCompoundingDrag"
+                          toolName="Drag Fiscale & Compounding"
+                          onClick={setActiveDossierToolId}
+                          size="xs"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-bold text-red-400 whitespace-nowrap">
+                          -{wealthProjections.taxDragEuro.toLocaleString("it-IT")} €
+                        </span>
+                        <span className="text-slate-400 text-[8.5px] hidden sm:inline whitespace-nowrap">
+                          (Bollo 0.20%: ~{wealthProjections.estimatedStampDutyTotalEuro.toLocaleString("it-IT")} €)
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Scomposizione del Capitale Finale & Monitor Traguardo FIRE */}
                   {(() => {

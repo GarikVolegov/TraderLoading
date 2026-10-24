@@ -177,6 +177,7 @@ const legacyHardcodedCopyFiles = new Set<string>([
   "components/financial/MonteCarloSimulationCard.tsx",
   "components/financial/PillarsAllocationBar.tsx",
   "components/financial/PillarsDonutChart.tsx",
+  "components/financial/TaxDoctrineModal.tsx",
   "components/milestones/LimenCertificateModal.tsx",
   "components/onboarding/ThresholdOfSelectionModal.tsx",
   "components/process/ProcessNextAction.tsx",
