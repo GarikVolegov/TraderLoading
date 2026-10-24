@@ -1244,7 +1244,7 @@ export default function FinancialArchitecture() {
               pacMonthlyEuro={pacEquity}
               color="#10b981"
               tone="emerald"
-              badgeTag="CRESCITA (COMPOUNDING)"
+              badgeTag="26% CAPGAIN • UCITS ACC"
               timingSignal={formatCompactRegime(equityTiming.regimeLabel)}
               timingScore={equityTiming.score}
               derivedMetricLabel="CAGR Atteso"
@@ -1266,7 +1266,7 @@ export default function FinancialArchitecture() {
               pacMonthlyEuro={pacDividends}
               color="#C5A059"
               tone="gold"
-              badgeTag="RENDITA (CASHFLOW)"
+              badgeTag="26% NETTO FRONTIERA"
               timingSignal={formatCompactRegime(dividendTiming.regimeLabel)}
               timingScore={dividendTiming.score}
               derivedMetricLabel="Rendimento Totale"
@@ -1288,11 +1288,7 @@ export default function FinancialArchitecture() {
               pacMonthlyEuro={pacCrypto}
               color="#f59e0b"
               tone="gold"
-              badgeTag={
-                profile.totalNetWorth > 0 && (subAllocations.cryptoAllocation / profile.totalNetWorth) * 100 <= 15
-                  ? "Conforme (<15%)"
-                  : "Guardrail >15%"
-              }
+              badgeTag="26% + 0.20% IVAFE"
               timingSignal={formatCompactRegime(cryptoTiming.regimeLabel)}
               timingScore={cryptoTiming.score}
               derivedMetricLabel="CAGR Ciclico Atteso"
@@ -1310,7 +1306,7 @@ export default function FinancialArchitecture() {
             {/* 4. Copertura & Metalli (Oro) */}
             <WealthAssetCard
               toolId="hedgingAllocation"
-              label="Copertura (Oro)"
+              label="Copertura (Oro & BTP)"
               subtitle="Oro fisico e asset decorrelati"
               valueEuro={subAllocations.hedgingAllocation}
               pct={profile.totalNetWorth > 0 ? (subAllocations.hedgingAllocation / profile.totalNetWorth) * 100 : 0}
@@ -1318,7 +1314,7 @@ export default function FinancialArchitecture() {
               pacMonthlyEuro={pacHedging}
               color="#64748b"
               tone="slate"
-              badgeTag="SCUDO DIFENSIVO"
+              badgeTag="12.5% STATO / 26% ORO"
               timingSignal={formatCompactRegime(goldTiming.regimeLabel)}
               timingScore={goldTiming.score}
               derivedMetricLabel="Apprezzamento Atteso"
@@ -1340,7 +1336,7 @@ export default function FinancialArchitecture() {
               pacMonthlyEuro={0}
               color="#E8C56A"
               tone="gold"
-              badgeTag="OPERATIVITÀ"
+              badgeTag="26% REDDITI DIVERSI"
               timingSignal={formatCompactRegime(tradingPositioning.regimeLabel)}
               timingScore={tradingPositioning.timingScore}
               derivedMetricLabel="Target"
