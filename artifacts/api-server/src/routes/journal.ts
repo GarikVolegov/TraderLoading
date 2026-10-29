@@ -882,8 +882,8 @@ const serveJournalImage: RequestHandler = async (req, res, next) => {
     res.status(404).json({ error: "Not found" }); return;
   }
   const currentUserId = getUserId(req);
-  if (image.userId && currentUserId && image.userId !== currentUserId) {
-    res.status(403).json({ error: "Forbidden" }); return;
+  if (image.userId && image.userId !== currentUserId) {
+    res.status(currentUserId ? 403 : 401).json({ error: "Forbidden" }); return;
   }
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Cache-Control", "private, max-age=86400");

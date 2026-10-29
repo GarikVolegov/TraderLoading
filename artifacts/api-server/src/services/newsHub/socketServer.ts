@@ -6,10 +6,12 @@ import type { NewsHubRuntime } from "./runtime.js";
 import { newsSubscriptionKey } from "./providerCorpus.js";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
 import { rejectWebSocketUpgrade } from "../webSocketAuth.js";
+import { isAllowedWebSocketOrigin } from "../../lib/security.js";
 import { isAtConnectionCapacity } from "../webSocketCapacity.js";
 import {
   canSend,
   createControlWebSocketServer,
+  createSocketRateLimiter,
   startHeartbeat,
 } from "../webSocketHeartbeat.js";
 
@@ -70,9 +72,20 @@ export function attachNewsHubWebSocket(server: Server, runtime: NewsHubRuntime):
   const stopHeartbeat = startHeartbeat(wss);
   const subscriptions = new WeakMap<WebSocket, ClientSubscription>();
   const subscriptionCleanups = new WeakMap<WebSocket, () => void>();
+  const allowSocketMessage = createSocketRateLimiter(30, 10_000);
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "", "http://localhost");
     if (url.pathname !== "/api/news/ws") return;
+    const origin = Array.isArray(request.headers.origin)
+      ? request.headers.origin[0]
+      : request.headers.origin;
+    const host = Array.isArray(request.headers.host)
+      ? request.headers.host[0]
+      : request.headers.host;
+    if (!isAllowedWebSocketOrigin(origin, host)) {
+      rejectWebSocketUpgrade(socket, 403, "Forbidden");
+      return;
+    }
     if (isAtConnectionCapacity(wss.clients.size)) {
       rejectWebSocketUpgrade(socket, 503, "Server at capacity");
       return;
@@ -85,18 +98,23 @@ export function attachNewsHubWebSocket(server: Server, runtime: NewsHubRuntime):
   server.on("upgrade", onUpgrade);
 
   const unsubscribe = runtime.onEvent((event) => {
+    if (wss.clients.size === 0 || event.type === "news_article") return;
+    const serialized = JSON.stringify(event);
     for (const client of wss.clients) {
       if (event.type === "news_snapshot") {
-        if (matchesSnapshot(subscriptions.get(client), event)) send(client, event);
+        if (matchesSnapshot(subscriptions.get(client), event) && canSend(client)) {
+          client.send(serialized);
+        }
         continue;
       }
-      if (event.type === "news_article") {
-        // Raw transport messages enter the shared corpus. Only a curated,
-        // language-specific snapshot can reach a subscriber.
+      if (
+        event.type === "news_error" &&
+        event.subscriptionKey &&
+        event.subscriptionKey !== newsSubscriptionKey(subscriptions.get(client) ?? {})
+      ) {
         continue;
       }
-      if (event.type === "news_error" && event.subscriptionKey && event.subscriptionKey !== newsSubscriptionKey(subscriptions.get(client) ?? {})) continue;
-      send(client, event);
+      if (canSend(client)) client.send(serialized);
     }
   });
 
@@ -105,6 +123,7 @@ export function attachNewsHubWebSocket(server: Server, runtime: NewsHubRuntime):
     for (const status of runtime.getProviderStatuses()) send(client, { type: "news_provider_status", status });
 
     client.on("message", (raw) => {
+      if (!allowSocketMessage(client)) return;
       const message = parse(raw);
       if (!message) {
         send(client, { type: "news_error", message: "Invalid news hub message" });

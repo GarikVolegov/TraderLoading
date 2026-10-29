@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageLayout } from "@/components/PageLayout";
 import { ProCheckoutDialog } from "@/components/ProCheckoutDialog";
+import { LimenCandidacyModal } from "@/components/candidacy/LimenCandidacyModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBillingStatus } from "@/lib/billingApi";
 
@@ -68,6 +69,7 @@ export default function ProPage() {
   const { language, t } = useLanguage();
   const localeCode = language === "en" ? "en-US" : language;
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [limenModalOpen, setLimenModalOpen] = useState(false);
   const isPro = billing.data?.pro === true;
   // Fail open (unlike ProUpgradeGate, which already gates on billing.isPending
   // and only needs a default for the rare error case): this page has no loading
@@ -162,6 +164,32 @@ export default function ProPage() {
                 </p>
               </div>
             )}
+
+            {/* Iniziativa Protocollo LIMEN */}
+            <div className="mx-auto mt-6 max-w-xl rounded-xl border border-[#C5A059]/40 bg-[#07080b]/90 p-4 text-left shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded border border-[#C5A059]/40 bg-[#C5A059]/15 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-[#E8C56A]">
+                      Dotazioni Protocollo AUREUS
+                    </span>
+                    <span className="font-mono text-xs text-muted-foreground whitespace-nowrap">
+                      10 €/m · 150 €/m
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[#94a3b8] leading-relaxed">
+                    Forgia del Passato, Architettura Patrimoniale e Dottrina del Tempo disponibili su candidatura con piano mensile o annuale.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => setLimenModalOpen(true)}
+                  className="shrink-0 border border-[#C5A059] bg-[#C5A059] text-black font-mono text-xs font-bold uppercase tracking-wider hover:bg-[#E8C56A] h-8 px-4"
+                >
+                  Configura
+                </Button>
+              </div>
+            </div>
           </motion.div>
         </section>
 
@@ -287,6 +315,7 @@ export default function ProPage() {
       </div>
 
       <ProCheckoutDialog open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+      <LimenCandidacyModal isOpen={limenModalOpen} onClose={() => setLimenModalOpen(false)} />
     </PageLayout>
   );
 }

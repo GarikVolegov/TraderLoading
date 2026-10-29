@@ -169,8 +169,14 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const activeBackgroundUrl = pickActiveBackgroundUrl({ isMobile, desktopUrl: backgroundUrlDesktop, mobileUrl: backgroundUrlMobile });
-  const backgroundPresets = resolveDeviceCatalog(device, customBackgrounds);
-  const canAddCustomBackground = canAddCustom(device, customBackgrounds);
+  const backgroundPresets = useMemo(
+    () => resolveDeviceCatalog(device, customBackgrounds),
+    [device, customBackgrounds],
+  );
+  const canAddCustomBackground = useMemo(
+    () => canAddCustom(device, customBackgrounds),
+    [device, customBackgrounds],
+  );
 
   const setActiveBackgroundForDevice = useCallback((url: string | null) => {
     if (isMobile) setBackgroundUrlMobile(url);
@@ -256,36 +262,59 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
     document.body.style.fontFamily = family;
   }, [fontChoice]);
 
+  const contextValue = useMemo<BackgroundContextValue>(
+    () => ({
+      activeBackgroundUrl,
+      device,
+      backgroundUrlDesktop,
+      backgroundUrlMobile,
+      setActiveBackgroundForDevice,
+      darkness,
+      setDarkness,
+      fontChoice,
+      setFontChoice,
+      tradingSessions,
+      setTradingSessions,
+      lotDivisor,
+      setLotDivisor,
+      calendarCurrencies,
+      setCalendarCurrencies,
+      calendarImpacts,
+      setCalendarImpacts,
+      backgroundPresets,
+      customBackgrounds,
+      setCustomBackgrounds,
+      canAddCustomBackground,
+      selectedPairs,
+      setSelectedPairs,
+      selectedCurrencies,
+      settingsLoaded,
+    }),
+    [
+      activeBackgroundUrl,
+      device,
+      backgroundUrlDesktop,
+      backgroundUrlMobile,
+      setActiveBackgroundForDevice,
+      darkness,
+      fontChoice,
+      tradingSessions,
+      lotDivisor,
+      calendarCurrencies,
+      calendarImpacts,
+      backgroundPresets,
+      customBackgrounds,
+      setCustomBackgrounds,
+      canAddCustomBackground,
+      selectedPairs,
+      setSelectedPairs,
+      selectedCurrencies,
+      settingsLoaded,
+    ],
+  );
+
   return (
-    <BackgroundCtx.Provider
-      value={{
-        activeBackgroundUrl,
-        device,
-        backgroundUrlDesktop,
-        backgroundUrlMobile,
-        setActiveBackgroundForDevice,
-        darkness,
-        setDarkness,
-        fontChoice,
-        setFontChoice,
-        tradingSessions,
-        setTradingSessions,
-        lotDivisor,
-        setLotDivisor,
-        calendarCurrencies,
-        setCalendarCurrencies,
-        calendarImpacts,
-        setCalendarImpacts,
-        backgroundPresets,
-        customBackgrounds,
-        setCustomBackgrounds,
-        canAddCustomBackground,
-        selectedPairs,
-        setSelectedPairs,
-        selectedCurrencies,
-        settingsLoaded,
-      }}
-    >
+    <BackgroundCtx.Provider value={contextValue}>
       {children}
     </BackgroundCtx.Provider>
   );

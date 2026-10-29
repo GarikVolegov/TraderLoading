@@ -59,6 +59,8 @@ async function main(): Promise<void> {
           consecutiveFailures = 0;
           if (result.skipped) skipped += 1;
           console.log(`[ingest] ${++done}/${total} ${label}: ${result.skipped ? "verified; skipped" : `${result.written} bars saved`} (${((Date.now() - startedAt) / 1000).toFixed(1)}s)`);
+          // Smooth pacing: pause 3s between downloaded chunks to prevent CDN anti-abuse throttling
+          if (!result.skipped) await new Promise((r) => setTimeout(r, 3000));
         } catch (error) {
           failed += 1;
           consecutiveFailures += 1;
@@ -79,6 +81,6 @@ async function main(): Promise<void> {
 
 main().catch(error => {
   console.error(`[ingest] ${error instanceof Error ? error.message : String(error)}`);
-  console.error("usage: ingest <seed|tail> [--symbols=XAUUSD,EURUSD,USOIL] [--years=5] [--from=YYYY-MM-DD] [--to=YYYY-MM-DD] [--resume=true|false]; import --symbols=SYMBOL --file=PATH --source=dukascopy");
+  console.error("usage: ingest <seed|tail> [--symbols=XAUUSD,EURUSD,USOIL,BTCUSD,ETHUSD] [--years=7] [--from=YYYY-MM-DD] [--to=YYYY-MM-DD] [--resume=true|false]; import --symbols=SYMBOL --file=PATH --source=dukascopy");
   process.exitCode = 1;
 }).finally(closeDbPool);

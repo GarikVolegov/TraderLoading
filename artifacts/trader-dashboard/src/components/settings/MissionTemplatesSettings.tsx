@@ -124,10 +124,10 @@ export function MissionTemplatesSettings() {
             <Input
               type="number"
               min="1"
-              placeholder="XP"
+              placeholder="Indice"
               value={newXp}
               onChange={(e) => setNewXp(e.target.value)}
-              className="text-sm w-24"
+              className="text-sm w-24 font-mono"
             />
             <Button
               onClick={handleAdd}
@@ -194,8 +194,8 @@ export function MissionTemplatesSettings() {
                         <h4 className="text-sm font-semibold truncate">
                           {t.title}
                         </h4>
-                        <span className="text-xs font-mono text-accent bg-secondary/60 px-1.5 py-0.5 rounded">
-                          {t.xpReward} XP
+                        <span className="text-xs font-mono text-accent bg-secondary/60 px-1.5 py-0.5 rounded whitespace-nowrap">
+                          +{t.xpReward} Indice
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">

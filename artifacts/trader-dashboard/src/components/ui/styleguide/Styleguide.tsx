@@ -34,14 +34,14 @@ export default function Styleguide() {
         <div className="flex items-center gap-2">
           <SigilIcon variant="threshold" size={24} className="text-primary" />
           <span className="font-mono text-xs font-bold uppercase tracking-[0.22em] text-primary">
-            LIMEN PROTOCOL // LIVING DESIGN SYSTEM
+            AUREUS PROTOCOL // LIVING DESIGN SYSTEM
           </span>
         </div>
         <h1 className="text-3xl font-black uppercase tracking-tight text-foreground font-display">
           Architectural Monolith / Obsidian Glass
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
-          Il sistema visivo ufficiale di LIMEN PROTOCOL: palette Nero Ossidiana, Pietra Antracite, Oro Brunito (#C5A059),
+          Il sistema visivo ufficiale di AUREUS PROTOCOL: palette Nero Ossidiana, Pietra Antracite, Oro Brunito (#C5A059),
           Cremisi Scuro e tipografia Cinzel, Space Grotesk e JetBrains Mono.
         </p>
       </header>
@@ -106,7 +106,7 @@ export default function Styleguide() {
         <Badge variant="secondary">SECONDARY / NEUTRO</Badge>
         <Badge variant="outline">OUTLINE / PROFILO</Badge>
         <Badge variant="muted">MUTED / SUBACQUEO</Badge>
-        <Badge variant="brand">BRAND / LIMEN</Badge>
+        <Badge variant="brand">BRAND / AUREUS</Badge>
       </Section>
 
       <Section title="Buttons · Action Tokens">

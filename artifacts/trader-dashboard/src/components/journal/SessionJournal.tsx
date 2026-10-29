@@ -32,9 +32,9 @@ import {
 import "@/components/process/process.css";
 
 /**
- * LIMEN PROTOCOL — Il Libro della Verità (Cronaca delle Sessioni)
+ * AUREUS PROTOCOL — Il Libro della Verità (Cronaca delle Sessioni)
  *
- * Restructured with the solemn, surgical aesthetic of LIMEN and maximum operational usability:
+ * Restructured with the solemn, surgical aesthetic of AUREUS and maximum operational usability:
  * - Real-time metrics ribbon (sessions, adherence, scenario outcomes, cumulative R)
  * - Live active session spotlight (if today's market session is in progress)
  * - Interactive search & status filter dock (conforming, deviations, trade, wait)

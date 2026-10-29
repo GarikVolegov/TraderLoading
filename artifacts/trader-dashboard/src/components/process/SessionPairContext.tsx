@@ -96,7 +96,13 @@ export function SessionPairContext({
         </p>
       )}
       {data && !collecting && (
-        <DirectionalOutlookPanel outlook={data.outlook} pair={pair} now={now} fresh={fresh} />
+        <DirectionalOutlookPanel
+          outlook={data.outlook}
+          directionalBias={data.directionalBias}
+          pair={pair}
+          now={now}
+          fresh={fresh}
+        />
       )}
       <section className="process-plan-summary" aria-label={t("center.score")}>
         <div className="flex flex-wrap items-center justify-between gap-3">

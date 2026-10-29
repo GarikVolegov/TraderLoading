@@ -37,10 +37,14 @@ import { validAcademyReferral } from "@/lib/academyReferral";
 
 import {
   type AcademySyllabusItem,
+  type MentorDoctrineTome,
 } from "../../../../contracts/academy";
 import LandingPage from "./LandingPage";
 import { AcademyVideoUpload, ManagedLessonVideo } from "@/components/academy/AcademyVideoUpload";
+import { SovereignVideoWatermark } from "@/components/academy/SovereignVideoWatermark";
 import { GeneralsBooksReader } from "@/components/academy/GeneralsBooksReader";
+import { MentorDoctrineViewer } from "@/components/academy/MentorDoctrineViewer";
+import { DoctrineExamModal } from "@/components/milestones/DoctrineExamModal";
 import { getLimenSessionInfo } from "@/lib/limenSession";
 import { useGetProfile } from "@workspace/api-client-react";
 import "./academy.css";
@@ -455,7 +459,7 @@ export const CANONI_MASTER_DATA: CanoneGroup[] = [
     id: "canone-5",
     roman: "CANONE V",
     title: "L'Arte del Duello & L'Arte dell'Assedio",
-    subtitle: "I Due Protocolli Operativi di LIMEN: Scalp ad Alta Frequenza e Swing Macro",
+    subtitle: "I Due Protocolli Operativi di AUREUS: Scalp ad Alta Frequenza e Swing Macro",
     timeframe: "M1 vs Daily",
     totalDuration: "1h 56m · 4 trasmissioni",
     transmissions: [
@@ -563,7 +567,8 @@ export default function Academy() {
   const lessonIdParam = params.get("lesson") ?? params.get("canone");
 
   // Determine active tab cleanly
-  const activeTab = useMemo<"canoni" | "trattato" | "espansione" | "incisione">(() => {
+  const activeTab = useMemo<"canoni" | "mentore" | "trattato" | "espansione" | "incisione">(() => {
+    if (tabParam === "mentore" || tabParam === "tomi" || tabParam === "dottrina") return "mentore";
     if (tabParam === "trattato" || tabParam === "codex") return "trattato";
     if (tabParam === "espansione" || tabParam === "affiliate") return "espansione";
     if (tabParam === "incisione" || tabParam === "teacher") return "incisione";
@@ -650,7 +655,7 @@ export default function Academy() {
 
   const handleExportSigillo = () => {
     const allChecked = Object.values(checklist).every(Boolean);
-    const text = `LIMEN PROTOCOL // LA DOTTRINA DEL TEMPO // IL FILTRO DEL CUSTODE
+    const text = `AUREUS PROTOCOL // LA DOTTRINA DEL TEMPO // IL FILTRO DEL CUSTODE
 Data CET: ${now.toLocaleDateString("it-IT")} ore ${now.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
 Operatore: ${profile?.name ?? "Operatore Sovrano"} · Grado: ${profile?.level ?? 1}
 Canone di Riferimento: ${activeTransmission.code} — ${activeTransmission.title}
@@ -680,7 +685,35 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
     });
   };
 
-  // Section tabs definition (3 sole sottosezioni chiare)
+  // Stato Esami di Padronanza Dottrinale (Tomi del Mentore)
+  const [activeExamTome, setActiveExamTome] = useState<MentorDoctrineTome | null>(null);
+  const [passedDoctrineExams, setPassedDoctrineExams] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("aureus_passed_doctrine_exams");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handlePassExam = (tomeId: string) => {
+    setPassedDoctrineExams((prev) => {
+      if (prev.includes(tomeId)) return prev;
+      const updated = [...prev, tomeId];
+      try {
+        localStorage.setItem("aureus_passed_doctrine_exams", JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+    toast({
+      title: "Sigillo Dottrinale Confermato",
+      description: "Padronanza registrata nel Dossier dell'Operatore e nelle Milestones di Grado.",
+    });
+  };
+
+  // Section tabs definition (Sezioni chiare con Corpus del Mentore)
   const sectionTabs: SectionTab[] = useMemo(
     () => [
       {
@@ -689,13 +722,23 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
         icon: <Layers className="h-4 w-4" />,
       },
       {
-        value: "trattato",
-        label: "02 · IL TRATTATO DEI GENERALI",
+        value: "mentore",
+        label: "02 · IL CORPUS DEL MENTORE",
         icon: <BookOpen className="h-4 w-4" />,
+        badge: (
+          <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold">
+            5 TOMI
+          </span>
+        ),
+      },
+      {
+        value: "trattato",
+        label: "03 · IL TRATTATO DEI GENERALI",
+        icon: <Shield className="h-4 w-4" />,
       },
       {
         value: "espansione",
-        label: "03 · IL MANDATO D'ESPANSIONE",
+        label: "04 · IL MANDATO D'ESPANSIONE",
         icon: <Award className="h-4 w-4" />,
         badge: (
           <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold">
@@ -729,22 +772,13 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
       <div className="flex flex-col lg:h-full lg:min-h-0 lg:overflow-hidden pt-1 max-w-[1760px] w-full mx-auto">
         {/* ─── BARRA DI NAVIGAZIONE COMPATTA (3 SEZIONI SOVRANE & PONTE FORGIA) ─── */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-2 shrink-0">
-          <div className="lg:hidden">
+          <div className="w-full sm:w-auto">
             <SectionTabs
               ariaLabel="Sezioni della Dottrina del Tempo"
               items={sectionTabs}
               value={activeTab}
               onValueChange={handleTabChange}
             />
-          </div>
-          <div className="hidden lg:flex items-center gap-2.5">
-            <span className="h-2 w-2 rounded-full bg-[#C5A059] animate-pulse" />
-            <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#C5A059]">
-              {activeTab === "canoni" && "01 · I CANONI OPERATIVI"}
-              {activeTab === "trattato" && "02 · IL TRATTATO DEI GENERALI"}
-              {activeTab === "espansione" && "03 · IL MANDATO D'ESPANSIONE"}
-              {activeTab === "incisione" && "BANCO D'INCISIONE"}
-            </span>
           </div>
           <div className="flex items-center gap-2 ml-auto">
             <Link
@@ -786,14 +820,49 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-mono text-xs text-muted-foreground bg-background px-2.5 py-1 rounded border border-border">
+                    <span
+                      className="inline-flex items-center gap-1 font-mono text-[10px] text-[#E8C56A] bg-[#C5A059]/10 px-2 py-0.5 rounded border border-[#C5A059]/30 whitespace-nowrap"
+                      title="Stream protetto con crittografia temporanea e watermark anticlonazione"
+                    >
+                      <Shield className="h-3 w-3 text-[#E8C56A]" />
+                      <span>Stream Protetto</span>
+                    </span>
+                    <span className="font-mono text-xs text-muted-foreground bg-background px-2.5 py-1 rounded border border-border whitespace-nowrap">
                       {activeTransmission.duration}
                     </span>
                   </div>
                 </CardHeader>
-                <CardContent className="p-0 bg-black aspect-video relative flex items-center justify-center overflow-hidden">
-                  {/* Player Rendering: Cloudflare Stream, Vimeo/YouTube Embed or Native Limen Cinematic */}
-                  {activeTransmission.streamVideoId ? (
+                <CardContent
+                  className="p-0 bg-black aspect-video relative flex items-center justify-center overflow-hidden"
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  {/* Sovereign Anti-Piracy Watermark Sentinel */}
+                  <SovereignVideoWatermark
+                    operatorName={profile?.name || "Iniziato Aureus"}
+                    operatorId={profile?.id != null ? `OP-${profile.id}` : "OP-SOVEREIGN"}
+                    activeLessonTitle={activeTransmission.title}
+                    enabled={Boolean(_hasProtocolAccess || activeTransmission.isFreePreview)}
+                  />
+
+                  {!activeTransmission.isFreePreview && !_hasProtocolAccess ? (
+                    <div className="absolute inset-0 bg-[#07080b]/95 flex flex-col items-center justify-center p-6 text-center z-10 border border-[#C5A059]/30">
+                      <div className="h-14 w-14 rounded-full bg-[#C5A059]/10 border border-[#C5A059]/40 flex items-center justify-center mb-4 text-[#E8C56A]">
+                        <Lock className="h-7 w-7" />
+                      </div>
+                      <h3 className="text-base sm:text-lg font-bold text-[#E8C56A] uppercase tracking-wider mb-2 font-display">
+                        Trasmissione Riservata all'Ordine
+                      </h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground max-w-md mb-5 leading-relaxed">
+                        Questo Canone Operativo richiede l'Investitura del Protocollo AUREUS attivo.
+                      </p>
+                      <Link
+                        href="/pro"
+                        className="px-5 py-2.5 rounded bg-[#C5A059] text-[#07080b] hover:bg-[#E8C56A] font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)]"
+                      >
+                        Sblocca con l'Investitura Sovrana →
+                      </Link>
+                    </div>
+                  ) : activeTransmission.streamVideoId ? (
                     <ManagedLessonVideo
                       id={activeTransmission.id}
                       title={activeTransmission.title}
@@ -811,6 +880,8 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
                   ) : (
                     <video
                       controls
+                      controlsList="nodownload noplaybackrate"
+                      disablePictureInPicture
                       playsInline
                       className="w-full h-full object-cover"
                       poster="/images/backgrounds/nero-ossidiana.webp"
@@ -1078,6 +1149,13 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
                               key={t.id}
                               type="button"
                               onClick={() => {
+                                if (!t.isFreePreview && !_hasProtocolAccess) {
+                                  toast({
+                                    title: "Canone Riservato all'Ordine",
+                                    description: "Questa trasmissione richiede il Protocollo Attivo. Accedi all'Investitura per sbloccare tutti i Canoni.",
+                                    variant: "destructive",
+                                  });
+                                }
                                 setSelectedCanoneId(group.id);
                                 setSelectedTransmissionId(t.id);
                               }}
@@ -1118,7 +1196,17 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
           </div>
         )}
 
-        {/* ─── SEZIONE 02: IL TRATTATO DEI GENERALI (I TRE LIBRI DEI GENERALI) ─── */}
+        {/* ─── SEZIONE 02: IL CORPUS DEL MENTORE (I 5 TOMI DELLA DOTTRINA OPERATIVA) ─── */}
+        {activeTab === "mentore" && (
+          <div className="limen-scroll-pane flex-1 min-h-0 pt-3 pb-8">
+            <MentorDoctrineViewer
+              onOpenExam={(tome) => setActiveExamTome(tome)}
+              passedExams={passedDoctrineExams}
+            />
+          </div>
+        )}
+
+        {/* ─── SEZIONE 03: IL TRATTATO DEI GENERALI (I TRE LIBRI DEI GENERALI) ─── */}
         {activeTab === "trattato" && (
           <div className="flex-1 min-h-0 flex flex-col justify-center pt-1 pb-1 lg:overflow-hidden">
             <GeneralsBooksReader />
@@ -1188,7 +1276,7 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
               {(() => {
                 const link = billingQuery.data?.affiliate.link
                   ? new URL(billingQuery.data.affiliate.link, window.location.origin).href
-                  : `${window.location.origin}/welcome?ref=${profile?.id ?? "LIMEN"}`;
+                  : `${window.location.origin}/welcome?ref=${profile?.id ?? "AUREUS"}`;
 
                 return (
                   <div className="space-y-3">
@@ -1247,6 +1335,15 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
             </div>
           </div>
         )}
+
+        {/* ─── MODALE PROVA DI PADRONANZA DOTTRINALE ─── */}
+        <DoctrineExamModal
+          isOpen={Boolean(activeExamTome)}
+          onClose={() => setActiveExamTome(null)}
+          tome={activeExamTome}
+          onPassExam={handlePassExam}
+          isAlreadyPassed={activeExamTome ? passedDoctrineExams.includes(activeExamTome.id) : false}
+        />
       </div>
     </PageLayout>
   );

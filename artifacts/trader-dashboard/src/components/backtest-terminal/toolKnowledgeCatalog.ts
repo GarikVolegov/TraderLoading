@@ -208,7 +208,7 @@ export const TOOL_KNOWLEDGE_CATALOG: Record<DrawingToolId, ToolKnowledgeEntry> =
       coordinates: "Prezzo e barra di inizio impulso (#1) e fine impulso (#2).",
       visibility: "Filtro multi-timeframe per mantenere visibili i Fib HTF o LTF dove necessario.",
     },
-    proTip: "Salva un modello 'Limen Equilibrium (0 - 0.5 - 1)' e un modello 'OTE Completa' nel menu Modello per passare da uno all'altro istantaneamente.",
+    proTip: "Salva un modello 'AUREUS Equilibrium (0 - 0.5 - 1)' e un modello 'OTE Completa' nel menu Modello per passare da uno all'altro istantaneamente.",
     previewKind: "fib",
   },
   rect: {

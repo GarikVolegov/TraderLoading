@@ -68,7 +68,7 @@ export function SchoolRequestForm() {
         </label>
       </div>
       <label>
-        Come vorresti usare LIMEN?
+        Come vorresti usare AUREUS?
         <textarea name="needs" required minLength={10} maxLength={4000} rows={4} />
       </label>
       <p>

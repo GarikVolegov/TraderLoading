@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { memo, useState } from "react";
 import { type ProjectionBands } from "@/lib/equityProjection";
 
 export interface TradePointDetail {
@@ -7,10 +7,16 @@ export interface TradePointDetail {
   pnl?: number;
   r?: number;
   cumulativeEuro?: number;
+  idealCumulativeEuro?: number;
+  hasLeak?: boolean;
+  leakNames?: string[];
+  bleedAmount?: number;
 }
 
 interface EquityCurveChartProps {
   realized: number[];
+  ideal?: number[];
+  showIdealCurve?: boolean;
   bands: ProjectionBands;
   projectionSteps: number;
   tradeDetails?: TradePointDetail[];
@@ -26,8 +32,10 @@ const ACCENT_GREEN = "#10B981";
 const PROJ_GOLD = "#C5A059";
 const PROJ_GOLD_MEDIAN = "#E5C378";
 
-export function EquityCurveChart({
+export const EquityCurveChart = memo(function EquityCurveChart({
   realized,
+  ideal,
+  showIdealCurve = false,
   bands,
   projectionSteps,
   tradeDetails,
@@ -37,7 +45,8 @@ export function EquityCurveChart({
 
   const histN = realized.length;
   const span = Math.max(1, histN - 1 + projectionSteps);
-  const allV = [...realized, ...bands.p10, ...bands.p90];
+  const effectiveIdeal = showIdealCurve && ideal && ideal.length === histN ? ideal : [];
+  const allV = [...realized, ...effectiveIdeal, ...bands.p10, ...bands.p90];
   const max = Math.max(...allV, 5);
   const min = Math.min(...allV, -5);
 
@@ -49,6 +58,21 @@ export function EquityCurveChart({
   const histLine = histPts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
   const lastPt = histPts[histPts.length - 1] ?? ([xOf(0), yOf(0)] as const);
   const histArea = `${histLine} L${lastPt[0].toFixed(1)},${H} L${(histPts[0]?.[0] ?? PAD_X).toFixed(1)},${H} Z`;
+
+  // Ideal (Zero-Leak) Curve calculations
+  const idealPts = effectiveIdeal.map((v, i) => [xOf(i), yOf(v)] as const);
+  const idealLine = idealPts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const lastIdealPt = idealPts[idealPts.length - 1];
+
+  // Friction Bleed Area (gap between Ideal and Realized line)
+  const bleedArea =
+    idealPts.length > 0 && histPts.length === idealPts.length
+      ? `${idealPts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ")} ${histPts
+          .slice()
+          .reverse()
+          .map((p) => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`)
+          .join(" ")} Z`
+      : "";
 
   const px = (k: number) => xOf(histN - 1 + k);
   const bandPath = (lo: number[], hi: number[]) => {
@@ -89,22 +113,39 @@ export function EquityCurveChart({
         {hoverIndex !== null ? (
           isHistoricalHover ? (
             <div className="flex items-center gap-2 truncate">
-              <span className="text-[#C5A059] font-bold">Trade #{hoverIndex + 1}</span>
+              {hoverIndex === 0 ? (
+                <span className="text-[#C5A059] font-bold">Punto Zero</span>
+              ) : (
+                <span className="text-[#C5A059] font-bold">Trade #{hoverIndex}</span>
+              )}
               {hoverTrade?.date && <span className="text-text-lo/70">· {hoverTrade.date}</span>}
-              <span className="text-text-hi font-semibold">{hoverTrade?.title}</span>
-              <span
-                className={
-                  hoverTrade?.pnl != null && hoverTrade.pnl >= 0
-                    ? "text-success font-bold"
-                    : "text-destructive font-bold"
-                }
-              >
-                {hoverTrade?.pnl != null ? `${hoverTrade.pnl >= 0 ? "+" : ""}${hoverTrade.pnl.toFixed(2)} ${currency}` : ""}
-              </span>
-              <span className="text-text-lo">| Progressivo:</span>
+              {hoverTrade?.title && <span className="text-text-hi font-semibold">{hoverTrade.title}</span>}
+              {hoverTrade?.pnl != null && hoverIndex > 0 && (
+                <span
+                  className={
+                    hoverTrade.pnl >= 0 ? "text-success font-bold" : "text-destructive font-bold"
+                  }
+                >
+                  {hoverTrade.pnl >= 0 ? "+" : ""}{hoverTrade.pnl.toFixed(2)} {currency}
+                </span>
+              )}
+              <span className="text-text-lo">| Realizzato:</span>
               <strong className={hoverVal != null && hoverVal >= 0 ? "text-success" : "text-destructive"}>
                 {hoverVal != null ? `${hoverVal >= 0 ? "+" : ""}${hoverVal.toFixed(2)} ${currency}` : ""}
               </strong>
+              {showIdealCurve && hoverTrade?.idealCumulativeEuro != null && (
+                <>
+                  <span className="text-text-lo">| Ideale:</span>
+                  <strong className="text-[#E8C56A]">
+                    +{hoverTrade.idealCumulativeEuro.toFixed(2)} {currency}
+                  </strong>
+                </>
+              )}
+              {hoverTrade?.hasLeak && hoverTrade.bleedAmount != null && hoverTrade.bleedAmount > 0 && (
+                <span className="px-1.5 py-0.5 text-[9px] rounded bg-red-950/60 border border-red-500/40 text-red-300 font-mono whitespace-nowrap">
+                  Leak: {hoverTrade.leakNames?.join(", ") ?? "Deriva"} (-{hoverTrade.bleedAmount.toFixed(2)} {currency})
+                </span>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2 truncate">
@@ -142,6 +183,10 @@ export function EquityCurveChart({
               <stop offset="0%" stopColor={ACCENT_GREEN} stopOpacity="0.22" />
               <stop offset="100%" stopColor={ACCENT_GREEN} stopOpacity="0" />
             </linearGradient>
+            <linearGradient id="bleedFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#C5A059" stopOpacity="0.05" />
+            </linearGradient>
           </defs>
 
           {/* Zero baseline */}
@@ -154,6 +199,11 @@ export function EquityCurveChart({
             strokeDasharray="2 2"
             strokeWidth="1"
           />
+
+          {/* Friction Bleed Area (Gap between Ideal and Realized) */}
+          {showIdealCurve && bleedArea && (
+            <path d={bleedArea} fill="url(#bleedFill)" />
+          )}
 
           {/* Monte Carlo Percentile Bands in EUR */}
           <path d={bandPath(bands.p10, bands.p90)} fill={PROJ_GOLD} fillOpacity="0.08" />
@@ -193,8 +243,23 @@ export function EquityCurveChart({
             strokeLinecap="round"
           />
 
+          {/* Ideal Zero-Leak Trajectory Line */}
+          {showIdealCurve && idealLine && (
+            <path
+              d={idealLine}
+              fill="none"
+              stroke="#E8C56A"
+              strokeWidth="1.8"
+              strokeDasharray="4 2"
+              strokeLinecap="round"
+            />
+          )}
+
           {/* Realized end marker */}
           {histPts.length > 0 && <circle cx={lastPt[0]} cy={lastPt[1]} r="3.5" fill={ACCENT_GREEN} />}
+          {showIdealCurve && lastIdealPt && (
+            <circle cx={lastIdealPt[0]} cy={lastIdealPt[1]} r="3" fill="#E8C56A" />
+          )}
           {bands.p50.length > 0 && (
             <circle cx={px(projectionSteps)} cy={yOf(bands.p50[projectionSteps])} r="3" fill={PROJ_GOLD_MEDIAN} />
           )}
@@ -222,6 +287,16 @@ export function EquityCurveChart({
                   strokeWidth="1.5"
                 />
               )}
+              {showIdealCurve && isHistoricalHover && effectiveIdeal[hoverIndex] !== undefined && (
+                <circle
+                  cx={xOf(hoverIndex)}
+                  cy={yOf(effectiveIdeal[hoverIndex])}
+                  r="3.5"
+                  fill="#E8C56A"
+                  stroke="#0A0A0C"
+                  strokeWidth="1.5"
+                />
+              )}
               {isProjectionHover && bands.p50[hoverIndex - histN + 1] !== undefined && (
                 <circle
                   cx={xOf(hoverIndex)}
@@ -238,4 +313,4 @@ export function EquityCurveChart({
       </div>
     </div>
   );
-}
+});

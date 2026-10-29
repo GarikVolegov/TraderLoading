@@ -24,7 +24,7 @@ export function SovereignJournalCockpit({
 
   // Retrieve trade entries from database
   const { data: entries } = useGetJournalEntries({
-    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 30_000 },
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 60_000, staleTime: 30_000 },
   });
 
   // Sessions from process state
@@ -121,15 +121,15 @@ export function SovereignJournalCockpit({
   const [mobileActiveView, setMobileActiveView] = useState<"registro" | "dossier">("registro");
 
   return (
-    <div className="flex flex-col h-full min-h-0 w-full overflow-hidden pb-1 select-none">
+    <div className="flex flex-col h-[calc(100dvh-var(--app-header-offset)-var(--bottom-nav-clearance)-4.25rem)] lg:h-full min-h-[520px] lg:min-h-0 w-full overflow-hidden pb-1 select-none">
       {/* ── MOBILE-ONLY VIEW SWITCHER (< xl) ── */}
-      <div className="flex xl:hidden items-center justify-between border-b border-border-subtle pb-2 mb-2 shrink-0">
-        <div className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-1 p-0.5 text-xs font-mono">
+      <div className="flex xl:hidden items-center justify-between gap-2 border-b border-border-subtle pb-2 mb-2 shrink-0 mobile-compact-bar">
+        <div className="flex items-center gap-1 rounded-lg border border-border-subtle bg-surface-1 p-0.5 text-xs font-mono">
           <button
             type="button"
             onClick={() => setMobileActiveView("registro")}
             className={cn(
-              "px-3 py-1 rounded font-semibold transition-all",
+              "px-2.5 sm:px-3 py-1 rounded font-semibold transition-all whitespace-nowrap",
               mobileActiveView === "registro"
                 ? "bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/40 font-bold"
                 : "text-text-lo hover:text-text-hi"
@@ -141,7 +141,7 @@ export function SovereignJournalCockpit({
             type="button"
             onClick={() => setMobileActiveView("dossier")}
             className={cn(
-              "px-3 py-1 rounded font-semibold transition-all",
+              "px-2.5 sm:px-3 py-1 rounded font-semibold transition-all whitespace-nowrap",
               mobileActiveView === "dossier"
                 ? "bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/40 font-bold"
                 : "text-text-lo hover:text-text-hi"
@@ -150,6 +150,11 @@ export function SovereignJournalCockpit({
             Dossier Tattico
           </button>
         </div>
+        {sortedEntries.length > 0 && (
+          <span className="font-mono text-[10px] text-[#E8C56A] bg-[#C5A059]/10 border border-[#C5A059]/30 px-2 py-0.5 rounded font-bold whitespace-nowrap">
+            #{tradeIndex + 1}/{sortedEntries.length} Trade
+          </span>
+        )}
       </div>
 
       {/* ── UNIFIED MASTER COCKPIT: DUAL INTERLOCKING MACRO-BLOCKS ── */}

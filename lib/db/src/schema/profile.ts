@@ -17,6 +17,7 @@ export const profileTable = pgTable("profile", {
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("profile_user_idx").on(table.userId),
+  index("profile_xp_idx").on(table.xp),
   uniqueIndex("profile_name_unique_authenticated")
     .on(sql`lower(${table.name})`)
     .where(sql`${table.userId} IS NOT NULL`),

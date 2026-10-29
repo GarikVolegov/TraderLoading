@@ -226,7 +226,10 @@ export const communityModerationLogTable = pgTable("community_moderation_log", {
   targetId: integer("target_id"),
   metadata: text("metadata"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-}, (t) => [index("community_moderation_log_community_idx").on(t.communityId, t.createdAt)]);
+}, (t) => [
+  index("community_moderation_log_community_idx").on(t.communityId, t.createdAt),
+  index("community_moderation_log_target_idx").on(t.targetUserId),
+]);
 
 export type Community = typeof communitiesTable.$inferSelect;
 export type CommunityMember = typeof communityMembersTable.$inferSelect;
@@ -256,6 +259,7 @@ export const communityJoinRequestsTable = pgTable("community_join_requests", {
 }, (t) => [
   uniqueIndex("community_join_requests_pair_idx").on(t.communityId, t.userId),
   index("community_join_requests_status_idx").on(t.communityId, t.status),
+  index("community_join_requests_user_idx").on(t.userId),
 ]);
 
 export type CommunityJoinRequest = typeof communityJoinRequestsTable.$inferSelect;

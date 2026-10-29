@@ -388,6 +388,8 @@ export * from './varcoSetupPlanZoneScenario';
 export * from './varcoVisionCandle';
 export * from './varcoVisionChecklistCurrent';
 export * from './varcoVisionRequest';
+export * from './varcoVisionRequestDirectionalBias';
+export * from './varcoVisionRequestDirectionalBiasH4MasterBias';
 export * from './varcoVisionRequestOperativeMemory';
 export * from './varcoVisionRequestOperativeMemoryFlipDirection';
 export * from './varcoVisionResponse';

@@ -56,10 +56,10 @@ export function JournalOverview({
   const [analysisOpen, setAnalysisOpen] = useState(false);
 
   const { data: edge } = useGetJournalEdge({
-    query: { queryKey: getGetJournalEdgeQueryKey(), refetchInterval: 30_000 },
+    query: { queryKey: getGetJournalEdgeQueryKey(), refetchInterval: 60_000, staleTime: 30_000 },
   });
   const { data: entries } = useGetJournalEntries({
-    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 30_000 },
+    query: { queryKey: getGetJournalEntriesQueryKey(), refetchInterval: 60_000, staleTime: 30_000 },
   });
 
   const recapPeriod = useMemo(() => getJournalRecapPeriod("four_week"), []);
@@ -314,7 +314,7 @@ export function JournalOverview({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#C5A059]">
-                  {"LABORATORIO DIAGNOSTICO LIMEN"}
+                  {"LABORATORIO DIAGNOSTICO AUREUS"}
                 </span>
                 <Badge variant="gold" className="text-[9px] uppercase">
                   {"3 MODULI"}

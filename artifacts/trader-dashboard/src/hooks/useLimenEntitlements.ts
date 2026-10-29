@@ -49,16 +49,7 @@ export function useLimenEntitlements() {
 
   const query = useQuery<LimenEntitlementsResponse>({
     queryKey: ["limen-entitlements"],
-    queryFn: () => {
-      const storedEmail =
-        typeof window !== "undefined"
-          ? localStorage.getItem("limen_candidate_email")
-          : null;
-      const url = storedEmail
-        ? `candidate-applications/my-entitlements?email=${encodeURIComponent(storedEmail)}`
-        : "candidate-applications/my-entitlements";
-      return apiJSON<LimenEntitlementsResponse>(url);
-    },
+    queryFn: () => apiJSON<LimenEntitlementsResponse>("candidate-applications/my-entitlements"),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
   });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useDeferredValue } from "react";
 import { useLocation } from "wouter";
 import { useFreeTrial } from "@/lib/useFreeTrial";
 import {
@@ -41,6 +41,7 @@ import {
   validateFinancialProfile,
   calculateOptimalWealthSubAllocations,
   calculateWealthProjections,
+  simulateMonteCarloEquity,
   applyStrategyPreset,
   calculateEquityBasketTiming,
   calculateDividendBasketTiming,
@@ -73,6 +74,7 @@ import { WealthAssetCard } from "@/components/financial/WealthAssetCard";
 import { WealthProjectionChart } from "@/components/financial/WealthProjectionChart";
 import { AdvisorVerdictCard } from "@/components/financial/AdvisorVerdictCard";
 import { TaxDoctrineModal } from "@/components/financial/TaxDoctrineModal";
+import { PropFirmCalculatorModal } from "@/components/financial/PropFirmCalculatorModal";
 
 /**
  * Sintesi chirurgica dei regimi di timing per l'interfaccia a 3 colonne (Zero sovrapposizioni)
@@ -132,22 +134,33 @@ export default function FinancialArchitecture() {
   // Time Horizon for multi-axis calculation (1, 3, 5, 10, 20 Anni)
   const [selectedHorizon, setSelectedHorizon] = useState<number>(5);
 
-  // Vista secondaria di ripartizione pilastri (grafico donut / barre)
-  const [showPillarsBreakdown, setShowPillarsBreakdown] = useState<boolean>(false);
+  // Vista unificata Step 3: Proiezione Net Worth / Motore Monte Carlo (1.000 Traiettorie) / 5 Pilastri
+  const [activeVisualView, setActiveVisualView] = useState<"projection" | "monte_carlo" | "pillars">("projection");
 
   // Modal Dossier Trigger State [• ℹ]
   const [activeDossierToolId, setActiveDossierToolId] = useState<string | null>(null);
 
   // Modal Dottrina Fiscale (Italia)
   const [isTaxModalOpen, setIsTaxModalOpen] = useState<boolean>(false);
+  const [taxInitialTab, setTaxInitialTab] = useState<"regimes" | "assets" | "prop" | "deadlines">("regimes");
+
+  // Modal Motore Prop Firm, Funnel 2 Fasi & Broker Sovrani
+  const [isPropCalculatorOpen, setIsPropCalculatorOpen] = useState<boolean>(false);
 
   // Auto-calculation reactive mode flag
   const [isAutoAllocation, setIsAutoAllocation] = useState<boolean>(true);
+  const [mobileStep, setMobileStep] = useState<1 | 2 | 3>(1);
 
   // Sync from remote profile once loaded
   useEffect(() => {
     if (remoteProfile) {
       setProfile(remoteProfile);
+      if (remoteProfile.monthlyPac !== undefined) {
+        setMonthlyPAC(remoteProfile.monthlyPac);
+      }
+      if (remoteProfile.targetNetWorth !== undefined) {
+        setTargetNetWorth(remoteProfile.targetNetWorth);
+      }
       if (remoteProfile.wealthSubAllocations) {
         setSubAllocations(remoteProfile.wealthSubAllocations);
       } else {
@@ -206,6 +219,35 @@ export default function FinancialArchitecture() {
       profile.simulatedDrawdownPct,
     ],
   );
+
+  const deferredTradingAllocation = useDeferredValue(profile.tradingAllocation);
+  const deferredReserveAllocation = useDeferredValue(profile.reserveAllocation);
+  const deferredExpectedMonthlyReturnPct = useDeferredValue(profile.expectedMonthlyReturnPct);
+  const deferredSimulatedDrawdownPct = useDeferredValue(profile.simulatedDrawdownPct);
+
+  // Motore stocastico Monte Carlo (1.000 traiettorie) calcolato automagicamente in tempo reale
+  const tradingMonteCarlo = useMemo(() => {
+    return simulateMonteCarloEquity({
+      initialCapital: Math.max(0, deferredTradingAllocation),
+      expectedMonthlyReturnPct: Math.max(0.5, deferredExpectedMonthlyReturnPct || 3),
+      simulatedDrawdownPct: Math.max(3, deferredSimulatedDrawdownPct || 10),
+      horizonMonths: Math.max(12, selectedHorizon * 12),
+      accountObjective: profile.accountObjective,
+      tradingStyle: "DAY_TRADING",
+      winRatePct: 54.0,
+      riskRewardRatio: 1.85,
+      tradesPerMonth: 20,
+      riskPerTradePct: 0.81,
+      iterations: 1000,
+      seed: 20261018,
+    });
+  }, [
+    deferredTradingAllocation,
+    deferredExpectedMonthlyReturnPct,
+    deferredSimulatedDrawdownPct,
+    selectedHorizon,
+    profile.accountObjective,
+  ]);
 
   const expectationEvaluation = useMemo(
     () =>
@@ -533,12 +575,20 @@ export default function FinancialArchitecture() {
     const nextSubs = applyStrategyPreset(preset, profile.investmentsAllocation);
     setSubAllocations(nextSubs);
     toast({
-      title: `Strategia ${preset === "DEFENSIVE" ? "Preservazione" : preset === "AGGRESSIVE_GROWTH" ? "Espansione" : "Equilibrio LIMEN"} Applicata`,
+      title: `Strategia ${
+        preset === "DEFENSIVE"
+          ? "Preservazione"
+          : preset === "AGGRESSIVE_GROWTH"
+          ? "Espansione"
+          : preset === "HYBRID_PROP"
+          ? "Ibrida Prop-to-Wealth"
+          : "Equilibrio AUREUS"
+      } Applicata`,
       description: "Asset class ribilanciate secondo la formula quantitativa istituzionale.",
     });
   };
 
-  // Calcola Allocazione Ottimale LIMEN
+  // Calcola Allocazione Ottimale AUREUS
   const handleApplyOptimalAllocation = useCallback(() => {
     setIsAutoAllocation(true);
     setActiveStrategyPreset("BALANCED_LIMEN");
@@ -561,7 +611,7 @@ export default function FinancialArchitecture() {
     });
 
     toast({
-      title: "Allocazione Ottimale LIMEN Applicata",
+      title: "Allocazione Ottimale AUREUS Applicata",
       description: "Formula reattiva e bilanciamento dei 5 motori ripristinati.",
     });
   }, []);
@@ -581,6 +631,8 @@ export default function FinancialArchitecture() {
     try {
       await updateMutation.mutateAsync({
         ...profile,
+        monthlyPac: monthlyPAC,
+        targetNetWorth,
         wealthSubAllocations: subAllocations,
         isCompleted: true,
       });
@@ -681,12 +733,24 @@ export default function FinancialArchitecture() {
   }
 
   return (
-    <PageLayout quiet fullWidth className="h-[100dvh] overflow-hidden flex flex-col">
+    <PageLayout quiet fullWidth className="lg:h-[100dvh] lg:overflow-hidden flex flex-col">
       {/* ─── MODALE DI APPROFONDIMENTO CHIRURGICO DEI SINGOLI STRUMENTI [• ℹ] ─── */}
       <InstrumentDossierModal
         toolId={activeDossierToolId}
         isOpen={activeDossierToolId !== null}
         onClose={() => setActiveDossierToolId(null)}
+        onOpenPropCalculator={() => setIsPropCalculatorOpen(true)}
+      />
+
+      {/* ─── MODALE MOTORE PROP FIRM, FUNNEL 2 FASI & BROKER SOVRANI ─── */}
+      <PropFirmCalculatorModal
+        isOpen={isPropCalculatorOpen}
+        onClose={() => setIsPropCalculatorOpen(false)}
+        initialTradingCapital={profile.tradingAllocation}
+        onOpenTaxDoctrine={(tab) => {
+          setTaxInitialTab(tab ?? "prop");
+          setIsTaxModalOpen(true);
+        }}
       />
 
       {/* ─── MODALE COMPENDIO DOTTRINA FISCALE (ITALIA 🇮🇹) ─── */}
@@ -695,15 +759,59 @@ export default function FinancialArchitecture() {
         onClose={() => setIsTaxModalOpen(false)}
         taxCountry={profile.taxCountry || "IT"}
         taxRegime={profile.taxRegime || "DICHIARATIVO"}
+        initialTab={taxInitialTab}
         onSelectRegime={(regime) => updateBaseParam({ taxRegime: regime })}
       />
 
+      {/* ─── MOBILE STEP SWITCHER (< 1024px) ─── */}
+      <div className="flex lg:hidden items-center justify-between gap-2 px-2 pt-1 pb-2 border-b border-[#C5A059]/20 shrink-0 mobile-compact-bar">
+        <div className="grid grid-cols-3 gap-1 rounded-lg border border-[#C5A059]/25 bg-[#07080b] p-0.5 text-[10px] font-mono flex-1">
+          <button
+            type="button"
+            onClick={() => setMobileStep(1)}
+            className={`py-1.5 px-1.5 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+              mobileStep === 1
+                ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/45"
+                : "text-slate-400 hover:text-foreground"
+            }`}
+          >
+            01 · Fotografia
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileStep(2)}
+            className={`py-1.5 px-1.5 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+              mobileStep === 2
+                ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/45"
+                : "text-slate-400 hover:text-foreground"
+            }`}
+          >
+            02 · Motori (5)
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileStep(3)}
+            className={`py-1.5 px-1.5 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+              mobileStep === 3
+                ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/45"
+                : "text-slate-400 hover:text-foreground"
+            }`}
+          >
+            03 · Stress Test
+          </button>
+        </div>
+      </div>
+
       {/* ─── COCKPIT AD ALTA DENSITÀ A 3 COLONNE (NESSUNA TESTATA, ZERO VUOTI, 100% UTILIZZO DELLO SPAZIO) ─── */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 p-2 sm:p-2.5 overflow-hidden">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 p-2 sm:p-2.5 lg:overflow-hidden">
         {/* ═══════════════════════════════════════════════════════════════
             COLONNA 1: STEP 1: FOTOGRAFIA FINANZIARIA (3 CARD BILANCIATE) (3/12)
            ═══════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-3 flex flex-col gap-2.5 h-full overflow-hidden">
+        <div
+          className={`lg:col-span-3 flex-col gap-2.5 lg:h-full lg:overflow-y-auto lg:overflow-x-hidden scrollbar-thin scrollbar-thumb-[#C5A059]/20 pr-0.5 min-w-0 ${
+            mobileStep === 1 ? "flex" : "hidden lg:flex"
+          }`}
+        >
           {/* CARD 1A: Patrimonio Reale & Liquidità di Sopravvivenza */}
           <div className="flex-1 flex flex-col justify-between rounded-xl border border-border/70 bg-[#0d0f14]/90 p-3 sm:p-3.5 shadow-sm">
             {/* Header Step 1 */}
@@ -741,13 +849,14 @@ export default function FinancialArchitecture() {
               <div className="relative shrink-0">
                 <input
                   type="number"
+                  inputMode="decimal"
                   min="0"
                   step="1000"
                   value={profile.totalNetWorth || ""}
                   onChange={(e) => updateBaseParam({ totalNetWorth: Number(e.target.value) })}
                   placeholder="50000"
                   aria-label="Patrimonio Complessivo"
-                  className="w-32 h-8 text-right font-mono font-bold text-sm sm:text-base pr-5 bg-[#0d0f14] border border-[#C5A059]/40 rounded px-2.5 text-[#E8C56A] focus:border-[#E8C56A] outline-none transition-colors"
+                  className="w-32 h-8 text-right font-mono font-bold text-sm sm:text-base pr-5 bg-[#0d0f14] border border-[#C5A059]/40 rounded px-2.5 text-[#E8C56A] focus:border-[#E8C56A] outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="absolute right-1.5 top-1.5 font-mono text-[11px] text-[#C5A059] font-bold pointer-events-none">
                   €
@@ -807,7 +916,7 @@ export default function FinancialArchitecture() {
 
             {/* Box Residenza Erariale & Regime Fiscale (Italia 🇮🇹) */}
             <div className="rounded-lg border border-[#C5A059]/30 bg-[#07080b]/80 p-2 space-y-1.5 font-mono text-[10.5px]">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-1.5">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <Scale className="h-3.5 w-3.5 text-[#C5A059] shrink-0" />
                   <span className="font-bold text-foreground uppercase tracking-tight text-[11px] truncate">
@@ -820,51 +929,50 @@ export default function FinancialArchitecture() {
                     size="xs"
                   />
                 </div>
-                <Badge className="bg-[#C5A059]/15 border-[#C5A059]/40 text-[#E8C56A] text-[9.5px] px-1.5 py-0.2 shrink-0">
-                  Italia 🇮🇹 (26%)
-                </Badge>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Badge className="bg-[#C5A059]/15 border-[#C5A059]/40 text-[#E8C56A] text-[9.5px] px-1.5 py-0.2 shrink-0">
+                    Italia 🇮🇹 (26%)
+                  </Badge>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsTaxModalOpen(true)}
+                    className="h-5 px-1.5 text-[9px] text-[#C5A059] hover:bg-[#C5A059]/15 hover:text-[#E8C56A] shrink-0 font-bold gap-1 underline decoration-[#C5A059]/40 underline-offset-2"
+                    title="Consulta il Compendio di Dottrina Fiscale per l'Italia"
+                  >
+                    <Landmark className="h-2.5 w-2.5" />
+                    <span>Dottrina</span>
+                  </Button>
+                </div>
               </div>
 
               {/* Selettore compatto Regime Dichiarativo vs Amministrato */}
-              <div className="flex items-center justify-between gap-1 pt-0.5">
-                <div className="grid grid-cols-2 gap-1 p-0.5 bg-[#0d0f14] rounded border border-border/70 flex-1 text-[9.5px]">
-                  <button
-                    type="button"
-                    onClick={() => updateBaseParam({ taxRegime: "DICHIARATIVO" })}
-                    className={`py-0.5 px-1 rounded transition-all font-bold text-center tracking-wider whitespace-nowrap ${
-                      (profile.taxRegime || "DICHIARATIVO") === "DICHIARATIVO"
-                        ? "bg-[#C5A059] text-[#07080b] shadow-sm"
-                        : "text-slate-400 hover:text-foreground"
-                    }`}
-                    title="Regime Dichiarativo: Broker esteri (IBKR, prop firm). Modello Redditi RT/RW/RM."
-                  >
-                    DICHIARATIVO
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateBaseParam({ taxRegime: "AMMINISTRATO" })}
-                    className={`py-0.5 px-1 rounded transition-all font-bold text-center tracking-wider whitespace-nowrap ${
-                      profile.taxRegime === "AMMINISTRATO"
-                        ? "bg-[#C5A059] text-[#07080b] shadow-sm"
-                        : "text-slate-400 hover:text-foreground"
-                    }`}
-                    title="Regime Amministrato: Banche e broker italiani (Fineco, Directa). Sostituto d'imposta."
-                  >
-                    AMMINISTRATO
-                  </button>
-                </div>
-
-                <Button
+              <div className="grid grid-cols-2 gap-1 p-0.5 bg-[#0d0f14] rounded border border-border/70 text-[9.5px]">
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsTaxModalOpen(true)}
-                  className="h-6 px-1.5 text-[9.5px] border-[#C5A059]/40 text-[#E8C56A] hover:bg-[#C5A059]/15 shrink-0 font-bold gap-1"
-                  title="Apri il Compendio di Dottrina Fiscale per l'Italia"
+                  onClick={() => updateBaseParam({ taxRegime: "DICHIARATIVO" })}
+                  className={`py-1 px-1 rounded transition-all font-bold text-center tracking-wider whitespace-nowrap ${
+                    (profile.taxRegime || "DICHIARATIVO") === "DICHIARATIVO"
+                      ? "bg-[#C5A059] text-[#07080b] shadow-sm"
+                      : "text-slate-400 hover:text-foreground"
+                  }`}
+                  title="Regime Dichiarativo: Broker esteri (IBKR, prop firm). Modello Redditi RT/RW/RM."
                 >
-                  <Landmark className="h-2.5 w-2.5" />
-                  <span>Dottrina</span>
-                </Button>
+                  DICHIARATIVO
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateBaseParam({ taxRegime: "AMMINISTRATO" })}
+                  className={`py-1 px-1 rounded transition-all font-bold text-center tracking-wider whitespace-nowrap ${
+                    profile.taxRegime === "AMMINISTRATO"
+                      ? "bg-[#C5A059] text-[#07080b] shadow-sm"
+                      : "text-slate-400 hover:text-foreground"
+                  }`}
+                  title="Regime Amministrato: Banche e broker italiani (Fineco, Directa). Sostituto d'imposta."
+                >
+                  AMMINISTRATO
+                </button>
               </div>
             </div>
           </div>
@@ -889,13 +997,14 @@ export default function FinancialArchitecture() {
                 <div className="relative">
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step="100"
                     value={profile.monthlyExpenses || ""}
                     onChange={(e) => updateBaseParam({ monthlyExpenses: Number(e.target.value) })}
                     placeholder="2000"
                     aria-label="Spese Medie Mensili"
-                    className="w-full h-8 text-right font-mono text-xs sm:text-sm font-bold pr-8 bg-[#07080b] border border-border/80 rounded px-2.5 text-foreground focus:border-[#C5A059] outline-none transition-colors"
+                    className="w-full h-8 text-right font-mono text-xs sm:text-sm font-bold pr-8 bg-[#07080b] border border-border/80 rounded px-2.5 text-foreground focus:border-[#C5A059] outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <span className="absolute right-2 top-2 font-mono text-[10px] text-muted-foreground pointer-events-none">
                     €/m
@@ -910,13 +1019,14 @@ export default function FinancialArchitecture() {
                 <div className="relative">
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step="100"
                     value={profile.externalStableIncome || ""}
                     onChange={(e) => updateBaseParam({ externalStableIncome: Number(e.target.value) })}
                     placeholder="2500"
                     aria-label="Entrate Esterne Mensili"
-                    className="w-full h-8 text-right font-mono text-xs sm:text-sm font-bold pr-8 bg-[#07080b] border border-emerald-500/40 rounded px-2.5 text-emerald-400 focus:border-emerald-400 outline-none transition-colors"
+                    className="w-full h-8 text-right font-mono text-xs sm:text-sm font-bold pr-8 bg-[#07080b] border border-emerald-500/40 rounded px-2.5 text-emerald-400 focus:border-emerald-400 outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <span className="absolute right-2 top-2 font-mono text-[10px] text-emerald-500/80 pointer-events-none">
                     €/m
@@ -962,13 +1072,14 @@ export default function FinancialArchitecture() {
                 <div className="relative flex-1 min-w-0">
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step="50"
                     value={monthlyPAC || ""}
                     onChange={(e) => setMonthlyPAC(Math.max(0, Number(e.target.value) || 0))}
                     placeholder="500"
                     aria-label="PAC Mensile Programmato"
-                    className="w-full h-8 text-right font-mono text-xs font-bold pr-7 bg-[#07080b] border border-border/80 rounded px-2 text-foreground focus:border-emerald-400 outline-none transition-colors"
+                    className="w-full h-8 text-right font-mono text-xs font-bold pr-7 bg-[#07080b] border border-border/80 rounded px-2 text-foreground focus:border-emerald-400 outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <span className="absolute right-2 top-2 font-mono text-[10px] text-muted-foreground pointer-events-none">
                     €/m
@@ -1031,13 +1142,14 @@ export default function FinancialArchitecture() {
                 <div className="relative flex-1 min-w-0">
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step="10000"
                     value={targetNetWorth || ""}
                     onChange={(e) => setTargetNetWorth(Math.max(0, Number(e.target.value) || 0))}
                     placeholder="500000"
                     aria-label="Target Indipendenza"
-                    className="w-full h-8 text-right font-mono text-xs font-bold pr-5 bg-[#07080b] border border-border/80 rounded px-2 text-[#E8C56A] focus:border-[#C5A059] outline-none transition-colors"
+                    className="w-full h-8 text-right font-mono text-xs font-bold pr-5 bg-[#07080b] border border-border/80 rounded px-2 text-[#E8C56A] focus:border-[#C5A059] outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <span className="absolute right-1.5 top-2 font-mono text-[10px] text-[#C5A059] font-bold pointer-events-none">
                     €
@@ -1064,11 +1176,16 @@ export default function FinancialArchitecture() {
 
             {/* Telemetria: Capitale Investibile Residuo */}
             <div className="rounded border border-[#C5A059]/20 bg-[#C5A059]/5 px-2.5 py-1.5 font-mono text-[11px] flex items-center justify-between">
-              <span className="text-slate-400 uppercase text-[10px]">
-                Investibile Residuo:
-              </span>
-              <span className="font-bold text-foreground">
-                {vitalLiquidity.investableCapital.toLocaleString("it-IT")} €
+              <div className="flex flex-col min-w-0">
+                <span className="text-slate-400 uppercase text-[10px] font-semibold truncate">
+                  Investibile Netto (Post-Riserva):
+                </span>
+                <span className="text-[9px] text-slate-500 whitespace-nowrap">
+                  Lordo: {vitalLiquidity.investableCapital.toLocaleString("it-IT")} € • Riserva: {profile.reserveAllocation.toLocaleString("it-IT")} €
+                </span>
+              </div>
+              <span className="font-bold text-foreground text-xs sm:text-sm whitespace-nowrap ml-2">
+                {Math.max(0, vitalLiquidity.investableCapital - profile.reserveAllocation).toLocaleString("it-IT")} €
               </span>
             </div>
 
@@ -1113,8 +1230,8 @@ export default function FinancialArchitecture() {
               </div>
 
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-slate-300">Riserva: {profile.reserveAllocation.toLocaleString("it-IT")} €</span>
-                <span className="text-slate-300">Trading: {profile.tradingAllocation.toLocaleString("it-IT")} €</span>
+                <span className="text-slate-300 whitespace-nowrap">Riserva: {profile.reserveAllocation.toLocaleString("it-IT")} €</span>
+                <span className="text-slate-300 whitespace-nowrap">Trading: {profile.tradingAllocation.toLocaleString("it-IT")} €</span>
               </div>
 
               {!reserveConstraint.isValid && (
@@ -1135,10 +1252,14 @@ export default function FinancialArchitecture() {
         {/* ═══════════════════════════════════════════════════════════════
             COLONNA 2: STEP 2: CONFIGURAZIONE STRATEGICA · I 5 MOTORI (5/12)
            ═══════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-5 flex flex-col justify-between rounded-xl border border-border/70 bg-[#0d0f14]/90 p-3 sm:p-3.5 shadow-sm overflow-hidden h-full">
+        <div
+          className={`lg:col-span-5 flex-col justify-between rounded-xl border border-border/70 bg-[#0d0f14]/90 p-3 sm:p-3.5 shadow-sm lg:overflow-y-auto lg:overflow-x-hidden lg:h-full scrollbar-thin scrollbar-thumb-[#C5A059]/20 pr-1 min-w-0 ${
+            mobileStep === 2 ? "flex" : "hidden lg:flex"
+          }`}
+        >
           {/* Header Colonna 2 & Presets Istituzionali */}
           <div className="border-b border-border/60 pb-2 mb-1.5 space-y-2 shrink-0">
-            {/* Riga 1: Titolo Step 2 + Totale Allocato */}
+            {/* Riga 1: Titolo Step 2 + Totale Allocato & Riconciliazione */}
             <div className="flex items-center justify-between gap-2 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <span className="font-mono text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#C5A059]/20 border border-[#C5A059]/40 text-[#E8C56A] shrink-0">
@@ -1149,21 +1270,44 @@ export default function FinancialArchitecture() {
                 </span>
                 <span className="sr-only">STEP 2: CONFIGURAZIONE STRATEGICA · I 5 MOTORI</span>
               </div>
-              <div className="flex items-center gap-1.5 font-mono text-[11px] px-2 py-0.5 rounded bg-[#07080b]/80 border border-border/70 shrink-0">
-                <span className="text-slate-400 text-[9.5px] uppercase">Allocato:</span>
+              <div className="flex items-center gap-2 font-mono text-[10.5px] px-2 py-0.5 rounded bg-[#07080b]/80 border border-border/70 shrink-0">
+                <span className="text-slate-400 text-[9px] uppercase hidden sm:inline">5 Pilastri:</span>
                 <span
                   className={`font-bold whitespace-nowrap ${
                     isExactSum ? "text-emerald-400" : "text-red-400"
                   }`}
+                  title={`Liquidità: ${profile.liquidityAllocation.toLocaleString("it-IT")}€ | Riserva: ${profile.reserveAllocation.toLocaleString("it-IT")}€ | Investimenti: ${profile.investmentsAllocation.toLocaleString("it-IT")}€ | Trading: ${profile.tradingAllocation.toLocaleString("it-IT")}€ | Cuscinetto: ${profile.futureProjectsAllocation.toLocaleString("it-IT")}€`}
                 >
                   {sumPillars.toLocaleString("it-IT")} / {profile.totalNetWorth.toLocaleString("it-IT")} €
+                </span>
+                <span className="text-slate-500">•</span>
+                <span className="text-slate-400 text-[9px] uppercase">Mercato:</span>
+                <span className="font-bold text-[#E8C56A] whitespace-nowrap">
+                  {(subAllocations.equityAllocation + subAllocations.dividendsAllocation + subAllocations.cryptoAllocation + subAllocations.hedgingAllocation + profile.tradingAllocation).toLocaleString("it-IT")} €
                 </span>
               </div>
             </div>
 
+            {/* Micro-sintesi di riconciliazione dei 5 Pilastri Sovrani (Zero buchi contabili) */}
+            <div className="flex items-center justify-between text-[9px] font-mono px-2 py-1 rounded bg-[#07080b]/60 border border-border/50 text-slate-400 gap-1 overflow-x-auto scrollbar-none whitespace-nowrap">
+              <span>💧 Liq: <strong className="text-slate-200">{profile.liquidityAllocation.toLocaleString("it-IT")} €</strong></span>
+              <span className="text-slate-600">|</span>
+              <span>🛡️ Riserva: <strong className="text-emerald-400">{profile.reserveAllocation.toLocaleString("it-IT")} €</strong></span>
+              <span className="text-slate-600">|</span>
+              <span>📈 Inv: <strong className="text-[#E8C56A]">{profile.investmentsAllocation.toLocaleString("it-IT")} €</strong></span>
+              <span className="text-slate-600">|</span>
+              <span>⚡ Trading: <strong className="text-[#E8C56A]">{profile.tradingAllocation.toLocaleString("it-IT")} €</strong></span>
+              {profile.futureProjectsAllocation > 0 && (
+                <>
+                  <span className="text-slate-600">|</span>
+                  <span>🧱 Cuscinetto: <strong className="text-slate-300">{profile.futureProjectsAllocation.toLocaleString("it-IT")} €</strong></span>
+                </>
+              )}
+            </div>
+
             {/* Riga 2: Selettore Presets a Piena Larghezza + Chip Top Opportunity */}
             <div className="flex items-center justify-between gap-2">
-              <div className="grid grid-cols-4 gap-1 p-0.5 bg-[#07080b] rounded border border-border/70 font-mono text-[9px] flex-1">
+              <div className="grid grid-cols-5 gap-1 p-0.5 bg-[#07080b] rounded border border-border/70 font-mono text-[9px] flex-1">
                 <button
                   type="button"
                   onClick={() => handleSelectPreset("DEFENSIVE")}
@@ -1185,7 +1329,7 @@ export default function FinancialArchitecture() {
                       ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_8px_rgba(197,160,89,0.35)]"
                       : "text-slate-400 hover:text-foreground"
                   }`}
-                  title="Equilibrio Aureo LIMEN: 50% Azioni, 25% Dividendi, 15% Oro, 10% Crypto"
+                  title="Equilibrio Aureo AUREUS: 50% Azioni, 25% Dividendi, 15% Oro, 10% Crypto"
                 >
                   EQUILIBRIO
                 </button>
@@ -1203,12 +1347,25 @@ export default function FinancialArchitecture() {
                   CRESCITA
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => handleSelectPreset("HYBRID_PROP")}
+                  className={`py-1 px-1 rounded transition-all font-bold text-center tracking-wider whitespace-nowrap ${
+                    activeStrategyPreset === "HYBRID_PROP"
+                      ? "bg-amber-950/80 text-amber-300 border border-amber-500/50 shadow-sm"
+                      : "text-slate-400 hover:text-foreground"
+                  }`}
+                  title="Pipeline Ibrida Prop-to-Wealth: 50% Azioni, 30% Dividendi, 12% Oro, 8% Crypto"
+                >
+                  IBRIDO
+                </button>
+
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleApplyOptimalAllocation}
-                  aria-label="Calcola Allocazione Ottimale LIMEN"
-                  title="Calcola Allocazione Ottimale LIMEN"
+                  aria-label="Calcola Allocazione Ottimale AUREUS"
+                  title="Calcola Allocazione Ottimale AUREUS"
                   className="h-full py-1 px-1 font-mono text-[9px] text-[#E8C56A] hover:bg-[#C5A059]/15 hover:text-[#F3D88C]"
                 >
                   <Sparkles className="h-2.5 w-2.5 mr-0.5 text-[#C5A059]" />
@@ -1250,6 +1407,8 @@ export default function FinancialArchitecture() {
               subtitle="Crescita indicizzata a lungo termine"
               valueEuro={subAllocations.equityAllocation}
               pct={profile.totalNetWorth > 0 ? (subAllocations.equityAllocation / profile.totalNetWorth) * 100 : 0}
+              subPct={profile.investmentsAllocation > 0 ? (subAllocations.equityAllocation / profile.investmentsAllocation) * 100 : 0}
+              subPctLabel="Inv"
               totalNetWorth={profile.totalNetWorth}
               pacMonthlyEuro={pacEquity}
               color="#10b981"
@@ -1272,6 +1431,8 @@ export default function FinancialArchitecture() {
               subtitle="Rendita passiva periodica"
               valueEuro={subAllocations.dividendsAllocation}
               pct={profile.totalNetWorth > 0 ? (subAllocations.dividendsAllocation / profile.totalNetWorth) * 100 : 0}
+              subPct={profile.investmentsAllocation > 0 ? (subAllocations.dividendsAllocation / profile.investmentsAllocation) * 100 : 0}
+              subPctLabel="Inv"
               totalNetWorth={profile.totalNetWorth}
               pacMonthlyEuro={pacDividends}
               color="#C5A059"
@@ -1294,6 +1455,8 @@ export default function FinancialArchitecture() {
               subtitle="Alpha asimmetrico sovrano con staking"
               valueEuro={subAllocations.cryptoAllocation}
               pct={profile.totalNetWorth > 0 ? (subAllocations.cryptoAllocation / profile.totalNetWorth) * 100 : 0}
+              subPct={profile.investmentsAllocation > 0 ? (subAllocations.cryptoAllocation / profile.investmentsAllocation) * 100 : 0}
+              subPctLabel="Inv"
               totalNetWorth={profile.totalNetWorth}
               pacMonthlyEuro={pacCrypto}
               color="#f59e0b"
@@ -1320,6 +1483,8 @@ export default function FinancialArchitecture() {
               subtitle="Oro fisico e asset decorrelati"
               valueEuro={subAllocations.hedgingAllocation}
               pct={profile.totalNetWorth > 0 ? (subAllocations.hedgingAllocation / profile.totalNetWorth) * 100 : 0}
+              subPct={profile.investmentsAllocation > 0 ? (subAllocations.hedgingAllocation / profile.investmentsAllocation) * 100 : 0}
+              subPctLabel="Inv"
               totalNetWorth={profile.totalNetWorth}
               pacMonthlyEuro={pacHedging}
               color="#64748b"
@@ -1335,13 +1500,15 @@ export default function FinancialArchitecture() {
               max={profile.totalNetWorth}
             />
 
-            {/* 5. Conto Trading (Trans-Limen) */}
+            {/* 5. Conto Trading (Trans-Aureus) */}
             <WealthAssetCard
               toolId="tradingAllocation"
-              label="Trading (Trans-Limen)"
+              label="Trading (Trans-Aureus)"
               subtitle="Motore operativo con vincolo 1:1"
               valueEuro={profile.tradingAllocation}
               pct={percentages.tradingPct}
+              subPct={percentages.tradingPct}
+              subPctLabel="NetWorth"
               totalNetWorth={profile.totalNetWorth}
               pacMonthlyEuro={0}
               color="#E8C56A"
@@ -1354,15 +1521,18 @@ export default function FinancialArchitecture() {
               secondaryMetric={`Rischio/Trade: €${tradingPositioning.riskPerTradeEuro} (${tradingPositioning.halfKellyRiskPct}%) • Impatto Net Worth: ${tradingPositioning.netWorthRiskPct}%`}
               onChangeEuro={(val) => handlePillarChange("tradingAllocation", val)}
               onOpenDossier={setActiveDossierToolId}
+              onOpenPropCalculator={() => setIsPropCalculatorOpen(true)}
               max={profile.totalNetWorth}
             />
           </div>
 
           {/* Termometro Rapido Aspettativa di Rendimento Conto */}
           <div className="pt-2 border-t border-border/60 mt-1 flex items-center justify-between text-xs font-mono shrink-0 gap-2 min-w-0">
-            <span className="text-slate-300 flex items-center gap-1.5 truncate min-w-0 flex-1">
-              <span className="shrink-0 text-slate-400">Termometro del Rischio Trading:</span>
-              <strong className="text-foreground font-bold truncate">{expectationEvaluation.headline}</strong>
+            <span className="text-slate-300 flex items-center gap-1.5 min-w-0 flex-1">
+              <span className="shrink-0 text-slate-400">Termometro del Rischio:</span>
+              <strong className="text-foreground font-bold whitespace-nowrap overflow-hidden text-ellipsis">
+                {expectationEvaluation.headline.replace(" / Conservativo", " · Solido").replace(" / Moderato", " · Moderato").replace(" / Aggressivo", " · Aggressivo")}
+              </strong>
             </span>
             <span className="text-slate-300 whitespace-nowrap shrink-0 ml-1">
               Target: <strong className="text-[#E8C56A]">{profile.expectedMonthlyReturnPct.toFixed(1)}%/m</strong> (
@@ -1377,11 +1547,15 @@ export default function FinancialArchitecture() {
         {/* ═══════════════════════════════════════════════════════════════
             COLONNA 3: STEP 3: ANALISI VISIVA, PROIEZIONI & VALIDAZIONE (4/12)
            ═══════════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-4 flex flex-col gap-2.5 h-full overflow-hidden">
-          {/* BLOCCO SUPERIORE: Selettore Orizzonte + Grafico Unificato Monte Carlo + Telemetrie */}
-          <div className="flex-1 flex flex-col justify-between rounded-xl border border-border/70 bg-[#0d0f14]/90 p-3 sm:p-3.5 shadow-sm overflow-hidden">
-            <div className="space-y-1.5 flex-1 flex flex-col justify-between overflow-hidden">
-              {/* Header Colonna 3: Selettore Asse Temporale & Toggle Donut in 2 Righe Senza Troncamenti */}
+        <div
+          className={`lg:col-span-4 flex-col gap-2.5 lg:h-full lg:overflow-y-auto lg:overflow-x-hidden scrollbar-thin scrollbar-thumb-[#C5A059]/20 pr-0.5 min-w-0 ${
+            mobileStep === 3 ? "flex" : "hidden lg:flex"
+          }`}
+        >
+          {/* BLOCCO SUPERIORE: Selettore Orizzonte + Visualizzatore Unificato Proiezioni / Monte Carlo / Pilastri */}
+          <div className="flex-1 flex flex-col rounded-xl border border-border/70 bg-[#0d0f14]/90 p-3 sm:p-3.5 shadow-sm overflow-hidden min-h-0">
+            <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
+              {/* Header Colonna 3: Titolo, Badge & Controlli Orizzonte */}
               <div className="border-b border-border/60 pb-2 mb-1.5 space-y-1.5 shrink-0">
                 <div className="flex items-center justify-between gap-2 min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -1389,7 +1563,7 @@ export default function FinancialArchitecture() {
                       03
                     </span>
                     <span className="font-mono text-[10.5px] sm:text-xs font-black uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
-                      STRESS TEST & VALIDAZIONE
+                      STRESS TEST & MONTE CARLO
                     </span>
                     <span className="sr-only">STEP 3: STRESS TEST & VALIDAZIONE FINALE</span>
                     <ToolInfoTrigger
@@ -1401,24 +1575,50 @@ export default function FinancialArchitecture() {
                   </div>
                 </div>
 
-                {/* Selettore Pillole Orizzonte Temporale, Toggle Lordo/Netto & Donut */}
-                <div className="flex items-center justify-between gap-1.5">
-                  <div className="flex items-center gap-1 min-w-0">
+                {/* Selettore Viste: Proiezione NW / Monte Carlo 1.000T / Donut + Toggle Lordo/Netto & Orizzonti */}
+                <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
+                  {/* Segmented View Switcher */}
+                  <div className="flex items-center gap-0.5 bg-[#07080b] p-0.5 rounded border border-border/70 font-mono text-[9.5px]">
                     <button
                       type="button"
-                      onClick={() => setShowPillarsBreakdown(!showPillarsBreakdown)}
-                      title="Mostra / Nascondi Donut dei 5 Pilastri"
-                      className={`px-2 py-0.5 rounded border text-[10px] font-mono font-bold transition-all ${
-                        showPillarsBreakdown
-                          ? "bg-[#C5A059]/20 border-[#C5A059] text-[#E8C56A]"
-                          : "border-border/60 text-slate-400 hover:text-foreground"
+                      onClick={() => setActiveVisualView("projection")}
+                      className={`px-2 py-0.5 rounded transition-all font-bold whitespace-nowrap flex items-center gap-1 ${
+                        activeVisualView === "projection"
+                          ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_8px_rgba(197,160,89,0.5)]"
+                          : "text-slate-400 hover:text-foreground"
                       }`}
                     >
-                      <PieChart className="h-2.5 w-2.5 inline mr-1" />
-                      Donut
+                      <LineChartIcon className="h-2.5 w-2.5" />
+                      <span>Proiezione</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveVisualView("monte_carlo")}
+                      className={`px-2 py-0.5 rounded transition-all font-bold whitespace-nowrap flex items-center gap-1 ${
+                        activeVisualView === "monte_carlo"
+                          ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_8px_rgba(197,160,89,0.5)]"
+                          : "text-slate-400 hover:text-foreground"
+                      }`}
+                    >
+                      <TrendingUp className="h-2.5 w-2.5" />
+                      <span>Monte Carlo (1.000T)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveVisualView("pillars")}
+                      className={`px-2 py-0.5 rounded transition-all font-bold whitespace-nowrap flex items-center gap-1 ${
+                        activeVisualView === "pillars"
+                          ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_8px_rgba(197,160,89,0.5)]"
+                          : "text-slate-400 hover:text-foreground"
+                      }`}
+                    >
+                      <PieChart className="h-2.5 w-2.5" />
+                      <span>Pilastri</span>
+                    </button>
+                  </div>
 
-                    {/* Toggle LORDO vs NETTO POST-TAX */}
+                  {/* Toggle LORDO vs NETTO & Pillole Orizzonte Temporale */}
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <div className="flex items-center gap-0.5 bg-[#07080b] p-0.5 rounded border border-border/70 font-mono text-[9px]">
                       <button
                         type="button"
@@ -1445,30 +1645,30 @@ export default function FinancialArchitecture() {
                         NETTO 🇮🇹
                       </button>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-0.5 bg-[#07080b] p-0.5 rounded border border-border/70 font-mono text-[10px] shrink-0">
-                    {[1, 3, 5, 10, 20].map((yr) => (
-                      <button
-                        key={yr}
-                        type="button"
-                        onClick={() => setSelectedHorizon(yr)}
-                        className={`px-2 py-0.5 rounded transition-all font-bold ${
-                          selectedHorizon === yr
-                            ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_8px_rgba(197,160,89,0.5)]"
-                            : "text-slate-400 hover:text-foreground"
-                        }`}
-                      >
-                        {yr}A
-                      </button>
-                    ))}
+                    <div className="flex items-center gap-0.5 bg-[#07080b] p-0.5 rounded border border-border/70 font-mono text-[10px] shrink-0">
+                      {[1, 3, 5, 10, 20].map((yr) => (
+                        <button
+                          key={yr}
+                          type="button"
+                          onClick={() => setSelectedHorizon(yr)}
+                          className={`px-1.5 py-0.5 rounded transition-all font-bold ${
+                            selectedHorizon === yr
+                              ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_8px_rgba(197,160,89,0.5)]"
+                              : "text-slate-400 hover:text-foreground"
+                          }`}
+                        >
+                          {yr}A
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Vista Principale: Grafico Unificato Proiezione + Monte Carlo con Risoluzione Adattiva */}
-              {!showPillarsBreakdown ? (
-                <div className="space-y-1.5 flex-1 flex flex-col justify-between overflow-hidden">
+              {/* CONTENUTO VISIVO PRINCIPALE: Proiezione Net Worth / Monte Carlo 1.000T / Donut Pilastri */}
+              {activeVisualView === "projection" && (
+                <div className="space-y-2 flex-1 flex flex-col justify-between overflow-y-auto scrollbar-thin scrollbar-thumb-[#C5A059]/25 pr-0.5">
                   <WealthProjectionChart
                     trajectory={wealthProjections.trajectory}
                     horizonYears={selectedHorizon}
@@ -1595,7 +1795,7 @@ export default function FinancialArchitecture() {
 
                           <div className="flex items-center justify-between text-[9px]">
                             <span className="text-slate-400">
-                              Versato: <strong className="text-slate-200">{investedEnd.toLocaleString("it-IT")} €</strong>
+                              Versato: <strong className="text-slate-200 whitespace-nowrap">{investedEnd.toLocaleString("it-IT")} €</strong>
                             </span>
                             <span className="text-[#E8C56A]">
                               Interesse Composto: <strong className="text-emerald-400">+{gainEuro.toLocaleString("it-IT")} €</strong>
@@ -1647,9 +1847,27 @@ export default function FinancialArchitecture() {
                     );
                   })()}
                 </div>
-              ) : (
-                /* Vista Alternativa: Donut Chart & Barre dei 5 Pilastri */
-                <div className="space-y-1 py-1">
+              )}
+
+              {/* VISTA 2: Motore Stocastico Monte Carlo (1.000 Traiettorie) con calcolo LIVE reattivo */}
+              {activeVisualView === "monte_carlo" && (
+                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#C5A059]/30 pr-0.5">
+                  <MonteCarloSimulationCard
+                    tradingAllocation={deferredTradingAllocation}
+                    reserveAllocation={deferredReserveAllocation}
+                    expectedMonthlyReturnPct={deferredExpectedMonthlyReturnPct}
+                    simulatedDrawdownPct={deferredSimulatedDrawdownPct}
+                    accountObjective={profile.accountObjective}
+                    initialWinRatePct={54}
+                    initialRiskRewardRatio={1.85}
+                    className="border border-[#C5A059]/20 bg-[#07080b]/90 shadow-none p-3 sm:p-3.5"
+                  />
+                </div>
+              )}
+
+              {/* VISTA 3: Donut Chart & Barre dei 5 Pilastri */}
+              {activeVisualView === "pillars" && (
+                <div className="space-y-1 py-1 flex-1 flex flex-col justify-center">
                   <div className="flex justify-center">
                     <PillarsDonutChart
                       pillars={{
@@ -1687,27 +1905,57 @@ export default function FinancialArchitecture() {
               onOpenDossier={setActiveDossierToolId}
             />
 
-            {/* Box: Simulazione Drawdown & Resilienza Psicologica */}
-            <div className="rounded-lg border border-border/70 bg-[#07080b]/70 p-2.5 space-y-1 font-mono text-[10.5px]">
+            {/* Box: Simulazione Drawdown & Resilienza Psicologica Integrata con Telemetrie Live */}
+            <div className="rounded-lg border border-border/70 bg-[#07080b]/70 p-2.5 space-y-1.5 font-mono text-[10.5px]">
               <div className="flex items-center justify-between text-muted-foreground uppercase pb-1 border-b border-border/50 gap-2 min-w-0">
                 <span className="font-bold text-foreground truncate min-w-0">Simulazione Drawdown & Pressione</span>
                 <span className="text-[9.5px] text-slate-400 whitespace-nowrap shrink-0" title="Profilo Mario vs Profilo Luigi">
                   Profilo Disciplinato vs Esposto
                 </span>
               </div>
-              <div className="flex items-center justify-between pt-0.5">
-                <span className="text-slate-300">Perdita -{profile.simulatedDrawdownPct}% Trading:</span>
-                <span className="font-bold text-red-400 whitespace-nowrap">
-                  -{psychologicalPressure.simulatedDrawdownEuro.toLocaleString("it-IT")} €
-                </span>
+
+              {/* Griglia Metriche di Stress Test & Monte Carlo Aggiornate Automagicamente */}
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] pt-0.5">
+                <div className="flex items-center justify-between min-w-0">
+                  <span className="text-slate-400 whitespace-nowrap">Perdita -{profile.simulatedDrawdownPct}%:</span>
+                  <span className="font-bold text-red-400 whitespace-nowrap ml-1 shrink-0">
+                    -{psychologicalPressure.simulatedDrawdownEuro.toLocaleString("it-IT")} €
+                  </span>
+                </div>
+                <div className="flex items-center justify-between min-w-0">
+                  <span className="text-slate-400 whitespace-nowrap">Impatto Net Worth:</span>
+                  <span className="font-bold text-emerald-400 whitespace-nowrap ml-1 shrink-0">
+                    -{psychologicalPressure.netWorthDrawdownImpactPct.toFixed(2)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between min-w-0">
+                  <span className="text-slate-400 whitespace-nowrap">VaR 95% Mensile:</span>
+                  <span className="font-bold text-amber-400 whitespace-nowrap ml-1 shrink-0">
+                    -{tradingMonteCarlo.monthlyVaR95Pct}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between min-w-0">
+                  <span className="text-slate-400 whitespace-nowrap">Max DD P95 (1.000T):</span>
+                  <span className="font-bold text-red-400 whitespace-nowrap ml-1 shrink-0">
+                    -{tradingMonteCarlo.maxDrawdownP95Pct}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between min-w-0">
+                  <span className="text-slate-400 whitespace-nowrap">Scudo Riserva 1:1:</span>
+                  <span className={`font-bold whitespace-nowrap ml-1 shrink-0 ${reserveConstraint.isValid ? "text-emerald-400" : "text-red-400"}`}>
+                    {reserveConstraint.isValid ? "Copertura 100%" : "Non Rispettato"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between min-w-0">
+                  <span className="text-slate-400 whitespace-nowrap">Capitale Integro:</span>
+                  <span className="font-bold text-[#E8C56A] whitespace-nowrap ml-1 shrink-0">
+                    {tradingMonteCarlo.probCapitalPreservedPct}% prob.
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-300">Impatto su Net Worth Totale:</span>
-                <span className="font-bold text-emerald-400 whitespace-nowrap">
-                  -{psychologicalPressure.netWorthDrawdownImpactPct.toFixed(2)}%
-                </span>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[#E8C56A] gap-0.5 pt-0.5">
+
+              {/* Indice Tenuta Mentale */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[#E8C56A] gap-0.5 pt-1 border-t border-border/40">
                 <span className="text-slate-400 text-[10px] uppercase">Indice Tenuta Mentale:</span>
                 <span className="font-bold uppercase text-right text-[#E8C56A] text-[10.5px]">
                   {psychologicalPressure.headline}
@@ -1730,17 +1978,6 @@ export default function FinancialArchitecture() {
               <Save className="h-4 w-4 mr-1.5" />
               <span>Salva e Attiva Protocollo Patrimoniale</span>
             </Button>
-          </div>
-
-          {/* Riferimento silenzioso al motore Monte Carlo per garantire copertura test statici */}
-          <div className="hidden" aria-hidden="true">
-            <MonteCarloSimulationCard
-              tradingAllocation={profile.tradingAllocation}
-              reserveAllocation={profile.reserveAllocation}
-              expectedMonthlyReturnPct={profile.expectedMonthlyReturnPct}
-              simulatedDrawdownPct={profile.simulatedDrawdownPct}
-              accountObjective={profile.accountObjective}
-            />
           </div>
         </div>
       </div>

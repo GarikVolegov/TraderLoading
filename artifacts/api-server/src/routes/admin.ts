@@ -1,6 +1,10 @@
 import { LaunchError } from "../lib/launchError.js";
 import { admitCandidate, updateCandidateApprovedServices } from "../services/launchApplications.js";
-import { listClerkSessions, revokeClerkSessions } from "../services/sessionRevocation.js";
+import {
+  invalidateUserSecurityCache,
+  listClerkSessions,
+  revokeClerkSessions,
+} from "../services/sessionRevocation.js";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   accountTradesTable,
@@ -40,6 +44,8 @@ import { ADMIN_PERMISSIONS_BY_ROLE, getBootstrapAdminIds } from "../lib/adminPer
 import { writeAdminAudit } from "../services/adminAudit.js";
 import { exportAccountData } from "../services/accountExport.js";
 import { logger } from "../lib/logger.js";
+import { systemWatchdog } from "../lib/systemWatchdog.js";
+import { getAllCircuitBreakersStats } from "../lib/circuitBreaker.js";
 import {
   isSupportStatus,
   serializeMessage,
@@ -63,7 +69,12 @@ export function parseAdminLimit(value: unknown, fallback: number): number {
 }
 
 export type AdminStatusFilter = "all" | "active" | "suspended" | "banned";
-export type AdminSubscriptionPlan = "free" | "pro" | "tributo_150";
+export type AdminSubscriptionPlan =
+  | "free"
+  | "pro"
+  | "tributo_150"
+  | "founders_10"
+  | "complete_150";
 export type AdminSubscriptionStatus =
   | "active"
   | "trialing"
@@ -74,6 +85,8 @@ const ADMIN_SUBSCRIPTION_PLANS: AdminSubscriptionPlan[] = [
   "free",
   "pro",
   "tributo_150",
+  "founders_10",
+  "complete_150",
 ];
 
 const ADMIN_SUBSCRIPTION_STATUSES: AdminSubscriptionStatus[] = [
@@ -1042,6 +1055,8 @@ router.get(
         serializeRuntimeFlag("SENTRY_DSN", process.env.SENTRY_DSN),
         serializeRuntimeFlag("OPENAI_API_KEY", process.env.OPENAI_API_KEY),
       ],
+      watchdog: systemWatchdog.getTelemetry(),
+      circuitBreakers: getAllCircuitBreakersStats(),
     });
   },
 );
@@ -1226,6 +1241,7 @@ router.post(
       targetType: "user", targetId: targetUserId, reason,
       after: { clerkSessionIds },
     });
+    invalidateUserSecurityCache(targetUserId);
     const result = await db.delete(sessionsTable)
       .where(sql`${sessionsTable.sess}->'user'->>'id' = ${targetUserId}`)
       .returning({ sid: sessionsTable.sid });
@@ -1269,6 +1285,8 @@ router.post("/admin/users/:userId/suspend", requireAdmin("users.suspend"), async
       },
     })
     .returning();
+
+  invalidateUserSecurityCache(targetUserId);
 
   await writeAdminAudit({
     req,
@@ -1322,6 +1340,8 @@ router.post(
         },
       })
       .returning();
+
+    invalidateUserSecurityCache(targetUserId);
 
     await writeAdminAudit({
       req,
@@ -1477,12 +1497,19 @@ router.post("/admin/candidate-applications/:id/admit", requireAdmin("billing.sub
   const approvedServices = Array.isArray(req.body.approvedServices)
     ? (req.body.approvedServices as string[])
     : undefined;
+  const billingCycle =
+    req.body.billingCycle === "yearly"
+      ? "yearly"
+      : req.body.billingCycle === "monthly"
+        ? "monthly"
+        : undefined;
 
   const result = await admitCandidate(
     id,
     req.admin!.userId,
     String(req.body.notes ?? "").trim().slice(0, 4000),
     approvedServices,
+    billingCycle,
   );
   await writeAdminAudit({
     req,
@@ -1507,7 +1534,19 @@ router.patch("/admin/candidate-applications/:id/services", requireAdmin("billing
     ? (req.body.approvedServices as string[])
     : ["base_protocol"];
   const notes = typeof req.body.notes === "string" ? req.body.notes.trim() : undefined;
-  const result = await updateCandidateApprovedServices(id, req.admin!.userId, approvedServices, notes);
+  const billingCycle =
+    req.body.billingCycle === "yearly"
+      ? "yearly"
+      : req.body.billingCycle === "monthly"
+        ? "monthly"
+        : undefined;
+  const result = await updateCandidateApprovedServices(
+    id,
+    req.admin!.userId,
+    approvedServices,
+    notes,
+    billingCycle,
+  );
   await writeAdminAudit({
     req,
     admin: req.admin!,

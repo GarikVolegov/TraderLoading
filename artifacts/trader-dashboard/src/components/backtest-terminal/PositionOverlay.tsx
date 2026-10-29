@@ -18,6 +18,8 @@ export interface ChartProjector {
   timeForX: (x: number) => number | null;
   width: number;
   height: number;
+  paneWidth?: number;
+  paneHeight?: number;
 }
 
 const GREEN = "hsl(142 71% 45%)";
@@ -242,7 +244,8 @@ export function PositionOverlay({
     const xStart = Math.max(0, projector.xForTime(pos.entryTime) ?? 0);
     if (yEntry == null || yStop == null || yTarget == null) return null;
 
-    const boxWidth = Math.max(0, width - 58 - xStart);
+    const paneW = projector.paneWidth ?? Math.max(0, width - 58);
+    const boxWidth = Math.max(0, paneW - xStart);
     const rewardTop = Math.min(yEntry, yTarget);
     const rewardHeight = Math.abs(yTarget - yEntry);
     const riskTop = Math.min(yEntry, yStop);
@@ -479,11 +482,21 @@ export function PositionOverlay({
     );
   });
 
+  const paneW = projector.paneWidth ?? Math.max(0, width - 58);
+  const paneH = projector.paneHeight ?? Math.max(0, height - 26);
+
   return (
     <svg ref={svgRef} className="btm-posoverlay" width={width} height={height} aria-hidden="true">
-      {connectors}
-      {pendingOrdersLayer}
-      {positionsLayer}
+      <defs>
+        <clipPath id="btm-pos-pane-clip">
+          <rect x={0} y={0} width={paneW} height={paneH} />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#btm-pos-pane-clip)">
+        {connectors}
+        {pendingOrdersLayer}
+        {positionsLayer}
+      </g>
     </svg>
   );
 }

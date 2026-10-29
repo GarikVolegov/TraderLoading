@@ -16,6 +16,8 @@ export interface RoomParticipant {
   tradesCount: number;
   lastActiveTs: number;
   isGhost?: boolean;
+  biometricBpm?: number;
+  stressLevel?: "calm" | "elevated" | "critical";
 }
 
 export interface RoomTradeBroadcast {
@@ -75,6 +77,8 @@ export type BattleRoomClientMessage =
       profitPct: number;
       drawdownPct: number;
       tradesCount: number;
+      biometricBpm?: number;
+      biometricShareConsent?: boolean;
     }
   | {
       type: "finish_run";
@@ -97,9 +101,26 @@ export type BattleRoomClientMessage =
       roomId: string;
       targetUserId: string;
       targetName?: string;
+    }
+  | {
+      type: "spectate_room";
+      roomId: string;
+    }
+  | {
+      type: "leave_spectate";
+      roomId: string;
+    }
+  | {
+      type: "ping";
+      timestamp: number;
     };
 
 export type BattleRoomServerMessage =
+  | {
+      type: "pong";
+      clientTimestamp: number;
+      serverTimestamp: number;
+    }
   | {
       type: "room_snapshot";
       roomId: string;
@@ -110,6 +131,7 @@ export type BattleRoomServerMessage =
       matchStartedAt?: number;
       matchEndsAt?: number;
       durationSeconds?: number;
+      spectatorCount?: number;
     }
   | {
       type: "participant_joined";
@@ -181,4 +203,9 @@ export type BattleRoomServerMessage =
       sender: string;
       sentence: string;
       timestamp: number;
+    }
+  | {
+      type: "spectator_count_update";
+      roomId: string;
+      spectatorCount: number;
     };

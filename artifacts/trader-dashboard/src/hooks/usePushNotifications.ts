@@ -24,6 +24,19 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
+let sharedSubscriptionLookup: Promise<PushSubscription | null> | null = null;
+
+function lookupSharedPushSubscription(): Promise<PushSubscription | null> {
+  if (!sharedSubscriptionLookup) {
+    sharedSubscriptionLookup = navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .finally(() => {
+        sharedSubscriptionLookup = null;
+      });
+  }
+  return sharedSubscriptionLookup;
+}
+
 export function usePushNotifications() {
   const { userId } = useAuth();
   const currentAccount = useRef(userId);
@@ -58,8 +71,7 @@ export function usePushNotifications() {
     }
     setReady(false);
     if (isSupported)
-      void navigator.serviceWorker.ready
-        .then((reg) => reg.pushManager.getSubscription())
+      void lookupSharedPushSubscription()
         .then((sub) => {
           if (!cancelled) setSubscription(sub);
         })

@@ -13,8 +13,14 @@ import { tradingDay } from "../lib/tradingTime.js";
 import { requireProFeature } from "../lib/billing.js";
 import { getOperatorIntegrityReport } from "../services/integrityEngine.js";
 import { canPublishPlatformContent as isPlatformAdmin } from "../lib/adminAuth.js";
+import { createMoneyRateLimiter } from "../lib/moneyRateLimit.js";
 
 const router: IRouter = Router();
+const avatarGenerateLimiter = createMoneyRateLimiter({
+  windowMs: 60_000,
+  limit: 4,
+  scope: "avatar-generate",
+});
 
 const XP_PER_LEVEL = 500;
 
@@ -124,15 +130,18 @@ function getUserId(req: Request): string | null {
 
 async function computeWinRate(userId: string | null): Promise<{ winRate: number | null; totalTrades: number }> {
   const filter = userId ? eq(accountTradesTable.userId, userId) : eq(accountTradesTable.userId, "guest");
-  const trades = await db
-    .select({ profit: accountTradesTable.profit })
+  const [agg] = await db
+    .select({
+      totalTrades: sql<number>`count(*)::int`,
+      wins: sql<number>`count(*) filter (where ${accountTradesTable.profit} > 0)::int`,
+    })
     .from(accountTradesTable)
     .where(and(filter, eq(accountTradesTable.status, "closed"), isNotNull(accountTradesTable.profit)));
 
-  const totalTrades = trades.length;
+  const totalTrades = Number(agg?.totalTrades ?? 0);
   if (totalTrades === 0) return { winRate: null, totalTrades: 0 };
 
-  const wins = trades.filter((trade) => Number(trade.profit) > 0).length;
+  const wins = Number(agg?.wins ?? 0);
   const winRate = Math.round((wins / totalTrades) * 100);
   return { winRate, totalTrades };
 }
@@ -294,9 +303,14 @@ router.post("/profile/avatar", avatarUpload.single("image"), async (req, res) =>
   res.json({ avatarUrl });
 });
 
-router.post("/profile/avatar/generate", async (req, res) => {
+router.post("/profile/avatar/generate", avatarGenerateLimiter, async (req, res) => {
   const userId = getUserId(req);
+  if (process.env.NODE_ENV === "production" && !userId) {
+    res.status(401).json({ error: "Autenticazione richiesta" });
+    return;
+  }
   const profile = await getOrCreateProfile(userId);
+  const previousAvatarUrl = profile.avatarUrl;
 
   const seed = crypto.createHash("md5")
     .update(`${userId || "guest"}-${Date.now()}-${Math.random()}`)
@@ -328,12 +342,19 @@ router.post("/profile/avatar/generate", async (req, res) => {
   try {
     const { generateImageBuffer } = await import("@workspace/integrations-openai-ai-server/image");
     const buffer = await generateImageBuffer(prompt, "512x512");
-    fs.writeFileSync(outputPath, buffer);
+    await fs.promises.writeFile(outputPath, buffer);
 
     const avatarUrl = `/api/uploads/avatars/${filename}`;
     await db.update(profileTable)
       .set({ avatarUrl })
       .where(eq(profileTable.id, profile.id));
+
+    if (previousAvatarUrl && previousAvatarUrl.startsWith("/api/uploads/avatars/ai-avatar-")) {
+      const oldFilename = path.basename(previousAvatarUrl);
+      if (oldFilename !== filename) {
+        await fs.promises.unlink(path.join(AVATARS_DIR, oldFilename)).catch(() => {});
+      }
+    }
 
     res.json({ avatarUrl });
   } catch (err) {

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ProCheckoutDialog } from "@/components/ProCheckoutDialog";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBillingStatus } from "@/lib/billingApi";
+import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
 
 export type ProFeature = "backtest" | "leaderboard" | "broker" | "wiki";
 
@@ -77,6 +78,11 @@ function PaywallCard({
             ) : (
               <p className="text-xs text-muted-foreground">{t("billing.checkout_unavailable")}</p>
             )}
+            <Link href="/landing#dotazioni">
+              <Button type="button" variant="outline" size="sm" className="border-[#C5A059]/40 bg-[#C5A059]/10 text-[#E8C56A] hover:bg-[#C5A059]/20 font-mono text-xs uppercase tracking-wider">
+                Configura Candidatura AUREUS
+              </Button>
+            </Link>
             <Link href="/pro">
               <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
                 {t("billing.discover_cta")}
@@ -110,12 +116,25 @@ export function ProUpgradeGate({
 }) {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const billing = useBillingStatus();
+  const { entitlements, isAdmin } = useLimenEntitlements();
 
   if (billing.isPending) {
     return <div className="min-h-[320px] rounded-lg bg-card/40 animate-pulse" />;
   }
 
+  if (isAdmin) {
+    return <>{children}</>;
+  }
+
   if (billing.data?.pro) {
+    return <>{children}</>;
+  }
+
+  if (feature === "backtest" && entitlements.forgeOfThePast) {
+    return <>{children}</>;
+  }
+
+  if (feature === "leaderboard" && (entitlements.quarterlyTournaments || entitlements.doctrineOfTime)) {
     return <>{children}</>;
   }
 

@@ -38,6 +38,7 @@ export const wikiSourcesTable = pgTable("wiki_sources", {
   index("wiki_sources_user_status_idx").on(table.userId, table.status),
   index("wiki_sources_user_created_idx").on(table.userId, table.createdAt),
   index("wiki_sources_user_folder_idx").on(table.userId, table.folderId),
+  index("wiki_sources_storage_key_idx").on(table.storageKey),
 ]);
 
 // Tracks async text extraction for uploaded files / imported URLs so the

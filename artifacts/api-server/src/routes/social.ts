@@ -10,7 +10,7 @@ import { getServerNotificationCopy } from "../services/notifications/notificatio
 import { consumeSignals, pushSignal } from "../services/callSignaling.js";
 import { resolveUploadPath } from "../lib/uploads.js";
 import { parseFeedPagination, nextFeedCursor } from "../services/feedPagination.js";
-import { imageMatchesType } from "../lib/imageValidation.js";
+import { imageMatchesType, readFileHeader } from "../lib/imageValidation.js";
 import { encryptChatPayload } from "../services/chatPayloadEncryption.js";
 
 const POST_IMAGES_DIR = resolveUploadPath("post-images");
@@ -175,12 +175,20 @@ router.get("/social/followers", async (req, res) => {
   if (!userId) return;
   try {
     const rows = await db.select({ followerId: followsTable.followerId })
-      .from(followsTable).where(eq(followsTable.followingId, userId));
+      .from(followsTable)
+      .where(eq(followsTable.followingId, userId))
+      .limit(200);
     const ids = rows.map(r => r.followerId);
     if (ids.length === 0) { res.json([]); return; }
-    const profiles = await db.select({ userId: profileTable.userId, name: profileTable.name, avatarUrl: profileTable.avatarUrl, level: profileTable.level, xp: profileTable.xp })
-      .from(profileTable).where(inArray(profileTable.userId, ids));
-    const mutuals = await Promise.all(profiles.map(async p => ({ ...p, isMutual: await isMutualFollow(userId, p.userId!) })));
+    const [profiles, myFollowingRows] = await Promise.all([
+      db.select({ userId: profileTable.userId, name: profileTable.name, avatarUrl: profileTable.avatarUrl, level: profileTable.level, xp: profileTable.xp })
+        .from(profileTable).where(inArray(profileTable.userId, ids)),
+      db.select({ followingId: followsTable.followingId })
+        .from(followsTable)
+        .where(and(eq(followsTable.followerId, userId), inArray(followsTable.followingId, ids))),
+    ]);
+    const myFollowingSet = new Set(myFollowingRows.map(r => r.followingId));
+    const mutuals = profiles.map(p => ({ ...p, isMutual: p.userId ? myFollowingSet.has(p.userId) : false }));
     res.json(mutuals);
   } catch (err) {
     console.error("followers error:", err);
@@ -193,12 +201,20 @@ router.get("/social/following", async (req, res) => {
   if (!userId) return;
   try {
     const rows = await db.select({ followingId: followsTable.followingId })
-      .from(followsTable).where(eq(followsTable.followerId, userId));
+      .from(followsTable)
+      .where(eq(followsTable.followerId, userId))
+      .limit(200);
     const ids = rows.map(r => r.followingId);
     if (ids.length === 0) { res.json([]); return; }
-    const profiles = await db.select({ userId: profileTable.userId, name: profileTable.name, avatarUrl: profileTable.avatarUrl, level: profileTable.level, xp: profileTable.xp })
-      .from(profileTable).where(inArray(profileTable.userId, ids));
-    const mutuals = await Promise.all(profiles.map(async p => ({ ...p, isMutual: await isMutualFollow(userId, p.userId!) })));
+    const [profiles, backFollowerRows] = await Promise.all([
+      db.select({ userId: profileTable.userId, name: profileTable.name, avatarUrl: profileTable.avatarUrl, level: profileTable.level, xp: profileTable.xp })
+        .from(profileTable).where(inArray(profileTable.userId, ids)),
+      db.select({ followerId: followsTable.followerId })
+        .from(followsTable)
+        .where(and(eq(followsTable.followingId, userId), inArray(followsTable.followerId, ids))),
+    ]);
+    const backFollowerSet = new Set(backFollowerRows.map(r => r.followerId));
+    const mutuals = profiles.map(p => ({ ...p, isMutual: p.userId ? backFollowerSet.has(p.userId) : false }));
     res.json(mutuals);
   } catch (err) {
     console.error("following error:", err);
@@ -221,11 +237,27 @@ router.get("/social/search", async (req, res) => {
     }).from(profileTable)
       .where(and(sql`${profileTable.name} ILIKE ${`%${q}%`}`, sql`${profileTable.userId} IS NOT NULL`, sql`${profileTable.userId} != ${userId}`))
       .limit(20);
-    const enriched = await Promise.all(results.map(async r => ({
-      ...r,
-      isFollowing: (await db.select().from(followsTable).where(and(eq(followsTable.followerId, userId), eq(followsTable.followingId, r.userId!))).limit(1)).length > 0,
-      isMutual: await isMutualFollow(userId, r.userId!),
-    })));
+    const candidateIds = results.map(r => r.userId).filter((id): id is string => Boolean(id));
+    if (candidateIds.length === 0) { res.json([]); return; }
+    const [outgoingRows, incomingRows] = await Promise.all([
+      db.select({ followingId: followsTable.followingId })
+        .from(followsTable)
+        .where(and(eq(followsTable.followerId, userId), inArray(followsTable.followingId, candidateIds))),
+      db.select({ followerId: followsTable.followerId })
+        .from(followsTable)
+        .where(and(eq(followsTable.followingId, userId), inArray(followsTable.followerId, candidateIds))),
+    ]);
+    const outgoingSet = new Set(outgoingRows.map(r => r.followingId));
+    const incomingSet = new Set(incomingRows.map(r => r.followerId));
+    const enriched = results.map(r => {
+      const isFollowing = r.userId ? outgoingSet.has(r.userId) : false;
+      const followsMe = r.userId ? incomingSet.has(r.userId) : false;
+      return {
+        ...r,
+        isFollowing,
+        isMutual: isFollowing && followsMe,
+      };
+    });
     res.json(enriched);
   } catch (err) {
     console.error("search error:", err);
@@ -236,11 +268,12 @@ router.get("/social/search", async (req, res) => {
 router.post("/social/upload-image", (req: Request, res: Response) => {
   const userId = req.user?.id;
   if (!userId) { res.status(401).json({ error: "Autenticazione richiesta" }); return; }
-  postImageUpload.single("image")(req, res, (err) => {
+  postImageUpload.single("image")(req, res, async (err) => {
     if (err) { res.status(400).json({ error: err.message ?? "Upload fallito" }); return; }
     if (!req.file) { res.status(400).json({ error: "Nessun file caricato" }); return; }
     try {
-      if (!imageMatchesType(fs.readFileSync(req.file.path), req.file.mimetype, req.file.originalname)) {
+      const header = await readFileHeader(req.file.path, 64);
+      if (!imageMatchesType(header, req.file.mimetype, req.file.originalname)) {
         removeUploadedFile(req.file.path); res.status(415).json({ error: "Immagine non valida" }); return;
       }
       const imageUrl = `/api/uploads/post-images/${req.file.filename}`;
@@ -267,10 +300,12 @@ router.post("/social/upload-file", (req: Request, res: Response) => {
         removeUploadedFile(req.file.path);
         res.status(400).json({ error: "Destinatario non valido" }); return;
       }
-      if (req.file.mimetype.startsWith("image/") &&
-          !imageMatchesType(fs.readFileSync(req.file.path), req.file.mimetype, req.file.originalname)) {
-        removeUploadedFile(req.file.path);
-        res.status(415).json({ error: "Immagine non valida" }); return;
+      if (req.file.mimetype.startsWith("image/")) {
+        const header = await readFileHeader(req.file.path, 64);
+        if (!imageMatchesType(header, req.file.mimetype, req.file.originalname)) {
+          removeUploadedFile(req.file.path);
+          res.status(415).json({ error: "Immagine non valida" }); return;
+        }
       }
       await db
         .insert(chatFileAccessTable)
@@ -315,7 +350,8 @@ router.get("/uploads/chat-files/:filename", async (req: Request, res: Response) 
     // Every other attachment remains a download, never executable app content.
     const imageMime: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp" };
     const mime = imageMime[path.extname(filename).toLowerCase()];
-    if (mime && imageMatchesType(fs.readFileSync(filePath), mime, filename)) {
+    const header = mime ? await readFileHeader(filePath, 64) : null;
+    if (mime && header && imageMatchesType(header, mime, filename)) {
       res.type(mime);
       res.setHeader("Content-Disposition", "inline");
     } else {
@@ -596,7 +632,7 @@ router.post("/social/upload-voice", (req: Request, res: Response) => {
     const toUserId = typeof req.body?.toUserId === "string" ? req.body.toUserId.trim() : "";
     if (!toUserId) { removeUploadedFile(req.file.path); res.status(400).json({ error: "Destinatario mancante" }); return; }
     try {
-    const bytes = fs.readFileSync(req.file.path);
+    const bytes = await readFileHeader(req.file.path, 32);
     const validAudio = req.file.mimetype === "audio/webm" ? bytes.length > 8 && bytes.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))
       : req.file.mimetype === "audio/ogg" && bytes.length > 16 && bytes.subarray(0, 4).toString() === "OggS";
     if (!validAudio) { removeUploadedFile(req.file.path); res.status(415).json({ error: "Audio non valido" }); return; }

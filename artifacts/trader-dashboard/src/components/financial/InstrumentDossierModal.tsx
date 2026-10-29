@@ -96,7 +96,7 @@ export const INSTRUMENT_DOSSIERS: Record<string, InstrumentDossier> = {
       "Divieto assoluto di impiegare la liquidità vitale per trading o investimenti volatili. Questo capitale vive segregato in conto corrente o deposito a vista.",
     guardrails: [
       "Minimo 3 mesi di spese per chi ha entrate stabili e zero dipendenti",
-      "Consigliati 6 mesi per la maggioranza degli operatori LIMEN",
+      "Consigliati 6 mesi per la maggioranza degli operatori AUREUS",
       "12 mesi obbligatori in presenza di figli o persone a carico",
     ],
     impactDescription:
@@ -126,11 +126,11 @@ export const INSTRUMENT_DOSSIERS: Record<string, InstrumentDossier> = {
   },
   tradingAllocation: {
     id: "tradingAllocation",
-    code: "TRA-ACT // MOTORE TRADING TRANS-LIMEN",
+    code: "TRA-ACT // MOTORE TRADING AUREUS",
     title: "Conto Trading Attivo",
     category: "Generazione Surplus",
     scope:
-      "La quota di capitale allocata all'esecuzione del Metodo LIMEN a mercato per estrarre rendimento asimmetrico e surplus operativo.",
+      "La quota di capitale allocata all'esecuzione del Metodo AUREUS a mercato per estrarre rendimento asimmetrico e surplus operativo.",
     formula: "Rischio Operativo per Trade = Conto Trading × 0.5% - 1.0% (Max Stop Loss)",
     formulaDescription:
       "Tutte le metriche di size, loss limit giornaliero e drawdown dell'intera piattaforma derivano direttamente da questa allocazione.",
@@ -222,7 +222,7 @@ export const INSTRUMENT_DOSSIERS: Record<string, InstrumentDossier> = {
     limenRule:
       "Mantenere la custodia privata su hardware wallet. Limitare lo staking a protocolli nativi o liquid staking di grado sovrano senza delegare le chiavi a exchange centralizzati.",
     guardrails: [
-      "Tetto massimo consigliato LIMEN: non oltre il 10% - 15% del Net Worth complessivo",
+      "Tetto massimo consigliato AUREUS: non oltre il 10% - 15% del Net Worth complessivo",
       "Staking consigliato su massimo il 50% della quota crypto (il restante 50% in Bitcoin cold storage)",
       "Reinvestimento del flusso di staking per accelerare il compounding o diversificazione verso Oro",
     ],
@@ -235,7 +235,7 @@ export const INSTRUMENT_DOSSIERS: Record<string, InstrumentDossier> = {
         "Quota crypto nel portafoglio scesa sotto il guardrail del 5% del Net Worth a seguito di correzione",
       ],
       comparisonWithOthers:
-        "Rispetto ai Dividendi: potenziale di rivalutazione asimmetrico 5-10x superiore nei cicli quadriennali, ma con drawdown del 50-70%. Regola LIMEN: quando la quota eccede il 15%, scatta la rotazione obbligatoria verso Oro e Dividendi.",
+        "Rispetto ai Dividendi: potenziale di rivalutazione asimmetrico 5-10x superiore nei cicli quadriennali, ma con drawdown del 50-70%. Regola AUREUS: quando la quota eccede il 15%, scatta la rotazione obbligatoria verso Oro e Dividendi.",
     },
     impactDescription:
       "Trasforma un asset volatile in un generatore ibrido di crescita esponenziale e flusso di cassa costante a supporto della sovranità finanziaria.",
@@ -305,7 +305,7 @@ export const INSTRUMENT_DOSSIERS: Record<string, InstrumentDossier> = {
     formulaDescription:
       "Misura l'esatto calo in euro e percentuale sul patrimonio complessivo, dimostrando la protezione garantita da liquidità vitale, riserva e oro intatti.",
     limenRule:
-      "Un portafoglio è conforme all'Ordine LIMEN solo se in grado di sopportare un crollo sistemico senza superare un drawdown complessivo del 10% - 15% sul Net Worth.",
+      "Un portafoglio è conforme all'Ordine AUREUS solo se in grado di sopportare un crollo sistemico senza superare un drawdown complessivo del 10% - 15% sul Net Worth.",
     guardrails: [
       "Indice di Scudo (Survival Shield Score) calcolato in tempo reale da 0 a 100",
       "Le spese vitali e il fondo di riserva rimangono intatti e sigillati (0% impatto)",
@@ -493,12 +493,14 @@ interface InstrumentDossierModalProps {
   toolId: string | null;
   isOpen: boolean;
   onClose: () => void;
+  onOpenPropCalculator?: () => void;
 }
 
 export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
   toolId,
   isOpen,
   onClose,
+  onOpenPropCalculator,
 }) => {
   const [activeTab, setActiveTab] = useState<"dossier" | "benchmark" | "crossAsset">("dossier");
   const [searchQuery, setSearchQuery] = useState("");
@@ -694,7 +696,7 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
               <div className="rounded-lg border border-[#C5A059]/35 bg-[#C5A059]/5 p-3.5 space-y-1.5">
                 <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-[#F3D88C]">
                   <Scale className="h-4 w-4 text-[#C5A059]" />
-                  <span>Regola d'Onore & Disciplina LIMEN</span>
+                  <span>Regola d'Onore & Disciplina AUREUS</span>
                 </div>
                 <p className="text-xs text-foreground/90 font-medium leading-relaxed italic">
                   « {dossier.limenRule} »
@@ -1091,7 +1093,7 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
                         <strong className="text-muted-foreground">1.62% del conto</strong>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span>Frazione Half-Kelly Applicata LIMEN:</span>
+                        <span>Frazione Half-Kelly Applicata AUREUS:</span>
                         <strong className="text-emerald-400 font-bold">{tradingPositioning.halfKellyRiskPct}% del conto</strong>
                       </div>
                       <div className="flex items-center justify-between">
@@ -1102,6 +1104,37 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
                         <span>Vincolo Fondo di Riserva 1:1:</span>
                         <strong className="text-[#E8C56A]">Obbligatorio (Riserva &ge; Conto Trading)</strong>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Sezione Prop Firm & Broker Sovrani (Asimmetria di Capitale) */}
+                  <div className="rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/10 p-3 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-[#E8C56A] font-bold uppercase text-[11px]">
+                        <Zap className="h-4 w-4 text-[#C5A059]" />
+                        <span>Asimmetria Capitale Prop Firm & Broker Sovrani</span>
+                      </div>
+                      <Badge variant="outline" className="text-[9px] border-emerald-500/40 text-emerald-300 font-bold uppercase whitespace-nowrap">
+                        Leva 148x su Fee
+                      </Badge>
+                    </div>
+                    <p className="text-[10.5px] text-muted-foreground leading-relaxed font-sans">
+                      Nel Protocollo AUREUS il trading non deve mai rischiare il patrimonio personale. Con una challenge prop da 100k, rischi unicamente la fee (~540 €) per gestire 100.000 €: al 3%/m incassi 2.400 €/m (+540 € rimborso al 1° mese), pari a oltre 140 volte il rendimento del conto diretto con la stessa fee.
+                    </p>
+                    <div className="pt-1.5 flex flex-wrap items-center justify-between gap-2 border-t border-border/40 text-[10px]">
+                      <span className="text-slate-300">Modello 2 Fasi (10% + 5%) & 5 Broker Sovrani</span>
+                      {onOpenPropCalculator && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onOpenPropCalculator();
+                          }}
+                          className="px-2.5 py-1 rounded bg-[#C5A059] text-black font-bold uppercase hover:bg-[#E8C56A] transition-all whitespace-nowrap shadow-sm text-[9.5px]"
+                        >
+                          Apri Simulatore Prop & Broker →
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1116,7 +1149,7 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-emerald-300 flex items-center gap-1.5 uppercase">
                     <Sparkles className="h-4 w-4 text-emerald-400" />
-                    <span>Verdetto di Rotazione Quantitativa LIMEN</span>
+                    <span>Verdetto di Rotazione Quantitativa AUREUS</span>
                   </span>
                   <Badge variant="outline" className="text-[9px] border-emerald-500/40 text-emerald-300 uppercase font-bold">
                     Top Opportunity: {crossAssetMatrix.topOpportunity.title}
@@ -1191,7 +1224,7 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
                     <p className="leading-relaxed">{crossAssetMatrix.pairwiseInsights.cryptoVsGold}</p>
                   </div>
                   <div className="rounded bg-[#11131c] p-2 border border-border/50 space-y-0.5">
-                    <strong className="text-foreground block">⚡ Trading Attivo Trans-Limen vs Investimenti Passivi:</strong>
+                    <strong className="text-foreground block">⚡ Trading Attivo Trans-Aureus vs Investimenti Passivi:</strong>
                     <p className="leading-relaxed">{crossAssetMatrix.pairwiseInsights.tradingVsPassive}</p>
                   </div>
                 </div>
@@ -1202,7 +1235,7 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
 
         {/* Footer */}
         <div className="bg-[#11131c] border-t border-[#C5A059]/20 p-3 px-5 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-          <span>ORDINE LIMEN // ARCHITETTURA PATRIMONIALE</span>
+          <span>ORDINE AUREUS // ARCHITETTURA PATRIMONIALE</span>
           <button
             type="button"
             onClick={onClose}

@@ -38,6 +38,29 @@ export interface LimenServiceItem {
   readonly features: readonly string[];
 }
 
+export const DOTAZIONE_PROMO_EXPIRES_AT = "2026-11-10T23:59:59.999Z";
+
+export function isDotazionePromoActive(now: Date = new Date()): boolean {
+  try {
+    const expiresMs = new Date(DOTAZIONE_PROMO_EXPIRES_AT).getTime();
+    return now.getTime() <= expiresMs;
+  } catch {
+    return true;
+  }
+}
+
+export interface LimenTierPromo {
+  readonly badge: string;
+  readonly promoMonthlyEur: number;
+  readonly promoMonthlyCents: number;
+  readonly promoDisplay: string;
+  readonly validityDays: number;
+  readonly originalMonthlyEur: number;
+  readonly discountPercent: number;
+  readonly expiresAt: string;
+  readonly description: string;
+}
+
 export interface LimenTierDefinition {
   readonly id: LimenTierId;
   readonly title: string;
@@ -53,6 +76,7 @@ export interface LimenTierDefinition {
   readonly yearlySavingsEur: number;
   readonly includedServices: readonly LimenServiceId[];
   readonly features: readonly string[];
+  readonly promo?: LimenTierPromo;
 }
 
 export const LIMEN_TIERS: readonly LimenTierDefinition[] = [
@@ -80,7 +104,7 @@ export const LIMEN_TIERS: readonly LimenTierDefinition[] = [
   {
     id: "founders_10",
     title: "Dotazione Operativa · Esclusiva Prime Persone",
-    badge: "PREZZO ESCLUSIVO PRIME PERSONE",
+    badge: "ESCLUSIVA PRIME PERSONE",
     subtitle: "Tariffa riservata ai primi operatori ammessi: sblocca il pacchetto base unito a La Forgia del Passato e all'Architettura Patrimoniale.",
     monthlyEur: 10,
     monthlyCents: 1000,
@@ -90,6 +114,17 @@ export const LIMEN_TIERS: readonly LimenTierDefinition[] = [
     yearlyDisplay: "100 € / anno",
     yearlyMonthlyEquivalentDisplay: "~8,33 €/mese · 2 Mesi in Omaggio",
     yearlySavingsEur: 20,
+    promo: {
+      badge: "PROMO 14 GIORNI",
+      promoMonthlyEur: 2.6,
+      promoMonthlyCents: 260,
+      promoDisplay: "2,60 € / 14 giorni",
+      validityDays: 14,
+      originalMonthlyEur: 10,
+      discountPercent: 74,
+      expiresAt: DOTAZIONE_PROMO_EXPIRES_AT,
+      description: "Dotazione Operativa in promozione a 2,60 € valida per 14 giorni.",
+    },
     includedServices: [
       "base_protocol",
       "forge_of_the_past",
@@ -99,7 +134,7 @@ export const LIMEN_TIERS: readonly LimenTierDefinition[] = [
       "Tutta la Soglia Iniziale Base (Varco, Libro Verità, Fratellanza, 5 Gradi)",
       "La Forgia del Passato: Simulatore storico candela per candela senza limiti",
       "Architettura Patrimoniale: Gestione rischio, drawdown e allocazione",
-      "Prezzo bloccato esclusivo 10€ per le prime persone ammesse",
+      "Accesso operativo promozionale a 2,60 € valido per 14 giorni (poi 10 €/m)",
     ],
   },
   {
@@ -160,21 +195,21 @@ export const LIMEN_SERVICES: readonly LimenServiceItem[] = [
     category: "addon",
     title: "La Forgia del Passato (Banco di Forgiatura)",
     shortTitle: "Banco di Forgiatura",
-    subtitle: "Simulatore candela per candela e archivio storico per affilare l'esecuzione. Incluso nell'offerta Prime Persone da 10€.",
+    subtitle: "Simulatore candela per candela e archivio storico per affilare l'esecuzione. In promo speciale a 2,60€ (valida 14 giorni).",
     priceType: "founders_bundle",
     priceAmountEur: 10,
     priceAmountCents: 1000,
     priceYearlyAmountEur: 100,
     priceYearlyAmountCents: 10000,
-    priceDisplay: "Incluso nel Piano 10 €/m",
+    priceDisplay: "Promo 2,60 € / 1° m (poi 10 €/m)",
     priceYearlyDisplay: "Incluso nel Piano 100 €/a",
     isIncludedInBase: false,
     routePath: "/backtest",
-    badgeLabel: "ESCLUSIVA PRIME PERSONE · 10€",
+    badgeLabel: "PROMO 14 GIORNI · 2,60 €",
     features: [
       "Replay storico candela per candela tick-by-tick",
       "Banco di Forgiatura con statistiche R:R avanzate",
-      "Incluso insieme all'Architettura Patrimoniale a 10 €/mese",
+      "Incluso insieme all'Architettura Patrimoniale a 2,60 € promo (poi 10 €/m)",
     ],
   },
   {
@@ -182,21 +217,21 @@ export const LIMEN_SERVICES: readonly LimenServiceItem[] = [
     category: "addon",
     title: "Architettura Patrimoniale",
     shortTitle: "Architettura Patrimoniale",
-    subtitle: "Le Fondamenta di Rischio: drawdown sostenibile e barriere di protezione. Inclusa nell'offerta Prime Persone da 10€.",
+    subtitle: "Le Fondamenta di Rischio: drawdown sostenibile e barriere di protezione. In promo speciale a 2,60€ (valida 14 giorni).",
     priceType: "founders_bundle",
     priceAmountEur: 10,
     priceAmountCents: 1000,
     priceYearlyAmountEur: 100,
     priceYearlyAmountCents: 10000,
-    priceDisplay: "Inclusa nel Piano 10 €/m",
+    priceDisplay: "Promo 2,60 € / 1° m (poi 10 €/m)",
     priceYearlyDisplay: "Inclusa nel Piano 100 €/a",
     isIncludedInBase: false,
     routePath: "/patrimonio",
-    badgeLabel: "ESCLUSIVA PRIME PERSONE · 10€",
+    badgeLabel: "PROMO 14 GIORNI · 2,60 €",
     features: [
       "Calcolo matematico della tolleranza di perdita",
       "Separazione tra capitale operativo e riserva d'assedio",
-      "Inclusa insieme a La Forgia del Passato a 10 €/mese",
+      "Inclusa insieme a La Forgia del Passato a 2,60 € promo (poi 10 €/m)",
     ],
   },
   {
@@ -238,19 +273,24 @@ export interface LimenPricingBreakdown {
   readonly activeDisplay: string;
   readonly formattedSummary: string;
   readonly yearlySavingsEur: number;
+  readonly promoActive?: boolean;
+  readonly promoDisplay?: string;
+  readonly promoBadge?: string;
+  readonly promoMonthlyFeeCents?: number;
 }
 
 /**
  * Computes pricing according to the official LIMEN tier structure:
  * - Only `base_protocol` -> 0 €
  * - `forge_of_the_past` and/or `financial_architecture` (without `doctrine_of_time`) ->
- *   Exclusive First Members rate: 10 €/month or 100 €/year (includes both Forge & Financial Architecture).
+ *   Exclusive First Members rate: 10 €/month (in promo a 2,60 € per il 1° mese per 14 giorni) or 100 €/year.
  * - `doctrine_of_time` selected -> Complete Project (Formazione + Finestra Operativa + Forge + Financial Architecture):
  *   150 €/month or 1.500 €/year.
  */
 export function calculateLimenServicesPricing(
   selectedIds: readonly string[],
   billingCycle: LimenBillingCycle = "monthly",
+  now: Date = new Date(),
 ): LimenPricingBreakdown {
   const set = new Set(selectedIds);
   set.add("base_protocol");
@@ -273,14 +313,30 @@ export function calculateLimenServicesPricing(
   const oneTimeFeeCents = 0;
 
   const isYearly = billingCycle === "yearly";
-  const activeFeeCents = isYearly ? yearlyFeeCents : monthlyFeeCents;
-  const activeDisplay = isYearly ? tier.yearlyDisplay : tier.monthlyDisplay;
+  const hasPromo =
+    tier.id === "founders_10" &&
+    !isYearly &&
+    !!tier.promo &&
+    isDotazionePromoActive(now);
+
+  const activeFeeCents = isYearly
+    ? yearlyFeeCents
+    : hasPromo
+      ? tier.promo!.promoMonthlyCents
+      : monthlyFeeCents;
+  const activeDisplay = isYearly
+    ? tier.yearlyDisplay
+    : hasPromo
+      ? tier.promo!.promoDisplay
+      : tier.monthlyDisplay;
 
   let formattedSummary: string;
   if (tier.id === "base_free") {
     formattedSummary = "0 € (Soglia Base Inclusa)";
   } else if (isYearly) {
     formattedSummary = `${tier.yearlyDisplay} (${tier.title})`;
+  } else if (hasPromo) {
+    formattedSummary = "2,60 € / 14 giorni (Dotazione Operativa)";
   } else {
     formattedSummary = `${tier.monthlyDisplay} (${tier.title})`;
   }
@@ -300,6 +356,10 @@ export function calculateLimenServicesPricing(
     activeDisplay,
     formattedSummary,
     yearlySavingsEur: tier.yearlySavingsEur,
+    promoActive: hasPromo,
+    promoDisplay: hasPromo ? tier.promo!.promoDisplay : undefined,
+    promoBadge: hasPromo ? tier.promo!.badge : undefined,
+    promoMonthlyFeeCents: hasPromo ? tier.promo!.promoMonthlyCents : undefined,
   };
 }
 

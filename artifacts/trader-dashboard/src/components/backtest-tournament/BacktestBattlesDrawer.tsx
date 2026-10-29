@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { socialHref } from "@/lib/chatTabs";
 import { BattleRoomLobbyModal } from "./BattleRoomLobbyModal";
 import { CustomLobbyModal } from "./CustomLobbyModal";
 import {
@@ -25,6 +26,7 @@ import {
   Plus,
   Shield,
   Shuffle,
+  Eye,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -283,13 +285,34 @@ export function BacktestBattlesDrawer({ onOpenHub }: { onOpenHub?: () => void })
                           <ArrowRight size={11} color="#D4AF37" />
                         </button>
 
+                        <a
+                          href={`/duello/room_tournament_${t.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            padding: "5px 8px",
+                            borderRadius: 6,
+                            background: "rgba(197, 160, 89, 0.1)",
+                            border: "1px solid rgba(197, 160, 89, 0.3)",
+                            color: "#E8C56A",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                          title="Osserva la Prova dalla Tribuna Spettatori"
+                          className="hover:bg-[#C5A059]/20"
+                        >
+                          <Eye size={11} />
+                        </a>
+
                         <button
                           type="button"
                           onClick={() => {
                             if (onOpenHub) {
                               onOpenHub();
                             } else {
-                              navigate("/tornei?sub=backtest");
+                              navigate(socialHref("competizioni", { vista: "battaglie", sub: "backtest" }));
                             }
                           }}
                           style={{
@@ -322,7 +345,7 @@ export function BacktestBattlesDrawer({ onOpenHub }: { onOpenHub?: () => void })
                     if (onOpenHub) {
                       onOpenHub();
                     } else {
-                      navigate("/tornei?sub=backtest");
+                      navigate(socialHref("competizioni", { vista: "battaglie", sub: "backtest" }));
                     }
                   }}
                   style={{

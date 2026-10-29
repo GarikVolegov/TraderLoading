@@ -13,12 +13,16 @@ import {
   QrCode as QrCodeIcon,
   Calendar,
   User,
+  Share2,
+  Link2,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getGradeMotto, getGradeRoman } from "./LimenGradeSigil";
 import { LimenMedallion } from "./LimenMedallion";
 import {
   computeCertHash,
+  buildShareableCertificateUrl,
   downloadCertificatePng,
   downloadCertificateSvg,
   printCertificate,
@@ -26,6 +30,9 @@ import {
   type CertificateData,
 } from "./certificateExport";
 import { getLimenGradeByNumber, LIMEN_GRADES } from "../../../../../contracts/limenGrades";
+import { HonorCardShareModal } from "@/components/honor-card/HonorCardShareModal";
+import type { HonorCardData } from "@/lib/honorCardGenerator";
+import { synestheticClick } from "@/lib/soundFx";
 
 export interface LimenCertificateModalProps {
   readonly cert: CertificateData | null;
@@ -41,6 +48,8 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
   const [downloadingPng, setDownloadingPng] = useState(false);
   const [downloadingSvg, setDownloadingSvg] = useState(false);
   const [copiedHash, setCopiedHash] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [showHonorCard, setShowHonorCard] = useState(false);
   const [activeTab, setActiveTab] = useState<"certificate" | "sigil">("certificate");
 
   // Dynamic user customization state
@@ -88,7 +97,14 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
   const motto = getGradeMotto(gradeNum);
 
   const effectiveUserName = (customUserName && customUserName.trim()) || cert.userName || "OPERATORE";
-  const defaultQrUrl = `https://limen.trade/verify/nft/${gradeNum}/${computeCertHash({ id: cert.id, level: gradeNum, userId: cert.userId })}`;
+  const shareableUrl = buildShareableCertificateUrl({
+    ...cert,
+    level: gradeNum,
+    levelName: gradeDef.fullTitle,
+    userName: effectiveUserName,
+    customDate: customDate.trim() || initialDateStr,
+  });
+  const defaultQrUrl = shareableUrl;
   const effectiveQrCode = customQrCode.trim() || defaultQrUrl;
 
   const effectiveCert: CertificateData = {
@@ -103,6 +119,25 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
 
   const hash = computeCertHash(effectiveCert);
   const serial = `#${effectiveCert.id.toString().padStart(4, "0")}`;
+
+  const honorCardData: HonorCardData = useMemo(
+    () => ({
+      title: `ASCESA A ${gradeDef.title.toUpperCase()}`,
+      subtitle: `« ${motto.motto} » · Investitura Ufficiale nel Protocollo Aureus`,
+      operatorName: effectiveUserName,
+      asset: `RANGO ${roman} · ${gradeDef.code}`,
+      winRate: 100,
+      winTrades: gradeNum,
+      totalTrades: gradeNum,
+      drawdown: 0,
+      maxAllowedDrawdown: 10,
+      totalProfitFormatted: `RANGO ${roman}`,
+      integrityScore: 100,
+      isDisqualified: false,
+      timestamp: effectiveCert.customDate,
+    }),
+    [gradeDef, motto, effectiveUserName, roman, gradeNum, effectiveCert.customDate],
+  );
 
   const handleResetDefaults = () => {
     setCustomUserName(cert.userName || "OPERATORE");
@@ -147,6 +182,14 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
     setCopiedHash(true);
     toast.success("Hash identificativo copiato negli appunti");
     setTimeout(() => setCopiedHash(false), 2000);
+  };
+
+  const handleCopyShareLink = () => {
+    synestheticClick();
+    navigator.clipboard.writeText(shareableUrl);
+    setCopiedLink(true);
+    toast.success("Link pubblico del Certificato copiato negli appunti!");
+    setTimeout(() => setCopiedLink(false), 2500);
   };
 
   const hasCustomEdits =
@@ -440,8 +483,43 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
             {/* EXPORT ACTION BUTTONS */}
             <div className="space-y-2 pt-1">
               <h4 className="font-mono text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Opzioni di Scaricamento e Stampa
+                Condivisione Link &amp; Scaricamento
               </h4>
+
+              {/* Public Shareable Certificate Link */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleCopyShareLink}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded font-mono text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-[#C5A059] via-[#E8C56A] to-[#C5A059] text-black hover:from-[#E8C56A] hover:to-[#F3D88C] active:scale-[0.99] transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] whitespace-nowrap cursor-pointer"
+                >
+                  {copiedLink ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+                  <span>{copiedLink ? "Link Certificato Copiato!" : "Copia Link Certificato Condivisibile"}</span>
+                </button>
+                <a
+                  href={shareableUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Apri la pagina pubblica del Certificato in una nuova scheda"
+                  className="shrink-0 flex items-center justify-center gap-1 px-3 py-2.5 rounded border border-[#C5A059]/50 bg-[#C5A059]/15 hover:bg-[#C5A059]/25 text-[#E8C56A] font-mono text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap"
+                >
+                  <span>Apri</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+
+              {/* Retina 1200x630 Honor Card Social Share */}
+              <button
+                type="button"
+                onClick={() => {
+                  synestheticClick();
+                  setShowHonorCard(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded font-mono text-xs font-bold uppercase tracking-wider border border-[#C5A059]/45 bg-[#C5A059]/15 text-[#E8C56A] hover:bg-[#C5A059]/25 active:scale-[0.99] transition-all"
+              >
+                <Share2 className="w-4 h-4" />
+                Condividi Scheda d&apos;Onore (Retina 1200x630)
+              </button>
 
               {/* PNG Download Button */}
               <button
@@ -480,10 +558,16 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
 
         {/* MODAL FOOTER */}
         <div className="px-5 py-2.5 border-t border-border bg-[#090A0D] flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-          <span>LIMEN PROTOCOL · Proof of Discipline Standard</span>
+          <span>AUREUS PROTOCOL · Proof of Discipline Standard</span>
           <span className="hidden sm:inline">ERC-721 Metadata Ready · QR Code Verified</span>
         </div>
       </div>
+
+      <HonorCardShareModal
+        isOpen={showHonorCard}
+        onClose={() => setShowHonorCard(false)}
+        data={honorCardData}
+      />
     </div>
   );
 };

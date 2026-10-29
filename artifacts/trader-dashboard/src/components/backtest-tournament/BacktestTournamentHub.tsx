@@ -11,6 +11,7 @@ import { Forgia3DArena } from "./Forgia3DArena";
 import { CustomLobbyModal } from "./CustomLobbyModal";
 import { BattleRoomLobbyModal } from "./BattleRoomLobbyModal";
 import { BattleInviteModal } from "./BattleInviteModal";
+import { ArenaSpectatorShareModal } from "./ArenaSpectatorShareModal";
 import { SigilIcon } from "@/components/ui/SigilIcon";
 import {
   fetchBacktestTournamentLeaderboard,
@@ -57,6 +58,7 @@ import {
   ArrowRight,
   Trophy,
   CheckCircle2,
+  Eye,
 } from "lucide-react";
 import "./tournament.css";
 
@@ -103,6 +105,7 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
   const [isCustomLobbyModalOpen, setIsCustomLobbyModalOpen] = useState(false);
   const [activeCustomLobby, setActiveCustomLobby] = useState<BacktestCustomLobby | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isSpectatorModalOpen, setIsSpectatorModalOpen] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState("");
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [showPodiumCeremony, setShowPodiumCeremony] = useState<boolean>(() => {
@@ -258,6 +261,10 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
       pair,
       timeframe,
       name: sessionName,
+      maxDD: String(quickMaxDD),
+      targetProfit: String(quickTargetProfit),
+      timerMin: quickHasTimer ? String(quickTimerMinutes) : "0",
+      blind: quickBlindMode ? "1" : "0",
     });
     navigate(`/backtest/${args.sessionId}/replay?${search.toString()}`);
   };
@@ -291,6 +298,17 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
       void qc.invalidateQueries({ queryKey: getGetBacktestSessionsQueryKey() });
 
       if (data.sessionId) {
+        if (typeof window !== "undefined") {
+          try {
+            const tempStart = window.localStorage.getItem("traderloading:backtest-start:temp");
+            if (tempStart) {
+              window.localStorage.setItem(`traderloading:backtest-start:${data.sessionId}`, tempStart);
+              window.localStorage.removeItem("traderloading:backtest-start:temp");
+            }
+          } catch {
+            // ignore
+          }
+        }
         openReplaySession({
           sessionId: data.sessionId,
           tournamentId: tId,
@@ -378,6 +396,16 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                   <span className="h-1.5 w-1.5 rounded-full bg-[#E8C56A] animate-pulse" />
                   Sfide tra Confratelli
                 </span>
+                <a
+                  href={`/duello/room_tournament_${selectedTournamentId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#C5A059]/40 bg-[#C5A059]/15 font-mono text-[9px] font-bold uppercase tracking-widest text-[#E8C56A] hover:bg-[#C5A059]/30 transition-all whitespace-nowrap"
+                  title="Apri la Tribuna Spettatori live in una nuova scheda"
+                >
+                  <Eye size={10} className="text-[#C5A059]" />
+                  <span>{telemetry?.liveSpectatorsCount ?? 0} Spettatori Live</span>
+                </a>
               </div>
               <p className="font-mono text-[10px] text-[#C5A059]/85 uppercase tracking-widest truncate mt-0.5 m-0">
                 Leader Storico: <strong className="text-[#E8C56A]">{telemetry?.bestSessionLabel ?? "GarikFX · XAU H1 (+52.26%)"}</strong> · Operatore: <strong className="text-white">{operatorDisplayName}</strong>
@@ -430,6 +458,16 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
               title={soundEnabled ? "Musica attiva — Clicca per silenziare" : "Musica disattivata — Clicca per riprodurre"}
             >
               {soundEnabled ? <Volume2 size={13} color="#E8C56A" /> : <VolumeX size={13} color="#64748b" />}
+            </button>
+
+            <button
+              type="button"
+              className="bt-btn-action py-1.5 px-2.5"
+              onClick={() => setIsSpectatorModalOpen(true)}
+              title="Tribuna Spettatori: Genera QR Code e link pubblico per invitare osservatori"
+            >
+              <Eye size={13} className="text-[#C5A059]" />
+              <span className="hidden md:inline">Tribuna</span>
             </button>
 
             <button
@@ -552,6 +590,7 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
             <div className="bt-podium-stage-wrap">
               <Forgia3DArena
                 asBackdrop
+                showEmbers={false}
                 participants={podium.concat(standings.slice(0, 5)).map((p) => ({
                   displayName: p.displayName,
                   profitPct: Number(p.profitPct),
@@ -568,8 +607,8 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                     Il Podio dell&apos;Ordine · Sessioni Reali
                   </span>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10 font-mono text-[10px] font-bold uppercase tracking-widest text-[#E8C56A]">
-                  Top 3 Campagne DB
+                <span className="px-2.5 py-0.5 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10 font-mono text-[10px] font-bold uppercase tracking-widest text-[#E8C56A] whitespace-nowrap">
+                  Top 3 Campagne Sovrane
                 </span>
               </div>
 
@@ -600,27 +639,27 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                       <span className="truncate">{secondPlace.displayName}</span>
                     </div>
                     <div className="bt-pillar-card group-hover:border-[#C5A059]/55 transition-colors">
-                      <div className="bt-pnl-headline">
-                        {formatCompactPct(Number(secondPlace.profitPct))}{" "}
+                      <div className="bt-pnl-headline whitespace-nowrap">
+                        <span>{formatCompactPct(Number(secondPlace.profitPct))}</span>{" "}
                         <span className="text-[11px] font-normal text-slate-400">PnL</span>
                       </div>
                       <div className="bt-pillar-stats">
                         <div>
-                          <strong>{Number(secondPlace.winRate).toFixed(1)}%</strong>
+                          <strong className="whitespace-nowrap font-mono">{Number(secondPlace.winRate).toFixed(1)}%</strong>
                           <span>Win rate</span>
                         </div>
                         <div>
-                          <strong>
+                          <strong className="whitespace-nowrap font-mono">
                             {secondPlace.winTrades}/{secondPlace.totalTrades}
                           </strong>
                           <span>Vinte/Tot</span>
                         </div>
                         <div>
-                          <strong>{Number(secondPlace.maxDrawdown).toFixed(2)}%</strong>
+                          <strong className="whitespace-nowrap font-mono">{Number(secondPlace.maxDrawdown).toFixed(2)}%</strong>
                           <span>Drawdown</span>
                         </div>
                         <div>
-                          <strong>{secondPlace.profitFactor || "1.85"}</strong>
+                          <strong className="whitespace-nowrap font-mono">{secondPlace.profitFactor || "1.85"}</strong>
                           <span>Profit Factor</span>
                         </div>
                       </div>
@@ -653,27 +692,27 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                       <span className="truncate">{firstPlace.displayName}</span>
                     </div>
                     <div className="bt-pillar-card group-hover:border-[#E8C56A] transition-colors">
-                      <div className="bt-pnl-headline" style={{ color: "#34d399" }}>
-                        {formatCompactPct(Number(firstPlace.profitPct))}{" "}
+                      <div className="bt-pnl-headline whitespace-nowrap" style={{ color: "#34d399" }}>
+                        <span>{formatCompactPct(Number(firstPlace.profitPct))}</span>{" "}
                         <span className="text-xs font-normal text-[#E8C56A]">PnL</span>
                       </div>
                       <div className="bt-pillar-stats">
                         <div>
-                          <strong>{Number(firstPlace.winRate).toFixed(1)}%</strong>
+                          <strong className="whitespace-nowrap font-mono">{Number(firstPlace.winRate).toFixed(1)}%</strong>
                           <span>Win rate</span>
                         </div>
                         <div>
-                          <strong>
+                          <strong className="whitespace-nowrap font-mono">
                             {firstPlace.winTrades}/{firstPlace.totalTrades}
                           </strong>
                           <span>Vinte/Tot</span>
                         </div>
                         <div>
-                          <strong>{Number(firstPlace.maxDrawdown).toFixed(2)}%</strong>
+                          <strong className="whitespace-nowrap font-mono">{Number(firstPlace.maxDrawdown).toFixed(2)}%</strong>
                           <span>Drawdown</span>
                         </div>
                         <div>
-                          <strong>{firstPlace.profitFactor || "2.44"}</strong>
+                          <strong className="whitespace-nowrap font-mono">{firstPlace.profitFactor || "2.44"}</strong>
                           <span>Profit Factor</span>
                         </div>
                       </div>
@@ -706,27 +745,27 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                       <span className="truncate">{thirdPlace.displayName}</span>
                     </div>
                     <div className="bt-pillar-card group-hover:border-[#C5A059]/55 transition-colors">
-                      <div className="bt-pnl-headline">
-                        {formatCompactPct(Number(thirdPlace.profitPct))}{" "}
+                      <div className="bt-pnl-headline whitespace-nowrap">
+                        <span>{formatCompactPct(Number(thirdPlace.profitPct))}</span>{" "}
                         <span className="text-[11px] font-normal text-slate-400">PnL</span>
                       </div>
                       <div className="bt-pillar-stats">
                         <div>
-                          <strong>{Number(thirdPlace.winRate).toFixed(1)}%</strong>
+                          <strong className="whitespace-nowrap font-mono">{Number(thirdPlace.winRate).toFixed(1)}%</strong>
                           <span>Win rate</span>
                         </div>
                         <div>
-                          <strong>
+                          <strong className="whitespace-nowrap font-mono">
                             {thirdPlace.winTrades}/{thirdPlace.totalTrades}
                           </strong>
                           <span>Vinte/Tot</span>
                         </div>
                         <div>
-                          <strong>{Number(thirdPlace.maxDrawdown).toFixed(2)}%</strong>
+                          <strong className="whitespace-nowrap font-mono">{Number(thirdPlace.maxDrawdown).toFixed(2)}%</strong>
                           <span>Drawdown</span>
                         </div>
                         <div>
-                          <strong>{thirdPlace.profitFactor || "1.87"}</strong>
+                          <strong className="whitespace-nowrap font-mono">{thirdPlace.profitFactor || "1.87"}</strong>
                           <span>Profit Factor</span>
                         </div>
                       </div>
@@ -959,7 +998,7 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                     <option value="3.00">3.0% (Chirurgico)</option>
                     <option value="5.00">5.0% (Rigido)</option>
                     <option value="8.00">8.0% (Standard)</option>
-                    <option value="10.00">10.0% (Limen Standard)</option>
+                    <option value="10.00">10.0% (Standard AUREUS)</option>
                   </select>
                 </div>
 
@@ -1048,7 +1087,10 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                   <div className="bt-battle-room-row">
                     <div className="flex-1 min-w-0 pr-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[11px] font-bold text-white uppercase truncate">
+                        <span
+                          className="font-mono text-[11px] font-bold text-white uppercase truncate min-w-[120px]"
+                          title="Duello 1v1 ad Armi Pari"
+                        >
                           Duello 1v1 ad Armi Pari
                         </span>
                         <span className="shrink-0 px-1.5 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 font-mono text-[9px] font-bold text-[#E8C56A] whitespace-nowrap">
@@ -1082,7 +1124,10 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                   <div className="bt-battle-room-row">
                     <div className="flex-1 min-w-0 pr-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[11px] font-bold text-white uppercase truncate">
+                        <span
+                          className="font-mono text-[11px] font-bold text-white uppercase truncate min-w-[120px]"
+                          title="Mischia della Tribù · Oro Puro"
+                        >
                           Mischia della Tribù · Oro Puro
                         </span>
                         <span className="shrink-0 px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/35 font-mono text-[9px] font-bold text-emerald-400 whitespace-nowrap">
@@ -1116,7 +1161,10 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                   <div className="bt-battle-room-row">
                     <div className="flex-1 min-w-0 pr-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[11px] font-bold text-white uppercase truncate">
+                        <span
+                          className="font-mono text-[11px] font-bold text-white uppercase truncate min-w-[120px]"
+                          title="Sfida Scalping Flash"
+                        >
                           Sfida Scalping Flash
                         </span>
                         <span className="shrink-0 px-1.5 py-0.5 rounded bg-sky-500/15 border border-sky-500/35 font-mono text-[9px] font-bold text-sky-400 whitespace-nowrap">
@@ -1150,7 +1198,10 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                   <div className="bt-battle-room-row">
                     <div className="flex-1 min-w-0 pr-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[11px] font-bold text-white uppercase truncate">
+                        <span
+                          className="font-mono text-[11px] font-bold text-white uppercase truncate min-w-[120px]"
+                          title="Battaglia Indici Wall Street"
+                        >
                           Battaglia Indici Wall Street
                         </span>
                         <span className="shrink-0 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/35 font-mono text-[9px] font-bold text-amber-400 whitespace-nowrap">
@@ -1184,7 +1235,10 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                   <div className="bt-battle-room-row">
                     <div className="flex-1 min-w-0 pr-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[11px] font-bold text-white uppercase truncate">
+                        <span
+                          className="font-mono text-[11px] font-bold text-white uppercase truncate min-w-[120px]"
+                          title="Arena Bitcoin Alpha"
+                        >
                           Arena Bitcoin Alpha
                         </span>
                         <span className="shrink-0 px-1.5 py-0.5 rounded bg-purple-500/15 border border-purple-500/35 font-mono text-[9px] font-bold text-purple-300 whitespace-nowrap">
@@ -1343,8 +1397,8 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                   <ShieldCheck size={12} className="text-[#E8C56A]" />
                   <span>Protocollo d&apos;Integrità Sovrano</span>
                 </span>
-                <span className="font-mono text-[9px] text-[#C5A059] uppercase font-bold">
-                  Prove Verificate DB
+                <span className="font-mono text-[9px] text-[#C5A059] uppercase font-bold whitespace-nowrap">
+                  Prove Verificate dell&apos;Ordine
                 </span>
               </div>
             </div>
@@ -1425,7 +1479,7 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                         <div className="flex items-center justify-between gap-2 w-full min-w-0">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
                             <span
-                              className="font-mono text-[11px] font-bold text-white uppercase truncate"
+                              className="font-mono text-[11px] font-bold text-white uppercase truncate min-w-[120px]"
                               title={sess.name}
                             >
                               {cleanSessionDisplayTitle(sess.name)}
@@ -1460,6 +1514,17 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                               <Play size={10} className="fill-current" />
                               <span>Replay</span>
                             </button>
+
+                            <a
+                              href={`/duello/room_tournament_${selectedTournamentId}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="bt-session-open-btn shrink-0 text-[#E8C56A] border-[#C5A059]/35 hover:border-[#C5A059]"
+                              title="Osserva il duello dalla Tribuna Spettatori"
+                            >
+                              <Eye size={10} className="text-[#C5A059]" />
+                              <span>Tribuna</span>
+                            </a>
                           </div>
                         </div>
 
@@ -1560,6 +1625,18 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
             ? `custom_forgia_${activeCustomLobby.code}`
             : `room_tournament_${selectedTournamentId}`
         }
+      />
+
+      {/* Modal Condivisione Tribuna Spettatori */}
+      <ArenaSpectatorShareModal
+        isOpen={isSpectatorModalOpen}
+        onClose={() => setIsSpectatorModalOpen(false)}
+        roomId={
+          activeCustomLobby
+            ? `custom_forgia_${activeCustomLobby.code}`
+            : `room_tournament_${selectedTournamentId}`
+        }
+        roomCode={activeCustomLobby?.code || `FORGIA-PROVA-${selectedTournamentId}`}
       />
     </div>
   );

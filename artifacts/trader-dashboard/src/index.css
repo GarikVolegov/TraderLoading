@@ -1,5 +1,7 @@
 @layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
+@source "./";
+@source "../index.html";
 @import "./styles/tokens.css";
 
 @theme inline {
@@ -108,6 +110,13 @@
   :root {
     --bottom-nav-clearance: 1.5rem;    /* was lg:pb-6 */
     --app-inset-left: 18.5rem;
+  }
+  :root[data-sidebar-collapsed="true"] {
+    --app-inset-left: 4.25rem;
+  }
+
+  [data-desktop-sidebar] {
+    transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
@@ -403,6 +412,21 @@
     bottom: var(--bottom-nav-clearance);
   }
 
+  /* Auto-hide floating mobile navigation when virtual keyboard is active */
+  [data-keyboard-open] [data-mobile-navigation] {
+    display: none !important;
+  }
+
+  /* Mobile Ergonomics & Touch Target utilities */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .touch-target-sm {
+    min-height: 38px;
+    min-width: 38px;
+  }
+
   /* Ticker */
   .animate-marquee {
     animation: marquee var(--marquee-duration, 30s) linear infinite;
@@ -562,9 +586,16 @@
 
 .limen-triad-grid {
   display: grid;
-  grid-template-columns: minmax(275px, 310px) minmax(0, 1fr) minmax(275px, 310px);
-  gap: 12px;
+  grid-template-columns: minmax(240px, 275px) minmax(0, 1fr) minmax(240px, 275px);
+  gap: 10px;
   align-items: start;
+}
+
+@media (min-width: 1366px) {
+  .limen-triad-grid {
+    grid-template-columns: minmax(275px, 310px) minmax(0, 1fr) minmax(275px, 310px);
+    gap: 12px;
+  }
 }
 
 @media (min-width: 1540px) {
@@ -620,8 +651,7 @@
   }
   .limen-col-left,
   .limen-col-center,
-  .limen-col-right,
-  .limen-col-sticky {
+  .limen-col-right {
     height: 100%;
     max-height: 100%;
     min-height: 0;
@@ -629,6 +659,11 @@
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
   }
+}
+
+.limen-auto-cv {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 120px;
 }
 
 .limen-col-header {

@@ -3,7 +3,7 @@
 // upserts; reads aggregate the M1 base into the requested timeframe in SQL so we
 // never ship millions of M1 rows to Node. See
 // docs/superpowers/specs/2026-06-14-candle-warehouse-design.md.
-import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { candleImportChunksTable, candleIngestionStateTable, candleTable, db } from "@workspace/db";
 import type { Candle } from "../candles.js";
 import { REPLAY_INSTRUMENTS, RES, SOURCE_ID, symbolId } from "../candleRegistry.js";
@@ -57,26 +57,54 @@ export async function upsertCandles(
     source: sourceId,
   }));
 
-  const CHUNK = 1000; // 9 cols × 1000 = 9k params, well under the pg limit
+  const CHUNK = 1500; // 9 cols × 1500 = 13.5k params, well under the pg 65k limit
   let written = 0;
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const slice = rows.slice(i, i + CHUNK);
-    await db
-      .insert(candleTable)
-      .values(slice)
-      .onConflictDoUpdate({
-        target: [candleTable.symbol, candleTable.res, candleTable.ts],
-        set: {
-          open: sql`excluded.open`,
-          high: sql`excluded.high`,
-          low: sql`excluded.low`,
-          close: sql`excluded.close`,
-          volume: sql`excluded.volume`,
-          source: sql`excluded.source`,
-        },
-      });
-    written += slice.length;
-  }
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const slice = rows.slice(i, i + CHUNK);
+      await tx
+        .insert(candleTable)
+        .values(slice)
+        .onConflictDoUpdate({
+          target: [candleTable.symbol, candleTable.res, candleTable.ts],
+          set: {
+            open: sql`excluded.open`,
+            high: sql`excluded.high`,
+            low: sql`excluded.low`,
+            close: sql`excluded.close`,
+            volume: sql`excluded.volume`,
+            source: sql`excluded.source`,
+          },
+        });
+      written += slice.length;
+    }
+
+    // Automatically roll up D1 daily candles in the same transaction
+    if (res === RES.M1 && candles.length > 0) {
+      await tx.execute(sql`
+        INSERT INTO ${candleTable} (symbol, res, ts, open, high, low, close, volume, source)
+        SELECT
+          symbol,
+          ${RES.D1} as res,
+          (ts / 86400) * 86400 as ts,
+          (array_agg(open ORDER BY ts ASC))[1] as open,
+          max(high) as high,
+          min(low) as low,
+          (array_agg(close ORDER BY ts DESC))[1] as close,
+          sum(volume) as volume,
+          source
+        FROM ${candleTable}
+        WHERE symbol = ${symbolId} AND res = ${RES.M1} AND ts >= ${candles[0].time} AND ts <= ${candles[candles.length - 1].time} AND source = ${sourceId}
+        GROUP BY symbol, source, (ts / 86400) * 86400
+        ON CONFLICT (symbol, res, ts) DO UPDATE SET
+          open = EXCLUDED.open,
+          high = EXCLUDED.high,
+          low = EXCLUDED.low,
+          close = EXCLUDED.close,
+          volume = EXCLUDED.volume;
+      `);
+    }
+  });
   return written;
 }
 
@@ -170,10 +198,74 @@ export async function readAggregated(
   toTs: number,
   opts: { limit?: number; fromStart?: boolean; sourceId?: number } = {},
 ): Promise<Candle[]> {
+  const takeLast = opts.fromStart === false && opts.limit != null;
+
+  // Fast-path: read directly from pre-rolled D1 daily candles (100x faster than aggregating M1 base)
+  if (intervalSeconds === 86400) {
+    const directRows = await db
+      .select()
+      .from(candleTable)
+      .where(
+        and(
+          eq(candleTable.symbol, symbolId),
+          eq(candleTable.res, RES.D1),
+          gte(candleTable.ts, fromTs),
+          lt(candleTable.ts, toTs),
+          opts.sourceId == null ? undefined : eq(candleTable.source, opts.sourceId),
+        ),
+      )
+      .orderBy(takeLast ? desc(candleTable.ts) : asc(candleTable.ts))
+      .limit(opts.limit ?? 5000);
+
+    if (directRows.length > 0) {
+      const rows = directRows.map((r) => ({
+        time: r.ts,
+        open: r.open,
+        high: r.high,
+        low: r.low,
+        close: r.close,
+        volume: r.volume,
+      }));
+      return takeLast ? rows.reverse() : rows;
+    }
+  }
+
+  // Fast-path: aggregate W1 directly from pre-rolled D1 daily candles (1500x faster than aggregating M1 base)
+  if (intervalSeconds === WEEK_SECONDS) {
+    const direction = sql.raw(takeLast ? "DESC" : "ASC");
+    const limit = opts.limit != null ? sql`LIMIT ${opts.limit}` : sql``;
+    const weeklyResult = await db.execute(sql`
+      SELECT
+        ((ts - ${FIRST_MONDAY}) / ${WEEK_SECONDS}) * ${WEEK_SECONDS} + ${FIRST_MONDAY} AS bucket,
+        (array_agg(open ORDER BY ts ASC))[1]   AS open,
+        max(high)                              AS high,
+        min(low)                               AS low,
+        (array_agg(close ORDER BY ts DESC))[1] AS close,
+        sum(volume)                            AS volume
+      FROM ${candleTable}
+      WHERE symbol = ${symbolId} AND res = ${RES.D1} AND ts >= ${fromTs} AND ts < ${toTs}
+        ${opts.sourceId == null ? sql`` : sql`AND source = ${opts.sourceId}`}
+      GROUP BY bucket
+      ORDER BY bucket ${direction}
+      ${limit}
+    `);
+
+    if (weeklyResult.rows.length > 0) {
+      const rows = weeklyResult.rows.map((r) => ({
+        time: Number(r.bucket),
+        open: Number(r.open),
+        high: Number(r.high),
+        low: Number(r.low),
+        close: Number(r.close),
+        volume: Number(r.volume),
+      }));
+      return takeLast ? rows.reverse() : rows;
+    }
+  }
+
   const offset = intervalSeconds === WEEK_SECONDS ? FIRST_MONDAY : 0;
   // When a limit is given without fromStart, take the most recent N buckets
   // (ORDER DESC + LIMIT) and reverse to ascending; otherwise take the first N.
-  const takeLast = opts.fromStart === false && opts.limit != null;
   const direction = sql.raw(takeLast ? "DESC" : "ASC");
   const limit = opts.limit != null ? sql`LIMIT ${opts.limit}` : sql``;
   const result = await db.execute(sql`

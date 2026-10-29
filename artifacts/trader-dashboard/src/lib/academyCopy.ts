@@ -163,7 +163,7 @@ const entries = {
   ],
   completed: ["Sigillata", "Sealed", "Sellada", "Scellée", "Versiegelt"],
   back: [
-    "Torna al percorso LIMEN",
+    "Torna al percorso AUREUS",
     "Back to The Doctrine of Time",
     "Volver a La Doctrina del Tiempo",
     "Retour à La Doctrine du Temps",

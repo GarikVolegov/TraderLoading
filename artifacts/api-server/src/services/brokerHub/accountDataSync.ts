@@ -137,99 +137,101 @@ export async function importBrokerAccountData(input: BrokerAccountDataSyncInput)
   let updated = 0;
   let journalCreated = 0;
 
-  for (const deal of closedDeals) {
-    const riskDistance = riskPriceDistance(deal);
-    const tradeReturnPct = returnPct(deal, input.snapshot);
-    const uniqueTradeWhere = and(
-      eq(accountTradesTable.source, deal.source),
-      eq(accountTradesTable.ticket, deal.id),
-      eq(accountTradesTable.userId, tradeUserId),
-    );
+  await db.transaction(async (tx) => {
+    for (const deal of closedDeals) {
+      const riskDistance = riskPriceDistance(deal);
+      const tradeReturnPct = returnPct(deal, input.snapshot);
+      const uniqueTradeWhere = and(
+        eq(accountTradesTable.source, deal.source),
+        eq(accountTradesTable.ticket, deal.id),
+        eq(accountTradesTable.userId, tradeUserId),
+      );
 
-    const values = {
-      ticket: deal.id,
-      source: deal.source,
-      executionEnvironment: snapshotExecutionEnvironment(input.profile, input.snapshot),
-      symbol: deal.symbol,
-      direction: deal.side,
-      volume: String(deal.volume),
-      openTime: deal.openedAt ?? deal.closedAt ?? "",
-      closeTime: deal.closedAt ?? null,
-      entryPrice: String(deal.entryPrice ?? 0),
-      exitPrice: numeric(deal.exitPrice),
-      stopLoss: numeric(deal.stopLoss),
-      takeProfit: numeric(deal.takeProfit),
-      profit: numeric(deal.profit),
-      commission: numeric(deal.commission),
-      swap: numeric(deal.swap),
-      status: "closed",
-      brokerProfileId: input.profile.id,
-      brokerAccountId: input.profile.accountId || input.snapshot.accounts[0]?.id || null,
-      riskPriceDistance: numeric(riskDistance),
-      returnPct: numeric(tradeReturnPct),
-      userId: tradeUserId,
-      updatedAt: new Date(),
-    };
+      const values = {
+        ticket: deal.id,
+        source: deal.source,
+        executionEnvironment: snapshotExecutionEnvironment(input.profile, input.snapshot),
+        symbol: deal.symbol,
+        direction: deal.side,
+        volume: String(deal.volume),
+        openTime: deal.openedAt ?? deal.closedAt ?? "",
+        closeTime: deal.closedAt ?? null,
+        entryPrice: String(deal.entryPrice ?? 0),
+        exitPrice: numeric(deal.exitPrice),
+        stopLoss: numeric(deal.stopLoss),
+        takeProfit: numeric(deal.takeProfit),
+        profit: numeric(deal.profit),
+        commission: numeric(deal.commission),
+        swap: numeric(deal.swap),
+        status: "closed",
+        brokerProfileId: input.profile.id,
+        brokerAccountId: input.profile.accountId || input.snapshot.accounts[0]?.id || null,
+        riskPriceDistance: numeric(riskDistance),
+        returnPct: numeric(tradeReturnPct),
+        userId: tradeUserId,
+        updatedAt: new Date(),
+      };
 
-    const [inserted] = await db
-      .insert(accountTradesTable)
-      .values(values)
-      .onConflictDoNothing()
-      .returning({ id: accountTradesTable.id });
+      const [inserted] = await tx
+        .insert(accountTradesTable)
+        .values(values)
+        .onConflictDoNothing()
+        .returning({ id: accountTradesTable.id });
 
-    let accountTradeId = inserted?.id;
-    let journalEntryId: number | null = null;
-    const shouldCreateJournal = Boolean(inserted);
+      let accountTradeId = inserted?.id;
+      let journalEntryId: number | null = null;
+      const shouldCreateJournal = Boolean(inserted);
 
-    if (inserted) {
-      accountTradeId = inserted?.id;
-      imported += 1;
-    } else {
-      const [current] = await db
-        .select()
-        .from(accountTradesTable)
-        .where(uniqueTradeWhere)
-        .limit(1);
+      if (inserted) {
+        accountTradeId = inserted?.id;
+        imported += 1;
+      } else {
+        const [current] = await tx
+          .select()
+          .from(accountTradesTable)
+          .where(uniqueTradeWhere)
+          .limit(1);
 
-      if (!current) continue;
-      // A later snapshot/profile change is not evidence of the environment in
-      // which an existing trade executed. Preserve even legacy unknown values.
-      values.executionEnvironment = current.executionEnvironment;
-      accountTradeId = current.id;
-      journalEntryId = current.journalEntryId;
-      // A closed deal re-imports identically every cycle; skip the no-op UPDATE
-      // (this was the bulk of the broker write load). Only write on a real change.
-      if (accountTradeChanged(toComparableTrade(current), toComparableTrade(values))) {
-        await db.update(accountTradesTable).set(values).where(eq(accountTradesTable.id, current.id));
-        updated += 1;
+        if (!current) continue;
+        // A later snapshot/profile change is not evidence of the environment in
+        // which an existing trade executed. Preserve even legacy unknown values.
+        values.executionEnvironment = current.executionEnvironment;
+        accountTradeId = current.id;
+        journalEntryId = current.journalEntryId;
+        // A closed deal re-imports identically every cycle; skip the no-op UPDATE
+        // (this was the bulk of the broker write load). Only write on a real change.
+        if (accountTradeChanged(toComparableTrade(current), toComparableTrade(values))) {
+          await tx.update(accountTradesTable).set(values).where(eq(accountTradesTable.id, current.id));
+          updated += 1;
+        }
       }
+
+      if (!accountTradeId || journalEntryId || !shouldCreateJournal) continue;
+
+      // Dedup diario: lo stesso ticket può arrivare da una riconnessione del
+      // profilo (nuova riga account_trades) — riaggancia l'entry esistente
+      // invece di crearne un duplicato.
+      const [journal] = await tx
+        .insert(journalEntriesTable)
+        .values({
+          title: journalTitle(deal),
+          content: journalContent(input.profile, input.snapshot, deal),
+          tradeDate: tradeDateFor(deal),
+          result: resultFromTradeNet(deal),
+          tags: journalTags(input.profile, deal),
+          userId: journalUserId,
+        })
+        .returning({ id: journalEntriesTable.id });
+
+      if (!journal) continue;
+      journalEntryId = journal.id;
+      journalCreated += 1;
+      await tx
+        .update(accountTradesTable)
+        .set({ journalEntryId, updatedAt: new Date() })
+        .where(eq(accountTradesTable.id, accountTradeId));
     }
-
-    if (!accountTradeId || journalEntryId || !shouldCreateJournal) continue;
-
-    // Dedup diario: lo stesso ticket può arrivare da una riconnessione del
-    // profilo (nuova riga account_trades) — riaggancia l'entry esistente
-    // invece di crearne un duplicato.
-    const [journal] = await db
-      .insert(journalEntriesTable)
-      .values({
-        title: journalTitle(deal),
-        content: journalContent(input.profile, input.snapshot, deal),
-        tradeDate: tradeDateFor(deal),
-        result: resultFromTradeNet(deal),
-        tags: journalTags(input.profile, deal),
-        userId: journalUserId,
-      })
-      .returning({ id: journalEntriesTable.id });
-
-    if (!journal) continue;
-    journalEntryId = journal.id;
-    journalCreated += 1;
-    await db
-      .update(accountTradesTable)
-      .set({ journalEntryId, updatedAt: new Date() })
-      .where(eq(accountTradesTable.id, accountTradeId));
-  }
+  });
 
   // If the new trade(s) tripped a risk-guard breaker, push the trader. Isolated:
   // a notification failure must never break the sync.

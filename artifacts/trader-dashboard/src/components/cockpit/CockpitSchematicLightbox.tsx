@@ -59,7 +59,7 @@ export function CockpitSchematicLightbox({
           />
           <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/70 border border-white/10 text-[9px] font-mono text-muted-foreground flex items-center gap-1 backdrop-blur-sm">
             <ZoomIn size={10} className="text-primary" />
-            <span>Schema Grafico Limen</span>
+            <span>Schema Grafico AUREUS</span>
           </div>
         </div>
 

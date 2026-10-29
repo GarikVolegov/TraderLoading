@@ -394,8 +394,8 @@ router.get("/tornei/certificates/:id/metadata", async (req: Request, res: Respon
     return;
   }
   res.json({
-    name: `LIMEN ${cert.tier.toUpperCase()} · ${cert.seasonLabel}`,
-    description: `Certificato ${cert.rarity} del torneo LIMEN — stagione ${cert.seasonLabel}. Rilasciato all'operatore ${cert.userName}.`,
+    name: `AUREUS ${cert.tier.toUpperCase()} · ${cert.seasonLabel}`,
+    description: `Certificato ${cert.rarity} del torneo AUREUS — stagione ${cert.seasonLabel}. Rilasciato all'operatore ${cert.userName}.`,
     image: `${appBaseUrl()}/api/tornei/certificates/${id}/image.png`,
     external_url: `${appBaseUrl()}/tornei?cert=${id}`,
     attributes: [

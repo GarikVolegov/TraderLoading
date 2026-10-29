@@ -1,7 +1,8 @@
 import { useCockpitCopy } from "@/hooks/useCockpitCopy";
-import { useCallback, useEffect, useState, useRef, type ReactNode, type MouseEvent } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState, useRef, type ReactNode, type MouseEvent } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowUpRight,
   Bookmark,
@@ -12,35 +13,99 @@ import {
   Clock,
   Crosshair,
   Focus,
+  Heart,
   Loader2,
+  Lock,
   Maximize2,
   Minimize2,
   Newspaper,
   PanelLeftClose,
   PanelLeftOpen,
   RotateCcw,
+  Shield,
   ShieldCheck,
   Sliders,
   Star,
+  Watch,
   Zap,
   ZoomIn,
   Gamepad2,
   Play,
+  Headphones,
+  Wind,
 } from "lucide-react";
+import { isUserTypingInEditableElement } from "@/lib/pwaAutoUpdater";
+import { useSmartWatchHeartRate } from "@/hooks/useSmartWatchHeartRate";
+import {
+  loadBioLockConfig,
+  saveBioLockConfig,
+  evaluateBioLockStatus,
+  getLastBreathAlignmentTimestamp,
+  recordBreathAlignmentTimestamp,
+  type BioLockConfig,
+} from "@/lib/bioLockGuard";
+import {
+  evaluateSentinelAlarms,
+  dispatchSentinelNotification,
+} from "@/lib/sentinelNotifications";
+import { apiJSON } from "@/lib/apiFetch";
+import {
+  isDeepWorkAmbienceActive,
+  toggleDeepWorkAmbience,
+  subscribeDeepWorkAmbience,
+  synestheticClick,
+  synestheticConfirm,
+  setRiskResonanceLevel,
+  modulateDeepWorkByBpm,
+} from "@/lib/soundFx";
 import { CockpitGuidanceBox, getStepGuidance } from "@/components/cockpit/CockpitGuidanceBox";
-import { CockpitNewsDialog } from "@/components/cockpit/CockpitNewsDialog";
-import { CockpitExamplesDialog } from "@/components/cockpit/CockpitExamplesDialog";
+import {
+  SESSION_TELEMETRY_EVENT,
+  SESSION_SWEEP_ALERT_EVENT,
+  SESSION_TELEMETRY_STORAGE_KEY,
+  type LiveSessionLiquidityTelemetry,
+  type SessionSweepAlertDetail,
+} from "@/components/backtest-terminal/SessionOpensOverlay";
 import { CockpitVisualChoice } from "@/components/cockpit/CockpitVisualChoice";
 import { CockpitSchematicLightbox } from "@/components/cockpit/CockpitSchematicLightbox";
 import { COCKPIT_SCHEMATICS, type CockpitSchematic } from "@/lib/cockpitSchematics";
-import { CockpitNextSessionPlanner } from "@/components/cockpit/CockpitNextSessionPlanner";
-import { CockpitFavoriteTools } from "@/components/cockpit/CockpitFavoriteTools";
-import { CockpitOperativePlanDialog } from "@/components/cockpit/CockpitOperativePlanDialog";
-import { CockpitUserPlaybookDialog } from "@/components/cockpit/CockpitUserPlaybookDialog";
-import { CockpitTradeRegisterModal, type TimeframeSnapshot } from "@/components/cockpit/CockpitTradeRegisterModal";
-import { DecompressionChamberModal } from "@/components/decompression/DecompressionChamberModal";
-import { JournalEntryModal } from "@/components/JournalEntryModal";
+import type { TimeframeSnapshot } from "@/components/cockpit/CockpitTradeRegisterModal";
+
+const CockpitNewsDialog = lazy(() =>
+  import("@/components/cockpit/CockpitNewsDialog").then((m) => ({ default: m.CockpitNewsDialog }))
+);
+const CockpitExamplesDialog = lazy(() =>
+  import("@/components/cockpit/CockpitExamplesDialog").then((m) => ({ default: m.CockpitExamplesDialog }))
+);
+const CockpitNextSessionPlanner = lazy(() =>
+  import("@/components/cockpit/CockpitNextSessionPlanner").then((m) => ({ default: m.CockpitNextSessionPlanner }))
+);
+const CockpitFavoriteTools = lazy(() =>
+  import("@/components/cockpit/CockpitFavoriteTools").then((m) => ({ default: m.CockpitFavoriteTools }))
+);
+const CockpitOperativePlanDialog = lazy(() =>
+  import("@/components/cockpit/CockpitOperativePlanDialog").then((m) => ({ default: m.CockpitOperativePlanDialog }))
+);
+const CockpitUserPlaybookDialog = lazy(() =>
+  import("@/components/cockpit/CockpitUserPlaybookDialog").then((m) => ({ default: m.CockpitUserPlaybookDialog }))
+);
+const CockpitTradeRegisterModal = lazy(() =>
+  import("@/components/cockpit/CockpitTradeRegisterModal").then((m) => ({ default: m.CockpitTradeRegisterModal }))
+);
+const DecompressionChamberModal = lazy(() =>
+  import("@/components/decompression/DecompressionChamberModal").then((m) => ({ default: m.DecompressionChamberModal }))
+);
+const TacticalBreathModal = lazy(() =>
+  import("@/components/cockpit/TacticalBreathModal").then((m) => ({ default: m.TacticalBreathModal }))
+);
+const SmartWatchConnectModal = lazy(() =>
+  import("@/components/biometrics/SmartWatchConnectModal").then((m) => ({ default: m.SmartWatchConnectModal }))
+);
+const JournalEntryModal = lazy(() =>
+  import("@/components/JournalEntryModal").then((m) => ({ default: m.JournalEntryModal }))
+);
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { LimenProprietaryChart } from "@/components/chart/LimenProprietaryChart";
 import { CockpitAiSentinelCard } from "@/components/cockpit/CockpitAiSentinelCard";
 import { useVarcoVisionSentinel } from "@/hooks/useVarcoVisionSentinel";
@@ -54,6 +119,12 @@ import {
   type LimenOperativeMemoryState,
 } from "@/lib/replay/limenOperativeMemory";
 import {
+  getStoredCockpitSentinelAutoScan,
+  setStoredCockpitSentinelAutoScan,
+  getStoredCockpitSentinelAutoAlign,
+  setStoredCockpitSentinelAutoAlign,
+} from "@/lib/sentinelPersistence";
+import {
   CockpitChartPrefsDialog,
   loadChartPreferences,
   buildTradingViewChartUrl,
@@ -62,6 +133,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getGetJournalEntriesQueryKey, getGetJournalEdgeQueryKey } from "@workspace/api-client-react";
 import { useTraderProcess, useProcessMutation } from "@/hooks/useTraderProcess";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { useSessionDraft } from "@/hooks/useSessionDraft";
 import {
   createProcessMethod,
@@ -92,10 +164,9 @@ import { cockpitImprovement } from "@/lib/cockpitPresentation";
 import { PREPARATION_TOOLS } from "@/lib/workspaceTools";
 import { processToolHref } from "@/lib/processToolNavigation";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { FinancialArchitectureBanner } from "@/components/financial/FinancialArchitectureBanner";
 import { useFinancialProfile, getReferenceTradingCapital } from "@/lib/financialProfileApi";
 import { useFreeTrial } from "@/lib/useFreeTrial";
-import { ContextMarketDetail, PriceHistory } from "@/components/ContextMarketDetail";
+import { QuantitativeSynthesisDialog } from "@/components/cockpit/QuantitativeSynthesisDialog";
 import { updateWorkspaceQuery } from "@/lib/workspaceNavigation";
 import "./TradingCockpit.css";
 
@@ -190,8 +261,16 @@ function Protection({
   const ck = useCockpitCopy();
   const method = state.activeMethod;
   const [confirmed, setConfirmed] = useState(false);
+  const [bioLockConfig, setBioLockConfig] = useState<BioLockConfig>(() => loadBioLockConfig());
   const mutation = useProcessMutation(createProcessMethod);
   const [requestId] = useState(() => crypto.randomUUID());
+
+  const updateBioLock = (patch: Partial<BioLockConfig>) => {
+    const next = { ...bioLockConfig, ...patch };
+    setBioLockConfig(next);
+    saveBioLockConfig(next);
+  };
+
   return (
     <form
       className="ck-form"
@@ -282,6 +361,60 @@ function Protection({
           defaultValue={method?.rules.maxDailyTrades}
         />
       </label>
+
+      {/* Presidio Bio-Lock Pre-Esecuzione (Smartwatch BLE & Respiro 4-7-8) */}
+      <div className="rounded-xl border border-[#C5A059]/35 bg-[#0d0f14] p-3.5 space-y-2.5 my-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Lock size={14} className="text-[#C5A059] shrink-0" />
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#E8C56A]">
+              Presidio Bio-Lock Pre-Esecuzione (Smartwatch BLE)
+            </span>
+          </div>
+          <span
+            className={`font-mono text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${
+              bioLockConfig.enabled
+                ? "bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]"
+                : "bg-white/5 border-white/15 text-muted-foreground"
+            }`}
+          >
+            {bioLockConfig.enabled ? "PRESIDIO ATTIVO" : "DISATTIVO"}
+          </span>
+        </div>
+
+        <Tick
+          label="Richiedi 1 ciclo di Respiro 4-7-8 prima di registrare il trade se il battito supera la soglia di Rischio Deriva"
+          checked={bioLockConfig.enabled}
+          onChange={(enabled) => updateBioLock({ enabled })}
+        />
+
+        {bioLockConfig.enabled && (
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/10 font-mono text-[10.5px]">
+            <span className="text-muted-foreground whitespace-nowrap">Soglia Critica BPM:</span>
+            <div className="flex items-center gap-1.5">
+              {[
+                { bpm: 85, label: "85 BPM · Rigido" },
+                { bpm: 92, label: "92 BPM · Standard" },
+                { bpm: 100, label: "100 BPM · Tollerante" },
+              ].map((opt) => (
+                <button
+                  key={opt.bpm}
+                  type="button"
+                  onClick={() => updateBioLock({ maxBpmThreshold: opt.bpm })}
+                  className={`px-2 py-1 rounded border text-[10px] font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    bioLockConfig.maxBpmThreshold === opt.bpm
+                      ? "border-[#C5A059]/60 bg-[#C5A059]/20 text-[#E8C56A]"
+                      : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <Tick label={ck("cockpit.ui.a095ce37a1")} checked={confirmed} onChange={setConfirmed} />
       <ErrorMessage error={mutation.error} />
       <button className="ck-primary" disabled={!confirmed || mutation.isPending}>
@@ -648,11 +781,27 @@ export default function TradingCockpit() {
     }
   }, [searchPair, analysis.market]);
 
-  if (!query.data)
+  if (!query.data) {
+    if (
+      import.meta.env.DEV &&
+      typeof window !== "undefined" &&
+      window.location.search.includes("staging=1")
+    ) {
+      const mockState = {
+        activeMethod: null,
+        activeStep: 0,
+        completedSteps: [],
+        stepEvidence: {},
+        evidence: [],
+        session: null,
+        updatedAt: new Date().toISOString(),
+      };
+      return <CockpitView state={mockState as any} analysis={analysis} onAnalysis={handleAnalysisChange} />;
+    }
     return (
       <main className="ck-boot">
         <ShieldCheck />
-        <h1>{"LIMEN PROTOCOL"}</h1>
+        <h1>{"AUREUS PROTOCOL"}</h1>
         <p role="status">
           {query.isError
             ? ck("cockpit.ui.boot.error")
@@ -663,6 +812,7 @@ export default function TradingCockpit() {
         )}
       </main>
     );
+  }
 
   if (query.data.activeMethod)
     return <PersistedCockpit key={query.data.activeMethod.id} state={query.data} seed={analysis} />;
@@ -793,7 +943,26 @@ function CockpitView({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const [now, setNow] = useState(() => new Date());
+  const now = useMinuteClock();
+  const [ambienceActive, setAmbienceActive] = useState(() => isDeepWorkAmbienceActive());
+
+  useEffect(() => {
+    return subscribeDeepWorkAmbience((active) => {
+      setAmbienceActive(active);
+    });
+  }, []);
+
+  const handleToggleAmbience = () => {
+    synestheticClick();
+    toggleDeepWorkAmbience();
+  };
+
+  const { data: adminStatus } = useQuery<{ isAdmin: boolean }>({
+    queryKey: ["admin-status"],
+    queryFn: () => apiJSON<{ isAdmin: boolean }>("milestones/admin/status"),
+    staleTime: 60_000,
+  });
+  const isAdmin = adminStatus?.isAdmin ?? false;
   const [dialog, setDialog] = useState<
     | "protection"
     | "context"
@@ -810,6 +979,18 @@ function CockpitView({
     | null
   >(null);
   const [journalModalOpen, setJournalModalOpen] = useState(false);
+  const [imminentRedNews, setImminentRedNews] = useState<{
+    title: string;
+    country: string;
+    time: number;
+    countdownMin: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const handleOpenJournal = () => setJournalModalOpen(true);
+    window.addEventListener("tl_open_journal_modal", handleOpenJournal);
+    return () => window.removeEventListener("tl_open_journal_modal", handleOpenJournal);
+  }, []);
   const [exampleCategory, setExampleCategory] = useState<string>("ALL");
   const [chartPrefs, setChartPrefs] = useState<ChartPreferences>(() => loadChartPreferences());
   const [chartKey, setChartKey] = useState<number>(0);
@@ -905,6 +1086,91 @@ function CockpitView({
   const [chartTF, setChartTF] = useState("60");
   const [tradeRegisterModalOpen, setTradeRegisterModalOpen] = useState(false);
   const [decompressionModalOpen, setDecompressionModalOpen] = useState(false);
+  const [tacticalBreathModalOpen, setTacticalBreathModalOpen] = useState(false);
+  const [smartWatchModalOpen, setSmartWatchModalOpen] = useState(false);
+  const [pendingBioLockTradeUnlock, setPendingBioLockTradeUnlock] = useState(false);
+  const [bioLockConfig, setBioLockConfig] = useState<BioLockConfig>(() => loadBioLockConfig());
+  const [lastBreathTimestamp, setLastBreathTimestamp] = useState<number | null>(() => getLastBreathAlignmentTimestamp());
+  const watchTelemetry = useSmartWatchHeartRate();
+
+  // Telemetria Liquidità di Sessione sincronizzata dal Grafico verso Il Custode della Soglia
+  const [sessionTelemetry, setSessionTelemetry] = useState<LiveSessionLiquidityTelemetry | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem(SESSION_TELEMETRY_STORAGE_KEY);
+      return raw ? (JSON.parse(raw) as LiveSessionLiquidityTelemetry) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onTelemetry = (e: Event) => {
+      const detail = (e as CustomEvent<LiveSessionLiquidityTelemetry>).detail;
+      const applyIfChanged = (next: LiveSessionLiquidityTelemetry) => {
+        setSessionTelemetry((prev) => {
+          if (
+            prev &&
+            prev.symbol === next.symbol &&
+            prev.sessionId === next.sessionId &&
+            prev.highPrice === next.highPrice &&
+            prev.lowPrice === next.lowPrice &&
+            prev.currentPrice === next.currentPrice
+          ) {
+            return prev;
+          }
+          return next;
+        });
+      };
+      if (detail) {
+        applyIfChanged(detail);
+        return;
+      }
+      try {
+        const raw = window.localStorage.getItem(SESSION_TELEMETRY_STORAGE_KEY);
+        if (raw) applyIfChanged(JSON.parse(raw) as LiveSessionLiquidityTelemetry);
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener(SESSION_TELEMETRY_EVENT, onTelemetry);
+    return () => window.removeEventListener(SESSION_TELEMETRY_EVENT, onTelemetry);
+  }, []);
+
+  // Notifica Toast istantanea quando una sessione viene spazzata live (Passo 3)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onSweepAlert = (e: Event) => {
+      const detail = (e as CustomEvent<SessionSweepAlertDetail>).detail;
+      if (!detail) return;
+      const formattedPrice =
+        detail.levelPrice >= 1000
+          ? detail.levelPrice.toFixed(2)
+          : detail.levelPrice >= 10
+            ? detail.levelPrice.toFixed(3)
+            : detail.levelPrice.toFixed(5);
+      toast({
+        title: `⚡ Sweep ${detail.side} ${detail.sessionLabel} Rilevato`,
+        description: `Il livello ${formattedPrice} su ${detail.symbol || a.market} è stato violato. Liquidità istituzionale assorbita.`,
+      });
+    };
+    window.addEventListener(SESSION_SWEEP_ALERT_EVENT, onSweepAlert);
+    return () => window.removeEventListener(SESSION_SWEEP_ALERT_EVENT, onSweepAlert);
+  }, [toast, a.market]);
+
+  useEffect(() => {
+    const syncBioLock = () => {
+      setBioLockConfig(loadBioLockConfig());
+      setLastBreathTimestamp(getLastBreathAlignmentTimestamp());
+    };
+    window.addEventListener("aureus-biolock-updated", syncBioLock);
+    window.addEventListener("storage", syncBioLock);
+    return () => {
+      window.removeEventListener("aureus-biolock-updated", syncBioLock);
+      window.removeEventListener("storage", syncBioLock);
+    };
+  }, []);
   const [inspectSchematic, setInspectSchematic] = useState<CockpitSchematic | null>(null);
   const [timeframeSnapshots, setTimeframeSnapshots] = useState<TimeframeSnapshot[]>(() => {
     try {
@@ -1066,11 +1332,6 @@ function CockpitView({
     });
   }, []);
 
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 15000);
-    return () => clearInterval(timer);
-  }, []);
-
   const [tradeActive, setTradeActive] = useState(() => confirmedProp || isMarketTradeActive(a.market, state.session));
 
   useEffect(() => {
@@ -1087,6 +1348,38 @@ function CockpitView({
       onAnalysis(updated);
     }
   };
+
+  const handleSelectMode = useCallback(
+    (mode: "scalp" | "swing") => {
+      if (a.mode === mode) return;
+      synestheticClick();
+      if (!isConfirmed) {
+        set({ mode });
+        if (mode === "scalp") {
+          setChartTF("60");
+        } else {
+          setChartTF("240");
+        }
+      } else {
+        const updated: CockpitAnalysis = { ...a, mode };
+        persistCockpitOperativity(updated);
+        onAnalysis(updated);
+        if (mode === "scalp") {
+          setChartTF("60");
+        } else {
+          setChartTF("240");
+        }
+        toast({
+          title: mode === "scalp" ? "Regime: Duello · Scalp" : "Regime: Assedio · Swing",
+          description:
+            mode === "scalp"
+              ? "Cockpit allineato al regime Scalping (H1 → M15 → M1). Focus su reattività di sessione."
+              : "Cockpit allineato al regime Swing (H4 → H1/M15 → M5). Focus su struttura e ampiezza.",
+        });
+      }
+    },
+    [a, isConfirmed, onAnalysis, toast],
+  );
 
   const onSelectMarket = (nextMarket: string) => {
     set({ market: nextMarket });
@@ -1137,7 +1430,51 @@ function CockpitView({
   const improvement = cockpitImprovement(state);
   const [reviewPhase, setReviewPhase] = useState<1 | 2 | 3 | 4 | null>(null);
   const phase = reviewPhase ?? (isConfirmed ? 4 : a.phase);
-  const tfs = a.mode === "scalp" ? ["H1", "M15", "M1"] : ["D1 / H4", "H1 / M15", a.execTF];
+  const tfs = useMemo(
+    () => (a.mode === "scalp" ? ["H1", "M15", "M1"] : ["D1 / H4", "H1 / M15", a.execTF]),
+    [a.mode, a.execTF],
+  );
+
+  // ── HOTKEY GLOBALI DI DISCIPLINA AUREUS (B: Respiro, D: Decompressione, 1-4: Fasi) ──
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (typeof document !== "undefined" && isUserTypingInEditableElement(document.activeElement)) {
+        return;
+      }
+      const key = e.key.toLowerCase();
+      if (key === "b") {
+        e.preventDefault();
+        synestheticClick();
+        setTacticalBreathModalOpen(true);
+      } else if (key === "d") {
+        e.preventDefault();
+        synestheticClick();
+        setDecompressionModalOpen(true);
+      } else if (key === "z") {
+        e.preventDefault();
+        synestheticClick();
+        toggleFocus();
+      } else if (["1", "2", "3", "4"].includes(key)) {
+        const targetStep = parseInt(key, 10);
+        if (targetStep === 1 || targetStep === 2 || targetStep === 3) {
+          if (!isConfirmed) {
+            e.preventDefault();
+            synestheticClick();
+            set({ phase: targetStep as 1 | 2 | 3 });
+            setReviewPhase(null);
+          }
+        } else if (targetStep === 4) {
+          e.preventDefault();
+          synestheticClick();
+          setReviewPhase(4);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isConfirmed, set, toggleFocus]);
 
   // Salva automaticamente lo stato dell'analisi quando cambia fase o timeframe
   const recordTimeframeSnapshot = useCallback((step: 1 | 2 | 3 | 4, tf: string, imgData?: string) => {
@@ -1158,14 +1495,26 @@ function CockpitView({
         : `Gestione attiva`;
 
       const existing = prev.find((s) => s.id === id);
+      const nextStepName = stepNames[step] || `Fase ${step}`;
+      const nextSummary = existing?.summary ?? defaultSummary;
+      const nextImg = imgData || existing?.imageDataUrl;
+      if (
+        existing &&
+        existing.stepName === nextStepName &&
+        existing.timeframe === tf &&
+        existing.summary === nextSummary &&
+        existing.imageDataUrl === nextImg
+      ) {
+        return prev;
+      }
       const updatedItem: TimeframeSnapshot = {
         id,
         step,
-        stepName: stepNames[step] || `Fase ${step}`,
+        stepName: nextStepName,
         timeframe: tf,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        summary: existing?.summary ?? defaultSummary,
-        imageDataUrl: imgData || existing?.imageDataUrl,
+        summary: nextSummary,
+        imageDataUrl: nextImg,
       };
 
       const filtered = prev.filter((s) => s.id !== id);
@@ -1279,8 +1628,28 @@ function CockpitView({
     updateSetup: updateAiSetup,
   } = useVarcoVisionSentinel();
 
-  const [continuousAutoScan, setContinuousAutoScan] = useState(true);
-  const [autoAlignCockpit, setAutoAlignCockpit] = useState(true);
+  const [continuousAutoScan, setContinuousAutoScanState] = useState<boolean>(() =>
+    getStoredCockpitSentinelAutoScan(false),
+  );
+  const [autoAlignCockpit, setAutoAlignCockpitState] = useState<boolean>(() =>
+    getStoredCockpitSentinelAutoAlign(true),
+  );
+
+  const setContinuousAutoScan = useCallback((updater: boolean | ((prev: boolean) => boolean)) => {
+    setContinuousAutoScanState((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      setStoredCockpitSentinelAutoScan(next);
+      return next;
+    });
+  }, []);
+
+  const setAutoAlignCockpit = useCallback((updater: boolean | ((prev: boolean) => boolean)) => {
+    setAutoAlignCockpitState((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      setStoredCockpitSentinelAutoAlign(next);
+      return next;
+    });
+  }, []);
   const [operativeMemory, setOperativeMemory] = useState<LimenOperativeMemoryState>(() =>
     loadOperativeMemory(a.market),
   );
@@ -1380,6 +1749,14 @@ function CockpitView({
         silent,
         activeSetup: activeSetupRef.current,
         enforceSessionWindows: true,
+        directionalBias: (market.data as any)?.directionalBias
+          ? {
+              h4MasterBias: (market.data as any).directionalBias.h4MasterBias,
+              edgeTier: (market.data as any).directionalBias.edgeTier,
+              antiFadeProtected: (market.data as any).directionalBias.antiFadeProtected,
+              confidenceScore: (market.data as any).directionalBias.confidenceScore,
+            }
+          : undefined,
         operativeMemory: {
           flipActive: mem.flipActive,
           flipDirection: mem.flipDirection,
@@ -1454,6 +1831,7 @@ function CockpitView({
       // ignore
     }
     setTradeActive(true);
+    synestheticConfirm();
     setReviewPhase(null);
 
     set(sealedCockpit);
@@ -1482,11 +1860,11 @@ function CockpitView({
   // Quantitative context values
   const reports = market.data?.cotReports ?? [];
   const latestCot = reports[0]?.nonCommNet;
-  const cotFormatted = latestCot != null ? formatCompactNumber(latestCot) : "+207.8K";
+  const cotFormatted = latestCot != null ? formatCompactNumber(latestCot) : (market.isPending ? "..." : "—");
 
   const ranges = market.data?.ranges ?? [];
   const d1Range = ranges.find((r) => r.days === 1 || r.days === 22) ?? ranges[0];
-  const _adrFormatted = d1Range?.value != null ? `${d1Range.value.toFixed(1)} pt` : "69.5 pt";
+  const _adrFormatted = d1Range?.value != null ? `${d1Range.value.toFixed(1)} pt` : (market.isPending ? "..." : "—");
 
   const events = market.data?.events ?? [];
   const nowMs = now.getTime();
@@ -1542,13 +1920,166 @@ function CockpitView({
     }
   }, [autoNewsStatus, confirmed, now, a.news, a.newsDay, a.ltfSchema, a.itfSchema, a.trigger, onAnalysis]);
 
-  const score = market.data?.score != null ? market.data.score : 21;
+  const score = market.data?.score != null ? market.data.score : 0;
 
   // Real-time Risk Threshold values
   const _riskAmount = operativeRules?.riskPerTrade != null ? `${operativeRules.riskPerTrade}${operativeRules.currency ?? "€"}` : "5€";
   const _lossAmount = operativeRules?.maxDailyLoss != null ? `${operativeRules.maxDailyLoss}${operativeRules.currency ?? "€"}` : "10€";
   const _tradesToday = state.evidence.filter((e) => e.sessionId === state.session?.id).length;
   const _maxTrades = operativeRules?.maxDailyTrades ?? 3;
+  const sessionDailyRisk = useMemo(() => {
+    return state.session ? dailyProcessRisk(state.session, state.evidence) : null;
+  }, [state.session, state.evidence]);
+  const isLossLimitBreached = Boolean(sessionDailyRisk && sessionDailyRisk.losses.length > 0);
+  const isOvertradingRisk = _tradesToday >= _maxTrades || isLossLimitBreached;
+  const sessionStartTime = state.session?.preparedAt || state.session?.createdAt;
+  const elapsedSessionMinutes = sessionStartTime
+    ? Math.max(0, Math.floor((nowMs - new Date(sessionStartTime).getTime()) / 60_000))
+    : 0;
+  const isSessionActive = Boolean(state.session && state.session.state !== "closed");
+  const isFatigued = isSessionActive && elapsedSessionMinutes >= 90;
+
+  const liveBioTelemetry = useMemo(() => {
+    if (watchTelemetry.isLive) {
+      const bpm = watchTelemetry.bpm;
+      const status: "calm" | "vigilant" | "elevated" | "critical" =
+        watchTelemetry.zone === "zen"
+          ? "calm"
+          : watchTelemetry.zone === "vigilant"
+          ? "vigilant"
+          : "critical";
+      const color =
+        watchTelemetry.zone === "zen"
+          ? "#10b981"
+          : watchTelemetry.zone === "vigilant"
+          ? "#C5A059"
+          : "#ef4444";
+      const stressReason = watchTelemetry.isBleConnected
+        ? (watchTelemetry.deviceName ? `${watchTelemetry.deviceName}` : "Smartwatch BLE")
+        : "Smartwatch (Sim)";
+
+      return {
+        bpm,
+        stressReason,
+        status,
+        color,
+        isWatchLive: true,
+      };
+    }
+
+    let baseBpm = 60;
+    let stressReason = "Assetto Sereno";
+    let status: "calm" | "vigilant" | "elevated" | "critical" = "calm";
+    let color = "#10b981";
+
+    if (isLossLimitBreached) {
+      baseBpm = Math.max(baseBpm, 108);
+      stressReason = "Limite Perdita Superato";
+      status = "critical";
+      color = "#ef4444";
+    } else if (isOvertradingRisk) {
+      baseBpm = Math.max(baseBpm, 96);
+      stressReason = "Rischio Deriva";
+      status = "critical";
+      color = "#ef4444";
+    } else if (imminentEvent) {
+      baseBpm = Math.max(baseBpm, 88);
+      stressReason = "Allerta Macro";
+      status = "elevated";
+      color = "#f59e0b";
+    } else if (isFatigued) {
+      baseBpm = Math.max(baseBpm, 82);
+      stressReason = "Affaticamento";
+      status = "elevated";
+      color = "#f59e0b";
+    } else if (_tradesToday >= _maxTrades * 0.75) {
+      baseBpm = Math.max(baseBpm, 72);
+      stressReason = "Quota 75%";
+      status = "vigilant";
+      color = "#C5A059";
+    }
+
+    return {
+      bpm: baseBpm,
+      stressReason,
+      status,
+      color,
+      isWatchLive: false,
+    };
+  }, [
+    watchTelemetry.isLive,
+    watchTelemetry.bpm,
+    watchTelemetry.zone,
+    watchTelemetry.isBleConnected,
+    watchTelemetry.deviceName,
+    isLossLimitBreached,
+    isOvertradingRisk,
+    imminentEvent,
+    isFatigued,
+    _tradesToday,
+    _maxTrades,
+  ]);
+
+  const bioLockEvaluation = useMemo(() => {
+    return evaluateBioLockStatus({
+      config: bioLockConfig,
+      currentBpm: liveBioTelemetry.bpm,
+      isCriticalDrift: liveBioTelemetry.status === "critical",
+      lastBreathMs: lastBreathTimestamp,
+      nowMs,
+    });
+  }, [bioLockConfig, liveBioTelemetry.bpm, liveBioTelemetry.status, lastBreathTimestamp, nowMs]);
+
+  useEffect(() => {
+    const ratio = Math.min(1, Math.max(0, _tradesToday / Math.max(1, _maxTrades)));
+    setRiskResonanceLevel(ratio);
+    if (ambienceActive && liveBioTelemetry.bpm) {
+      modulateDeepWorkByBpm(liveBioTelemetry.bpm);
+    }
+  }, [_tradesToday, _maxTrades, ambienceActive, liveBioTelemetry.bpm]);
+
+  // Sentinella di Salvaguardia Operatore PWA / Web Push Notifications
+  const lastNotifiedFatigueSessionIdRef = useRef<string | null>(null);
+  const lastCardioDriftNotificationMsRef = useRef<number>(0);
+
+  useEffect(() => {
+    const alarm = evaluateSentinelAlarms({
+      isSessionActive,
+      sessionId: state.session?.id,
+      elapsedSessionMinutes,
+      currentBpm: liveBioTelemetry.bpm,
+      isCriticalDrift: liveBioTelemetry.status === "critical",
+      stressReason: liveBioTelemetry.stressReason,
+      lastNotifiedFatigueSessionId: lastNotifiedFatigueSessionIdRef.current,
+      lastCardioDriftNotificationMs: lastCardioDriftNotificationMsRef.current,
+      nowMs,
+    });
+
+    if (alarm) {
+      if (alarm.updatedFatigueSessionId) {
+        lastNotifiedFatigueSessionIdRef.current = alarm.updatedFatigueSessionId;
+      }
+      if (alarm.updatedCardioTimestampMs) {
+        lastCardioDriftNotificationMsRef.current = alarm.updatedCardioTimestampMs;
+      }
+      dispatchSentinelNotification(alarm, (opts) => {
+        toast({
+          title: opts.title,
+          description: opts.description,
+          variant: opts.variant,
+        });
+      });
+    }
+  }, [
+    isSessionActive,
+    state.session?.id,
+    elapsedSessionMinutes,
+    liveBioTelemetry.bpm,
+    liveBioTelemetry.status,
+    liveBioTelemetry.stressReason,
+    nowMs,
+    toast,
+  ]);
 
   return (
     <main
@@ -1594,8 +2125,6 @@ function CockpitView({
         </div>
       )}
 
-      {!isFreeTrial && <FinancialArchitectureBanner className="mx-3 mt-2 mb-3" />}
-
       {/* ── COCKPIT A 2 COLONNE: Left Process Wizard + Main Chart Area ── */}
       <div
         className="ck-workspace"
@@ -1606,30 +2135,90 @@ function CockpitView({
         {/* COLONNA 1 (SINISTRA): IL FLUSSO GUIDATO (Process Wizard) */}
         {!isFreeTrial && (
           <aside className="ck-process" aria-label={ck("cockpit.ui.157a305253")}>
-          {/* Toggle Modalità: Duello · Scalp vs Assedio · Swing + Esempi */}
-          <div className="ck-session-line">
-            <div className="ck-segment" role="group" aria-label={ck("cockpit.ui.114e037766")}>
-              {(["scalp", "swing"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  aria-pressed={a.mode === mode}
-                  disabled={confirmed}
-                  onClick={() => set({ mode })}
-                >
-                  {mode === "scalp" ? "Duello · Scalp" : "Assedio · Swing"}
-                </button>
-              ))}
+          {/* Testata Operativa: Toggle Modalità (Scalp/Swing) + Barra Sovrana Centratura Tattica (Zero Overlap & Zero Overflow) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="ck-segment flex-1 min-w-0" role="group" aria-label={ck("cockpit.ui.114e037766")}>
+                {(["scalp", "swing"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={a.mode === mode}
+                    onClick={() => handleSelectMode(mode)}
+                    className="whitespace-nowrap"
+                  >
+                    {mode === "scalp" ? (
+                      <>
+                        <Zap size={11} className="shrink-0 text-[#C5A059]" />
+                        <span>Duello · Scalp</span>
+                      </>
+                    ) : (
+                      <>
+                        <Shield size={11} className="shrink-0 text-[#C5A059]" />
+                        <span>Assedio · Swing</span>
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="ck-col-toggle-btn ml-1 hidden lg:inline-grid shrink-0"
+                title={ck("cockpit.ui.panel.left_hide")}
+                aria-label={ck("cockpit.ui.panel.left_hide")}
+                onClick={toggleLeft}
+              >
+                <PanelLeftClose size={15} />
+              </button>
             </div>
-            <button
-              type="button"
-              className="ck-col-toggle-btn ml-auto hidden lg:inline-grid"
-              title={ck("cockpit.ui.panel.left_hide")}
-              aria-label={ck("cockpit.ui.panel.left_hide")}
-              onClick={toggleLeft}
-            >
-              <PanelLeftClose size={15} />
-            </button>
+
+            {/* Barra Sovrana di Centratura Tattica (50/50, bilanciata e anti-overflow) */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className={`inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg border font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer min-w-0 shadow-sm ${
+                  liveBioTelemetry.status === "critical"
+                    ? "border-rose-500/60 bg-rose-500/15 text-rose-300 animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.25)]"
+                    : liveBioTelemetry.status === "elevated"
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-300 animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                    : "border-[#C5A059]/30 bg-[#0d0f14] text-[#E8C56A] hover:bg-[#C5A059]/20 hover:border-[#C5A059]/50 hover:shadow-[0_0_10px_rgba(197,160,89,0.15)]"
+                }`}
+                title={
+                  liveBioTelemetry.status === "critical" || liveBioTelemetry.status === "elevated"
+                    ? `Respiro Tattico 4-7-8 (Scorciatoia: B): Tensione cardiaca (${liveBioTelemetry.bpm} BPM) — Centratura raccomandata`
+                    : "Respiro Tattico 4-7-8 (Scorciatoia: B): Centratura sovrana pre-operativa"
+                }
+                onClick={() => {
+                  synestheticClick();
+                  setTacticalBreathModalOpen(true);
+                }}
+              >
+                <Wind
+                  className={`w-3.5 h-3.5 shrink-0 ${
+                    liveBioTelemetry.status === "critical"
+                      ? "text-rose-400"
+                      : liveBioTelemetry.status === "elevated"
+                      ? "text-amber-400"
+                      : "text-[#C5A059]"
+                  }`}
+                />
+                <span className="truncate">Respiro</span>
+                <kbd className="px-1 py-0.2 rounded bg-black/60 border border-white/10 text-[8px] text-muted-foreground font-mono shrink-0">B</kbd>
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg border border-[#C5A059]/30 bg-[#0d0f14] text-[#E8C56A] hover:bg-[#C5A059]/20 hover:border-[#C5A059]/50 hover:shadow-[0_0_10px_rgba(197,160,89,0.15)] font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer min-w-0 shadow-sm"
+                title="Camera di Decompressione (Scorciatoia: D): stacca la mente e ricarica il focus"
+                onClick={() => {
+                  synestheticClick();
+                  setDecompressionModalOpen(true);
+                }}
+              >
+                <Gamepad2 className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
+                <span className="truncate">Decompressione</span>
+                <kbd className="px-1 py-0.2 rounded bg-black/60 border border-white/10 text-[8px] text-muted-foreground font-mono shrink-0">D</kbd>
+              </button>
+            </div>
           </div>
 
           {/* Stepper Orizzontale Compatto a 4 step (grid-cols-4 gap-1 text-[11px]) */}
@@ -1655,6 +2244,7 @@ function CockpitView({
                   disabled={isDisabled}
                   className={`ck-stepper-btn ${isActive ? "is-active" : ""} ${isStepReady ? "is-done" : ""}`}
                   onClick={() => {
+                    synestheticClick();
                     if (confirmed) {
                       setReviewPhase(step as 1 | 2 | 3 | 4);
                     }
@@ -1684,28 +2274,91 @@ function CockpitView({
               setExampleCategory(cat ?? "ALL");
               setDialog("examples");
             }}
-            className="mb-3"
+            className="mb-2"
           />
 
-          {/* Sentinella Visiva del Varco (AI Co-Pilot Checklist & Setup — Motore Unificato) */}
-          <div className="mb-3">
-            <CockpitAiSentinelCard
-              isScanning={isAiScanning}
-              analysis={aiAnalysis}
-              onScan={() => void handleScanVarcoAi(false)}
-              onAdoptSetup={handleAdoptAiSetup}
-              showOverlay={showAiOverlay}
-              onToggleOverlay={() => setShowAiOverlay((prev) => !prev)}
-              currentPhase={phase}
-              continuousAutoScan={continuousAutoScan}
-              onToggleContinuousAutoScan={() => setContinuousAutoScan((prev) => !prev)}
-              autoAlignCockpit={autoAlignCockpit}
-              onToggleAutoAlignCockpit={() => setAutoAlignCockpit((prev) => !prev)}
-              operativeMemory={operativeMemory}
-              onResetMemory={handleResetOperativeMemory}
-              interval={chartTF}
-            />
-          </div>
+          {/* ── CUSTODE DELLA SOGLIA: TELEMETRIA LIQUIDITÀ DI SESSIONE (Max/Min, Range Pips & Sweep) ── */}
+          {sessionTelemetry && (
+            <div className="mb-2.5 rounded-lg border border-[#C5A059]/30 bg-[#0d0f14]/95 px-2.5 py-2 font-mono text-[10px]">
+              <div className="flex items-center justify-between gap-1.5 mb-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Crosshair className="w-3 h-3 text-[#C5A059] shrink-0" />
+                  <span className="font-bold text-[#E8C56A] uppercase tracking-wider truncate">
+                    {`${sessionTelemetry.sessionLabel} (${sessionTelemetry.hoursLabel})`}
+                  </span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[#E8C56A] font-bold whitespace-nowrap">
+                  {`${sessionTelemetry.rangePips.toFixed(1)} pips`}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-1.5 flex-wrap text-[9.5px] text-slate-300">
+                <span className="whitespace-nowrap">
+                  {"MAX "}
+                  <strong className="text-emerald-400">
+                    {sessionTelemetry.highPrice >= 1000
+                      ? sessionTelemetry.highPrice.toFixed(2)
+                      : sessionTelemetry.highPrice >= 10
+                        ? sessionTelemetry.highPrice.toFixed(3)
+                        : sessionTelemetry.highPrice.toFixed(5)}
+                  </strong>
+                </span>
+                <span className="whitespace-nowrap">
+                  {"MIN "}
+                  <strong className="text-rose-400">
+                    {sessionTelemetry.lowPrice >= 1000
+                      ? sessionTelemetry.lowPrice.toFixed(2)
+                      : sessionTelemetry.lowPrice >= 10
+                        ? sessionTelemetry.lowPrice.toFixed(3)
+                        : sessionTelemetry.lowPrice.toFixed(5)}
+                  </strong>
+                </span>
+                <span
+                  className={`px-1.5 py-0.2 rounded border text-[8.5px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                    sessionTelemetry.sweptHigh
+                      ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
+                      : sessionTelemetry.sweptLow
+                        ? "bg-rose-500/15 border-rose-500/40 text-rose-400"
+                        : sessionTelemetry.priceZone === "PREMIUM"
+                          ? "bg-[#C5A059]/15 border-[#C5A059]/35 text-[#E8C56A]"
+                          : "bg-sky-500/15 border-sky-500/35 text-sky-300"
+                  }`}
+                >
+                  {sessionTelemetry.sweptHigh
+                    ? "⚡ SWEEP MAX"
+                    : sessionTelemetry.sweptLow
+                      ? "⚡ SWEEP MIN"
+                      : sessionTelemetry.priceZone === "PREMIUM"
+                        ? "ZONA PREMIUM (>50%)"
+                        : "ZONA DISCOUNT (<50%)"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Sentinella Visiva del Varco (AI Co-Pilot Checklist & Setup) — Accessibile Esclusivamente da ADMIN */}
+          {isAdmin && (
+            <div className="mb-2">
+              <CockpitAiSentinelCard
+                isScanning={isAiScanning}
+                analysis={aiAnalysis}
+                onScan={() => void handleScanVarcoAi(false)}
+                onAdoptSetup={handleAdoptAiSetup}
+                showOverlay={showAiOverlay}
+                onToggleOverlay={() => setShowAiOverlay((prev) => !prev)}
+                currentPhase={phase}
+                continuousAutoScan={continuousAutoScan}
+                onToggleContinuousAutoScan={() => setContinuousAutoScan((prev) => !prev)}
+                autoAlignCockpit={autoAlignCockpit}
+                onToggleAutoAlignCockpit={() => setAutoAlignCockpit((prev) => !prev)}
+                operativeMemory={operativeMemory}
+                onResetMemory={handleResetOperativeMemory}
+                interval={chartTF}
+                directionalBias={(market.data as any)?.directionalBias}
+                onOpenTacticalBreath={() => setTacticalBreathModalOpen(true)}
+              />
+            </div>
+          )}
 
           {/* Contenitore Attivo Step Unificato (eliminata la duplicazione delle card) */}
           <div className="ck-active-step-card">
@@ -2214,7 +2867,7 @@ function CockpitView({
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[9px] font-mono text-emerald-400/90 block">Consigliato Limen</span>
+                        <span className="text-[9px] font-mono text-emerald-400/90 block">Consigliato AUREUS</span>
                         <span className="text-[11px] font-mono font-bold text-emerald-300">1.0% (€{riskStandard})</span>
                       </div>
                     </div>
@@ -2484,11 +3137,11 @@ function CockpitView({
 
                     {/* Fase 2: Svolta */}
                     <div className="p-2 rounded-lg bg-black/40 border border-white/5 flex items-start justify-between gap-2">
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-[9px] font-mono text-muted-foreground uppercase block">
                           02 · Svolta [{tfs[1]}]
                         </span>
-                        <strong className="text-foreground text-[11px] truncate block max-w-[200px]">
+                        <strong className="text-foreground text-[11px] block leading-tight break-words">
                           {a.scenario || "Reazione Livello Chiave"}
                           {a.area ? ` (${a.area})` : ""}
                         </strong>
@@ -2523,21 +3176,21 @@ function CockpitView({
                       </div>
 
                       <div className="grid grid-cols-4 gap-1.5 pt-1 text-center font-mono">
-                        <div className="bg-white/[0.02] p-1 rounded border border-white/5">
+                        <div className="bg-white/[0.02] p-1 rounded border border-white/5 min-w-0">
                           <span className="text-[8px] text-muted-foreground uppercase block">Entry</span>
-                          <span className="text-[10px] text-foreground font-bold">{state.session?.plan?.entry || value?.entry || localEntry || "A Mercato"}</span>
+                          <span className="text-[10px] text-foreground font-bold whitespace-nowrap block">{state.session?.plan?.entry || value?.entry || localEntry || "A Mercato"}</span>
                         </div>
-                        <div className="bg-white/[0.02] p-1 rounded border border-white/5">
+                        <div className="bg-white/[0.02] p-1 rounded border border-white/5 min-w-0">
                           <span className="text-[8px] text-muted-foreground uppercase block">Stop</span>
-                          <span className="text-[10px] text-rose-400 font-bold">{state.session?.plan?.stop || value?.stop || localStop || "Struttura"}</span>
+                          <span className="text-[10px] text-rose-400 font-bold whitespace-nowrap block">{state.session?.plan?.stop || value?.stop || localStop || "Struttura"}</span>
                         </div>
-                        <div className="bg-white/[0.02] p-1 rounded border border-white/5">
+                        <div className="bg-white/[0.02] p-1 rounded border border-white/5 min-w-0">
                           <span className="text-[8px] text-muted-foreground uppercase block">Target</span>
-                          <span className="text-[10px] text-emerald-400 font-bold truncate block">{state.session?.plan?.guidance?.cockpit?.target || a.target || "Pool"}</span>
+                          <span className="text-[10px] text-emerald-400 font-bold whitespace-nowrap block">{state.session?.plan?.guidance?.cockpit?.target || a.target || "Pool"}</span>
                         </div>
-                        <div className="bg-white/[0.02] p-1 rounded border border-white/5">
+                        <div className="bg-white/[0.02] p-1 rounded border border-white/5 min-w-0">
                           <span className="text-[8px] text-muted-foreground uppercase block">Rischio</span>
-                          <span className="text-[10px] text-amber-400 font-bold">{state.activeMethod?.rules.currency ?? "€"}{state.session?.plan?.initialRisk || value?.risk || localRisk || String(riskStandard || "80")}</span>
+                          <span className="text-[10px] text-amber-400 font-bold whitespace-nowrap block">{state.activeMethod?.rules.currency ?? "€"}{state.session?.plan?.initialRisk || value?.risk || localRisk || String(riskStandard || "80")}</span>
                         </div>
                       </div>
                     </div>
@@ -2722,6 +3375,28 @@ function CockpitView({
 
         {/* COLONNA 2 (CENTRO/DESTRA): GRAFICO DOMINANTE E ACTION BAR */}
         <section className="ck-chart-area" aria-label={ck("cockpit.ui.31175df55f")}>
+          {/* Banner Coprifuoco Volatilità (Custode della Soglia) */}
+          {imminentRedNews && imminentRedNews.countdownMin <= 15 && imminentRedNews.countdownMin >= -5 && (
+            <div className="mx-2 mb-1.5 px-3 py-1.5 rounded-lg bg-[#ef4444]/10 border border-[#ef4444]/40 shadow-[0_0_15px_rgba(239,68,68,0.12)] flex items-center justify-between text-xs font-mono shrink-0">
+              <div className="flex items-center gap-2 text-[#ef4444] min-w-0">
+                <span className="flex h-2 w-2 rounded-full bg-[#ef4444] animate-ping shrink-0" />
+                <span className="font-bold tracking-wider uppercase text-[11px] whitespace-nowrap">
+                  Custode della Soglia · Coprifuoco Volatilità
+                </span>
+                <span className="text-[#94a3b8] text-[11px] truncate">
+                  Rilascio ad alto impatto <strong className="text-[#ef4444] font-bold">{imminentRedNews.country}</strong> {imminentRedNews.title} {imminentRedNews.countdownMin > 0 ? `tra ${imminentRedNews.countdownMin} min` : "in corso"}. Esposizione sconsigliata.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDialog("news")}
+                className="text-[10px] uppercase font-bold tracking-wider text-[#E8C56A] hover:text-[#F3D88C] bg-[#C5A059]/15 border border-[#C5A059]/35 px-2 py-0.5 rounded whitespace-nowrap shrink-0 transition-colors cursor-pointer"
+              >
+                Vedi Calendario
+              </button>
+            </div>
+          )}
+
           {/* Area Grafico: Motore Proprietario LIMEN (Lightweight Charts v5 + TV Real-Time Feed + Overlay FX Replay) */}
           <div className="ck-chart">
             <LimenProprietaryChart
@@ -2732,6 +3407,8 @@ function CockpitView({
               leftCollapsed={leftCollapsed && !isFreeTrial}
               onToggleLeft={toggleLeft}
               biasScore={score}
+              h4DirectionalBias={(market.data as any)?.directionalBias?.h4MasterBias}
+              edgeTier={(market.data as any)?.directionalBias?.edgeTier}
               onOpenContext={() => setDialog("context")}
               macroText={macroText}
               macroStatus={autoNewsStatus}
@@ -2742,17 +3419,18 @@ function CockpitView({
                 toggleFocus();
                 setMobileTab("chart");
               }}
+              isAdmin={isAdmin}
               aiSetup={aiSetup}
               onUpdateAiSetup={updateAiSetup}
               onAdoptAiSetup={() => aiSetup && handleAdoptAiSetup(aiSetup, aiAnalysis?.checklistAudit.ltfTrigger.triggerType)}
-              showAiOverlay={showAiOverlay}
+              showAiOverlay={isAdmin ? showAiOverlay : false}
               onToggleAiOverlay={() => setShowAiOverlay((prev) => !prev)}
               isAiScanning={isAiScanning}
-              onScanAi={() => void handleScanVarcoAi(false)}
+              onScanAi={isAdmin ? () => void handleScanVarcoAi(false) : undefined}
               onCandlesUpdate={(candles) => {
                 chartCandlesRef.current = candles;
                 const lastBar = candles[candles.length - 1];
-                if (continuousAutoScan && lastBar && lastLiveBarTimeRef.current !== lastBar.time) {
+                if (isAdmin && continuousAutoScan && lastBar && lastLiveBarTimeRef.current !== lastBar.time) {
                   lastLiveBarTimeRef.current = lastBar.time;
                   if (liveDebounceRef.current) clearTimeout(liveDebounceRef.current);
                   liveDebounceRef.current = setTimeout(() => {
@@ -2761,10 +3439,81 @@ function CockpitView({
                 }
               }}
               chartCanvasRef={chartCanvasRef}
+              onImminentNewsChange={setImminentRedNews}
               onTradePlanned={(trade) => {
+                const isCurfew = Boolean(
+                  imminentRedNews &&
+                  imminentRedNews.countdownMin <= 15 &&
+                  imminentRedNews.countdownMin >= -5
+                );
+
+                // Sincronizzazione automatica con il Piano Operativo del Varco
+                const operativeKey = `tl_cockpit_operative_plan_${a.market}`;
+                const planToSave = {
+                  asset: a.market,
+                  bias: trade.direction === "buy" ? "long" : "short",
+                  entryPrice: String(trade.entryPrice),
+                  stopLoss: String(trade.stopLoss),
+                  takeProfit1: String(trade.takeProfit),
+                  riskReward: trade.riskReward,
+                  setupName: `Il Varco: Setup ${a.market} (${trade.direction.toUpperCase()}) · 1:${trade.riskReward} R`,
+                  notes: `Posizione proiettata a grafico su Il Varco (${a.market}). Entry: ${trade.entryPrice}, Stop Loss: ${trade.stopLoss}, Target: ${trade.takeProfit}, R:R stimato 1:${trade.riskReward}.`,
+                  status: "confirmed",
+                  updatedAt: new Date().toISOString(),
+                };
+                try {
+                  localStorage.setItem(operativeKey, JSON.stringify(planToSave));
+                  refreshDockState();
+                  window.dispatchEvent(new CustomEvent("tl_cockpit_plan_updated", { detail: { market: a.market } }));
+                } catch {
+                  // ignore
+                }
+
+                // Sincronizza lo stato degli input del cockpit
+                setLocalEntry(String(trade.entryPrice));
+                setLocalStop(String(trade.stopLoss));
+                persistCockpitInputs(a.market, {
+                  entry: String(trade.entryPrice),
+                  stop: String(trade.stopLoss),
+                });
+                if (change) {
+                  change({
+                    entry: String(trade.entryPrice),
+                    stop: String(trade.stopLoss),
+                  });
+                }
+                set({
+                  cycle: trade.direction === "buy" ? "up" : "down",
+                  target: String(trade.takeProfit),
+                  targetConfirmed: true,
+                });
+
+                // Notifica toast solenne con link di trascrizione istantanea nel Libro della Verità
                 toast({
-                  title: `Trade Proiettato (${trade.direction.toUpperCase()})`,
-                  description: `Entry: ${trade.entryPrice} · SL: ${trade.stopLoss} · TP: ${trade.takeProfit} · R:R: 1:${trade.riskReward}`,
+                  title: isCurfew
+                    ? `⚠️ Custode della Soglia: Coprifuoco News Attivo (${imminentRedNews?.country})`
+                    : `Piano Grafico Acquisito · ${trade.direction.toUpperCase()}`,
+                  description: (
+                    <div className="space-y-1 text-xs">
+                      <div>
+                        Entry: <span className="font-mono text-[#F4F4F6]">{trade.entryPrice}</span> · SL: <span className="font-mono text-[#ef4444]">{trade.stopLoss}</span> · TP: <span className="font-mono text-[#10b981]">{trade.takeProfit}</span> (<span className="font-mono font-bold text-[#C5A059]">1:{trade.riskReward} R</span>)
+                      </div>
+                      {isCurfew && (
+                        <div className="text-[#ef4444] font-medium">
+                          Rilascio macro {imminentRedNews?.title} {imminentRedNews && imminentRedNews.countdownMin > 0 ? `tra ${imminentRedNews.countdownMin} min` : "in corso"}. Preserva il capitale.
+                        </div>
+                      )}
+                    </div>
+                  ),
+                  action: (
+                    <ToastAction
+                      altText="Trascrivi nel Diario"
+                      onClick={() => setJournalModalOpen(true)}
+                      className="bg-[#C5A059]/20 hover:bg-[#C5A059]/30 text-[#E8C56A] border border-[#C5A059]/40 text-xs font-mono font-bold whitespace-nowrap cursor-pointer"
+                    >
+                      Trascrivi nel Diario
+                    </ToastAction>
+                  ),
                 });
               }}
             />
@@ -2831,22 +3580,186 @@ function CockpitView({
                   {playbookCount}
                 </span>
               </button>
+
+              <span className="h-4 w-px bg-[#C5A059]/20 shrink-0 mx-0.5" aria-hidden="true" />
+
+              {/* 4. Bio-Telemetria Cardiaca & Connessione Smartwatch Bluetooth */}
+              <button
+                type="button"
+                className={`ck-dock-btn ${
+                  liveBioTelemetry.isWatchLive
+                    ? "border-[#C5A059]/50 bg-[#C5A059]/15 text-[#E8C56A] shadow-[0_0_10px_rgba(197,160,89,0.2)]"
+                    : liveBioTelemetry.status === "critical"
+                      ? "border-[#ef4444]/40 bg-[#ef4444]/10 text-[#ef4444]"
+                      : ""
+                }`}
+                onClick={() => {
+                  synestheticClick();
+                  setSmartWatchModalOpen(true);
+                }}
+                title={`Bio-Telemetria Cardiaca: ${liveBioTelemetry.bpm} BPM (${liveBioTelemetry.stressReason}). Clicca per collegare o gestire lo Smartwatch tramite Bluetooth.`}
+                aria-label={`Bio-telemetria cardiaca live: ${liveBioTelemetry.bpm} BPM`}
+              >
+                {liveBioTelemetry.isWatchLive ? (
+                  <Watch size={13} className="shrink-0 text-[#C5A059]" />
+                ) : (
+                  <Heart
+                    size={13}
+                    className="shrink-0"
+                    style={{
+                      color: liveBioTelemetry.color,
+                      animation: `pulse ${(60 / liveBioTelemetry.bpm).toFixed(2)}s ease-in-out infinite`,
+                    }}
+                    fill={liveBioTelemetry.color}
+                  />
+                )}
+                <span
+                  className="font-mono font-bold whitespace-nowrap"
+                  style={{ color: liveBioTelemetry.color }}
+                >
+                  {liveBioTelemetry.bpm} BPM
+                </span>
+                <span
+                  className="text-[9px] uppercase px-1.5 py-0.5 rounded font-mono font-bold tracking-wider whitespace-nowrap hidden xl:inline"
+                  style={{
+                    background: "rgba(0,0,0,0.35)",
+                    color: liveBioTelemetry.color,
+                    border: `1px solid ${liveBioTelemetry.color}35`,
+                  }}
+                >
+                  {liveBioTelemetry.stressReason}
+                </span>
+              </button>
+
+              {/* 5. Rituale del Respiro Tattico 4-7-8 */}
+              <button
+                type="button"
+                className={`ck-dock-btn ${
+                  isFatigued
+                    ? "border-[#ef4444]/60 bg-[#ef4444]/15 text-[#ef4444] animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.25)]"
+                    : ""
+                }`}
+                onClick={() => {
+                  synestheticClick();
+                  setTacticalBreathModalOpen(true);
+                }}
+                title={
+                  isFatigued
+                    ? `Sessione attiva da ${elapsedSessionMinutes}m: alto rischio di affaticamento decisionale. Clicca per avviare il Rituale del Respiro Tattico 4-7-8 (Scorciatoia: B).`
+                    : "Avvia il Rituale del Respiro Tattico 4-7-8 per resettare il sistema nervoso autonomo (Scorciatoia: B)"
+                }
+              >
+                <Wind size={13} className={isFatigued ? "text-[#ef4444] shrink-0" : "text-[#C5A059] shrink-0"} />
+                <span className="whitespace-nowrap">Respiro 4-7-8</span>
+                {isFatigued && (
+                  <span className="ml-0.5 px-1.5 py-0.5 rounded bg-[#ef4444]/20 border border-[#ef4444]/40 text-[#ef4444] font-mono text-[9px] uppercase font-bold tracking-wider whitespace-nowrap">
+                    Pausa 4-7-8
+                  </span>
+                )}
+              </button>
+
+              {/* 6. Atmosfera Deep Work 432 Hz Zen */}
+              <button
+                type="button"
+                className={`ck-dock-btn ${ambienceActive ? "border-[#C5A059]/60 bg-[#C5A059]/15 text-[#E8C56A] shadow-[0_0_10px_rgba(197,160,89,0.2)]" : ""}`}
+                onClick={handleToggleAmbience}
+                title={
+                  ambienceActive
+                    ? "Atmosfera Acustica Deep Work (432 Hz Pitagorico + Flusso Alpha 1.4 Hz + Brown Noise) attiva. Clicca per disattivare."
+                    : "Attiva l'Atmosfera Acustica Deep Work (432 Hz + Flusso Alpha + Brown Noise) per massima concentrazione"
+                }
+              >
+                <Headphones size={13} className={ambienceActive ? "text-[#E8C56A] animate-pulse shrink-0" : "text-[#C5A059] shrink-0"} />
+                <span className="whitespace-nowrap">{ambienceActive ? "432Hz Attivo" : "432Hz Zen"}</span>
+              </button>
+
+              {/* 7. Regole & Rischio (Guardrail & Limiti Trade Giornalieri) */}
+              <button
+                type="button"
+                className={`ck-dock-btn ${
+                  isOvertradingRisk
+                    ? "border-[#ef4444]/50 bg-[#ef4444]/15 text-[#ef4444]"
+                    : "border-[#C5A059]/30 bg-[#C5A059]/10 text-[#E8C56A]"
+                }`}
+                onClick={() => {
+                  synestheticClick();
+                  setDialog("protection");
+                }}
+                title="Apri le impostazioni di Rischio e i guardrail de Il Custode della Soglia"
+              >
+                {isOvertradingRisk ? (
+                  <AlertCircle size={13} className="text-[#ef4444] shrink-0" />
+                ) : (
+                  <Shield size={13} className="text-[#C5A059] shrink-0" />
+                )}
+                <span className="whitespace-nowrap">Regole &amp; Rischio</span>
+                <span
+                  className={`ml-0.5 px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                    isOvertradingRisk
+                      ? "bg-[#ef4444]/20 border border-[#ef4444]/40 text-[#ef4444]"
+                      : "bg-black/40 border border-white/10 text-foreground/90"
+                  }`}
+                >
+                  {_tradesToday}/{_maxTrades} Trade{isLossLimitBreached ? " · STOP LOSS" : isOvertradingRisk ? " · STOP" : ""}
+                </span>
+              </button>
             </div>
 
-            {/* 4. REGISTRA TRADE · IL LIBRO DELLA VERITÀ */}
+            {/* 8. REGISTRA TRADE · IL LIBRO DELLA VERITÀ */}
             <button
               type="button"
-              className="ck-dock-cta cursor-pointer flex items-center gap-2 group"
-              onClick={() => setTradeRegisterModalOpen(true)}
-              title="Registra il trade eseguito nel Libro della Verità con schematica, metriche e screenshot"
+              className={`ck-dock-cta cursor-pointer flex items-center gap-2 group ${
+                bioLockEvaluation.isLocked ? "border-[#ef4444]/60 shadow-[0_0_16px_rgba(239,68,68,0.25)]" : ""
+              }`}
+              onClick={() => {
+                synestheticClick();
+                if (isLossLimitBreached) {
+                  toast({
+                    title: "Il Varco è Sigillato · Limite di Perdita Raggiunto",
+                    description:
+                      "Hai raggiunto la perdita massima consentita dal Protocollo per la sessione odierna. Preserva il capitale e completa il Respiro Tattico prima di chiudere la postazione.",
+                    variant: "destructive",
+                  });
+                  setPendingBioLockTradeUnlock(true);
+                  setTacticalBreathModalOpen(true);
+                  return;
+                }
+                if (bioLockEvaluation.isLocked) {
+                  toast({
+                    title: "Presidio Bio-Lock Attivo · Custode della Soglia",
+                    description:
+                      bioLockEvaluation.reason ||
+                      "Completa 1 ciclo di Respiro Tattico 4-7-8 per sbloccare la registrazione del trade.",
+                  });
+                  setPendingBioLockTradeUnlock(true);
+                  setTacticalBreathModalOpen(true);
+                  return;
+                }
+                setTradeRegisterModalOpen(true);
+              }}
+              title={
+                bioLockEvaluation.isLocked
+                  ? `${bioLockEvaluation.reason} Clicca per avviare il Respiro 4-7-8.`
+                  : "Registra il trade eseguito nel Libro della Verità con schematica, metriche e screenshot"
+              }
             >
-              <BookOpen size={15} className="group-hover:scale-110 transition-transform" />
-              <span className="font-bold tracking-wide">REGISTRA TRADE · IL LIBRO DELLA VERITÀ</span>
-              {activePlanSummary.hasPlan && (
+              {bioLockEvaluation.isLocked ? (
+                <Lock size={14} className="text-[#ef4444] shrink-0" />
+              ) : (
+                <BookOpen size={15} className="group-hover:scale-110 transition-transform shrink-0" />
+              )}
+              <span className="font-bold tracking-wide">
+                REGISTRA TRADE<span className="hidden sm:inline"> · IL LIBRO DELLA VERITÀ</span>
+              </span>
+              {bioLockEvaluation.isLocked ? (
+                <span className="inline-flex items-center gap-1 ml-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#ef4444]/20 border border-[#ef4444]/40 text-[#ef4444] font-bold uppercase whitespace-nowrap">
+                  <Wind size={10} className="inline" /> Bio-Lock 4-7-8
+                </span>
+              ) : activePlanSummary.hasPlan ? (
                 <span className="hidden xl:inline-flex items-center gap-1 ml-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-primary text-black font-extrabold uppercase shadow-sm">
                   <Zap size={10} className="inline" /> Pre-compilato
                 </span>
-              )}
+              ) : null}
             </button>
           </div>
         </section>
@@ -2869,7 +3782,7 @@ function CockpitView({
                   : dialog === "news"
                     ? `Calendario Economico & Catalizzatori Macro`
                     : dialog === "user_playbook"
-                      ? `I Miei Esempi Operativi · LIMEN Playbook`
+                      ? `I Miei Esempi Operativi · AUREUS Playbook`
                       : dialog === "operative_plan"
                         ? `Piano Operativo di Sessione · ${a.market}`
                         : dialog === "favorite_tools"
@@ -2883,7 +3796,7 @@ function CockpitView({
                                 : dialog === "notes"
                                   ? ck("cockpit.ui.dialog.notes")
                                   : dialog === "confirm"
-                                    ? "Sigillo del Trade & Inizio Gestione · LIMEN PROTOCOL"
+                                    ? "Sigillo del Trade & Inizio Gestione · AUREUS PROTOCOL"
                                     : dialog === "protocol"
                                       ? "Protocollo Operativo & Regole Inviolabili"
                                       : ck("cockpit.ui.dialog.default")}
@@ -2911,59 +3824,12 @@ function CockpitView({
           )}
 
           {dialog === "context" && (
-            <div className="space-y-6">
-              {/* Factor Breakdown cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3 rounded-lg bg-white/[0.02] border border-white/10">
-                  <span className="text-[10px] font-mono text-muted-foreground uppercase">1. Prezzo / Trend</span>
-                  <strong className="block text-sm font-semibold mt-1 text-foreground">
-                    {market.data?.components?.find((c) => c.id === "price")?.score ?? "+8"}
-                  </strong>
-                  <small className="text-[10px] text-muted-foreground">Struttura & EMA</small>
-                </div>
-                <div className="p-3 rounded-lg bg-white/[0.02] border border-white/10">
-                  <span className="text-[10px] font-mono text-muted-foreground uppercase">2. Macro & News</span>
-                  <strong className="block text-sm font-semibold mt-1 text-foreground">
-                    {market.data?.components?.find((c) => c.id === "news")?.score ?? "+5"}
-                  </strong>
-                  <small className="text-[10px] text-muted-foreground">{events.length} eventi alto impatto</small>
-                </div>
-                <div className="p-3 rounded-lg bg-white/[0.02] border border-white/10">
-                  <span className="text-[10px] font-mono text-muted-foreground uppercase">3. Retail Sentiment</span>
-                  <strong className="block text-sm font-semibold mt-1 text-foreground">
-                    +3
-                  </strong>
-                  <small className="text-[10px] text-muted-foreground">Contrarian signal</small>
-                </div>
-                <div className="p-3 rounded-lg bg-white/[0.02] border border-white/10">
-                  <span className="text-[10px] font-mono text-muted-foreground uppercase">4. COT Report</span>
-                  <strong className="block text-sm font-semibold mt-1 text-foreground">
-                    {cotFormatted}
-                  </strong>
-                  <small className="text-[10px] text-muted-foreground">Non-Commercial Net</small>
-                </div>
-              </div>
-
-              {/* Price History & Market Depth */}
-              <PriceHistory data={market.data} />
-              <ContextMarketDetail data={market.data} />
-
-              {/* Preparation Tool Links */}
-              <nav className="ck-tool-links" aria-label="Strumenti di Contesto">
-                {PREPARATION_TOOLS.map((tool) => (
-                  <Link
-                    key={tool.id}
-                    href={processToolHref(tool.href, {
-                      pair: a.market,
-                      methodVersionId: state.activeMethod?.id,
-                      fromProcess: true,
-                    })}
-                  >
-                    {t(tool.labelKey)} ↗
-                  </Link>
-                ))}
-              </nav>
-            </div>
+            <QuantitativeSynthesisDialog
+              market={a.market}
+              data={market.data}
+              onOpenNews={() => setDialog("news")}
+              onOpenPlan={() => setDialog("operative_plan")}
+            />
           )}
 
           {dialog === "notes" && (
@@ -3007,65 +3873,67 @@ function CockpitView({
             </div>
           )}
 
-          {dialog === "news" && (
-            <CockpitNewsDialog
-              market={a.market}
-              fallbackEvents={market.data?.events}
-            />
-          )}
+          <Suspense fallback={null}>
+            {dialog === "news" && (
+              <CockpitNewsDialog
+                market={a.market}
+                fallbackEvents={market.data?.events}
+              />
+            )}
 
-          {dialog === "examples" && (
-            <CockpitExamplesDialog
-              initialCategory={exampleCategory ?? undefined}
-              currentMarket={a.market}
-            />
-          )}
+            {dialog === "examples" && (
+              <CockpitExamplesDialog
+                initialCategory={exampleCategory ?? undefined}
+                currentMarket={a.market}
+              />
+            )}
 
-          {dialog === "operative_plan" && (
-            <CockpitOperativePlanDialog
-              key={a.market}
-              market={a.market}
-              timeframe={chartTF}
-              cockpitEntry={localEntry}
-              cockpitStop={localStop}
-              cockpitRisk={localRisk}
-              cockpitBias={a.cycle === "up" ? "long" : a.cycle === "down" ? "short" : "wait"}
-              onPlanSaved={() => {
-                refreshDockState();
-              }}
-              onOpenJournal={() => {
-                setDialog(null);
-                setJournalModalOpen(true);
-              }}
-            />
-          )}
+            {dialog === "operative_plan" && (
+              <CockpitOperativePlanDialog
+                key={a.market}
+                market={a.market}
+                timeframe={chartTF}
+                cockpitEntry={localEntry}
+                cockpitStop={localStop}
+                cockpitRisk={localRisk}
+                cockpitBias={a.cycle === "up" ? "long" : a.cycle === "down" ? "short" : "wait"}
+                onPlanSaved={() => {
+                  refreshDockState();
+                }}
+                onOpenJournal={() => {
+                  setDialog(null);
+                  setJournalModalOpen(true);
+                }}
+              />
+            )}
 
-          {dialog === "user_playbook" && (
-            <CockpitUserPlaybookDialog
-              currentMarket={a.market}
-              onOpenOperativePlan={() => setDialog("operative_plan")}
-            />
-          )}
+            {dialog === "user_playbook" && (
+              <CockpitUserPlaybookDialog
+                currentMarket={a.market}
+                onOpenOperativePlan={() => setDialog("operative_plan")}
+              />
+            )}
 
-          {dialog === "favorite_tools" && (
-            <CockpitFavoriteTools
-              market={a.market}
-              onReloadChart={() => setChartKey((k) => k + 1)}
-              onOpenPlan={() => setDialog("operative_plan")}
-              onOpenJournal={() => setJournalModalOpen(true)}
-            />
-          )}
+            {dialog === "favorite_tools" && (
+              <CockpitFavoriteTools
+                market={a.market}
+                onReloadChart={() => setChartKey((k) => k + 1)}
+                onOpenPlan={() => setDialog("operative_plan")}
+                onOpenJournal={() => setJournalModalOpen(true)}
+              />
+            )}
 
-          {dialog === "next_session_plan" && (
-            <CockpitNextSessionPlanner
-              currentMarket={a.market}
-              currentTimeframe={chartTF}
-              onPlanSaved={() => {
-                updatePlansCount();
-                refreshDockState();
-              }}
-            />
-          )}
+            {dialog === "next_session_plan" && (
+              <CockpitNextSessionPlanner
+                currentMarket={a.market}
+                currentTimeframe={chartTF}
+                onPlanSaved={() => {
+                  updatePlansCount();
+                  refreshDockState();
+                }}
+              />
+            )}
+          </Suspense>
 
           {dialog === "chart_prefs" && (
             <CockpitChartPrefsDialog
@@ -3161,50 +4029,60 @@ function CockpitView({
       </Dialog>
 
       {/* ── MODALE LIBRO DELLA VERITÀ (IN-PLACE SENZA LASCIARE IL GRAFICO) ── */}
-      <JournalEntryModal
-        isOpen={journalModalOpen}
-        onClose={() => setJournalModalOpen(false)}
-        initialPair={a.market}
-        processSessionId={state.session?.id}
-        methodVersionId={state.session?.methodVersionId}
-      />
+      {journalModalOpen && (
+        <Suspense fallback={null}>
+          <JournalEntryModal
+            isOpen={journalModalOpen}
+            onClose={() => setJournalModalOpen(false)}
+            initialPair={a.market}
+            processSessionId={state.session?.id}
+            methodVersionId={state.session?.methodVersionId}
+          />
+        </Suspense>
+      )}
 
       {/* ── MODALE REGISTRAZIONE TRADE SEMPLIFICATA & PRECOMPILATA ── */}
-      <CockpitTradeRegisterModal
-        isOpen={tradeRegisterModalOpen}
-        onClose={() => setTradeRegisterModalOpen(false)}
-        market={a.market}
-        bias={a.cycle === "down" || a.cycle === "end_down" ? "short" : "long"}
-        scenario={a.scenario || state.session?.plan?.setup?.split("·")[0]?.trim() || "Setup Istituzionale"}
-        trigger={a.trigger || state.session?.plan?.setup?.split("·")[1]?.trim() || "JTC"}
-        entryPrice={state.session?.plan?.entry || value?.entry || localEntry}
-        stopLoss={state.session?.plan?.stop || value?.stop || localStop}
-        target={state.session?.plan?.guidance?.cockpit?.target || a.target}
-        initialRisk={String(state.session?.plan?.initialRisk || value?.risk || localRisk || String(riskStandard || "80"))}
-        currency={state.activeMethod?.rules.currency ?? "€"}
-        notes={mgmtNote}
-        timeframeSnapshots={timeframeSnapshots}
-        onAddSnapshotImage={(snapshotId, imageDataUrl) => {
-          setTimeframeSnapshots((prev) => {
-            const next = prev.map((s) => (s.id === snapshotId ? { ...s, imageDataUrl: imageDataUrl || undefined } : s));
-            try {
-              localStorage.setItem(`tl_cockpit_tf_snapshots_${a.market}`, JSON.stringify(next));
-            } catch {
-              // ignore
-            }
-            return next;
-          });
-        }}
-        processSessionId={state.session?.id}
-        methodVersionId={state.session?.methodVersionId}
-        onSuccess={() => {
-          executeTradeReset(true);
-          toast({
-            title: "Trade Archiviato nel Diario!",
-            description: `${a.market} registrato nel Libro della Verità. Cockpit pronto per la prossima operazione.`,
-          });
-        }}
-      />
+      {tradeRegisterModalOpen && (
+        <Suspense fallback={null}>
+          <CockpitTradeRegisterModal
+            isOpen={tradeRegisterModalOpen}
+            onClose={() => setTradeRegisterModalOpen(false)}
+            market={a.market}
+            bias={a.cycle === "down" || a.cycle === "end_down" ? "short" : "long"}
+            scenario={a.scenario || state.session?.plan?.setup?.split("·")[0]?.trim() || "Setup Istituzionale"}
+            trigger={a.trigger || state.session?.plan?.setup?.split("·")[1]?.trim() || "JTC"}
+            entryPrice={state.session?.plan?.entry || value?.entry || localEntry}
+            stopLoss={state.session?.plan?.stop || value?.stop || localStop}
+            target={state.session?.plan?.guidance?.cockpit?.target || a.target}
+            initialRisk={String(state.session?.plan?.initialRisk || value?.risk || localRisk || String(riskStandard || "80"))}
+            currency={state.activeMethod?.rules.currency ?? "€"}
+            notes={mgmtNote}
+            timeframeSnapshots={timeframeSnapshots}
+            onAddSnapshotImage={(snapshotId, imageDataUrl) => {
+              setTimeframeSnapshots((prev) => {
+                const next = prev.map((s) => (s.id === snapshotId ? { ...s, imageDataUrl: imageDataUrl || undefined } : s));
+                try {
+                  localStorage.setItem(`tl_cockpit_tf_snapshots_${a.market}`, JSON.stringify(next));
+                } catch {
+                  // ignore
+                }
+                return next;
+              });
+            }}
+            processSessionId={state.session?.id}
+            methodVersionId={state.session?.methodVersionId}
+            biometricBpm={liveBioTelemetry.bpm}
+            biometricReason={liveBioTelemetry.stressReason}
+            onSuccess={() => {
+              executeTradeReset(true);
+              toast({
+                title: "Trade Archiviato nel Diario!",
+                description: `${a.market} registrato nel Libro della Verità. Cockpit pronto per la prossima operazione.`,
+              });
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* ── MODALE INGRANDIMENTO SCHEMI GRAFICI (LIGHTBOX HD) ── */}
       <CockpitSchematicLightbox
@@ -3214,14 +4092,55 @@ function CockpitView({
       />
 
       {/* ── CAMERA DI DECOMPRESSIONE (GIOCO 3D & DISTACCO OPERATIVO) ── */}
-      <DecompressionChamberModal
-        open={decompressionModalOpen}
-        onOpenChange={setDecompressionModalOpen}
-        activeTradeContext={{
-          symbol: a.market,
-          direction: a.mode,
-        }}
-      />
+      {decompressionModalOpen && (
+        <Suspense fallback={null}>
+          <DecompressionChamberModal
+            open={decompressionModalOpen}
+            onOpenChange={setDecompressionModalOpen}
+            activeTradeContext={{
+              symbol: a.market,
+              direction: a.mode,
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* ── MODALE RESPIRO TATTICO (CENTRATURA 4-7-8 PRE-OPERATIVA) ── */}
+      {tacticalBreathModalOpen && (
+        <Suspense fallback={null}>
+          <TacticalBreathModal
+            isOpen={tacticalBreathModalOpen}
+            onClose={() => {
+              setTacticalBreathModalOpen(false);
+              setPendingBioLockTradeUnlock(false);
+            }}
+            onComplete={() => {
+              const nowTs = Date.now();
+              recordBreathAlignmentTimestamp(nowTs);
+              setLastBreathTimestamp(nowTs);
+              if (pendingBioLockTradeUnlock) {
+                setPendingBioLockTradeUnlock(false);
+                setTacticalBreathModalOpen(false);
+                setTradeRegisterModalOpen(true);
+                toast({
+                  title: "Presidio Bio-Lock Sbloccato",
+                  description: "Centratura 4-7-8 completata. Il Libro della Verità è pronto per il sigillo.",
+                });
+              }
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* ── MODALE CONNESSIONE SMARTWATCH BLUETOOTH (BIO-TELEMETRIA LIVE) ── */}
+      {smartWatchModalOpen && (
+        <Suspense fallback={null}>
+          <SmartWatchConnectModal
+            open={smartWatchModalOpen}
+            onClose={() => setSmartWatchModalOpen(false)}
+          />
+        </Suspense>
+      )}
     </main>
   );
 }

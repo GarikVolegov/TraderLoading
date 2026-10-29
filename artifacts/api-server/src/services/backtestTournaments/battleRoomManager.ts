@@ -6,6 +6,11 @@ import type {
 } from "./battleRoomTypes.js";
 import { SEED_COMMUNITY_ENTRIES } from "./store.js";
 import { assignBlindHistoricalDates, getBlindHistoricalTimestamp } from "./blindDateEngine.js";
+import {
+  publishBattleRoomMessage,
+  onBattleRoomMessage,
+  closeBattleRoomPubSub,
+} from "./battleEvents.js";
 
 export interface BattleRoomState {
   id: string;
@@ -16,13 +21,83 @@ export interface BattleRoomState {
   matchEndsAt?: number;
   durationSeconds?: number;
   timerInterval?: NodeJS.Timeout;
+  telemetryFlushTimer?: NodeJS.Timeout;
+  lastTelemetryBroadcastAt?: number;
   participants: Map<string, RoomParticipant>;
-  subscribers: Set<(msg: BattleRoomServerMessage) => void>;
+  subscribers: Set<(msg: BattleRoomServerMessage, preSerialized?: string) => void>;
+  spectators: Set<string>;
   createdAt: number;
 }
 
+export interface BattleInvitePayload {
+  roomId: string;
+  roomCode: string;
+  senderName: string;
+  targetUserId: string;
+  pair: string;
+  timeframe: string;
+  durationMinutes: number;
+}
+
+export type BattleInviteListener = (invite: BattleInvitePayload) => void | Promise<void>;
+
 class BattleRoomManager {
   private rooms = new Map<string, BattleRoomState>();
+  private sweepTimer?: NodeJS.Timeout;
+  private unsubscribeBus?: () => void;
+  private inviteListeners = new Set<BattleInviteListener>();
+
+  constructor() {
+    this.sweepTimer = setInterval(() => {
+      this.pruneInactiveRooms();
+    }, 300_000);
+    if (typeof this.sweepTimer.unref === "function") {
+      this.sweepTimer.unref();
+    }
+    this.unsubscribeBus = onBattleRoomMessage((roomId, msg) => {
+      this.broadcastLocal(roomId, msg);
+    });
+  }
+
+  /**
+   * Sweeps rooms that finished or were abandoned with no subscribers,
+   * clearing their ticker intervals to prevent memory and handle leaks.
+   */
+  public pruneInactiveRooms(now = Date.now()): number {
+    let pruned = 0;
+    for (const [roomId, room] of this.rooms.entries()) {
+      const matchExpired = room.matchEndsAt && now > room.matchEndsAt + 15 * 60 * 1000;
+      const roomStale = now - room.createdAt > 4 * 3600 * 1000;
+      const hasHumanSubscribers = room.subscribers.size > 0 || (room.spectators && room.spectators.size > 0);
+      const hasHumanParticipants = Array.from(room.participants.values()).some((p) => !p.isGhost);
+
+      if ((matchExpired || roomStale) && !hasHumanSubscribers && !hasHumanParticipants) {
+        if (room.timerInterval) clearInterval(room.timerInterval);
+        if (room.telemetryFlushTimer) clearTimeout(room.telemetryFlushTimer);
+        this.rooms.delete(roomId);
+        pruned++;
+      }
+    }
+    return pruned;
+  }
+
+  public async stop() {
+    if (this.unsubscribeBus) {
+      this.unsubscribeBus();
+      this.unsubscribeBus = undefined;
+    }
+    await closeBattleRoomPubSub();
+    if (this.sweepTimer) {
+      clearInterval(this.sweepTimer);
+      this.sweepTimer = undefined;
+    }
+    for (const room of this.rooms.values()) {
+      if (room.timerInterval) clearInterval(room.timerInterval);
+      if (room.telemetryFlushTimer) clearTimeout(room.telemetryFlushTimer);
+    }
+    this.rooms.clear();
+    this.inviteListeners.clear();
+  }
 
   /**
    * Get or initialize a battle room.
@@ -35,6 +110,23 @@ class BattleRoomManager {
   ): BattleRoomState {
     let room = this.rooms.get(roomId);
     if (!room) {
+      if (this.rooms.size >= 1000) {
+        this.pruneInactiveRooms();
+        if (this.rooms.size >= 1000) {
+          for (const [candidateId, candidate] of this.rooms.entries()) {
+            const hasHumans =
+              candidate.subscribers.size > 0 ||
+              candidate.spectators.size > 0 ||
+              Array.from(candidate.participants.values()).some((p) => !p.isGhost);
+            if (!hasHumans) {
+              if (candidate.timerInterval) clearInterval(candidate.timerInterval);
+              if (candidate.telemetryFlushTimer) clearTimeout(candidate.telemetryFlushTimer);
+              this.rooms.delete(candidateId);
+              break;
+            }
+          }
+        }
+      }
       const isCustom = roomId.startsWith("custom_");
       room = {
         id: roomId,
@@ -56,6 +148,7 @@ class BattleRoomManager {
           : undefined,
         participants: new Map(),
         subscribers: new Set(),
+        spectators: new Set(),
         createdAt: Date.now(),
       };
 
@@ -104,7 +197,10 @@ class BattleRoomManager {
     return room;
   }
 
-  public subscribe(roomId: string, listener: (msg: BattleRoomServerMessage) => void): () => void {
+  public subscribe(
+    roomId: string,
+    listener: (msg: BattleRoomServerMessage, preSerialized?: string) => void,
+  ): () => void {
     const room = this.rooms.get(roomId);
     if (room) {
       room.subscribers.add(listener);
@@ -113,23 +209,38 @@ class BattleRoomManager {
       const current = this.rooms.get(roomId);
       if (current) {
         current.subscribers.delete(listener);
-        if (current.subscribers.size === 0 && current.participants.size === 0) {
+        const hasHumanParticipants = Array.from(current.participants.values()).some(
+          (p) => !p.isGhost,
+        );
+        if (
+          current.subscribers.size === 0 &&
+          current.spectators.size === 0 &&
+          !hasHumanParticipants
+        ) {
+          if (current.timerInterval) clearInterval(current.timerInterval);
+          if (current.telemetryFlushTimer) clearTimeout(current.telemetryFlushTimer);
           this.rooms.delete(roomId);
         }
       }
     };
   }
 
-  public broadcast(roomId: string, msg: BattleRoomServerMessage) {
+  private broadcastLocal(roomId: string, msg: BattleRoomServerMessage) {
     const room = this.rooms.get(roomId);
-    if (!room) return;
+    if (!room || room.subscribers.size === 0) return;
+    const preSerialized = JSON.stringify(msg);
     for (const listener of room.subscribers) {
       try {
-        listener(msg);
+        listener(msg, preSerialized);
       } catch {
         // Drop failed subscriber
       }
     }
+  }
+
+  public broadcast(roomId: string, msg: BattleRoomServerMessage) {
+    this.broadcastLocal(roomId, msg);
+    publishBattleRoomMessage(roomId, msg);
   }
 
   public joinRoom(
@@ -145,7 +256,7 @@ class BattleRoomManager {
       displayName: user.displayName,
       avatarUrl: user.avatarUrl ?? null,
       country: user.country || "IT",
-      gradeTitle: user.gradeTitle || "Iniziato di Limen",
+      gradeTitle: user.gradeTitle || "Iniziato AUREUS",
       tribeTag: user.tribeTag,
       status: "ready",
       isReady: user.isReady ?? false,
@@ -199,9 +310,10 @@ class BattleRoomManager {
    */
   public async startBattle(roomId: string): Promise<Record<string, { startCandleTs: number }>> {
     const room = this.rooms.get(roomId);
-    if (!room) return {};
+    if (!room || room.isStarting) return {};
 
     room.isStarting = true;
+    try {
 
     // Countdown 3s
     for (let sec = 3; sec > 0; sec--) {
@@ -286,8 +398,17 @@ class BattleRoomManager {
       durationSeconds,
     });
 
-    room.isStarting = false;
     return assignments;
+    } finally {
+      room.isStarting = false;
+    }
+  }
+
+  public onInvite(listener: BattleInviteListener): () => void {
+    this.inviteListeners.add(listener);
+    return () => {
+      this.inviteListeners.delete(listener);
+    };
   }
 
   public sendInvite(roomId: string, senderName: string, targetUserId: string) {
@@ -299,6 +420,16 @@ class BattleRoomManager {
     const timeframe = room.rules?.timeframe || "M5";
     const durationMinutes = Math.round((room.rules?.timeLimitSeconds || 900) / 60);
 
+    const invitePayload: BattleInvitePayload = {
+      roomId,
+      roomCode,
+      senderName,
+      targetUserId,
+      pair,
+      timeframe,
+      durationMinutes,
+    };
+
     this.broadcast(roomId, {
       type: "lobby_invitation_received",
       roomId,
@@ -308,6 +439,19 @@ class BattleRoomManager {
       timeframe,
       durationMinutes,
     });
+
+    for (const listener of this.inviteListeners) {
+      try {
+        const result = listener(invitePayload);
+        if (result && typeof (result as any).catch === "function") {
+          (result as Promise<void>).catch(() => {
+            // Handled inside listener
+          });
+        }
+      } catch {
+        // Listener safety guard
+      }
+    }
   }
 
   public leaveRoom(roomId: string, userId: string) {
@@ -322,12 +466,25 @@ class BattleRoomManager {
         userId,
       });
     }
+
+    const hasHumanParticipants = Array.from(room.participants.values()).some((p) => !p.isGhost);
+    if (room.subscribers.size === 0 && !hasHumanParticipants) {
+      if (room.timerInterval) clearInterval(room.timerInterval);
+      this.rooms.delete(roomId);
+    }
   }
 
   public updateTelemetry(
     roomId: string,
     userId: string,
-    data: { profitPct: number; drawdownPct: number; tradesCount: number },
+    data: {
+      profitPct: number;
+      drawdownPct: number;
+      tradesCount: number;
+      biometricBpm?: number;
+      /** Consenso esplicito e separato (GDPR art. 9). Senza `true` il BPM è scartato. */
+      biometricShareConsent?: boolean;
+    },
   ) {
     const room = this.rooms.get(roomId);
     if (!room) return;
@@ -340,28 +497,90 @@ class BattleRoomManager {
     p.tradesCount = data.tradesCount;
     p.lastActiveTs = Date.now();
 
-    // Check 10% DD limit
-    if (data.drawdownPct >= 10.0 && p.status !== "disqualified") {
+    if (data.biometricShareConsent !== true) {
+      // Revoca/assenza di consenso: nessun dato biometrico resta in stanza.
+      delete p.biometricBpm;
+      delete p.stressLevel;
+    } else if (
+      typeof data.biometricBpm === "number" &&
+      Number.isFinite(data.biometricBpm) &&
+      data.biometricBpm >= 30 &&
+      data.biometricBpm <= 230
+    ) {
+      p.biometricBpm = data.biometricBpm;
+      p.stressLevel =
+        data.biometricBpm >= 95
+          ? "critical"
+          : data.biometricBpm >= 80
+          ? "elevated"
+          : "calm";
+    }
+
+    // Check room drawdown limit (defaults to 10%)
+    const maxDdLimit = room.rules?.maxDrawdownPct ?? 10.0;
+    if (data.drawdownPct >= maxDdLimit && p.status !== "disqualified") {
       p.status = "disqualified";
       this.broadcast(roomId, {
         type: "participant_disqualified",
         roomId,
         userId,
         displayName: p.displayName,
-        reason: "Violazione Limite di Rischio: Max Drawdown 10% superato",
+        reason: `Violazione Limite di Rischio: Max Drawdown ${maxDdLimit}% superato`,
       });
     }
 
-    this.broadcast(roomId, {
-      type: "telemetry_tick",
-      roomId,
-      participants: Array.from(room.participants.values()),
-    });
+    // Coalesce high-frequency telemetry ticks per room (leading edge + 100ms trailing window)
+    const now = Date.now();
+    const elapsed = now - (room.lastTelemetryBroadcastAt ?? 0);
+    if (elapsed >= 100) {
+      if (room.telemetryFlushTimer) {
+        clearTimeout(room.telemetryFlushTimer);
+        room.telemetryFlushTimer = undefined;
+      }
+      room.lastTelemetryBroadcastAt = now;
+      this.broadcast(roomId, {
+        type: "telemetry_tick",
+        roomId,
+        participants: Array.from(room.participants.values()),
+      });
+    } else if (!room.telemetryFlushTimer) {
+      const waitMs = Math.max(10, 100 - elapsed);
+      const flushTimer = setTimeout(() => {
+        room.telemetryFlushTimer = undefined;
+        const current = this.rooms.get(roomId);
+        if (!current) return;
+        current.lastTelemetryBroadcastAt = Date.now();
+        this.broadcast(roomId, {
+          type: "telemetry_tick",
+          roomId,
+          participants: Array.from(current.participants.values()),
+        });
+      }, waitMs);
+      if (typeof flushTimer.unref === "function") {
+        flushTimer.unref();
+      }
+      room.telemetryFlushTimer = flushTimer;
+    }
+  }
+
+  public touchParticipant(roomId: string, userId: string) {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+    const p = room.participants.get(userId);
+    if (p) {
+      p.lastActiveTs = Date.now();
+    }
   }
 
   public recordTrade(roomId: string, trade: Omit<RoomTradeBroadcast, "id">) {
     const room = this.rooms.get(roomId);
     if (!room) return;
+
+    const p = room.participants.get(trade.userId);
+    if (p) {
+      p.lastActiveTs = Date.now();
+      p.tradesCount += 1;
+    }
 
     const broadcastTrade: RoomTradeBroadcast = {
       ...trade,
@@ -376,6 +595,14 @@ class BattleRoomManager {
   }
 
   public broadcastStoicSentence(roomId: string, sender: string, sentence: string) {
+    const room = this.rooms.get(roomId);
+    if (room) {
+      const p = Array.from(room.participants.values()).find((x) => x.displayName === sender);
+      if (p) {
+        p.lastActiveTs = Date.now();
+      }
+    }
+
     this.broadcast(roomId, {
       type: "stoic_sentence_broadcast",
       roomId,
@@ -398,6 +625,7 @@ class BattleRoomManager {
     matchStartedAt?: number;
     matchEndsAt?: number;
     durationSeconds?: number;
+    spectatorCount?: number;
   } {
     const room = this.rooms.get(roomId);
     if (!room) return { participants: [] };
@@ -408,7 +636,60 @@ class BattleRoomManager {
       matchStartedAt: room.matchStartedAt,
       matchEndsAt: room.matchEndsAt,
       durationSeconds: room.durationSeconds,
+      spectatorCount: room.spectators?.size ?? 0,
     };
+  }
+
+  public spectateRoom(
+    roomId: string,
+    spectatorId: string,
+  ): {
+    snapshot: ReturnType<BattleRoomManager["getRoomSnapshotData"]>;
+    spectatorCount: number;
+  } {
+    let room = this.rooms.get(roomId);
+    if (!room) {
+      room = this.getOrCreateRoom(roomId, 1);
+    }
+    if (!room.spectators) {
+      room.spectators = new Set();
+    }
+    room.spectators.add(spectatorId);
+    const count = room.spectators.size;
+
+    this.broadcast(roomId, {
+      type: "spectator_count_update",
+      roomId,
+      spectatorCount: count,
+    });
+
+    return {
+      snapshot: this.getRoomSnapshotData(roomId),
+      spectatorCount: count,
+    };
+  }
+
+  public getRoomSpectatorCount(roomId: string): number {
+    const room = this.rooms.get(roomId);
+    return room?.spectators ? room.spectators.size : 0;
+  }
+
+  public leaveSpectate(roomId: string, spectatorId: string): void {
+    const room = this.rooms.get(roomId);
+    if (!room || !room.spectators) return;
+    if (room.spectators.delete(spectatorId)) {
+      this.broadcast(roomId, {
+        type: "spectator_count_update",
+        roomId,
+        spectatorCount: room.spectators.size,
+      });
+      const hasHumanParticipants = Array.from(room.participants.values()).some((p) => !p.isGhost);
+      if (room.subscribers.size === 0 && room.spectators.size === 0 && !hasHumanParticipants) {
+        if (room.timerInterval) clearInterval(room.timerInterval);
+        if (room.telemetryFlushTimer) clearTimeout(room.telemetryFlushTimer);
+        this.rooms.delete(roomId);
+      }
+    }
   }
 
   /**
@@ -417,8 +698,10 @@ class BattleRoomManager {
   public resetForTesting() {
     for (const room of this.rooms.values()) {
       if (room.timerInterval) clearInterval(room.timerInterval);
+      if (room.telemetryFlushTimer) clearTimeout(room.telemetryFlushTimer);
     }
     this.rooms.clear();
+    this.inviteListeners.clear();
   }
 }
 

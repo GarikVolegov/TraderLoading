@@ -209,7 +209,7 @@ export const LimenGradeSigil: React.FC<LimenGradeSigilProps> = ({
             opacity="0.88"
           >
             <textPath href={`#${uid}-arc-top`} startOffset="50%" textAnchor="middle">
-              {clampedGrade === 5 ? "LIMEN PROTOCOL · CERCHIA INTERNA" : "LIMEN PROTOCOL · INVESTITURA SOVRANA"}
+              {clampedGrade === 5 ? "AUREUS PROTOCOL · CERCHIA INTERNA" : "AUREUS PROTOCOL · INVESTITURA SOVRANA"}
             </textPath>
           </text>
 

@@ -25,7 +25,7 @@ assert.match(page, /STEP 3: STRESS TEST & VALIDAZIONE FINALE/i);
 assert.match(page, /PillarsDonutChart/);
 assert.match(page, /MonteCarloSimulationCard/);
 assert.match(page, /PillarsAllocationBar/);
-assert.match(page, /Calcola Allocazione Ottimale LIMEN/);
+assert.match(page, /Calcola Allocazione Ottimale (AUREUS|LIMEN)/);
 
 // Hard Rule: 1:1 Reserve vs Trading Constraint & Indicator
 assert.match(page, /reserveConstraint\.isValid/);

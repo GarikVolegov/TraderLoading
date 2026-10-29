@@ -1041,13 +1041,13 @@ export function createBrokersRouter(
 
   router.get("/brokers/companion/downloads/mt5-settings", async (req, res) => {
     try {
-      const profileId = readString(req.query.profileId);
-      const token = readString(req.query.token);
+      const profileId = readString(req.query.profileId).replace(/[\r\n]/g, "").slice(0, 128);
+      const token = readString(req.query.token).replace(/[\r\n]/g, "").slice(0, 256);
       if (!profileId || !token) {
         res.status(400).json({ error: "Codice profilo e codice di abbinamento richiesti." });
         return;
       }
-      const apiBase = appBaseUrl(req.query.apiBase);
+      const apiBase = appBaseUrl(req.query.apiBase).replace(/[\r\n]/g, "");
       const tradingEnabled = readString(req.query.tradingEnabled).toLowerCase() === "true";
       const settings = [
         `ApiBase=${apiBase}`,
@@ -1068,6 +1068,20 @@ export function createBrokersRouter(
   router.get("/brokers/companion/status/:profileId", async (req, res) => {
     try {
       const profileId = req.params.profileId;
+      const userId = req.user?.id;
+      const token = readString(req.query.token);
+      if (process.env.NODE_ENV === "production" && !userId && !token) {
+        res.status(401).json({ error: "Autenticazione richiesta." });
+        return;
+      }
+      if (userId) {
+        const existing = await runtime.listProfiles();
+        const profile = existing.profiles.find((item) => item.id === profileId);
+        if (profile?.ownerUserId && profile.ownerUserId !== userId) {
+          res.status(403).json({ error: "Accesso non autorizzato al profilo broker." });
+          return;
+        }
+      }
       const health = await companionStore.getHealth(profileId);
       const snapshot = await companionStore.getSnapshot(profileId);
       const connected = health === "connected" && snapshot?.status === "connected";
@@ -1145,8 +1159,8 @@ export function createBrokersRouter(
           currency: readString(rawMetrics.currency, account.currency),
           dailyProfit: readNumber(rawMetrics.dailyProfit),
         },
-        positions: Array.isArray(req.body?.positions) ? req.body.positions.map(normalizePosition) : [],
-        orders: Array.isArray(req.body?.orders) ? req.body.orders.map(normalizeOrder) : [],
+        positions: Array.isArray(req.body?.positions) ? req.body.positions.slice(0, 1000).map(normalizePosition) : [],
+        orders: Array.isArray(req.body?.orders) ? req.body.orders.slice(0, 1000).map(normalizeOrder) : [],
         lastUpdated: new Date().toISOString(),
       };
       const savedSnapshot =
@@ -1177,7 +1191,7 @@ export function createBrokersRouter(
     try {
       const profileId = readString(req.body?.profileId);
       const token = readString(req.body?.token);
-      const deals: BrokerDeal[] = Array.isArray(req.body?.deals) ? req.body.deals.map(normalizeDeal) : [];
+      const deals: BrokerDeal[] = Array.isArray(req.body?.deals) ? req.body.deals.slice(0, 2500).map(normalizeDeal) : [];
       const existing = await runtime.listProfiles();
       const profile = existing.profiles.find((item) => item.id === profileId);
       const isSmartLink = await requireTrustedSmartLink(runtime, profile, token);
@@ -1288,7 +1302,7 @@ export function createBrokersRouter(
       const brokerName = readString(req.body?.brokerName, "Broker importato");
       const accountId = readString(req.body?.accountId, `IMPORT-${Date.now()}`);
       const accountLabel = readString(req.body?.accountLabel, `${brokerName} import`);
-      const deals: BrokerDeal[] = Array.isArray(req.body?.deals) ? req.body.deals.map(normalizeDeal) : [];
+      const deals: BrokerDeal[] = Array.isArray(req.body?.deals) ? req.body.deals.slice(0, 2500).map(normalizeDeal) : [];
       if (deals.length === 0) throw new Error("Importa almeno un trade chiuso dal report broker.");
       const profit = deals.reduce((sum: number, deal: BrokerDeal) => sum + (deal.profit ?? 0), 0);
       const profile = await runtime.saveProfile({

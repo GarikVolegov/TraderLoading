@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useGetUserSettings } from "@workspace/api-client-react";
 import {
   decodeScheduledCallFromLocation,
@@ -6,7 +6,10 @@ import {
   parseScheduledCalls,
   type ScheduledCallConfig,
 } from "@/lib/scheduledCalls";
-import { ScheduledCallOverlay } from "./ScheduledCallOverlay";
+
+const ScheduledCallOverlay = lazy(() =>
+  import("./ScheduledCallOverlay").then((m) => ({ default: m.ScheduledCallOverlay })),
+);
 
 export function ScheduledCallRuntime() {
   const { data: settings } = useGetUserSettings();
@@ -25,7 +28,9 @@ export function ScheduledCallRuntime() {
 
   useEffect(() => {
     const calls = parseScheduledCalls(settings?.alarmConfigs);
+    if (calls.length === 0) return;
     const check = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       const now = new Date();
       const minuteKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()} ${now.getHours()}:${now.getMinutes()}`;
       for (const call of calls) {
@@ -37,9 +42,16 @@ export function ScheduledCallRuntime() {
         break;
       }
     };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") check();
+    };
     check();
     const timer = setInterval(check, 10_000);
-    return () => clearInterval(timer);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [settings?.alarmConfigs]);
 
   useEffect(() => {
@@ -58,5 +70,11 @@ export function ScheduledCallRuntime() {
     snoozeTimersRef.current.push(timer);
   }, [activeCall]);
 
-  return <ScheduledCallOverlay call={activeCall} onDismiss={handleDismiss} onSnooze={handleSnooze} />;
+  if (!activeCall) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <ScheduledCallOverlay call={activeCall} onDismiss={handleDismiss} onSnooze={handleSnooze} />
+    </Suspense>
+  );
 }

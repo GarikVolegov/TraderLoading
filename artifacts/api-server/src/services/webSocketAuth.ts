@@ -10,6 +10,7 @@ const SESSION_COOKIE = "sid";
 export type WebSocketAuthContext = {
   userId: string;
   source: "clerk" | "session";
+  sessionId?: string | null;
 };
 
 export type WebSocketAuthenticator = (
@@ -50,7 +51,9 @@ function sessionIdFromUpgrade(request: IncomingMessage): string | null {
   return cookies[SESSION_COOKIE] ?? null;
 }
 
-async function getClerkUserId(request: IncomingMessage): Promise<string | null> {
+async function getClerkAuth(
+  request: IncomingMessage,
+): Promise<{ userId: string; sessionId: string } | null> {
   if (!process.env.CLERK_SECRET_KEY) return null;
   try {
     const state = await authenticateRequest({
@@ -62,7 +65,7 @@ async function getClerkUserId(request: IncomingMessage): Promise<string | null> 
     if (!auth) return null;
     const { isClerkSessionRevoked } = await import("./sessionRevocation.js");
     if (!auth.userId || !auth.sessionId || await isClerkSessionRevoked(auth.userId, auth.sessionId)) return null;
-    return auth.userId;
+    return { userId: auth.userId, sessionId: auth.sessionId };
   } catch (err) {
     logger.warn({ err }, "Clerk websocket authentication failed");
     return null;
@@ -73,14 +76,40 @@ export async function authenticateWebSocketUpgrade(
   request: IncomingMessage,
 ): Promise<WebSocketAuthContext | null> {
   const { isSocketAccountActive } = await import("./sessionRevocation.js");
-  const clerkUserId = await getClerkUserId(request);
-  if (clerkUserId) return await isSocketAccountActive(clerkUserId) ? { userId: clerkUserId, source: "clerk" } : null;
+  const clerkAuth = await getClerkAuth(request);
+  if (clerkAuth) {
+    return (await isSocketAccountActive(clerkAuth.userId))
+      ? { userId: clerkAuth.userId, source: "clerk", sessionId: clerkAuth.sessionId }
+      : null;
+  }
 
   const sid = sessionIdFromUpgrade(request);
   if (!sid) return null;
   const { getSession } = await import("../lib/auth.js");
   const session = await getSession(sid);
-  return session?.user.id && await isSocketAccountActive(session.user.id) ? { userId: session.user.id, source: "session" } : null;
+  return session?.user.id && (await isSocketAccountActive(session.user.id))
+    ? { userId: session.user.id, source: "session", sessionId: sid }
+    : null;
+}
+
+async function revalidateEstablishedSocketContext(
+  context: WebSocketAuthContext,
+  request: IncomingMessage,
+): Promise<WebSocketAuthContext | null> {
+  const { isClerkSessionRevoked, isSocketAccountActive } = await import("./sessionRevocation.js");
+  if (context.source === "clerk") {
+    if (context.sessionId && (await isClerkSessionRevoked(context.userId, context.sessionId))) {
+      return null;
+    }
+    return (await isSocketAccountActive(context.userId)) ? context : null;
+  }
+
+  const sid = context.sessionId ?? sessionIdFromUpgrade(request);
+  if (!sid) return null;
+  const { getSession } = await import("../lib/auth.js");
+  const session = await getSession(sid);
+  if (!session?.user.id || session.user.id !== context.userId) return null;
+  return (await isSocketAccountActive(context.userId)) ? context : null;
 }
 
 export async function authorizeWebSocketUpgrade(
@@ -106,9 +135,14 @@ export async function authorizeWebSocketUpgrade(
     return null;
   }
   watchWebSocketAuthorization(socket, async () => {
-    const current = await authenticate(request);
-    return Boolean(current && current.userId === context.userId &&
-      (!security.requireProAccess || await security.requireProAccess(current, request)));
+    const current = security.authenticate
+      ? await security.authenticate(request)
+      : await revalidateEstablishedSocketContext(context, request);
+    return Boolean(
+      current &&
+        current.userId === context.userId &&
+        (!security.requireProAccess || (await security.requireProAccess(current, request))),
+    );
   });
   return context;
 }
@@ -118,8 +152,17 @@ export function rejectWebSocketUpgrade(
   statusCode: 401 | 402 | 403 | 503,
   reason: string,
 ): void {
-  socket.write(
-    `HTTP/1.1 ${statusCode} ${reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`,
-  );
-  socket.destroy();
+  try {
+    if (!socket.destroyed && socket.writable) {
+      socket.write(
+        `HTTP/1.1 ${statusCode} ${reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`,
+      );
+    }
+  } catch {
+    // Ignore write errors on already-closing sockets
+  } finally {
+    if (!socket.destroyed) {
+      socket.destroy();
+    }
+  }
 }

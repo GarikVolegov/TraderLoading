@@ -463,14 +463,14 @@ router.get("/milestones/certificates/:id/metadata", async (req: Request, res: Re
   const effectiveUserName = profile?.name || cert.userName || "Operatore";
 
   res.json({
-    name: `LIMEN Investitura · Grado ${cert.level} · ${cert.levelName}`,
-    description: `Certificato NFT di Investitura conferito all'Operatore ${effectiveUserName} per il raggiungimento di ${cert.levelName} sotto il protocollo LIMEN.`,
+    name: `AUREUS Investitura · Grado ${cert.level} · ${cert.levelName}`,
+    description: `Certificato NFT di Investitura conferito all'Operatore ${effectiveUserName} per il raggiungimento di ${cert.levelName} sotto il protocollo AUREUS.`,
     image: `${appBaseUrl()}/api/milestones/certificates/${id}/image.svg`,
     attributes: [
       { trait_type: "Grade", value: cert.level },
       { trait_type: "Grade Name", value: cert.levelName },
       { trait_type: "Operator", value: effectiveUserName },
-      { trait_type: "Protocol", value: "LIMEN PROTOCOL" },
+      { trait_type: "Protocol", value: "AUREUS PROTOCOL" },
       { trait_type: "Standard", value: "Proof of Discipline" },
       { trait_type: "Awarded At", value: cert.awardedAt ? new Date(cert.awardedAt).toISOString() : null },
     ],

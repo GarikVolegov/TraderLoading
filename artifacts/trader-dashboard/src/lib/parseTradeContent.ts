@@ -69,12 +69,19 @@ function parseNumeric(raw: string): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
+const PARSE_CACHE_LIMIT = 5000;
+const parseCache = new Map<string, ParsedTradeContent | null>();
+
 /**
  * Estrae i campi del trade dal contenuto importato.
  * Ritorna null se il contenuto non è nel formato di import (es. note manuali).
+ * Include cache O(1) in-memory per eliminare overhead di parsing continuo sui render.
  */
 export function parseTradeContent(content: string | null | undefined): ParsedTradeContent | null {
   if (!content) return null;
+
+  const cached = parseCache.get(content);
+  if (cached !== undefined) return cached;
 
   const result: ParsedTradeContent = {};
   const commentLines: string[] = [];
@@ -109,9 +116,15 @@ export function parseTradeContent(content: string | null | undefined): ParsedTra
   }
 
   // Serve almeno il nucleo identificativo del trade, altrimenti è una nota libera.
-  if (matchedKeys < 4 || !result.ticket || !result.symbol) return null;
+  if (matchedKeys < 4 || !result.ticket || !result.symbol) {
+    if (parseCache.size >= PARSE_CACHE_LIMIT) parseCache.clear();
+    parseCache.set(content, null);
+    return null;
+  }
 
   if (commentLines.length > 0) result.comment = commentLines.join("\n");
+  if (parseCache.size >= PARSE_CACHE_LIMIT) parseCache.clear();
+  parseCache.set(content, result);
   return result;
 }
 

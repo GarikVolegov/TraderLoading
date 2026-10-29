@@ -406,7 +406,7 @@ export function DailyOrderStages({
                 La Dottrina del Tempo
               </div>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Lezioni, syllabus e principi di struttura di mercato della LIMEN Academy.
+                Lezioni, syllabus e principi di struttura di mercato della AUREUS Academy.
               </p>
             </div>
             <div className="pt-3 font-mono text-[10px] font-bold text-purple-400 uppercase tracking-wider">

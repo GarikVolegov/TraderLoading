@@ -33,6 +33,9 @@ export interface LimenGradeDefinition {
   readonly unlockedPrivileges: readonly string[];
   readonly lockedNotice?: string;
   readonly sigilId: LimenSigilId;
+  readonly associatedTomeId?: string;
+  readonly doctrineExamTitle?: string;
+  readonly doctrineExamSummary?: string;
 }
 
 export const LIMEN_GRADES: readonly LimenGradeDefinition[] = [
@@ -43,9 +46,12 @@ export const LIMEN_GRADES: readonly LimenGradeDefinition[] = [
     title: "Novizio Consapevole",
     fullTitle: "GRADO I — Novizio Consapevole",
     subtitle: "Ingresso nell'Ordine e addestramento ai fondamenti operativi.",
-    requirementSummary: "Sottoscrizione de Il Patto di Ingresso alla Soglia di Selezione.",
+    requirementSummary: "Sottoscrizione de Il Patto di Ingresso alla Soglia di Selezione e superamento Prova Dottrinale.",
     requiredConsecutiveSessions: 0,
     minIntegrityPct: 0,
+    associatedTomeId: "tomo-soglie-psicologiche",
+    doctrineExamTitle: "Esame Dottrinale: Le Soglie Psicologiche",
+    doctrineExamSummary: "Verifica sul calcolo al 50% delle inefficienze e allineamento con i numeri tondi istituzionali.",
     unlockedPrivileges: [
       "Accesso a La Forgia del Passato (Simulatore Storico)",
       "Accesso a La Dottrina del Tempo (Arte dell'Assedio & Arte del Duello)",
@@ -63,9 +69,12 @@ export const LIMEN_GRADES: readonly LimenGradeDefinition[] = [
     fullTitle: "GRADO II — Il Custode della Regola",
     subtitle: "Padronanza della disciplina quotidiana e diritto di trasmissione del Codice.",
     requirementSummary:
-      "30 sessioni consecutive con Indice di Integrità al 100% ne Il Libro della Verità.",
+      "30 sessioni consecutive con Indice di Integrità al 100% ne Il Libro della Verità e Prova Dottrinale Tomo II.",
     requiredConsecutiveSessions: 30,
     minIntegrityPct: 85,
+    associatedTomeId: "tomo-volume-profile",
+    doctrineExamTitle: "Esame Dottrinale: Volume Profile & Order Flow",
+    doctrineExamSummary: "Verifica sulle morfologie P/b/D, Point of Control (POC) e assorbimenti volumetrici.",
     unlockedPrivileges: [
       "Sblocco sezione «Il Tempio Fisico» (Protocollo Biologico e Nutrizionale)",
       "Sblocco «Il Mandato di Espansione» (Codice di Chiamata con Royalty ricorrente del 20% — 30€/mese)",
@@ -81,9 +90,12 @@ export const LIMEN_GRADES: readonly LimenGradeDefinition[] = [
     fullTitle: "GRADO III — L'Osservatore Sovrano",
     subtitle: "Governo trimestrale del tempo, del corpo e dell'esecuzione.",
     requirementSummary:
-      "90 giorni (1 trimestre) di costanza operativa e fisica verificata.",
+      "90 giorni (1 trimestre) di costanza operativa, fisica e Prova Dottrinale Asian Range.",
     requiredConsecutiveSessions: 90,
     minIntegrityPct: 90,
+    associatedTomeId: "tomo-asian-range",
+    doctrineExamTitle: "Esame Dottrinale: Asian Range Strategy",
+    doctrineExamSummary: "Verifica sulla cartografia asiatica, manipolazione di Londra e sweep degli estremi.",
     unlockedPrivileges: [
       "Accesso prioritario e diritto di parola a «Il Concilio della Domenica»",
       "Sblocco moduli di negoziazione avanzata (Straight Line)",
@@ -99,10 +111,13 @@ export const LIMEN_GRADES: readonly LimenGradeDefinition[] = [
     fullTitle: "GRADO IV — L'Architetto del Reale",
     subtitle: "Trasmutazione della disciplina finanziaria in espansione imprenditoriale.",
     requirementSummary:
-      "Profittabilità verificata e superamento prove di comunicazione/vendita (Straight Line).",
+      "Profittabilità verificata e superamento Prova Dottrinale Metodologie Bancarie.",
     requiredConsecutiveSessions: 120,
     minIntegrityPct: 92,
     requiredProfitFactor: 1.5,
+    associatedTomeId: "tomo-ciclo-mercato",
+    doctrineExamTitle: "Esame Dottrinale: Metodologie Bancarie & Ciclo di Mercato",
+    doctrineExamSummary: "Verifica sulle 4 fasi istituzionali Wyckoffiane e neutralizzazione delle trappole emotive.",
     unlockedPrivileges: [
       "Sblocco completo «AUREUS B2B / Rete Imprenditoriale» (Segnalazione e chiusura contratti)",
       "Diritto di acquisizione capi esclusivi de «L'Uniforme» (Grado IV)",
@@ -117,10 +132,13 @@ export const LIMEN_GRADES: readonly LimenGradeDefinition[] = [
     title: "Il Fondatore d'Eredità",
     fullTitle: "GRADO V — Il Fondatore d'Eredità",
     subtitle: "Custode supremo del Protocollo e membro della Cerchia Interna.",
-    requirementSummary: "Investitura diretta ed esclusiva da parte del Comando (Cerchia Interna).",
+    requirementSummary: "Investitura diretta esclusiva e Prova Magistrale Geopolitica dei BRICS & Oro.",
     requiredConsecutiveSessions: 180,
     minIntegrityPct: 95,
     adminOnly: true,
+    associatedTomeId: "tomo-brics-oro",
+    doctrineExamTitle: "Esame Dottrinale: Geopolitica dei BRICS & L'Impero dell'Oro",
+    doctrineExamSummary: "Verifica sul superamento del debito fiduciario, riserve auree fisiche e posizionamento macro.",
     unlockedPrivileges: [
       "Membro della Cerchia Interna AUREUS",
       "Sovranità operativa su tutte le divisioni dell'Ecosistema",

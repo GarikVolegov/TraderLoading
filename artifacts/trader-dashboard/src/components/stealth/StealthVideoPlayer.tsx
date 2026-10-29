@@ -68,17 +68,19 @@ export const LIMEN_CHAPTERS: CaseStudyChapter[] = [
     id: "chap-4",
     timestamp: 12.5,
     title: "04. IL SIGILLO",
-    tag: "TRANS-LIMEN",
+    tag: "AUREUS",
     description: "00:12 - 00:18 // Consacrazione del Codice della Presenza e dell'Eredità",
     telemetryType: "execution",
     videoSrc: "/videos/limen-act4.mp4",
   },
 ];
 
+export const AUREUS_CHAPTERS = LIMEN_CHAPTERS;
+
 export function StealthVideoPlayer({
   initialVideoSrc,
   initialPosterSrc,
-  title = "DISPOSITIVO_OPERATIVO_LIMEN // REPLAY_M15_M1",
+  title = "DISPOSITIVO_OPERATIVO_AUREUS // REPLAY_M15_M1",
   className,
 }: StealthVideoPlayerProps) {
   const [videoSrc, setVideoSrc] = useState<string | null>(null);

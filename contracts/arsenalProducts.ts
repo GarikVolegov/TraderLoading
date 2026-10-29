@@ -81,7 +81,7 @@ export const ARSENAL_PRODUCTS: readonly ArsenalProduct[] = [
     title: "L'Uniforme Completa (Felpa & Pantalone)",
     subtitle: "Set coordinato felpa e pantalone sartoriale con ricami dorati Madeira.",
     description:
-      "Completo ufficiale dell'Operatore Limen in cotone pesante, venduto esclusivamente come set coordinato. Taglio dritto minimale privo di marchi commerciali, con ricami dorati su petto, polsino, dorso e fianco.",
+      "Completo ufficiale dell'Operatore AUREUS in cotone pesante, venduto esclusivamente come set coordinato. Taglio dritto minimale privo di marchi commerciali, con ricami dorati su petto, polsino, dorso e fianco.",
     priceCents: 15900, // 159.00 EUR
     currency: "eur",
     requiredGrade: 2,
@@ -146,7 +146,7 @@ export const ARSENAL_PRODUCTS: readonly ArsenalProduct[] = [
     title: "L'Uniforme — Golden Signature & Trajan Column Hoodie",
     subtitle: "Capo sartoriale non vendibile singolarmente — incluso esclusivamente nell'Uniforme Completa d'Ordine.",
     description:
-      "Capo sartoriale d'eccellenza per l'Operatore Limen. Tre punti di ricamo ad altissima densità con filati dorati Madeira Classic Gold: firma calligrafica 'Limen' sul petto sinistro, Aureo Romano numismatico (Aureus Liminis) da 4.5 cm con la Porta Ianua sul polsino sinistro, e grande Pilastro Romano Istoriato (Columna Caelata) sul dorso. Venduto esclusivamente nel set completo.",
+      "Capo sartoriale d'eccellenza per l'Operatore AUREUS. Tre punti di ricamo ad altissima densità con filati dorati Madeira Classic Gold: firma calligrafica 'AUREUS' sul petto sinistro, Aureo Romano numismatico (Aureus Liminis) da 4.5 cm con la Porta Ianua sul polsino sinistro, e grande Pilastro Romano Istoriato (Columna Caelata) sul dorso. Venduto esclusivamente nel set completo.",
     priceCents: 8900,
     currency: "eur",
     requiredGrade: 2,
@@ -180,7 +180,7 @@ export const ARSENAL_PRODUCTS: readonly ArsenalProduct[] = [
       },
     ],
     specs: [
-      "Petto Sinistro: Firma Calligrafica 'Limen' dorata ad altissima densità (10 × 5 cm, punto raso Madeira Gold)",
+      "Petto Sinistro: Firma Calligrafica 'AUREUS' dorata ad altissima densità (10 × 5 cm, punto raso Madeira Gold)",
       "Polsino Sinistro: Aureo Romano Numismatico (Aureus Liminis, 4.5 cm) con Porta Ianua a battenti chiusi e corona di 36 perle",
       "Schiena Dorsale: Pilastro Romano Istoriato (Columna Caelata 28 × 14 cm) con capitello corinzio e narrazione a 5 gradi (Zero loghi commerciali)",
       "Blank Ufficiale Gildan 18500 Heavy Blend (50% cotone pettinato / 50% poliestere prelavato, 271 g/m²)",

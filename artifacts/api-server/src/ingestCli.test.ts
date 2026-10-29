@@ -5,6 +5,12 @@ const supported = ["XAUUSD", "EURUSD", "USOIL", "BTCUSD"];
 const options = parseIngestOptions(["seed", "--symbols=xauusd,EURUSD,xauusd,usoil", "--years=5"], supported);
 assert.deepEqual(options.symbols, ["XAUUSD", "EURUSD", "USOIL"]);
 assert.equal(options.resume, true);
+
+const allOptions = parseIngestOptions(["seed", "--symbols=ALL"], supported);
+assert.deepEqual(allOptions.symbols, supported);
+
+const tierOptions = parseIngestOptions(["seed", "--tier=1"], supported);
+assert.deepEqual(tierOptions.symbols, ["BTCUSD", "XAUUSD", "EURUSD", "USOIL"]);
 for (const args of [
   ["seed", "--symbols=EURUSD,UNKNOWN"], ["seed", "--symbols="], ["seed", "--years=0"],
   ["seed", "--years=Infinity"], ["seed", "--years=2.5"], ["seed", "--from=2025-02-29"],

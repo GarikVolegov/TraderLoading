@@ -1,7 +1,7 @@
 import React from "react";
 import { ToolInfoTrigger } from "./ToolInfoTrigger";
 import { Slider } from "@/components/ui/slider";
-import { Clock } from "lucide-react";
+import { Clock, Zap } from "lucide-react";
 
 export interface WealthAssetCardProps {
   toolId: string;
@@ -10,6 +10,8 @@ export interface WealthAssetCardProps {
   icon?: React.ReactNode;
   valueEuro: number;
   pct: number;
+  subPct?: number;
+  subPctLabel?: string;
   totalNetWorth: number;
   color: string;
   tone?: "gold" | "emerald" | "crimson" | "slate";
@@ -22,6 +24,7 @@ export interface WealthAssetCardProps {
   badgeTag?: string;
   onChangeEuro: (newVal: number) => void;
   onOpenDossier: (toolId: string) => void;
+  onOpenPropCalculator?: () => void;
   min?: number;
   max?: number;
   step?: number;
@@ -35,6 +38,8 @@ export const WealthAssetCard: React.FC<WealthAssetCardProps> = ({
   icon: _icon,
   valueEuro,
   pct,
+  subPct,
+  subPctLabel = "Inv",
   totalNetWorth: _totalNetWorth,
   color,
   tone = "gold",
@@ -47,6 +52,7 @@ export const WealthAssetCard: React.FC<WealthAssetCardProps> = ({
   badgeTag,
   onChangeEuro,
   onOpenDossier,
+  onOpenPropCalculator,
   min = 0,
   max = 100000,
   step = 500,
@@ -96,16 +102,26 @@ export const WealthAssetCard: React.FC<WealthAssetCardProps> = ({
               onChange={(e) => onChangeEuro(Math.max(0, Number(e.target.value) || 0))}
               placeholder="0"
               aria-label={`Allocazione per ${label}`}
-              className="w-20 sm:w-24 h-7 text-right font-mono text-xs sm:text-[12.5px] font-bold pr-4 bg-[#07080b] border border-[#C5A059]/35 rounded px-2 text-foreground focus:border-[#E8C56A] outline-none transition-colors"
+              className="w-20 sm:w-24 h-7 text-right font-mono text-xs sm:text-[12.5px] font-bold pr-4 bg-[#07080b] border border-[#C5A059]/35 rounded px-2 text-foreground focus:border-[#E8C56A] outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <span className="absolute right-1.5 top-1 font-mono text-[10px] text-[#C5A059] font-bold pointer-events-none">
               €
             </span>
           </div>
 
-          <span className="font-mono text-xs sm:text-[12.5px] font-bold text-[#E8C56A] whitespace-nowrap min-w-[46px] text-right px-1.5 py-0.5 rounded bg-[#C5A059]/10 border border-[#C5A059]/25">
-            {pct.toFixed(1)}%
-          </span>
+          <div className="flex items-center gap-1">
+            {subPct !== undefined && (
+              <span
+                className="font-mono text-[9.5px] text-slate-400 whitespace-nowrap hidden sm:inline"
+                title={`${subPct.toFixed(1)}% del paniere investimenti`}
+              >
+                ({subPct.toFixed(0)}% {subPctLabel})
+              </span>
+            )}
+            <span className="font-mono text-xs sm:text-[12.5px] font-bold text-[#E8C56A] whitespace-nowrap min-w-[46px] text-right px-1.5 py-0.5 rounded bg-[#C5A059]/10 border border-[#C5A059]/25">
+              {pct.toFixed(1)}%
+            </span>
+          </div>
         </div>
       </div>
 
@@ -162,12 +178,26 @@ export const WealthAssetCard: React.FC<WealthAssetCardProps> = ({
       </div>
 
       {/* ─── RIGA 4: MICRO-TELEMETRIA SECONDARIA, PAC MENSILE E BADGE ─── */}
-      {(secondaryMetric || (pacMonthlyEuro !== undefined && pacMonthlyEuro > 0) || badgeTag) && (
+      {(secondaryMetric || (pacMonthlyEuro !== undefined && pacMonthlyEuro > 0) || badgeTag || onOpenPropCalculator) && (
         <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1 border-t border-border/40 min-w-0">
           <span className="text-slate-400 font-medium truncate min-w-0 flex-1">
             {secondaryMetric || ""}
           </span>
           <div className="flex items-center gap-1.5 shrink-0 ml-2">
+            {onOpenPropCalculator && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenPropCalculator();
+                }}
+                className="inline-flex items-center gap-1 font-mono text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#C5A059]/20 border border-[#C5A059]/40 text-[#E8C56A] hover:bg-[#C5A059]/35 hover:text-[#F3D88C] transition-all cursor-pointer whitespace-nowrap shadow-sm"
+                title="Apri il Calcolatore Asimmetrico Prop Firm & Broker Sovrani"
+              >
+                <Zap className="h-2.5 w-2.5 text-[#E8C56A]" />
+                <span>Prop Firm (148x)</span>
+              </button>
+            )}
             {pacMonthlyEuro !== undefined && pacMonthlyEuro > 0 && (
               <span className="font-bold text-emerald-400 bg-emerald-950/40 px-1.5 py-0.2 rounded border border-emerald-500/30 whitespace-nowrap text-[9px]">
                 +{pacMonthlyEuro.toLocaleString("it-IT")} €/m PAC

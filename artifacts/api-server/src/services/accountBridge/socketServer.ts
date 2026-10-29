@@ -10,8 +10,10 @@ import { isAtConnectionCapacity } from "../webSocketCapacity.js";
 import {
   canSend,
   createControlWebSocketServer,
+  createSocketRateLimiter,
   startHeartbeat,
 } from "../webSocketHeartbeat.js";
+import { isAccountBridgeEnabledInCurrentEnv } from "../../routes/account-bridge.js";
 
 type ClientMessage = {
   type?: string;
@@ -60,20 +62,27 @@ export function attachAccountBridgeWebSocket(
     requireProAccess: security.requireProAccess ?? defaultRequireAccountBridgePro,
   };
   let started = false;
+  const allowSocketMessage = createSocketRateLimiter(60, 10_000);
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "", "http://localhost");
     if (url.pathname !== "/api/account/ws") return;
+    if (!security.authenticate && !isAccountBridgeEnabledInCurrentEnv()) {
+      rejectWebSocketUpgrade(socket, 503, "Account bridge disabled");
+      return;
+    }
     if (isAtConnectionCapacity(wss.clients.size)) {
       rejectWebSocketUpgrade(socket, 503, "Server at capacity");
       return;
     }
     void (async () => {
       const auth = await authorizeWebSocketUpgrade(request, socket, socketSecurity);
-      if (!auth) return;
+      if (!auth || socket.destroyed) return;
       wss.handleUpgrade(request, socket, head, (client) => {
         wss.emit("connection", client, request);
       });
-    })();
+    })().catch(() => {
+      rejectWebSocketUpgrade(socket, 503, "Service Unavailable");
+    });
   };
 
   server.on("upgrade", onUpgrade);
@@ -84,9 +93,11 @@ export function attachAccountBridgeWebSocket(
     await service.start();
   }
 
-  service.onEvent((event) => {
+  const unsubscribe = service.onEvent((event) => {
+    if (wss.clients.size === 0) return;
+    const serialized = JSON.stringify(event);
     for (const client of wss.clients) {
-      send(client, event);
+      if (canSend(client)) client.send(serialized);
     }
   });
 
@@ -102,6 +113,7 @@ export function attachAccountBridgeWebSocket(
     })();
 
     client.on("message", (raw) => {
+      if (!allowSocketMessage(client)) return;
       const message = parseClientMessage(raw);
 
       if (!message) {
@@ -110,14 +122,23 @@ export function attachAccountBridgeWebSocket(
       }
 
       if (message.type === "refresh" || message.type === "subscribe") {
-        void service.getSnapshot().then((snapshot) => {
-          send(client, { type: "snapshot", snapshot });
-        });
+        void service
+          .getSnapshot()
+          .then((snapshot) => {
+            send(client, { type: "snapshot", snapshot });
+          })
+          .catch((error) => {
+            const errMsg = error instanceof Error ? error.message : "Account bridge snapshot failed";
+            send(client, { type: "error", message: errMsg });
+          });
         return;
       }
 
       if (message.type === "place_order") {
-        void service.placeOrder(message.payload, message.requestId);
+        void service.placeOrder(message.payload, message.requestId).catch((error) => {
+          const errMsg = error instanceof Error ? error.message : "Account bridge order failed";
+          send(client, { type: "error", message: errMsg });
+        });
       }
     });
   });
@@ -125,6 +146,7 @@ export function attachAccountBridgeWebSocket(
   return {
     service,
     async close(): Promise<void> {
+      unsubscribe();
       server.off("upgrade", onUpgrade);
       stopHeartbeat();
       await service.stop();

@@ -27,30 +27,135 @@ export function useSocialSocket(channelId: number | null, onChannelMessage: () =
   useEffect(() => {
     if (channelId === null) return;
     let closed = false;
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(socialSocketUrl());
-    } catch {
-      return; // socket construction failed (e.g. bad URL) — polling still covers it
-    }
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+    let lastActivity = Date.now();
+    let reconnectAttempt = 0;
+    let currentWs: WebSocket | null = null;
 
-    ws.onopen = () => {
-      if (!closed) ws.send(JSON.stringify({ type: "subscribe", channelId }));
-    };
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(String(event.data)) as SocialSocketEvent;
-        if (message.type === "community:message" && message.channelId === channelId) {
-          callbackRef.current();
-        }
-      } catch {
-        // ignore malformed frames
+    const clearTimers = () => {
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      if (heartbeatTimer !== null) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
       }
     };
 
+    const scheduleReconnect = () => {
+      if (closed || reconnectTimer !== null) return;
+      const baseDelay = Math.min(15_000, 1_500 * Math.pow(2, Math.min(reconnectAttempt, 4)));
+      const jitter = Math.floor(Math.random() * 600);
+      reconnectAttempt += 1;
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        if (!closed) {
+          connectSocket();
+        }
+      }, baseDelay + jitter);
+    };
+
+    const startHeartbeat = (socket: WebSocket) => {
+      if (heartbeatTimer !== null) clearInterval(heartbeatTimer);
+      lastActivity = Date.now();
+      heartbeatTimer = setInterval(() => {
+        if (closed || currentWs !== socket) return;
+        if (socket.readyState === WebSocket.OPEN) {
+          // If 45s have passed without any frame, the connection is zombie (silent drop)
+          if (Date.now() - lastActivity > 45_000) {
+            socket.close();
+            return;
+          }
+          try {
+            socket.send(JSON.stringify({ type: "ping" }));
+          } catch {
+            socket.close();
+          }
+        }
+      }, 25_000);
+    };
+
+    const connectSocket = () => {
+      if (closed) return;
+      clearTimers();
+
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(socialSocketUrl());
+        currentWs = ws;
+      } catch {
+        return; // socket construction failed (e.g. bad URL) — polling still covers it
+      }
+
+      ws.onopen = () => {
+        if (!closed && currentWs === ws) {
+          reconnectAttempt = 0;
+          lastActivity = Date.now();
+          startHeartbeat(ws);
+          ws.send(JSON.stringify({ type: "subscribe", channelId }));
+        }
+      };
+      ws.onmessage = (event) => {
+        lastActivity = Date.now();
+        try {
+          const message = JSON.parse(String(event.data)) as SocialSocketEvent;
+          if (message.type === "community:message" && message.channelId === channelId) {
+            callbackRef.current();
+          }
+        } catch {
+          // ignore malformed frames
+        }
+      };
+      ws.onclose = () => {
+        if (currentWs !== ws) return;
+        if (heartbeatTimer !== null) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+        if (!closed) {
+          scheduleReconnect();
+        }
+      };
+    };
+
+    const handleOnline = () => {
+      if (closed) return;
+      if (
+        !currentWs ||
+        currentWs.readyState === WebSocket.CLOSED ||
+        currentWs.readyState === WebSocket.CLOSING
+      ) {
+        reconnectAttempt = 0;
+        connectSocket();
+      }
+    };
+
+    const handleVisibility = () => {
+      if (closed) return;
+      if (document.visibilityState === "visible") {
+        if (
+          !currentWs ||
+          currentWs.readyState === WebSocket.CLOSED ||
+          currentWs.readyState === WebSocket.CLOSING
+        ) {
+          reconnectAttempt = 0;
+          connectSocket();
+        }
+      }
+    };
+
+    connectSocket();
+    window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
       closed = true;
-      ws.close();
+      clearTimers();
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      currentWs?.close();
     };
   }, [channelId]);
 }

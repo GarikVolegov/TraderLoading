@@ -7,7 +7,7 @@ import {
   missionsTable,
   ideasTable,
 } from "@workspace/db";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, inArray } from "drizzle-orm";
 import { getUserId } from "./profile.js";
 import { shouldSendPushNotification } from "../services/notifications/pushDedupe.js";
 import {
@@ -306,21 +306,24 @@ async function checkGoalRemindersForUser(
   userId: string,
   now: Date,
   romeDay: string,
+  preloadedGoals?: Array<{ id: number; content: string; reminderTime: string | null }>,
 ): Promise<void> {
-  const goals = await db
-    .select({
-      id: ideasTable.id,
-      content: ideasTable.content,
-      reminderTime: ideasTable.reminderTime,
-    })
-    .from(ideasTable)
-    .where(
-      and(
-        eq(ideasTable.userId, userId),
-        eq(ideasTable.type, "goal"),
-        eq(ideasTable.completed, false),
-      ),
-    );
+  const goals =
+    preloadedGoals ??
+    (await db
+      .select({
+        id: ideasTable.id,
+        content: ideasTable.content,
+        reminderTime: ideasTable.reminderTime,
+      })
+      .from(ideasTable)
+      .where(
+        and(
+          eq(ideasTable.userId, userId),
+          eq(ideasTable.type, "goal"),
+          eq(ideasTable.completed, false),
+        ),
+      ));
 
   for (const goal of goals) {
     if (!isTimeReminderDue(goal.reminderTime, now)) continue;
@@ -425,54 +428,99 @@ export function startSessionScheduler(): SchedulerHandle {
         .selectDistinct({ userId: pushSubscriptionsTable.userId })
         .from(pushSubscriptionsTable);
 
-      await Promise.allSettled(
-        rows.map(async ({ userId }) => {
-          if (!userId) return;
-          const where = eq(userSettingsTable.userId, userId);
-          const [settings] = await db
-            .select({
-              tradingSessions: userSettingsTable.tradingSessions,
-              alarmConfigs: userSettingsTable.alarmConfigs,
-              dailyReminderTime: userSettingsTable.dailyReminderTime,
-              preMacroMinutes: userSettingsTable.preMacroMinutes,
-            })
-            .from(userSettingsTable)
-            .where(where)
-            .limit(1);
+      const userIds = rows
+        .map((r) => r.userId)
+        .filter((id): id is string => Boolean(id));
+      if (userIds.length === 0) return;
 
-          let sessions: TradingSessionConfig[] = [];
-          try {
-            if (settings?.tradingSessions) sessions = JSON.parse(settings.tradingSessions);
-          } catch {
-            // malformed sessions config — skip session checks, other reminders still run below
-          }
+      // Batch-fetch settings and active goals for all subscribed users in 2 queries
+      // instead of 2 × N concurrent queries per minute.
+      const [allSettings, allGoals] = await Promise.all([
+        db
+          .select({
+            userId: userSettingsTable.userId,
+            tradingSessions: userSettingsTable.tradingSessions,
+            alarmConfigs: userSettingsTable.alarmConfigs,
+            dailyReminderTime: userSettingsTable.dailyReminderTime,
+            preMacroMinutes: userSettingsTable.preMacroMinutes,
+          })
+          .from(userSettingsTable)
+          .where(inArray(userSettingsTable.userId, userIds)),
+        db
+          .select({
+            id: ideasTable.id,
+            userId: ideasTable.userId,
+            content: ideasTable.content,
+            reminderTime: ideasTable.reminderTime,
+          })
+          .from(ideasTable)
+          .where(
+            and(
+              inArray(ideasTable.userId, userIds),
+              eq(ideasTable.type, "goal"),
+              eq(ideasTable.completed, false),
+            ),
+          ),
+      ]);
 
-          // Each check runs independently: a transient error in one (e.g. a pool
-          // timeout on its query) must not skip the user's other reminders, and
-          // must be observable instead of swallowed by the outer allSettled.
-          const runCheck = async (name: string, fn: () => Promise<void>): Promise<void> => {
-            try {
-              await fn();
-            } catch (err) {
-              reportJobError(err, { job: "push-scheduler", check: name, userId });
-            }
-          };
-          if (sessions.length > 0)
-            await runCheck("sessions", () =>
-              checkSessionsForUser(userId, sessions, nowH, nowM, today),
-            );
-          await runCheck("scheduledCalls", () =>
-            checkScheduledCallsForUser(userId, settings?.alarmConfigs, now),
-          );
-          await runCheck("dailyReminder", () =>
-            checkDailyReminderForUser(userId, settings?.dailyReminderTime, now, romeDay),
-          );
-          await runCheck("goalReminders", () => checkGoalRemindersForUser(userId, now, romeDay));
-          await runCheck("macroEvents", () =>
-            checkMacroEventsForUser(userId, settings?.preMacroMinutes ?? 15, now, macroEvents),
-          );
-        }),
+      const settingsByUser = new Map(
+        allSettings.filter((s) => s.userId).map((s) => [s.userId!, s]),
       );
+      const goalsByUser = new Map<
+        string,
+        Array<{ id: number; content: string; reminderTime: string | null }>
+      >();
+      for (const g of allGoals) {
+        if (!g.userId) continue;
+        const list = goalsByUser.get(g.userId) ?? [];
+        list.push({ id: g.id, content: g.content, reminderTime: g.reminderTime });
+        goalsByUser.set(g.userId, list);
+      }
+
+      const BATCH_CONCURRENCY = 15;
+      for (let i = 0; i < userIds.length; i += BATCH_CONCURRENCY) {
+        const chunk = userIds.slice(i, i + BATCH_CONCURRENCY);
+        await Promise.allSettled(
+          chunk.map(async (userId) => {
+            const settings = settingsByUser.get(userId);
+            const userGoals = goalsByUser.get(userId) ?? [];
+
+            let sessions: TradingSessionConfig[] = [];
+            try {
+              if (settings?.tradingSessions) sessions = JSON.parse(settings.tradingSessions);
+            } catch {
+              // malformed sessions config — skip session checks, other reminders still run below
+            }
+
+            // Each check runs independently: a transient error in one (e.g. a pool
+            // timeout on its query) must not skip the user's other reminders, and
+            // must be observable instead of swallowed by the outer allSettled.
+            const runCheck = async (name: string, fn: () => Promise<void>): Promise<void> => {
+              try {
+                await fn();
+              } catch (err) {
+                reportJobError(err, { job: "push-scheduler", check: name, userId });
+              }
+            };
+            if (sessions.length > 0)
+              await runCheck("sessions", () =>
+                checkSessionsForUser(userId, sessions, nowH, nowM, today),
+              );
+            await runCheck("scheduledCalls", () =>
+              checkScheduledCallsForUser(userId, settings?.alarmConfigs, now),
+            );
+            await runCheck("dailyReminder", () =>
+              checkDailyReminderForUser(userId, settings?.dailyReminderTime, now, romeDay),
+            );
+            await runCheck("goalReminders", () =>
+              checkGoalRemindersForUser(userId, now, romeDay, userGoals),
+            );
+            await runCheck("macroEvents", () =>
+              checkMacroEventsForUser(userId, settings?.preMacroMinutes ?? 15, now, macroEvents),
+            );
+          }),
+        );
+      }
     } catch (err) {
       reportJobError(err, { job: "push-scheduler" });
     }

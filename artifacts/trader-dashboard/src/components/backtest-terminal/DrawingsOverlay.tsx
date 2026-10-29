@@ -3,7 +3,7 @@
 // arrowUp, path, arrowDown, shortPosition, longPosition, rect, arrow, text,
 // frvp (Fixed Range Volume Profile), highlighter, trend, ray, hray, hline,
 // vline, fib, ruler.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Copy,
   Trash2,
@@ -21,9 +21,14 @@ import {
   HelpCircle,
   GripVertical,
   Zap,
+  Bell,
+  Clock,
 } from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { getPipMultiplier } from "@/lib/pipMultiplier";
+import { computeLots, pipValuePerLot, riskAmountFor } from "@/lib/replay/lotSizing";
+import { analyzeInstitutionalLiquidity } from "@/lib/chart/liquidityEngine";
+import { analyzeWyckoffStructure } from "@/lib/chart/wyckoffEngine";
 import type { DrawingPoint, ReplayDrawing } from "@/lib/replay/types";
 import {
   computeAnchoredVwap,
@@ -144,13 +149,17 @@ function findCandleByTime(
   return null;
 }
 
-export function DrawingsOverlay({
+export const DrawingsOverlay = memo(function DrawingsOverlay({
   engine,
   projector,
   revision,
   activeTool,
   onToolDone,
   onOpenKnowledge,
+  onAddAlert,
+  externalContextMenu,
+  onClearExternalContextMenu,
+  onSeekToTime,
 }: {
   engine: ReplayEngine;
   projector: ChartProjector;
@@ -158,6 +167,10 @@ export function DrawingsOverlay({
   activeTool: DrawingToolId;
   onToolDone: () => void;
   onOpenKnowledge?: (tool: DrawingToolId) => void;
+  onAddAlert?: (price: number) => void;
+  externalContextMenu?: { x: number; y: number; price: number; time?: number } | null;
+  onClearExternalContextMenu?: () => void;
+  onSeekToTime?: (time: number) => void;
 }) {
   const { language } = useLanguage();
   const copy = (english: string) => (language === "it" ? DRAWING_COPY[english] ?? english : english);
@@ -172,6 +185,24 @@ export function DrawingsOverlay({
   const [textDraft, setTextDraft] = useState<{ at: DrawingPoint; x: number; y: number; kind?: "text" | "callout" } | null>(null);
 
   const { drawings, setDrawings: engineSetDrawings, settings, symbol, revealed, ticket, setTicket } = engine;
+  const hasPositionDrawing = useMemo(
+    () => drawings.some((d) => d.kind === "position") || activeTool === "longPosition" || activeTool === "shortPosition",
+    [drawings, activeTool],
+  );
+  const positionStructuralKey = hasPositionDrawing
+    ? `${revealed.length}:${revealed[0]?.time ?? 0}:${revealed[revealed.length - 1]?.time ?? 0}`
+    : "none";
+  const memoizedLiqSnapshot = useMemo(
+    () => (hasPositionDrawing ? analyzeInstitutionalLiquidity(revealed) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [positionStructuralKey],
+  );
+  const memoizedWyckoffSnap = useMemo(
+    () => (hasPositionDrawing ? analyzeWyckoffStructure(revealed) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [positionStructuralKey],
+  );
+  const [activeDragItem, setActiveDragItem] = useState<{ id: string; drawing: ReplayDrawing } | null>(null);
   const [objectsOpen, setObjectsOpen] = useState(false);
   const [, refreshHistory] = useState(0);
   const history = useRef(new DrawingHistory());
@@ -240,7 +271,22 @@ export function DrawingsOverlay({
     drawingId?: string;
     x: number;
     y: number;
+    price?: number;
+    time?: number;
   } | null>(null);
+
+  // Sync external context menu triggered from ReplayChart container
+  useEffect(() => {
+    if (externalContextMenu) {
+      setContextMenu({
+        type: "canvas",
+        x: externalContextMenu.x,
+        y: externalContextMenu.y,
+        price: externalContextMenu.price,
+        time: externalContextMenu.time,
+      });
+    }
+  }, [externalContextMenu]);
   const copiedDrawingRef = useRef<ReplayDrawing | null>(null);
   const contextDrawing = drawings.find((d) => d.id === contextMenu?.drawingId) ?? selectedDrawing;
 
@@ -261,6 +307,7 @@ export function DrawingsOverlay({
     return { x: Math.max(16, Math.floor((typeof window !== "undefined" ? window.innerWidth : 800) / 2 - 200)), y: 52 };
   });
   const toolbarDragRef = useRef<{ id: number; startX: number; startY: number; initX: number; initY: number } | null>(null);
+  const [sealedSetupIds, setSealedSetupIds] = useState<Record<string, boolean>>({});
 
   const handleToolbarGripPointerDown = (event: React.PointerEvent) => {
     if (event.button !== 0) return;
@@ -314,23 +361,33 @@ export function DrawingsOverlay({
   const handleCanvasContextMenu = (e: React.MouseEvent) => {
     if (toolActive) return;
     e.preventDefault();
+    const rect = svgRef.current?.getBoundingClientRect();
+    const relX = rect ? e.clientX - rect.left : e.clientX;
+    const relY = rect ? e.clientY - rect.top : e.clientY;
+    const price = projector.priceForY(relY);
+    const time = projector.timeForX(relX);
     setContextMenu({
       type: "canvas",
       x: e.clientX,
       y: e.clientY,
+      price: price != null && Number.isFinite(price) ? price : undefined,
+      time: typeof time === "number" ? time : undefined,
     });
   };
 
   useEffect(() => {
     if (!contextMenu) return;
-    const close = () => setContextMenu(null);
+    const close = () => {
+      setContextMenu(null);
+      onClearExternalContextMenu?.();
+    };
     window.addEventListener("pointerdown", close);
     window.addEventListener("wheel", close, { passive: true });
     return () => {
       window.removeEventListener("pointerdown", close);
       window.removeEventListener("wheel", close);
     };
-  }, [contextMenu]);
+  }, [contextMenu, onClearExternalContextMenu]);
 
   useEffect(() => {
     if (!gesture.current && observedDrawings.current !== drawings) {
@@ -673,6 +730,7 @@ export function DrawingsOverlay({
   };
 
   const cancelGesture = () => {
+    setActiveDragItem(null);
     const active = gesture.current;
     if (active) {
       active.cleanup();
@@ -698,7 +756,7 @@ export function DrawingsOverlay({
 
   useEffect(() => () => { gesture.current?.cleanup(); }, []);
 
-  // ── select, move and resize: one immutable transaction per gesture ─────────
+  // ── select, move and resize: one immutable transaction per gesture (rAF-throttled 120 FPS) ──
   const beginShapeDrag = (id: string, handle?: DrawingHandle) => (event: React.PointerEvent<SVGElement>) => {
     if (toolActive || event.button !== 0) return;
     event.preventDefault();
@@ -709,33 +767,108 @@ export function DrawingsOverlay({
     if (!start || !original || original.locked) return;
     const before = currentDrawings.current;
     const pointerId = event.pointerId;
-    const onMove = (moveEvent: PointerEvent) => {
-      if (moveEvent.pointerId !== pointerId) return;
-      const point = pointAt(moveEvent.clientX, moveEvent.clientY);
-      if (!point) return;
+
+    // Pre-calcola candidati snap liquidità ONCE all'inizio del drag (zero ricalcoli nel loop 120 FPS)
+    const snapCandidates: number[] = [];
+    if (original.kind === "position" && (handle === "tp" || handle === "sl" || handle === "entry") && revealed && revealed.length > 0) {
+      const recent = revealed.slice(-48);
+      snapCandidates.push(Math.max(...recent.map((b) => b.high)));
+      snapCandidates.push(Math.min(...recent.map((b) => b.low)));
+      try {
+        const liqPools = analyzeInstitutionalLiquidity(revealed).levels.map((l) => l.price);
+        snapCandidates.push(...liqPools);
+      } catch {}
+    }
+
+    let moveRaf: number | null = null;
+    let pendingMoveEvent: PointerEvent | null = null;
+    let currentTransformed = original;
+
+    const applyMove = () => {
+      moveRaf = null;
+      if (!pendingMoveEvent) return;
+      const rawPoint = pointAt(pendingMoveEvent.clientX, pendingMoveEvent.clientY);
+      if (!rawPoint) return;
+
+      let point = rawPoint;
+      if (snapCandidates.length > 0) {
+        const targetY = projector.yForPrice(rawPoint.price);
+        if (targetY != null) {
+          let snappedPrice = rawPoint.price;
+          let minPxDist = 9; // Tolleranza magnetica 9px
+          for (const candidate of snapCandidates) {
+            const candY = projector.yForPrice(candidate);
+            if (candY != null && Math.abs(candY - targetY) <= minPxDist) {
+              minPxDist = Math.abs(candY - targetY);
+              snappedPrice = candidate;
+            }
+          }
+          point = { ...rawPoint, price: snappedPrice };
+        }
+      }
+
       const next = handle
         ? resizeDrawing(original, handle, point)
         : moveDrawing(original, point.time - start.time, point.price - start.price);
-      const after = before.map((item) => (item.id === id ? next : item));
-      currentDrawings.current = after;
-      engineSetDrawings(after);
+      currentTransformed = next;
+      setActiveDragItem({ id, drawing: next });
     };
+
+    const onMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
+      pendingMoveEvent = moveEvent;
+      if (moveRaf == null) {
+        moveRaf = requestAnimationFrame(applyMove);
+      }
+    };
+
     const cleanup = () => {
+      if (moveRaf != null) {
+        cancelAnimationFrame(moveRaf);
+        moveRaf = null;
+      }
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
       window.removeEventListener("blur", onCancel);
     };
+
     const onUp = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
-      onMove(upEvent);
       cleanup();
-      history.current.record(before, currentDrawings.current);
-      observedDrawings.current = currentDrawings.current;
+      setActiveDragItem(null);
+      // Calcola punto finale e consolida in un'unica transazione atomica (salva su storage e dispatch sync)
+      const rawPoint = pointAt(upEvent.clientX, upEvent.clientY);
+      let point = rawPoint ?? start;
+      if (rawPoint && snapCandidates.length > 0) {
+        const targetY = projector.yForPrice(rawPoint.price);
+        if (targetY != null) {
+          let snappedPrice = rawPoint.price;
+          let minPxDist = 9;
+          for (const candidate of snapCandidates) {
+            const candY = projector.yForPrice(candidate);
+            if (candY != null && Math.abs(candY - targetY) <= minPxDist) {
+              minPxDist = Math.abs(candY - targetY);
+              snappedPrice = candidate;
+            }
+          }
+          point = { ...rawPoint, price: snappedPrice };
+        }
+      }
+      const finalNext = handle
+        ? resizeDrawing(original, handle, point)
+        : moveDrawing(original, point.time - start.time, point.price - start.price);
+      const after = before.map((item) => (item.id === id ? finalNext : item));
+      setDrawings(after);
       gesture.current = null;
-      refreshHistory((value) => value + 1);
     };
-    const onCancel = () => cancelGesture();
+
+    const onCancel = () => {
+      cleanup();
+      setActiveDragItem(null);
+      cancelGesture();
+    };
+
     gesture.current = { before, cleanup };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
@@ -847,7 +980,7 @@ export function DrawingsOverlay({
     if (!isDraft && !isDrawingVisibleOnInterval(item, engine.intervalSeconds)) return null;
     const selected = !isDraft && item.id === selectedId;
     const key = isDraft ? "draft" : item.id;
-    const handleDot = (hx: number, hy: number, handle: DrawingHandle, label: string) => {
+    const handleDot = (hx: number, hy: number, handle: DrawingHandle, label: string, customColor?: string) => {
       if (!selected || item.locked) return null;
       const cursor =
         handle === "tp" || handle === "sl"
@@ -857,6 +990,17 @@ export function DrawingsOverlay({
           : handle === "end"
           ? "ew-resize"
           : "crosshair";
+      const strokeColor =
+        customColor ??
+        (handle === "tp"
+          ? "#10b981"
+          : handle === "sl"
+          ? "#ef4444"
+          : handle === "entry"
+          ? "#3b82f6"
+          : handle === "end"
+          ? "#C5A059"
+          : "#2563eb");
       return (
         <g
           key={handle}
@@ -869,7 +1013,7 @@ export function DrawingsOverlay({
         >
           <title>{copy(label)}</title>
           <circle cx={hx} cy={hy} r={14} fill="transparent" style={{ cursor }} />
-          <circle cx={hx} cy={hy} r={5} fill="#ffffff" stroke="#2563eb" strokeWidth={2} style={{ cursor }} />
+          <circle cx={hx} cy={hy} r={5} fill="#ffffff" stroke={strokeColor} strokeWidth={2} style={{ cursor }} />
         </g>
       );
     };
@@ -892,18 +1036,21 @@ export function DrawingsOverlay({
           ? "6 3"
           : undefined;
 
+    const maxW = projector.paneWidth ?? width;
+    const maxH = projector.paneHeight ?? height;
+
     switch (item.kind) {
       case "hline": {
         const ly = y(item.price);
         if (ly == null) return null;
         return (
           <g key={key}>
-            <line x1={0} y1={ly} x2={width} y2={ly} stroke={item.color} strokeWidth={item.width} strokeDasharray={dash} pointerEvents="none" />
+            <line x1={0} y1={ly} x2={maxW} y2={ly} stroke={item.color} strokeWidth={item.width} strokeDasharray={dash} pointerEvents="none" />
             <text x={8} y={ly - 5} fontSize={9.5} fontWeight={700} fill={item.color} fontFamily="var(--btm-mono)" pointerEvents="none">
               {item.text ? `${item.text} · ` : ""}{formatPrice(item.price, symbol)}
             </text>
-            {!isDraft && hitLine(item.id, 0, ly, width, ly)}
-            {handleDot(width / 2, ly, "anchor", "Move horizontal line")}
+            {!isDraft && hitLine(item.id, 0, ly, maxW, ly)}
+            {handleDot(maxW / 2, ly, "anchor", "Move horizontal line")}
           </g>
         );
       }
@@ -913,12 +1060,12 @@ export function DrawingsOverlay({
         if (rx == null || ry == null) return null;
         return (
           <g key={key}>
-            <line x1={rx} y1={ry} x2={width} y2={ry} stroke={item.color} strokeWidth={item.width} strokeDasharray={dash} pointerEvents="none" />
+            <line x1={rx} y1={ry} x2={maxW} y2={ry} stroke={item.color} strokeWidth={item.width} strokeDasharray={dash} pointerEvents="none" />
             <circle cx={rx} cy={ry} r={3} fill={item.color} pointerEvents="none" />
-            <text x={Math.max(rx + 6, width - 125)} y={ry - 5} fontSize={9.5} fontWeight={700} fill={item.color} fontFamily="var(--btm-mono)" pointerEvents="none">
+            <text x={Math.max(rx + 6, maxW - 125)} y={ry - 5} fontSize={9.5} fontWeight={700} fill={item.color} fontFamily="var(--btm-mono)" pointerEvents="none">
               {item.text ? `${item.text} · ` : ""}{formatPrice(item.at.price, symbol)}
             </text>
-            {!isDraft && hitLine(item.id, rx, ry, width, ry)}
+            {!isDraft && hitLine(item.id, rx, ry, maxW, ry)}
             {handleDot(rx, ry, "anchor", "First anchor")}
           </g>
         );
@@ -928,9 +1075,9 @@ export function DrawingsOverlay({
         if (vx == null) return null;
         return (
           <g key={key}>
-            <line x1={vx} y1={0} x2={vx} y2={height} stroke={item.color} strokeWidth={item.width} strokeDasharray={dash} pointerEvents="none" />
-            {!isDraft && hitLine(item.id, vx, 0, vx, height)}
-            {handleDot(vx, height / 2, "anchor", "Move vertical line")}
+            <line x1={vx} y1={0} x2={vx} y2={maxH} stroke={item.color} strokeWidth={item.width} strokeDasharray={dash} pointerEvents="none" />
+            {!isDraft && hitLine(item.id, vx, 0, vx, maxH)}
+            {handleDot(vx, maxH / 2, "anchor", "Move vertical line")}
           </g>
         );
       }
@@ -1216,25 +1363,80 @@ export function DrawingsOverlay({
         const ty = y(item.tpPrice);
         if (ex == null || ey == null || sy == null || ty == null) return null;
         const endCoord = item.endTime != null ? x(item.endTime) : null;
-        const boxWidth = endCoord != null ? Math.max(40, endCoord - ex) : Math.min(240, Math.max(60, width - 58 - ex));
+        const boxWidth = endCoord != null ? Math.max(50, endCoord - ex) : Math.min(280, Math.max(80, width - 58 - ex));
         const pipMult = getPipMultiplier(symbol);
+        const pipVal = pipValuePerLot(symbol);
         const tpPips = Math.abs(item.tpPrice - item.entry.price) * pipMult;
         const slPips = Math.abs(item.entry.price - item.slPrice) * pipMult;
         const rrVal = slPips > 0 ? (tpPips / slPips).toFixed(2) : "—";
         const tpPct = item.entry.price > 0 ? ((Math.abs(item.tpPrice - item.entry.price) / item.entry.price) * 100).toFixed(2) : "0.00";
         const slPct = item.entry.price > 0 ? ((Math.abs(item.entry.price - item.slPrice) / item.entry.price) * 100).toFixed(2) : "0.00";
+
+        // Parametric risk and exact lot size calculation (TradingView Pro)
+        const accountBalance = item.accountSize ?? engine.account?.balance ?? 10000;
+        const riskPct = item.riskPct ?? (engine.ticket?.riskMode === "percent" ? engine.ticket?.riskValue : null) ?? 1;
+        const rawRisk = engine.ticket?.riskMode === "fixed" && item.riskPct == null
+          ? (engine.ticket?.riskValue ?? 100)
+          : (accountBalance * riskPct) / 100;
+        const cashRisk = Math.max(1, rawRisk);
+        const calculatedLots = computeLots({ riskAmount: cashRisk, slPips, symbol });
+        const effectiveRisk = calculatedLots > 0 ? calculatedLots * slPips * pipVal : cashRisk;
+        const effectiveReward = calculatedLots > 0 ? calculatedLots * tpPips * pipVal : cashRisk * (slPips > 0 ? tpPips / slPips : 1);
+
         const targetColor = item.targetColor ?? item.color ?? "#10b981";
         const stopColor = item.stopColor ?? "#ef4444";
         const fillAlpha = Math.round((item.fillOpacity ?? 0.16) * 100);
         const interactive = toolActive || isDraft ? "none" : "auto";
+        const isLong = item.direction === "buy";
+
+        const tpBoxHeight = Math.max(2, Math.abs(ty - ey));
+        const slBoxHeight = Math.max(2, Math.abs(sy - ey));
+        const minBoxY = Math.min(ey, ty);
+        const slBoxY = Math.min(ey, sy);
+
+        // Guardrail Dinamico del Custode della Soglia + Livello Target Parziale / Break-Even (50% TP1)
+        const rrNumeric = slPips > 0 ? tpPips / slPips : 0;
+        const isCustodeCompliant = rrNumeric >= 1.5;
+        const partialPrice = item.entry.price + (item.tpPrice - item.entry.price) * 0.5;
+        const py = (ey + ty) / 2;
+        const partialReward = effectiveReward * 0.5;
+        const partialLots = Math.max(0.01, Number((calculatedLots * 0.5).toFixed(2)));
+
+        // Rilevamento Fase Ciclica Istituzionale e Pool di Liquidità BSL/SSL Mirato per il Dossier SIGILLA
+        const liqSnapshot = memoizedLiqSnapshot ?? analyzeInstitutionalLiquidity(revealed);
+        const targetCandidatePools = liqSnapshot.levels.filter((l) =>
+          isLong ? l.side === "BSL" : l.side === "SSL",
+        );
+        let targetPoolLabel: string = isLong ? "BSL · HOD/PDH" : "SSL · LOD/PDL";
+        if (targetCandidatePools.length > 0) {
+          let bestPool = targetCandidatePools[0];
+          let minDiff = Math.abs(bestPool.price - item.tpPrice);
+          for (const pool of targetCandidatePools) {
+            const diff = Math.abs(pool.price - item.tpPrice);
+            if (diff < minDiff) {
+              minDiff = diff;
+              bestPool = pool;
+            }
+          }
+          targetPoolLabel = bestPool.label;
+        }
+        const wyckoffSnap = memoizedWyckoffSnap ?? analyzeWyckoffStructure(revealed);
+        const wyckoffRegime = wyckoffSnap.tradingRange?.structureType ?? "CONGESTION";
+        const latestWyckoffGrab =
+          wyckoffSnap.events.length > 0
+            ? wyckoffSnap.events[wyckoffSnap.events.length - 1].label
+            : (liqSnapshot.wyckoffGrabs.length > 0
+                ? liqSnapshot.wyckoffGrabs[liqSnapshot.wyckoffGrabs.length - 1].label
+                : null);
+
         return (
           <g key={key} onDoubleClick={openDrawingProperties(item.id)} onContextMenu={(e) => handleDrawingContextMenu(e, item.id)}>
-            {/* Box Zona Profitto (Verde) */}
+            {/* Box Zona Profitto (Verde Smeraldo) */}
             <rect
               x={ex}
-              y={Math.min(ey, ty)}
+              y={minBoxY}
               width={boxWidth}
-              height={Math.max(2, Math.abs(ty - ey))}
+              height={tpBoxHeight}
               fill={`color-mix(in srgb, ${targetColor} ${fillAlpha}%, transparent)`}
               stroke={selected ? targetColor : "none"}
               strokeWidth={0.8}
@@ -1242,12 +1444,12 @@ export function DrawingsOverlay({
               onPointerDown={beginShapeDrag(item.id)}
               style={{ cursor: toolActive ? undefined : "grab" }}
             />
-            {/* Box Zona Stop (Rosso) */}
+            {/* Box Zona Stop (Rosso Rubino) */}
             <rect
               x={ex}
-              y={Math.min(ey, sy)}
+              y={slBoxY}
               width={boxWidth}
-              height={Math.max(2, Math.abs(sy - ey))}
+              height={slBoxHeight}
               fill={`color-mix(in srgb, ${stopColor} ${fillAlpha}%, transparent)`}
               stroke={selected ? stopColor : "none"}
               strokeWidth={0.8}
@@ -1256,21 +1458,227 @@ export function DrawingsOverlay({
               style={{ cursor: toolActive ? undefined : "grab" }}
             />
 
-            {/* Linee Visive Livelli */}
+            {/* Linee Visive Livelli (Entry, TP, SL, e Break-Even / Target Parziale 50%) */}
             <line x1={ex} y1={ey} x2={ex + boxWidth} y2={ey} stroke="#3b82f6" strokeWidth={1.5} pointerEvents="none" />
             <line x1={ex} y1={ty} x2={ex + boxWidth} y2={ty} stroke={targetColor} strokeWidth={1.4} strokeDasharray="5 3" pointerEvents="none" />
             <line x1={ex} y1={sy} x2={ex + boxWidth} y2={sy} stroke={stopColor} strokeWidth={1.4} strokeDasharray="5 3" pointerEvents="none" />
+            <line x1={ex} y1={py} x2={ex + boxWidth} y2={py} stroke="#C5A059" strokeWidth={1} strokeDasharray="3 3" opacity={0.8} pointerEvents="none" />
 
-            {/* Testi e Parametri R:R */}
-            <text x={ex + 6} y={ey - 5} fontSize={9.5} fontWeight={700} fill="#e2e8f0" fontFamily="var(--btm-mono)" pointerEvents="none">
-              {item.direction === "buy" ? "LONG" : "SHORT"} · R:R {rrVal}
-            </text>
-            <text x={ex + 6} y={ty < ey ? ty + 11 : ty - 4} fontSize={8.5} fontWeight={600} fill={targetColor} fontFamily="var(--btm-mono)" pointerEvents="none">
-              TP {formatPrice(item.tpPrice, symbol)} (+{tpPips.toFixed(1)}p · {tpPct}%)
-            </text>
-            <text x={ex + 6} y={sy > ey ? sy - 4 : sy + 11} fontSize={8.5} fontWeight={600} fill={stopColor} fontFamily="var(--btm-mono)" pointerEvents="none">
-              SL {formatPrice(item.slPrice, symbol)} (-{slPips.toFixed(1)}p · {slPct}%)
-            </text>
+            {/* Dettagli nel Box TP (TradingView Minimalist Clean Standard) */}
+            <g pointerEvents="none">
+              <text
+                x={ex + 6}
+                y={isLong ? minBoxY + 12 : ty - 10}
+                dominantBaseline="central"
+                fontSize={8.5}
+                fontWeight={700}
+                fill={targetColor}
+                fontFamily="var(--btm-mono)"
+                opacity={0.9}
+              >
+                TP +{tpPips.toFixed(1)}p ({tpPct}%)
+              </text>
+            </g>
+
+            {/* Dettagli nel Box SL (TradingView Minimalist Clean Standard) */}
+            <g pointerEvents="none">
+              <text
+                x={ex + 6}
+                y={isLong ? sy - 10 : slBoxY + 12}
+                dominantBaseline="central"
+                fontSize={8.5}
+                fontWeight={700}
+                fill={stopColor}
+                fontFamily="var(--btm-mono)"
+                opacity={0.9}
+              >
+                SL -{slPips.toFixed(1)}p ({slPct}%)
+              </text>
+            </g>
+
+            {/* Badge Centrale Snello con R:R & Toolbar Operativa Espansa solo al click/selezione */}
+            {(() => {
+              if (!selected) {
+                const pillW = 74;
+                const pillH = 18;
+                const pillX = ex + Math.max(4, (boxWidth - pillW) / 2);
+                const pillY = ey - pillH / 2;
+                return (
+                  <g transform={`translate(${pillX}, ${pillY})`} pointerEvents="all">
+                    <rect
+                      width={pillW}
+                      height={pillH}
+                      rx={9}
+                      fill="#07080b"
+                      fillOpacity={0.88}
+                      stroke={isCustodeCompliant ? "rgba(197, 160, 89, 0.45)" : "rgba(239, 68, 68, 0.55)"}
+                      strokeWidth={1}
+                      filter="drop-shadow(0 2px 4px rgba(0,0,0,0.75))"
+                    />
+                    <text
+                      x={pillW / 2}
+                      y={pillH / 2}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize={8}
+                      fontWeight={700}
+                      fill="#E8C56A"
+                      fontFamily="var(--btm-mono)"
+                      pointerEvents="none"
+                    >
+                      R:R {rrVal}
+                    </text>
+                  </g>
+                );
+              }
+
+              const pillW = 248;
+              const pillH = 22;
+              const pillX = ex + Math.max(4, (boxWidth - pillW) / 2);
+              const pillY = ey - pillH - 4; // Fluttua sopra la linea di ingresso per non coprire il prezzo
+              return (
+                <g transform={`translate(${pillX}, ${pillY})`} pointerEvents="all">
+                  <rect
+                    width={pillW}
+                    height={pillH}
+                    rx={11}
+                    fill="#07080b"
+                    fillOpacity={0.96}
+                    stroke="rgba(197, 160, 89, 0.6)"
+                    strokeWidth={1}
+                    filter="drop-shadow(0 4px 12px rgba(0,0,0,0.9))"
+                  />
+                  <text x={8} y={11} dominantBaseline="central" fontSize={8} fontWeight={600} fill="#94a3b8" fontFamily="var(--btm-mono)" pointerEvents="none">
+                    {isLong ? "LONG" : "SHORT"} <tspan fill="#E8C56A" fontWeight="bold">R:R {rrVal}</tspan>
+                  </text>
+                  {/* Bottone Forgia */}
+                  <g
+                    transform="translate(108, 2.5)"
+                    style={{ cursor: "pointer" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      engine.executeDrawingOrder?.(item);
+                    }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      engine.executeDrawingOrder?.(item);
+                    }}
+                  >
+                    <rect width={58} height={17} rx={8.5} fill={isCustodeCompliant ? "#C5A059" : "#ef4444"} />
+                    <text x={29} y={8.5} textAnchor="middle" dominantBaseline="central" fontSize={7.5} fontWeight={800} fill={isCustodeCompliant ? "#07080b" : "#ffffff"} fontFamily="var(--btm-mono)" pointerEvents="none">
+                      FORGIA {calculatedLots.toFixed(2)}L
+                    </text>
+                  </g>
+                  {/* Bottone Sigilla */}
+                  <g
+                    transform="translate(170, 2.5)"
+                    style={{ cursor: "pointer" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      try {
+                        const key = "limen_libro_verita_sealed_setups_v1";
+                        const existing = JSON.parse(localStorage.getItem(key) || "[]");
+                        const record = {
+                          id: item.id,
+                          symbol,
+                          direction: item.direction,
+                          entryPrice: item.entry.price,
+                          slPrice: item.slPrice,
+                          tpPrice: item.tpPrice,
+                          tp1BePrice: partialPrice,
+                          lots: calculatedLots,
+                          partialLots,
+                          rr: rrVal,
+                          cashRisk: Number(effectiveRisk.toFixed(2)),
+                          expectedReward: Number(effectiveReward.toFixed(2)),
+                          custodeCompliant: isCustodeCompliant,
+                          cyclePhase: liqSnapshot.cycle.phase,
+                          cycleTitle: liqSnapshot.cycle.title,
+                          dilutionRatio: liqSnapshot.cycle.dilutionRatio,
+                          targetLiquidityPool: targetPoolLabel,
+                          wyckoffRegime,
+                          wyckoffGrab: latestWyckoffGrab,
+                          sealedAt: new Date().toISOString(),
+                        };
+                        localStorage.setItem(key, JSON.stringify([record, ...existing.filter((x: any) => x.id !== item.id)].slice(0, 50)));
+                        window.dispatchEvent(new CustomEvent("limen:setup-sealed", { detail: record }));
+                      } catch {}
+                      setSealedSetupIds((prev) => ({ ...prev, [item.id]: true }));
+                    }}
+                  >
+                    <rect
+                      width={50}
+                      height={17}
+                      rx={8.5}
+                      fill={sealedSetupIds[item.id] ? "#10b981" : "#11131c"}
+                      stroke={sealedSetupIds[item.id] ? "#10b981" : "rgba(197, 160, 89, 0.4)"}
+                      strokeWidth={1}
+                    />
+                    <text
+                      x={25}
+                      y={8.5}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize={7.2}
+                      fontWeight={800}
+                      fill={sealedSetupIds[item.id] ? "#07080b" : "#E8C56A"}
+                      fontFamily="var(--btm-mono)"
+                      pointerEvents="none"
+                    >
+                      {sealedSetupIds[item.id] ? "SIGILLATO" : "SIGILLA"}
+                    </text>
+                  </g>
+                  {/* Tasto Cancella Rapido (X) */}
+                  <g
+                    transform={`translate(${pillW - 19}, 2.5)`}
+                    style={{ cursor: "pointer" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      engine.setDrawings((prev) => prev.filter((d) => d.id !== item.id));
+                    }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      engine.setDrawings((prev) => prev.filter((d) => d.id !== item.id));
+                    }}
+                  >
+                    <title>Elimina setup dal grafico</title>
+                    <circle cx={8.5} cy={8.5} r={8.5} fill="#ef4444" fillOpacity={0.85} />
+                    <text x={8.5} y={8.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontWeight={900} fill="#ffffff" pointerEvents="none">
+                      ×
+                    </text>
+                  </g>
+                </g>
+              );
+            })()}
+
+            {/* Pillole Asse Prezzi Destro (TradingView Slim Edge Tags) */}
+            <g transform={`translate(${ex + boxWidth}, 0)`} pointerEvents="none">
+              {/* Pillola TP */}
+              <g transform={`translate(2, ${ty - 7})`}>
+                <rect width={48} height={14} rx={2.5} fill={targetColor} fillOpacity={0.95} />
+                <text x={24} y={7} textAnchor="middle" dominantBaseline="central" fontSize={7.8} fontWeight={700} fill="#ffffff" fontFamily="var(--btm-mono)">
+                  {formatPrice(item.tpPrice, symbol)}
+                </text>
+              </g>
+              {/* Pillola TP1 / BE 50% (Solo se selezionato e altezza sufficiente per non collidere) */}
+              {selected && tpBoxHeight >= 36 && (
+                <g transform={`translate(2, ${py - 7})`}>
+                  <rect width={48} height={14} rx={2.5} fill="#07080b" stroke="#C5A059" strokeWidth={1} />
+                  <text x={24} y={7} textAnchor="middle" dominantBaseline="central" fontSize={7.5} fontWeight={700} fill="#E8C56A" fontFamily="var(--btm-mono)">
+                    BE {formatPrice(partialPrice, symbol)}
+                  </text>
+                </g>
+              )}
+              {/* Pillola SL */}
+              <g transform={`translate(2, ${sy - 7})`}>
+                <rect width={48} height={14} rx={2.5} fill={stopColor} fillOpacity={0.95} />
+                <text x={24} y={7} textAnchor="middle" dominantBaseline="central" fontSize={7.8} fontWeight={700} fill="#ffffff" fontFamily="var(--btm-mono)">
+                  {formatPrice(item.slPrice, symbol)}
+                </text>
+              </g>
+            </g>
 
             {/* Hit Areas Ampie e Trascinabili per Entry, TP, SL e Durata */}
             <line
@@ -1318,48 +1726,11 @@ export function DrawingsOverlay({
               style={{ cursor: "ew-resize" }}
             />
 
-            {/* Maniglie Visive con cerchi generosi per il drag */}
-            {handleDot(ex, ey, "entry", "Trascina per modificare Prezzo d'Ingresso")}
-            {handleDot(ex + boxWidth / 2, sy, "sl", "Trascina per modificare Stop Loss")}
-            {handleDot(ex + boxWidth / 2, ty, "tp", "Trascina per modificare Take Profit")}
-            {handleDot(ex + boxWidth, ey, "end", "Trascina per estendere la durata della posizione")}
-            <g
-              style={{ cursor: "pointer" }}
-              pointerEvents="all"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                engine.executeDrawingOrder?.(item);
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                engine.executeDrawingOrder?.(item);
-              }}
-            >
-              <rect
-                x={ex + Math.max(80, boxWidth - 118)}
-                y={ey - 11}
-                width={112}
-                height={22}
-                rx={4}
-                fill="hsl(217 91% 60% / 0.95)"
-                stroke="#93c5fd"
-                strokeWidth={1}
-              />
-              <text
-                x={ex + Math.max(80, boxWidth - 118) + 56}
-                y={ey}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={9}
-                fontWeight={800}
-                fill="#ffffff"
-                fontFamily="var(--btm-mono)"
-                pointerEvents="none"
-              >
-                {uiText("backtest_terminal.order_from_drawing")}
-              </text>
-            </g>
+            {/* Maniglie Visive con cerchi generosi e colori dedicati (TradingView Pro) */}
+            {handleDot(ex, ey, "entry", "Trascina per modificare Prezzo d'Ingresso", "#3b82f6")}
+            {handleDot(ex + boxWidth / 2, sy, "sl", "Trascina per modificare Stop Loss", "#ef4444")}
+            {handleDot(ex + boxWidth / 2, ty, "tp", "Trascina per modificare Take Profit", "#10b981")}
+            {handleDot(ex + boxWidth, ey, "end", "Trascina per estendere la durata della posizione", "#C5A059")}
           </g>
         );
       }
@@ -1671,7 +2042,7 @@ export function DrawingsOverlay({
         }
         if (item.kind === "fib") {
           const startX = Math.min(ax, bx);
-          const endX = item.extendRight !== false ? Math.max(Math.max(ax, bx), width - 58) : Math.max(ax + 30, Math.max(ax, bx));
+          const endX = item.extendRight !== false ? Math.max(Math.max(ax, bx), projector.paneWidth ?? (width - 58)) : Math.max(ax + 30, Math.max(ax, bx));
           const activeLevels = (item.levels ?? DEFAULT_FIB_LEVELS).filter((l) => l.enabled);
           const pA = item.reverse ? item.b.price : item.a.price;
           const pB = item.reverse ? item.a.price : item.b.price;
@@ -1880,13 +2251,20 @@ export function DrawingsOverlay({
         onContextMenu={handleCanvasContextMenu}
         role="presentation"
         style={{
-          touchAction: toolActive || selectedId || engine.pickingOrderPrice ? "none" : undefined,
-          pointerEvents: toolActive || selectedId || engine.pickingOrderPrice ? "auto" : "none",
+          touchAction: toolActive || selectedId || activeDragItem || engine.pickingOrderPrice ? "none" : undefined,
+          pointerEvents: toolActive || selectedId || activeDragItem || engine.pickingOrderPrice ? "auto" : "none",
           cursor: toolActive || engine.pickingOrderPrice ? "crosshair" : undefined,
         }}
       >
-        {drawings.map((item) => renderShape(item))}
-        {draftShape && renderShape(draftShape, true)}
+        <defs>
+          <clipPath id="btm-draw-pane-clip">
+            <rect x={0} y={0} width={projector.paneWidth ?? width} height={projector.paneHeight ?? height} />
+          </clipPath>
+        </defs>
+        <g clipPath="url(#btm-draw-pane-clip)">
+          {drawings.map((item) => renderShape(activeDragItem && activeDragItem.id === item.id ? activeDragItem.drawing : item))}
+          {draftShape && renderShape(draftShape, true)}
+        </g>
         {toolActive && snapX != null && snapY != null && (
           <circle cx={snapX} cy={snapY} r={4.5} fill="none" stroke="#3b82f6" strokeWidth={1.6} pointerEvents="none" />
         )}
@@ -2180,8 +2558,69 @@ export function DrawingsOverlay({
           {contextMenu.type === "canvas" && (
             <>
               <div className="limen-cm-header">
-                <span className="limen-cm-title">AREA GRAFICO · LIMEN</span>
+                <span className="limen-cm-title">AREA GRAFICO · AUREUS</span>
               </div>
+              {contextMenu.price !== undefined && (
+                <>
+                  <div className="limen-cm-divider" />
+                  <button
+                    type="button"
+                    className="limen-cm-item limen-cm-gold"
+                    onClick={() => {
+                      if (contextMenu.price !== undefined) {
+                        onAddAlert?.(contextMenu.price);
+                      }
+                      setContextMenu(null);
+                    }}
+                  >
+                    <Bell size={13} className="text-[#E8C56A]" />
+                    <span>
+                      Allerta Prezzo a{" "}
+                      <span className="font-mono text-[#E8C56A] whitespace-nowrap">
+                        {formatPrice(contextMenu.price, symbol)}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="limen-cm-item"
+                    onClick={() => {
+                      if (contextMenu.price !== undefined && setTicket) {
+                        setTicket((prev: any) => ({
+                          ...prev,
+                          orderType: "LIMIT",
+                          limitPrice: contextMenu.price,
+                        }));
+                      }
+                      setContextMenu(null);
+                    }}
+                  >
+                    <Zap size={13} className="text-[#C5A059]" />
+                    <span>
+                      Piazza Limite a{" "}
+                      <span className="font-mono text-[#E8C56A] whitespace-nowrap">
+                        {formatPrice(contextMenu.price, symbol)}
+                      </span>
+                    </span>
+                  </button>
+                  {contextMenu.time !== undefined && onSeekToTime && (
+                    <button
+                      type="button"
+                      className="limen-cm-item"
+                      onClick={() => {
+                        if (contextMenu.time !== undefined) {
+                          onSeekToTime(contextMenu.time);
+                        }
+                        setContextMenu(null);
+                        onClearExternalContextMenu?.();
+                      }}
+                    >
+                      <Clock size={13} className="text-[#C5A059]" />
+                      <span>Salta Replay a questa Barra</span>
+                    </button>
+                  )}
+                </>
+              )}
               <div className="limen-cm-divider" />
               <button
                 type="button"
@@ -2275,4 +2714,4 @@ export function DrawingsOverlay({
       )}
     </>
   );
-}
+});

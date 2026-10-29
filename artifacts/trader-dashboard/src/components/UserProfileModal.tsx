@@ -118,9 +118,9 @@ export function UserProfileModal({
             <div className="flex items-center gap-3">
               <Avatar name={profile?.name ?? "?"} avatarUrl={profile?.avatarUrl} size="lg" />
               <div>
-                <p id={titleId} className="font-bold text-lg leading-tight">{profile?.name ?? "Trader"}</p>
-                <p className="text-xs text-muted-foreground">
-                  Livello {profile?.level ?? 1} · {(profile?.xp ?? 0).toLocaleString()} XP
+                <p id={titleId} className="font-bold text-lg leading-tight">{profile?.name ?? "Operatore"}</p>
+                <p className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                  Grado {Math.min(5, Math.max(1, Math.ceil((profile?.level ?? 1) / 4)))} · Indice {(profile?.xp ?? 0).toLocaleString()}
                 </p>
               </div>
             </div>

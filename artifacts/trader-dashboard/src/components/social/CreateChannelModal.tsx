@@ -11,14 +11,18 @@ import { useDialogA11y } from "@/hooks/useDialogA11y";
 export function CreateChannelModal({
   communityId,
   onClose,
+  initialType = "text",
+  allowOnlyVoice = false,
 }: {
   communityId: number;
   onClose: () => void;
+  initialType?: "text" | "voice";
+  allowOnlyVoice?: boolean;
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [name, setName] = useState("");
-  const [type, setType] = useState<"text" | "voice">("text");
+  const [type, setType] = useState<"text" | "voice">(allowOnlyVoice ? "voice" : initialType);
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -57,7 +61,9 @@ export function CreateChannelModal({
         className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl focus:outline-none"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 id={titleId} className="font-bold text-base">{uiText("auto.ui.0a38396995")}</h2>
+          <h2 id={titleId} className="font-bold text-base font-display">
+            {allowOnlyVoice ? "Nuova Stanza Vocale di Studio" : uiText("auto.ui.0a38396995")}
+          </h2>
           <button
             onClick={onClose}
             aria-label={uiText("common.close")}
@@ -67,30 +73,46 @@ export function CreateChannelModal({
           </button>
         </div>
         <div className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            {(["text", "voice"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setType(t)}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${type === t ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/30"}`}
-              >
-                {t === "text" ? (
-                  <Hash className="w-5 h-5" />
-                ) : (
-                  <Volume2 className="w-5 h-5" />
-                )}
-                <span className="text-xs font-semibold">
-                  {t === "text" ? "Testo" : "Voce"}
-                </span>
-              </button>
-            ))}
-          </div>
+          {!allowOnlyVoice ? (
+            <div className="grid grid-cols-2 gap-2">
+              {(["text", "voice"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setType(t)}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${type === t ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/30"}`}
+                >
+                  {t === "text" ? (
+                    <Hash className="w-5 h-5" />
+                  ) : (
+                    <Volume2 className="w-5 h-5" />
+                  )}
+                  <span className="text-xs font-semibold">
+                    {t === "text" ? "Testo" : "Voce"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 p-3 rounded-xl border border-[#C5A059]/30 bg-[#C5A059]/10 text-slate-200">
+              <div className="p-2 rounded-lg bg-[#C5A059]/20 text-[#E8C56A]">
+                <Volume2 className="w-5 h-5" />
+              </div>
+              <div className="text-xs">
+                <span className="font-bold text-[#E8C56A] block">Chat Vocale Pubblica</span>
+                <span className="text-slate-400 text-[11px]">Aperta a tutti gli Operatori per ritrovarsi e studiare.</span>
+              </div>
+            </div>
+          )}
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={40}
             placeholder={
-              type === "text" ? "es. analisi-tecnica" : "es. Sala Vocale"
+              allowOnlyVoice
+                ? "es. Preparazione HTF Asia o Focus Oro"
+                : type === "text"
+                ? "es. analisi-tecnica"
+                : "es. Sala Vocale"
             }
             className="w-full bg-secondary/30 border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
           />

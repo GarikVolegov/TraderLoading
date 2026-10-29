@@ -21,6 +21,7 @@ export interface ScanVarcoOptions {
   activeSetup?: VarcoSetupPlan | null;
   enforceSessionWindows?: boolean;
   operativeMemory?: VarcoVisionRequest["operativeMemory"];
+  directionalBias?: VarcoVisionRequest["directionalBias"];
 }
 
 export function useVarcoVisionSentinel() {
@@ -69,6 +70,7 @@ export function useVarcoVisionSentinel() {
           activeSetup: params.activeSetup ?? undefined,
           enforceSessionWindows: params.enforceSessionWindows,
           operativeMemory: params.operativeMemory,
+          directionalBias: params.directionalBias,
         };
 
         const res = await analyzeVarcoVision(payload, { signal: controller.signal });

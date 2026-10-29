@@ -27,7 +27,7 @@ function spawnLogged(service: RuntimeSmokeService): StartedProcess {
     : ["--filter", "@workspace/trader-dashboard", "run", "dev"];
   const env = isApi
     ? { ...process.env, BASE_PATH: "/", NODE_ENV: "development", PORT: "3001" }
-    : buildFrontendDevEnv({ ...process.env, BASE_PATH: "/", PORT: "5173" });
+    : { ...process.env, ...buildFrontendDevEnv({ ...process.env, BASE_PATH: "/", PORT: "5173" }) };
 
   const resolved = resolveSpawnCommand(command, args);
   const child = spawn(resolved.command, resolved.args, {

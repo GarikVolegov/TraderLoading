@@ -186,6 +186,42 @@ export interface AdminSystemOverview {
     key: string;
     configured: boolean;
   }>;
+  watchdog?: {
+    status: "healthy" | "degraded" | "critical";
+    uptimeSeconds: number;
+    totalAnomalies: number;
+    recoveredRejections: number;
+    consecutiveRejections: number;
+    eventLoopDelayMs: {
+      mean: number;
+      p95: number;
+      max: number;
+    };
+    recentAnomalies: Array<{
+      id: string;
+      timestamp: string;
+      kind: string;
+      severity: string;
+      message: string;
+      metadata?: Record<string, unknown>;
+    }>;
+    maintenance?: {
+      lastRunAt: string | null;
+      prunedOrphanRooms: number;
+      dbPingMs: number | null;
+      status: "idle" | "running" | "completed" | "error";
+      lastError?: string;
+    };
+  };
+  circuitBreakers?: Record<
+    string,
+    {
+      state: "CLOSED" | "OPEN" | "HALF_OPEN";
+      failureCount: number;
+      successCount: number;
+      lastFailureTime: number | null;
+    }
+  >;
 }
 
 export type AdminSubscriptionPlan = "free" | "pro" | "tributo_150";

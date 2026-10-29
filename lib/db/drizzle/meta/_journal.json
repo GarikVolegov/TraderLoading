@@ -372,6 +372,41 @@
       "when": 1792800000000,
       "tag": "0052_candidate_applications_yearly_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1792810000000,
+      "tag": "0053_financial_profile_extensions",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1792820000000,
+      "tag": "0054_scalability_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1792900000000,
+      "tag": "0055_candle_partitions_2020",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793000000000,
+      "tag": "0056_trial_once_and_honor_seals",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1793100000000,
+      "tag": "0057_realtime_performance_indexes",
+      "breakpoints": true
     }
   ]
 }

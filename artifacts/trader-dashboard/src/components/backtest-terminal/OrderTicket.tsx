@@ -8,8 +8,20 @@
 //   and bulk "Tutte a BE" / "Chiudi tutte" operations.
 // - Pending orders list with cancel controls.
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ClipboardList, Crosshair, Layers, Save, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ClipboardList, Crosshair, Layers, Lock, Save, X } from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
+import { useSmartWatchHeartRate } from "@/hooks/useSmartWatchHeartRate";
+import { TacticalBreathModal } from "../cockpit/TacticalBreathModal";
+import { computeReplayTelemetry } from "./ReplayBioTelemetryHUD";
+import {
+  loadBioLockConfig,
+  evaluateBioLockStatus,
+  getLastBreathAlignmentTimestamp,
+  recordBreathAlignmentTimestamp,
+  type BioLockConfig,
+} from "@/lib/bioLockGuard";
+import { synestheticAlert, synestheticClick } from "@/lib/soundFx";
 import {
   createTicketProfilesStorageKey,
   parseTicketProfiles,
@@ -108,7 +120,41 @@ export function OrderTicket({
   onDraftChange: (patch: Partial<OrderTicketDraft>) => void;
 }) {
   const { language } = useLanguage();
+  const { toast } = useToast();
+  const watch = useSmartWatchHeartRate();
+  const [breathModalOpen, setBreathModalOpen] = useState(false);
+  const [pendingDirection, setPendingDirection] = useState<"buy" | "sell" | null>(null);
+  const [bioLockConfig, setBioLockConfig] = useState<BioLockConfig>(() => loadBioLockConfig());
+  const [lastBreathTs, setLastBreathTs] = useState<number | null>(() => getLastBreathAlignmentTimestamp());
   const { ticket, setTicket, positions, pendingOrders, currentPrice } = engine;
+
+  useEffect(() => {
+    const handleSync = () => {
+      setBioLockConfig(loadBioLockConfig());
+      setLastBreathTs(getLastBreathAlignmentTimestamp());
+    };
+    window.addEventListener("aureus-biolock-updated", handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener("aureus-biolock-updated", handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, []);
+
+  const currentBpm = watch.isLive
+    ? watch.bpm
+    : computeReplayTelemetry(positions, currentPrice, engine.symbol, engine.openProfit).bpm;
+
+  const bioLockEval = useMemo(() => {
+    return evaluateBioLockStatus({
+      config: bioLockConfig,
+      currentBpm,
+      isCriticalDrift: currentBpm >= bioLockConfig.maxBpmThreshold,
+      lastBreathMs: lastBreathTs,
+      nowMs: Date.now(),
+    });
+  }, [bioLockConfig, currentBpm, lastBreathTs]);
+
   const { pendingMode, orderPrice } = draft;
   const setPendingMode = (mode: boolean) => {
     if (mode && (!orderPrice || Number.parseFloat(orderPrice) <= 0) && currentPrice > 0) {
@@ -151,7 +197,7 @@ export function OrderTicket({
   const parsedPrice = Number.parseFloat(orderPrice);
   const canPlace = pendingMode && Number.isFinite(parsedPrice) && parsedPrice > 0 && engine.lots > 0;
 
-  const submit = (direction: "buy" | "sell") => {
+  const executeOrderDirect = (direction: "buy" | "sell") => {
     if (pendingMode) {
       if (canPlace) {
         engine.placeOrder(direction, parsedPrice);
@@ -161,6 +207,23 @@ export function OrderTicket({
     }
     if (direction === "buy") engine.buy();
     else engine.sell();
+  };
+
+  const submit = (direction: "buy" | "sell") => {
+    synestheticClick();
+    if (bioLockEval.isLocked) {
+      synestheticAlert();
+      toast({
+        title: "Presidio Bio-Lock Attivo (Forgia del Passato)",
+        description:
+          bioLockEval.reason ||
+          `Frequenza cardiaca in Rischio Deriva (${currentBpm} BPM). Completa 1 ciclo di Respiro 4-7-8 per eseguire l'ordine.`,
+      });
+      setPendingDirection(direction);
+      setBreathModalOpen(true);
+      return;
+    }
+    executeOrderDirect(direction);
   };
 
   const applyRrPreset = (ratio: number) => {
@@ -525,20 +588,58 @@ export function OrderTicket({
               className="btm-buy"
               onClick={() => submit("buy")}
               disabled={unavailable || engine.lots <= 0 || (pendingMode && !canPlace)}
+              title={bioLockEval.isLocked ? `Presidio Bio-Lock: ${bioLockEval.reason}` : undefined}
             >
-              <ArrowUp size={15} /> BUY
+              {bioLockEval.isLocked ? <Lock size={14} className="text-[#ef4444]" /> : <ArrowUp size={15} />}
+              <span>BUY</span>
+              {bioLockEval.isLocked && (
+                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#ef4444]/25 text-[#ef4444] border border-[#ef4444]/40 font-bold ml-1">
+                  4-7-8
+                </span>
+              )}
             </button>
             <button
               type="button"
               className="btm-sell"
               onClick={() => submit("sell")}
               disabled={unavailable || engine.lots <= 0 || (pendingMode && !canPlace)}
+              title={bioLockEval.isLocked ? `Presidio Bio-Lock: ${bioLockEval.reason}` : undefined}
             >
-              <ArrowDown size={15} /> SELL
+              {bioLockEval.isLocked ? <Lock size={14} className="text-[#ef4444]" /> : <ArrowDown size={15} />}
+              <span>SELL</span>
+              {bioLockEval.isLocked && (
+                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#ef4444]/25 text-[#ef4444] border border-[#ef4444]/40 font-bold ml-1">
+                  4-7-8
+                </span>
+              )}
             </button>
           </div>
         </div>
       </section>
+
+      {/* Modale Respiro Tattico 4-7-8 di sblocco Bio-Lock per la Forgia */}
+      <TacticalBreathModal
+        isOpen={breathModalOpen}
+        onClose={() => {
+          setBreathModalOpen(false);
+          setPendingDirection(null);
+        }}
+        onComplete={() => {
+          const now = Date.now();
+          recordBreathAlignmentTimestamp(now);
+          setLastBreathTs(now);
+          if (pendingDirection) {
+            const dir = pendingDirection;
+            setPendingDirection(null);
+            setBreathModalOpen(false);
+            executeOrderDirect(dir);
+            toast({
+              title: "Presidio Bio-Lock Sbloccato",
+              description: "Centratura 4-7-8 completata. Ordine immesso nella Forgia del Passato.",
+            });
+          }
+        }}
+      />
     </div>
   );
 }

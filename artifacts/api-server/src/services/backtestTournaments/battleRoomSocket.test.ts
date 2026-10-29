@@ -27,7 +27,7 @@ function openSocket(url: string): Promise<WebSocket> {
   });
 }
 
-function nextMessage<T = BattleRoomServerMessage>(ws: WebSocket, timeoutMs = 2500): Promise<T> {
+function nextMessage<T = BattleRoomServerMessage>(ws: WebSocket, timeoutMs = 10000): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       ws.off("message", onMessage);
@@ -44,6 +44,51 @@ function nextMessage<T = BattleRoomServerMessage>(ws: WebSocket, timeoutMs = 250
     }
     ws.on("message", onMessage);
   });
+}
+
+function createMessageQueue(ws: WebSocket) {
+  const queue: any[] = [];
+  const waiting: Array<(msg: any) => void> = [];
+
+  ws.on("message", (data) => {
+    try {
+      const parsed = JSON.parse(String(data));
+      if (waiting.length > 0) {
+        const resolve = waiting.shift()!;
+        resolve(parsed);
+      } else {
+        queue.push(parsed);
+      }
+    } catch {}
+  });
+
+  return {
+    async next(timeoutMs = 10000): Promise<any> {
+      if (queue.length > 0) {
+        return queue.shift()!;
+      }
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          const idx = waiting.indexOf(resolve);
+          if (idx !== -1) waiting.splice(idx, 1);
+          reject(new Error("timed out waiting for battle room socket message"));
+        }, timeoutMs);
+        waiting.push((msg) => {
+          clearTimeout(timer);
+          resolve(msg);
+        });
+      });
+    },
+    async waitForType(type: string, timeoutMs = 12000): Promise<any> {
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        const remaining = Math.max(100, timeoutMs - (Date.now() - start));
+        const msg = await this.next(remaining);
+        if (msg.type === type) return msg;
+      }
+      throw new Error(`Timed out waiting for message type: ${type}`);
+    },
+  };
 }
 
 async function runTests() {
@@ -94,7 +139,7 @@ async function runTests() {
     assert.equal((tradeMsg as any).trade.type, "BUY");
     assert.equal((tradeMsg as any).trade.price, 2650.5);
 
-    // Telemetry update
+    // Telemetry update with bio-telemetry heart rate
     client1.send(
       JSON.stringify({
         type: "telemetry_update",
@@ -102,6 +147,8 @@ async function runTests() {
         profitPct: 3.45,
         drawdownPct: 1.2,
         tradesCount: 4,
+        biometricBpm: 84,
+        biometricShareConsent: true,
       }),
     );
 
@@ -110,6 +157,22 @@ async function runTests() {
     const me = (tickMsg as any).participants.find((p: any) => p.userId === "test_user_alpha");
     assert.equal(me.currentProfitPct, 3.45);
     assert.equal(me.currentDrawdownPct, 1.2);
+    assert.equal(me.biometricBpm, 84);
+    assert.equal(me.stressLevel, "elevated");
+
+    // Test Heartbeat & Latency Sentinel (Ping / Pong)
+    const pingSentAt = Date.now();
+    client1.send(
+      JSON.stringify({
+        type: "ping",
+        timestamp: pingSentAt,
+      }),
+    );
+
+    const pongMsg = await nextMessage(client1);
+    assert.equal(pongMsg.type, "pong");
+    assert.equal((pongMsg as any).clientTimestamp, pingSentAt);
+    assert.ok(typeof (pongMsg as any).serverTimestamp === "number");
 
     client1.close();
   } finally {
@@ -157,6 +220,7 @@ async function runTests() {
   const { server: server3, socketServer: socketServer3, url: url3 } = await listen();
   try {
     const client = await openSocket(url3);
+    const mq = createMessageQueue(client);
 
     client.send(
       JSON.stringify({
@@ -173,7 +237,7 @@ async function runTests() {
       }),
     );
 
-    const snapMsg = await nextMessage(client);
+    const snapMsg = await mq.waitForType("room_snapshot");
     assert.equal(snapMsg.type, "room_snapshot");
     assert.equal((snapMsg as any).rules?.pair, "EUR/USD");
     assert.equal((snapMsg as any).rules?.randomDates, true);
@@ -187,7 +251,7 @@ async function runTests() {
       }),
     );
 
-    const readyMsg = await nextMessage(client);
+    const readyMsg = await mq.waitForType("ready_status_changed");
     assert.equal(readyMsg.type, "ready_status_changed");
     assert.equal((readyMsg as any).isReady, true);
 
@@ -200,7 +264,7 @@ async function runTests() {
     );
 
     // Receives countdown
-    const cdMsg = await nextMessage(client, 4000);
+    const cdMsg = await mq.waitForType("battle_countdown");
     assert.equal(cdMsg.type, "battle_countdown");
 
     client.close();

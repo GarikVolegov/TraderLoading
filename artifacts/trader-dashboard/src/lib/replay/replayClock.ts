@@ -50,17 +50,20 @@ export function logicalIndexAtTime(candles: ReplayCandle[], time: number, interv
   return before + (time - bar.time) / Math.max(1, nextTime - bar.time);
 }
 
-/** Inverse of logicalIndexAtTime: resolves logical bar indices (including future right-offset whitespace) to unix seconds. */
+/** Inverse of logicalIndexAtTime: resolves logical bar indices (including fractional and future right-offset whitespace) to unix seconds. */
 export function timeAtLogicalIndex(candles: ReplayCandle[], logical: number, intervalSeconds: number): number | null {
   if (!candles.length || !Number.isFinite(logical)) return null;
   const step = Math.max(1, intervalSeconds);
-  const rounded = Math.round(logical);
-  if (rounded < 0) {
-    return candles[0].time + rounded * step;
+  if (logical < 0) {
+    return candles[0].time + Math.round(logical * step);
   }
   const lastIdx = candles.length - 1;
-  if (rounded <= lastIdx) {
-    return candles[rounded].time;
+  if (logical >= lastIdx) {
+    return candles[lastIdx].time + Math.round((logical - lastIdx) * step);
   }
-  return candles[lastIdx].time + (rounded - lastIdx) * step;
+  const baseIdx = Math.floor(logical);
+  const frac = logical - baseIdx;
+  const baseTime = candles[baseIdx].time;
+  const nextTime = candles[baseIdx + 1]?.time ?? baseTime + step;
+  return baseTime + Math.round(frac * (nextTime - baseTime));
 }

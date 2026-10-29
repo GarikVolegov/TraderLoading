@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 export type LoadingStep = "assets" | "data" | "audio" | "complete";
 
@@ -21,8 +21,13 @@ export function LoadingProvider({ children }: { children: ReactNode }) {
     setCurrentStep("complete");
   }, []);
 
+  const contextValue = useMemo(
+    () => ({ isLoading, currentStep, setIsLoading, setCurrentStep, completeLoading }),
+    [isLoading, currentStep, completeLoading],
+  );
+
   return (
-    <LoadingCtx.Provider value={{ isLoading, currentStep, setIsLoading, setCurrentStep, completeLoading }}>
+    <LoadingCtx.Provider value={contextValue}>
       {children}
     </LoadingCtx.Provider>
   );

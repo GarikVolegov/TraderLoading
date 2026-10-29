@@ -842,3 +842,69 @@ test("analyzeWyckoffSchematicGeometry models user XAUUSD diagram with BC, AR, ST
   assert.ok(labels.includes("UTAD"));
   assert.ok(labels.includes("10%"));
 });
+
+test("analyzeWyckoffSchematicGeometry models user XAUUSD Reaccumulation with AR, ST, 10% Apollo, STB, and JTC corridor", () => {
+  const baseTime = 1715000000;
+  const candles: VarcoVisionCandle[] = [
+    // 0. Trend precedente e PS
+    { time: baseTime + 0 * 900, open: 4015.0, high: 4018.0, low: 4008.0, close: 4010.0, volume: 1500 },
+    // 1. SC (Selling Climax @ ~4005.0)
+    { time: baseTime + 1 * 900, open: 4010.0, high: 4012.0, low: 4005.0, close: 4007.0, volume: 3200 },
+    // 2. Rimbalzo verso AR
+    { time: baseTime + 2 * 900, open: 4007.0, high: 4017.0, low: 4006.0, close: 4015.0, volume: 2400 },
+    // 3. AR (Automatic Rally @ ~4022.0)
+    { time: baseTime + 3 * 900, open: 4015.0, high: 4022.0, low: 4014.0, close: 4020.0, volume: 2800 },
+    // 4. Inizio pullback dopo AR
+    { time: baseTime + 4 * 900, open: 4020.0, high: 4021.0, low: 4017.0, close: 4018.0, volume: 1100 },
+    // 5. ST (Secondary Test pullback trough @ 4015.0)
+    { time: baseTime + 5 * 900, open: 4018.0, high: 4019.0, low: 4015.0, close: 4016.0, volume: 1300 },
+    // 6. Ripartenza Fase B
+    { time: baseTime + 6 * 900, open: 4016.0, high: 4025.0, low: 4016.0, close: 4024.0, volume: 1900 },
+    // 7. 10% Apollo (massimo induttivo Fase B @ 4030.0)
+    { time: baseTime + 7 * 900, open: 4024.0, high: 4030.0, low: 4022.0, close: 4026.0, volume: 2900 },
+    // 8. Candela di rifiuto post-10%
+    { time: baseTime + 8 * 900, open: 4026.0, high: 4027.0, low: 4018.0, close: 4019.0, volume: 1800 },
+    // 9. STB (Sfondamento del climax SC a 3988.53)
+    { time: baseTime + 9 * 900, open: 4019.0, high: 4020.0, low: 3988.53, close: 3995.0, volume: 5100 },
+    // 10. Forte ripartenza post-STB (Fase C -> D)
+    { time: baseTime + 10 * 900, open: 3995.0, high: 4032.0, low: 3994.0, close: 4028.0, volume: 4400 },
+    // 11. Consolidamento POC / Test
+    { time: baseTime + 11 * 900, open: 4028.0, high: 4036.0, low: 4025.0, close: 4034.79, volume: 2200 },
+    // 12. Breakout SOS a 4041.4
+    { time: baseTime + 12 * 900, open: 4034.79, high: 4041.4, low: 4033.0, close: 4040.0, volume: 4600 },
+  ];
+
+  const geom = analyzeWyckoffSchematicGeometry(candles, "long", "XAUUSD", false, false, {
+    isReaccumOrRedistrib: true,
+    zoneScenario: "reaccum",
+    markupCount: 2,
+  });
+
+  assert.equal(geom.schematicType, "reaccumulation");
+  assert.equal(geom.arPrice, 4022.0, "AR must be at 4022.0");
+  assert.equal(geom.tenPercentLevel, 4030.0, "10% Apollo must be isolated at 4030.0 (not 4041.4)");
+  assert.equal(geom.icePrice, 3988.53, "Ice price must be 3988.53");
+  assert.equal(geom.creekPrice, 4030.0, "Creek resistance should be at 10% Apollo level (4030.0)");
+
+  // ST must be the trough between AR and 10%
+  const stPoint = geom.schematicPoints.find((p) => p.label === "ST");
+  assert.ok(stPoint, "ST point must exist");
+  assert.equal(stPoint?.price, 4015.0, "ST must be located at the pullback low 4015.0");
+
+  // JTC Zone must be strictly bounded between 10% (4030.0) and AR (4020.0-4022.0)
+  assert.equal(geom.jtcBtiZoneHigh, 4030.0, "JTC zone top must be at 10% shadow (4030.0)");
+  assert.equal(geom.jtcBtiZoneLow, 4020.0, "JTC zone bottom must be at AR body (4020.0)");
+
+  // Schematic Points
+  const labels = geom.schematicPoints.map((p) => p.label);
+  assert.ok(labels.includes("AR"), "Must include AR");
+  assert.ok(labels.includes("ST"), "Must include ST");
+  assert.ok(labels.includes("10%"), "Must include 10%");
+  assert.ok(labels.includes("STB"), "Must include STB");
+  assert.ok(labels.includes("SOS"), "Must include SOS");
+
+  const tenPctPoint = geom.schematicPoints.find((p) => p.label === "10%");
+  assert.equal(tenPctPoint?.price, 4030.0, "10% point price must be 4030.0");
+  const sosPoint = geom.schematicPoints.find((p) => p.label === "SOS");
+  assert.equal(sosPoint?.price, 4041.4, "SOS point price must be 4041.4");
+});

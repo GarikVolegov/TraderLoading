@@ -504,6 +504,22 @@ export type VarcoVisionRequestOperativeMemory = {
   quarantinedCombos?: string[];
 };
 
+export type VarcoVisionRequestDirectionalBiasH4MasterBias = typeof VarcoVisionRequestDirectionalBiasH4MasterBias[keyof typeof VarcoVisionRequestDirectionalBiasH4MasterBias];
+
+
+export const VarcoVisionRequestDirectionalBiasH4MasterBias = {
+  BULLISH: 'BULLISH',
+  BEARISH: 'BEARISH',
+  NEUTRAL: 'NEUTRAL',
+} as const;
+
+export type VarcoVisionRequestDirectionalBias = {
+  h4MasterBias?: VarcoVisionRequestDirectionalBiasH4MasterBias;
+  edgeTier?: string;
+  antiFadeProtected?: boolean;
+  confidenceScore?: number;
+};
+
 export type VarcoSetupPlanDirection = typeof VarcoSetupPlanDirection[keyof typeof VarcoSetupPlanDirection];
 
 
@@ -615,6 +631,7 @@ export interface VarcoVisionRequest {
   activeSetup?: VarcoSetupPlan;
   enforceSessionWindows?: boolean;
   operativeMemory?: VarcoVisionRequestOperativeMemory;
+  directionalBias?: VarcoVisionRequestDirectionalBias;
 }
 
 export type VarcoChecklistItemAuditTriggerType = typeof VarcoChecklistItemAuditTriggerType[keyof typeof VarcoChecklistItemAuditTriggerType];

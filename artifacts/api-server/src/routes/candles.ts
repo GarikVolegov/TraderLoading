@@ -78,10 +78,45 @@ router.get("/backtest/candles", async (req, res) => {
 
   try {
     const data = await getCandles(symbol, interval, { startDate, from, to, limit, mode, anchorTime, replayTime, warmupBars });
+    if (startDate || from != null) {
+      // Historical candles: immutable dataset, aggressive CDN caching
+      res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
+    } else {
+      // Current live window: brief CDN caching with stale-while-revalidate to collapse traffic bursts
+      res.setHeader("Cache-Control", "public, max-age=15, s-maxage=30, stale-while-revalidate=60");
+    }
+    if (data && typeof data === "object" && "stale" in data && data.stale) {
+      res.setHeader("X-Aureus-Data-Source", "PIT-Stale-Fallback");
+    } else {
+      res.setHeader("X-Aureus-Data-Source", "Live-Stream");
+    }
     res.json(data);
   } catch (err: unknown) {
+    if (err instanceof ReplayHistoryError) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    try {
+      const emergency = await getCandles(symbol, interval, {
+        startDate,
+        from,
+        to,
+        limit,
+        mode: "replay",
+        anchorTime,
+        replayTime,
+        warmupBars,
+      });
+      if (emergency && emergency.candles && emergency.candles.length > 0) {
+        res.setHeader("X-Aureus-Data-Source", "Emergency-PIT-Fallback");
+        res.json({ ...emergency, stale: true });
+        return;
+      }
+    } catch {
+      // ignore fallback error and return standard error
+    }
     const msg = err instanceof Error ? err.message : String(err);
-    res.status(err instanceof ReplayHistoryError ? err.status : 502).json({ error: msg });
+    res.status(502).json({ error: msg });
   }
 });
 
@@ -98,6 +133,7 @@ router.get("/backtest/candles/meta", async (req, res) => {
 
   try {
     const meta = await getCandlesMeta(symbol);
+    res.setHeader("Cache-Control", "public, max-age=300, s-maxage=1800, stale-while-revalidate=86400");
     res.json(meta);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -106,12 +142,30 @@ router.get("/backtest/candles/meta", async (req, res) => {
 });
 
 router.get("/candles/live", (req, res) => {
+  if (!isValidSymbolInput(req.query.symbol)) {
+    res.status(400).json({ error: "Invalid symbol" });
+    return;
+  }
   const symbol = normalizeSymbol(req.query.symbol);
   const interval = normalizeInterval(req.query.interval);
+
+  if (!isSupportedSymbol(symbol)) {
+    res.status(400).json({
+      error: `Symbol ${symbol} not supported. Available: ${SUPPORTED_SYMBOLS.join(", ")}`,
+    });
+    return;
+  }
+  if (!INTERVAL_SECONDS[interval]) {
+    res.status(400).json({
+      error: `Interval ${interval} not supported. Available: ${Object.keys(INTERVAL_SECONDS).join(", ")}`,
+    });
+    return;
+  }
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
   if (typeof (res as any).flushHeaders === "function") {
     (res as any).flushHeaders();
   }
@@ -119,24 +173,33 @@ router.get("/candles/live", (req, res) => {
   const bridge = TradingViewBridge.getInstance();
   bridge.subscribeSymbol(symbol, interval);
 
+  const safeWrite = (payload: string) => {
+    if (!res.writableEnded && !(res as any).writableNeedDrain) {
+      res.write(payload);
+    }
+  };
+
   const latest = bridge.getLatestTick(symbol, interval);
   if (latest) {
-    res.write(`data: ${JSON.stringify(latest)}\n\n`);
+    safeWrite(`data: ${JSON.stringify(latest)}\n\n`);
   } else {
-    res.write(`data: ${JSON.stringify({ status: "connected", symbol, interval })}\n\n`);
+    safeWrite(`data: ${JSON.stringify({ status: "connected", symbol, interval })}\n\n`);
   }
 
   const onTick = (tick: any) => {
     if (tick.symbol === symbol && tick.interval === interval) {
-      res.write(`data: ${JSON.stringify(tick)}\n\n`);
+      safeWrite(`data: ${JSON.stringify(tick)}\n\n`);
     }
   };
 
   bridge.on("tick", onTick);
 
   const ping = setInterval(() => {
-    res.write(": ping\n\n");
+    safeWrite(": ping\n\n");
   }, 15000);
+  if (typeof ping.unref === "function") {
+    ping.unref();
+  }
 
   req.on("close", () => {
     clearInterval(ping);

@@ -148,6 +148,8 @@ export function LimenAiSetupOverlay({
 
   const width = projector.width || 800;
   const height = projector.height || 600;
+  const paneWidth = projector.paneWidth || width;
+  const paneHeight = projector.paneHeight || height;
 
   // Se non c'è setup ma c'è scansione attiva, mostra il gadget scansionatore solo se abilitato
   if (!setup) {
@@ -189,9 +191,9 @@ export function LimenAiSetupOverlay({
   // Delimitazione orizzontale della proiezione ordini (Risk/Reward): solo dal trigger/fine schematica verso destra
   const boxEnd = setup.schematicBox ? projector.xForTime(setup.schematicBox.endTime) : null;
   const xLatest = projector.xForTime(Date.now() / 1000) ?? Math.max(0, width - 260);
-  const defaultBracketStart = boxEnd != null ? Math.max(0, Math.min(width - 240, boxEnd + 10)) : Math.max(0, xLatest);
-  const bracketLeft = Math.max(0, Math.min(width - 220, defaultBracketStart));
-  const bracketWidth = Math.max(140, width - 40 - bracketLeft);
+  const defaultBracketStart = boxEnd != null ? Math.max(0, Math.min(paneWidth - 240, boxEnd + 10)) : Math.max(0, xLatest);
+  const bracketLeft = Math.max(0, Math.min(paneWidth - 220, defaultBracketStart));
+  const bracketWidth = Math.max(140, paneWidth - 10 - bracketLeft);
 
   return (
     <div ref={containerRef} className="limen-ai-setup-overlay" aria-label="Visualizzazione Setup IA">
@@ -262,7 +264,7 @@ export function LimenAiSetupOverlay({
                   title={`Creek Line & 10% Apollo @ ${box.creekPrice ?? box.tenPercentLevel}`}
                 >
                   <span className="limen-wyckoff-creek-badge">
-                    {`CREEK · 10% ${isAccum || isReaccum ? "SOS" : "SOW"} @ ${box.creekPrice ?? box.tenPercentLevel}`}
+                    {`CREEK · 10% @ ${box.creekPrice ?? box.tenPercentLevel}`}
                   </span>
                 </div>
               )
@@ -281,10 +283,10 @@ export function LimenAiSetupOverlay({
                   <div
                     className="limen-wyckoff-10pct-line"
                     style={{ top: `${Math.max(0, y10 - boxTop)}px` }}
-                    title={`Livello 10% Apollo (${isAccum || isReaccum ? "SOS" : "SOW"} @ ${box.tenPercentLevel})`}
+                    title={`Livello 10% Apollo @ ${box.tenPercentLevel}`}
                   >
                     <span className="limen-wyckoff-10pct-badge">
-                      {`10% ${isAccum || isReaccum ? "SOS" : "SOW"} @ ${box.tenPercentLevel}`}
+                      {`10% APOLLO @ ${box.tenPercentLevel}`}
                     </span>
                   </div>
                 )}
@@ -395,8 +397,14 @@ export function LimenAiSetupOverlay({
         const x = projector.xForTime(pt.time);
         const y = projector.yForPrice(pt.price);
         if (x == null || y == null) return null;
+        const isLong =
+          setup.direction === "long" ||
+          setup.schematicBox?.schematicType === "accumulation" ||
+          setup.schematicBox?.schematicType === "reaccumulation";
         const cls = pt.label.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const isHigh = ["bc", "st", "ut", "utad", "sos", "10", "102"].includes(cls);
+        const isHigh = isLong
+          ? ["ar", "10", "102", "sos", "creek", "ut", "utad"].includes(cls)
+          : ["bc", "st", "ut", "utad", "test", "psy", "creek"].includes(cls);
         const posClass = isHigh ? "is-high-marker" : "is-low-marker";
         return (
           <div

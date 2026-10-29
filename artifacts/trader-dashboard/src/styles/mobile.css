@@ -21,14 +21,23 @@
     scroll-padding-bottom: var(--bottom-nav-clearance);
   }
 
-  /* The target grows without changing the visible icon or checkbox glyph. */
-  :is(button, [role="button"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]):not([data-touch-size="custom"]):not([role="switch"]):not([role="checkbox"]) {
+  /* The target grows without changing the visible icon or checkbox glyph, while respecting compact chart/toolbar bars. */
+  :is(button, [role="button"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]):not([data-touch-size="custom"]):not([role="switch"]):not([role="checkbox"]):not(.limen-chart-header *):not(.limen-bottom-bar *):not(.limen-chart-ohlc-legend *):not(.ck-stepper-grid *):not(.ck-chart-dock *):not(.bt-chip-group *):not(.mobile-compact-bar *) {
     min-height: 44px;
     min-width: 44px;
   }
 
-  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="color"]) {
+  :is(.limen-chart-header, .limen-bottom-bar, .ck-stepper-grid, .ck-chart-dock, .bt-chip-group, .mobile-compact-bar) :is(button, [role="button"]) {
+    touch-action: manipulation;
+  }
+
+  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="color"]):not(.mobile-compact-input) {
     min-height: 44px;
+    font-size: 16px !important;
+    max-width: 100%;
+  }
+
+  input.mobile-compact-input {
     font-size: 16px !important;
     max-width: 100%;
   }

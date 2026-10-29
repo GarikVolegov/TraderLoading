@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { it, enUS, es, fr, de } from "date-fns/locale";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { it } from "date-fns/locale/it";
 import type { Locale } from "date-fns";
 import { detectLanguageFromLocales, FALLBACK_DICT, loadDict, type Language } from "@/lib/i18n";
 import { getLanguageFromPath } from "@/lib/seo";
@@ -14,12 +14,16 @@ export const LANGUAGES: Record<Language, { name: string; flag: string; label: st
   de: { name: "Deutsch", flag: "🇩🇪", label: "DE" },
 };
 
-const DATE_FNS_LOCALES: Record<Language, Locale> = {
+const DATE_FNS_LOCALE_CACHE: Partial<Record<Language, Locale>> = {
   it,
-  en: enUS,
-  es,
-  fr,
-  de,
+};
+
+const DATE_FNS_LOCALE_LOADERS: Record<Language, () => Promise<Locale>> = {
+  it: () => Promise.resolve(it),
+  en: () => import("date-fns/locale/en-US").then((m) => m.enUS),
+  es: () => import("date-fns/locale/es").then((m) => m.es),
+  fr: () => import("date-fns/locale/fr").then((m) => m.fr),
+  de: () => import("date-fns/locale/de").then((m) => m.de),
 };
 
 const STORAGE_KEY = "tl_language";
@@ -82,6 +86,7 @@ interface LanguageContextValue {
   setLanguage: (lang: Language, persist?: boolean) => void;
   resetToBrowserLanguage: () => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
+  dateLocale: Locale;
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
@@ -109,6 +114,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   // Italian is bundled eagerly (fallback); other languages swap in as soon as
   // their lazy chunk arrives (~30 kB gzip — one round-trip on cold load).
   const [dict, setDict] = useState<Record<string, string>>(FALLBACK_DICT);
+  const [dateLocale, setDateLocale] = useState<Locale>(() => DATE_FNS_LOCALE_CACHE[language] ?? it);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -127,6 +133,21 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         // Chunk fetch can fail on flaky networks or across a redeploy; the UI
         // already degrades to FALLBACK_DICT, so just avoid an unhandled rejection.
       });
+
+    const cachedLocale = DATE_FNS_LOCALE_CACHE[language];
+    if (cachedLocale) {
+      setDateLocale(cachedLocale);
+    } else {
+      DATE_FNS_LOCALE_LOADERS[language]()
+        .then((loadedLocale) => {
+          DATE_FNS_LOCALE_CACHE[language] = loadedLocale;
+          if (alive) {
+            setDateLocale(loadedLocale);
+          }
+        })
+        .catch(() => {});
+    }
+
     return () => {
       alive = false;
     };
@@ -146,7 +167,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("languagechange", handleBrowserLanguageChange);
   }, []);
 
-  const setLanguage = (lang: Language, persist = true) => {
+  const setLanguage = useCallback((lang: Language, persist = true) => {
     if (persist) {
       try {
         localStorage.setItem(STORAGE_KEY, lang);
@@ -156,9 +177,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       }
     }
     setLangState(lang);
-  };
+  }, []);
 
-  const resetToBrowserLanguage = () => {
+  const handleResetToBrowserLanguage = useCallback(() => {
     try {
       localStorage.removeItem(STORAGE_KEY);
       setIsAutoDetected(true);
@@ -167,34 +188,60 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
     const browserLang = getBrowserLanguage();
     setLangState(browserLang);
-  };
+  }, []);
 
-  const t = (key: string, vars?: Record<string, string | number>): string => {
-    let str = dict[key] ?? FALLBACK_DICT[key] ?? key;
-    if (vars) {
-      Object.entries(vars).forEach(([k, v]) => {
-        str = str.replaceAll(`{${k}}`, String(v));
-      });
-    }
-    return str;
-  };
+  const t = useCallback(
+    (key: string, vars?: Record<string, string | number>): string => {
+      let str = dict[key] ?? FALLBACK_DICT[key] ?? key;
+      if (vars) {
+        Object.entries(vars).forEach(([k, v]) => {
+          str = str.replaceAll(`{${k}}`, String(v));
+        });
+      }
+      return str;
+    },
+    [dict],
+  );
+
+  const contextValue = useMemo(
+    () => ({
+      language,
+      isAutoDetected,
+      setLanguage,
+      resetToBrowserLanguage: handleResetToBrowserLanguage,
+      t,
+      dateLocale,
+    }),
+    [language, isAutoDetected, setLanguage, handleResetToBrowserLanguage, t, dateLocale],
+  );
 
   return (
-    <LanguageContext.Provider value={{ language, isAutoDetected, setLanguage, resetToBrowserLanguage, t }}>
+    <LanguageContext.Provider value={contextValue}>
       {children}
     </LanguageContext.Provider>
   );
 }
 
+const DEFAULT_LANGUAGE_FALLBACK: LanguageContextValue = {
+  language: "it",
+  isAutoDetected: false,
+  setLanguage: () => {},
+  resetToBrowserLanguage: () => {},
+  t: (key: string, vars?: Record<string, string | number>) => uiText(key, vars),
+  dateLocale: it,
+};
+
 export function useLanguage() {
   const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error("useLanguage must be inside LanguageProvider");
+  if (!ctx) {
+    return DEFAULT_LANGUAGE_FALLBACK;
+  }
   return ctx;
 }
 
 export function useDateLocale(): Locale {
-  const { language } = useLanguage();
-  return DATE_FNS_LOCALES[language];
+  const ctx = useContext(LanguageContext);
+  return ctx?.dateLocale ?? it;
 }
 
 export function uiText(key: string, vars?: Record<string, string | number>): string {

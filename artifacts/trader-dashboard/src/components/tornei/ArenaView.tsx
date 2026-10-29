@@ -134,7 +134,7 @@ export function ArenaView({
             <div className="flex items-center gap-1.5 min-w-0">
               <Target size={12} className="text-[#C5A059] shrink-0" />
               <span className="font-mono text-[10px] uppercase tracking-wider text-slate-300 font-bold truncate">
-                Le Tue Statistiche nel Torneo
+                Le Tue Statistiche nelle Prove del Fuoco
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -239,7 +239,7 @@ export function ArenaView({
                 <CheckCircle size={10} />
                 <span>Finisher</span>
               </div>
-              <div className="text-[9px] text-amber-400 font-semibold mt-0.5">Certificato + 100 XP</div>
+              <div className="text-[9px] text-amber-400 font-semibold mt-0.5 whitespace-nowrap">Certificato + Onore</div>
             </div>
           </div>
 
@@ -300,11 +300,11 @@ export function ArenaView({
         </div>
 
         {/* Header Colonne Tabella */}
-        <div className="grid grid-cols-[48px_1fr_95px_95px_75px] items-center px-3 py-2 rounded-lg bg-[#07080B] font-mono text-[10px] uppercase tracking-wider text-slate-400 mb-1.5">
+        <div className="grid grid-cols-[36px_1fr_64px_64px] sm:grid-cols-[48px_1fr_95px_95px_75px] items-center px-3 py-2 rounded-lg bg-[#07080B] font-mono text-[10px] uppercase tracking-wider text-slate-400 mb-1.5">
           <span>{t("tornei.col.rank")}</span>
           <span>{t("tornei.col.trader")}</span>
           <span className="text-right">{t("tornei.col.rcum")}</span>
-          <span className="text-right">{t("tornei.col.discipline")}</span>
+          <span className="hidden sm:block text-right">{t("tornei.col.discipline")}</span>
           <span className="text-right">{t("tornei.col.score")}</span>
         </div>
 
@@ -320,7 +320,7 @@ export function ArenaView({
               return (
                 <div
                   key={r.id}
-                  className={`grid grid-cols-[48px_1fr_95px_95px_75px] items-center px-3 py-2.5 rounded-lg border transition-all text-xs ${
+                  className={`grid grid-cols-[36px_1fr_64px_64px] sm:grid-cols-[48px_1fr_95px_95px_75px] items-center px-3 py-2.5 rounded-lg border transition-all text-xs ${
                     isDq
                       ? "border-red-950/40 bg-red-950/10 opacity-70"
                       : r.me
@@ -367,9 +367,9 @@ export function ArenaView({
                       {initials(r.displayName)}
                     </span>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         <span
-                          className={`font-semibold truncate max-w-[140px] sm:max-w-[180px] ${
+                          className={`font-semibold truncate ${
                             isDq ? "line-through text-slate-400" : "text-white"
                           }`}
                         >
@@ -389,21 +389,21 @@ export function ArenaView({
                   </div>
 
                   {/* R Cumulato */}
-                  <div className="text-right font-mono font-bold">
+                  <div className="text-right font-mono font-bold whitespace-nowrap">
                     <span className={isDq ? "text-slate-500 line-through" : "text-emerald-400"}>
                       {fmtR(r.rCum)}
                     </span>
                   </div>
 
                   {/* Indice Disciplina */}
-                  <div className="text-right font-mono">
+                  <div className="hidden sm:block text-right font-mono whitespace-nowrap">
                     <span className={isDq ? "text-red-400" : "text-slate-200"}>
                       {r.discIndex}%
                     </span>
                   </div>
 
                   {/* Score Totale */}
-                  <div className="text-right font-mono font-bold text-white">
+                  <div className="text-right font-mono font-bold text-white whitespace-nowrap">
                     {isDq ? "—" : r.score.toFixed(1)}
                   </div>
                 </div>

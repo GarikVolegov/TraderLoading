@@ -31,7 +31,16 @@ export async function retryWithBackoff<T>(fn: () => Promise<T>, options: RetryOp
       lastError = error;
       if (attempt >= attempts) break;
       onRetry?.(error, attempt);
-      const delay = Math.min(maxDelayMs, baseDelayMs * factor ** (attempt - 1));
+      let delay = Math.min(maxDelayMs, baseDelayMs * factor ** (attempt - 1));
+      if (error instanceof Error) {
+        const match = /Retry-After\s+(\d+)/i.exec(error.message);
+        if (match) {
+          const retrySec = Number(match[1]);
+          if (Number.isFinite(retrySec) && retrySec > 0) {
+            delay = Math.min(maxDelayMs, Math.max(delay, retrySec * 1000));
+          }
+        }
+      }
       await sleep(delay);
     }
   }

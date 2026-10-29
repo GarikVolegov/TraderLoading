@@ -17,7 +17,7 @@ interface PartnerDashboardProps {
   onOpenGatekeeping?: () => void;
 }
 
-export function PartnerDashboard({ userId = "LIMEN-OPERATOR-77" }: PartnerDashboardProps) {
+export function PartnerDashboard({ userId = "AUREUS-OPERATOR-77" }: PartnerDashboardProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [partnerMembersCount, _setPartnerMembersCount] = useState<number>(7); // Example 7 active members
 

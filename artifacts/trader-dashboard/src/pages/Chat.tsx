@@ -9,7 +9,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { SundayCouncilBanner } from "@/components/social/SundayCouncilBanner";
-import { BacktestTournamentHub } from "@/components/backtest-tournament/BacktestTournamentHub";
 import { useUser } from "@clerk/react";
 import { Loader2, LogIn, Users } from "lucide-react";
 import type { SocialUser } from "@/components/social/types";
@@ -20,6 +19,7 @@ const SocialTab = lazy(() => import("@/components/social/SocialTab").then(m => (
 const ConversationsWorkspace = lazy(() => import("@/components/social/ConversationsWorkspace"));
 const ClassificaTab = lazy(() => import("@/components/social/ClassificaTab").then(m => ({ default: m.ClassificaTab })));
 const TorneiWorkspace = lazy(() => import("./Tornei").then(m => ({ default: m.TorneiWorkspace })));
+const BacktestTournamentHub = lazy(() => import("@/components/backtest-tournament/BacktestTournamentHub").then(m => ({ default: m.BacktestTournamentHub })));
 
 function Loading() {
   return <div className="flex min-h-48 items-center justify-center" role="status"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -72,7 +72,7 @@ export default function Chat() {
             />
           </div>
           {location.tab === "competizioni" && (
-            <div className="inline-flex items-center rounded-lg border border-[#26262E] bg-[#07080B] p-0.5 font-mono text-xs shrink-0 self-start md:self-auto ml-auto">
+            <div className="inline-flex items-center rounded-lg border border-[#26262E] bg-[#07080B] p-0.5 font-mono text-xs shrink-0 self-start md:self-auto ml-auto max-w-full overflow-x-auto scrollbar-none">
               <Link
                 href={socialHref("competizioni", { vista: "xp" })}
                 className={cn(
@@ -93,7 +93,7 @@ export default function Chat() {
                     : "text-slate-400 hover:text-white"
                 )}
               >
-                Torneo Mensile
+                Arene della Disciplina
               </Link>
               <Link
                 href={socialHref("competizioni", { vista: "battaglie", sub: "backtest" })}
@@ -114,7 +114,7 @@ export default function Chat() {
         {location.tab === "conversazioni" && (
           <ViewportPanel>
             <div className="h-full min-h-0 flex flex-col">
-              <ConversationsWorkspace currentUserId={user?.id ?? ""} currentUserName={user?.firstName ?? "Trader"} />
+              <ConversationsWorkspace currentUserId={user?.id ?? ""} currentUserName={user?.firstName ?? "Operatore"} />
             </div>
           </ViewportPanel>
         )}
@@ -130,7 +130,11 @@ export default function Chat() {
           : !entitlements.quarterlyTournaments
           ? <LimenServiceLockGate serviceId="quarterly_tournaments" />
           : location.competitionView === "battaglie"
-          ? <BacktestTournamentHub />
+          ? (
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#C5A059]/30">
+              <BacktestTournamentHub />
+            </div>
+          )
           : <TorneiWorkspace embedded />)}
       </Suspense>
     </PageLayout>

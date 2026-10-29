@@ -50,8 +50,8 @@ app.use(cors(createCorsOptions()));
 app.use(compression({ threshold: 1024 }));
 app.use(cookieParser());
 app.use("/api/billing/webhook", express.raw({ type: "application/json" }), createStripeWebhookRouter());
-app.use(express.json({ limit: "5mb" }));
-app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 app.use("/api", healthRouter);
 
@@ -82,6 +82,7 @@ app.use(authMiddleware);
 // a horizontally-scaled deployment.
 const rateLimitStore = process.env.REDIS_URL
   ? createRedisRateLimitStore({
+      prefix: "rl:api:",
       getClient: async () => {
         const pending = getSharedRedisClient();
         return pending ? ((await pending) as unknown as RateLimitRedis) : null;
@@ -148,8 +149,18 @@ function serveFrontendApp(expressApp: Express) {
       immutable: true,
       maxAge: "1y",
       setHeaders(res, filePath) {
-        if (filePath.endsWith("index.html") || filePath.endsWith("sw.js")) {
-          res.setHeader("Cache-Control", "no-store");
+        if (
+          filePath.endsWith("index.html") ||
+          filePath.endsWith("sw.js") ||
+          filePath.endsWith("manifest.json") ||
+          filePath.endsWith("version.json")
+        ) {
+          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+          return;
+        }
+        const normalized = filePath.replace(/\\/g, "/");
+        if (!normalized.includes("/assets/")) {
+          res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
         }
       },
     }),
@@ -164,6 +175,11 @@ function serveFrontendApp(expressApp: Express) {
       next();
       return;
     }
+    if (req.path.startsWith("/assets/")) {
+      res.status(404).end();
+      return;
+    }
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.sendFile(indexFile);
   });
 }

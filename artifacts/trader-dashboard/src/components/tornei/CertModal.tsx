@@ -112,7 +112,7 @@ export function CertModal({ cert, claiming, hasWallet, mintEnabled, onClaim, onC
                 setDownloading(true);
                 await downloadTorneoCertificate({
                   tier,
-                  userName: cert.userName || "Operatore Limen",
+                  userName: cert.userName || "Operatore AUREUS",
                   seasonLabel: cert.seasonLabel,
                   certId: cert.id,
                 });

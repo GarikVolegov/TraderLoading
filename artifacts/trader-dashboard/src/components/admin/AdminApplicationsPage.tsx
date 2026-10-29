@@ -125,7 +125,17 @@ function renderServiceBadges(services?: string[] | null) {
                 variant="outline"
                 className="border-purple-500/40 bg-purple-500/10 text-purple-400 text-[10px] whitespace-nowrap"
               >
-                +Dottrina 170€
+                +Dottrina 150€/m
+              </Badge>
+            );
+          case "quarterly_tournaments":
+            return (
+              <Badge
+                key={s}
+                variant="outline"
+                className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-[10px] whitespace-nowrap"
+              >
+                +Tornei Trimestrali
               </Badge>
             );
           default:
@@ -208,7 +218,7 @@ export function AdminApplicationsPage() {
       setActionNotes("");
       toast({
         title: "Candidatura Ammessa",
-        description: "L'operatore e i servizi approvati sono stati sbloccati nel Protocollo LIMEN.",
+        description: "L'operatore e i servizi approvati sono stati sbloccati nel Protocollo AUREUS.",
       });
     },
     onError: (err) => {
@@ -387,17 +397,24 @@ export function AdminApplicationsPage() {
                     <TableCell>
                       <div className="space-y-1">
                         {renderServiceBadges(app.approvedServices ?? app.selectedServices)}
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-mono text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 text-[#E8C56A] whitespace-nowrap">
                             {app.billingCycle === "yearly" ? "Annuale" : "Mensile"}
                           </span>
+                          {app.monthlyFeeCents === 260 && app.billingCycle !== "yearly" && (
+                            <span className="font-mono text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-[#10b981]/40 bg-[#10b981]/15 text-[#10b981] whitespace-nowrap">
+                              Promo 14G
+                            </span>
+                          )}
                           <span className="font-mono text-[11px] font-bold text-[#E8C56A] whitespace-nowrap">
                             {app.billingCycle === "yearly"
                               ? (app.yearlyFeeCents ?? 0) > 0
                                 ? `${(app.yearlyFeeCents ?? 0) / 100} €/anno`
                                 : "Base 0€"
                               : (app.monthlyFeeCents ?? 0) > 0
-                                ? `${(app.monthlyFeeCents ?? 0) / 100} €/mese`
+                                ? app.monthlyFeeCents === 260
+                                  ? "2,60 € (14g)"
+                                  : `${(app.monthlyFeeCents ?? 0) / 100} €/mese`
                                 : "Base 0€"}
                           </span>
                         </div>
@@ -485,7 +502,7 @@ export function AdminApplicationsPage() {
                   <span className="text-muted-foreground">Piano selezionato:</span>{" "}
                   <span className="font-semibold text-primary">
                     {selectedApp.planChosen === "founders_10"
-                      ? "Esclusiva Prime Persone (10€/m · 100€/a)"
+                      ? `Dotazione Operativa (${selectedApp.billingCycle === "monthly" ? "Promo 2,60€ / 10€/m" : "100€/a"})`
                       : selectedApp.planChosen === "complete_150" || selectedApp.planChosen === "direct_150"
                         ? "Progetto Completo (150€/m · 1.500€/a)"
                         : selectedApp.planChosen === "base_free"
@@ -556,7 +573,7 @@ export function AdminApplicationsPage() {
                       }
                       className="rounded border border-[#10b981]/40 bg-[#10b981]/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[#10b981] hover:bg-[#10b981]/20 transition-colors whitespace-nowrap"
                     >
-                      Prime Persone 10€ (Forgia + Patrimonio)
+                      Dotazione Operativa (Forgia + Patrimonio)
                     </button>
                     <button
                       type="button"

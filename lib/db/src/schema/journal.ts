@@ -32,7 +32,10 @@ export const journalImagesTable = pgTable("journal_images", {
   entryId: serial("entry_id").notNull().references(() => journalEntriesTable.id, { onDelete: "cascade" }),
   filePath: text("file_path").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [index("journal_images_entry_idx").on(table.entryId)]);
+}, (table) => [
+  index("journal_images_entry_idx").on(table.entryId),
+  index("journal_images_file_path_idx").on(table.filePath),
+]);
 
 export const journalRecapsTable = pgTable("journal_recaps", {
   id: serial("id").primaryKey(),

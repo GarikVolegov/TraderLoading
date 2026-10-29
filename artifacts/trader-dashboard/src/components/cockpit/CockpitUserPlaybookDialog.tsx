@@ -426,7 +426,7 @@ export function CockpitUserPlaybookDialog({
       asset: currentMarket,
       bias: s.category === "inversion" ? "long" : s.trigger === "WAIT" ? "wait" : "long",
       setupName: s.title,
-      notes: `[PLAYBOOK LIMEN: ${s.outcome.toUpperCase()}]\n${s.categoryLabel} · TRIGGER: ${s.trigger} (${s.comeTrigger})\nDOVE HTF: ${s.doveHTF}\nSINISTRA: ${s.sinistra}\nTARGET: ${s.targetPool}\nLEZIONE AUREA: ${s.lesson}`,
+      notes: `[PLAYBOOK AUREUS: ${s.outcome.toUpperCase()}]\n${s.categoryLabel} · TRIGGER: ${s.trigger} (${s.comeTrigger})\nDOVE HTF: ${s.doveHTF}\nSINISTRA: ${s.sinistra}\nTARGET: ${s.targetPool}\nLEZIONE AUREA: ${s.lesson}`,
       imageUrl: s.imageUrl || existing?.imageUrl || null,
       status: "draft",
       updatedAt: new Date().toISOString(),
@@ -526,7 +526,7 @@ export function CockpitUserPlaybookDialog({
                 I Miei Esempi Operativi · Playbook Sovrano
               </h3>
               <span className="hidden md:inline-flex px-1.5 py-0.2 rounded text-[10px] font-mono bg-white/5 border border-white/10 text-muted-foreground">
-                LIMEN Method
+                AUREUS Method
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">

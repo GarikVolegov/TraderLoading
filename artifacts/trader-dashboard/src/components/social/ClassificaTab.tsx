@@ -162,32 +162,33 @@ export function ClassificaTab({ currentUserId }: { currentUserId: string }) {
                     }`}
                   >
                     {/* Flank Sinistro: Posizione, Avatar, Nome bello grande, Grado & Eventuale Penalità */}
-                    <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 overflow-hidden">
+                    <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
                       <div className="shrink-0">
                         <PositionBadge position={entry.position} />
                       </div>
                       <div className="shrink-0">
                         <Avatar name={entry.name} avatarUrl={entry.avatarUrl} size="md" />
                       </div>
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 truncate">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
                         <span
-                          className={`text-base sm:text-lg font-bold font-display tracking-wide truncate ${
+                          className={`text-sm sm:text-lg font-bold font-display tracking-wide truncate min-w-[96px] sm:min-w-[120px] ${
                             isMe ? "text-[#E8C56A]" : "text-white"
                           }`}
                         >
                           {entry.name}
                         </span>
                         {isMe && (
-                          <span className="shrink-0 text-xs text-[#C5A059] font-mono font-semibold">
+                          <span className="shrink-0 text-xs text-[#C5A059] font-mono font-semibold whitespace-nowrap">
                             (Tu)
                           </span>
                         )}
-                        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-[#C5A059]/40 bg-[#C5A059]/10 px-2 py-0.5 font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#E8C56A]">
+                        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-[#C5A059]/40 bg-[#C5A059]/10 px-2 py-0.5 font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
                           <SigilIcon variant={entry.grade.sigilId} size={12} />
-                          {entry.grade.code} — {entry.grade.title}
+                          <span>{entry.grade.code}</span>
+                          <span className="hidden md:inline">— {entry.grade.title}</span>
                         </span>
                         {entry.recentViolationsCount > 0 && (
-                          <span className="shrink-0 rounded border border-[#8B1E1E] bg-[#8B1E1E]/20 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase text-red-400">
+                          <span className="shrink-0 rounded border border-[#8B1E1E] bg-[#8B1E1E]/20 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase text-red-400 whitespace-nowrap">
                             Penalizzato (-{entry.recentViolationsCount * 8} pt)
                           </span>
                         )}
@@ -196,38 +197,38 @@ export function ClassificaTab({ currentUserId }: { currentUserId: string }) {
 
                     {/* Flank Destro: Riquadri Dati (Costanza, Win Rate, R:R, Maestria) */}
                     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-                      <div className="rounded-lg border border-[#C5A059]/30 bg-[#12131A] px-2.5 sm:px-3 py-1.5 text-center min-w-[62px] sm:min-w-[76px] shadow-sm">
+                      <div className="rounded-lg border border-[#C5A059]/30 bg-[#12131A] px-2 sm:px-3 py-1.5 text-center min-w-[56px] sm:min-w-[76px] shadow-sm">
                         <div className="font-mono text-[8px] sm:text-[9px] uppercase tracking-wider text-slate-400">
                           Costanza
                         </div>
-                        <div className="font-mono text-xs sm:text-sm font-bold text-white">
+                        <div className="font-mono text-xs sm:text-sm font-bold text-white whitespace-nowrap">
                           {entry.consistencyScore}%
                         </div>
                       </div>
 
-                      <div className="rounded-lg border border-[#C5A059]/30 bg-[#12131A] px-2.5 sm:px-3 py-1.5 text-center min-w-[62px] sm:min-w-[76px] shadow-sm">
-                        <div className="font-mono text-[8px] sm:text-[9px] uppercase tracking-wider text-slate-400">
+                      <div className="hidden sm:block rounded-lg border border-[#C5A059]/30 bg-[#12131A] px-2.5 sm:px-3 py-1.5 text-center min-w-[62px] sm:min-w-[76px] shadow-sm">
+                        <div className="font-mono text-[8px] sm:text-[9px] uppercase tracking-wider text-slate-400 whitespace-nowrap">
                           Win Rate
                         </div>
-                        <div className="font-mono text-xs sm:text-sm font-bold text-white">
+                        <div className="font-mono text-xs sm:text-sm font-bold text-white whitespace-nowrap">
                           {entry.winRate != null ? `${entry.winRate}%` : "—"}
                         </div>
                       </div>
 
-                      <div className="rounded-lg border border-[#C5A059]/30 bg-[#12131A] px-2.5 sm:px-3 py-1.5 text-center min-w-[62px] sm:min-w-[76px] shadow-sm">
+                      <div className="hidden sm:block rounded-lg border border-[#C5A059]/30 bg-[#12131A] px-2.5 sm:px-3 py-1.5 text-center min-w-[62px] sm:min-w-[76px] shadow-sm">
                         <div className="font-mono text-[8px] sm:text-[9px] uppercase tracking-wider text-slate-400">
                           R:R
                         </div>
-                        <div className="font-mono text-xs sm:text-sm font-bold text-white">
+                        <div className="font-mono text-xs sm:text-sm font-bold text-white whitespace-nowrap">
                           {entry.avgRiskReward.toFixed(2)}
                         </div>
                       </div>
 
-                      <div className="rounded-lg border border-[#C5A059]/60 bg-[#171822] px-2.5 sm:px-3.5 py-1.5 text-center min-w-[68px] sm:min-w-[82px] shadow-[0_0_12px_rgba(197,160,89,0.12)]">
+                      <div className="rounded-lg border border-[#C5A059]/60 bg-[#171822] px-2.5 sm:px-3.5 py-1.5 text-center min-w-[64px] sm:min-w-[82px] shadow-[0_0_12px_rgba(197,160,89,0.12)]">
                         <div className="font-mono text-[8px] sm:text-[9px] uppercase tracking-wider text-[#C5A059]">
                           Maestria
                         </div>
-                        <div className="font-mono text-xs sm:text-sm font-bold text-[#E8C56A]">
+                        <div className="font-mono text-xs sm:text-sm font-bold text-[#E8C56A] whitespace-nowrap">
                           {entry.masteryScore.toFixed(1)}
                         </div>
                       </div>

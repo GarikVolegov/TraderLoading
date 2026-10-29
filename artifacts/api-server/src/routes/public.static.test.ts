@@ -23,4 +23,25 @@ assert.match(
   "traders count must exclude anonymous/unlinked profile rows",
 );
 
+assert.match(
+  source,
+  /\/public\/verify-honor\/:hash/,
+  "must define public GET verify-honor route",
+);
+assert.match(
+  source,
+  /\/public\/og-honor\/:hash/,
+  "must define public GET og-honor route for OpenGraph dynamic cards",
+);
+assert.match(
+  source,
+  /\/public\/verify-honor/,
+  "must define public POST verify-honor route",
+);
+assert.match(
+  source,
+  /\/public\/register-honor-seal/,
+  "must define public POST register-honor-seal route",
+);
+
 console.log("public stats route source checks passed");

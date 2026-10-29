@@ -2955,6 +2955,18 @@ components:
               type: array
               items:
                 type: string
+        directionalBias:
+          type: object
+          properties:
+            h4MasterBias:
+              type: string
+              enum: [BULLISH, BEARISH, NEUTRAL]
+            edgeTier:
+              type: string
+            antiFadeProtected:
+              type: boolean
+            confidenceScore:
+              type: number
     VarcoChecklistItemAudit:
       type: object
       required: [valid, note]

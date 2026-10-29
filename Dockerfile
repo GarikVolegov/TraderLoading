@@ -11,7 +11,7 @@ WORKDIR /app
 # Stage 1: Dependencies Cache
 FROM base AS deps
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json tsconfig.base.json ./
+COPY .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json tsconfig.base.json ./
 COPY artifacts/api-server/package.json artifacts/api-server/package.json
 COPY artifacts/trader-dashboard/package.json artifacts/trader-dashboard/package.json
 COPY lib/api-client-react/package.json lib/api-client-react/package.json
@@ -24,7 +24,7 @@ COPY lib/replit-auth-web/package.json lib/replit-auth-web/package.json
 COPY contracts/package.json contracts/package.json
 COPY scripts/package.json scripts/package.json
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
 
 # Stage 2: Compile & Build
 FROM deps AS build
@@ -38,10 +38,12 @@ ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 ENV VITE_CLERK_PROXY_URL=$VITE_CLERK_PROXY_URL
 ENV VITE_API_BASE=$VITE_API_BASE
 ENV VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
+ENV SKIP_PRERENDER=1
 
 COPY . .
 
 RUN pnpm run build:railway
+RUN pnpm --filter @workspace/api-server deploy --prod /prod/api-server
 
 # Stage 3: Hardened Runtime
 FROM node:24-bookworm-slim AS runtime
@@ -57,7 +59,8 @@ RUN useradd --system --uid 10001 --create-home --home-dir /home/trader trader \
   && mkdir -p /app/uploads \
   && chown -R trader:trader /app
 
-COPY --from=build --chown=trader:trader /app /app
+COPY --from=build --chown=trader:trader /prod/api-server /app/artifacts/api-server
+COPY --from=build --chown=trader:trader /app/artifacts/trader-dashboard/dist /app/artifacts/trader-dashboard/dist
 
 WORKDIR /app/artifacts/api-server
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { memo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { SigilIcon, type SigilVariant } from "@/components/ui/SigilIcon";
 
@@ -79,11 +79,11 @@ interface LimenPageEmblemProps {
  * Museum-grade 3D Blender + NanoBanana sculpted obsidian & burnished gold emblem
  * replaces flat emojis and plain wireframe icons in page headers across LIMEN PROTOCOL.
  */
-export function LimenPageEmblem({
+export const LimenPageEmblem = memo(function LimenPageEmblem({
   variant,
   size = "md",
   className,
-  alt = "LIMEN Emblem",
+  alt = "AUREUS Emblem",
 }: LimenPageEmblemProps) {
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -103,7 +103,7 @@ export function LimenPageEmblem({
     <div
       style={{ width: `${dim}px`, height: `${dim}px` }}
       className={cn(
-        "relative shrink-0 flex items-center justify-center select-none pointer-events-none transition-all duration-300",
+        "relative shrink-0 flex items-center justify-center select-none pointer-events-none transition-[transform,opacity] duration-200",
         className,
       )}
       aria-hidden="true"
@@ -114,7 +114,7 @@ export function LimenPageEmblem({
           alt={alt}
           width={dim}
           height={dim}
-          className="relative z-10 w-full h-full object-contain select-none pointer-events-none drop-shadow-[0_4px_8px_rgba(0,0,0,0.85)] filter transition-all duration-300"
+          className="relative z-10 w-full h-full object-contain select-none pointer-events-none"
           onError={() => setLoadFailed(true)}
           decoding="async"
         />
@@ -123,4 +123,4 @@ export function LimenPageEmblem({
       )}
     </div>
   );
-}
+});

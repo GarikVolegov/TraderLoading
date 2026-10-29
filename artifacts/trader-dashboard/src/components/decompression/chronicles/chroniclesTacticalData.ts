@@ -261,7 +261,7 @@ export const ORACLE_DILEMMAS: OracleDilemma[] = [
       {
         text: "Sposta lo Stop Loss più indietro per evitare di prendere la perdita.",
         outcomeText:
-          "Violazione cardine del Codice LIMEN. La Deriva si fa strada nella tua coscienza (-35 Integrità).",
+          "Violazione cardine del Codice AUREUS. La Deriva si fa strada nella tua coscienza (-35 Integrità).",
         effect: {
           sanityDelta: -35,
         },

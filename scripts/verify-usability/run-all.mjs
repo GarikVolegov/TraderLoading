@@ -12,6 +12,8 @@ const ORDER = [
   "tornei",
   "missions",
   "journal",
+  "backtest",
+  "mobile",
   "misc",
   "admin",
 ];

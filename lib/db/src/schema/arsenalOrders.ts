@@ -36,6 +36,7 @@ export const arsenalOrdersTable = pgTable(
     index("arsenal_orders_user_idx").on(t.userId),
     index("arsenal_orders_stripe_session_idx").on(t.stripeSessionId),
     index("arsenal_orders_status_idx").on(t.fulfillmentStatus),
+    index("arsenal_orders_created_idx").on(t.createdAt),
   ],
 );
 

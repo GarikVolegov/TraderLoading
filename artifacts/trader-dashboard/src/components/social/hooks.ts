@@ -40,8 +40,8 @@ export function useCommunityFiles(channelId: number | null) {
     queryKey: ["communityFiles", channelId],
     queryFn: () => apiJSON(`community/channels/${channelId}/files`),
     enabled: channelId !== null,
-    refetchInterval: 10_000,
-    staleTime: 0,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 }
 
@@ -58,7 +58,7 @@ export function useFeed() {
       apiJSON<FeedPage>(`social/feed?limit=20${pageParam ? `&cursor=${pageParam}` : ""}`),
     initialPageParam: null as number | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    refetchInterval: 8000,
+    refetchInterval: 60_000,
   });
 }
 
@@ -66,7 +66,7 @@ export function useStories() {
   return useQuery<StoryGroup[]>({
     queryKey: ["social/stories"],
     queryFn: () => apiJSON("social/stories"),
-    refetchInterval: 30000,
+    refetchInterval: 120_000,
   });
 }
 
@@ -74,7 +74,7 @@ export function useMutualFollowers() {
   return useQuery<SocialUser[]>({
     queryKey: ["social/mutual-followers"],
     queryFn: () => apiJSON("social/mutual-followers"),
-    refetchInterval: 15000,
+    refetchInterval: 120_000,
   });
 }
 
@@ -125,8 +125,8 @@ export function useCommunities() {
   return useQuery<CommunityType[]>({
     queryKey: ["communities"],
     queryFn: () => apiJSON("community"),
-    staleTime: 20_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
   });
 }
 
@@ -135,7 +135,7 @@ export function useCommunityDetail(id: number | null) {
     queryKey: ["community", id],
     queryFn: () => apiJSON(`community/${id}`),
     enabled: id !== null,
-    staleTime: 10_000,
+    staleTime: 30_000,
   });
 }
 
@@ -144,10 +144,10 @@ export function useCommunityMessages(channelId: number | null) {
     queryKey: ["communityMessages", channelId],
     queryFn: () => apiJSON(`community/channels/${channelId}/messages`),
     enabled: channelId !== null,
-    // The social WebSocket hub now delivers new channel messages in real time
-    // (see useSocialSocket); this poll is only a reconnection safety net.
-    refetchInterval: 15_000,
-    staleTime: 0,
+    // The social WebSocket hub delivers new channel messages in real time
+    // (see useSocialSocket); this relaxed poll acts as reconnection fallback.
+    refetchInterval: 45_000,
+    staleTime: 10_000,
   });
 }
 
@@ -156,8 +156,8 @@ export function useVoicePresence(channelId: number | null, enabled: boolean) {
     queryKey: ["voicePresence", channelId],
     queryFn: () => apiJSON(`community/voice/${channelId}/presence`),
     enabled: channelId !== null && enabled,
-    refetchInterval: 10_000,
-    staleTime: 0,
+    refetchInterval: 30_000,
+    staleTime: 5_000,
   });
 }
 

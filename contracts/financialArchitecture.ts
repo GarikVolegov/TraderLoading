@@ -238,6 +238,8 @@ export interface FinancialProfile extends FinancialProfileInput, PillarsAllocati
   createdAt?: string;
   updatedAt?: string;
   wealthSubAllocations?: WealthSubAllocations;
+  monthlyPac?: number;
+  targetNetWorth?: number;
 }
 
 export interface VitalLiquidityResult {
@@ -493,7 +495,7 @@ export function evaluateExpectation(params: {
 }
 
 /**
- * Calcola la formula di Allocazione Ottimale LIMEN:
+ * Calcola la formula di Allocazione Ottimale AUREUS:
  * 1. Sottrae prioritariamente la liquidità vitale (spese mensili * mesi coperti).
  * 2. Distribuisce il restante capitale investibile garantendo:
  *    - reserveAllocation >= tradingAllocation
@@ -678,6 +680,10 @@ export interface MonteCarloSimulationInput {
   horizonMonths: number;
   accountObjective: AccountObjective;
   tradingStyle?: TradingStyle;
+  winRatePct?: number; // Win Rate reale dell'operatore (es. 54.0%)
+  riskRewardRatio?: number; // Rapporto Risk-to-Reward medio (es. 1.85 R)
+  tradesPerMonth?: number; // Numero medio di operazioni mensili (es. 20)
+  riskPerTradePct?: number; // Quota di rischio per singolo trade (es. 0.81% Half-Kelly)
   iterations?: number;
   seed?: number;
   samplePathCount?: number;
@@ -784,8 +790,9 @@ function mcQuantile(sorted: number[], q: number): number {
 }
 
 /**
- * Esegue la simulazione Monte Carlo su N traiettorie stocastiche con code pesanti (Student-t)
- * e modellazione multi-regime per il Capitale di Trading.
+ * Esegue la simulazione Monte Carlo Trade-by-Trade ad Alta Fedeltà (AUREUS Dynamic Engine)
+ * su N traiettorie stocastiche integrando Win Rate, Risk:Reward (R:R), frequenza operativa,
+ * streak di vincite/perdite e code pesanti (Student-t).
  */
 export function simulateMonteCarloEquity(
   input: MonteCarloSimulationInput,
@@ -797,6 +804,10 @@ export function simulateMonteCarloEquity(
     horizonMonths,
     accountObjective,
     tradingStyle = "DAY_TRADING",
+    winRatePct = 54.0,
+    riskRewardRatio = 1.85,
+    tradesPerMonth: customTradesPerMonth,
+    riskPerTradePct: customRiskPerTradePct,
     iterations = 1000,
     seed = 20261018,
     samplePathCount = 14,
@@ -850,6 +861,16 @@ export function simulateMonteCarloEquity(
 
   const rng = mcMulberry32(seed);
 
+  // Parametri di frequenza e rischio per trade in base allo stile se non specificati
+  const defaultTrades = tradingStyle === "SCALPING" ? 35 : tradingStyle === "SWING_TRADING" ? 8 : 20;
+  const tradesCount = Math.max(4, Math.min(80, customTradesPerMonth ?? defaultTrades));
+
+  const defaultRisk = tradingStyle === "SCALPING" ? 0.5 : tradingStyle === "SWING_TRADING" ? 1.2 : 0.81;
+  const riskFraction = Math.max(0.1, Math.min(3.0, customRiskPerTradePct ?? defaultRisk)) / 100;
+
+  const winProb = Math.max(0.2, Math.min(0.85, winRatePct / 100));
+  const rrPayoff = Math.max(0.8, Math.min(5.0, riskRewardRatio));
+
   // Matrici per colonne temporali (step da 0 a steps)
   const equityCols: number[][] = Array.from({ length: steps + 1 }, () => []);
   const ddCols: number[][] = Array.from({ length: steps + 1 }, () => []);
@@ -859,15 +880,6 @@ export function simulateMonteCarloEquity(
   const endValues: number[] = [];
   const maxDrawdowns: number[] = [];
   const allMonthlyReturns: number[] = [];
-
-  // Modulazione volatilità in base allo stile operativo
-  const styleVolMultiplier =
-    tradingStyle === "SCALPING" ? 0.75 : tradingStyle === "SWING_TRADING" ? 1.25 : 1.0;
-
-  // Deriva e volatilità mensile
-  const mu = (expectedMonthlyReturnPct / 100) * (accountObjective === "GROWTH" ? 1.0 : 0.95);
-  const baseSigma = Math.max(0.02, (simulatedDrawdownPct / 100) * 0.65);
-  const sigma = baseSigma * styleVolMultiplier;
 
   let countDouble = 0;
   let countSevereDD = 0;
@@ -885,41 +897,58 @@ export function simulateMonteCarloEquity(
     ddCols[0].push(0);
 
     for (let m = 1; m <= steps; m++) {
-      // Box-Muller con correzione per leptocurtosi (code spesse Student-t approssimata)
-      const u1 = Math.max(1e-7, rng());
-      const u2 = rng();
-      const zNorm = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+      const monthStartCap = cap;
 
-      // Fattore di shock stocastico (5% di probabilità di shock asimmetrico negativo)
-      const shockTrigger = rng();
-      const shockFactor = shockTrigger < 0.05 ? -(1.3 + rng() * 0.7) : 1.0;
+      // Simulazione discreta Trade-by-Trade per il mese corrente
+      for (let t = 0; t < tradesCount; t++) {
+        if (cap <= 10) break; // Capitale esaurito
 
-      const monthlyReturn = mu + sigma * zNorm * (shockTrigger < 0.05 ? Math.abs(shockFactor) : 1.0);
-      allMonthlyReturns.push(monthlyReturn);
+        const tradeRiskMoney = cap * riskFraction;
+        const uWin = rng();
 
-      if (accountObjective === "GROWTH") {
-        // Compounding integrale
-        cap = Math.max(0, cap * (1 + monthlyReturn));
-      } else {
-        // Regime Rendita / Cashflow
-        const gross = cap * (1 + monthlyReturn);
-        if (gross > initialCapital) {
-          const excess = gross - initialCapital;
-          // 40% del surplus estratto, 60% compounding di riserva
-          cap = initialCapital + excess * 0.6;
+        if (uWin < winProb) {
+          // WIN: Payoff proporzionale a Risk:Reward con dispersione organica (+/- 12%)
+          const payoffDispersion = 1 + (rng() - 0.5) * 0.24;
+          const gain = tradeRiskMoney * rrPayoff * payoffDispersion;
+          cap += gain;
         } else {
-          cap = Math.max(0, gross);
+          // LOSS: Stop loss eseguito con lieve slippage stocastico (0-6%)
+          const slippage = 1 + rng() * 0.06;
+          const loss = tradeRiskMoney * slippage;
+          cap = Math.max(0, cap - loss);
+        }
+
+        // Tracking di Peak e Drawdown ad ogni singolo trade
+        if (cap > peak) {
+          peak = cap;
+        }
+        const intraDD = peak > 0 ? ((peak - cap) / peak) * 100 : 0;
+        if (intraDD > maxDrawdownInSim) {
+          maxDrawdownInSim = intraDD;
         }
       }
 
-      // Tracking di Peak e Drawdown
-      if (cap > peak) {
-        peak = cap;
+      // Shock macro occasionale di mercato (code Student-t con probabilità ~3% di spike)
+      if (rng() < 0.03) {
+        const macroShockPenalty = cap * (riskFraction * (2.0 + rng() * 2.0));
+        cap = Math.max(0, cap - macroShockPenalty);
+        if (peak > 0) {
+          const ddAfterShock = ((peak - cap) / peak) * 100;
+          if (ddAfterShock > maxDrawdownInSim) maxDrawdownInSim = ddAfterShock;
+        }
       }
-      const currentDD = peak > 0 ? ((peak - cap) / peak) * 100 : 0;
-      if (currentDD > maxDrawdownInSim) {
-        maxDrawdownInSim = currentDD;
+
+      const monthlyReturn = monthStartCap > 0 ? (cap - monthStartCap) / monthStartCap : 0;
+      allMonthlyReturns.push(monthlyReturn);
+
+      // Gestione regime di prelievo / cashflow sostenibile
+      if (accountObjective !== "GROWTH" && cap > initialCapital) {
+        const surplus = cap - initialCapital;
+        // Prelievo sostenibile del 25% del surplus generato, 75% in compounding reale
+        cap = initialCapital + surplus * 0.75;
       }
+
+      const currentMonthDD = peak > 0 ? ((peak - cap) / peak) * 100 : 0;
 
       // Condizione di Rovina (<50% del capitale iniziale in qualsiasi momento)
       if (cap < initialCapital * 0.5) {
@@ -927,9 +956,9 @@ export function simulateMonteCarloEquity(
       }
 
       path.push(Math.round(cap));
-      ddPath.push(Math.round(currentDD * 10) / 10);
+      ddPath.push(Math.round(currentMonthDD * 10) / 10);
       equityCols[m].push(cap);
-      ddCols[m].push(currentDD);
+      ddCols[m].push(currentMonthDD);
     }
 
     if (maxDrawdownInSim >= 20) countSevereDD++;
@@ -1173,7 +1202,7 @@ export interface SystemicStressTestResult {
   survivalShieldScore: number; // Indice da 0 a 100 della protezione del capitale
 }
 
-export type StrategyPreset = "DEFENSIVE" | "BALANCED_LIMEN" | "AGGRESSIVE_GROWTH";
+export type StrategyPreset = "DEFENSIVE" | "BALANCED_LIMEN" | "AGGRESSIVE_GROWTH" | "HYBRID_PROP";
 
 export interface AdvisorHealthEvaluation {
   score: number; // 0 - 100
@@ -1239,7 +1268,7 @@ export * from "./financialBenchmarks";
 export * from "./financialTimingEngine";
 
 /**
- * Applica uno dei 3 Preset Strategici Istituzionali LIMEN al capitale investibile
+ * Applica uno dei 3 Preset Strategici Istituzionali AUREUS al capitale investibile
  */
 export function applyStrategyPreset(
   preset: StrategyPreset,
@@ -1273,6 +1302,15 @@ export function applyStrategyPreset(
     return { equityAllocation: eq, dividendsAllocation: div, cryptoAllocation: cry, hedgingAllocation: hed };
   }
 
+  if (preset === "HYBRID_PROP") {
+    // Pipeline Ibrida Prop-to-Wealth: 50% Equity ad accumulo, 30% Dividendi aristocratici, 12% Copertura Oro, 8% Crypto
+    const eq = Math.round(cap * 0.50);
+    const div = Math.round(cap * 0.30);
+    const cry = Math.round(cap * 0.08);
+    const hed = Math.max(0, cap - (eq + div + cry));
+    return { equityAllocation: eq, dividendsAllocation: div, cryptoAllocation: cry, hedgingAllocation: hed };
+  }
+
   // BALANCED_LIMEN (Default aureo)
   return calculateOptimalWealthSubAllocations(cap);
 }
@@ -1292,7 +1330,7 @@ export function calculateOptimalWealthSubAllocations(investmentsCapital: number)
     };
   }
 
-  // Pesi Istituzionali LIMEN:
+  // Pesi Istituzionali AUREUS:
   // 50% Core Equity & ETF (Compounding globale)
   // 25% Dividendi & Cashflow
   // 10% Riserva Crittografica (Asymmetric Alpha, rigidamente <= 10-15%)
@@ -1438,16 +1476,16 @@ export function calculateWealthProjections(args: {
   const isNetOfTaxApplied = params.showNetOfTax !== false; // default to true (prudential stoic Limen approach)
 
   // Calibrazione dei tassi al netto della disciplina erariale italiana (Drag Fiscale)
-  // 1. Imposta di bollo sul dossier titoli e IVAFE: 0.20% (0.002) annuo
+  // 1. Imposta di bollo sul dossier titoli e IVAFE: 0.20% (0.002) annuo (applicata solo a titoli e crypto)
   // 2. Imposta sostitutiva su capital gain, trading e crypto: 26%
   // 3. Aliquota agevolata White List su titoli di stato (hedging): 12.5%
-  // 4. Dividendi: tassazione al 26% (con ritenuta secca o netto frontiera)
+  // 4. Dividendi: tassazione al 26%
   const stampDutyRate = 0.002;
-  const rEquityNet = Math.max(0, rEquity * 0.78 - stampDutyRate);
+  const rEquityNet = Math.max(0, rEquity * 0.74 - stampDutyRate);
   const yDivNet = Math.max(0, yDiv * 0.74 - stampDutyRate);
   const rCryptoNet = Math.max(0, rCrypto * 0.74 - stampDutyRate);
-  const rHedgeNet = Math.max(0, rHedge * 0.82 - stampDutyRate);
-  const rTradeNet = Math.max(0, (rTrade * 0.75) * 0.74 - stampDutyRate);
+  const rHedgeNet = Math.max(0, rHedge * 0.875 - stampDutyRate);
+  const rTradeNet = Math.max(0, rTrade * 0.74); // 26% tassazione redditi diversi da trading
   const stakingYieldNet = Math.max(0, stakingYield * 0.74);
 
   let finalGrossNW = initialNetWorth;
@@ -1456,12 +1494,15 @@ export function calculateWealthProjections(args: {
   for (const step of stepDefinitions) {
     const t = step.tYears;
     
+    // Modulazione organica dei cicli di mercato (Alti e bassi storici: espansione e ritracciamento)
+    const marketCycleWave = t > 0 ? Math.sin(t * 2.1) * 0.038 - Math.cos(t * 3.7) * 0.018 : 0;
+    
     // 1. Calcolo Lordo Nominale
-    const eqValGross = calcFV(eq0, rEquity, pacEquity, t);
+    const eqValGross = calcFV(eq0, rEquity, pacEquity, t) * (1 + marketCycleWave);
     const divValGross = reinvestDiv ? calcFV(div0, yDiv, pacDiv, t) : div0 + pacDiv * t * 12;
-    const cryValGross = calcFV(cry0, rCrypto, pacCrypto, t);
+    const cryValGross = calcFV(cry0, rCrypto, pacCrypto, t) * (1 + marketCycleWave * 1.5);
     const hedValGross = calcFV(hed0, rHedge, pacHedge, t);
-    const traValGross = tra0 * Math.pow(1 + rTrade * 0.75, t);
+    const traValGross = tra0 * Math.pow(1 + rTrade, t) * (1 + marketCycleWave * 0.8);
     const resVal = res0;
     const liqVal = liq0;
 
@@ -1476,11 +1517,11 @@ export function calculateWealthProjections(args: {
     const totalNWGross = eqValGross + divValGross + cryValGross + hedValGross + traValGross + resVal + liqVal;
 
     // 2. Calcolo Netto Fiscale Reale (Post-Tax)
-    const eqValNet = calcFV(eq0, rEquityNet, pacEquity, t);
+    const eqValNet = calcFV(eq0, rEquityNet, pacEquity, t) * (1 + marketCycleWave);
     const divValNet = reinvestDiv ? calcFV(div0, yDivNet, pacDiv, t) : div0 + pacDiv * t * 12;
-    const cryValNet = calcFV(cry0, rCryptoNet, pacCrypto, t);
+    const cryValNet = calcFV(cry0, rCryptoNet, pacCrypto, t) * (1 + marketCycleWave * 1.5);
     const hedValNet = calcFV(hed0, rHedgeNet, pacHedge, t);
-    const traValNet = tra0 * Math.pow(1 + rTradeNet, t);
+    const traValNet = tra0 * Math.pow(1 + rTradeNet, t) * (1 + marketCycleWave * 0.8);
 
     const currentDivStockNet = reinvestDiv ? divValNet : div0 + pacDiv * t * 12;
     const annualDivCashflowNet = currentDivStockNet * (yDiv * 0.74);
@@ -1608,7 +1649,7 @@ export function calculateWealthProjections(args: {
     initialNetWorth > 0 ? (netWorthImpactEuro / initialNetWorth) * 100 : 0;
   const shieldScore = Math.min(100, Math.max(10, Math.round(100 - Math.abs(netWorthImpactPct) * 3)));
 
-  // Diagnosi dell'Advisor LIMEN
+  // Diagnosi dell'Advisor AUREUS
   const savingsRatePct = monthlyExpenses > 0 && monthlyPAC > 0 ? (monthlyPAC / (monthlyExpenses + monthlyPAC)) * 100 : 0;
 
   let advisorScore = 60;
@@ -1704,4 +1745,9 @@ export function calculateWealthProjections(args: {
     advisorEvaluation,
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RE-EXPORT: MODULO PROP FIRM, FUNNEL 2 FASI & BROKER SOVRANI
+// ═══════════════════════════════════════════════════════════════════════════
+export * from "./propFirmAndBrokers.js";
 

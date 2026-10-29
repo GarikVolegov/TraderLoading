@@ -49,9 +49,13 @@ await assert.rejects(simulateReplayExecution({ pages: abortedHistory(), position
 assert.equal(position.bestPips, 0);
 
 // Multi-position execution: two positions (one stopped, one survives)
+async function* multiHistory() {
+  yield [bar(120, 69.9, 70.2), bar(180, 69.7, 70.2)];
+  yield [bar(240, 69.6, 70.5)];
+}
 const p1 = openPosition({ id: "pos-1", direction: "buy", entryPrice: 70, entryTime: 120, slPips: 20, tpPips: 40, lots: 0.5, riskAmount: 100, symbol: "USOIL" });
 const p2 = openPosition({ id: "pos-2", direction: "buy", entryPrice: 70, entryTime: 120, slPips: 50, tpPips: 100, lots: 0.2, riskAmount: 100, symbol: "USOIL" });
-const multiResult = await simulateReplayExecution({ pages: history(), positions: [p1, p2], symbol: "USOIL", targetTime: 14400, rules });
+const multiResult = await simulateReplayExecution({ pages: multiHistory(), positions: [p1, p2], symbol: "USOIL", targetTime: 14400, rules });
 assert.equal(multiResult.exits.length, 1);
 assert.equal(multiResult.exits[0].exitReason, "sl");
 assert.equal(multiResult.positions.length, 1, "p2 survived because its wider SL was not hit");

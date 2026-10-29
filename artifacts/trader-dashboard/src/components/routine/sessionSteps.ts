@@ -1,18 +1,18 @@
-import { Moon, Wind, Smile, Heart, Eye, Zap, BookOpen } from "lucide-react";
+import { Moon, Wind, Heart, Eye, Zap, BookOpen, ShieldCheck, Activity } from "lucide-react";
 import type { SessionStep } from "./types";
 
 export const MORNING_STEPS: SessionStep[] = [
-  { type: "emotion-quiz",   title: "Come ti senti?",          subtitle: "Check-in emotivo pre-sessione",           icon: Smile },
-  { type: "breathing",      title: "Respirazione",             subtitle: "Box breathing 4-4-4-4 · 4 cicli",         icon: Wind },
-  { type: "gratitude",      title: "Gratitudine",              subtitle: "Tre cose per cui sei grato stamattina",   icon: Heart },
-  { type: "visualization",  title: "Visualizzazione",          subtitle: "Immagina la tua sessione perfetta",       icon: Eye,  skippable: true },
-  { type: "complete",       title: "Pratica completata",       subtitle: "La preparazione operativa continua in Oggi", icon: Zap },
+  { type: "emotion-quiz",   title: "Stato Bio-Emotivo",               subtitle: "Valutazione stoica dello stato di presenza pre-sessione", icon: Activity },
+  { type: "breathing",      title: "Centratura Neurale",              subtitle: "Box breathing 4-4-4-4 · 4 cicli di stabilità",           icon: Wind },
+  { type: "gratitude",      title: "Regola & Gratitudine",            subtitle: "I tre vincoli inviolabili e fondamenti della sessione",   icon: Heart },
+  { type: "visualization",  title: "Contemplazione dello Scenario",  subtitle: "Visualizzazione chirurgica dell'esecuzione disciplinata", icon: Eye, skippable: true },
+  { type: "complete",       title: "Sigillo d'Allineamento",          subtitle: "La preparazione operativa continua ne Il Varco",          icon: Zap },
 ];
 
 export const EVENING_STEPS: SessionStep[] = [
-  { type: "emotion-quiz",   title: "Come è andata?",           subtitle: "Check-out emotivo di fine sessione",      icon: Smile },
-  { type: "breathing",      title: "Decompressione",           subtitle: "Respirazione 4-7-8 per rilassarsi",       icon: Wind },
-  { type: "gratitude",      title: "Gratitudine serale",       subtitle: "Tre lezioni o cose positive di oggi",     icon: Heart },
-  { type: "reflection",     title: "Riflessione",              subtitle: "Analisi onesta della giornata",           icon: BookOpen },
-  { type: "complete",       title: "Buona notte!",             subtitle: "Riposa bene. Domani torni più forte",     icon: Moon },
+  { type: "emotion-quiz",   title: "Verifica della Deriva",           subtitle: "Check-out stoico sulla disciplina della seduta",         icon: ShieldCheck },
+  { type: "breathing",      title: "Decompressione Neurale",          subtitle: "Respirazione cadenzata 4-7-8 per il distacco conscio",   icon: Wind },
+  { type: "gratitude",      title: "Insegnamenti della Seduta",       subtitle: "Tre lezioni o conferme oggettive emerse oggi",            icon: Heart },
+  { type: "reflection",     title: "Il Libro della Verità",           subtitle: "Rendicontazione onesta e analisi analitica",              icon: BookOpen },
+  { type: "complete",       title: "Sigillo di Chiusura",             subtitle: "Sessione sigillata. Distacco conscio e riposo disciplinato", icon: Moon },
 ];

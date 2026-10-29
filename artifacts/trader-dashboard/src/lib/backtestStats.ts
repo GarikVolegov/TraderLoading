@@ -136,17 +136,17 @@ export function calculateBacktestStats(
   let rrCount = 0;
 
   for (const trade of trades) {
-    if (trade.stopLoss && trade.entryPrice) {
-      const entry = toNumber(trade.entryPrice);
-      const stopLoss = toNumber(trade.stopLoss);
-      const exit = toNumber(trade.exitPrice);
-      const risk = Math.abs(entry - stopLoss);
+    const entry = toNumber(trade.entryPrice);
+    const exit = toNumber(trade.exitPrice);
+    let risk = trade.initialRisk != null ? toNumber(trade.initialRisk) : 0;
+    if (risk <= 0 && trade.stopLoss && trade.entryPrice) {
+      risk = Math.abs(entry - toNumber(trade.stopLoss));
+    }
 
-      if (risk > 0) {
-        const reward = trade.direction === "buy" ? exit - entry : entry - exit;
-        totalRR += reward / risk;
-        rrCount += 1;
-      }
+    if (risk > 0 && entry > 0 && exit > 0) {
+      const reward = trade.direction === "buy" ? exit - entry : entry - exit;
+      totalRR += reward / risk;
+      rrCount += 1;
     }
   }
 
@@ -190,6 +190,8 @@ export function calculateDetailedBacktestStats(
   const lossRate = Math.round((losses / total) * 100);
   const beRate = Math.round((breakevens / total) * 100);
 
+  let grossMonetaryGains = 0;
+  let grossMonetaryLosses = 0;
   let grossGains = 0;
   let grossLosses = 0;
   let winCount = 0;
@@ -209,6 +211,12 @@ export function calculateDetailedBacktestStats(
     if (pnl > bestPnl) bestPnl = pnl;
     if (pnl < worstPnl) worstPnl = pnl;
 
+    if (pnl > 0) {
+      grossMonetaryGains += pnl;
+    } else if (pnl < 0) {
+      grossMonetaryLosses += Math.abs(pnl);
+    }
+
     if (pips > 0) {
       grossGains += pips;
       winCount++;
@@ -218,7 +226,11 @@ export function calculateDetailedBacktestStats(
     }
   }
 
-  const profitFactor = grossLosses > 0 ? (grossGains / grossLosses).toFixed(2) : grossGains > 0 ? "MAX" : null;
+  const profitFactor = grossMonetaryLosses > 0
+    ? (grossMonetaryGains / grossMonetaryLosses).toFixed(2)
+    : grossMonetaryGains > 0
+      ? "MAX"
+      : (grossLosses > 0 ? (grossGains / grossLosses).toFixed(2) : grossGains > 0 ? "MAX" : null);
   const avgWinPipsNum = winCount > 0 ? grossGains / winCount : 0;
   const avgLossPipsNum = lossCount > 0 ? grossLosses / lossCount : 0;
   const winLossRatio = avgLossPipsNum > 0 ? (avgWinPipsNum / avgLossPipsNum).toFixed(2) : null;

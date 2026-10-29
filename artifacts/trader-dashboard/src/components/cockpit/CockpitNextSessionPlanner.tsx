@@ -120,7 +120,7 @@ export function CockpitNextSessionPlanner({
       setNotificationPermission(perm);
       if (perm === "granted") {
         await deliverBrowserNotification({
-          title: "LIMEN · Notifiche Sessione Attive",
+          title: "AUREUS · Notifiche Sessione Attive",
           body: "Riceverai un promemoria operativo all'avvio della sessione con il tuo piano.",
         });
       }
@@ -136,7 +136,7 @@ export function CockpitNextSessionPlanner({
       if (perm !== "granted") return;
     }
     await deliverBrowserNotification({
-      title: `LIMEN · Prossima Sessione [${SESSIONS_CONFIG[session].name}]`,
+      title: `AUREUS · Prossima Sessione [${SESSIONS_CONFIG[session].name}]`,
       body: `Piano attivo per ${asset}: ${title || "Verifica livelli chiave e piano condizionale prima di entrare."}`,
     });
     setTestNotificationSent(true);
@@ -164,7 +164,7 @@ export function CockpitNextSessionPlanner({
         const targetHour = sessionHours[plan.session];
         if (targetHour !== undefined && currentHour === targetHour && currentMinute <= 5) {
           deliverBrowserNotification({
-            title: `LIMEN · Sessione ${SESSIONS_CONFIG[plan.session].name} Avviata!`,
+            title: `AUREUS · Sessione ${SESSIONS_CONFIG[plan.session].name} Avviata!`,
             body: `${plan.asset}: ${plan.title}. Livelli: ${plan.levels || "Verifica il piano condizionale sul Varco."}`,
           });
           modified = true;

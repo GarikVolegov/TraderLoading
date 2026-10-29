@@ -165,7 +165,7 @@ export function LimenOperationalChain({ compact = false }: { compact?: boolean }
 
   return (
     <nav
-      aria-label={"Catena Operativa LIMEN"}
+      aria-label={"Catena Operativa AUREUS"}
       className={`limen-chain-bar relative overflow-hidden border border-border/85 bg-card/90 backdrop-blur-md transition-colors ${
         compact ? "px-3 py-1.5" : "px-3.5 py-2 sm:px-4"
       }`}

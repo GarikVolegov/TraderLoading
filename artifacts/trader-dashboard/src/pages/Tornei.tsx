@@ -12,6 +12,8 @@ import { PercorsoView } from "@/components/tornei/PercorsoView";
 import { CertModal } from "@/components/tornei/CertModal";
 import { BacktestTournamentHub } from "@/components/backtest-tournament/BacktestTournamentHub";
 import { Button } from "@/components/ui/button";
+import { LimenServiceLockGate } from "@/components/candidacy/LimenServiceLockGate";
+import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
 import { countdownParts, pad2 } from "@/components/tornei/format";
 import {
   fetchTorneiCurrent,
@@ -33,11 +35,42 @@ import "@/components/tornei/tornei.css";
 
 type Dir = "arena" | "percorso" | "battaglie";
 
+function SeasonCountdownBadge({
+  target,
+  showCountdown,
+  label,
+  endedLabel,
+}: {
+  target: number;
+  showCountdown: boolean;
+  label: string;
+  endedLabel: string;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!showCountdown) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [showCountdown]);
+  const c = countdownParts(target, now);
+  const countdownFormatted = `${c.d}d : ${pad2(c.h)}h : ${pad2(c.m)}m : ${pad2(c.s)}s`;
+  return (
+    <div className="flex items-center gap-2 bg-[#07080B] border border-[#26262E] rounded-lg px-2.5 py-1 whitespace-nowrap shrink-0">
+      <Timer size={12} className="text-[#C5A059] shrink-0" />
+      <span className="text-[10px] text-slate-400 whitespace-nowrap">{label}:</span>
+      <span className="text-[#E8C56A] font-bold text-xs font-mono whitespace-nowrap tracking-wide">
+        {showCountdown ? countdownFormatted : endedLabel}
+      </span>
+    </div>
+  );
+}
+
 export default function Tornei() {
   return <PageLayout fullWidth><TorneiWorkspace /></PageLayout>;
 }
 
 export function TorneiWorkspace({ embedded = false }: { embedded?: boolean }) {
+  const { entitlements, isAdmin } = useLimenEntitlements();
   const { t } = useLanguage();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -55,7 +88,6 @@ export function TorneiWorkspace({ embedded = false }: { embedded?: boolean }) {
   };
   const setMetric = (value: TorneiMetric) => navigate(`/chat${updateWorkspaceQuery(search, { t: "competizioni", metrica: value })}`);
   const [selectedCert, setSelectedCert] = useState<TorneiCertificate | null>(null);
-  const [now, setNow] = useState(() => Date.now());
 
   const walletQuery = useQuery({ queryKey: torneiWalletKey(), queryFn: () => fetchTorneiWallet() });
   const hasWallet = Boolean(walletQuery.data?.walletAddress);
@@ -114,19 +146,18 @@ export function TorneiWorkspace({ embedded = false }: { embedded?: boolean }) {
   const target = season ? (season.status === "upcoming" ? Date.parse(season.startsAt) : Date.parse(season.endsAt)) : 0;
   const showCountdown = Boolean(season && season.status !== "ended");
 
-  useEffect(() => {
-    if (!showCountdown) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [showCountdown]);
-
-  const c = countdownParts(target, now);
-  const countdownFormatted = `${c.d}d : ${pad2(c.h)}h : ${pad2(c.m)}m : ${pad2(c.s)}s`;
-
   const visibleQueries = dir === "arena"
     ? [currentQuery, standingsQuery]
     : [currentQuery, meQuery, hallQuery];
   const failed = visibleQueries.some((query) => query.isError);
+
+  if (!isAdmin && !entitlements.quarterlyTournaments) {
+    return (
+      <div className={embedded ? "p-4 flex items-center justify-center min-h-[360px]" : "py-8 flex items-center justify-center"}>
+        <LimenServiceLockGate serviceId="quarterly_tournaments" />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -146,7 +177,7 @@ export function TorneiWorkspace({ embedded = false }: { embedded?: boolean }) {
             </span>
             <div className="flex items-center gap-2 shrink-0">
               <h2 className="font-display text-xs sm:text-sm font-bold uppercase tracking-wider text-white whitespace-nowrap">
-                Torneo Mensile {season?.label ? `// ${season.label}` : ""}
+                Le Prove del Fuoco {season?.label ? `// ${season.label}` : ""}
               </h2>
               {season && (
                 <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-[#C5A059]/35 bg-[#C5A059]/10 px-2.5 py-0.5 font-mono text-[9.5px] text-[#E8C56A] font-bold whitespace-nowrap shrink-0">
@@ -166,13 +197,12 @@ export function TorneiWorkspace({ embedded = false }: { embedded?: boolean }) {
           {/* Sezione Centro: Conto alla Rovescia & Progresso */}
           {season && (
             <div className="hidden md:flex items-center gap-2.5 font-mono text-xs text-slate-300 shrink-0">
-              <div className="flex items-center gap-2 bg-[#07080B] border border-[#26262E] rounded-lg px-2.5 py-1 whitespace-nowrap shrink-0">
-                <Timer size={12} className="text-[#C5A059] shrink-0" />
-                <span className="text-[10px] text-slate-400 whitespace-nowrap">{t("tornei.countdown")}:</span>
-                <span className="text-[#E8C56A] font-bold text-xs font-mono whitespace-nowrap tracking-wide">
-                  {showCountdown ? countdownFormatted : t("tornei.status.ended")}
-                </span>
-              </div>
+              <SeasonCountdownBadge
+                target={target}
+                showCountdown={showCountdown}
+                label={t("tornei.countdown")}
+                endedLabel={t("tornei.status.ended")}
+              />
               <div className="hidden lg:flex items-center gap-2 bg-[#07080B] border border-[#26262E] rounded-lg px-2.5 py-1 text-[10px] whitespace-nowrap shrink-0">
                 <span className="text-slate-400 whitespace-nowrap">Mese:</span>
                 <div className="w-16 h-1.5 bg-[#181920] rounded-full border border-[#26262E] overflow-hidden shrink-0">
@@ -249,7 +279,9 @@ export function TorneiWorkspace({ embedded = false }: { embedded?: boolean }) {
         {/* Contenuto Principale: Cockpit Zero-Scroll */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
           {dir === "battaglie" ? (
-            <BacktestTournamentHub />
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#C5A059]/30">
+              <BacktestTournamentHub />
+            </div>
           ) : failed ? (
             <div role="alert" className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center my-auto">
               <p>{t("common.load_error")}</p>

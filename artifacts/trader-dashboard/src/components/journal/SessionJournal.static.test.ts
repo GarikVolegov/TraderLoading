@@ -3,10 +3,10 @@ import fs from "node:fs";
 
 const src = fs.readFileSync("src/components/journal/SessionJournal.tsx", "utf8");
 
-// 1. LIMEN Brand & Aesthetic consistency
-assert.match(src, /SigilIcon/, "SessionJournal must use LIMEN SigilIcon geometry");
-assert.match(src, /LIMEN PROTOCOL/, "Must reference the official protocol breadcrumb");
-assert.match(src, /C5A059|D4AF37/, "Must apply LIMEN gold styling constants");
+// 1. AUREUS Brand & Aesthetic consistency
+assert.match(src, /SigilIcon/, "SessionJournal must use SigilIcon geometry");
+assert.match(src, /(AUREUS|LIMEN) PROTOCOL/, "Must reference the official protocol breadcrumb");
+assert.match(src, /C5A059|D4AF37/, "Must apply brand gold styling constants");
 
 // 2. Usability & Metrics
 assert.match(src, /stats\.adherence/, "Must calculate and display adherence / integrity index");

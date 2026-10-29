@@ -248,13 +248,13 @@ export const CURRENT_GOLD_BENCHMARK: GoldMarketBenchmark = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. TRADING (TRANS-LIMEN) — PARAMETRI QUANTITATIVI HALF-KELLY
+// 5. TRADING (AUREUS PROTOCOL) — PARAMETRI QUANTITATIVI HALF-KELLY
 // ─────────────────────────────────────────────────────────────────────────────
 export interface TradingKellyModel {
   winRatePct: number; // Win rate storico verificato (%)
   riskRewardRatio: number; // Rapporto R:R medio realizzato
   fullKellyFractionPct: number; // Quota ottimale teorica di Kelly
-  halfKellyFractionPct: number; // Quota conservativa LIMEN (Half-Kelly)
+  halfKellyFractionPct: number; // Quota conservativa AUREUS (Half-Kelly)
   maxRiskPerTradePctOfAccount: number; // Rischio massimo per operazione (% del conto trading)
   expectedMonthlyCagrPct: number; // Tasso mensile atteso sul conto trading (%)
 }
@@ -267,3 +267,5 @@ export const LIMEN_TRADING_KELLY_MODEL: TradingKellyModel = {
   maxRiskPerTradePctOfAccount: 0.8,
   expectedMonthlyCagrPct: 3.0,
 };
+
+export const AUREUS_TRADING_KELLY_MODEL = LIMEN_TRADING_KELLY_MODEL;

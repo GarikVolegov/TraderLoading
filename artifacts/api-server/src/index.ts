@@ -4,6 +4,7 @@ import app from "./app";
 import { cotScheduler } from "./routes/tools.js";
 import { startTorneiScheduler } from "./cron/torneiScheduler.js";
 import { startLifecycleScheduler } from "./cron/lifecycleScheduler.js";
+import { startCandleTailScheduler } from "./cron/candleTailScheduler.js";
 import { startSessionScheduler } from "./routes/push.js";
 import { attachAccountBridgeWebSocket } from "./services/accountBridge/socketServer.js";
 import { attachBrokerHubWebSocket } from "./services/brokerHub/socketServer.js";
@@ -17,8 +18,16 @@ import { attachBattleRoomWebSocket } from "./services/backtestTournaments/battle
 import logger from "./lib/logger";
 import { backgroundTasksEnabled } from "./lib/localBackgroundTasks.js";
 import { assertRedisConfigured, closeSharedRedisClient } from "./lib/redisClient.js";
+import { closeAppCache } from "./lib/cache.js";
+import { warmupCache } from "./services/cacheWarmup.js";
+import {
+  getServiceRole,
+  shouldRunSchedulers,
+  shouldRunWebSockets,
+} from "./services/serviceRole.js";
 import { uploadsPersistenceWarning } from "./lib/uploads.js";
 import { captureError, flushObservability, initObservability } from "./lib/observability";
+import { systemWatchdog } from "./lib/systemWatchdog.js";
 
 initObservability();
 
@@ -42,12 +51,36 @@ assertRedisConfigured();
 const uploadsWarning = uploadsPersistenceWarning();
 if (uploadsWarning) logger.warn(uploadsWarning);
 
+const serviceRole = getServiceRole();
+logger.info({ serviceRole }, "Initializing AUREUS service runtime");
+
 const server = createServer(app);
+// High-concurrency production tuning: Keep-alive timeout must exceed the reverse proxy idle timeout
+// (e.g. AWS ALB 60s, Railway proxy, Cloudflare) to prevent premature socket resets and 502 Bad Gateway errors.
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 66_000;
+server.requestTimeout = 30_000;
+const noopAsyncCloseHandle = {
+  async close() {},
+};
+
+const runWebSockets = shouldRunWebSockets(serviceRole);
 const accountBridgeSocket = attachAccountBridgeWebSocket(server);
 const brokerHubSocket = attachBrokerHubWebSocket(server);
 const newsHubSocket = attachNewsHubWebSocket(server, newsHubRuntime);
-const socialHubSocket = attachSocialHubWebSocket(server);
-const battleRoomSocket = attachBattleRoomWebSocket(server);
+const socialHubSocket = runWebSockets
+  ? attachSocialHubWebSocket(server)
+  : noopAsyncCloseHandle;
+const battleRoomSocket = runWebSockets
+  ? attachBattleRoomWebSocket(server)
+  : noopAsyncCloseHandle;
+if (!runWebSockets) {
+  void Promise.allSettled([
+    accountBridgeSocket.close(),
+    brokerHubSocket.close(),
+    newsHubSocket.close(),
+  ]);
+}
 let newsProviderSockets: ReturnType<typeof attachNewsProviderSockets> | null = null;
 let intelligenceScheduler: ReturnType<typeof startMarketIntelligenceScheduler> | null = null;
 
@@ -62,6 +95,7 @@ const noopCloseHandle: CloseHandle = {
 let sessionScheduler: CloseHandle = noopCloseHandle;
 let torneiScheduler: { close(): void | Promise<void> } = { close() {} };
 let lifecycleScheduler: { close(): void | Promise<void> } = { close() {} };
+let candleTailScheduler: { close(): void | Promise<void> } = { close() {} };
 let isShuttingDown = false;
 
 function closeHttpServer(): Promise<void> {
@@ -112,9 +146,11 @@ async function shutdown(reason: string, exitCode = 0): Promise<void> {
     sessionScheduler.close(),
     torneiScheduler.close(),
     lifecycleScheduler.close(),
+    candleTailScheduler.close(),
     brokerHubRuntime.close(),
     cotScheduler.close(),
     newsHubRuntime.stop(),
+    closeAppCache(),
   ]);
 
   logShutdownFailures(stopResults);
@@ -141,6 +177,7 @@ process.on("SIGINT", () => {
 });
 
 process.on("unhandledRejection", (reason) => {
+  systemWatchdog.handleUnhandledRejection(reason);
   captureError(reason instanceof Error ? reason : new Error("Unhandled promise rejection"), {
     reason,
     surface: "process",
@@ -163,7 +200,14 @@ process.on("uncaughtException", (err) => {
 });
 
 server.listen(port, () => {
-  logger.info({ port }, "Server listening");
+  logger.info({ port, serviceRole }, "Server listening");
+  if (!shouldRunSchedulers(serviceRole)) {
+    void cotScheduler
+      .close()
+      .catch((err) => logger.warn({ err }, "COT scheduler bypass failed"));
+    logger.info({ serviceRole }, "Background schedulers bypassed for service role");
+    return;
+  }
   if (!backgroundTasksEnabled(process.env)) {
     void cotScheduler
       .close()
@@ -174,10 +218,14 @@ server.listen(port, () => {
   sessionScheduler = startSessionScheduler();
   torneiScheduler = startTorneiScheduler();
   lifecycleScheduler = startLifecycleScheduler();
+  candleTailScheduler = startCandleTailScheduler();
   newsProviderSockets = attachNewsProviderSockets(newsHubRuntime);
   intelligenceScheduler = startMarketIntelligenceScheduler();
   void newsHubRuntime.refresh({ force: true }).catch((error) => {
     logger.warn({ err: error }, "Initial news refresh failed");
   });
   newsHubRuntime.start();
+  void warmupCache().catch((err) => {
+    logger.warn({ err }, "Cache warmup background execution failed");
+  });
 });

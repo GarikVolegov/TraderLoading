@@ -1,11 +1,11 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { Suspense, lazy, useState, useMemo, useEffect, useRef } from "react";
 import { getPairLabel } from "@workspace/pair-catalog";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO } from "date-fns";
 import {
   Plus, Trash2, TrendingUp, TrendingDown,
   BarChart3, FlaskConical, ChevronRight, Play, ArrowUpRight,
-  Target, Layers, Zap, Flame, Gamepad2, RotateCcw, DollarSign,
+  Target, Layers, Zap, Flame, Gamepad2, RotateCcw, DollarSign, Swords, Dices, EyeOff,
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { QueryErrorState } from "@/components/QueryErrorState";
@@ -30,15 +30,24 @@ import { useBackground } from "@/contexts/BackgroundContext";
 import { ProUpgradeGate } from "@/components/ProUpgradeGate";
 import { calculateDetailedBacktestStats } from "@/lib/backtestStats";
 import { uiText, useDateLocale } from "@/contexts/LanguageContext";
-import { parseUtcDateTimeInput, utcDateTimeInput } from "@/components/backtest-terminal/dateTime";
+import { generateRandomTradingTimestamp, getYearTradingStart, parseUtcDateTimeInput, utcDateTimeInput } from "@/components/backtest-terminal/dateTime";
 import { fetchReplayCandlesMeta, type ReplayCandlesMeta } from "@/lib/replayCandlesApi";
 import { useTraderProcess } from "@/hooks/useTraderProcess";
 import { ReplayEquityCurve } from "@/components/backtest-terminal/ReplayEquityCurve";
 import { BacktestBattlesDrawer } from "@/components/backtest-tournament/BacktestBattlesDrawer";
-import { BacktestTournamentHub } from "@/components/backtest-tournament/BacktestTournamentHub";
-import { DecompressionChamberModal } from "@/components/decompression/DecompressionChamberModal";
 import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
 import { LimenServiceLockGate } from "@/components/candidacy/LimenServiceLockGate";
+
+const BacktestTournamentHub = lazy(() =>
+  import("@/components/backtest-tournament/BacktestTournamentHub").then((m) => ({
+    default: m.BacktestTournamentHub,
+  }))
+);
+const DecompressionChamberModal = lazy(() =>
+  import("@/components/decompression/DecompressionChamberModal").then((m) => ({
+    default: m.DecompressionChamberModal,
+  }))
+);
 
 const ALL_BT_PAIRS = [
   "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "NZD/USD", "USD/CAD",
@@ -99,7 +108,20 @@ function NewSessionForm({
   const lastOpen = historyMeta?.warehouse?.lastTs;
   const firstTime = firstOpen != null ? firstOpen + 60 : null;
   const lastTime = lastOpen != null ? lastOpen + 60 : null;
-  const startOutsideHistory = selectedStartTime != null && ((firstTime != null && selectedStartTime < firstTime) || (lastTime != null && selectedStartTime > lastTime));
+  // Dates before the archive start snap to the first quote; only future dates are rejected.
+  const startOutsideHistory = selectedStartTime != null && lastTime != null && selectedStartTime > lastTime;
+  const [blindStart, setBlindStart] = useState(false);
+  const firstYear = firstTime != null ? new Date(firstTime * 1000).getUTCFullYear() : 2020;
+  const lastYear = lastTime != null ? new Date(lastTime * 1000).getUTCFullYear() : new Date().getUTCFullYear();
+  const yearOptions = Array.from({ length: Math.max(0, lastYear - firstYear + 1) }, (_, i) => firstYear + i);
+  const pickYear = (year: number) => {
+    setBlindStart(false);
+    setStartDateTime(utcDateTimeInput(getYearTradingStart(year, firstTime, lastTime)));
+  };
+  const pickRandom = (blind: boolean) => {
+    setBlindStart(blind);
+    setStartDateTime(utcDateTimeInput(generateRandomTradingTimestamp(firstTime, lastTime != null ? lastTime - 30 * 86400 : null, pair)));
+  };
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
@@ -107,10 +129,12 @@ function NewSessionForm({
       const session = await createMutation.mutateAsync({
         data: { name: name.trim(), pair, timeframe, strategy: strategy.trim() || undefined },
       });
-      const startTime = parseUtcDateTimeInput(startDateTime);
+      const parsedStart = parseUtcDateTimeInput(startDateTime);
+      const startTime = parsedStart != null && firstTime != null ? Math.max(parsedStart, firstTime) : parsedStart;
       if (startTime != null) {
         try {
           window.localStorage.setItem(`traderloading:backtest-start:${session.id}`, String(startTime));
+          if (blindStart) window.localStorage.setItem(`traderloading:backtest-blind:${session.id}`, "1");
         } catch {
           // Go to date remains available when browser storage is unavailable.
         }
@@ -206,17 +230,55 @@ function NewSessionForm({
             <label htmlFor="backtest-session-start" className="text-[9.5px] font-mono text-muted-foreground uppercase tracking-wider">
               {uiText("backtest_terminal.start_datetime")} · {uiText("backtest_terminal.timezone_utc")}
             </label>
+            <div className="flex flex-wrap gap-1">
+              {yearOptions.map((year) => (
+                <button
+                  key={year}
+                  type="button"
+                  onClick={() => pickYear(year)}
+                  className="px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase tracking-wider whitespace-nowrap bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#E8C56A] hover:bg-[#C5A059]/20 transition-colors"
+                >
+                  {year}
+                </button>
+              ))}
+            </div>
+            {blindStart ? (
+              <div className="flex items-center justify-between h-8 px-2 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10">
+                <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
+                  <EyeOff className="w-3.5 h-3.5" /> Data celata · Zero bias
+                </span>
+                <button type="button" onClick={() => setBlindStart(false)} className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground hover:text-[#E8C56A] whitespace-nowrap">
+                  Svela
+                </button>
+              </div>
+            ) : (
             <Input
               id="backtest-session-start"
               type="datetime-local"
               step={60}
               value={startDateTime}
               onChange={(event) => setStartDateTime(event.target.value)}
-              min={utcDateTimeInput(firstTime) || undefined}
               max={utcDateTimeInput(lastTime) || undefined}
               aria-invalid={startOutsideHistory}
               className="h-8 text-xs font-mono"
             />
+            )}
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => pickRandom(false)}
+                className="inline-flex items-center justify-center gap-1.5 h-7 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 text-[#E8C56A] font-mono text-[9.5px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-[#C5A059]/20"
+              >
+                <Dices className="w-3.5 h-3.5" /> Data Casuale
+              </button>
+              <button
+                type="button"
+                onClick={() => pickRandom(true)}
+                className="inline-flex items-center justify-center gap-1.5 h-7 rounded border border-slate-400/30 bg-slate-400/10 text-slate-300 font-mono text-[9.5px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-slate-400/20"
+              >
+                <EyeOff className="w-3.5 h-3.5" /> Replay Cieco
+              </button>
+            </div>
             {startOutsideHistory && (
               <p className="text-[9px] text-destructive" role="alert">
                 {uiText("backtest_terminal.date_outside_history")}
@@ -337,6 +399,7 @@ export default function Backtest() {
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(urlSessionId);
   const [tradeFilter, setTradeFilter] = useState<TradeFilter>("all");
   const [decompressionOpen, setDecompressionOpen] = useState(false);
+  const [mobileSection, setMobileSection] = useState<"workbench" | "sessions">("workbench");
 
   // Sync selectedSessionId if urlSessionId changes
   useEffect(() => {
@@ -427,25 +490,71 @@ export default function Backtest() {
     );
   }
 
-  const showBattlesHub = new URLSearchParams(search).get("tab") === "battaglie" || new URLSearchParams(search).get("sub") === "battaglie";
+  const showBattlesHub =
+    new URLSearchParams(search).get("tab") === "battaglie" ||
+    new URLSearchParams(search).get("sub") === "battaglie" ||
+    new URLSearchParams(search).has("join") ||
+    new URLSearchParams(search).has("room");
 
   if (showBattlesHub) {
     return (
-      <PageLayout quiet fullWidth className="h-[100dvh]">
-        <ProUpgradeGate feature="backtest" fillViewport>
-          <BacktestTournamentHub onExit={() => navigate("/backtest")} />
+      <PageLayout fullWidth className="pb-12">
+        <ProUpgradeGate feature="backtest">
+          <Suspense fallback={<div className="min-h-[60vh] bg-[#07080b]" />}>
+            <BacktestTournamentHub onExit={() => navigate("/backtest")} />
+          </Suspense>
         </ProUpgradeGate>
       </PageLayout>
     );
   }
 
   return (
-    <PageLayout quiet fullWidth className="h-[100dvh]">
+    <PageLayout quiet fullWidth className="lg:h-[100dvh]">
       <ProUpgradeGate feature="backtest" fillViewport>
-        <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-3 flex-1 min-h-0 h-full overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 lg:h-full lg:overflow-hidden">
+          {/* ── Mobile Section Switcher (< 1024px): Banco & KPI / Sessioni / Prove del Fuoco ── */}
+          <div className="flex lg:hidden items-center justify-between gap-1.5 mb-2.5 pb-2 border-b border-[#C5A059]/20 shrink-0 mobile-compact-bar">
+            <div className="flex items-center gap-1 rounded-lg border border-[#C5A059]/25 bg-[#0B0D13] p-0.5 text-[11px] font-mono flex-1">
+              <button
+                type="button"
+                onClick={() => setMobileSection("workbench")}
+                className={`flex-1 py-1.5 px-2 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                  mobileSection === "workbench"
+                    ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/45"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Banco &amp; KPI
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileSection("sessions")}
+                className={`flex-1 py-1.5 px-2 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                  mobileSection === "sessions"
+                    ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/45"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Sessioni ({sessions?.length ?? 0})
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/backtest?tab=battaglie")}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#C5A059]/45 bg-gradient-to-r from-[#C5A059]/20 to-[#C5A059]/10 text-[#E8C56A] font-mono text-[10.5px] font-bold uppercase tracking-wider whitespace-nowrap shrink-0"
+            >
+              <Swords className="w-3.5 h-3.5 text-[#E8C56A]" />
+              <span>Prove del Fuoco</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-3 flex-1 min-h-0 lg:h-full lg:overflow-hidden">
             {/* ── Archivio Sessioni Replay (Colonna Sinistra) ── */}
-            <aside className="border border-border/80 bg-card/60 backdrop-blur flex flex-col h-full min-h-0 overflow-hidden">
+            <aside
+              className={`border border-border/80 bg-card/60 backdrop-blur flex-col h-[calc(100dvh-var(--app-header-offset)-var(--bottom-nav-clearance)-4.5rem)] lg:h-full min-h-[460px] lg:min-h-0 overflow-hidden ${
+                mobileSection === "sessions" ? "flex" : "hidden lg:flex"
+              }`}
+            >
               {/* Header / Protocollo in Verifica */}
               <div className="p-3 border-b border-border/70 space-y-2 shrink-0 bg-card/90">
                 {activeMethod && (
@@ -532,8 +641,8 @@ export default function Backtest() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <AnimatePresence>
-                    {sessions.map((session, idx) => {
+                  <div className="space-y-2">
+                    {sessions.map((session) => {
                       const sessionStats = session.stats;
                       const totalPips = parseFloat(sessionStats.totalPips);
                       const isSelected = activeSession?.id === session.id;
@@ -557,17 +666,15 @@ export default function Backtest() {
                             : "text-muted-foreground";
 
                       return (
-                        <motion.div
+                        <div
                           key={session.id}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.96 }}
-                          transition={{ delay: idx * 0.02 }}
+                          style={{ contentVisibility: "auto", containIntrinsicSize: "auto 96px" }}
                           onClick={() => {
                             setSelectedSessionId(session.id);
+                            setMobileSection("workbench");
                             window.history.replaceState(null, "", "?session=" + session.id);
                           }}
-                          className={`border p-2.5 cursor-pointer group transition-all relative ${
+                          className={`border p-2.5 cursor-pointer group transition-[background-color,border-color] duration-150 relative ${
                             isSelected
                               ? "border-primary bg-primary/10 shadow-[inset_2px_0_0_hsl(var(--primary))]"
                               : "border-border/70 bg-card/75 hover:border-primary/45 hover:bg-card"
@@ -613,10 +720,10 @@ export default function Backtest() {
                               <ChevronRight className="w-3 h-3" />
                             </span>
                           </div>
-                        </motion.div>
+                        </div>
                       );
                     })}
-                  </AnimatePresence>
+                  </div>
                 )}
               </div>
 
@@ -636,7 +743,11 @@ export default function Backtest() {
             </aside>
 
             {/* ── Area Operativa & Statistiche Avanzate (Colonna Destra - Inalterata) ── */}
-            <main className="border border-border/80 bg-card/60 backdrop-blur flex flex-col h-full min-h-0 overflow-hidden p-3 gap-2.5">
+            <main
+              className={`border border-border/80 bg-card/60 backdrop-blur flex-col lg:h-full min-h-0 overflow-y-auto lg:overflow-hidden p-2.5 sm:p-3 gap-2.5 ${
+                mobileSection === "workbench" ? "flex" : "hidden lg:flex"
+              }`}
+            >
               {/* Hero Session Command Bar */}
               <div className="border border-primary/40 bg-gradient-to-r from-primary/15 via-card to-card p-3 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
                 <div className="min-w-0">
@@ -878,7 +989,7 @@ export default function Backtest() {
                   </div>
 
                   {/* Filtri pillola */}
-                  <div className="flex items-center gap-1 font-mono text-[9.5px]">
+                  <div className="flex flex-wrap items-center gap-1 font-mono text-[9.5px] mobile-compact-bar">
                     {(
                       [
                         { id: "all", label: `Tutti (${trades?.length ?? 0})` },
@@ -940,107 +1051,102 @@ export default function Backtest() {
                     </div>
                   ) : (
                     <div className="space-y-1.5">
-                      <AnimatePresence>
-                        {filteredTrades.map((trade: BacktestTrade, idx) => (
-                          <motion.div
-                            key={trade.id}
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, x: -12 }}
-                            transition={{ delay: Math.min(idx * 0.015, 0.3) }}
-                            className="border border-border/70 bg-background/80 hover:bg-background hover:border-primary/45 p-2 px-3 flex items-center justify-between gap-3 group transition-colors font-mono"
-                          >
-                            {/* Direzione & Icona */}
-                            <div className="flex items-center gap-2.5 min-w-[90px]">
-                              <div
-                                className={`w-6 h-6 flex items-center justify-center shrink-0 border ${
-                                  trade.direction === "buy"
-                                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                                    : "border-rose-500/30 bg-rose-500/10 text-rose-400"
-                                }`}
-                              >
-                                {trade.direction === "buy" ? (
-                                  <TrendingUp className="w-3 h-3" />
-                                ) : (
-                                  <TrendingDown className="w-3 h-3" />
-                                )}
-                              </div>
-                              <span className={`text-[10px] font-bold uppercase ${
-                                trade.direction === "buy" ? "text-emerald-400" : "text-rose-400"
-                              }`}>
-                                {trade.direction}
-                              </span>
-                            </div>
-
-                            {/* Prezzi Entry -> Exit */}
-                            <div className="flex-1 min-w-[140px] text-[10.5px]">
-                              <span className="text-muted-foreground">{trade.entryPrice}</span>
-                              <span className="text-muted-foreground/60 mx-1.5">→</span>
-                              <span className="text-foreground font-semibold">{trade.exitPrice}</span>
-                              {(trade.stopLoss || trade.takeProfit) && (
-                                <span className="text-[9px] text-muted-foreground/60 ml-2 hidden sm:inline">
-                                  {trade.stopLoss ? `SL: ${trade.stopLoss}` : ""} {trade.takeProfit ? `TP: ${trade.takeProfit}` : ""}
-                                </span>
+                      {filteredTrades.map((trade: BacktestTrade) => (
+                        <div
+                          key={trade.id}
+                          style={{ contentVisibility: "auto", containIntrinsicSize: "auto 44px" }}
+                          className="border border-border/70 bg-background/80 hover:bg-background hover:border-primary/45 p-2 px-3 flex items-center justify-between gap-3 group transition-colors duration-150 font-mono"
+                        >
+                          {/* Direzione & Icona */}
+                          <div className="flex items-center gap-2.5 min-w-[90px]">
+                            <div
+                              className={`w-6 h-6 flex items-center justify-center shrink-0 border ${
+                                trade.direction === "buy"
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                  : "border-rose-500/30 bg-rose-500/10 text-rose-400"
+                              }`}
+                            >
+                              {trade.direction === "buy" ? (
+                                <TrendingUp className="w-3 h-3" />
+                              ) : (
+                                <TrendingDown className="w-3 h-3" />
                               )}
                             </div>
+                            <span className={`text-[10px] font-bold uppercase ${
+                              trade.direction === "buy" ? "text-emerald-400" : "text-rose-400"
+                            }`}>
+                              {trade.direction}
+                            </span>
+                          </div>
 
-                            {/* PNL & Pips Risultato */}
-                            <div className="min-w-[120px] text-right">
-                              {trade.netPnl != null ? (
-                                <>
-                                  <span
-                                    className={`text-xs font-bold tabular-nums whitespace-nowrap ${
-                                      parseFloat(trade.netPnl) > 0
-                                        ? "text-emerald-400"
-                                        : parseFloat(trade.netPnl) < 0
-                                          ? "text-rose-400"
-                                          : "text-amber-400"
-                                    }`}
-                                  >
-                                    {parseFloat(trade.netPnl) >= 0 ? "+" : ""}
-                                    {parseFloat(trade.netPnl).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
-                                    {trade.currency ?? "EUR"}
-                                  </span>
-                                  <span className="text-[9px] text-muted-foreground/75 block tabular-nums whitespace-nowrap">
-                                    {trade.result === "win" ? "+" : ""}{trade.pips ?? "0"} pips
-                                  </span>
-                                </>
-                              ) : (
+                          {/* Prezzi Entry -> Exit */}
+                          <div className="flex-1 min-w-[140px] text-[10.5px]">
+                            <span className="text-muted-foreground">{trade.entryPrice}</span>
+                            <span className="text-muted-foreground/60 mx-1.5">→</span>
+                            <span className="text-foreground font-semibold">{trade.exitPrice}</span>
+                            {(trade.stopLoss || trade.takeProfit) && (
+                              <span className="text-[9px] text-muted-foreground/60 ml-2 hidden sm:inline">
+                                {trade.stopLoss ? `SL: ${trade.stopLoss}` : ""} {trade.takeProfit ? `TP: ${trade.takeProfit}` : ""}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* PNL & Pips Risultato */}
+                          <div className="min-w-[120px] text-right">
+                            {trade.netPnl != null ? (
+                              <>
                                 <span
                                   className={`text-xs font-bold tabular-nums whitespace-nowrap ${
-                                    trade.result === "win"
+                                    parseFloat(trade.netPnl) > 0
                                       ? "text-emerald-400"
-                                      : trade.result === "loss"
+                                      : parseFloat(trade.netPnl) < 0
                                         ? "text-rose-400"
                                         : "text-amber-400"
                                   }`}
                                 >
+                                  {parseFloat(trade.netPnl) >= 0 ? "+" : ""}
+                                  {parseFloat(trade.netPnl).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                                  {trade.currency ?? "EUR"}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground/75 block tabular-nums whitespace-nowrap">
                                   {trade.result === "win" ? "+" : ""}{trade.pips ?? "0"} pips
                                 </span>
-                              )}
-                            </div>
-
-                            {/* Lotti & Data */}
-                            <div className="min-w-[90px] text-right hidden sm:block text-[9.5px] text-muted-foreground/75">
-                              <span>{trade.lotSize} lotti</span>
-                              <span className="block text-[8.5px] text-muted-foreground/60">
-                                {format(parseISO(trade.tradeDate), "d MMM yyyy", { locale: dateLocale })}
+                              </>
+                            ) : (
+                              <span
+                                className={`text-xs font-bold tabular-nums whitespace-nowrap ${
+                                  trade.result === "win"
+                                    ? "text-emerald-400"
+                                    : trade.result === "loss"
+                                      ? "text-rose-400"
+                                      : "text-amber-400"
+                                }`}
+                              >
+                                {trade.result === "win" ? "+" : ""}{trade.pips ?? "0"} pips
                               </span>
-                            </div>
+                            )}
+                          </div>
 
-                            {/* Azioni */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 h-6 w-6 p-0 text-destructive hover:bg-destructive/10 shrink-0"
-                              onClick={() => void handleDeleteTrade(trade.id)}
-                              title="Elimina trade simulato"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
+                          {/* Lotti & Data */}
+                          <div className="min-w-[90px] text-right hidden sm:block text-[9.5px] text-muted-foreground/75">
+                            <span>{trade.lotSize} lotti</span>
+                            <span className="block text-[8.5px] text-muted-foreground/60">
+                              {format(parseISO(trade.tradeDate), "d MMM yyyy", { locale: dateLocale })}
+                            </span>
+                          </div>
+
+                          {/* Azioni */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 h-6 w-6 p-0 text-destructive hover:bg-destructive/10 shrink-0"
+                            onClick={() => void handleDeleteTrade(trade.id)}
+                            title="Elimina trade simulato"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1059,7 +1165,11 @@ export default function Backtest() {
           </div>
         </div>
       </ProUpgradeGate>
-      <DecompressionChamberModal open={decompressionOpen} onOpenChange={setDecompressionOpen} />
+      {decompressionOpen && (
+        <Suspense fallback={null}>
+          <DecompressionChamberModal open={decompressionOpen} onOpenChange={setDecompressionOpen} />
+        </Suspense>
+      )}
     </PageLayout>
   );
 }

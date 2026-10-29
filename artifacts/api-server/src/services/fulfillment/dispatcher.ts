@@ -33,7 +33,7 @@ export async function dispatchArsenalOrder(orderId: string): Promise<DispatchRes
   }
 
   const recipient: FulfillmentRecipient = {
-    name: order.customerName || "Operatore Limen",
+    name: order.customerName || "Operatore AUREUS",
     address1: order.shippingAddressLine1 || "",
     address2: order.shippingAddressLine2,
     city: order.shippingCity || "",

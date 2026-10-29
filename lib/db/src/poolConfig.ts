@@ -42,7 +42,9 @@ export function createPgPoolConfig(env: DbEnv = process.env): PoolConfig {
     url.searchParams.delete("options");
     connectionString = url.toString();
   }
-  const options = [dsnOptions ?? env.PGOPTIONS, "-c TimeZone=UTC"].filter(Boolean).join(" ");
+  const statementTimeout = parsePositiveInteger(env.PG_STATEMENT_TIMEOUT_MS, 0);
+  const statementOpt = statementTimeout > 0 ? `-c statement_timeout=${statementTimeout}ms` : undefined;
+  const options = [dsnOptions ?? env.PGOPTIONS, statementOpt, "-c TimeZone=UTC"].filter(Boolean).join(" ");
 
   const config: PoolConfig = {
     connectionString,

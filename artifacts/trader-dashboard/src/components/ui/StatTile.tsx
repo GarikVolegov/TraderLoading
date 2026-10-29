@@ -51,7 +51,7 @@ export function StatTile({
       </p>
       <p
         className={cn(
-          "mt-2 font-mono font-black leading-tight tabular-nums tracking-tight",
+          "mt-2 font-mono font-black leading-tight tabular-nums tracking-tight whitespace-nowrap",
           sizeClasses[size],
           TONE_CLASS[tone],
         )}

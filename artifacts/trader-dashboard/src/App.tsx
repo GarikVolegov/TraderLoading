@@ -1,5 +1,5 @@
 import { useMobileViewport } from "./hooks/use-mobile-viewport";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, Component, type ReactNode } from "react";
 import { Switch, Route, Redirect, useLocation, useSearch, Router as WouterRouter } from "wouter";
 import { hasExplicitCenterView, resolveWorkspaceAlias } from "./lib/workspaceNavigation";
 import { motion, MotionConfig } from "framer-motion";
@@ -9,7 +9,7 @@ import { shouldRetryQuery } from "./lib/queryRetry";
 import { shouldNotifyGlobally } from "./lib/mutationErrorPolicy";
 import { toast } from "./hooks/use-toast";
 import { reportClientError } from "./lib/clientErrorReporter";
-import { uiText } from "./contexts/LanguageContext";
+import { uiText } from "@/contexts/LanguageContext";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
 import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -18,35 +18,58 @@ import { AudioProvider } from "./contexts/AudioContext";
 import { BackgroundProvider } from "./contexts/BackgroundContext";
 import { LoadingProvider } from "./contexts/LoadingContext";
 import { PinLockProvider } from "./contexts/PinLockContext";
-import { LanguageProvider } from "./contexts/LanguageContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { AuthPageShell } from "./components/AuthPageShell";
 import { CookieConsentPopup } from "./components/CookieConsentPopup";
-import { GoalReminders } from "./components/GoalReminders";
-import { DailyAlarmNotifier } from "./components/DailyAlarmNotifier";
-import { MacroNotifier } from "./components/MacroNotifier";
-import { SessionStartNotifier } from "./components/SessionStartNotifier";
-import { CommandPalette } from "./components/CommandPalette";
 import { SignUpConversionTracker } from "./components/SignUpConversionTracker";
 import { ReferralAttributionTracker } from "./components/ReferralAttributionTracker";
-import { NicknameOnboarding } from "./pages/NicknameOnboarding";
+import { NetworkResilienceSentinel } from "./components/NetworkResilienceSentinel";
+import { PwaUpdateNotificationBanner } from "./components/PwaUpdateNotificationBanner";
 import { initAnalytics } from "./lib/analytics";
 import { academyAuthDestination } from "./lib/academyReferral";
 
+const GoalReminders = lazy(() =>
+  import("./components/GoalReminders").then((m) => ({ default: m.GoalReminders })),
+);
+const DailyAlarmNotifier = lazy(() =>
+  import("./components/DailyAlarmNotifier").then((m) => ({ default: m.DailyAlarmNotifier })),
+);
+const MacroNotifier = lazy(() =>
+  import("./components/MacroNotifier").then((m) => ({ default: m.MacroNotifier })),
+);
+const SessionStartNotifier = lazy(() =>
+  import("./components/SessionStartNotifier").then((m) => ({ default: m.SessionStartNotifier })),
+);
+const SundayCouncilNotifier = lazy(() =>
+  import("./components/social/SundayCouncilNotifier").then((m) => ({ default: m.SundayCouncilNotifier })),
+);
+const CommandPalette = lazy(() =>
+  import("./components/CommandPalette").then((m) => ({ default: m.CommandPalette })),
+);
+const ScheduledCallRuntime = lazy(() =>
+  import("./components/ScheduledCallRuntime").then((m) => ({ default: m.ScheduledCallRuntime })),
+);
+const ThresholdOfSelectionModal = lazy(() =>
+  import("./components/onboarding/ThresholdOfSelectionModal").then((m) => ({ default: m.ThresholdOfSelectionModal })),
+);
+
+const NicknameOnboarding = lazy(() =>
+  import("./pages/NicknameOnboarding").then((m) => ({ default: m.NicknameOnboarding })),
+);
+
 // Avvio analytics (no-op senza VITE_GA_MEASUREMENT_ID o senza consenso cookie).
 initAnalytics();
-import { ScheduledCallRuntime } from "./components/ScheduledCallRuntime";
 import { PinLockScreen } from "./components/PinLockScreen";
 import { TopNav } from "./components/TopNav";
 import { BottomNav } from "./components/BottomNav";
-import { ThresholdOfSelectionModal } from "./components/onboarding/ThresholdOfSelectionModal";
 import {
   getBrowserLanguage,
   getStoredLanguagePreference,
   hasStoredLanguagePreference,
   LANGUAGES,
   useLanguage,
-} from "./contexts/LanguageContext";
+} from "@/contexts/LanguageContext";
 import type { Language } from "./lib/i18n";
 import {
   SEO_PAGE_KEYS,
@@ -82,6 +105,8 @@ const SeoArticlePage = lazy(() => import("./pages/seo/SeoArticlePage"));
 const Protocollo = lazy(() => import("./pages/ProtocolloPage"));
 const FinancialArchitecture = lazy(() => import("./pages/FinancialArchitecture"));
 const DecompressionPage = lazy(() => import("./pages/DecompressionPage"));
+const PublicNotaryVerification = lazy(() => import("./pages/PublicNotaryVerification"));
+const PublicArenaSpectatorPage = lazy(() => import("./pages/PublicArenaSpectatorPage"));
 
 // Public marketing languages served under a /{lang} URL prefix (English lives
 // at the root and is the x-default).
@@ -116,6 +141,9 @@ const queryClient = new QueryClient({
       // remount (default staleTime 0). Real-time market/chat queries override this
       // with their own staleTime/refetchInterval, so freshness there is unaffected.
       staleTime: 60_000,
+      // Sospende il polling in background quando la scheda è minimizzata/nascosta
+      // per azzerare i risvegli del thread principale e il traffico di rete inutile.
+      refetchIntervalInBackground: false,
     },
   },
 });
@@ -147,6 +175,55 @@ function stripBase(path: string): string {
     : path;
 }
 
+const clerkAureusLocalization = {
+  locale: "it-IT",
+  socialButtonsBlockButton: "Accedi con {{provider|titleize}}",
+  dividerText: "oppure con credenziali",
+  formFieldLabel__emailAddress: "Email Operativa",
+  formFieldLabel__emailAddress_username: "Email o Nome Operativo",
+  formFieldInputPlaceholder__emailAddress: "operatore@dominio.com",
+  formFieldInputPlaceholder__emailAddress_username: "operatore@dominio.com",
+  formFieldLabel__password: "Parola d'Ordine (Password)",
+  formFieldInputPlaceholder__password: "••••••••••••",
+  formFieldInputPlaceholder__signUpPassword: "Crea la tua parola d'Ordine",
+  formButtonPrimary: "Attraversa la Soglia",
+  footerActionLink__useAnotherMethod: "Usa un altro metodo d'accesso",
+  formFieldAction__forgotPassword: "Parola d'ordine smarrita?",
+  backButton: "Indietro",
+  signIn: {
+    start: {
+      title: "Attraversa il Varco",
+      subtitle: "Accedi al Terminale Operativo del Protocollo Aureus",
+      actionText: "Non possiedi ancora un'Iniziazione?",
+      actionLink: "Richiedi Iniziazione",
+    },
+    password: {
+      title: "Verifica Parola d'Ordine",
+      subtitle: "Inserisci le credenziali d'accesso dell'Ordine",
+      actionLink: "Parola d'ordine dimenticata?",
+    },
+  },
+  signUp: {
+    start: {
+      title: "Iniziazione dell'Operatore",
+      subtitle: "Candidati e accedi al Grado I (Novizio Consapevole)",
+      actionText: "Hai già attraversato il Varco?",
+      actionLink: "Accedi",
+    },
+    continue: {
+      title: "Completa la Soglia",
+      subtitle: "Verifica e finalizza la tua iniziazione",
+      actionText: "Hai già un accesso?",
+      actionLink: "Accedi",
+    },
+    emailCode: {
+      title: "Verifica Codice d'Iniziazione",
+      subtitle: "Inserisci il codice a 6 cifre trasmesso alla tua email",
+      resendButton: "Invia nuovamente codice",
+    },
+  },
+};
+
 const clerkAppearance = {
   baseTheme: dark,
   cssLayerName: "clerk",
@@ -159,10 +236,10 @@ const clerkAppearance = {
   variables: {
     colorPrimary: "#C5A059",
     colorForeground: "#F4F4F6",
-    colorMutedForeground: "#8E8E99",
+    colorMutedForeground: "#94a3b8",
     colorDanger: "#ef4444",
-    colorBackground: "#0A0A0C",
-    colorInput: "#141418",
+    colorBackground: "#0d0f14",
+    colorInput: "#07080b",
     colorInputForeground: "#F4F4F6",
     colorNeutral: "#26262E",
     fontFamily: "'Space Grotesk', -apple-system, sans-serif",
@@ -175,24 +252,24 @@ const clerkAppearance = {
     footer: "!hidden",
     header: "!hidden",
     headerTitle: "text-[#F4F4F6] font-bold font-mono tracking-wider",
-    headerSubtitle: "text-[#8E8E99]",
-    socialButtonsBlockButtonText: "text-[#F4F4F6] font-semibold",
-    formFieldLabel: "text-[#F4F4F6] font-semibold text-xs tracking-wide",
-    footerActionLink: "text-[#C5A059] hover:text-[#D6B575] font-semibold",
-    footerActionText: "text-[#8E8E99]",
-    dividerText: "text-[#8E8E99]",
+    headerSubtitle: "text-[#94a3b8]",
+    socialButtonsBlockButtonText: "text-[#F4F4F6] font-mono font-semibold text-xs tracking-wider",
+    formFieldLabel: "text-[#E8C56A] font-mono text-[10px] font-bold uppercase tracking-wider",
+    footerActionLink: "text-[#C5A059] hover:text-[#E8C56A] font-semibold",
+    footerActionText: "text-[#94a3b8]",
+    dividerText: "text-[#94a3b8] font-mono text-[9px] uppercase tracking-widest",
     identityPreviewEditButton: "text-[#C5A059]",
-    formFieldSuccessText: "text-[#C5A059]",
+    formFieldSuccessText: "text-[#10b981]",
     alertText: "text-[#F4F4F6]",
     logoBox: "!hidden",
     logoImage: "h-11 w-11 rounded-lg",
-    socialButtonsBlockButton: "!border-[#26262E] hover:!border-[#C5A059]/50 !bg-[#141418]/90 !rounded-xl backdrop-blur transition-all",
-    formButtonPrimary: "!bg-[#C5A059] !text-[#0A0A0C] hover:!bg-[#D6B575] font-bold !rounded-xl !shadow-[0_4px_16px_rgba(197,160,89,0.25)] transition-all",
-    formFieldInput: "!bg-[#141418]/90 !border-[#26262E] !text-[#F4F4F6] focus:!border-[#C5A059] focus:!ring-1 focus:!ring-[#C5A059]/40 !rounded-xl",
-    footerAction: "!bg-[#0A0A0C]",
-    dividerLine: "!bg-[#26262E]",
-    alert: "!bg-[#1f0d12] !border-[#ef4444]/35 !rounded-xl",
-    otpCodeFieldInput: "!bg-[#141418]/90 !border-[#26262E] !text-[#F4F4F6] focus:!border-[#C5A059] !rounded-xl",
+    socialButtonsBlockButton: "!border-[#C5A059]/30 hover:!border-[#C5A059]/70 !bg-[#07080b]/90 !rounded-lg backdrop-blur transition-all shadow-[0_2px_10px_rgba(0,0,0,0.5)]",
+    formButtonPrimary: "!bg-gradient-to-r !from-[#E8C56A] !via-[#C5A059] !to-[#B38D45] !text-[#07080b] hover:!brightness-110 font-mono font-bold uppercase tracking-wider text-xs !rounded-lg !shadow-[0_0_20px_rgba(197,160,89,0.3)] transition-all cursor-pointer",
+    formFieldInput: "!bg-[#07080b]/95 !border-[#C5A059]/25 !text-[#F4F4F6] focus:!border-[#C5A059] focus:!ring-1 focus:!ring-[#C5A059]/50 !rounded-lg font-mono text-sm",
+    footerAction: "!bg-transparent",
+    dividerLine: "!bg-[#C5A059]/20",
+    alert: "!bg-[#1f0d12] !border-[#ef4444]/40 !rounded-lg",
+    otpCodeFieldInput: "!bg-[#07080b]/95 !border-[#C5A059]/30 !text-[#F4F4F6] focus:!border-[#C5A059] !rounded-lg font-mono text-lg font-bold",
     formFieldRow: "",
     main: "",
   },
@@ -236,7 +313,9 @@ function WelcomePage() {
   return (
     <>
       <Show when="signed-in">
-        <NicknameOnboarding />
+        <Suspense fallback={<PageFallback />}>
+          <NicknameOnboarding />
+        </Suspense>
       </Show>
       <Show when="signed-out">
         <Redirect to="/sign-in" />
@@ -280,19 +359,25 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
-/* ── Page transition — entrance only, no exit to avoid crash ─────────────── */
+/* ── Page transition — entrance only, GPU-friendly (no scale rasterization on mobile) ── */
 const pageTransition = {
-  initial: { opacity: 0, y: 6, scale: 0.998 },
+  initial: { opacity: 0, y: 4 },
   animate: {
     opacity: 1,
     y: 0,
-    scale: 1,
-    transition: { duration: 0.24, ease: [0.16, 1, 0.3, 1] as const },
+    transition: { duration: 0.14, ease: [0.16, 1, 0.3, 1] as const },
   },
 };
 
 function PageFallback() {
-  return <div className="min-h-screen bg-background" />;
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center pl-[var(--app-inset-left)]">
+      <div className="relative grid place-items-center">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#C5A059]/20 border-t-[#C5A059]" />
+        <span className="sr-only">Caricamento...</span>
+      </div>
+    </div>
+  );
 }
 
 function LanguageServerSync() {
@@ -442,14 +527,19 @@ function AuthenticatedShell() {
       {/* Global overlays — never unmounted during page transitions */}
       <PinLockScreen />
       <LoadingScreen />
-      <ThresholdOfSelectionModal />
-      <GoalReminders />
-      <DailyAlarmNotifier />
-      <ScheduledCallRuntime />
-      <MacroNotifier />
-      <SessionStartNotifier />
+      <SafeModuleBoundary>
+        <Suspense fallback={null}>
+          <ThresholdOfSelectionModal />
+          <GoalReminders />
+          <DailyAlarmNotifier />
+          <ScheduledCallRuntime />
+          <MacroNotifier />
+          <SessionStartNotifier />
+          <SundayCouncilNotifier />
+          <CommandPalette />
+        </Suspense>
+      </SafeModuleBoundary>
       <LanguageServerSync />
-      <CommandPalette />
       <SignUpConversionTracker />
 
       {/* Unified LIMEN navigation — always mounted across all authenticated routes */}
@@ -460,6 +550,49 @@ function AuthenticatedShell() {
       <AppRouter />
     </BackgroundProvider>
     </MotionConfig>
+  );
+}
+
+class SafeModuleBoundary extends Component<{ children: ReactNode }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(err: unknown) {
+    console.warn("[SafeModuleBoundary] Modulo di background saltato:", err);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
+function AuthInitializingScreen() {
+  return (
+    <div
+      role="status"
+      className="min-h-screen bg-[#07080B] flex flex-col items-center justify-center gap-4 text-center p-4 select-none"
+    >
+      <div className="relative flex items-center justify-center">
+        <div className="w-16 h-16 rounded-2xl border border-[#C5A059]/40 bg-[#0E1017] flex items-center justify-center shadow-[0_0_24px_rgba(197,160,89,0.22)]">
+          <img
+            src="/app-icon-192.png?v=20261021g"
+            alt="AUREUS"
+            width={40}
+            height={40}
+            className="rounded-lg object-cover"
+          />
+        </div>
+      </div>
+      <div className="space-y-1">
+        <h2 className="font-serif text-xs font-bold tracking-[0.28em] text-[#C5A059] uppercase">
+          AUREUS PROTOCOL
+        </h2>
+        <p className="text-[11px] font-mono text-slate-400">
+          Inizializzazione presidio di sicurezza...
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -526,6 +659,15 @@ function AppShell() {
     return () => window.clearTimeout(timer);
   }, [isLoaded]);
 
+  const isDevStagingBypass =
+    import.meta.env.DEV &&
+    typeof window !== "undefined" &&
+    window.location.search.includes("staging=1");
+
+  if (isDevStagingBypass) {
+    return <AuthenticatedShell />;
+  }
+
   if (!isLoaded) {
     if (authTimedOut && location === "/") {
       return (
@@ -537,7 +679,7 @@ function AppShell() {
     return authTimedOut ? (
       <AuthTimeoutScreen />
     ) : (
-      <div className="min-h-screen bg-[hsl(224,71%,4%)]" />
+      <AuthInitializingScreen />
     );
   }
 
@@ -670,44 +812,71 @@ function ClerkProviderWithRoutes() {
     <ClerkProvider
       publishableKey={clerkPubKey!}
       appearance={clerkAppearance}
+      localization={clerkAureusLocalization}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
-        <ReferralAttributionTracker />
-        <Switch>
-          <Route path="/sign-in/*?" component={SignInPage} />
-          <Route path="/sign-up/*?" component={SignUpPage} />
-          <Route path="/privacy" component={PrivacyPage} />
-          <Route path="/terms" component={TermsPage} />
-          <Route path="/protocollo">
-            {() => (
-              <Suspense fallback={<PageFallback />}>
-                <Protocollo />
-              </Suspense>
-            )}
-          </Route>
-          <Route path="/sandbox">
-            {() => (
-              <Suspense fallback={<PageFallback />}>
-                <Protocollo />
-              </Suspense>
-            )}
-          </Route>
-          {/* Internal design-system reference: dev-only, never reachable in a
-              production build (finding: was publicly reachable at /styleguide). */}
-          {import.meta.env.DEV && <Route path="/styleguide" component={Styleguide} />}
-          <Route path="/welcome" component={WelcomePage} />
-          {marketingRoutes}
-          <Route path="/*?" component={AppShell} />
-        </Switch>
-        {/* Inside ClerkProvider: CookieConsentPopup calls useUser() to fire the
-            sign_up conversion with the user's createdAt on consent. */}
-        <CookieConsentPopup />
-      </QueryClientProvider>
+      <ClerkQueryClientCacheInvalidator />
+      <ReferralAttributionTracker />
+      <Switch>
+        <Route path="/sign-in/*?" component={SignInPage} />
+        <Route path="/sign-up/*?" component={SignUpPage} />
+        <Route path="/privacy" component={PrivacyPage} />
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/protocollo">
+          {() => (
+            <Suspense fallback={<PageFallback />}>
+              <Protocollo />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/sandbox">
+          {() => (
+            <Suspense fallback={<PageFallback />}>
+              <Protocollo />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/verifica/*?">
+          {() => (
+            <Suspense fallback={<PageFallback />}>
+              <PublicNotaryVerification />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/verify/*?">
+          {() => (
+            <Suspense fallback={<PageFallback />}>
+              <PublicNotaryVerification />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/duello/*?">
+          {() => (
+            <Suspense fallback={<PageFallback />}>
+              <PublicArenaSpectatorPage />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/battle/*?">
+          {() => (
+            <Suspense fallback={<PageFallback />}>
+              <PublicArenaSpectatorPage />
+            </Suspense>
+          )}
+        </Route>
+        {/* Internal design-system reference: dev-only, never reachable in a
+            production build (finding: was publicly reachable at /styleguide). */}
+        {import.meta.env.DEV && <Route path="/styleguide" component={Styleguide} />}
+        <Route path="/welcome" component={WelcomePage} />
+        {marketingRoutes}
+        <Route path="/*?" component={AppShell} />
+      </Switch>
+      {/* Inside ClerkProvider: CookieConsentPopup calls useUser() to fire the
+          sign_up conversion with the user's createdAt on consent. */}
+      <CookieConsentPopup />
     </ClerkProvider>
   );
 }
@@ -737,6 +906,8 @@ function App() {
                   <ScrollToTop />
                   <ClerkProviderWithRoutes />
                 </WouterRouter>
+                <NetworkResilienceSentinel />
+                <PwaUpdateNotificationBanner />
                 <Toaster />
               </AudioProvider>
             </LoadingProvider>

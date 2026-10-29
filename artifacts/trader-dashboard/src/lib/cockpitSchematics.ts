@@ -125,7 +125,7 @@ export const COCKPIT_SCHEMATICS: Record<string, CockpitSchematic> = {
     keyPoints: [
       "Range stretto e candele sovrapposte",
       "Nessun estremo ancora cacciato",
-      "Regola Limen: disciplina assoluta, zero trade fino allo sweep",
+      "Regola AUREUS: disciplina assoluta, zero trade fino allo sweep",
     ],
   },
   liq_intermediate: {
@@ -309,12 +309,12 @@ export const COCKPIT_SCHEMATICS: Record<string, CockpitSchematic> = {
     step: 4,
     category: "management",
     title: "Stop a Pareggio (Breakeven)",
-    subtitle: "Regola Limen: Almeno 1 : 1.5 R:R su presa di liquidità",
-    description: "Regola metodologica Limen Protocol: lo stop loss non va mai anticipato a BE prematuramente. Lo spostamento a Pareggio (BE) deve avvenire solo ad almeno 1 : 1.5 di Rischio/Rendimento su una presa di liquidità confermata.",
+    subtitle: "Regola AUREUS: Almeno 1 : 1.5 R:R su presa di liquidità",
+    description: "Regola metodologica Protocollo AUREUS: lo stop loss non va mai anticipato a BE prematuramente. Lo spostamento a Pareggio (BE) deve avvenire solo ad almeno 1 : 1.5 di Rischio/Rendimento su una presa di liquidità confermata.",
     imageSrc: "/images/cockpit-schematics/mgmt-be.png",
     fallbackType: "be",
     keyPoints: [
-      "Regola Limen: Spostamento a BE solo dopo almeno 1 : 1.5 R:R",
+      "Regola AUREUS: Spostamento a BE solo dopo almeno 1 : 1.5 R:R",
       "Condizione necessaria: Avvenuta presa di liquidità intermedia",
       "Evita di farti buttare fuori dal rumore o dai pullback fisiologici",
       "Preserva l'aspettativa matematica proteggendo il capitale",
@@ -326,11 +326,11 @@ export const COCKPIT_SCHEMATICS: Record<string, CockpitSchematic> = {
     category: "management",
     title: "Presa Parziale (TP1) & Target Liquidità",
     subtitle: "Primo parziale a 1 : 3 R:R · Altrimenti alla liquidità",
-    description: "Regola metodologica Limen Protocol: il primo parziale, se va preso, va preso tassativamente sul rapporto Rischio/Rendimento di 1 : 3; altrimenti la posizione si mantiene integra puntando direttamente al pool di liquidità principale.",
+    description: "Regola metodologica Protocollo AUREUS: il primo parziale, se va preso, va preso tassativamente sul rapporto Rischio/Rendimento di 1 : 3; altrimenti la posizione si mantiene integra puntando direttamente al pool di liquidità principale.",
     imageSrc: "/images/cockpit-schematics/mgmt-tp1.png",
     fallbackType: "tp1",
     keyPoints: [
-      "Regola Limen: Primo parziale preso esclusivamente sul rapporto 1 : 3 di R:R",
+      "Regola AUREUS: Primo parziale preso esclusivamente sul rapporto 1 : 3 di R:R",
       "Alternativa rigorosa: Se non si monetizza a 1 : 3, si punta direttamente al pool di liquidità",
       "Nessun parziale prematuro sotto a 1 : 3 per preservare l'aspettativa matematica",
       "Garantisce asimmetria statistica favorevole nel lungo periodo",

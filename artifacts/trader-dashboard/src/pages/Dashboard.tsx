@@ -49,6 +49,7 @@ import { JournalWidget } from "@/components/JournalWidget";
 import { LotCalculatorWidget } from "@/components/LotCalculatorWidget";
 import { BrokerHubWidget } from "@/components/broker-hub/BrokerHubWidget";
 import { TradingViewWatchlistWidget } from "@/components/TradingViewWatchlistWidget";
+import { WidgetErrorBoundary } from "@/components/ui/WidgetErrorBoundary";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { columnsForWidth, distributeColumns, visibleWidgetOrder } from "./Dashboard.layout";
 import { useIsDesktop } from "@/hooks/use-media-query";
@@ -283,7 +284,9 @@ function SortableWidget({
           style={{ borderRadius: "0.625rem" }}
           onClick={handleOpen}
         >
-          <def.component />
+          <WidgetErrorBoundary title={uiText(def.labelKey)}>
+            <def.component />
+          </WidgetErrorBoundary>
 
           {/* Affordance "apri pagina" — appare solo all'hover, non occupa spazio */}
           {isOpenable && (
@@ -513,16 +516,18 @@ export default function Dashboard({
     return (
       <div data-focused-widget={focusWidget} className="mx-auto w-full max-w-3xl py-6">
         {selected ? (
-          (() => {
-            const pair = new URLSearchParams(search).get("pair") || undefined;
-            if (focusWidget === "sentiment") return <SentimentWidget pair={pair} />;
-            if (focusWidget === "volatility") return <VolatilityWidget pair={pair} />;
-            if (focusWidget === "cot") return <CotWidget pair={pair} />;
-            if (focusWidget === "calendar") return <CalendarWidget pair={pair} />;
-            if (focusWidget === "tradingview-watchlist")
-              return <TradingViewWatchlistWidget pair={pair} />;
-            return <selected.component />;
-          })()
+          <WidgetErrorBoundary title={uiText(selected.labelKey)}>
+            {(() => {
+              const pair = new URLSearchParams(search).get("pair") || undefined;
+              if (focusWidget === "sentiment") return <SentimentWidget pair={pair} />;
+              if (focusWidget === "volatility") return <VolatilityWidget pair={pair} />;
+              if (focusWidget === "cot") return <CotWidget pair={pair} />;
+              if (focusWidget === "calendar") return <CalendarWidget pair={pair} />;
+              if (focusWidget === "tradingview-watchlist")
+                return <TradingViewWatchlistWidget pair={pair} />;
+              return <selected.component />;
+            })()}
+          </WidgetErrorBoundary>
         ) : (
           <p role="alert">{t("catalog.empty")}</p>
         )}

@@ -48,20 +48,56 @@ export function createCandidateApplicationsRouter(save = createCandidate): IRout
 
   router.get("/candidate-applications/my-entitlements", async (req, res) => {
     const userId = req.user?.id ?? null;
-    const queryEmail = typeof req.query.email === "string" ? req.query.email.trim() : null;
-    const entitlementsData = await getCandidateEntitlementsForUser(
-      userId,
-      req.user?.email ?? queryEmail,
-    );
+    const userEmail = req.user?.email ?? null;
+
+    if (!userId && !userEmail) {
+      res.json({
+        ok: true,
+        hasApplication: false,
+        candidateCode: null,
+        status: "nessuna",
+        selectedServices: ["base_protocol"],
+        approvedServices: ["base_protocol"],
+        monthlyFeeCents: 0,
+        yearlyFeeCents: 0,
+        oneTimeFeeCents: 0,
+        entitlements: {
+          varco: true,
+          bookOfTruth: true,
+          brotherhood: true,
+          fiveGrades: true,
+          quarterlyTournaments: false,
+          forgeOfThePast: false,
+          financialArchitecture: false,
+          doctrineOfTime: false,
+        },
+      });
+      return;
+    }
+
+    const entitlementsData = await getCandidateEntitlementsForUser(userId, userEmail);
     res.json({ ok: true, ...entitlementsData });
   });
 
   router.get("/candidate-applications/my-status", async (req, res) => {
     const userId = req.user?.id ?? null;
-    const queryEmail = typeof req.query.email === "string" ? req.query.email.trim() : null;
+    const userEmail = req.user?.email ?? null;
+    const candidateCode = typeof req.query.candidateCode === "string" ? req.query.candidateCode.trim() : null;
+
+    if (!userId && !userEmail && !candidateCode) {
+      res.json({
+        ok: true,
+        hasApplication: false,
+        candidateCode: null,
+        status: "nessuna",
+      });
+      return;
+    }
+
     const entitlementsData = await getCandidateEntitlementsForUser(
       userId,
-      req.user?.email ?? queryEmail,
+      userEmail,
+      candidateCode,
     );
     res.json({ ok: true, ...entitlementsData });
   });

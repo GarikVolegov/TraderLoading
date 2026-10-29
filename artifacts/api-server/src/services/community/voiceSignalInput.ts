@@ -10,6 +10,6 @@ export function voiceChannelId(value: unknown): number | null {
 // Bound their size and reject object coercion and unsupported signal types.
 export const voiceSignalInput = z.object({
   to: z.string().min(1).max(200).refine(value => value.trim() === value),
-  type: z.enum(["offer", "answer", "ice"]),
+  type: z.enum(["offer", "answer", "ice", "media-state", "reaction"]),
   data: z.string().max(131072).optional().default(""),
 });

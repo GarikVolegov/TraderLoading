@@ -17,8 +17,25 @@ pool.on("error", (err) => {
 
 export const db = drizzle(pool, { schema });
 
+const replicaUrl = process.env.DATABASE_READ_REPLICA_URL || process.env.DATABASE_REPLICA_URL;
+export const readPool = replicaUrl
+  ? new Pool(createPgPoolConfig({ ...process.env, DATABASE_URL: replicaUrl }))
+  : pool;
+
+if (readPool !== pool) {
+  readPool.on("error", (err) => {
+    console.error("[db-replica] idle client error (connection will be replaced):", err.message);
+  });
+}
+
+export const readDb = readPool === pool ? db : drizzle(readPool, { schema });
+
 export async function closeDbPool(): Promise<void> {
-  await pool.end();
+  const promises: Promise<void>[] = [pool.end()];
+  if (readPool !== pool) {
+    promises.push(readPool.end());
+  }
+  await Promise.allSettled(promises);
 }
 
 export * from "./schema";

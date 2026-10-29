@@ -55,6 +55,8 @@ const ALLOWED_FILE_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "text/plain", "text/csv",
   "application/zip", "application/x-zip-compressed",
+  "video/webm", "video/mp4",
+  "audio/webm", "audio/mp4", "audio/ogg",
 ]);
 
 const communityFileUpload = multer({
@@ -226,7 +228,10 @@ router.post("/community", async (req, res) => {
       const defaultChannels = [
         { communityId: community.id, name: "generale", type: "text", position: 0 },
         { communityId: community.id, name: "analisi", type: "text", position: 1 },
-        { communityId: community.id, name: "Sala Vocale", type: "voice", position: 2 },
+        { communityId: community.id, name: "Concilio Plenario", type: "voice", position: 2 },
+        { communityId: community.id, name: "Preparazione HTF & Macro", type: "voice", position: 3 },
+        { communityId: community.id, name: "Tattiche Intraday", type: "voice", position: 4 },
+        { communityId: community.id, name: "Tavolo Studio & Verità", type: "voice", position: 5 },
       ];
       await tx.insert(communityChannelsTable).values(defaultChannels);
       return community;
@@ -485,7 +490,26 @@ router.post("/community/:id/channels", async (req, res) => {
       return;
     }
 
-    if (!(await requirePermission(req, res, communityId, "channels.manage"))) return;
+    const isVoice = type === "voice";
+    if (!isVoice) {
+      if (!(await requirePermission(req, res, communityId, "channels.manage"))) return;
+    } else {
+      // Per le stanze vocali pubbliche, qualsiasi membro della Fratellanza può creare autonomamente una stanza vocale di ritrovo
+      const [membership] = await db
+        .select({ id: communityMembersTable.id })
+        .from(communityMembersTable)
+        .where(and(eq(communityMembersTable.communityId, communityId), eq(communityMembersTable.userId, userId)))
+        .limit(1);
+      const [comm] = await db
+        .select({ creatorId: communitiesTable.creatorId })
+        .from(communitiesTable)
+        .where(eq(communitiesTable.id, communityId))
+        .limit(1);
+      if (!membership && comm?.creatorId !== userId) {
+        res.status(403).json({ error: "Devi essere membro per aprire una stanza vocale" });
+        return;
+      }
+    }
 
     const existing = await db
       .select({ position: communityChannelsTable.position })
@@ -805,7 +829,7 @@ router.post("/community/channels/:channelId/files", (req: Request, res: Response
     try {
       const channelId = parseInt(String(req.params.channelId));
       const [channel] = await db.select().from(communityChannelsTable).where(eq(communityChannelsTable.id, channelId)).limit(1);
-      if (!channel || channel.type !== "text") { res.status(400).json({ error: "Canale non valido" }); return; }
+      if (!channel || (channel.type !== "text" && channel.type !== "voice")) { res.status(400).json({ error: "Canale non valido" }); return; }
 
       const [membership] = await db
         .select()

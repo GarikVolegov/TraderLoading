@@ -3,6 +3,7 @@ import { Modal } from "@/components/ui/modal";
 import { Forgia3DArena } from "./Forgia3DArena";
 import { useBattleRoom } from "./useBattleRoom";
 import { BattleInviteModal } from "./BattleInviteModal";
+import { ArenaSpectatorShareModal } from "./ArenaSpectatorShareModal";
 import {
   Flame,
   Users,
@@ -15,6 +16,7 @@ import {
   Check,
   UserPlus,
   Clock,
+  Eye,
 } from "lucide-react";
 import type { BacktestTournament, BacktestCustomLobby } from "@/lib/backtestTournamentsApi";
 import { playBattleChime } from "@/lib/tournamentSoundEffects";
@@ -40,6 +42,7 @@ export function BattleRoomLobbyModal({
 }: BattleRoomLobbyModalProps) {
   const [isReady, setIsReadyState] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [isSpectatorShareOpen, setIsSpectatorShareOpen] = useState(false);
 
   const isCustom = Boolean(customLobby);
   const roomCode = customLobby?.code || `TOURN-${tournament?.id || 1}`;
@@ -72,6 +75,7 @@ export function BattleRoomLobbyModal({
     setReady,
     startBattle,
     sendLobbyInvite,
+    spectatorCount,
   } = useBattleRoom({
     roomId,
     tournamentId,
@@ -152,6 +156,16 @@ export function BattleRoomLobbyModal({
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSpectatorShareOpen(true)}
+                className="px-2.5 py-1.5 rounded bg-[#181922] border border-[#C5A059]/40 hover:bg-[#252634] font-mono text-xs text-[#E8C56A] font-semibold flex items-center gap-1.5 transition-all shadow"
+                title="Condividi la Tribuna Spettatori con QR Code"
+              >
+                <Eye size={13} className="text-[#C5A059]" />
+                <span className="whitespace-nowrap">Tribuna ({spectatorCount ?? 0})</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsInviteOpen(true)}
@@ -321,6 +335,15 @@ export function BattleRoomLobbyModal({
         roomCode={roomCode}
         roomId={roomId}
         onSendSocketInvite={sendLobbyInvite}
+      />
+
+      {/* Modal Tribuna Spettatori */}
+      <ArenaSpectatorShareModal
+        isOpen={isSpectatorShareOpen}
+        onClose={() => setIsSpectatorShareOpen(false)}
+        roomId={roomId}
+        roomCode={roomCode}
+        combatantNames={participants.map((p) => p.displayName)}
       />
     </>
   );

@@ -15,7 +15,7 @@ export interface EmailClient {
 }
 
 function defaultFrom(): string {
-  return process.env.EMAIL_FROM || "LIMEN PROTOCOL <assistenza@traderloading.com>";
+  return process.env.EMAIL_FROM || "AUREUS PROTOCOL <assistenza@traderloading.com>";
 }
 
 function ensureClient(): EmailClient | null {

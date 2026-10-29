@@ -328,7 +328,7 @@ export function CockpitChartPrefsDialog({
           {[
             { id: "default", label: "Standard TV", up: "#089981", down: "#f23645" },
             { id: "emerald", label: "Smeraldo & Rubino", up: "#10b981", down: "#ef4444" },
-            { id: "gold", label: "Oro LIMEN & Desat", up: "#d4af37", down: "#64748b" },
+            { id: "gold", label: "Oro AUREUS & Desat", up: "#d4af37", down: "#64748b" },
             { id: "cyan", label: "Neon Ciano & Rosa", up: "#06b6d4", down: "#f43f5e" },
             { id: "monochrome", label: "Istituzionale B/N", up: "#f8fafc", down: "#334155" },
           ].map((ct) => {

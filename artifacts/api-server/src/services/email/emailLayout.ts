@@ -17,7 +17,7 @@ export const BRAND = {
   success: "#2ac075",
   danger: "#e64c4c",
   font: "'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-  productName: "LIMEN",
+  productName: "AUREUS",
 } as const;
 
 export interface EmailLayoutOptions {

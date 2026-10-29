@@ -64,7 +64,7 @@ export function DailyOrderPulseHeader({
         <div className="flex items-center gap-2">
           <SigilIcon variant="daily-order" size={18} className="text-primary" />
           <span className="font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-            LIMEN PROTOCOL // PROTOCOLLO OPERATIVO
+            AUREUS PROTOCOL // PROTOCOLLO OPERATIVO
           </span>
         </div>
 

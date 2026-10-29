@@ -15,6 +15,7 @@ import { CommunityReviews } from "./CommunityReviews";
 import { StarRating } from "./StarRating";
 import { TextChannelView } from "./TextChannelView";
 import { VoiceChannelView } from "./VoiceChannelView";
+import { VoiceChannelPresenceBadge } from "./VoiceChannelPresenceBadge";
 import { ChannelUnlockPanel } from "./ChannelUnlockPanel";
 import { ChannelPricingModal } from "./ChannelPricingModal";
 import { socialText } from "@/lib/i18n/reorganizationSocial";
@@ -57,6 +58,7 @@ export function CommunityTab({
     useCommunityDetail(selectedCommunityId);
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [createOnlyVoice, setCreateOnlyVoice] = useState(false);
   const [pricingChannelId, setPricingChannelId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
@@ -322,16 +324,21 @@ export function CommunityTab({
             const channels = (communityDetail.channels ?? []).filter(
               (c) => c.type === type,
             );
-            if (channels.length === 0 && !canManageChannels) return null;
+            const canCreateThisType = type === "voice" ? (canManageChannels || communityDetail.isMember) : canManageChannels;
+            if (channels.length === 0 && !canCreateThisType) return null;
             return (
               <div key={type} className="mb-2">
                 <div className="flex items-center justify-between px-3 py-1">
                   <p className="font-mono text-[9px] font-bold text-[#C5A059] uppercase tracking-widest">
-                    {type === "text" ? uiText("auto.ui.db36ee74bb") : uiText("auto.ui.5cf4dba953")}
+                    {type === "text" ? uiText("auto.ui.db36ee74bb") : "STANZE VOCALI & CONCILIO"}
                   </p>
-                  {canManageChannels && (
+                  {canCreateThisType && (
                     <button
-                      onClick={() => setShowCreateChannel(true)}
+                      onClick={() => {
+                        setCreateOnlyVoice(type === "voice" && !canManageChannels);
+                        setShowCreateChannel(true);
+                      }}
+                      title={type === "voice" ? "Apri Stanza Vocale di Studio" : "Crea Canale"}
                       className="p-1 rounded text-slate-400 hover:text-[#E8C56A] hover:bg-[#C5A059]/10 transition-colors"
                     >
                       <Plus className="w-3 h-3" />
@@ -364,6 +371,7 @@ export function CommunityTab({
                         <Volume2 className="w-3.5 h-3.5 shrink-0 text-[#C5A059]" />
                       )}
                       <span className="text-xs font-medium truncate font-mono">{ch.name}</span>
+                      {ch.type === "voice" && <VoiceChannelPresenceBadge channelId={ch.id} />}
                       {ch.locked && <Lock className="w-3 h-3 shrink-0 text-[#C5A059]/80" />}
                       {isPaid && (
                         <span className="ml-auto font-mono text-[10px] text-[#C5A059] tabular-nums shrink-0">
@@ -619,7 +627,12 @@ export function CommunityTab({
       {showCreateChannel && selectedCommunityId && (
         <CreateChannelModal
           communityId={selectedCommunityId}
-          onClose={() => setShowCreateChannel(false)}
+          allowOnlyVoice={createOnlyVoice}
+          initialType={createOnlyVoice ? "voice" : "text"}
+          onClose={() => {
+            setShowCreateChannel(false);
+            setCreateOnlyVoice(false);
+          }}
         />
       )}
       {showSettings && communityDetail && (

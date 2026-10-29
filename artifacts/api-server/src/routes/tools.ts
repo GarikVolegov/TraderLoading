@@ -11,6 +11,7 @@ import type { NewsDeepDive } from "../services/newsHub/types.js";
 import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { createSentimentOutlookService } from "../services/sentimentOutlook.js";
 import { attachIntelligence } from "../services/marketIntelligence.js";
+import { getDirectionalBiasForPair } from "../services/directionalBiasEngine.js";
 import { newsSubscriptionKey } from "../services/newsHub/providerCorpus.js";
 import { buildVolatilitySnapshot, volatilityResponse, type VolatilitySnapshot } from "../services/volatilitySnapshot.js";
 import { parseMonteCarloParams } from "../services/monteCarloParams.js";
@@ -25,6 +26,7 @@ import {
 } from "../services/watchlistQuotes.js";
 import { getJsonCache, setJsonCache } from "../lib/cache.js";
 import { captureError } from "../lib/observability.js";
+import { createMoneyRateLimiter } from "../lib/moneyRateLimit.js";
 
 const router = Router();
 
@@ -40,7 +42,10 @@ function onCotFetchError(err: unknown): void {
 // Scenario-based Monte Carlo: ogni simulazione ha la propria sequenza di regimi
 // di mercato (bull / neutral / bear) che cambiano stocasticamente. Questo rende
 // ogni curva genuinamente unica, con drawdown, recuperi e fasi di trend diversi.
-router.post("/tools/montecarlo", (req, res) => {
+router.post(
+  "/tools/montecarlo",
+  createMoneyRateLimiter({ windowMs: 60_000, limit: 30 }),
+  (req, res) => {
   // Validate + clamp every input (numTrades/simCount bound the work) so a crafted
   // body can't spin the CPU or allocate unbounded curves. winrate is normalized to 0..1.
   const { winrate, avgR, lossR, numTrades, riskPercent, initialBalance, simCount } =
@@ -188,7 +193,28 @@ router.get("/tools/market-context", async (req, res) => {
     return;
   }
   if(req.query.horizon && req.query.horizon!=="4h") {res.status(400).json({error:"Unsupported horizon"});return;}
-  res.json(await attachIntelligence(getMarketContext(pair)));
+  const intelligence = await attachIntelligence(getMarketContext(pair));
+  try {
+    const directionalBias = await getDirectionalBiasForPair(pair);
+    res.json({ ...intelligence, directionalBias });
+  } catch {
+    res.json(intelligence);
+  }
+});
+
+router.get("/tools/directional-bias", async (req, res) => {
+  const pair = typeof req.query.pair === "string" ? req.query.pair.trim().toUpperCase() : "XAUUSD";
+  if (!getPairEntry(pair) || !isSupportedSymbol(pair)) {
+    res.status(400).json({ error: "Dati non disponibili per questo strumento" });
+    return;
+  }
+  try {
+    const bias = await getDirectionalBiasForPair(pair);
+    res.json(bias);
+  } catch (err) {
+    console.error("[tools/directional-bias] error:", err);
+    res.status(500).json({ error: "Errore durante il calcolo del bias direzionale macro" });
+  }
 });
 router.get("/tools/sentiment", async (_req, res) => {
   res.json(await getSentimentOutlook());
@@ -366,7 +392,7 @@ async function resolveWatchlistItem(pair: string): Promise<WatchlistItem> {
   if (fresh) return fresh;
 
   // Cache miss: kick off a background refresh and serve the best we have now.
-  void ensureWatchlistWarm(pair);
+  void ensureWatchlistWarm(pair).catch(() => {});
   const stale =
     watchlistLastGood.get(pair) ?? (await getJsonCache<WatchlistItem>(watchlistStaleKey(pair)));
   return stale ?? buildWatchlistItem(pair, null, true);
@@ -387,7 +413,10 @@ const cotTask = cron.schedule("5 * * * *", () => { void getCotOutlook().catch(on
 let cotSchedulerClosed = false;
 export const cotScheduler = { async close() { if(cotSchedulerClosed)return;cotSchedulerClosed=true;cotTask.stop(); cotTask.destroy(); } };
 void getCotOutlook().catch(onCotFetchError);
-router.get("/tools/cot", async (_req, res) => { res.json(await getCotOutlook()); });
+router.get("/tools/cot", async (_req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400");
+  res.json(await getCotOutlook());
+});
 
 // ─── 5. MACRO NEWS AI ─────────────────────────────────────────────────────────
 interface MacroNewsResult {

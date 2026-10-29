@@ -89,6 +89,7 @@ export const tournamentPrizesTable = pgTable(
   },
   (t) => [
     uniqueIndex("tournament_prizes_season_user_tier_unique").on(t.seasonId, t.userId, t.tier),
+    index("tournament_prizes_user_idx").on(t.userId),
   ],
 );
 

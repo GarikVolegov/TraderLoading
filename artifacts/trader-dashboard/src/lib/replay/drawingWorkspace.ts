@@ -33,16 +33,18 @@ export const DEFAULT_DRAWING_VISIBILITY: DrawingVisibilityConfig = {
 };
 
 export const DEFAULT_FIB_LEVELS: FibLevelConfig[] = [
-  { level: 0, enabled: true, color: "#787b86" },
-  { level: 0.236, enabled: true, color: "#f23645" },
-  { level: 0.382, enabled: true, color: "#ff9800" },
-  { level: 0.5, enabled: true, color: "#4caf50" },
-  { level: 0.618, enabled: true, color: "#089981" },
-  { level: 0.705, enabled: false, color: "#d4af37" },
-  { level: 0.786, enabled: true, color: "#2962ff" },
-  { level: 1, enabled: true, color: "#787b86" },
-  { level: 1.272, enabled: false, color: "#9c27b0" },
-  { level: 1.618, enabled: false, color: "#2962ff" },
+  { level: -0.618, enabled: false, color: "#ef4444" },
+  { level: -0.27, enabled: false, color: "#f59e0b" },
+  { level: 0, enabled: true, color: "#94a3b8" },
+  { level: 0.236, enabled: true, color: "#64748b" },
+  { level: 0.382, enabled: true, color: "#38bdf8" },
+  { level: 0.5, enabled: true, color: "#10b981" },
+  { level: 0.618, enabled: true, color: "#E8C56A" },
+  { level: 0.705, enabled: true, color: "#C5A059" },
+  { level: 0.786, enabled: true, color: "#f59e0b" },
+  { level: 1, enabled: true, color: "#94a3b8" },
+  { level: 1.272, enabled: false, color: "#a855f7" },
+  { level: 1.618, enabled: false, color: "#3b82f6" },
 ];
 
 /**

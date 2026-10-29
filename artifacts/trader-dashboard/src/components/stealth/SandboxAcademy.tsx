@@ -318,13 +318,13 @@ export function SandboxAcademy({
   };
 
   const [gatekeepingOpen, setGatekeepingOpen] = useState(false);
-  const [gatekeepingReason, setGatekeepingReason] = useState<string>("Sblocco completo del Protocollo Limen");
+  const [gatekeepingReason, setGatekeepingReason] = useState<string>("Sblocco completo del Protocollo AUREUS");
 
   const handleRequestAccess = (reason?: string) => {
     if (onRequestAccess) {
       onRequestAccess(reason);
     } else {
-      setGatekeepingReason(reason || "Sblocco completo del Protocollo Limen");
+      setGatekeepingReason(reason || "Sblocco completo del Protocollo AUREUS");
       setGatekeepingOpen(true);
     }
   };
@@ -388,12 +388,12 @@ export function SandboxAcademy({
   };
 
   const downloadChecklistTemplate = () => {
-    const content = `LIMEN PROTOCOL // LA DOTTRINA DEL TEMPO // CHECKLIST PRE-SESSIONE\nData: ${new Date().toLocaleDateString()}\n\n1. FINESTRA TEMPORALE KILL-ZONE: ${checklist.sessione ? "VALIDATA" : "NON VERIFICATA"}\n2. SWEEP DI LIQUIDITA HTF: ${checklist.sweep ? "RILEVATO" : "NON PRESENTE"}\n3. CAMBIO DI CARATTERE ITF (MSS): ${checklist.mss ? "CONFERMATO" : "IN ATTESA"}\n4. INVALIDAZIONE MATEMATICA: ${checklist.invalidazione ? "DEFINITA" : "NON DICHIARATA"}\n\nREGOLA RIGIDA: Se anche un solo elemento risulta non verificato, l'esecuzione a mercato e SEVERAMENTE VIETATA nel Limen Protocol.`;
+    const content = `AUREUS PROTOCOL // LA DOTTRINA DEL TEMPO // CHECKLIST PRE-SESSIONE\nData: ${new Date().toLocaleDateString()}\n\n1. FINESTRA TEMPORALE KILL-ZONE: ${checklist.sessione ? "VALIDATA" : "NON VERIFICATA"}\n2. SWEEP DI LIQUIDITA HTF: ${checklist.sweep ? "RILEVATO" : "NON PRESENTE"}\n3. CAMBIO DI CARATTERE ITF (MSS): ${checklist.mss ? "CONFERMATO" : "IN ATTESA"}\n4. INVALIDAZIONE MATEMATICA: ${checklist.invalidazione ? "DEFINITA" : "NON DICHIARATA"}\n\nREGOLA RIGIDA: Se anche un solo elemento risulta non verificato, l'esecuzione a mercato e SEVERAMENTE VIETATA nel Protocollo AUREUS.`;
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "limen-protocol-checklist-pre-entry.txt";
+    link.download = "aureus-protocol-checklist-pre-entry.txt";
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -409,7 +409,7 @@ export function SandboxAcademy({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-slate-200 uppercase tracking-wider">
-                LIVELLO DI ACCESSO // LIMEN PROTOCOL:
+                LIVELLO DI ACCESSO // AUREUS PROTOCOL:
               </span>
               <span
                 className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded border ${
@@ -550,7 +550,7 @@ export function SandboxAcademy({
               <div className="w-full rounded-2xl overflow-hidden border border-border shadow-2xl bg-[#07080C]">
                 <StealthVideoPlayer
                   key={activeLesson.id}
-                  title={`LIMEN PROTOCOL // ${activeLesson.title}`}
+                  title={`AUREUS PROTOCOL // ${activeLesson.title}`}
                   initialVideoSrc={activeLesson.videoUrl || undefined}
                 />
               </div>
@@ -603,7 +603,7 @@ export function SandboxAcademy({
                   <div className="flex items-center gap-2">
                     <Shield className="h-4 w-4 text-amber-400" />
                     <span className="font-mono text-xs font-bold text-foreground uppercase">
-                      CHECKLIST PRE-ENTRY INTERATTIVA // LIMEN PROTOCOL
+                      CHECKLIST PRE-ENTRY INTERATTIVA // AUREUS PROTOCOL
                     </span>
                   </div>
                   <button
@@ -669,7 +669,7 @@ export function SandboxAcademy({
           <div className="flex items-center justify-between">
             <span className="font-mono text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <Layers className="h-4 w-4 text-primary" />
-              INDICE DIDATTICO · LIMEN PROTOCOL
+              INDICE DIDATTICO · AUREUS PROTOCOL
             </span>
             <span className="font-mono text-[11px] text-slate-500">
               {userTier === "sandbox" ? "2 LEZIONI SBLOCCATE" : "TUTTO SBLOCCATO"}
@@ -785,14 +785,14 @@ export function SandboxAcademy({
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 I Moduli 1, 2, 3, 4 e 5 contengono i trigger di esecuzione al minuto e l&apos;archivio dei case studies
-                settimanali. L&apos;ammissione richiede la revisione del tuo profilo tramite il gatekeeping del Limen Protocol.
+                settimanali. L&apos;ammissione richiede la revisione del tuo profilo tramite il gatekeeping del Protocollo AUREUS.
               </p>
               <button
                 type="button"
                 onClick={() => handleRequestAccess("Richiesta di ammissione per sblocco completo dell'Academy")}
                 className="w-full py-2.5 rounded-xl border border-amber-400 bg-amber-400/15 text-amber-300 font-bold text-xs tracking-wider uppercase font-mono hover:bg-amber-400 hover:text-black transition-all"
               >
-                VERIFICA IDONEITÀ · CANDIDATURA LIMEN
+                VERIFICA IDONEITÀ · CANDIDATURA AUREUS
               </button>
             </div>
           )}

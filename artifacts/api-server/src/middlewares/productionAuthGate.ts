@@ -12,6 +12,7 @@ export const ANONYMOUS_FALLBACK_PREFIXES = [
   "/backtest",
   "/checkins",
   "/checklist",
+  "/financial-profile",
   "/ideas",
   "/journal",
   "/mission-templates",

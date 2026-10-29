@@ -13,6 +13,7 @@ import { PricingAtmosphere } from "@/components/landing/PricingAtmosphere";
 import { SigilIcon, type SigilVariant } from "@/components/ui/SigilIcon";
 import { captureStealthReferral } from "@/lib/stealthTracking";
 import { LIMEN_GRADES, type LimenGradeNumber } from "../../../../contracts/limenGrades";
+import { isDotazionePromoActive } from "../../../../contracts/limenServices";
 import {
   ArrowRight,
   Sparkles,
@@ -923,6 +924,7 @@ export default function LandingPage() {
   const [invitedMembers, setInvitedMembers] = useState<number>(5);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [isAudioMuted, setIsAudioMuted] = useState(true);
+  const isPromoActive = isDotazionePromoActive();
   const [active3dModel, setActive3dModel] = useState<{
     title: string;
     subtitle: string;
@@ -1044,17 +1046,17 @@ export default function LandingPage() {
           1. NAVBAR FISSA MINIMALE ("MONOLITHIC STEALTH WEALTH")
           ===================================================================== */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#080808]/90 border-b border-[#24242C] transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 lg:h-20 flex items-center justify-between gap-3 sm:gap-4">
           {/* Logo & Sigil */}
-          <Link href="/" className="flex items-center gap-3.5 group shrink-0 whitespace-nowrap">
-            <div className="h-10 w-10 rounded-lg bg-[#121216] border border-[#C5A059]/40 flex items-center justify-center text-[#C5A059] shadow-[0_0_15px_rgba(197,160,89,0.18)] group-hover:border-[#C5A059] group-hover:shadow-[0_0_20px_rgba(197,160,89,0.35)] transition-all shrink-0 overflow-hidden">
+          <Link href="/" className="flex items-center gap-2.5 sm:gap-3.5 group shrink-0 whitespace-nowrap">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-[#121216] border border-[#C5A059]/40 flex items-center justify-center text-[#C5A059] shadow-[0_0_15px_rgba(197,160,89,0.18)] group-hover:border-[#C5A059] group-hover:shadow-[0_0_20px_rgba(197,160,89,0.35)] transition-all shrink-0 overflow-hidden">
               <img src="/app-icon-192.png?v=20261021g" alt="AUREUS" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col whitespace-nowrap">
-              <span className="font-serif tracking-[0.25em] font-black text-xl text-[#F4F4F6] group-hover:text-[#C5A059] transition-colors uppercase leading-none">
+              <span className="font-serif tracking-[0.2em] sm:tracking-[0.25em] font-black text-lg sm:text-xl text-[#F4F4F6] group-hover:text-[#C5A059] transition-colors uppercase leading-none">
                 AUREUS
               </span>
-              <span className="font-mono text-[9px] tracking-[0.22em] text-[#C5A059] uppercase leading-none mt-1 whitespace-nowrap">
+              <span className="font-mono text-[8.5px] sm:text-[9px] tracking-[0.18em] sm:tracking-[0.22em] text-[#C5A059] uppercase leading-none mt-1 whitespace-nowrap">
                 CICLO OPERATIVO
               </span>
             </div>
@@ -1094,11 +1096,11 @@ export default function LandingPage() {
           </div>
 
           {/* Tablet & Mobile Right Controls */}
-          <div className="flex xl:hidden items-center gap-3">
+          <div className="flex xl:hidden items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => openGatekeeping("Richiesta di Ammissione alla Soglia (Header)")}
-              className="hidden sm:inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 rounded-lg border border-[#C5A059] bg-[#C5A059]/10 text-[#C5A059] hover:bg-[#C5A059] hover:text-[#0A0A0C] font-mono text-[11px] font-bold tracking-[0.18em] uppercase transition-all"
+              className="hidden sm:inline-flex items-center gap-2 whitespace-nowrap px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-lg border border-[#C5A059] bg-[#C5A059]/10 text-[#C5A059] hover:bg-[#C5A059] hover:text-[#0A0A0C] font-mono text-[10px] sm:text-[11px] font-bold tracking-[0.16em] sm:tracking-[0.18em] uppercase transition-all"
             >
               <span>VARCA LA SOGLIA</span>
               <ArrowRight className="h-3.5 w-3.5 shrink-0" />
@@ -1108,7 +1110,7 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2.5 rounded-lg border border-[#24242C] text-[#8E8E99] hover:text-[#F4F4F6] bg-[#121216]/60 hover:bg-[#121216] transition-colors focus:outline-none focus:border-[#C5A059]/50"
+              className="p-2 sm:p-2.5 rounded-lg border border-[#24242C] text-[#8E8E99] hover:text-[#F4F4F6] bg-[#121216]/60 hover:bg-[#121216] transition-colors focus:outline-none focus:border-[#C5A059]/50"
               aria-label="Toggle menu"
               aria-expanded={mobileMenuOpen}
             >
@@ -1119,7 +1121,7 @@ export default function LandingPage() {
 
         {/* Mobile / Tablet Dropdown Panel */}
         {mobileMenuOpen && (
-          <div className="xl:hidden border-b border-[#24242C] bg-[#080808]/98 backdrop-blur-2xl px-6 py-6 space-y-4">
+          <div className="xl:hidden border-b border-[#24242C] bg-[#080808]/98 backdrop-blur-2xl px-5 sm:px-6 py-5 sm:py-6 space-y-4">
             <nav className="flex flex-col gap-3 font-mono text-xs tracking-widest uppercase">
               {navLinks.map((link) => (
                 <a
@@ -1157,39 +1159,39 @@ export default function LandingPage() {
         {/* =====================================================================
             2. HERO SECTION MONUMENTALE ED EMOZIONALE
             ===================================================================== */}
-        <section className="relative pt-16 sm:pt-20 lg:pt-24 pb-20 sm:pb-28 lg:pb-36 overflow-hidden border-b border-[#24242C]/70 bg-[#060709]" aria-labelledby="hero-title">
+        <section className="relative pt-10 sm:pt-20 lg:pt-24 pb-16 sm:pb-28 lg:pb-36 overflow-hidden border-b border-[#24242C]/70 bg-[#060709]" aria-labelledby="hero-title">
           {/* Immersive Cathedral Atmosphere: Lateral Blender + Nano Banana Columns & Zenith Light */}
           <HeroAtmosphere />
 
           <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center z-10">
             {/* Top Monospace Protocol Badge with Pulsing Live Singularity */}
-            <div className="inline-flex items-center gap-2.5 px-4 sm:px-5 py-2 rounded-[4px] border border-[#C5A059]/45 bg-[#0E0F14]/95 text-[#C5A059] font-mono text-[10px] sm:text-[11px] tracking-[0.24em] uppercase shadow-[0_0_20px_rgba(197,160,89,0.18)] backdrop-blur-md">
-              <span className="relative flex h-2 w-2">
+            <div className="inline-flex items-center gap-2 sm:gap-2.5 px-3 sm:px-5 py-1.5 sm:py-2 rounded-[4px] border border-[#C5A059]/45 bg-[#0E0F14]/95 text-[#C5A059] font-mono text-[9px] sm:text-[11px] tracking-[0.16em] sm:tracking-[0.24em] uppercase shadow-[0_0_20px_rgba(197,160,89,0.18)] backdrop-blur-md max-w-full">
+              <span className="relative flex h-2 w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A059] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#C5A059]"></span>
               </span>
-              <SigilIcon variant="threshold" size={13} className="text-[#C5A059]" />
-              <span>IL CODICE DELLA PRESENZA E DELL'EREDITÀ // CICLO OPERATIVO</span>
+              <SigilIcon variant="threshold" size={13} className="text-[#C5A059] shrink-0" />
+              <span className="truncate">IL CODICE DELLA PRESENZA E DELL'EREDITÀ // CICLO OPERATIVO</span>
             </div>
 
             {/* Monumental Headline with Clean Unobstructed Center Stage */}
-            <div className="relative w-full max-w-4xl mx-auto mt-8 sm:mt-10 lg:mt-12">
+            <div className="relative w-full max-w-4xl mx-auto mt-6 sm:mt-10 lg:mt-12">
               <h1
                 id="hero-title"
-                className="landing-hero-title font-cinzel text-[1.75rem] sm:text-[2.65rem] lg:text-[3.25rem] font-bold text-[#F4F4F6] text-center leading-[1.18]"
+                className="landing-hero-title font-cinzel text-[1.5rem] xs:text-[1.85rem] sm:text-[2.65rem] lg:text-[3.25rem] font-bold text-[#F4F4F6] text-center leading-[1.18]"
               >
                 <span className="block text-[#F4F4F6] sm:whitespace-nowrap drop-shadow-[0_4px_18px_rgba(0,0,0,0.9)]">
                   LA MASSA OFFRE IL TRIBUTO.
                 </span>
-                <span className="hero-gold-gradient block mt-3 sm:mt-4 font-black tracking-[0.04em] sm:tracking-[0.06em]">
+                <span className="hero-gold-gradient block mt-2.5 sm:mt-4 font-black tracking-[0.03em] sm:tracking-[0.06em]">
                   GLI ARCHITETTI DISEGNANO IL VARCO.
                 </span>
               </h1>
             </div>
 
             {/* Philosophical-Operational Sub-headline with Generous Margins */}
-            <div className="max-w-2xl mx-auto mt-9 sm:mt-11 lg:mt-13 text-center">
-              <p className="text-sm sm:text-base lg:text-[17px] text-neutral-300/90 leading-[1.8] font-sans font-normal">
+            <div className="max-w-2xl mx-auto mt-6 sm:mt-11 lg:mt-13 text-center">
+              <p className="text-xs sm:text-base lg:text-[17px] text-neutral-300/90 leading-[1.75] font-sans font-normal">
                 Nel rumore dei mercati, chi agisce per istinto non è un operatore: è il{" "}
                 <strong className="text-[#C44D4D] font-semibold tracking-wide">combustibile della struttura</strong>. Oltre la soglia di{" "}
                 <strong className="text-[#C5A059] font-medium tracking-wide">AUREUS</strong> non esistono scommesse, ma solo rito, allineamento geometrico ai volumi istituzionali e silenziosa esecuzione chirurgica.
@@ -1197,26 +1199,26 @@ export default function LandingPage() {
             </div>
 
             {/* 3-Pillar Institutional Micro-Anchor Bar with Clear Separation */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-2.5 sm:gap-3.5 mt-8 sm:mt-10 lg:mt-12 font-mono text-[10px] sm:text-[11px] tracking-[0.14em] uppercase">
-              <span className="px-4 py-2 rounded-[4px] bg-[#101015]/95 border border-[#C5A059]/30 text-[#C5A059] whitespace-nowrap shadow-sm">
+            <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-2 sm:gap-3.5 mt-6 sm:mt-10 lg:mt-12 font-mono text-[9px] sm:text-[11px] tracking-[0.12em] sm:tracking-[0.14em] uppercase">
+              <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-[4px] bg-[#101015]/95 border border-[#C5A059]/30 text-[#C5A059] whitespace-nowrap shadow-sm">
                 01. DECODIFICA DEI VOLUMI
               </span>
               <span className="text-[#C5A059]/40 hidden sm:inline">•</span>
-              <span className="px-4 py-2 rounded-[4px] bg-[#101015]/95 border border-[#C5A059]/30 text-[#C5A059] whitespace-nowrap shadow-sm">
+              <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-[4px] bg-[#101015]/95 border border-[#C5A059]/30 text-[#C5A059] whitespace-nowrap shadow-sm">
                 02. DISCIPLINA CHIRURGICA
               </span>
               <span className="text-[#C5A059]/40 hidden sm:inline">•</span>
-              <span className="px-4 py-2 rounded-[4px] bg-[#101015]/95 border border-[#C5A059]/30 text-[#C5A059] whitespace-nowrap shadow-sm">
+              <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-[4px] bg-[#101015]/95 border border-[#C5A059]/30 text-[#C5A059] whitespace-nowrap shadow-sm">
                 03. IMMUNITÀ DAL CAOS
               </span>
             </div>
 
             {/* CTA Action Area: Monumental Gold Button & Obsidian Glass */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 sm:mt-12 lg:mt-15 w-full">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-8 sm:mt-12 lg:mt-15 w-full">
               <button
                 type="button"
                 onClick={() => openGatekeeping("Ammissione Diretta - Eroe Principale")}
-                className="hero-gold-btn group w-full sm:w-auto h-13 sm:h-14 px-8 sm:px-10 rounded-[6px] text-[#0A0A0C] font-mono text-xs sm:text-sm font-black tracking-[0.18em] uppercase inline-flex items-center justify-center gap-3 whitespace-nowrap cursor-pointer"
+                className="hero-gold-btn group w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-10 rounded-[6px] text-[#0A0A0C] font-mono text-xs sm:text-sm font-black tracking-[0.16em] sm:tracking-[0.18em] uppercase inline-flex items-center justify-center gap-3 whitespace-nowrap cursor-pointer shadow-[0_0_25px_rgba(197,160,89,0.35)]"
               >
                 <span>VARCA LA SOGLIA — INIZIA L'ASCESA</span>
                 <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
@@ -1224,7 +1226,7 @@ export default function LandingPage() {
 
               <a
                 href="#manifesto"
-                className="hero-obsidian-btn w-full sm:w-auto h-13 sm:h-14 px-8 rounded-[6px] text-[#C4C4CD] font-mono text-xs sm:text-sm font-semibold tracking-[0.16em] uppercase inline-flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
+                className="hero-obsidian-btn w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 rounded-[6px] text-[#C4C4CD] font-mono text-xs sm:text-sm font-semibold tracking-[0.14em] sm:tracking-[0.16em] uppercase inline-flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
               >
                 <span>LEGGI IL MANIFESTO</span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-[#C5A059]" />
@@ -1246,7 +1248,7 @@ export default function LandingPage() {
             </div>
 
             {/* Spazio Puro Dedicato al Film Master — Cornice a Filo Sottile Dorato con Respiro Maestoso */}
-            <div className="mt-20 sm:mt-28 lg:mt-32 max-w-4xl w-full mx-auto">
+            <div className="mt-10 sm:mt-20 lg:mt-32 max-w-4xl w-full mx-auto">
               <div className="relative rounded-2xl overflow-hidden border border-[#C5A059]/40 shadow-[0_0_50px_rgba(197,160,89,0.15)] bg-[#0A0A0C] aspect-video group">
                 <video
                   src="/videos/limen-scene1.mp4"
@@ -1261,7 +1263,7 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => setIsAudioMuted(!isAudioMuted)}
-                  className="absolute bottom-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0A0A0C]/75 hover:bg-[#0A0A0C] border border-[#C5A059]/50 text-[#C5A059] font-mono text-[10px] tracking-widest uppercase backdrop-blur-md transition-all shadow-[0_4px_15px_rgba(0,0,0,0.8)] cursor-pointer"
+                  className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20 flex items-center gap-2 px-3 py-2 sm:py-1.5 rounded-full bg-[#0A0A0C]/85 hover:bg-[#0A0A0C] border border-[#C5A059]/60 text-[#C5A059] font-mono text-[9px] sm:text-[10px] tracking-widest uppercase backdrop-blur-md transition-all shadow-[0_4px_15px_rgba(0,0,0,0.8)] cursor-pointer touch-manipulation"
                   aria-label={isAudioMuted ? "Attiva audio narrazione" : "Disattiva audio"}
                 >
                   {isAudioMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5 animate-pulse" />}
@@ -1788,18 +1790,18 @@ export default function LandingPage() {
         <section id="espansione" className="py-16 sm:py-24 relative border-t border-[#24242C]/40" aria-labelledby="expansion-title">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
             {/* Section Header */}
-            <div className="text-center space-y-3 max-w-3xl mx-auto">
+            <div className="text-center space-y-3 max-w-3xl mx-auto flex flex-col items-center">
               <span className="font-mono text-xs font-bold text-[#C5A059] tracking-[0.25em] uppercase flex items-center justify-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 text-[#C5A059]" />
                 IL MANDATO DI ESPANSIONE // ROYALTY RICORRENTE 20%
               </span>
               <h2
                 id="expansion-title"
-                className="text-2xl sm:text-3xl lg:text-4xl font-serif font-black text-white tracking-tight"
+                className="text-2xl sm:text-3xl lg:text-4xl font-serif font-black text-white tracking-tight text-center"
               >
                 Azzeramento del Tributo &amp; Rendita di Merito
               </h2>
-              <p className="text-xs sm:text-sm text-[#8E8E99] leading-relaxed font-sans max-w-2xl mx-auto">
+              <p className="text-xs sm:text-sm text-[#8E8E99] leading-relaxed font-sans max-w-2xl mx-auto text-center">
                 Un mandato cavalleresco di crescita organica. Per ogni iniziato introdotto che supera Il Varco, ricevi una <strong className="text-white">Royalty del 20% (€30/mese a vita)</strong>. Con 5 iniziati, il Tributo mensile è azzerato al 100%.
               </p>
             </div>
@@ -1877,7 +1879,7 @@ export default function LandingPage() {
                     step="1"
                     value={invitedMembers}
                     onChange={(e) => setInvitedMembers(parseInt(e.target.value, 10))}
-                    className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#24242C] accent-[#C5A059]"
+                    className="w-full h-3 rounded-lg appearance-none cursor-pointer bg-[#24242C] accent-[#C5A059] touch-manipulation py-2"
                   />
                 </div>
 
@@ -1888,8 +1890,8 @@ export default function LandingPage() {
                       <Coins className="h-3 w-3 text-[#C5A059]" />
                       <span>ROYALTY MENSILE</span>
                     </div>
-                    <div className="text-xl font-bold text-white">
-                      €{monthlyRoyalty} <span className="text-xs text-[#8E8E99] font-normal">/ mese</span>
+                    <div className="text-xl font-bold text-white whitespace-nowrap">
+                      €{monthlyRoyalty} <span className="text-xs text-[#8E8E99] font-normal whitespace-nowrap">/ mese</span>
                     </div>
                     <div className="mt-0.5 text-[10px] text-[#8E8E99]">
                       {invitedMembers} iniziati × €30 (20%)
@@ -1903,8 +1905,8 @@ export default function LandingPage() {
                     </div>
                     {invitedMembers < 5 ? (
                       <div>
-                        <div className="text-xl font-bold text-amber-400">
-                          €{netTributeCost} <span className="text-xs text-[#8E8E99] font-normal">/ mese</span>
+                        <div className="text-xl font-bold text-amber-400 whitespace-nowrap">
+                          €{netTributeCost} <span className="text-xs text-[#8E8E99] font-normal whitespace-nowrap">/ mese</span>
                         </div>
                         <div className="mt-0.5 text-[10px] text-amber-400/80">
                           {5 - invitedMembers} per azzerare ({coveragePercent}%)
@@ -1912,7 +1914,7 @@ export default function LandingPage() {
                       </div>
                     ) : invitedMembers === 5 ? (
                       <div>
-                        <div className="text-xl font-black text-[#C5A059]">
+                        <div className="text-xl font-black text-[#C5A059] whitespace-nowrap">
                           €0 / MESE
                         </div>
                         <div className="mt-0.5 text-[10px] font-bold text-[#C5A059]">
@@ -1921,7 +1923,7 @@ export default function LandingPage() {
                       </div>
                     ) : (
                       <div>
-                        <div className="text-xl font-black text-[#D4AF37]">
+                        <div className="text-xl font-black text-[#D4AF37] whitespace-nowrap">
                           +€{netRecurringProfit} / MESE
                         </div>
                         <div className="mt-0.5 text-[10px] font-bold text-[#D4AF37]">
@@ -1960,7 +1962,7 @@ export default function LandingPage() {
 
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10 relative z-10">
             {/* Header d'Ordine */}
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <div className="text-center space-y-4 max-w-3xl mx-auto flex flex-col items-center">
               <span className="font-mono text-xs font-bold text-[#C5A059] tracking-[0.25em] uppercase">
                 L'AMMISSIONE ALL'ORDINE // SCELTA DELLA DOTAZIONE
               </span>
@@ -2034,7 +2036,7 @@ export default function LandingPage() {
                   {/* Status chip & Selector status */}
                   <div className="flex items-center justify-between gap-2 border-b border-[#24242C]/60 pb-3">
                     <span className="font-mono text-[9px] sm:text-[10px] uppercase font-bold tracking-widest px-2.5 py-0.5 rounded border border-[#10b981]/40 bg-[#10b981]/15 text-[#10b981] whitespace-nowrap">
-                      ✦ ESCLUSIVA PRIME PERSONE · BLOCCATO
+                      {isPromoActive ? "✦ PROMO 14 GIORNI · BLOCCATO" : "✦ ESCLUSIVA PRIME PERSONE · BLOCCATO"}
                     </span>
                     {selectedTierId === "founders_10" ? (
                       <span className="font-mono text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border border-[#C5A059]/50 bg-[#C5A059]/20 text-[#E8C56A] whitespace-nowrap">
@@ -2061,10 +2063,10 @@ export default function LandingPage() {
                   <div className="rounded-xl border border-[#C5A059]/20 bg-[#07080b]/90 p-4 flex items-baseline justify-between gap-3">
                     <div className="flex items-baseline gap-1.5">
                       <span className="font-mono text-4xl sm:text-5xl font-black text-[#E8C56A] tracking-tight whitespace-nowrap">
-                        {pricingCycle === "yearly" ? "€100" : "€10"}
+                        {pricingCycle === "yearly" ? "€100" : isPromoActive ? "€2,60" : "€10"}
                       </span>
                       <span className="font-mono text-xs text-[#94a3b8] whitespace-nowrap">
-                        {pricingCycle === "yearly" ? "/ anno" : "/ mese"}
+                        {pricingCycle === "yearly" ? "/ anno" : isPromoActive ? "/ 14 giorni" : "/ mese"}
                       </span>
                     </div>
 
@@ -2163,13 +2165,13 @@ export default function LandingPage() {
                     onClick={(e) => {
                       e.stopPropagation();
                       openGatekeeping(
-                        `Candidatura Dotazione Prime Persone (${pricingCycle === "yearly" ? "100€/a" : "10€/m"})`,
+                        `Candidatura Dotazione Operativa (${pricingCycle === "yearly" ? "100€/a" : isPromoActive ? "2,60€ / 14 giorni" : "10€/m"})`,
                         "founders_10",
                       );
                     }}
                     className="w-full py-4 px-4 rounded-xl border border-[#C5A059] bg-[#C5A059]/20 hover:bg-[#C5A059] text-[#E8C56A] hover:text-[#07080b] font-mono text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(197,160,89,0.2)] group cursor-pointer"
                   >
-                    <span>CANDIDATI CON DOTAZIONE PRIME PERSONE</span>
+                    <span>CANDIDATI CON DOTAZIONE OPERATIVA</span>
                     <ArrowRight className="h-4 w-4 shrink-0 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
@@ -2363,6 +2365,7 @@ export default function LandingPage() {
                   <div className="text-center mb-4 space-y-1">
                     <h4 className="font-serif text-lg font-bold text-white">Matrice di Accesso ai Moduli d'Ordine</h4>
                     <p className="font-mono text-xs text-[#94a3b8]">Confronto analitico tra i 3 gradi di dotazione</p>
+                    <p className="font-mono text-[10px] text-[#C5A059] block sm:hidden">← Scorri orizzontalmente per confrontare i dettagli →</p>
                   </div>
 
                   <table className="w-full min-w-[560px] text-xs font-mono text-left">
@@ -2370,7 +2373,7 @@ export default function LandingPage() {
                       <tr className="border-b border-[#24242C] text-[#94a3b8]">
                         <th className="py-2.5 px-3">Modulo di Protocollo</th>
                         <th className="py-2.5 px-3 text-center">Soglia Base (0€)</th>
-                        <th className="py-2.5 px-3 text-center text-[#E8C56A]">Prime Persone (10€/m)</th>
+                        <th className="py-2.5 px-3 text-center text-[#E8C56A] whitespace-nowrap">Dotazione Operativa (2,60€)</th>
                         <th className="py-2.5 px-3 text-center text-white">Progetto Completo (150€/m)</th>
                       </tr>
                     </thead>
@@ -2519,7 +2522,7 @@ export default function LandingPage() {
                           <div className="w-24 h-[1px] bg-gradient-to-r from-transparent via-[#C5A059]/40 to-transparent mx-auto" />
 
                           {/* Centered Answer Text */}
-                          <p className="text-xs sm:text-sm text-[#A0A0AA] font-sans leading-relaxed max-w-2xl mx-auto">
+                          <p className="text-xs sm:text-sm text-[#A0A0AA] font-sans leading-relaxed max-w-2xl mx-auto text-center">
                             {t(item.answerKey)}
                           </p>
 

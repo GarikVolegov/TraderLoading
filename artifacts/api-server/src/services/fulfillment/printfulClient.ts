@@ -308,7 +308,7 @@ export async function sendOrderToPrintful(payload: PrintfulOrderPayload): Promis
         retail_price: (item.priceCents / 100).toFixed(2),
         ...(item.variantId && !isNaN(Number(item.variantId))
           ? { sync_variant_id: Number(item.variantId) }
-          : { sku: item.sku || `LIMEN-${item.productTitle.slice(0, 10).toUpperCase()}` }),
+          : { sku: item.sku || `AUREUS-${item.productTitle.slice(0, 10).toUpperCase()}` }),
       };
     });
 
@@ -326,7 +326,7 @@ export async function sendOrderToPrintful(payload: PrintfulOrderPayload): Promis
       },
       items: printfulItems,
       packing_slip: {
-        message: "LIMEN PROTOCOL // Dotazione d'Ordine Ufficiale — Zero Rumore Cognitivo.",
+        message: "AUREUS PROTOCOL // Dotazione d'Ordine Ufficiale — Zero Rumore Cognitivo.",
       },
     };
 

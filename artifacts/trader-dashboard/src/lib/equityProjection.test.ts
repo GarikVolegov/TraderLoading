@@ -40,3 +40,21 @@ test("monteCarloBands tolerates an empty sample set", () => {
   const b = monteCarloBands([], { steps: 5, start: 2 });
   assert.deepEqual(b.p50, [2, 2, 2, 2, 2, 2]);
 });
+
+test("monteCarloBands scales proportionally with riskMultiplier", () => {
+  const samples = [100, -50, 150, -80, 200];
+  const b1 = monteCarloBands(samples, { steps: 10, start: 0, seed: 100, riskMultiplier: 1.0 });
+  const b2 = monteCarloBands(samples, { steps: 10, start: 0, seed: 100, riskMultiplier: 2.0 });
+  const bHalf = monteCarloBands(samples, { steps: 10, start: 0, seed: 100, riskMultiplier: 0.5 });
+
+  for (let i = 1; i <= 10; i++) {
+    const spread1 = b1.p90[i] - b1.p10[i];
+    const spread2 = b2.p90[i] - b2.p10[i];
+    const spreadHalf = bHalf.p90[i] - bHalf.p10[i];
+
+    // Multiplier 2.0 must double the spread
+    assert.ok(Math.abs(spread2 - spread1 * 2) < 1e-6, `spread2 must be double spread1 at step ${i}`);
+    // Multiplier 0.5 must halve the spread
+    assert.ok(Math.abs(spreadHalf - spread1 * 0.5) < 1e-6, `spreadHalf must be half spread1 at step ${i}`);
+  }
+});

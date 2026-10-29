@@ -226,18 +226,55 @@ export function checkStopHit(
   bar: ReplayCandle,
 ): { exitPrice: number; exitReason: "sl" | "tp" } | null {
   if (position.direction === "buy") {
-    if (position.hasStop && bar.low <= position.stopLoss) {
+    const slHit = position.hasStop && bar.low <= position.stopLoss;
+    const tpHit = position.tpPips > 0 && bar.high >= position.takeProfit;
+
+    if (slHit && tpHit) {
+      if (bar.open <= position.stopLoss) {
+        return { exitPrice: bar.open, exitReason: "sl" };
+      }
+      if (bar.open >= position.takeProfit) {
+        return { exitPrice: bar.open, exitReason: "tp" };
+      }
+      const distToSL = Math.abs(bar.open - position.stopLoss);
+      const distToTP = Math.abs(bar.open - position.takeProfit);
+      if (distToTP < distToSL * 0.5) {
+        return { exitPrice: position.takeProfit, exitReason: "tp" };
+      }
       return { exitPrice: Math.min(bar.open, position.stopLoss), exitReason: "sl" };
     }
-    if (position.tpPips > 0 && bar.high >= position.takeProfit) {
+
+    if (slHit) {
+      return { exitPrice: Math.min(bar.open, position.stopLoss), exitReason: "sl" };
+    }
+    if (tpHit) {
       return { exitPrice: Math.max(bar.open, position.takeProfit), exitReason: "tp" };
     }
     return null;
   }
-  if (position.hasStop && bar.high >= position.stopLoss) {
+
+  const slHit = position.hasStop && bar.high >= position.stopLoss;
+  const tpHit = position.tpPips > 0 && bar.low <= position.takeProfit;
+
+  if (slHit && tpHit) {
+    if (bar.open >= position.stopLoss) {
+      return { exitPrice: bar.open, exitReason: "sl" };
+    }
+    if (bar.open <= position.takeProfit) {
+      return { exitPrice: bar.open, exitReason: "tp" };
+    }
+    const distToSL = Math.abs(bar.open - position.stopLoss);
+    const distToTP = Math.abs(bar.open - position.takeProfit);
+    if (distToTP < distToSL * 0.5) {
+      return { exitPrice: position.takeProfit, exitReason: "tp" };
+    }
     return { exitPrice: Math.max(bar.open, position.stopLoss), exitReason: "sl" };
   }
-  if (position.tpPips > 0 && bar.low <= position.takeProfit) {
+
+  if (slHit) {
+    return { exitPrice: Math.max(bar.open, position.stopLoss), exitReason: "sl" };
+  }
+  if (tpHit) {
     return { exitPrice: Math.min(bar.open, position.takeProfit), exitReason: "tp" };
   }
   return null;

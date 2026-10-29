@@ -14,7 +14,7 @@ import {
 const FONT_OPTIONS = [
   {
     value: "space-grotesk",
-    label: "Space Grotesk (Predefinito LIMEN)",
+    label: "Space Grotesk (Predefinito AUREUS)",
     description: "Proporzioni geometriche, alta leggibilità su metriche e telemetrie.",
   },
   {

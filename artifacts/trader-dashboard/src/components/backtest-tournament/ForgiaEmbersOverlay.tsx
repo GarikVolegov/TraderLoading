@@ -15,6 +15,7 @@ export function ForgiaEmbersOverlay() {
     if (!ctx) return;
 
     let animId = 0;
+    let isVisible = true;
     let width = (canvas.width = canvas.offsetWidth || 300);
     let height = (canvas.height = canvas.offsetHeight || 200);
 
@@ -23,14 +24,15 @@ export function ForgiaEmbersOverlay() {
       width = canvas.width = canvas.offsetWidth || 300;
       height = canvas.height = canvas.offsetHeight || 200;
     };
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", onResize, { passive: true });
 
-    // 20 particelle dorate leggere
-    const count = 20;
+    // Particelle dorate leggere (ridotte su mobile per fluidità GPU e batteria)
+    const isMobileViewport = window.innerWidth < 768;
+    const count = isMobileViewport ? 8 : 16;
     const embers = Array.from({ length: count }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      size: 0.8 + Math.random() * 1.6,
+      size: 0.8 + Math.random() * 1.5,
       speedY: 0.2 + Math.random() * 0.45,
       speedX: (Math.random() - 0.5) * 0.2,
       opacity: 0.15 + Math.random() * 0.55,
@@ -40,6 +42,8 @@ export function ForgiaEmbersOverlay() {
     let lastTime = performance.now();
 
     const render = (now: number) => {
+      animId = 0;
+      if (document.hidden || !isVisible) return;
       const dt = Math.min((now - lastTime) / 16.66, 2);
       lastTime = now;
 
@@ -62,23 +66,43 @@ export function ForgiaEmbersOverlay() {
         ctx.fill();
       }
 
-      if (!document.hidden) {
+      animId = requestAnimationFrame(render);
+    };
+
+    const startLoop = () => {
+      if (!animId && !document.hidden && isVisible) {
+        lastTime = performance.now();
         animId = requestAnimationFrame(render);
       }
     };
 
-    animId = requestAnimationFrame(render);
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry?.isIntersecting ?? true;
+        if (isVisible) startLoop();
+        else if (animId) {
+          cancelAnimationFrame(animId);
+          animId = 0;
+        }
+      },
+      { threshold: 0.01 },
+    );
+    io.observe(canvas);
+
+    startLoop();
 
     const onVisibility = () => {
-      if (!document.hidden && !animId) {
-        lastTime = performance.now();
-        animId = requestAnimationFrame(render);
+      if (!document.hidden) startLoop();
+      else if (animId) {
+        cancelAnimationFrame(animId);
+        animId = 0;
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
-      cancelAnimationFrame(animId);
+      if (animId) cancelAnimationFrame(animId);
+      io.disconnect();
       window.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibility);
     };

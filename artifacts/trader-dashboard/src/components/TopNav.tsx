@@ -2,6 +2,8 @@ import { BrandMark } from "@/components/BrandMark";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { motion } from "framer-motion";
 import { Link, useLocation, useSearch } from "wouter";
+import { getLimenSessionInfo } from "@/lib/limenSession";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import {
   Volume2,
   VolumeX,
@@ -16,6 +18,8 @@ import {
   Globe,
   LogOut,
   ChevronRight,
+  Sunrise,
+  Gamepad2,
 } from "lucide-react";
 import { useAudio } from "@/contexts/AudioContext";
 import { useGetProfile } from "@workspace/api-client-react";
@@ -34,7 +38,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiJSON } from "@/lib/apiFetch";
 import { getLimenPageQuote } from "@/lib/limenPageQuotes";
 import { computeLimenIntegritySnapshot, type LimenIntegritySnapshot } from "../../../../contracts/limenGrades";
-import { openThresholdManifesto } from "@/components/onboarding/ThresholdOfSelectionModal";
+import { openThresholdManifesto } from "@/components/onboarding/thresholdEvents";
 
 export function TopNav() {
   const [location, navigate] = useLocation();
@@ -63,12 +67,27 @@ export function TopNav() {
     queryFn: () => apiJSON("profile/integrity"),
     staleTime: 30_000,
   });
+  const fallbackSnapshot = computeLimenIntegritySnapshot({
+    legacyLevel: profile?.level ?? 1,
+    consecutiveIntegralSessions: profile?.streak ?? 0,
+  });
   const integritySnapshot =
-    serverIntegrity ??
-    computeLimenIntegritySnapshot({
-      legacyLevel: profile?.level ?? 1,
-      consecutiveIntegralSessions: profile?.streak ?? 0,
-    });
+    serverIntegrity && serverIntegrity.currentGrade
+      ? serverIntegrity
+      : fallbackSnapshot;
+  const currentGrade = integritySnapshot?.currentGrade ?? fallbackSnapshot.currentGrade;
+  const currentRoman = currentGrade?.roman ?? "I";
+  const currentCode = currentGrade?.code ?? "GRADO I";
+  const currentTitle = currentGrade?.title ?? "Novizio Consapevole";
+  const currentIntegrityIndex = integritySnapshot?.integrityIndex ?? 100;
+
+  const now = useMinuteClock();
+  const limenSession = getLimenSessionInfo(now);
+  const timeString = now.toLocaleTimeString("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Rome",
+  });
 
   return (
     <motion.header
@@ -94,13 +113,34 @@ export function TopNav() {
           {/* Divider — mobile only */}
           <div className="w-px h-4 bg-border/60 lg:hidden shrink-0" />
 
-          {/* Thematic Philosophical Quote */}
+          {/* Thematic Philosophical Quote (Desktop) + Live Session Telemetry Pill (Mobile/Tablet) */}
           <motion.div
             className="flex-1 min-w-0 overflow-hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.15, duration: 0.3 }}
           >
+            {/* Mobile Live Session Telemetry Pill (Zero Vuoti Ingiustificati) */}
+            <div
+              className="flex lg:hidden items-center gap-1.5 min-w-0"
+              title={`${limenSession.shortName} (${limenSession.hours})`}
+            >
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#C5A059]/30 bg-[#0d0f14]/90 px-2 py-1 font-mono text-[10px] whitespace-nowrap min-w-0">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                    limenSession.isActive ? "bg-emerald-400 animate-pulse" : "bg-[#C5A059]"
+                  }`}
+                />
+                <span className="font-bold uppercase tracking-wider text-[#E8C56A] truncate">
+                  {limenSession.shortName}
+                </span>
+                <span className="text-muted-foreground/50 hidden sm:inline">·</span>
+                <span className="font-semibold text-foreground/85 tabular-nums hidden sm:inline">
+                  {timeString} CET
+                </span>
+              </span>
+            </div>
+
             <motion.div
               key={pageQuote}
               initial={{ opacity: 0, y: -2 }}
@@ -186,13 +226,13 @@ export function TopNav() {
                       className="h-full w-full object-cover"
                     />
                     <span className="absolute inset-x-0 bottom-0 bg-[#0A0A0C]/85 py-px text-center font-mono text-[7px] font-bold uppercase tracking-wider text-primary">
-                      {integritySnapshot.currentGrade.roman}
+                      {currentRoman}
                     </span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="w-72 sm:w-80 rounded-lg border border-[#C5A059]/35 bg-[#0C0D12]/98 backdrop-blur-xl p-0 shadow-[0_16px_50px_rgba(0,0,0,0.85),0_0_24px_rgba(197,160,89,0.15)] text-foreground overflow-hidden"
+                  className="w-[calc(100vw-24px)] max-w-xs sm:max-w-sm rounded-lg border border-[#C5A059]/35 bg-[#0C0D12]/98 backdrop-blur-xl p-0 shadow-[0_16px_50px_rgba(0,0,0,0.85),0_0_24px_rgba(197,160,89,0.15)] text-foreground overflow-hidden"
                 >
                   {/* OPERATOR DOSSIER HEADER */}
                   <div className="p-3.5 border-b border-[#C5A059]/20 bg-gradient-to-b from-[#181924] via-[#0F1017] to-[#0A0B0E]">
@@ -207,7 +247,7 @@ export function TopNav() {
                           />
                         </div>
                         <span className="absolute -bottom-1 -right-1 px-1.5 py-px rounded-sm bg-[#C5A059] text-black font-mono text-[8px] font-black shadow-sm">
-                          {integritySnapshot.currentGrade.roman}
+                          {currentRoman}
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
@@ -216,19 +256,19 @@ export function TopNav() {
                             {profileName}
                           </p>
                           <span className="px-1.5 py-0.5 rounded-sm font-mono text-[8.5px] font-bold uppercase tracking-wider bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/30 shrink-0">
-                            {integritySnapshot.currentGrade.code}
+                            {currentCode}
                           </span>
                         </div>
                         <p className="font-mono text-[10px] text-muted-foreground truncate">
-                          {integritySnapshot.currentGrade.title}
+                          {currentTitle}
                         </p>
                         <div className="mt-1 flex items-center gap-2 font-mono text-[9.5px]">
-                          <span className="text-emerald-400 font-semibold">
-                            Integrità: {integritySnapshot.integrityIndex}%
+                          <span className="text-emerald-400 font-semibold whitespace-nowrap">
+                            Integrità: {currentIntegrityIndex}%
                           </span>
                           <span className="text-muted-foreground/60">·</span>
-                          <span className="text-[#C5A059] font-medium">
-                            Streak: {profile?.streak ?? 0}d
+                          <span className="text-[#C5A059] font-medium whitespace-nowrap">
+                            Streak: {profile?.streak ?? 0} gg
                           </span>
                         </div>
                       </div>
@@ -328,9 +368,39 @@ export function TopNav() {
                       </div>
                     </DropdownMenuItem>
 
+                    <DropdownMenuItem
+                      onSelect={() => navigate("/routine")}
+                      className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-mono cursor-pointer rounded-sm hover:bg-[#C5A059]/10 hover:text-[#F4E1B3] transition-colors group"
+                    >
+                      <div className="w-6 h-6 rounded flex items-center justify-center shrink-0 border border-white/5 bg-white/5 text-[#C5A059] group-hover:border-[#C5A059]/30">
+                        <Sunrise className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground/90 group-hover:text-primary truncate">
+                          L&apos;Ordine Giornaliero
+                        </p>
+                        <p className="text-[9.5px] text-muted-foreground">Routine mattutina &amp; serale</p>
+                      </div>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onSelect={() => navigate("/decompressione")}
+                      className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-mono cursor-pointer rounded-sm hover:bg-[#C5A059]/10 hover:text-[#F4E1B3] transition-colors group"
+                    >
+                      <div className="w-6 h-6 rounded flex items-center justify-center shrink-0 border border-white/5 bg-white/5 text-[#C5A059] group-hover:border-[#C5A059]/30">
+                        <Gamepad2 className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground/90 group-hover:text-primary truncate">
+                          Oasi di Decompressione
+                        </p>
+                        <p className="text-[9.5px] text-muted-foreground">Cronache del distacco conscio</p>
+                      </div>
+                    </DropdownMenuItem>
+
                     <DropdownMenuSeparator className="bg-white/10 my-1" />
 
-                    {/* SEZIONE 3: PATRIMONIO & ARSENALE */}
+                    {/* SEZIONE 3: ARCHITETTURA PATRIMONIALE */}
                     <div className="px-2.5 pt-1.5 pb-1 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
                       Patrimonio &amp; Dotazioni
                     </div>

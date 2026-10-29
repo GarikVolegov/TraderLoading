@@ -46,13 +46,19 @@ async function testTcp(profile: AccountConnectionProfile): Promise<{ reachable: 
   });
 }
 
+export function isAccountBridgeEnabledInCurrentEnv(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  return env.NODE_ENV !== "production";
+}
+
 export function createAccountBridgeRouter(options: AccountBridgeRouterOptions = {}): IRouter {
   const router = Router();
   const store = options.store ?? createAccountProfileStore();
   const runtime = options.runtime ?? accountBridgeRuntime;
   const env = options.env ?? process.env;
 
-  if (env.NODE_ENV === "production") {
+  if (!isAccountBridgeEnabledInCurrentEnv(env)) {
     router.use("/account/connections", (_req, res) => {
       res.status(410).json({ error: "Legacy account bridge routes are disabled in production." });
     });

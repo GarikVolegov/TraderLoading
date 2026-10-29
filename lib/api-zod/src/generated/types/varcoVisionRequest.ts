@@ -8,6 +8,7 @@
 import type { VarcoSetupPlan } from './varcoSetupPlan';
 import type { VarcoVisionCandle } from './varcoVisionCandle';
 import type { VarcoVisionChecklistCurrent } from './varcoVisionChecklistCurrent';
+import type { VarcoVisionRequestDirectionalBias } from './varcoVisionRequestDirectionalBias';
 import type { VarcoVisionRequestOperativeMemory } from './varcoVisionRequestOperativeMemory';
 
 export interface VarcoVisionRequest {
@@ -27,4 +28,5 @@ export interface VarcoVisionRequest {
   activeSetup?: VarcoSetupPlan;
   enforceSessionWindows?: boolean;
   operativeMemory?: VarcoVisionRequestOperativeMemory;
+  directionalBias?: VarcoVisionRequestDirectionalBias;
 }

@@ -17,6 +17,7 @@
     "financialArchitecture.ts",
     "financialBenchmarks.ts",
     "financialTimingEngine.ts",
+    "propFirmAndBrokers.ts",
     "arsenalProducts.ts",
     "backtestChart.ts",
     "limenServices.ts"

@@ -587,7 +587,7 @@ export const SCENARIO_MISSIONS: ScenarioMission[] = [
   {
     id: 7,
     year: "2026",
-    name: "Il Nesso Quantistico LIMEN",
+    name: "Il Nesso Quantistico AUREUS",
     subtitle: "La Battaglia della Sovranità Operativa",
     historicalContext:
       "La soglia tra uomo e algoritmo: l'Operatore dell'Ordine domina l'intero book multi-asset contro l'intelligenza artificiale di mercato.",

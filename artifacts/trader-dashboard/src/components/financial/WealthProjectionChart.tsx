@@ -141,9 +141,9 @@ export const WealthProjectionChart: React.FC<WealthProjectionChartProps> = ({
   return (
     <div className={`relative flex flex-col justify-between ${className}`}>
       {/* Header telemetria interattiva */}
-      <div className="flex items-center justify-between pb-1.5 border-b border-border/50 text-[10.5px] font-mono">
+      <div className="flex items-center justify-between pb-1.5 border-b border-border/50 text-[10.5px] font-mono gap-1.5 min-w-0">
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[#C5A059] font-bold uppercase whitespace-nowrap">
+          <span className="text-[#07080b] bg-[#C5A059] px-1.5 py-0.2 rounded font-bold uppercase whitespace-nowrap text-[10px]">
             {active ? active.point.stepLabel : `${horizonYears}A`}
           </span>
           {active && active.point.year > 0 && (
@@ -160,19 +160,19 @@ export const WealthProjectionChart: React.FC<WealthProjectionChartProps> = ({
         </div>
 
         {active && (
-          <div className="flex items-center gap-2.5 shrink-0 text-[10px]">
+          <div className="flex items-center gap-2 shrink-0 text-[10px]">
             {active.point.taxDragEuro !== undefined && active.point.taxDragEuro > 0 && (
               <span className="text-red-400 font-semibold whitespace-nowrap hidden sm:inline" title="Impatto fiscale cumulato a questo step">
                 Drag: -{active.point.taxDragEuro.toLocaleString("it-IT")} €
               </span>
             )}
-            <span className="text-muted-foreground whitespace-nowrap">
+            <span className="text-muted-foreground whitespace-nowrap hidden xs:inline">
               Rendita:{" "}
               <strong className="text-[#E8C56A] font-bold">
                 +{(active.point.totalMonthlyPassiveCashflow ?? active.point.monthlyDividendCashflow).toLocaleString("it-IT")} €/m
               </strong>
             </span>
-            <span className="text-foreground font-bold whitespace-nowrap">
+            <span className="font-bold whitespace-nowrap text-[#E8C56A] px-1.5 py-0.2 rounded bg-[#C5A059]/10 border border-[#C5A059]/25">
               {active.point.totalProjectedNetWorth.toLocaleString("it-IT")} €
             </span>
           </div>
@@ -372,8 +372,8 @@ export const WealthProjectionChart: React.FC<WealthProjectionChartProps> = ({
       </div>
 
       {/* Legenda Compatta Monte Carlo & Indicatori Chiave */}
-      <div className="flex items-center justify-between pt-1 px-1 font-mono text-[9.5px] text-slate-300 border-t border-border/40 mt-0.5">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between pt-1 px-1 font-mono text-[9.5px] text-slate-300 border-t border-border/40 mt-0.5 gap-y-1">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <div className="flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-[#C5A059]" />
             <span className="text-slate-300">Mediana P50</span>
@@ -389,8 +389,10 @@ export const WealthProjectionChart: React.FC<WealthProjectionChartProps> = ({
         </div>
 
         {active && (
-          <div className="text-right text-[9.5px] text-[#E8C56A] font-semibold">
-            Bear: {active.point.p10NetWorth.toLocaleString("it-IT")} € | Bull: {active.point.p90NetWorth.toLocaleString("it-IT")} €
+          <div className="text-right text-[9.5px] text-[#E8C56A] font-semibold whitespace-nowrap ml-auto">
+            <span>Bear: <strong className="text-red-300">{active.point.p10NetWorth.toLocaleString("it-IT")} €</strong></span>
+            <span className="mx-1 text-slate-500">|</span>
+            <span>Bull: <strong className="text-emerald-300">{active.point.p90NetWorth.toLocaleString("it-IT")} €</strong></span>
           </div>
         )}
       </div>

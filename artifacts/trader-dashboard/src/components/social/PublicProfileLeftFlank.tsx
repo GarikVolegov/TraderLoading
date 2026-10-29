@@ -181,8 +181,7 @@ export function PublicProfileLeftFlank({
               </button>
             </div>
             <p className="font-mono text-[10px] text-[#C5A059]/90 truncate">
-              {grade.title} · Lv.{myProfile?.level ?? 1} ·{" "}
-              {(myProfile?.xp ?? 0).toLocaleString()} XP
+              {grade.code} · {grade.title}
             </p>
           </div>
 

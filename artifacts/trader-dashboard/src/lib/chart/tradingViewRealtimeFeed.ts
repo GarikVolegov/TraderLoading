@@ -304,7 +304,7 @@ export class TradingViewRealtimeFeed {
   }
 
   private triggerFallback(): void {
-    this.setStatus("fallback", "Connessione diretta ai server dati Limen...");
+    this.setStatus("fallback", "Connessione diretta ai server dati AUREUS...");
     this.fetchRestFallback();
   }
 

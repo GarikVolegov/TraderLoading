@@ -1,8 +1,8 @@
-import { isClerkSessionRevoked } from "../services/sessionRevocation.js";
+import { getCachedAdminUserStatus, isClerkSessionRevoked } from "../services/sessionRevocation.js";
 import { getAuth } from "@clerk/express";
 import { type Request, type Response, type NextFunction } from "express";
 import type { AuthUser } from "@workspace/api-zod";
-import { adminUserStatusTable, db, loginAccessTable } from "@workspace/db";
+import { db, loginAccessTable } from "@workspace/db";
 import { and, eq, gte } from "drizzle-orm";
 import logger, { requestContext, type RequestContext } from "../lib/logger";
 import { getSession, getSessionId, type SessionData } from "../lib/auth";
@@ -84,15 +84,7 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
   const getStoredSession = deps.getStoredSession ?? getSession;
   const getAdminStatus =
     deps.getAdminStatus ??
-    (async (userId: string) => {
-      const [adminStatus] = await db
-        .select({ status: adminUserStatusTable.status })
-        .from(adminUserStatusTable)
-        .where(eq(adminUserStatusTable.userId, userId))
-        .limit(1);
-
-      return adminStatus ?? null;
-    });
+    ((userId: string) => getCachedAdminUserStatus(userId));
   const recordLoginAccess = deps.recordAccess ?? recordAccess;
   const warn =
     deps.warn ??

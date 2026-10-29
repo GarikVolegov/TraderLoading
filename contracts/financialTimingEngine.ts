@@ -395,7 +395,7 @@ export function calculateCryptoBasketTiming(
     },
     {
       id: "asymmetryGuardrail",
-      name: "Asimmetria & Guardrail LIMEN",
+      name: "Asimmetria & Guardrail AUREUS",
       weightPct: 15,
       score: scoreDrawdown,
       rawMetric: `Drawdown ATH: ${weightedDrawdownAth.toFixed(1)}%`,
@@ -432,7 +432,7 @@ export function calculateCryptoBasketTiming(
       "MVRV Medio On-Chain": `${weightedMvrv.toFixed(2)}x`,
       "Finestra Halving": `Mese ${halvingMonth} (Espansione)`,
       "Distanza Media ATH": `${weightedDrawdownAth.toFixed(1)}%`,
-      "Guardrail LIMEN": "Max 10-15% Net Worth",
+      "Guardrail AUREUS": "Max 10-15% Net Worth",
     },
     factors,
     opportunityIndex: compositeScore,
@@ -692,7 +692,7 @@ export function calculateCrossAssetAllocationMatrix(
     },
     {
       assetId: "trading",
-      title: "Trading (Trans-Limen)",
+      title: "Trading (Trans-Aureus)",
       score: tradingResult.timingScore,
       coreReason: tradingResult.positioningSummary,
       actionBadge: "Esecuzione Half-Kelly",
@@ -734,9 +734,9 @@ export function calculateCrossAssetAllocationMatrix(
         ? "I Dividendi Aristocratici offrono attualmente un rapporto rischio/rendimento superiore rispetto alle Azioni Growth: lo yield spread positivo garantisce flussi di cassa tangibili senza dipendere da multipli azionari espansivi."
         : "Le Azioni & ETF Core superano i Dividendi: l'Equity Risk Premium favorevole e la solida market breadth raccomandano l'accumulo orientato al compounding di lungo periodo.",
     cryptoVsGold:
-      "L'Oro fisico garantisce la conservazione assoluta del capitale senza drawdown sistemici ed è lo scudo ideale durante shock monetari. Le Criptovalute offrono asimmetria esponenziale: la regola aurea LIMEN vincola le crypto a max 15% Net Worth e canalizza ciclicamente le plusvalenze verso Oro e Dividendi.",
+      "L'Oro fisico garantisce la conservazione assoluta del capitale senza drawdown sistemici ed è lo scudo ideale durante shock monetari. Le Criptovalute offrono asimmetria esponenziale: la regola aurea AUREUS vincola le crypto a max 15% Net Worth e canalizza ciclicamente le plusvalenze verso Oro e Dividendi.",
     tradingVsPassive:
-      "Il trading attivo Trans-Limen estrae alpha monetario periodico indipendentemente dalla direzione dei mercati generali (anche in fasi ribassiste o orizzontali), a condizione inviolabile che il conto trading sia coperto 1:1 dal fondo di riserva e dimensionato a Half-Kelly.",
+      "Il trading attivo AUREUS estrae alpha monetario periodico indipendentemente dalla direzione dei mercati generali (anche in fasi ribassiste o orizzontali), a condizione inviolabile che il conto trading sia coperto 1:1 dal fondo di riserva e dimensionato a Half-Kelly.",
   };
 
   return {

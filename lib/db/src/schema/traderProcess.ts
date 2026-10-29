@@ -131,6 +131,8 @@ export const processEvidenceTable = pgTable(
       t.backtestTradeId,
     ),
     index("process_evidence_method_idx").on(t.userId, t.methodVersionId),
+    index("process_evidence_user_observed_idx").on(t.userId, t.observedAt),
+    index("process_evidence_session_idx").on(t.sessionId),
   ],
 );
 export const processImprovementsTable = pgTable(

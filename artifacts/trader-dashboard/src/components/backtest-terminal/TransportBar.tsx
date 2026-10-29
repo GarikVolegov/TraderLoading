@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Headphones, Dices, Eye, EyeOff } from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
-import { formatUtcReplayTime, parseUtcDateTimeInput, utcDateTimeInput } from "./dateTime";
+import { formatBlindReplayDisplay, formatUtcReplayTime, parseUtcDateTimeInput, utcDateTimeInput } from "./dateTime";
 import { terminalLocale } from "./format";
 import { REPLAY_SPEEDS, type ReplayEngine } from "./useReplayEngine";
+import { ReplayBioTelemetryHUD } from "./ReplayBioTelemetryHUD";
+import {
+  isDeepWorkAmbienceActive,
+  toggleDeepWorkAmbience,
+  subscribeDeepWorkAmbience,
+  getDeepWorkAmbienceMode,
+  type AmbienceFrequencyMode,
+  synestheticClick,
+} from "@/lib/soundFx";
 
 export function TransportBar({ engine }: { engine: ReplayEngine }) {
   const { language } = useLanguage();
@@ -12,14 +21,29 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
   const jumpRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const jumpButtonRef = useRef<HTMLButtonElement>(null);
+
+  const [ambienceActive, setAmbienceActive] = useState(() => isDeepWorkAmbienceActive());
+  const [ambienceMode, setAmbienceMode] = useState<AmbienceFrequencyMode>(() => getDeepWorkAmbienceMode());
+
+  useEffect(() => {
+    return subscribeDeepWorkAmbience((active) => {
+      setAmbienceActive(active);
+      setAmbienceMode(getDeepWorkAmbienceMode());
+    });
+  }, []);
   // Warehouse bounds are M1 OPEN times; a candle is observable after its close.
   const firstOpen = engine.meta?.warehouse?.firstTs;
   const lastOpen = engine.meta?.warehouse?.lastTs;
   const minimum = firstOpen != null ? firstOpen + 60 : null;
   const maximum = lastOpen != null ? lastOpen + 60 : null;
   const parsed = parseUtcDateTimeInput(jumpValue);
-  const outsideBounds = parsed != null && ((minimum != null && parsed < minimum) || (maximum != null && parsed > maximum));
+  // Dates before the archive start snap forward to the first quote instead of being rejected.
+  const outsideBounds = parsed != null && maximum != null && parsed > maximum;
   const canJump = parsed != null && !outsideBounds && !engine.loading && !engine.executing;
+  const firstYear = minimum != null ? new Date(minimum * 1000).getUTCFullYear() : 2020;
+  const lastYear = maximum != null ? new Date(maximum * 1000).getUTCFullYear() : new Date().getUTCFullYear();
+  const years = Array.from({ length: Math.max(0, lastYear - firstYear + 1) }, (_, i) => firstYear + i);
+  const busy = engine.loading || engine.executing;
 
   useEffect(() => {
     if (!jumpOpen) return;
@@ -41,6 +65,23 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
       window.removeEventListener("keydown", escape, { capture: true });
     };
   }, [jumpOpen]);
+
+  const scrubRafRef = useRef<number | null>(null);
+  const handleScrubChange = (fraction: number) => {
+    if (scrubRafRef.current != null) {
+      cancelAnimationFrame(scrubRafRef.current);
+    }
+    scrubRafRef.current = requestAnimationFrame(() => {
+      scrubRafRef.current = null;
+      engine.seekFraction(fraction);
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scrubRafRef.current != null) cancelAnimationFrame(scrubRafRef.current);
+    };
+  }, []);
 
   const openJump = () => {
     setJumpValue(utcDateTimeInput(engine.replayTime ?? engine.startTime));
@@ -67,15 +108,58 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
         aria-label={uiText("backtest_terminal.speed")}>
         {REPLAY_SPEEDS.map((value) => <option key={value} value={value}>{value}×</option>)}
       </select>
+      <span
+        className="btm-simulated-pill"
+        title="Importi simulati: il valore del pip segue il modello del replay, senza conversioni valutarie reali."
+      >
+        SIMULATO
+      </span>
       <input className="btm-scrub-input" type="range" min={0} max={1000} step={1}
         value={Math.round(engine.progress * 1000)} disabled={engine.loading || engine.executing || engine.noData}
-        onChange={(event) => engine.seekFraction(Number(event.target.value) / 1000)}
+        onChange={(event) => handleScrubChange(Number(event.target.value) / 1000)}
         aria-label={uiText("backtest_terminal.scrubber")}
         aria-valuetext={`${Math.round(engine.progress * 100)}%`}
         style={{ "--btm-progress": `${engine.progress * 100}%` } as React.CSSProperties} />
       <div className="btm-clock" aria-live="off">
-        <span className="btm-clock-time">{engine.replayTime != null ? formatUtcReplayTime(engine.replayTime, terminalLocale(language)) : "—"} <span className="btm-timezone">CET</span></span>
+        <span className="btm-clock-time">{engine.replayTime != null ? formatBlindReplayDisplay(engine.replayTime, !engine.blindMasked, terminalLocale(language)) : "—"} {!engine.blindMasked && <span className="btm-timezone">CET</span>}</span>
         <span className="btm-clock-count">{engine.appending || engine.executing ? uiText("backtest_terminal.loading_history") : uiText("backtest_terminal.candle_counter", { current: Math.min(engine.cursor + 1, engine.candles.length), total: engine.candles.length })}</span>
+      </div>
+      <ReplayBioTelemetryHUD engine={engine} />
+      {/* ── SELETTORE AUDIO SINESTETICO BINAURALE & SOLFEGGIO REPLAY ── */}
+      <div className="btm-ambience-anchor">
+        <button
+          type="button"
+          onClick={() => {
+            synestheticClick();
+            if (!ambienceActive) {
+              toggleDeepWorkAmbience("432hz");
+            } else if (ambienceMode === "432hz") {
+              toggleDeepWorkAmbience("528hz");
+            } else {
+              toggleDeepWorkAmbience();
+            }
+          }}
+          className={`btm-transport-btn btm-ambience-btn ${
+            ambienceActive
+              ? ambienceMode === "528hz"
+                ? "btm-ambience-active btm-ambience-528"
+                : "btm-ambience-active btm-ambience-432"
+              : ""
+          }`}
+          title={
+            !ambienceActive
+              ? "Attiva Audio Frequenziale (Clicca per 432 Hz Calma Aurea)"
+              : ambienceMode === "432hz"
+              ? "Frequenza Aurea 432 Hz Attiva (Clicca per 528 Hz Solfeggio)"
+              : "Frequenza Solfeggio 528 Hz Attiva (Clicca per Silenziare)"
+          }
+          aria-label="Tappeto Acustico Binaurale Replay"
+        >
+          <Headphones size={15} />
+          <span>
+            {ambienceActive ? (ambienceMode === "528hz" ? "528 Hz" : "432 Hz") : "Audio"}
+          </span>
+        </button>
       </div>
       <div className="btm-jump-anchor">
         <button ref={jumpButtonRef} type="button" className="btm-jump-trigger" onClick={openJump}
@@ -88,22 +172,50 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
           <form onSubmit={(event) => {
             event.preventDefault();
             if (!canJump || parsed == null) return;
-            engine.jumpToTime(parsed);
+            engine.jumpToTime(minimum != null ? Math.max(parsed, minimum) : parsed);
             setJumpOpen(false);
             jumpButtonRef.current?.focus();
           }}>
+            <div className="btm-jump-years" role="group" aria-label="Anno">
+              {years.map((year) => (
+                <button key={year} type="button" className="btm-year-chip" disabled={busy}
+                  onClick={() => { engine.jumpToYear(year); setJumpOpen(false); }}>
+                  {engine.blindMasked ? "····" : year}
+                </button>
+              ))}
+            </div>
+            <div className="btm-jump-random">
+              <button type="button" className="btm-random-btn" disabled={busy}
+                onClick={() => { engine.jumpToRandomDate(); setJumpOpen(false); }}>
+                <Dices size={14} /><span>Data Casuale</span>
+              </button>
+              <button type="button" className="btm-random-btn btm-random-blind" disabled={busy}
+                onClick={() => { engine.jumpToRandomDate({ blind: true }); setJumpOpen(false); }}>
+                <EyeOff size={14} /><span>Casuale Cieca</span>
+              </button>
+            </div>
+            {!engine.blindMasked && <>
             <label className="btm-field" htmlFor="btm-start-time"><span className="btm-field-label">{uiText("backtest_terminal.start_datetime")} · {uiText("backtest_terminal.timezone_utc")}</span>
               <input ref={inputRef} id="btm-start-time" className="btm-datejump" type="datetime-local" step={60} required
-                min={utcDateTimeInput(minimum) || undefined} max={utcDateTimeInput(maximum) || undefined}
+                max={utcDateTimeInput(maximum) || undefined}
                 value={jumpValue} onChange={(event) => setJumpValue(event.target.value)} aria-invalid={outsideBounds} />
             </label>
             <p className="btm-muted">{uiText("backtest_terminal.jump_utc_hint")}</p>
             {minimum != null && maximum != null && <p className="btm-jump-range">{uiText("backtest_terminal.history_available")}:<br />{formatUtcReplayTime(minimum, terminalLocale(language))} → {formatUtcReplayTime(maximum, terminalLocale(language))} {uiText("backtest_terminal.timezone_utc")}</p>}
             {outsideBounds && <p className="btm-formula-error" role="alert">{uiText("backtest_terminal.date_outside_history")}</p>}
             <button className="btm-primary-btn" type="submit" disabled={!canJump}>{uiText("backtest_terminal.jump_confirm")}</button>
+            </>}
           </form>
         </div>}
       </div>
+      <button type="button" className={`btm-blind-toggle ${engine.blindMode ? "btm-blind-on" : ""}`}
+        onClick={engine.blindMode ? engine.revealBlindPeriod : engine.toggleBlindMode}
+        onDoubleClick={engine.blindMode ? engine.toggleBlindMode : undefined}
+        title={engine.blindMode ? (engine.blindMasked ? "Svela il periodo (doppio clic: disattiva Replay Cieco)" : "Nascondi di nuovo il periodo (doppio clic: disattiva)") : "Attiva Replay Cieco: data nascosta, zero bias"}
+        aria-pressed={engine.blindMode}>
+        {engine.blindMasked ? <EyeOff size={15} /> : <Eye size={15} />}
+        <span className="whitespace-nowrap">{engine.blindMode ? (engine.blindMasked ? "Svela" : "Celato ✓") : "Cieco"}</span>
+      </button>
     </footer>
   );
 }

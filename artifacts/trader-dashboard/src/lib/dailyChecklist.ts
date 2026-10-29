@@ -1,6 +1,13 @@
 /** Daily confirmations are local to this browser, account and Rome trading day. */
+const romeDayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Rome",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function checklistDay(now = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  return romeDayFormatter.format(now);
 }
 export function checklistStorageKey(userId: string): string {
   return `tl_confirmation_session_v2:${userId}`;

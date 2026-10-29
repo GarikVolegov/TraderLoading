@@ -8,9 +8,16 @@ import { canAccessChannel } from "../community/channelAccess.js";
 import { isChannelFree } from "../community/channelPricing.js";
 import { closeWebSocketServer } from "../webSocketShutdown.js";
 import { authorizeWebSocketUpgrade, rejectWebSocketUpgrade, type WebSocketAuthContext, type WebSocketSecurityOptions } from "../webSocketAuth.js";
-import { canSend, createControlWebSocketServer, startHeartbeat } from "../webSocketHeartbeat.js";
+import {
+  canSend,
+  createControlWebSocketServer,
+  createSocketRateLimiter,
+  startHeartbeat,
+} from "../webSocketHeartbeat.js";
 import { isAtConnectionCapacity } from "../webSocketCapacity.js";
-import { onSocialEvent, shouldDeliverToChannelSubscriber, type SocialEvent } from "./socialEvents.js";
+import { closeSocialPubSub, onSocialEvent, shouldDeliverToChannelSubscriber, type SocialEvent } from "./socialEvents.js";
+import { singleFlight } from "../../lib/singleFlight.js";
+import logger from "../../lib/logger.js";
 
 interface ClientMessage {
   type?: string;
@@ -26,10 +33,28 @@ export interface SocialHubWebSocketServer {
   close(): Promise<void>;
 }
 
+const CHANNEL_ACCESS_CACHE_TTL_MS = 15_000;
+const CHANNEL_ACCESS_CACHE_MAX = 5_000;
+const channelAccessCache = new Map<string, { allowed: boolean; expiresAt: number }>();
+const channelAccessInFlight = new Map<string, Promise<boolean>>();
+
+export function invalidateChannelAccessCache(userId?: string, channelId?: number): void {
+  if (!userId && channelId === undefined) {
+    channelAccessCache.clear();
+    return;
+  }
+  for (const key of channelAccessCache.keys()) {
+    const [u, c] = key.split(":");
+    if ((userId && u === userId) || (channelId !== undefined && Number(c) === channelId)) {
+      channelAccessCache.delete(key);
+    }
+  }
+}
+
 /** Channel access mirrors the HTTP read gate (assertChannelAccess): community
  *  membership for free channels, plus an active entitlement (or owner/channels.manage)
  *  for paid channels — so live push never leaks a locked paid channel's messages. */
-async function defaultCanAccessChannel(userId: string, channelId: number): Promise<boolean> {
+async function queryCanAccessChannel(userId: string, channelId: number): Promise<boolean> {
   const [channel] = await db
     .select({ communityId: communityChannelsTable.communityId, priceCents: communityChannelsTable.priceCents })
     .from(communityChannelsTable)
@@ -60,6 +85,26 @@ async function defaultCanAccessChannel(userId: string, channelId: number): Promi
   });
 }
 
+async function defaultCanAccessChannel(userId: string, channelId: number): Promise<boolean> {
+  const key = `${userId}:${channelId}`;
+  const now = Date.now();
+  const cached = channelAccessCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.allowed;
+  }
+  if (cached) channelAccessCache.delete(key);
+
+  return singleFlight(channelAccessInFlight, key, async () => {
+    const allowed = await queryCanAccessChannel(userId, channelId);
+    if (channelAccessCache.size >= CHANNEL_ACCESS_CACHE_MAX && !channelAccessCache.has(key)) {
+      const oldest = channelAccessCache.keys().next().value;
+      if (oldest !== undefined) channelAccessCache.delete(oldest);
+    }
+    channelAccessCache.set(key, { allowed, expiresAt: Date.now() + CHANNEL_ACCESS_CACHE_TTL_MS });
+    return allowed;
+  });
+}
+
 function parse(raw: WebSocket.RawData): ClientMessage | null {
   try {
     const parsed = JSON.parse(String(raw)) as unknown;
@@ -83,6 +128,7 @@ export function attachSocialHubWebSocket(server: Server, security: SocialHubSecu
   const canAccessChannel = security.canAccessChannel ?? defaultCanAccessChannel;
   const clientUsers = new WeakMap<WebSocket, string>();
   const clientChannels = new WeakMap<WebSocket, Set<number>>();
+  const allowSocketMessage = createSocketRateLimiter(60, 10_000);
 
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "", "http://localhost");
@@ -93,23 +139,28 @@ export function attachSocialHubWebSocket(server: Server, security: SocialHubSecu
     }
     void (async () => {
       const auth = await authorizeWebSocketUpgrade(request, socket, security);
-      if (!auth) return;
+      if (!auth || socket.destroyed) return;
       wss.handleUpgrade(request, socket, head, (client) => {
         wss.emit("connection", client, request, auth);
       });
-    })();
+    })().catch((err) => {
+      logger.warn({ err }, "Social websocket upgrade failed");
+      rejectWebSocketUpgrade(socket, 503, "Service Unavailable");
+    });
   };
 
   server.on("upgrade", onUpgrade);
 
   const unsubscribe = onSocialEvent((event: SocialEvent) => {
+    if (wss.clients.size === 0) return;
+    const serialized = JSON.stringify(event);
     for (const client of wss.clients) {
       if (canSend(client) && shouldDeliverToChannelSubscriber(clientChannels.get(client), event)) {
         const userId = clientUsers.get(client);
         if (!userId) continue;
         void canAccessChannel(userId, event.channelId).then(allowed => {
           if (!allowed) { clientChannels.get(client)?.delete(event.channelId); return; }
-          if (canSend(client) && shouldDeliverToChannelSubscriber(clientChannels.get(client), event)) client.send(JSON.stringify(event));
+          if (canSend(client) && shouldDeliverToChannelSubscriber(clientChannels.get(client), event)) client.send(serialized);
         }).catch(() => {});
       }
     }
@@ -120,8 +171,18 @@ export function attachSocialHubWebSocket(server: Server, security: SocialHubSecu
     clientChannels.set(client, new Set<number>());
 
     client.on("message", (raw: WebSocket.RawData) => {
+      if (!allowSocketMessage(client)) return;
       const message = parse(raw);
-      if (!message || typeof message.channelId !== "number") return;
+      if (!message) return;
+
+      if (message.type === "ping") {
+        if (canSend(client)) {
+          client.send(JSON.stringify({ type: "pong" }));
+        }
+        return;
+      }
+
+      if (typeof message.channelId !== "number") return;
       const channelId = message.channelId;
 
       if (message.type === "subscribe") {
@@ -146,6 +207,7 @@ export function attachSocialHubWebSocket(server: Server, security: SocialHubSecu
       unsubscribe();
       server.off("upgrade", onUpgrade);
       stopHeartbeat();
+      await closeSocialPubSub();
       await closeWebSocketServer(wss);
     },
   };

@@ -2,6 +2,7 @@ import type { Candle } from "../candles.js";
 import { SOURCE_ID } from "../candleRegistry.js";
 import { fetchWithRetry } from "../../lib/httpRetry.js";
 import type { CandleSource } from "./types.js";
+import { fetchBinanceMonthlyZip, isFullCalendarMonth } from "./binanceArchive.js";
 
 // Warehouse symbol → Binance spot pair. Binance quotes in USDT, used here as the
 // USD proxy (documented limitation in the warehouse spec).
@@ -57,12 +58,12 @@ async function fetchBinanceRange(
   const stepMs = INTERVAL_STEP_MS[binanceInterval];
   if (!stepMs) throw new Error(`binance: unsupported interval ${binanceInterval}`);
 
-  const endMs = toTs * 1000;
+  const endMs = toTs * 1000 - 1;
   let cursor = fromTs * 1000;
   const all: Candle[] = [];
 
   // Klines are capped at 1000 rows/call; page forward by the last bar's time.
-  while (cursor < endMs) {
+  while (cursor <= endMs) {
     const url = `${BASE_URL}?symbol=${pair}&interval=${binanceInterval}&startTime=${cursor}&endTime=${endMs}&limit=${PAGE_LIMIT}`;
     // Retry transient 429/5xx so one blip doesn't abort a month-long ingestion run.
     const response = await fetchWithRetry(url, { timeoutMs: 15000 });
@@ -78,7 +79,16 @@ async function fetchBinanceRange(
     if (rows.length < PAGE_LIMIT) break; // final page
   }
 
-  return all;
+  // Strictly enforce upper bound < toTs and deduplicate on timestamps
+  const seen = new Set<number>();
+  const out: Candle[] = [];
+  for (const c of all) {
+    if (c.time < toTs && !seen.has(c.time)) {
+      seen.add(c.time);
+      out.push(c);
+    }
+  }
+  return out.sort((a, b) => a.time - b.time);
 }
 
 /** Whether the live daily fetcher can serve this symbol. */
@@ -104,6 +114,20 @@ export const binanceSource: CandleSource = {
   async fetchRange(symbol, fromTs, toTs) {
     const pair = PAIR[symbol];
     if (!pair) throw new Error(`binance: unsupported symbol ${symbol}`);
+
+    // Fast-path: monthly static archive download (1.2s per 44k M1 candles, zero rate-limit)
+    if (isFullCalendarMonth(fromTs, toTs)) {
+      const date = new Date(fromTs * 1000);
+      try {
+        const zipCandles = await fetchBinanceMonthlyZip(pair, date.getUTCFullYear(), date.getUTCMonth() + 1);
+        if (zipCandles && zipCandles.length > 0) {
+          return zipCandles.filter((c) => c.time >= fromTs && c.time < toTs);
+        }
+      } catch (err) {
+        console.warn(`[binance] Archive zip fallback for ${pair} ${date.toISOString().slice(0, 7)}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
     return fetchBinanceRange(pair, "1m", fromTs, toTs);
   },
 };

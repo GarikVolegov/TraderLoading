@@ -1,6 +1,10 @@
 # GEMINI.md — Contesto Operativo & Regole Inviolabili AUREUS
 
 > Questo file è caricato all'avvio di ogni sessione e definisce il quadro operativo e di design di **AUREUS** (Protocollo Aureus / AUREUS PROTOCOL).
+>
+> 🏛️ **MEMORIA OPERATIVA SOVRANA (Obsidian Vault)**:
+> La fonte unica e definitiva di memoria, regole fisse, architettura backend, design system frontend, sicurezza e ottimizzazione risiede in:
+> 👉 [`BRAIN.md`](BRAIN.md) e nel vault modulare [`docs/brain/00-ATLAS.md`](docs/brain/00-ATLAS.md).
 
 ---
 
@@ -40,3 +44,14 @@ Ogni modifica all'interfaccia utente, aggiunta di componenti, modali, testi o se
   - `pnpm typecheck` — Convalida TypeScript strict
   - `pnpm --filter @workspace/trader-dashboard build` — Compilazione frontend Vite
   - `pnpm verify` — Gate completo di rilascio
+
+---
+
+## 3. Regola Inviolabile di Chiusura Lavoro: Proattività Architetturale
+
+> [!IMPORTANT]
+> **A LAVORO FINITO, PROPORRE SEMPRE NUOVE IDEE E SOLUZIONI**:
+> Al termine di ogni implementazione, refactoring o risoluzione di bug, l'agente ha l'obbligo vincolante di **non fermarsi alla mera esecuzione passiva**.
+> Deve sempre proporre all'utente:
+> 1. **Nuove Idee e Miglioramenti Strategici**: Ottimizzazioni UX, feature d'eccellenza, telemetrie avanzate o raffinamenti architetturali coerenti con l'Ethos AUREUS.
+> 2. **Piano d'Azione Passo-Passo Ordinato**: Una sequenza logica, ordinata e progressiva dei prossimi passi consigliati per far avanzare l'ecosistema in modo solido e privo di regressioni.

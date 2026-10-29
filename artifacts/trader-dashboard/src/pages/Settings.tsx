@@ -3,6 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { PageLayout } from "@/components/PageLayout";
 import { ProfileWidget } from "@/components/ProfileWidget";
 import { AudioPlayer } from "@/components/AudioPlayer";
+import { SoundFxSettings } from "@/components/settings/SoundFxSettings";
 import { BackgroundPresetsManager } from "@/components/BackgroundPresetsManager";
 import { BillingSubscriptionPanel } from "@/components/BillingSubscriptionPanel";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ import { MissionTemplatesSettings } from "@/components/settings/MissionTemplates
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { LoginAccessSection } from "@/components/settings/LoginAccessSection";
 import { PinSettings } from "@/components/settings/PinSettings";
+import { SmartWatchSettingsSection } from "@/components/settings/SmartWatchSettingsSection";
 import { LanguageSettings } from "@/components/settings/LanguageSettings";
 import { ChecklistSettings } from "@/components/settings/ChecklistSettings";
 import { AuthSection } from "@/components/settings/AuthSection";
@@ -158,11 +160,12 @@ export default function Settings() {
   });
 
   const integrity =
-    serverIntegrity ??
-    computeLimenIntegritySnapshot({
-      legacyLevel: profile?.level ?? 1,
-      consecutiveIntegralSessions: profile?.streak ?? 0,
-    });
+    serverIntegrity && serverIntegrity.currentGrade
+      ? serverIntegrity
+      : computeLimenIntegritySnapshot({
+          legacyLevel: profile?.level ?? 1,
+          consecutiveIntegralSessions: profile?.streak ?? 0,
+        });
 
   const searchString = useSearch();
 
@@ -379,6 +382,7 @@ export default function Settings() {
     sicurezza: (
       <div className="space-y-6">
         <PinSettings />
+        <SmartWatchSettingsSection />
         <LoginAccessSection />
       </div>
     ),
@@ -427,7 +431,12 @@ export default function Settings() {
         </Button>
       </div>
     ),
-    audio: <AudioPlayer />,
+    audio: (
+      <div className="space-y-6">
+        <AudioPlayer />
+        <SoundFxSettings />
+      </div>
+    ),
     notifiche: <NotificationSettings />,
     citazioni: <QuotesSettings />,
     lingua: <LanguageSettings />,
@@ -466,7 +475,7 @@ export default function Settings() {
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="inline-flex items-center gap-1.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-[#E8C56A]">
                   <Shield className="w-3 h-3 text-[#C5A059]" />
-                  LIMEN PROTOCOL // CONFIGURAZIONE D'ORDINE
+                  AUREUS PROTOCOL // CONFIGURAZIONE D'ORDINE
                 </span>
                 <span className="inline-flex items-center gap-1 rounded border border-[#10b981]/30 bg-[#10b981]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[#10b981]">
                   <ShieldCheck className="w-3 h-3 text-[#10b981]" />

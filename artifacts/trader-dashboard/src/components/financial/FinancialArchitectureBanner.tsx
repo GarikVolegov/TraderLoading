@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { ShieldAlert, ArrowRight } from "lucide-react";
+import { ShieldAlert, ArrowRight, X } from "lucide-react";
 import { useFinancialProfile } from "@/lib/financialProfileApi";
 import { useFreeTrial } from "@/lib/useFreeTrial";
+import { synestheticClick } from "@/lib/soundFx";
 
 interface FinancialArchitectureBannerProps {
   className?: string;
@@ -10,52 +12,61 @@ interface FinancialArchitectureBannerProps {
 export function FinancialArchitectureBanner({ className = "" }: FinancialArchitectureBannerProps) {
   const { data: profile } = useFinancialProfile();
   const { isFreeTrial } = useFreeTrial();
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem("aureus_dismiss_fin_banner") === "true";
+    } catch {
+      return false;
+    }
+  });
 
-  // Se è attiva la prova gratuita o l'architettura patrimoniale è già stata validata e completata, non mostrare il banner
-  if (isFreeTrial || profile?.isCompleted) {
+  // Se è attiva la prova gratuita, l'avviso è stato congedato o l'architettura patrimoniale è completata, non mostrare
+  if (isFreeTrial || profile?.isCompleted || dismissed) {
     return null;
   }
+
+  const handleDismiss = () => {
+    synestheticClick();
+    setDismissed(true);
+    try {
+      localStorage.setItem("aureus_dismiss_fin_banner", "true");
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <div
       role="alert"
-      className={`relative min-w-0 shrink-0 rounded-xl border border-[#C5A059]/40 bg-gradient-to-r from-[#141418] via-[#1A1814] to-[#141418] p-4 sm:p-5 text-[#F4F4F6] shadow-[0_4px_24px_rgba(0,0,0,0.4)] ${className}`}
+      className={`relative min-w-0 shrink-0 rounded-lg border border-[#C5A059]/30 bg-gradient-to-r from-[#141418] via-[#1A1814] to-[#141418] px-3 py-1.5 text-[#F4F4F6] shadow-sm flex items-center justify-between gap-3 ${className}`}
     >
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5 min-w-0">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/10 text-[#C5A059]">
-            <ShieldAlert className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#C5A059]">
-                Prerequisito di Metodo LIMEN
-              </span>
-              <span className="rounded bg-[#8B1E1E]/40 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[#ef4444] border border-[#8B1E1E]">
-                Setup Obbligatorio
-              </span>
-            </div>
-            <h4
-              className="text-sm sm:text-base font-bold uppercase tracking-wide text-foreground"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Architettura Patrimoniale & Fondamenta di Rischio
-            </h4>
-            <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-              Il trading non inizia dal grafico, ma dalla struttura finanziaria sottostante. La tenuta psicologica a mercato richiede un fondo di riserva adeguato e un conto di trading equilibrato rispetto al tuo patrimonio totale.
-            </p>
-          </div>
-        </div>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <ShieldAlert className="h-4 w-4 shrink-0 text-[#C5A059]" />
+        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#C5A059] shrink-0 whitespace-nowrap hidden sm:inline">
+          Architettura Patrimoniale:
+        </span>
+        <span className="text-[11px] text-muted-foreground truncate">
+          Configura il fondo di riserva per completare le fondamenta di rischio.
+        </span>
+      </div>
 
-        <div className="flex shrink-0 items-center self-start md:self-center">
-          <Link
-            href="/patrimonio"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#C5A059] bg-[#C5A059] px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-[#0A0A0C] transition-all hover:bg-[#d8b56f] hover:shadow-[0_0_15px_rgba(197,160,89,0.3)]"
-          >
-            <span>Configura Architettura</span>
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <Link
+          href="/patrimonio"
+          className="inline-flex items-center gap-1.5 rounded border border-[#C5A059]/50 bg-[#C5A059]/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A] transition-all hover:bg-[#C5A059]/25 hover:border-[#C5A059] whitespace-nowrap"
+        >
+          <span>Configura</span>
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
+          aria-label="Chiudi avviso architettura patrimoniale"
+          title="Nascondi avviso"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );

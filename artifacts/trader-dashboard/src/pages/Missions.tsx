@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import confetti from "canvas-confetti";
 import {
   Target, Zap, Flame, Trophy, BarChart3,
   CheckCircle2, Circle, ChevronRight, Loader2, CalendarPlus,
@@ -16,6 +15,7 @@ import {
 } from "@workspace/api-client-react";
 import { downloadICS } from "@/utils/icsExport";
 import { uiText } from "@/contexts/LanguageContext";
+import { synestheticConfirm, synestheticTrophy } from "@/lib/soundFx";
 
 function exportMissionToCalendar(mission: Mission) {
   const today = new Date();
@@ -54,18 +54,13 @@ export function MissionsWorkspace({ embedded = false }: { embedded?: boolean }) 
         qc.invalidateQueries({ queryKey: getGetMissionsQueryKey() });
         qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
         qc.invalidateQueries({ queryKey: ["my-certificates"] });
-        toast({ title: uiText("auto.ui.f16def3338"), description: `+${data.mission.xpReward} XP` });
+        synestheticConfirm();
+        toast({ title: uiText("auto.ui.f16def3338"), description: `+${data.mission.xpReward} Punti Integrità` });
         if (data.levelUp) {
-          const end = Date.now() + 3000;
-          const frame = () => {
-            confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ["#22c55e", "#3b82f6", "#10b981"] });
-            confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ["#22c55e", "#3b82f6", "#10b981"] });
-            if (Date.now() < end) requestAnimationFrame(frame);
-          };
-          frame();
+          synestheticTrophy();
           toast({
-            title: uiText("auto.ui.ff8e233b1b"),
-            description: uiText("auto.ui.2c7129d177", { level: data.profile.level }),
+            title: "Ascesa di Grado",
+            description: `Avanzamento a ${data.profile.levelName ?? `Grado ${data.profile.level}`}`,
             className: "bg-primary text-primary-foreground border-none font-bold",
             duration: 6000,
           });
@@ -102,7 +97,7 @@ export function MissionsWorkspace({ embedded = false }: { embedded?: boolean }) 
                 <span className="font-mono text-2xl font-bold text-primary">{profile?.level ?? "—"}</span>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-lg font-bold">{profile?.levelName ?? "Trader"}</p>
+                <p className="truncate text-lg font-bold">{profile?.levelName ?? "Operatore"}</p>
                 <p className="text-xs text-muted-foreground">
                   {profile ? uiText("auto.ui.4cff443fcb", { xp: profile.xp }) : uiText("common.loading")}
                   {profile?.xpToNextLevel ? uiText("auto.ui.4d9cf271fb", { xp: profile.xpToNextLevel }) : ""}
@@ -121,20 +116,20 @@ export function MissionsWorkspace({ embedded = false }: { embedded?: boolean }) 
         </Card>
 
         <div className="grid grid-cols-3 gap-3">
-          <StatTile icon={Flame} label="Streak" value={`${profile?.streak ?? 0}g`} accent="text-orange-400" />
+          <StatTile icon={Flame} label="Costanza" value={`${profile?.streak ?? 0} ses`} accent="text-[#E8C56A]" />
           <StatTile icon={BarChart3} label="Win rate" value={profile?.winRate != null ? `${Math.round(profile.winRate)}%` : "—"} accent="text-green-400" />
-          <StatTile icon={Trophy} label="Trade" value={`${profile?.totalTrades ?? 0}`} accent="text-yellow-400" />
+          <StatTile icon={Trophy} label="Trade" value={`${profile?.totalTrades ?? 0}`} accent="text-[#C5A059]" />
         </div>
       </div>
 
-      {/* Progresso XP di oggi */}
+      {/* Progresso Integrità di oggi */}
       <Card>
         <CardContent className="p-4">
           <div className="mb-1.5 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-sm font-bold">
               <Zap className="h-4 w-4 text-primary" /> {uiText("auto.ui.85c01a96b7")}
             </span>
-            <span className="font-mono text-xs text-muted-foreground">{totalXp}/{totalPossible} XP · {completed.length}/{missions?.length ?? 0}</span>
+            <span className="font-mono text-xs text-muted-foreground whitespace-nowrap">{totalXp}/{totalPossible} Integrità · {completed.length}/{missions?.length ?? 0}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-secondary/60">
             <motion.div
@@ -168,48 +163,52 @@ export function MissionsWorkspace({ embedded = false }: { embedded?: boolean }) 
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: mission.completed ? 0.55 : 1, x: 0 }}
                   transition={{ delay: idx * 0.04, duration: 0.25 }}
-                  className={`flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/15 ${mission.completed ? "grayscale" : ""}`}
+                  className={`flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-3 sm:py-3.5 hover:bg-secondary/15 ${mission.completed ? "grayscale" : ""}`}
                 >
-                  <button
-                    type="button"
-                    aria-label={`${uiText(mission.completed ? "common.completed" : "common.complete")}: ${mission.title}`}
-                    onClick={() => !mission.completed && completeMutation.mutate({ id: mission.id })}
-                    disabled={mission.completed || completeMutation.isPending}
-                    className="shrink-0 transition-transform active:scale-90"
-                  >
-                    {mission.completed
-                      ? <CheckCircle2 className="h-5 w-5 text-primary" />
-                      : <Circle className="h-5 w-5 text-muted-foreground/40 hover:text-primary/60" />}
-                  </button>
+                  <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      aria-label={`${uiText(mission.completed ? "common.completed" : "common.complete")}: ${mission.title}`}
+                      onClick={() => !mission.completed && completeMutation.mutate({ id: mission.id })}
+                      disabled={mission.completed || completeMutation.isPending}
+                      className="shrink-0 transition-transform active:scale-90 mt-0.5 sm:mt-0"
+                    >
+                      {mission.completed
+                        ? <CheckCircle2 className="h-5 w-5 text-primary" />
+                        : <Circle className="h-5 w-5 text-muted-foreground/40 hover:text-primary/60" />}
+                    </button>
 
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-sm font-semibold leading-snug ${mission.completed ? "text-muted-foreground line-through" : ""}`}>
-                      {mission.title}
-                    </p>
-                    <p className="mt-0.5 text-xs leading-snug text-muted-foreground/60">{mission.description}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-semibold leading-snug ${mission.completed ? "text-muted-foreground line-through" : ""}`}>
+                        {mission.title}
+                      </p>
+                      <p className="mt-0.5 text-xs leading-snug text-muted-foreground/60">{mission.description}</p>
+                    </div>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <span className="rounded-md border border-border/30 bg-secondary/50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-accent/80">
-                      {mission.xpReward}xp
+                  <div className="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto shrink-0 pt-1.5 sm:pt-0 border-t border-border/15 sm:border-t-0">
+                    <span className="rounded-md border border-border/30 bg-secondary/50 px-2 py-0.5 font-mono text-[10px] font-bold text-accent/80 whitespace-nowrap">
+                      +{mission.xpReward} Integrità
                     </span>
-                    <button
-                      onClick={() => exportMissionToCalendar(mission)}
-                      className="rounded-lg p-1 text-muted-foreground/40 transition-colors hover:bg-secondary/50 hover:text-muted-foreground"
-                      title={uiText("auto.ui.89d9091dcd")}
-                    >
-                      <CalendarPlus className="h-3.5 w-3.5" />
-                    </button>
-                    {!mission.completed && (
+                    <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => completeMutation.mutate({ id: mission.id })}
-                        disabled={completeMutation.isPending}
-                        className="group flex items-center gap-0.5 rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1.5 text-[11px] font-bold text-primary transition-all hover:border-primary/35 hover:bg-primary/20"
+                        onClick={() => exportMissionToCalendar(mission)}
+                        className="rounded-lg p-1.5 text-muted-foreground/50 transition-colors hover:bg-secondary/50 hover:text-muted-foreground touch-target-sm flex items-center justify-center"
+                        title={uiText("auto.ui.89d9091dcd")}
                       >
-                        {uiText("auto.ui.1f4e9341c0")}
-                        <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                        <CalendarPlus className="h-4 w-4" />
                       </button>
-                    )}
+                      {!mission.completed && (
+                        <button
+                          onClick={() => completeMutation.mutate({ id: mission.id })}
+                          disabled={completeMutation.isPending}
+                          className="group flex items-center gap-1 rounded-lg border border-primary/25 bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary transition-all hover:border-primary/40 hover:bg-primary/20 min-h-[32px]"
+                        >
+                          {uiText("auto.ui.1f4e9341c0")}
+                          <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               ))}

@@ -73,9 +73,9 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
   const jsonLd: JsonLd[] = [breadcrumbJsonLd(t("seo.nav.home"), eyebrow, page, language)];
   if (faqItems.length) jsonLd.push(faqJsonLd(language, faqItems));
   if (page === "pricing") {
-    jsonLd.push(pricingProductJsonLd("LIMEN", t(`${base}.intro`), canonical));
+    jsonLd.push(pricingProductJsonLd("AUREUS", t(`${base}.intro`), canonical));
   } else if (TOPIC_PAGES.has(page)) {
-    jsonLd.push(softwareAppJsonLd(`LIMEN — ${eyebrow}`, t(`${base}.intro`), canonical, language));
+    jsonLd.push(softwareAppJsonLd(`AUREUS — ${eyebrow}`, t(`${base}.intro`), canonical, language));
   }
 
   return (
@@ -96,9 +96,9 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
         <nav className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
           <Link href={landingPath(language)} className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#C5A059]/40 bg-[#121216] text-[#C5A059] shadow-[0_0_12px_rgba(197,160,89,0.18)] overflow-hidden">
-              <img src="/app-icon-192.png?v=20261021g" alt="LIMEN" className="w-full h-full object-cover" />
+              <img src="/app-icon-192.png?v=20261021g" alt="AUREUS" className="w-full h-full object-cover" />
             </span>
-            <span className="font-serif tracking-[0.2em] text-base font-bold uppercase">LIMEN</span>
+            <span className="font-serif tracking-[0.2em] text-base font-bold uppercase">AUREUS</span>
           </Link>
           <div className="flex items-center gap-2 text-sm">
             <Link

@@ -12,7 +12,8 @@ import {
   type BacktestTribePreset,
   type BacktestCustomLobby,
 } from "@workspace/db";
-import { and, desc, eq, like, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
+import { battleRoomManager } from "./battleRoomManager.js";
 
 // ── Default seed tournaments (Arene della Forgia) ───────────────────────────
 export interface TournamentSeed {
@@ -177,47 +178,70 @@ export interface ArenaRealTelemetry {
   maxDrawdownLimit: number;
   bestTradePnl: number;
   bestSessionLabel: string;
+  liveSpectatorsCount: number;
 }
 
 // ── Ensure tournaments exist in database & purge legacy fake seed bots ────────
+let seedTournamentsEnsuredAt = 0;
+let seedTournamentsInFlight: Promise<void> | null = null;
+const SEED_ENSURE_TTL_MS = 10 * 60 * 1000;
+
 export async function ensureSeedTournaments(): Promise<void> {
-  try {
-    // Purge any legacy synthetic seed_user_* entries so only real data is shown
-    await db
-      .delete(backtestTournamentEntriesTable)
-      .where(like(backtestTournamentEntriesTable.userId, "seed_user_%"));
-
-    // Ensure tournament #1 uses the Sovereign Forge title instead of legacy "Time Trial [34T]"
-    await db
-      .update(backtestTournamentsTable)
-      .set({ title: "Arena Sovrana XAU/USD" })
-      .where(eq(backtestTournamentsTable.slug, "time-trial-34t"));
-
-    const existing = await db.select().from(backtestTournamentsTable).limit(1);
-    if (existing.length === 0) {
-      for (const t of SEED_TOURNAMENTS) {
-        await db
-          .insert(backtestTournamentsTable)
-          .values({
-            slug: t.slug,
-            title: t.title,
-            description: t.description,
-            pair: t.pair,
-            timeframe: t.timeframe,
-            initialBalance: t.initialBalance,
-            maxDrawdownPct: t.maxDrawdownPct,
-            targetProfitPct: t.targetProfitPct,
-            maxTrades: t.maxTrades,
-            timeLimitSeconds: t.timeLimitSeconds,
-            participantCount: t.participantCount,
-            status: t.status,
-          })
-          .onConflictDoNothing();
-      }
-    }
-  } catch {
-    initMemStore();
+  const now = Date.now();
+  if (now - seedTournamentsEnsuredAt < SEED_ENSURE_TTL_MS) {
+    return;
   }
+  if (seedTournamentsInFlight) {
+    return seedTournamentsInFlight;
+  }
+
+  seedTournamentsInFlight = (async () => {
+    try {
+      const existing = await db.select().from(backtestTournamentsTable).limit(1);
+      if (existing.length === 0) {
+        // First initialization: purge legacy synthetic seed_user_* entries and insert canonical arenas
+        await db
+          .delete(backtestTournamentEntriesTable)
+          .where(like(backtestTournamentEntriesTable.userId, "seed_user_%"));
+
+        for (const t of SEED_TOURNAMENTS) {
+          await db
+            .insert(backtestTournamentsTable)
+            .values({
+              slug: t.slug,
+              title: t.title,
+              description: t.description,
+              pair: t.pair,
+              timeframe: t.timeframe,
+              initialBalance: t.initialBalance,
+              maxDrawdownPct: t.maxDrawdownPct,
+              targetProfitPct: t.targetProfitPct,
+              maxTrades: t.maxTrades,
+              timeLimitSeconds: t.timeLimitSeconds,
+              participantCount: t.participantCount,
+              status: t.status,
+            })
+            .onConflictDoNothing();
+        }
+      } else if (seedTournamentsEnsuredAt === 0) {
+        // Run legacy cleanup only once per process boot
+        await db
+          .delete(backtestTournamentEntriesTable)
+          .where(like(backtestTournamentEntriesTable.userId, "seed_user_%"));
+        await db
+          .update(backtestTournamentsTable)
+          .set({ title: "Arena Sovrana XAU/USD" })
+          .where(eq(backtestTournamentsTable.slug, "time-trial-34t"));
+      }
+      seedTournamentsEnsuredAt = Date.now();
+    } catch {
+      initMemStore();
+    } finally {
+      seedTournamentsInFlight = null;
+    }
+  })();
+
+  return seedTournamentsInFlight;
 }
 
 // ── List all available tournaments ───────────────────────────────────────────
@@ -362,21 +386,44 @@ export async function getTournamentLeaderboard(
     const initialBal = Number(tournament.initialBalance) || 100000;
     const maxAllowedDD = Number(tournament.maxDrawdownPct) || 10;
 
-    // 1. Load real user profiles, real backtest sessions, real backtest trades, and real entries
-    const [profiles, sessions, allTrades, dbEntries] = await Promise.all([
-      db.select().from(profileTable),
+    // 1. Load bounded recent backtest sessions and tournament entries first,
+    // then fetch only matching trades and profiles instead of dumping full tables.
+    const [sessions, dbEntries] = await Promise.all([
       db
         .select()
         .from(backtestSessionsTable)
-        .orderBy(desc(backtestSessionsTable.createdAt)),
-      db
-        .select()
-        .from(backtestTradesTable)
-        .orderBy(backtestTradesTable.createdAt),
+        .orderBy(desc(backtestSessionsTable.createdAt))
+        .limit(80),
       db
         .select()
         .from(backtestTournamentEntriesTable)
-        .where(eq(backtestTournamentEntriesTable.tournamentId, tournament.id)),
+        .where(eq(backtestTournamentEntriesTable.tournamentId, tournament.id))
+        .limit(200),
+    ]);
+
+    const sessionIds = sessions.map((s) => s.id);
+    const relevantUserIds = Array.from(
+      new Set([
+        ...sessions.map((s) => s.userId).filter((u): u is string => Boolean(u)),
+        ...dbEntries.map((e) => e.userId).filter((u): u is string => Boolean(u)),
+        ...(currentUserId ? [currentUserId] : []),
+      ]),
+    );
+
+    const [profiles, allTrades] = await Promise.all([
+      relevantUserIds.length > 0
+        ? db
+            .select()
+            .from(profileTable)
+            .where(inArray(profileTable.userId, relevantUserIds))
+        : db.select().from(profileTable).limit(100),
+      sessionIds.length > 0
+        ? db
+            .select()
+            .from(backtestTradesTable)
+            .where(inArray(backtestTradesTable.sessionId, sessionIds))
+            .orderBy(backtestTradesTable.createdAt)
+        : Promise.resolve([] as Array<typeof backtestTradesTable.$inferSelect>),
     ]);
 
     // Map userId -> real Profile (preferring named non-test profiles)
@@ -766,6 +813,9 @@ export async function getTournamentLeaderboard(
       bestSessionLabel: bestSession
         ? `${bestSession.displayName} (+${Number(bestSession.profitPct).toFixed(2)}%)`
         : "Nessuna sessione",
+      liveSpectatorsCount: battleRoomManager.getRoomSpectatorCount(
+        `room_tournament_${tournament.id}`,
+      ),
     };
 
     const podium = formatted.slice(0, 3);
@@ -1100,7 +1150,7 @@ export async function joinTournament(args: {
         name: sessionTitle,
         pair: targetPair,
         timeframe: targetTimeframe,
-        strategy: "Limen Prove del Fuoco",
+        strategy: "AUREUS Prove del Fuoco",
         notes: null,
         userId: args.userId,
         createdAt: new Date(),
@@ -1180,11 +1230,18 @@ export async function completeTournamentRun(summary: TournamentRunSummary) {
     for (const [idx, item] of all.entries()) {
       const rank = idx + 1;
       if (item.userId === summary.userId) userRank = rank;
-      await db
-        .update(backtestTournamentEntriesTable)
-        .set({ rank })
-        .where(eq(backtestTournamentEntriesTable.id, item.id));
     }
+    await db.execute(sql`
+      WITH ranked AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY CAST(score AS numeric) DESC, id ASC)::int AS new_rank
+        FROM backtest_tournament_entries
+        WHERE tournament_id = ${tournament.id}
+      )
+      UPDATE backtest_tournament_entries AS e
+      SET rank = ranked.new_rank
+      FROM ranked
+      WHERE e.id = ranked.id AND e.rank IS DISTINCT FROM ranked.new_rank
+    `);
 
     const won = !isDisqualified && summary.profitPct > 0;
 

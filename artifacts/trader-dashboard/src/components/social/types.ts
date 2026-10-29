@@ -89,7 +89,7 @@ export interface CallSignal {
 
 export interface VoiceSignal {
   from: string;
-  type: "offer" | "answer" | "ice";
+  type: "offer" | "answer" | "ice" | "media-state" | "reaction";
   data: string;
 }
 

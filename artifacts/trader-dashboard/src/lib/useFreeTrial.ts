@@ -96,28 +96,81 @@ export function formatTrialRemaining(expiresAt: number | null): string {
 }
 
 /**
+ * Shared singleton subscription for free trial local state so multiple mounted
+ * consumers (TopNav, BottomNav, TradingCockpit, etc.) share one 60s visibility-aware timer.
+ */
+type TrialListener = (record: FreeTrialRecord | null) => void;
+const trialListeners = new Set<TrialListener>();
+let sharedTrialInterval: number | null = null;
+let cachedTrialRecord: FreeTrialRecord | null | undefined = undefined;
+
+function notifyTrialListeners() {
+  const next = getStoredFreeTrial();
+  const prev = cachedTrialRecord;
+  cachedTrialRecord = next;
+  if (
+    prev !== undefined &&
+    prev?.isActive === next?.isActive &&
+    prev?.expiresAt === next?.expiresAt &&
+    prev?.startedAt === next?.startedAt
+  ) {
+    return;
+  }
+  for (const listener of trialListeners) {
+    listener(next);
+  }
+}
+
+function handleVisibilityChange() {
+  if (typeof document !== "undefined" && document.visibilityState === "visible") {
+    notifyTrialListeners();
+  }
+}
+
+function subscribeFreeTrial(listener: TrialListener): () => void {
+  trialListeners.add(listener);
+  if (trialListeners.size === 1 && typeof window !== "undefined") {
+    cachedTrialRecord = getStoredFreeTrial();
+    window.addEventListener("tl:trial-state-changed", notifyTrialListeners);
+    window.addEventListener("storage", notifyTrialListeners);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    sharedTrialInterval = window.setInterval(() => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        notifyTrialListeners();
+      }
+    }, 60_000);
+  }
+  return () => {
+    trialListeners.delete(listener);
+    if (trialListeners.size === 0 && typeof window !== "undefined") {
+      window.removeEventListener("tl:trial-state-changed", notifyTrialListeners);
+      window.removeEventListener("storage", notifyTrialListeners);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (sharedTrialInterval !== null) {
+        window.clearInterval(sharedTrialInterval);
+        sharedTrialInterval = null;
+      }
+      cachedTrialRecord = undefined;
+    }
+  };
+}
+
+/**
  * React hook to observe trial status across client storage and server billing state.
  */
 export function useFreeTrial() {
   const billing = useBillingStatus();
-  const [localTrial, setLocalTrial] = useState<FreeTrialRecord | null>(() => getStoredFreeTrial());
+  const [localTrial, setLocalTrial] = useState<FreeTrialRecord | null>(() =>
+    cachedTrialRecord !== undefined ? cachedTrialRecord : getStoredFreeTrial(),
+  );
   const [, startTransition] = useTransition();
 
   useEffect(() => {
-    const handleUpdate = () => {
+    return subscribeFreeTrial((next) => {
       startTransition(() => {
-        setLocalTrial(getStoredFreeTrial());
+        setLocalTrial(next);
       });
-    };
-    window.addEventListener("tl:trial-state-changed", handleUpdate);
-    window.addEventListener("storage", handleUpdate);
-    const interval = window.setInterval(handleUpdate, 15000);
-
-    return () => {
-      window.removeEventListener("tl:trial-state-changed", handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
-      window.clearInterval(interval);
-    };
+    });
   }, []);
 
   const isServerTrial =

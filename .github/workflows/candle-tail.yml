@@ -20,11 +20,11 @@ on:
       symbols:
         description: "Symbols to import (comma separated)"
         type: string
-        default: "XAUUSD,EURUSD,USOIL"
+        default: "XAUUSD,EURUSD,USOIL,BTCUSD,ETHUSD"
       years:
         description: "Years of history for seed mode"
         type: string
-        default: "5"
+        default: "7"
 
 concurrency:
   group: candle-tail
@@ -39,7 +39,7 @@ jobs:
       NODE_ENV: production
       INGEST_MODE: ${{ github.event.inputs.mode || 'tail' }}
       INGEST_SYMBOLS: ${{ github.event.inputs.symbols || '' }}
-      INGEST_YEARS: ${{ github.event.inputs.years || '5' }}
+      INGEST_YEARS: ${{ github.event.inputs.years || '7' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

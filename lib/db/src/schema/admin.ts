@@ -67,6 +67,10 @@ export const adminUserSubscriptionsTable = pgTable("admin_user_subscriptions", {
     stripePriceId: text("stripe_price_id"),
     currentPeriodEnd: timestamp("current_period_end"),
     cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    // Trial one-shot: trialStartedAt viene scritto atomicamente all'attivazione,
+    // trialUsedAt resta valorizzato per sempre e blocca ogni nuova attivazione.
+    trialStartedAt: timestamp("trial_started_at"),
+    trialUsedAt: timestamp("trial_used_at"),
     reason: text("reason"),
     updatedBy: text("updated_by"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -151,6 +155,7 @@ export const candidateApplicationsTable = pgTable("candidate_applications", {
   index("candidate_applications_email_idx").on(table.email),
   index("candidate_applications_status_idx").on(table.status),
   index("candidate_applications_created_idx").on(table.createdAt),
+  index("candidate_applications_user_idx").on(table.userId),
 ]);
 
 export const systemFeatureFlagsTable = pgTable("system_feature_flags", {
@@ -230,3 +235,15 @@ export type SystemFeatureFlag = typeof systemFeatureFlagsTable.$inferSelect;
 export type InsertSystemFeatureFlag = z.infer<
   typeof insertSystemFeatureFlagSchema
 >;
+
+// Sigilli d'Onore: record immutabili server-side, di proprietà dell'utente e
+// firmati HMAC-SHA256 con un segreto lato server (mai esposto al client).
+export const honorSealsTable = pgTable("honor_seals", {
+    hash: text("hash").primaryKey(),
+    userId: text("user_id").notNull(),
+    payload: jsonb("payload").notNull(),
+    signature: text("signature").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+    index("honor_seals_user_idx").on(table.userId, table.createdAt),
+]);

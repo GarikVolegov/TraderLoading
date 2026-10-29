@@ -51,8 +51,19 @@ function isValidClerkKey(key: string): boolean {
   return key.startsWith("pk_test_") || key.startsWith("pk_live_");
 }
 
+function resolveBuildVersion(): string {
+  const candidate =
+    process.env.VITE_APP_VERSION ||
+    process.env.APP_VERSION ||
+    process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ||
+    process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
+    `build-${Date.now()}`;
+  return candidate.trim();
+}
+
 export default defineConfig(async ({ command }) => {
   const isServe = command === "serve";
+  const buildVersion = resolveBuildVersion();
   // Upload sourcemaps to Sentry only on a production build WITH a token configured —
   // so prod stack traces symbolicate. Without the token the build behaves exactly as
   // before (no maps emitted, nothing uploaded). Maps are deleted after upload so they
@@ -75,11 +86,51 @@ export default defineConfig(async ({ command }) => {
     }
   }
 
+  const outDir = path.resolve(import.meta.dirname, "dist/public");
+
   return {
   base: basePath,
+  define: {
+    __APP_BUILD_VERSION__: JSON.stringify(buildVersion),
+  },
   plugins: [
     react(),
     tailwindcss(),
+    {
+      name: "aureus-pwa-version-manifest",
+      configureServer(server) {
+        server.middlewares.use("/version.json", (_req, res) => {
+          res.setHeader("Content-Type", "application/json");
+          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+          res.end(JSON.stringify({ version: buildVersion, builtAt: new Date().toISOString() }));
+        });
+      },
+      closeBundle() {
+        if (isServe) return;
+        try {
+          fs.mkdirSync(outDir, { recursive: true });
+          const versionFile = path.join(outDir, "version.json");
+          fs.writeFileSync(
+            versionFile,
+            JSON.stringify({ version: buildVersion, builtAt: new Date().toISOString() }),
+            "utf8",
+          );
+          const swFile = path.join(outDir, "sw.js");
+          if (fs.existsSync(swFile)) {
+            const currentSw = fs.readFileSync(swFile, "utf8");
+            if (!currentSw.includes("aureus-build-version:")) {
+              fs.writeFileSync(
+                swFile,
+                `${currentSw.trimEnd()}\n// aureus-build-version: ${buildVersion}\n`,
+                "utf8",
+              );
+            }
+          }
+        } catch (err) {
+          console.warn("[aureus-pwa-version-manifest] Failed to stamp build version:", err);
+        }
+      },
+    },
     ...(isServe ? [runtimeErrorOverlay()] : []),
     ...(isServe &&
     process.env.REPL_ID !== undefined
@@ -124,11 +175,48 @@ export default defineConfig(async ({ command }) => {
     minify: "esbuild",
     cssMinify: true,
     reportCompressedSize: true,
-    // No manualChunks: Rollup's default per-dynamic-import chunking is
-    // topologically ordered (no circular chunk graphs), so page-only libraries
-    // (recharts, @xyflow, lightweight-charts, @dnd-kit) load with their lazy
-    // page instead of in an eager vendor mega-chunk. The old manual grouping
-    // that black-screened (forwardRef undefined) is exactly what this avoids.
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("node_modules/react/") || id.includes("node_modules/react-dom/") || id.includes("node_modules/scheduler/")) {
+              return "vendor-react";
+            }
+            if (id.includes("@clerk")) {
+              return "vendor-clerk";
+            }
+            if (id.includes("three")) {
+              return "vendor-three";
+            }
+            if (id.includes("lightweight-charts")) {
+              return "vendor-charts";
+            }
+            if (id.includes("recharts")) {
+              return "vendor-recharts";
+            }
+            if (id.includes("@radix-ui")) {
+              return "vendor-radix";
+            }
+            if (id.includes("d3-") || id.includes("/d3/")) {
+              return "vendor-d3";
+            }
+            if (id.includes("framer-motion")) {
+              return "vendor-motion";
+            }
+            if (id.includes("@tanstack")) {
+              return "vendor-query";
+            }
+            if (id.includes("lucide-react")) {
+              return "vendor-icons";
+            }
+            if (id.includes("date-fns")) {
+              return "vendor-date";
+            }
+          }
+        },
+      },
+    },
   },
   server: {
     port,

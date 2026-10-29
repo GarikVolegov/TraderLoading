@@ -116,7 +116,7 @@ export function AdminShell({
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 overflow-y-auto border-r border-border bg-card/95 lg:block">
         <div className="flex h-16 items-center border-b border-border px-5">
           <div>
-            <p className="text-sm font-semibold font-display tracking-wider">LIMEN PROTOCOL</p>
+            <p className="text-sm font-semibold font-display tracking-wider">AUREUS PROTOCOL</p>
             <p className="text-xs text-muted-foreground">{t("admin.brand.console")}</p>
           </div>
         </div>

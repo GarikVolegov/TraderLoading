@@ -3,12 +3,54 @@ import { useAuth } from "@clerk/react";
 import { checklistDay, checklistStorageKey, readDailyChecklist } from "@/lib/dailyChecklist";
 import { reportClientError } from "@/lib/clientErrorReporter";
 const EVENT = "tl:daily-checklist";
+
+function msUntilNextMinuteBoundary(): number {
+  const remainder = Date.now() % 60_000;
+  return Math.max(1_000, 60_000 - remainder + 100);
+}
+
 function subscribe(sync: () => void) {
-  const timer = window.setInterval(sync, 1000);
+  let timerId: number | null = null;
+  let lastDay = checklistDay();
+
+  const scheduleCheck = () => {
+    if (timerId !== null) window.clearTimeout(timerId);
+    timerId = window.setTimeout(() => {
+      timerId = null;
+      const currentDay = checklistDay();
+      if (currentDay !== lastDay) {
+        lastDay = currentDay;
+        sync();
+      }
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        scheduleCheck();
+      }
+    }, msUntilNextMinuteBoundary());
+  };
+
+  const onVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      sync();
+      scheduleCheck();
+    } else if (timerId !== null) {
+      window.clearTimeout(timerId);
+      timerId = null;
+    }
+  };
+
+  scheduleCheck();
   window.addEventListener("storage", sync);
   window.addEventListener(EVENT, sync);
   window.addEventListener("focus", sync);
-  return () => { clearInterval(timer); window.removeEventListener("storage", sync); window.removeEventListener(EVENT, sync); window.removeEventListener("focus", sync); };
+  document.addEventListener("visibilitychange", onVisibilityChange);
+
+  return () => {
+    if (timerId !== null) window.clearTimeout(timerId);
+    window.removeEventListener("storage", sync);
+    window.removeEventListener(EVENT, sync);
+    window.removeEventListener("focus", sync);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+  };
 }
 export function useDailyChecklist(items: { id: number }[] | undefined) {
   const { userId } = useAuth();

@@ -391,4 +391,43 @@ async function startBillingServer(options = {}) {
   }
 }
 
+{
+  let activated = false;
+  const server = await startBillingServer({
+    activateTrial: async (userId: string) => {
+      assert.equal(userId, "user-billing");
+      if (activated) {
+        return { success: false, status: 409, error: "trial_not_available" };
+      }
+      activated = true;
+      return { success: true };
+    },
+    getSubscription: async () => ({
+      plan: "pro",
+      status: "trialing",
+      source: "trial_1_day",
+      manualOverride: false,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      currentPeriodEnd: new Date(Date.now() + 86400000),
+      cancelAtPeriodEnd: false,
+    }),
+  });
+  try {
+    // 1. Prima attivazione del trial: consentita
+    const firstRes = await fetch(`${server.base}/billing/trial`, { method: "POST" });
+    assert.equal(firstRes.status, 200);
+    const body = (await firstRes.json()) as { plan: string; pro: boolean };
+    assert.equal(body.plan, "pro");
+    assert.equal(body.pro, true);
+
+    // 2. Secondo tentativo di attivazione: respinto come non disponibile (one-shot policy)
+    const secondRes = await fetch(`${server.base}/billing/trial`, { method: "POST" });
+    assert.equal(secondRes.status, 409);
+    assert.deepEqual(await secondRes.json(), { error: "trial_not_available" });
+  } finally {
+    await server.close();
+  }
+}
+
 console.log("billing route checks passed");

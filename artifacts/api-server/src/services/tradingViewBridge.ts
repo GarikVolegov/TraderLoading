@@ -1,4 +1,5 @@
 import EventEmitter from "node:events";
+import { INTERVAL_SECONDS } from "./candleRegistry.js";
 
 export interface LiveTick {
   symbol: string;
@@ -42,6 +43,15 @@ const TV_SYMBOL_MAP: Record<string, string> = {
   EURUSD: "OANDA:EURUSD",
   GBPUSD: "OANDA:GBPUSD",
   USDJPY: "OANDA:USDJPY",
+  USDCHF: "OANDA:USDCHF",
+  AUDUSD: "OANDA:AUDUSD",
+  NZDUSD: "OANDA:NZDUSD",
+  USDCAD: "OANDA:USDCAD",
+  EURGBP: "OANDA:EURGBP",
+  EURJPY: "OANDA:EURJPY",
+  GBPJPY: "OANDA:GBPJPY",
+  AUDJPY: "OANDA:AUDJPY",
+  XAGUSD: "OANDA:XAGUSD",
   US30: "CAPITALCOM:US30",
   NAS100: "OANDA:NAS100USD",
   SPX500: "OANDA:SPX500USD",
@@ -54,12 +64,14 @@ export class TradingViewBridge extends EventEmitter {
   private static instance: TradingViewBridge | null = null;
   private ws: any = null;
   private isConnected: boolean = false;
+  private reconnectTimer: NodeJS.Timeout | null = null;
   private chartSession: string = "";
   private subscriptions = new Set<string>(); // key: "symbol:interval"
   private latestCandles = new Map<string, LiveTick>();
 
   private constructor() {
     super();
+    this.setMaxListeners(0);
     this.chartSession = "cs_" + Math.random().toString(36).substring(2, 10);
     this.connect();
   }
@@ -126,17 +138,28 @@ export class TradingViewBridge extends EventEmitter {
 
       this.ws.onclose = () => {
         this.isConnected = false;
-        setTimeout(() => this.connect(), 4000);
+        this.scheduleReconnect(4000);
       };
     } catch (e) {
       console.warn("[TradingView Bridge] Failed to initialize WS:", e);
-      setTimeout(() => this.connect(), 5000);
+      this.scheduleReconnect(5000);
+    }
+  }
+
+  private scheduleReconnect(delayMs: number): void {
+    if (this.reconnectTimer) return;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, delayMs);
+    if (typeof this.reconnectTimer.unref === "function") {
+      this.reconnectTimer.unref();
     }
   }
 
   private sendSubscription(symbol: string, interval: string): void {
     if (!this.ws || !this.isConnected) return;
-    const tvSymbol = TV_SYMBOL_MAP[symbol] ?? `FX:${symbol}`;
+    const tvSymbol = TV_SYMBOL_MAP[symbol] ?? (symbol.length === 6 ? `OANDA:${symbol}` : `FX:${symbol}`);
     const seriesId = `s_${symbol}_${interval}`.toLowerCase();
     const symbolSeriesId = `sym_${symbol}`.toLowerCase();
 
@@ -202,10 +225,12 @@ export class TradingViewBridge extends EventEmitter {
 
                 if (tickData && tickData.length >= 5) {
                   const [t, o, h, l, c, v] = tickData;
+                  const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
+                  const bucketTime = Math.floor(Number(t) / intervalSecs) * intervalSecs;
                   const tick: LiveTick = {
                     symbol,
                     interval,
-                    time: Math.floor(t),
+                    time: bucketTime,
                     open: Number(o),
                     high: Number(h),
                     low: Number(l),

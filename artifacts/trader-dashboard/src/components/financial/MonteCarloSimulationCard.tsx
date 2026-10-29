@@ -19,6 +19,8 @@ interface MonteCarloSimulationCardProps {
   expectedMonthlyReturnPct: number;
   simulatedDrawdownPct: number;
   accountObjective: AccountObjective;
+  initialWinRatePct?: number;
+  initialRiskRewardRatio?: number;
   className?: string;
 }
 
@@ -35,10 +37,15 @@ export const MonteCarloSimulationCard: React.FC<MonteCarloSimulationCardProps> =
   expectedMonthlyReturnPct,
   simulatedDrawdownPct,
   accountObjective,
+  initialWinRatePct = 54,
+  initialRiskRewardRatio = 1.85,
   className = "",
 }) => {
   const [horizonMonths, setHorizonMonths] = useState<number>(12);
   const [tradingStyle, setTradingStyle] = useState<TradingStyle>("DAY_TRADING");
+  const [winRatePct, setWinRatePct] = useState<number>(initialWinRatePct);
+  const [riskRewardRatio, setRiskRewardRatio] = useState<number>(initialRiskRewardRatio);
+  const [tradesPerMonth, setTradesPerMonth] = useState<number>(20);
   const [activeTab, setActiveTab] = useState<TabView>("trajectories");
   const [hoverMonth, setHoverMonth] = useState<number | null>(null);
 
@@ -48,6 +55,9 @@ export const MonteCarloSimulationCard: React.FC<MonteCarloSimulationCardProps> =
   const monthlyReturn = Math.max(0.5, expectedMonthlyReturnPct || 3);
   const drawdownPct = Math.max(3, simulatedDrawdownPct || 10);
 
+  // Expectancy matematica per trade in unità R
+  const expectancyR = (winRatePct / 100) * riskRewardRatio - (1 - winRatePct / 100);
+
   const mc = useMemo(() => {
     return simulateMonteCarloEquity({
       initialCapital,
@@ -56,11 +66,24 @@ export const MonteCarloSimulationCard: React.FC<MonteCarloSimulationCardProps> =
       horizonMonths,
       accountObjective,
       tradingStyle,
+      winRatePct,
+      riskRewardRatio,
+      tradesPerMonth,
       iterations: 1000,
       seed: 20261018,
       samplePathCount: 14,
     });
-  }, [initialCapital, monthlyReturn, drawdownPct, horizonMonths, accountObjective, tradingStyle]);
+  }, [
+    initialCapital,
+    monthlyReturn,
+    drawdownPct,
+    horizonMonths,
+    accountObjective,
+    tradingStyle,
+    winRatePct,
+    riskRewardRatio,
+    tradesPerMonth,
+  ]);
 
   // SVG coordinate mappers per Equity
   const allValues = useMemo(() => {
@@ -274,6 +297,81 @@ export const MonteCarloSimulationCard: React.FC<MonteCarloSimulationCardProps> =
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* ─── BARRA DI CALIBRAZIONE REALE: WIN RATE, R:R & EXPECTANCY (ZERO RETTE) ─── */}
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-lg bg-[#07080b] border border-[#C5A059]/25 font-mono text-[9.5px]">
+          {/* Win Rate */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 uppercase font-semibold">Win Rate:</span>
+            <div className="flex items-center gap-0.5 bg-[#0D0D10] p-0.5 rounded border border-border">
+              {[45, 50, 54, 60].map((wr) => (
+                <button
+                  key={wr}
+                  type="button"
+                  onClick={() => setWinRatePct(wr)}
+                  className={`px-1.5 py-0.2 rounded font-bold transition-all ${
+                    winRatePct === wr
+                      ? "bg-[#C5A059] text-[#07080b] shadow-xs"
+                      : "text-slate-400 hover:text-foreground"
+                  }`}
+                >
+                  {wr}%
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Risk to Reward */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 uppercase font-semibold">Risk:Reward:</span>
+            <div className="flex items-center gap-0.5 bg-[#0D0D10] p-0.5 rounded border border-border">
+              {[1.5, 1.85, 2.0, 2.5].map((rr) => (
+                <button
+                  key={rr}
+                  type="button"
+                  onClick={() => setRiskRewardRatio(rr)}
+                  className={`px-1.5 py-0.2 rounded font-bold transition-all ${
+                    riskRewardRatio === rr
+                      ? "bg-[#C5A059] text-[#07080b] shadow-xs"
+                      : "text-slate-400 hover:text-foreground"
+                  }`}
+                >
+                  {rr}R
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Frequenza Trade/Mese */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 uppercase font-semibold">Trade/m:</span>
+            <div className="flex items-center gap-0.5 bg-[#0D0D10] p-0.5 rounded border border-border">
+              {[10, 20, 30].map((tpm) => (
+                <button
+                  key={tpm}
+                  type="button"
+                  onClick={() => setTradesPerMonth(tpm)}
+                  className={`px-1.5 py-0.2 rounded font-bold transition-all ${
+                    tradesPerMonth === tpm
+                      ? "bg-[#C5A059] text-[#07080b] shadow-xs"
+                      : "text-slate-400 hover:text-foreground"
+                  }`}
+                >
+                  {tpm}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Expectancy Edge Badge */}
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-bold">
+            <span>EV:</span>
+            <span>+{expectancyR.toFixed(2)} R</span>
+            <span className="text-slate-400 text-[8.5px] font-normal">
+              (+{(expectancyR * (initialCapital * 0.0081)).toFixed(0)} €/trade)
+            </span>
           </div>
         </div>
 

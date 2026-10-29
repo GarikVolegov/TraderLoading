@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Check } from "lucide-react";
+import { synestheticCheck, synestheticClick } from "@/lib/soundFx";
 import type { Answers } from "./types";
 
 const CHECKLIST_ITEMS = [
@@ -19,9 +20,15 @@ export function ChecklistStep({
   const checked = (answers.checklist as string[] | undefined) ?? [];
 
   const toggle = (id: string) => {
-    const next = checked.includes(id)
-      ? checked.filter((c) => c !== id)
-      : [...checked, id];
+    const isAdding = !checked.includes(id);
+    if (isAdding) {
+      synestheticCheck();
+    } else {
+      synestheticClick();
+    }
+    const next = isAdding
+      ? [...checked, id]
+      : checked.filter((c) => c !== id);
     onChange({ ...answers, checklist: next });
   };
 

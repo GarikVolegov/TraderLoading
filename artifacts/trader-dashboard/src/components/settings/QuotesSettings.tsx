@@ -146,7 +146,7 @@ export function QuotesSettings() {
             Nessuna sentenza personalizzata memorizzata.
           </p>
           <p className="text-[11px] font-mono text-muted-foreground/60">
-            Il sistema utilizzerà gli aforismi classici della dottrina LIMEN (Marco Aurelio, Seneca, Epitteto).
+            Il sistema utilizzerà gli aforismi classici della dottrina AUREUS (Marco Aurelio, Seneca, Epitteto).
           </p>
         </div>
       ) : (

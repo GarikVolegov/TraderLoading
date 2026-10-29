@@ -12,7 +12,10 @@ import {
   Users,
   Shield,
   Sparkles,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
+import { synestheticCheck } from "@/lib/soundFx";
 
 export interface BattleInviteModalProps {
   isOpen: boolean;
@@ -30,8 +33,9 @@ export function BattleInviteModal({
   onSendSocketInvite,
 }: BattleInviteModalProps) {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"link" | "search">("link");
+  const [activeTab, setActiveTab] = useState<"link" | "search" | "spectator">("link");
   const [copied, setCopied] = useState(false);
+  const [spectatorCopied, setSpectatorCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
@@ -45,6 +49,27 @@ export function BattleInviteModal({
     if (typeof window === "undefined") return "";
     const origin = window.location.origin;
     return `${origin}/chat?t=competizioni&vista=battaglie&room=${encodeURIComponent(roomCode)}`;
+  };
+
+  const effectiveRoomId = roomId || roomCode;
+  const getSpectatorUrl = () => {
+    if (typeof window === "undefined") return "";
+    const origin = window.location.origin;
+    return `${origin}/duello/${encodeURIComponent(effectiveRoomId)}`;
+  };
+
+  const handleCopySpectatorLink = () => {
+    const url = getSpectatorUrl();
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      synestheticCheck();
+      navigator.clipboard.writeText(url);
+      setSpectatorCopied(true);
+      toast({
+        title: "Link Tribuna Spettatori Copiato!",
+        description: "Condividi questo link per far assistere chiunque al duello in diretta streaming sincrona.",
+      });
+      setTimeout(() => setSpectatorCopied(false), 2500);
+    }
   };
 
   const handleCopyLink = () => {
@@ -120,10 +145,21 @@ export function BattleInviteModal({
             >
               Fratellanza
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("spectator")}
+              className={`px-2.5 py-1 rounded transition-all ${
+                activeTab === "spectator"
+                  ? "bg-[#C5A059] text-black font-bold shadow"
+                  : "text-[#A1A1AA] hover:text-white"
+              }`}
+            >
+              Tribuna
+            </button>
           </div>
         </div>
 
-        {activeTab === "link" ? (
+        {activeTab === "link" && (
           <div className="space-y-3.5 py-1">
             <div className="p-3 rounded-lg bg-[#121318] border border-white/10 space-y-2 text-left">
               <span className="font-mono text-[9.5px] uppercase tracking-wider text-[#A1A1AA] block">
@@ -165,7 +201,9 @@ export function BattleInviteModal({
               Chiunque apra questo link accede immediatamente alla stanza multiplayer e compare nella Forgia 3D con il proprio profilo registrato.
             </p>
           </div>
-        ) : (
+        )}
+
+        {activeTab === "search" && (
           <div className="space-y-3 text-left py-1">
             <div className="relative">
               <Search size={13} className="absolute left-3 top-2.5 text-[#71717A]" />
@@ -225,6 +263,59 @@ export function BattleInviteModal({
                   );
                 })
               )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "spectator" && (
+          <div className="space-y-3.5 py-1 text-left">
+            <div className="p-3 rounded-lg bg-[#121318] border border-[#C5A059]/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[9.5px] uppercase tracking-wider text-[#A1A1AA] flex items-center gap-1.5">
+                  <Eye size={12} className="text-[#C5A059]" /> Tribuna Spettatori Live
+                </span>
+                <span className="px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 font-mono text-[9px] text-[#E8C56A] font-bold uppercase tracking-wider">
+                  Accesso Libero
+                </span>
+              </div>
+              <p className="text-[11px] text-[#94A3B8] leading-relaxed m-0">
+                Consenti a osservatori, allievi e confratelli di assistere alla Prova in diretta.
+                Visualizzeranno telemetria sincrona, battiti cardiaci e curve di capitale in tempo reale senza poter inviare ordini.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-mono text-[#A1A1AA] uppercase tracking-wider">
+                Link Pubblico Spettatore
+              </label>
+              <div className="flex items-center gap-2 p-1.5 rounded-lg bg-[#14151C] border border-white/10">
+                <input
+                  type="text"
+                  readOnly
+                  value={getSpectatorUrl()}
+                  className="w-full bg-transparent border-none outline-none text-xs font-mono text-[#CBD5E1] px-2 select-all"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopySpectatorLink}
+                  className="px-3 py-1.5 rounded bg-gradient-to-r from-[#C5A059] to-[#D4AF37] text-black font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 hover:brightness-110 shrink-0 transition-all shadow"
+                >
+                  {spectatorCopied ? <Check size={12} className="stroke-[3]" /> : <Copy size={12} />}
+                  <span>{spectatorCopied ? "Copiato" : "Copia Link"}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <a
+                href={getSpectatorUrl()}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-mono text-[#D4AF37] hover:underline"
+              >
+                <span>Apri schermata spettatore</span>
+                <ExternalLink size={12} />
+              </a>
             </div>
           </div>
         )}

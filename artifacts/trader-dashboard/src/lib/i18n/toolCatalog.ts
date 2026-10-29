@@ -317,11 +317,11 @@ const entries: Record<string, readonly [string, string, string, string, string]>
     "Die 5 Aufstiegsgrade, Integritätsindex und freigeschaltete Privilegien.",
   ],
   "catalog.hint.quotes": [
-    "Massime stoiche e operative dell'Ordine LIMEN.",
-    "Stoic and operational maxims of the LIMEN Order.",
-    "Máximas estoicas y operativas del Orden LIMEN.",
-    "Maximes stoïciennes et opérationnelles de l’Ordre LIMEN.",
-    "Stoische und operative Maximen des LIMEN-Ordens.",
+    "Massime stoiche e operative dell'Ordine AUREUS.",
+    "Stoic and operational maxims of the AUREUS Order.",
+    "Máximas estoicas y operativas del Orden AUREUS.",
+    "Maximes stoïciennes et opérationnelles de l’Ordre AUREUS.",
+    "Stoische und operative Maximen des AUREUS-Ordens.",
   ],
   "catalog.hint.support": [
     "Canale diretto con il Comando.",

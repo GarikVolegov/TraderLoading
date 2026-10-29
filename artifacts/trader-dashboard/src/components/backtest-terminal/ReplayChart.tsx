@@ -34,6 +34,8 @@ import { cursorAtReplayTime, logicalIndexAtTime, timeAtLogicalIndex } from "@/li
 import { toHeikinAshi } from "@/lib/replay/heikinAshi";
 import type { ReplayCandle } from "@/lib/replay/types";
 import { DrawingsOverlay } from "./DrawingsOverlay";
+import { ChartAlertsOverlay } from "./ChartAlertsOverlay";
+import type { ReplayAlertsApi } from "./useReplayAlerts";
 import { formatPrice, priceDecimals, terminalLocale } from "./format";
 import { PositionOverlay, type ChartProjector } from "./PositionOverlay";
 import { SessionOpensOverlay } from "./SessionOpensOverlay";
@@ -41,6 +43,7 @@ import { LimenAiSetupOverlay } from "../chart/LimenAiSetupOverlay";
 import type { VarcoSetupPlan } from "@workspace/api-client-react";
 import type { DrawingToolId } from "./toolRailModel";
 import type { ReplayEngine } from "./useReplayEngine";
+import { formatBlindTimeOnly } from "./dateTime";
 
 export interface ReplayChartApi {
   zoomIn: () => void;
@@ -59,6 +62,37 @@ type PriceSeries =
   | { type: "line"; series: ISeriesApi<"Line"> }
   | { type: "area"; series: ISeriesApi<"Area"> };
 
+const replayTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+function formatReplayTime(locale: string, unixSeconds: number): string {
+  let fmt = replayTimeFormatters.get(locale);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(locale, {
+      timeZone: "Europe/Rome",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    replayTimeFormatters.set(locale, fmt);
+  }
+  return fmt.format(new Date(unixSeconds * 1000));
+}
+
+function findCandleAtTime(candles: ReplayCandle[], time: number): ReplayCandle | null {
+  let lo = 0;
+  let hi = candles.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const c = candles[mid];
+    if (c.time === time) return c;
+    if (c.time < time) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return null;
+}
+
 export function ReplayChart({
   engine,
   apiRef,
@@ -71,6 +105,7 @@ export function ReplayChart({
   onUpdateAiSetup,
   onAdoptAiSetup,
   onToggleAiOverlay,
+  alertsApi,
 }: {
   engine: ReplayEngine;
   apiRef?: React.MutableRefObject<ReplayChartApi | null>;
@@ -83,6 +118,7 @@ export function ReplayChart({
   onUpdateAiSetup?: (setup: VarcoSetupPlan) => void;
   onAdoptAiSetup?: () => void;
   onToggleAiOverlay?: () => void;
+  alertsApi?: ReplayAlertsApi;
 }) {
   const { language, t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -97,6 +133,7 @@ export function ReplayChart({
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const [revision, setRevision] = useState(0);
   const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 });
+  const [crosshairY, setCrosshairY] = useState<number | null>(null);
   // Bumped when the chart instance is recreated: the
   // data/watermark/marker/price-line effects must re-run against the new chart
   // even though their own deps did not change.
@@ -185,10 +222,7 @@ export function ReplayChart({
         locale: terminalLocale(language),
         timeFormatter: (time: Time) => {
           if (typeof time !== "number") return String(time);
-          return new Intl.DateTimeFormat(terminalLocale(language), {
-            timeZone: "Europe/Rome", day: "2-digit", month: "short", year: "numeric",
-            hour: "2-digit", minute: "2-digit", hour12: false,
-          }).format(new Date(time * 1000));
+          return formatReplayTime(terminalLocale(language), time);
         },
       },
       handleScroll: { vertTouchDrag: false },
@@ -217,21 +251,8 @@ export function ReplayChart({
       };
     }
 
-    // Overlay re-projection: pan/zoom and container resizes bump `revision`.
+    // Overlay re-projection: pan/zoom and container resizes bump `revision` (coalesced per frame).
     const bump = () => setRevision((value) => value + 1);
-    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-      bump();
-      if (range && range.from < 50 && lastRenderRef.current.length > 0) historyLoaderRef.current();
-    });
-    chart.timeScale().subscribeVisibleTimeRangeChange(bump);
-    const resizeObserver = new ResizeObserver(() => {
-      setOverlaySize({ width: container.clientWidth, height: container.clientHeight });
-      bump();
-    });
-    resizeObserver.observe(container);
-    setOverlaySize({ width: container.clientWidth, height: container.clientHeight });
-    setChartEpoch((epoch) => epoch + 1);
-
     let animFrame: number | null = null;
     const scheduleRevision = () => {
       if (animFrame != null) return;
@@ -241,20 +262,42 @@ export function ReplayChart({
       });
     };
 
+    const onLogicalRangeChange = (range: { from: number; to: number } | null) => {
+      scheduleRevision();
+      if (range && range.from < 50 && lastRenderRef.current.length > 0) historyLoaderRef.current();
+    };
+    chart.timeScale().subscribeVisibleLogicalRangeChange(onLogicalRangeChange);
+    chart.timeScale().subscribeVisibleTimeRangeChange(scheduleRevision);
+    const resizeObserver = new ResizeObserver(() => {
+      const nextW = container.clientWidth;
+      const nextH = container.clientHeight;
+      setOverlaySize((prev) => (prev.width === nextW && prev.height === nextH ? prev : { width: nextW, height: nextH }));
+      scheduleRevision();
+    });
+    resizeObserver.observe(container);
+    setOverlaySize({ width: container.clientWidth, height: container.clientHeight });
+    setChartEpoch((epoch) => epoch + 1);
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.buttons > 0) {
+        scheduleRevision();
+      }
+    };
+
     container.addEventListener("pointerdown", scheduleRevision);
-    container.addEventListener("pointermove", scheduleRevision);
+    container.addEventListener("pointermove", onPointerMove);
     container.addEventListener("pointerup", scheduleRevision);
     container.addEventListener("wheel", scheduleRevision, { passive: true });
 
     return () => {
       container.removeEventListener("pointerdown", scheduleRevision);
-      container.removeEventListener("pointermove", scheduleRevision);
+      container.removeEventListener("pointermove", onPointerMove);
       container.removeEventListener("pointerup", scheduleRevision);
       container.removeEventListener("wheel", scheduleRevision);
       if (animFrame != null) cancelAnimationFrame(animFrame);
       resizeObserver.disconnect();
-      chart.timeScale().unsubscribeVisibleLogicalRangeChange(bump);
-      chart.timeScale().unsubscribeVisibleTimeRangeChange(bump);
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(onLogicalRangeChange);
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(scheduleRevision);
       if (apiRef) apiRef.current = null;
       watermarkRef.current = null;
       priceSeriesRef.current = null;
@@ -273,18 +316,24 @@ export function ReplayChart({
   }, [apiRef]);
 
   // Localization does not need a new chart: preserve viewport, drawings and replay.
+  // Replay Cieco: the axis and crosshair expose only the hour, never day/month/year.
+  const blindMasked = engine.blindMasked;
   useEffect(() => {
+    const loc = terminalLocale(language);
     chartRef.current?.applyOptions({
       localization: {
-        locale: terminalLocale(language),
-        timeFormatter: (time: Time) => typeof time !== "number" ? String(time) :
-          new Intl.DateTimeFormat(terminalLocale(language), {
-            timeZone: "Europe/Rome", day: "2-digit", month: "short", year: "numeric",
-            hour: "2-digit", minute: "2-digit", hour12: false,
-          }).format(new Date(time * 1000)),
+        locale: loc,
+        timeFormatter: (time: Time) =>
+          typeof time !== "number" ? String(time) : blindMasked ? `${formatBlindTimeOnly(time)} · Cieco` : formatReplayTime(loc, time),
+      },
+      timeScale: {
+        tickMarkFormatter: (time: Time, tickMarkType: number) => {
+          if (!blindMasked || typeof time !== "number") return null;
+          return tickMarkType >= 3 ? formatBlindTimeOnly(time) : "◆";
+        },
       },
     });
-  }, [language, chartEpoch]);
+  }, [language, chartEpoch, blindMasked]);
 
   // ── watermark (symbol + timeframe) ─────────────────────────────────────────
   useEffect(() => {
@@ -539,27 +588,65 @@ export function ReplayChart({
     settings.showLastPriceLine,
   ]);
 
-  // ── interactive OHLC status line / legend tracking ────────────────────────
+  // ── interactive OHLC status line / legend tracking (O(log N) + RAF-throttled) ──
   const [hoverCandle, setHoverCandle] = useState<ReplayCandle | null>(null);
+  const displayCandlesRef = useRef<ReplayCandle[]>(displayCandles);
+  displayCandlesRef.current = displayCandles;
+
+  const crosshairYRef = useRef<number | null>(null);
+
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
+    let rafId: number | null = null;
+    let pendingTime: number | null = null;
+    let pendingY: number | null = null;
+
     const handler = (param: { time?: Time; point?: { x: number; y: number } }) => {
-      if (!param.point || !param.time) {
-        setHoverCandle(null);
-        return;
+      if (param.point && typeof param.point.y === "number") {
+        pendingY = param.point.y;
+      } else {
+        pendingY = null;
       }
-      const t = typeof param.time === "number" ? param.time : null;
-      if (!t) {
-        setHoverCandle(null);
-        return;
+      crosshairYRef.current = pendingY;
+      if (!param.point || !param.time || typeof param.time !== "number") {
+        pendingTime = null;
+      } else {
+        pendingTime = param.time;
       }
-      const candle = displayCandles.find((c) => c.time === t);
-      setHoverCandle(candle ?? null);
+      if (rafId != null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        setCrosshairY((prevY) => (prevY === pendingY ? prevY : pendingY));
+        if (pendingTime === null) {
+          setHoverCandle((prev) => (prev === null ? prev : null));
+          return;
+        }
+        const list = displayCandlesRef.current;
+        const candle = findCandleAtTime(list, pendingTime);
+        setHoverCandle((prev) => {
+          if (prev === candle) return prev;
+          if (
+            prev &&
+            candle &&
+            prev.time === candle.time &&
+            prev.close === candle.close &&
+            prev.open === candle.open &&
+            prev.high === candle.high &&
+            prev.low === candle.low
+          ) {
+            return prev;
+          }
+          return candle;
+        });
+      });
     };
     chart.subscribeCrosshairMove(handler);
-    return () => chart.unsubscribeCrosshairMove(handler);
-  }, [displayCandles, chartEpoch]);
+    return () => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      chart.unsubscribeCrosshairMove(handler);
+    };
+  }, [chartEpoch]);
 
   // ── reveal: setData on seeks, update on single steps ───────────────────────
   useEffect(() => {
@@ -669,8 +756,21 @@ export function ReplayChart({
             : previousRange,
         );
       } else if (displayCandles.length > 0) {
-        const to = displayCandles.length - 1 + (settings.rightOffsetBars ?? 12);
-        chart.timeScale().setVisibleLogicalRange({ from: to - VISIBLE_BARS_ON_SEEK, to });
+        const targetTime = engine.currentBar?.time ?? engine.replayTime;
+        const rightOffset = settings.rightOffsetBars ?? 12;
+        if (targetTime != null) {
+          const cursorIdx = cursorAtReplayTime(displayCandles, targetTime + 0.001);
+          if (cursorIdx >= 0) {
+            const targetTo = cursorIdx + rightOffset;
+            chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, targetTo - VISIBLE_BARS_ON_SEEK), to: targetTo });
+          } else {
+            const to = displayCandles.length - 1 + rightOffset;
+            chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, to - VISIBLE_BARS_ON_SEEK), to });
+          }
+        } else {
+          const to = displayCandles.length - 1 + rightOffset;
+          chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, to - VISIBLE_BARS_ON_SEEK), to });
+        }
       }
     }
 
@@ -888,10 +988,21 @@ export function ReplayChart({
 
   // ── closed-trade markers (entry arrows, exit dots) ─────────────────────────
   const lastRevealedTime = revealed.length > 0 ? revealed[revealed.length - 1].time : null;
+  const visibleTradeCountKey = useMemo(() => {
+    if (engine.replayTime == null || engine.trades.length === 0) return "0:0";
+    let entries = 0;
+    let exits = 0;
+    for (const t of engine.trades) {
+      if (t.entryTime <= engine.replayTime) entries++;
+      if (t.exitTime <= engine.replayTime) exits++;
+    }
+    return `${entries}:${exits}`;
+  }, [engine.trades, engine.replayTime]);
+
   useEffect(() => {
     const markersApi = markersRef.current;
     if (!markersApi || lastRevealedTime == null) return;
-    if (settings.showTradesOnChart === false && engine.hoveredTradeId == null) {
+    if ((settings.showTradesOnChart === false && engine.hoveredTradeId == null) || engine.trades.length === 0) {
       markersApi.setMarkers([]);
       return;
     }
@@ -929,7 +1040,8 @@ export function ReplayChart({
     }
     markers.sort((a, b) => (a.time as number) - (b.time as number));
     markersApi.setMarkers(markers);
-  }, [engine.trades, engine.replayTime, revealed, lastRevealedTime, symbol, chartType, chartEpoch, settings.showTradesOnChart, engine.hoveredTradeId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine.trades, visibleTradeCountKey, symbol, chartType, chartEpoch, settings.showTradesOnChart, engine.hoveredTradeId]);
 
   // ── open-position price lines (entry / SL / TP on the price axis) ──────────
   useEffect(() => {
@@ -960,6 +1072,11 @@ export function ReplayChart({
     const chart = chartRef.current;
     const price = priceSeriesRef.current;
     if (!chart || !price || overlaySize.width <= 0) return null;
+    const priceScaleWidth = chart.priceScale("right")?.width() || 58;
+    const timeScaleHeight = chart.timeScale()?.height() || 26;
+    const paneWidth = Math.max(0, overlaySize.width - priceScaleWidth);
+    const paneHeight = Math.max(0, overlaySize.height - timeScaleHeight);
+
     return {
       xForTime: (time: number) => {
         const coordinate = chart.timeScale().timeToCoordinate(time as Time);
@@ -980,21 +1097,64 @@ export function ReplayChart({
       },
       width: overlaySize.width,
       height: overlaySize.height,
+      paneWidth,
+      paneHeight,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- revision invalidates chart coordinates after pan/zoom
   }, [overlaySize, revision, revealed, engine.intervalSeconds, chartEpoch, chartType]);
 
-  // Right-click = replay jump to the bar under the cursor;
-  // the browser menu stays available on the rest of the terminal.
+  const [chartContextMenu, setChartContextMenu] = useState<{
+    x: number;
+    y: number;
+    price: number;
+    time?: number;
+  } | null>(null);
+
+  // Shift + Right-click = replay jump to the bar under the cursor;
+  // Standard Right-click = apre il menu contestuale chirurgico AUREUS (Allerta, Limite, Salta Barra).
   const onContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
     const chart = chartRef.current;
     const container = containerRef.current;
-    if (!chart || !container) return;
+    if (!chart || !container || !projector) return;
     event.preventDefault();
-    const x = event.clientX - container.getBoundingClientRect().left;
-    const time = chart.timeScale().coordinateToTime(x);
-    if (typeof time === "number") engine.seekToTime(time);
+    const rect = container.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const time = projector.timeForX(x);
+
+    if (event.shiftKey && typeof time === "number") {
+      engine.seekToTime(time);
+      return;
+    }
+
+    const price = projector.priceForY(y);
+    if (price != null && Number.isFinite(price)) {
+      setChartContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        price,
+        time: typeof time === "number" ? time : undefined,
+      });
+    }
   };
+
+  // ── Alt + A shortcut: rapida creazione allerta al prezzo sotto al crosshair ──
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === "a" || e.key === "A" || e.code === "KeyA")) {
+        const currentY = crosshairYRef.current;
+        if (currentY != null && projector && alertsApi) {
+          const price = projector.priceForY(currentY);
+          if (price != null && Number.isFinite(price)) {
+            e.preventDefault();
+            alertsApi.createAlert(price);
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [projector, alertsApi]);
 
   const activeBar = hoverCandle ?? (displayCandles.length > 0 ? displayCandles[displayCandles.length - 1] : null);
   const barChange = activeBar ? activeBar.close - activeBar.open : 0;
@@ -1058,6 +1218,19 @@ export function ReplayChart({
         <SessionOpensOverlay engine={engine} projector={projector} revision={revision} />
       )}
       {projector && <PositionOverlay engine={engine} projector={projector} revision={revision} />}
+      {projector && alertsApi && (
+        <ChartAlertsOverlay
+          engine={engine}
+          projector={projector}
+          revision={revision}
+          alerts={alertsApi.alerts}
+          onCreateAlert={alertsApi.createAlert}
+          onRemoveAlert={alertsApi.removeAlert}
+          onUpdateAlertPrice={alertsApi.updateAlertPrice}
+          onToggleAlert={alertsApi.toggleAlert}
+          crosshairY={crosshairY}
+        />
+      )}
       {projector && (
         <DrawingsOverlay
           engine={engine}
@@ -1066,6 +1239,10 @@ export function ReplayChart({
           activeTool={activeTool}
           onToolDone={onToolDone ?? (() => undefined)}
           onOpenKnowledge={onOpenKnowledge}
+          onAddAlert={alertsApi?.createAlert}
+          externalContextMenu={chartContextMenu}
+          onClearExternalContextMenu={() => setChartContextMenu(null)}
+          onSeekToTime={(time) => engine.seekToTime(time)}
         />
       )}
       {projector && showAiOverlay && aiSetup && (

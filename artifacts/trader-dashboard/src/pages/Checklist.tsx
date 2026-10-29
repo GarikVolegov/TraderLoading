@@ -99,8 +99,8 @@ export function ChecklistWorkspace({ embedded = false }: { embedded?: boolean })
               <p className="text-sm text-muted-foreground">{t("checklist.confirmation_empty_desc")}</p>
             </div>
           ) : (
-            <AnimatePresence>
-              <div className="divide-y divide-border/50">
+            <div className="divide-y divide-border/50">
+              <AnimatePresence initial={false}>
                 {items.map((item, idx) => (
                   <motion.div
                     key={item.id}
@@ -130,8 +130,8 @@ export function ChecklistWorkspace({ embedded = false }: { embedded?: boolean })
                     </Button>
                   </motion.div>
                 ))}
-              </div>
-            </AnimatePresence>
+              </AnimatePresence>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -177,10 +177,9 @@ export function UserProfileModal({
                   {profile?.name}
                 </p>
                 <p className="font-mono text-xs text-[#C5A059] flex items-center gap-1.5 mt-0.5">
-                  <Award className="w-3.5 h-3.5" />
-                  <span>
-                    Livello {profile?.level ?? 1} ·{" "}
-                    {(profile?.xp ?? 0).toLocaleString()} XP
+                  <Award className="w-3.5 h-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">
+                    {grade.code} · {grade.title}
                   </span>
                 </p>
               </div>

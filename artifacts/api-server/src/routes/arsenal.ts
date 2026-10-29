@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import crypto from "node:crypto";
 import type Stripe from "stripe";
 import { db, arsenalOrdersTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
@@ -237,8 +238,31 @@ export async function handleArsenalOrderSession(session: Stripe.Checkout.Session
   }
 }
 
+function verifyWebhookSecret(req: Request, expectedSecret: string | undefined, headerName: string): boolean {
+  const configured = expectedSecret?.trim();
+  if (!configured) {
+    return process.env.NODE_ENV !== "production";
+  }
+  const rawHeader = req.headers[headerName] ?? req.headers["authorization"];
+  const candidate = (Array.isArray(rawHeader) ? rawHeader[0] : rawHeader ?? "")
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+  if (!candidate || candidate.length !== configured.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(candidate), Buffer.from(configured));
+}
+
+function sanitizeTrackingUrl(url?: string): string | undefined {
+  if (!url || typeof url !== "string") return undefined;
+  const trimmed = url.trim();
+  return /^https:\/\/[^\s<>"]+$/i.test(trimmed) ? trimmed.slice(0, 512) : undefined;
+}
+
 // POST /api/arsenal/webhooks/printful
 router.post("/arsenal/webhooks/printful", async (req: Request, res: Response) => {
+  if (!verifyWebhookSecret(req, process.env.PRINTFUL_WEBHOOK_SECRET, "x-printful-webhook-secret")) {
+    res.status(401).json({ error: "Unauthorized webhook" });
+    return;
+  }
   const body = req.body as {
     type?: string;
     data?: {
@@ -250,11 +274,11 @@ router.post("/arsenal/webhooks/printful", async (req: Request, res: Response) =>
   if (body?.type === "package_shipped" && body.data?.order?.external_id) {
     await updateOrderTracking({
       provider: "printful",
-      orderId: body.data.order.external_id,
-      providerOrderId: String(body.data.order.id || ""),
-      trackingNumber: body.data.shipment?.tracking_number || "TRK-PRINTFUL",
-      trackingUrl: body.data.shipment?.tracking_url,
-      carrier: body.data.shipment?.carrier,
+      orderId: String(body.data.order.external_id).slice(0, 128),
+      providerOrderId: String(body.data.order.id || "").slice(0, 64),
+      trackingNumber: String(body.data.shipment?.tracking_number || "TRK-PRINTFUL").slice(0, 128),
+      trackingUrl: sanitizeTrackingUrl(body.data.shipment?.tracking_url),
+      carrier: body.data.shipment?.carrier ? String(body.data.shipment.carrier).slice(0, 64) : undefined,
     });
   }
 
@@ -263,6 +287,10 @@ router.post("/arsenal/webhooks/printful", async (req: Request, res: Response) =>
 
 // POST /api/arsenal/webhooks/lulu
 router.post("/arsenal/webhooks/lulu", async (req: Request, res: Response) => {
+  if (!verifyWebhookSecret(req, process.env.LULU_WEBHOOK_SECRET, "x-lulu-webhook-secret")) {
+    res.status(401).json({ error: "Unauthorized webhook" });
+    return;
+  }
   const body = req.body as {
     topic?: string;
     data?: {
@@ -274,11 +302,11 @@ router.post("/arsenal/webhooks/lulu", async (req: Request, res: Response) => {
   };
 
   if (body?.data?.external_id && body.data.status?.name === "SHIPPED") {
-    const trackingUrl = body.data.line_item_statuses?.[0]?.tracking_urls?.[0];
+    const trackingUrl = sanitizeTrackingUrl(body.data.line_item_statuses?.[0]?.tracking_urls?.[0]);
     await updateOrderTracking({
       provider: "lulu",
-      orderId: body.data.external_id,
-      providerOrderId: String(body.data.id || ""),
+      orderId: String(body.data.external_id).slice(0, 128),
+      providerOrderId: String(body.data.id || "").slice(0, 64),
       trackingNumber: "TRK-LULU",
       trackingUrl,
       carrier: "Postal Carrier",
@@ -289,7 +317,12 @@ router.post("/arsenal/webhooks/lulu", async (req: Request, res: Response) => {
 });
 
 // GET /api/arsenal/admin/printful-status
-router.get("/arsenal/admin/printful-status", async (_req: Request, res: Response) => {
+router.get("/arsenal/admin/printful-status", async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  if (!userId || !(await isPlatformAdmin(userId))) {
+    res.status(403).json({ error: "Accesso riservato al Consiglio Direttivo" });
+    return;
+  }
   const status = await verifyPrintfulStatus();
   res.json(status);
 });

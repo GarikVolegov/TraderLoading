@@ -283,7 +283,7 @@ export function softwareAppJsonLd(
     operatingSystem: "Web",
     inLanguage: lang,
     offers: TRADERLOADING_OFFERS,
-    publisher: { "@type": "Organization", name: "LIMEN PROTOCOL", url: `${SITE_ORIGIN}/` },
+    publisher: { "@type": "Organization", name: "AUREUS PROTOCOL", url: `${SITE_ORIGIN}/` },
   };
 }
 
@@ -299,7 +299,7 @@ export function pricingProductJsonLd(
     name,
     description,
     url,
-    brand: { "@type": "Brand", name: "LIMEN" },
+    brand: { "@type": "Brand", name: "AUREUS" },
     offers: TRADERLOADING_OFFERS,
   };
 }

@@ -81,11 +81,11 @@ export function ChroniclesHub({ onClose, activeTradeContext }: ChroniclesHubProp
     <div className="w-full h-full flex flex-col justify-between font-mono select-none overflow-hidden text-foreground">
       {/* Sub-Header & 3D Game Experience Switcher */}
       <div className="p-2 sm:p-3 bg-[#0d0f14] border-b border-[#C5A059]/20 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-1.5 p-1 bg-black/50 border border-white/10 rounded-xl overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1.5 p-1 bg-black/50 border border-white/10 rounded-xl overflow-x-auto scrollbar-none max-w-full">
           <button
             type="button"
             onClick={() => handleTabChange("chess3d")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === "chess3d"
                 ? "bg-[#C5A059] text-black shadow-md font-extrabold"
                 : "text-[#E8C56A] hover:bg-[#C5A059]/10"
@@ -101,7 +101,7 @@ export function ChroniclesHub({ onClose, activeTradeContext }: ChroniclesHubProp
           <button
             type="button"
             onClick={() => handleTabChange("cockpit3d")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === "cockpit3d"
                 ? "bg-[#C5A059] text-black shadow-md font-extrabold"
                 : "text-muted-foreground hover:text-foreground"
@@ -114,7 +114,7 @@ export function ChroniclesHub({ onClose, activeTradeContext }: ChroniclesHubProp
           <button
             type="button"
             onClick={() => handleTabChange("risk3d")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === "risk3d"
                 ? "bg-[#C5A059] text-black shadow-md"
                 : "text-muted-foreground hover:text-foreground"
@@ -127,7 +127,7 @@ export function ChroniclesHub({ onClose, activeTradeContext }: ChroniclesHubProp
           <button
             type="button"
             onClick={() => handleTabChange("fluid3d")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === "fluid3d"
                 ? "bg-[#C5A059] text-black shadow-md"
                 : "text-muted-foreground hover:text-foreground"
@@ -140,7 +140,7 @@ export function ChroniclesHub({ onClose, activeTradeContext }: ChroniclesHubProp
           <button
             type="button"
             onClick={() => handleTabChange("runner3d")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === "runner3d"
                 ? "bg-[#C5A059] text-black shadow-md"
                 : "text-muted-foreground hover:text-foreground"
@@ -153,7 +153,7 @@ export function ChroniclesHub({ onClose, activeTradeContext }: ChroniclesHubProp
           <button
             type="button"
             onClick={() => handleTabChange("breaker3d")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === "breaker3d"
                 ? "bg-[#C5A059] text-black shadow-md"
                 : "text-muted-foreground hover:text-foreground"

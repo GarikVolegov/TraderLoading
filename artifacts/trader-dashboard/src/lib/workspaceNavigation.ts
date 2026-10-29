@@ -39,7 +39,13 @@ export function resolveWorkspaceAlias(path: string, search = ""): string | null 
     "/news": ["/", { vista: "notizie" }],
     "/dashboard/widgets": ["/", { vista: "strumenti" }],
     "/library": ["/wiki", { t: "unlocked" }],
-    "/tornei": ["/chat", { t: "competizioni", vista: "torneo" }],
+    "/tornei": [
+      "/chat",
+      {
+        t: "competizioni",
+        vista: new URLSearchParams(search).get("sub") === "backtest" ? "battaglie" : "torneo",
+      },
+    ],
     "/calendar": ["/journal", { t: "piano", vista: "agenda" }],
     "/resources": ["/", {}],
     "/clock": ["/", { vista: "strumenti", strumento: "sessioni" }],

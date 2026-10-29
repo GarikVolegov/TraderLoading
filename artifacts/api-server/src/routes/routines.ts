@@ -1,7 +1,7 @@
 import { tradingDay } from "../lib/tradingTime.js";
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
-import { and, eq, gte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, or, sql } from "drizzle-orm";
 import { db, friendshipsTable, profileTable, routineCompletionsTable } from "@workspace/db";
 import { getUserId } from "./profile.js";
 
@@ -164,6 +164,89 @@ router.post("/routines/completions", async (req, res) => {
     id: record.id,
     qualityScore: record.qualityScore,
     completionDate: record.completionDate,
+  });
+});
+
+router.get("/routines/history", async (req, res) => {
+  const currentUserId = getUserId(req);
+  if (!currentUserId) {
+    res.status(401).json({ error: "Autenticazione richiesta" });
+    return;
+  }
+
+  const since = tradingDay(new Date(Date.now() - 90 * 86_400_000))!;
+  const records = await db
+    .select()
+    .from(routineCompletionsTable)
+    .where(
+      and(
+        eq(routineCompletionsTable.userId, currentUserId),
+        gte(routineCompletionsTable.completionDate, since),
+      ),
+    )
+    .orderBy(desc(routineCompletionsTable.completedAt));
+
+  const totalCompletions = records.length;
+  const morningCount = records.filter((r) => r.template === "morning").length;
+  const eveningCount = records.filter((r) => r.template === "evening").length;
+
+  const dates = records.map((r) => r.completionDate);
+  const currentStreakDays = calculateStreak(dates, todayKey());
+
+  // Calcolo longest streak
+  const uniqueDatesSorted = [...new Set(dates)].sort();
+  let longestStreakDays = 0;
+  let runningStreak = 0;
+  let prevDate: string | null = null;
+  for (const d of uniqueDatesSorted) {
+    if (!prevDate) {
+      runningStreak = 1;
+    } else if (daysBetween(d, prevDate) === 1) {
+      runningStreak += 1;
+    } else {
+      runningStreak = 1;
+    }
+    prevDate = d;
+    if (runningStreak > longestStreakDays) {
+      longestStreakDays = runningStreak;
+    }
+  }
+
+  const avgQualityScore = totalCompletions
+    ? Math.round(records.reduce((sum, r) => sum + r.qualityScore, 0) / totalCompletions)
+    : 0;
+
+  // Tasso aderenza 30 giorni (% giorni con almeno un completamento negli ultimi 30 giorni)
+  const since30 = tradingDay(new Date(Date.now() - 30 * 86_400_000))!;
+  const distinctDays30 = new Set(records.filter((r) => r.completionDate >= since30).map((r) => r.completionDate)).size;
+  const adherenceRate30d = Math.min(100, Math.round((distinctDays30 / 30) * 100));
+
+  res.json({
+    currentStreakDays,
+    longestStreakDays,
+    totalCompletions,
+    morningCount,
+    eveningCount,
+    adherenceRate30d,
+    avgQualityScore,
+    history: records.map((r) => {
+      let answers: Record<string, unknown> = {};
+      try {
+        answers = JSON.parse(r.answersJson || "{}");
+      } catch {
+        answers = {};
+      }
+      return {
+        id: r.id,
+        routineId: r.routineId,
+        routineTitle: r.routineTitle,
+        template: r.template,
+        qualityScore: r.qualityScore,
+        answers,
+        completionDate: r.completionDate,
+        completedAt: r.completedAt,
+      };
+    }),
   });
 });
 

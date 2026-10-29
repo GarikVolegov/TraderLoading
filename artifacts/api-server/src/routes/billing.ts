@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, adminUserSubscriptionsTable, stripeWebhookEventsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, ne, or } from "drizzle-orm";
 import type Stripe from "stripe";
 import {
   createStripeClient,
@@ -48,6 +48,7 @@ export interface BillingRouterOptions {
   cancelSubscription?: (userId: string, subscriptionId: string) => Promise<SubscriptionLike | null>;
   resumeSubscription?: (userId: string, subscriptionId: string) => Promise<SubscriptionLike | null>;
   listInvoices?: (userId: string, customerId: string) => Promise<BillingInvoice[]>;
+  activateTrial?: (userId: string) => Promise<{ success: boolean; status?: number; error?: string }>;
 }
 
 function requireBillingUser(req: Request): NonNullable<Request["user"]> | null {
@@ -325,27 +326,60 @@ export function createBillingRouter(options: BillingRouterOptions = {}): IRouter
       return;
     }
 
-    const trialEnd = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await db
-      .insert(adminUserSubscriptionsTable)
-      .values({
-        userId: user.id,
-        plan: "pro",
-        status: "trialing",
-        source: "trial_1_day",
-        manualOverride: false,
-        currentPeriodEnd: trialEnd,
-      })
-      .onConflictDoUpdate({
-        target: adminUserSubscriptionsTable.userId,
-        set: {
+    if (options.activateTrial) {
+      const result = await options.activateTrial(user.id);
+      if (!result.success) {
+        res.status(result.status ?? 409).json({ error: result.error ?? "trial_not_available" });
+        return;
+      }
+    } else {
+      // Trial one-shot e atomico: l'INSERT ... ON CONFLICT DO UPDATE ... WHERE
+      // viene valutato dal database in un'unica istruzione, quindi due richieste
+      // concorrenti non possono attivare il trial due volte. Il trial non
+      // sovrascrive mai piani Stripe, override manuali o piani Pro ancora validi.
+      const now = new Date();
+      const trialEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const activated = await db
+        .insert(adminUserSubscriptionsTable)
+        .values({
+          userId: user.id,
           plan: "pro",
           status: "trialing",
           source: "trial_1_day",
+          manualOverride: false,
           currentPeriodEnd: trialEnd,
-          updatedAt: new Date(),
-        },
-      });
+          trialStartedAt: now,
+          trialUsedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: adminUserSubscriptionsTable.userId,
+          set: {
+            plan: "pro",
+            status: "trialing",
+            source: "trial_1_day",
+            currentPeriodEnd: trialEnd,
+            trialStartedAt: now,
+            trialUsedAt: now,
+            updatedAt: now,
+          },
+          setWhere: and(
+            isNull(adminUserSubscriptionsTable.trialUsedAt),
+            ne(adminUserSubscriptionsTable.source, "trial_1_day"),
+            eq(adminUserSubscriptionsTable.manualOverride, false),
+            isNull(adminUserSubscriptionsTable.stripeSubscriptionId),
+            or(
+              ne(adminUserSubscriptionsTable.plan, "pro"),
+              ne(adminUserSubscriptionsTable.status, "active"),
+            ),
+          ),
+        })
+        .returning({ userId: adminUserSubscriptionsTable.userId });
+
+      if (activated.length === 0) {
+        res.status(409).json({ error: "trial_not_available" });
+        return;
+      }
+    }
 
     const subscription = await getSubscription(user.id);
     res.json(serializeBillingStatus(subscription, checkoutAvailable()));
@@ -752,14 +786,26 @@ export function createStripeWebhookRouter(): IRouter {
       }
       const payload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(String(req.body ?? ""));
       const event = stripe.webhooks.constructEvent(payload, signature, config.webhookSecret);
-      // Completion is recorded AFTER idempotent effects. A precommitted claim can
-      // permanently lose a payment on crash. Invoice uniqueness and transfer row
-      // locks enforce money idempotency even if concurrent deliveries both proceed.
-      const [done] = await db.select().from(stripeWebhookEventsTable).where(eq(stripeWebhookEventsTable.eventId, event.id)).limit(1);
-      const duplicate = !!done;
+      // Atomic claim via INSERT ON CONFLICT DO NOTHING RETURNING.
+      // Eliminates TOCTOU race condition where concurrent retries both execute handleStripeEvent.
+      // If processing fails, the claim is deleted to allow Stripe's subsequent retry to succeed.
+      const [claimed] = await db
+        .insert(stripeWebhookEventsTable)
+        .values({ eventId: event.id, type: event.type })
+        .onConflictDoNothing()
+        .returning({ eventId: stripeWebhookEventsTable.eventId });
+
+      const duplicate = !claimed;
       if (!duplicate) {
-        await handleStripeEvent(event, stripe);
-        await db.insert(stripeWebhookEventsTable).values({ eventId: event.id, type: event.type }).onConflictDoNothing();
+        try {
+          await handleStripeEvent(event, stripe);
+        } catch (handleErr) {
+          await db
+            .delete(stripeWebhookEventsTable)
+            .where(eq(stripeWebhookEventsTable.eventId, event.id))
+            .catch(() => {});
+          throw handleErr;
+        }
       }
       res.json({ received: true, duplicate });
     } catch (error) {

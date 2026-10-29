@@ -1,6 +1,16 @@
 /** Pure CLI parsing/planning: invalid input fails before any market data writes. */
-export const PRIORITY_HISTORY_SYMBOLS = ["XAUUSD", "EURUSD", "USOIL"] as const;
+export const PRIORITY_HISTORY_SYMBOLS = ["XAUUSD", "EURUSD", "USOIL", "BTCUSD", "ETHUSD"] as const;
+export const SOVEREIGN_HISTORY_ANCHOR = "2020-01-01";
+export const DEFAULT_HISTORY_YEARS = 7;
 export const DAY_SECONDS = 86_400;
+
+export const INGEST_TIERS: Record<string, readonly string[]> = {
+  "1": ["BTCUSD", "ETHUSD", "XAUUSD", "EURUSD", "USOIL", "GBPUSD", "USDJPY"],
+  "2": ["USDCHF", "AUDUSD", "USDCAD", "NZDUSD"],
+  "3": ["EURGBP", "EURJPY", "GBPJPY", "AUDJPY"],
+  "4": ["US30", "NAS100", "SPX500"],
+};
+
 export type IngestMode = "seed" | "tail" | "import";
 
 export interface IngestOptions {
@@ -26,17 +36,31 @@ export function parseIngestOptions(argv: string[], supportedSymbols: readonly st
   const [mode, ...args] = argv;
   if (mode !== "seed" && mode !== "tail" && mode !== "import") throw new Error("mode must be seed, tail, or import");
   const flags: Record<string, string> = {};
-  const allowed = new Set(["symbols", "years", "from", "to", "resume", "file", "source"]);
+  const allowed = new Set(["symbols", "years", "from", "to", "resume", "file", "source", "tier"]);
   for (const arg of args) {
     const match = /^--([a-z]+)=(.+)$/.exec(arg);
     if (!match || !allowed.has(match[1]) || flags[match[1]] != null) throw new Error(`invalid or duplicate flag: ${arg}`);
     flags[match[1]] = match[2];
   }
-  const symbols = [...new Set((flags.symbols ?? supportedSymbols.join(",")).split(",").map(s => s.trim().toUpperCase()))];
+
+  let symbolsInput = flags.symbols;
+  if (flags.tier != null) {
+    const tierKey = flags.tier.toUpperCase();
+    if (tierKey !== "1" && tierKey !== "2" && tierKey !== "3" && tierKey !== "4" && tierKey !== "ALL") {
+      throw new Error(`invalid tier: ${flags.tier} (must be 1, 2, 3, 4, or ALL)`);
+    }
+    const rawTierList = tierKey === "ALL" ? supportedSymbols : INGEST_TIERS[tierKey] ?? [];
+    const tierSymbols = rawTierList.filter(s => supportedSymbols.includes(s));
+    symbolsInput = flags.symbols ?? tierSymbols.join(",");
+  } else if (symbolsInput?.toUpperCase() === "ALL") {
+    symbolsInput = supportedSymbols.join(",");
+  }
+
+  const symbols = [...new Set((symbolsInput ?? supportedSymbols.join(",")).split(",").map(s => s.trim().toUpperCase()))];
   if (symbols.length === 0 || symbols.some(s => !supportedSymbols.includes(s))) {
     throw new Error(`unsupported symbols: ${symbols.filter(s => !supportedSymbols.includes(s)).join(", ")}`);
   }
-  const years = Number(flags.years ?? 5);
+  const years = Number(flags.years ?? DEFAULT_HISTORY_YEARS);
   if (!Number.isInteger(years) || years < 1 || years > 30) throw new Error("years must be an integer between 1 and 30");
   if (flags.resume != null && flags.resume !== "true" && flags.resume !== "false") throw new Error("resume must be true or false");
   const from = flags.from ? parseDayStart(flags.from) : undefined;

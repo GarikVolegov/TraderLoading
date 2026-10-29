@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { SigilIcon } from "@/components/ui/SigilIcon";
 import { Button } from "@/components/ui/button";
-import { Lock, ArrowLeft, BookOpen, Compass, ShieldAlert } from "lucide-react";
+import { Lock, BookOpen, Compass } from "lucide-react";
 import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
+import { LimenCandidacyModal } from "@/components/candidacy/LimenCandidacyModal";
+import type { LimenTierId } from "../../../../../contracts/limenServices";
 
 interface LimenServiceLockGateProps {
   serviceId:
@@ -16,27 +19,31 @@ interface LimenServiceLockGateProps {
 const SERVICE_META = {
   forge_of_the_past: {
     title: "La Forgia del Passato (Banco di Forgiatura)",
-    priceBadge: "Esclusiva Prime Persone · 10 €/mese o 100 €/anno",
+    priceBadge: "Promo 14 Giorni · 2,60 € (poi 10 €/m o 100 €/a)",
     description:
-      "Modulo di addestramento nell'ombra e simulatore replay candela per candela. Incluso insieme all'Architettura Patrimoniale nel Piano Esclusivo Prime Persone.",
+      "Modulo di addestramento nell'ombra e simulatore replay candela per candela. Incluso insieme all'Architettura Patrimoniale nel Piano Dotazione Operativa.",
+    defaultTierId: "founders_10" as LimenTierId,
   },
   financial_architecture: {
     title: "Architettura Patrimoniale & Fondamenta di Rischio",
-    priceBadge: "Esclusiva Prime Persone · 10 €/mese o 100 €/anno",
+    priceBadge: "Promo 14 Giorni · 2,60 € (poi 10 €/m o 100 €/a)",
     description:
-      "Modulo di gestione del capitale e barriere matematiche di drawdown. Incluso insieme alla Forgia del Passato nel Piano Esclusivo Prime Persone.",
+      "Modulo di gestione del capitale e barriere matematiche di drawdown. Incluso insieme alla Forgia del Passato nel Piano Dotazione Operativa.",
+    defaultTierId: "founders_10" as LimenTierId,
   },
   doctrine_of_time: {
     title: "La Dottrina del Tempo & Finestra Operativa",
     priceBadge: "Progetto Completo · 150 €/mese o 1.500 €/anno",
     description:
       "Accademia video d'Ordine, studio dei cicli orari bancari, Finestra Operativa e Concilio della Domenica. Richiede l'abilitazione al Progetto Completo.",
+    defaultTierId: "complete_150" as LimenTierId,
   },
   quarterly_tournaments: {
     title: "Le Prove del Fuoco (Tornei Trimestrali)",
     priceBadge: "Progetto Completo · Fase Avanzata d'Onore",
     description:
       "I Tornei Trimestrali sono competizioni ad alto rigore riservate al Progetto Completo e ai gradi avanzati dell'Ordine.",
+    defaultTierId: "complete_150" as LimenTierId,
   },
 } as const;
 
@@ -44,8 +51,17 @@ export function LimenServiceLockGate({
   serviceId,
   onConfigureClick,
 }: LimenServiceLockGateProps) {
+  const [modalOpen, setModalOpen] = useState(false);
   const meta = SERVICE_META[serviceId];
   const { status, hasApplication, candidateCode } = useLimenEntitlements();
+
+  const handleAction = () => {
+    if (onConfigureClick) {
+      onConfigureClick();
+    } else {
+      setModalOpen(true);
+    }
+  };
 
   return (
     <div className="flex min-h-[70vh] w-full flex-col items-center justify-center p-4 text-center">
@@ -115,17 +131,21 @@ export function LimenServiceLockGate({
             </Button>
           </Link>
 
-          {onConfigureClick && (
-            <Button
-              size="sm"
-              onClick={onConfigureClick}
-              className="bg-[#C5A059] text-xs font-mono font-bold uppercase tracking-wider text-[#07080b] hover:bg-[#E8C56A]"
-            >
-              Richiedi Dotazione
-            </Button>
-          )}
+          <Button
+            size="sm"
+            onClick={handleAction}
+            className="bg-[#C5A059] text-xs font-mono font-bold uppercase tracking-wider text-[#07080b] hover:bg-[#E8C56A] shadow-[0_0_15px_rgba(197,160,89,0.3)] transition-all cursor-pointer"
+          >
+            Richiedi Dotazione
+          </Button>
         </div>
       </div>
+
+      <LimenCandidacyModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        defaultTierId={meta.defaultTierId}
+      />
     </div>
   );
 }

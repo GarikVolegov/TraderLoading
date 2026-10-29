@@ -112,7 +112,10 @@ export async function simulateReplayExecution(input: {
         finalTime = bar.time + 60;
         if (exit) event = { kind: exit.exitReason, price: exit.exitPrice };
         activePositions.push(...newlyFilledThisBar);
-        return true;
+        // Only halt early if no active positions and no active orders remain to evaluate
+        if (activePositions.length === 0 && activeOrders.length === 0) {
+          return true;
+        }
       }
     }
 

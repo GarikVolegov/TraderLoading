@@ -65,13 +65,13 @@ export async function sendOrderToLulu(payload: LuluOrderPayload): Promise<Dispat
       },
       body: JSON.stringify({
         external_id: payload.orderId,
-        contact_email: payload.recipient.email || "ordini@limenprotocol.com",
+        contact_email: payload.recipient.email || "ordini@aureusprotocol.com",
         line_items: [
           {
-            title: "Il Codice Trimestrale — Diario Operativo Limen",
+            title: "Il Codice Trimestrale — Diario Operativo AUREUS",
             // Asset PDF ufficiali di stampa (configurabili tramite env o storage)
-            cover: process.env.LULU_CODICE_COVER_URL || "https://limenprotocol.com/assets/print/codice-cover.pdf",
-            interior: process.env.LULU_CODICE_INTERIOR_URL || "https://limenprotocol.com/assets/print/codice-interior-90days.pdf",
+            cover: process.env.LULU_CODICE_COVER_URL || "https://aureusprotocol.com/assets/print/codice-cover.pdf",
+            interior: process.env.LULU_CODICE_INTERIOR_URL || "https://aureusprotocol.com/assets/print/codice-interior-90days.pdf",
             pod_package_id: "0600X0900BWSTDPB060UW444MXX", // Formato A5 Hardcover Casewrap
             quantity: 1,
           },

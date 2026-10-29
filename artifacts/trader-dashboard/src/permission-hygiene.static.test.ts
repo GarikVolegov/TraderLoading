@@ -27,7 +27,9 @@ const PERMISSION_ALLOWLIST: Record<string, readonly ForbiddenPattern[]> = {
   "components/cockpit/CockpitNextSessionPlanner.tsx": [".requestPermission("],
   "components/social/MessaggiTab.tsx": ["getUserMedia("],
   "components/social/StoryViewer.tsx": ["getUserMedia("],
-  "components/social/VoiceChannelView.tsx": ["getUserMedia("],
+  "components/social/VoiceChannelView.tsx": ["getUserMedia(", "getDisplayMedia("],
+  "lib/smartwatchBle.ts": [".requestDevice("],
+  "lib/replayOfflineBuffer.ts": ["storage.persist("],
 };
 
 type Violation = { file: string; line: number; pattern: string };

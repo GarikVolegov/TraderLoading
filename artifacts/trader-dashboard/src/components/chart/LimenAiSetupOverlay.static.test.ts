@@ -20,7 +20,7 @@ assert.match(overlaySrc, /Adotta nel Varco/, "Must render direct 1-click adoptio
 const cardSrc = fs.readFileSync(path.join(srcRoot, "components/cockpit/CockpitAiSentinelCard.tsx"), "utf8");
 
 assert.match(cardSrc, /Sentinella Visiva/, "Must render Sentinella Visiva title");
-assert.match(cardSrc, /Audit Checklist LIMEN/, "Must render 4-phase checklist audit section");
+assert.match(cardSrc, /Audit Checklist (AUREUS|LIMEN)/, "Must render 4-phase checklist audit section");
 assert.match(cardSrc, /1\.\s*Contesto HTF/, "Must audit Phase 1 HTF");
 assert.match(cardSrc, /2\.\s*Punto Svolta/, "Must audit Phase 2 Svolta");
 assert.match(cardSrc, /3\.\s*Trigger/, "Must audit Phase 3 Trigger");

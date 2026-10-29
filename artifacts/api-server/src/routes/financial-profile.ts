@@ -27,6 +27,8 @@ const router: IRouter = Router();
 const financialProfileSchema = z.object({
   totalNetWorth: z.number().min(0),
   monthlyExpenses: z.number().min(0),
+  monthlyPac: z.number().min(0).optional(),
+  targetNetWorth: z.number().min(0).optional(),
   liquidityMonthsCovered: z.number().int().min(3).max(12),
   externalStableIncome: z.number().min(0),
   hasDependents: z.boolean(),
@@ -35,6 +37,10 @@ const financialProfileSchema = z.object({
   tradingAllocation: z.number().min(0),
   investmentsAllocation: z.number().min(0),
   futureProjectsAllocation: z.number().min(0),
+  wealthSubAllocations: z
+    .record(z.string().max(64), z.unknown())
+    .refine((val) => JSON.stringify(val).length <= 32_768, "wealthSubAllocations payload too large")
+    .optional(),
   accountObjective: z.enum(["GROWTH", "INCOME"]),
   timeHorizonYears: z.number().min(0.1).max(50),
   expectedMonthlyReturnPct: z.number().min(0).max(100),
@@ -48,11 +54,22 @@ const financialProfileSchema = z.object({
 function serializeFinancialProfileRecord(
   record: typeof financialProfilesTable.$inferSelect,
 ): FinancialProfile {
+  let parsedWealthSubAllocations = undefined;
+  if (record.wealthSubAllocations) {
+    try {
+      parsedWealthSubAllocations = JSON.parse(record.wealthSubAllocations);
+    } catch {
+      // Ignore json parse error
+    }
+  }
+
   return {
     id: record.id,
     userId: record.userId,
     totalNetWorth: Number(record.totalNetWorth) || 0,
     monthlyExpenses: Number(record.monthlyExpenses) || 0,
+    monthlyPac: record.monthlyPac != null ? Number(record.monthlyPac) : undefined,
+    targetNetWorth: record.targetNetWorth != null ? Number(record.targetNetWorth) : undefined,
     liquidityMonthsCovered: record.liquidityMonthsCovered ?? 6,
     externalStableIncome: Number(record.externalStableIncome) || 0,
     hasDependents: Boolean(record.hasDependents),
@@ -61,6 +78,7 @@ function serializeFinancialProfileRecord(
     tradingAllocation: Number(record.tradingAllocation) || 0,
     investmentsAllocation: Number(record.investmentsAllocation) || 0,
     futureProjectsAllocation: Number(record.futureProjectsAllocation) || 0,
+    wealthSubAllocations: parsedWealthSubAllocations,
     accountObjective: (record.accountObjective as "GROWTH" | "INCOME") || "GROWTH",
     timeHorizonYears: Number(record.timeHorizonYears) || 3,
     expectedMonthlyReturnPct: Number(record.expectedMonthlyReturnPct) || 3,
@@ -117,7 +135,7 @@ router.put("/financial-profile", async (req: Request, res: Response) => {
 
     // Se l'utente tenta di validare o completare, esegui la validazione del metodo
     if (data.isCompleted) {
-      const validation = validateFinancialProfile(data);
+      const validation = validateFinancialProfile(data as Partial<FinancialProfile>);
       if (!validation.isValid) {
         return res.status(422).json({
           error: validation.errors[0] || "Validazione fallita",
@@ -137,12 +155,18 @@ router.put("/financial-profile", async (req: Request, res: Response) => {
       ? existing?.validatedAt ?? now
       : null;
 
+    const subAllocationsJson = data.wealthSubAllocations
+      ? JSON.stringify(data.wealthSubAllocations)
+      : existing?.wealthSubAllocations ?? null;
+
     if (existing) {
       const [updated] = await db
         .update(financialProfilesTable)
         .set({
           totalNetWorth: String(data.totalNetWorth),
           monthlyExpenses: String(data.monthlyExpenses),
+          monthlyPac: data.monthlyPac !== undefined ? String(data.monthlyPac) : existing.monthlyPac,
+          targetNetWorth: data.targetNetWorth !== undefined ? String(data.targetNetWorth) : existing.targetNetWorth,
           liquidityMonthsCovered: data.liquidityMonthsCovered,
           externalStableIncome: String(data.externalStableIncome),
           hasDependents: data.hasDependents,
@@ -151,6 +175,7 @@ router.put("/financial-profile", async (req: Request, res: Response) => {
           tradingAllocation: String(data.tradingAllocation),
           investmentsAllocation: String(data.investmentsAllocation),
           futureProjectsAllocation: String(data.futureProjectsAllocation),
+          wealthSubAllocations: subAllocationsJson,
           accountObjective: data.accountObjective,
           timeHorizonYears: String(data.timeHorizonYears),
           expectedMonthlyReturnPct: String(data.expectedMonthlyReturnPct),
@@ -176,6 +201,8 @@ router.put("/financial-profile", async (req: Request, res: Response) => {
         userId,
         totalNetWorth: String(data.totalNetWorth),
         monthlyExpenses: String(data.monthlyExpenses),
+        monthlyPac: data.monthlyPac !== undefined ? String(data.monthlyPac) : "0",
+        targetNetWorth: data.targetNetWorth !== undefined ? String(data.targetNetWorth) : "0",
         liquidityMonthsCovered: data.liquidityMonthsCovered,
         externalStableIncome: String(data.externalStableIncome),
         hasDependents: data.hasDependents,
@@ -184,6 +211,7 @@ router.put("/financial-profile", async (req: Request, res: Response) => {
         tradingAllocation: String(data.tradingAllocation),
         investmentsAllocation: String(data.investmentsAllocation),
         futureProjectsAllocation: String(data.futureProjectsAllocation),
+        wealthSubAllocations: subAllocationsJson,
         accountObjective: data.accountObjective,
         timeHorizonYears: String(data.timeHorizonYears),
         expectedMonthlyReturnPct: String(data.expectedMonthlyReturnPct),

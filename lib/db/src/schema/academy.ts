@@ -34,6 +34,7 @@ export const academyLessonsTable = pgTable(
   },
   (table) => [
     index("academy_lessons_catalog_idx").on(table.published, table.moduleId, table.orderIndex),
+    index("academy_lessons_module_idx").on(table.moduleId, table.orderIndex),
   ],
 );
 

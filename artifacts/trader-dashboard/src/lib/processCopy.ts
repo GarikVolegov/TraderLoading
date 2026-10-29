@@ -128,7 +128,7 @@ const copy = {
   "verify": ["La Forgia","The Forge","La Forja","La Forge","Die Schmiede"],
   "apply": ["Il Varco","The Threshold","El Umbral","Le Seuil","Die Schwelle"],
   "consolidate": ["Libro della Verità","Book of Truth","Libro de la Verdad","Livre de la Vérité","Buch der Wahrheit"],
-  "path": ["LIMEN PROTOCOL","LIMEN PROTOCOL","LIMEN PROTOCOL","LIMEN PROTOCOL","LIMEN PROTOCOL"],
+  "path": ["AUREUS PROTOCOL","AUREUS PROTOCOL","AUREUS PROTOCOL","AUREUS PROTOCOL","AUREUS PROTOCOL"],
   "loading": ["Allineamento a L'Ordine Giornaliero in corso…","Aligning with The Daily Order…","Alineando con El Orden Diario…","Alignement sur L’Ordre Quotidien…","Ausrichtung auf die Tagesordnung…"],
   "loadError": ["Il processo non è disponibile. Riprova per riprendere i dati salvati.","Your process is unavailable. Retry to resume saved data.","El proceso no está disponible. Reintenta para recuperar los datos.","Le processus est indisponible. Réessayez pour retrouver vos données.","Der Prozess ist nicht verfügbar. Versuche es erneut, um gespeicherte Daten zu laden."],
   "retry": ["Riprova","Retry","Reintentar","Réessayer","Erneut versuchen"],

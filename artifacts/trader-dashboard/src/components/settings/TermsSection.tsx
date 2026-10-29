@@ -33,7 +33,7 @@ export function TermsSection() {
           <FileText className="w-5 h-5 text-[#E8C56A] mt-0.5 shrink-0" />
           <div>
             <p className="font-display text-sm font-bold uppercase tracking-wide text-[#F4F4F6]">
-              Il Patto di Selezione & Condizioni del Protocollo · LIMEN
+              Il Patto di Selezione & Condizioni del Protocollo · AUREUS
             </p>
             <p className="text-xs font-mono text-muted-foreground/80 mt-0.5">
               Revisione dell&apos;Ordine: {TERMS_UPDATED}. L&apos;utilizzo del cockpit implica la piena accettazione della disciplina e dei vincoli stabiliti.
@@ -50,7 +50,7 @@ export function TermsSection() {
       <div className="space-y-4">
         <TermsBlock title={uiText("auto.ui.ab1929adc0")}>
           <p>
-            LIMEN è uno strumento sovrano di supporto alla disciplina, all&apos;architettura decisionale e all&apos;organizzazione personale per trader e operatori. Non fornisce consigli finanziari, sollecitazioni al pubblico risparmio, segnali d&apos;acquisto o raccomandazioni di investimento di alcun tipo.
+            AUREUS è uno strumento sovrano di supporto alla disciplina, all&apos;architettura decisionale e all&apos;organizzazione personale per trader e operatori. Non fornisce consigli finanziari, sollecitazioni al pubblico risparmio, segnali d&apos;acquisto o raccomandazioni di investimento di alcun tipo.
           </p>
           <p>
             Qualsiasi decisione di esposizione sul mercato dei capitali è di esclusiva responsabilità dell&apos;operatore.
@@ -62,7 +62,7 @@ export function TermsSection() {
             L&apos;operatività sui mercati finanziari a leva comporta un rischio strutturale elevato di perdita parziale o totale del capitale. I risultati storici registrati ne La Forgia del Passato non costituiscono garanzia di rendimento futuro.
           </p>
           <p className="text-xs bg-[#ef4444]/10 border border-[#ef4444]/30 rounded-lg p-3 font-mono text-[#F4F4F6]">
-            ⚠️ LIMEN declina qualsiasi responsabilità per perdite finanziarie derivanti dall&apos;esecuzione autonoma delle operazioni dell&apos;utente.
+            ⚠️ AUREUS declina qualsiasi responsabilità per perdite finanziarie derivanti dall&apos;esecuzione autonoma delle operazioni dell&apos;utente.
           </p>
         </TermsBlock>
 
@@ -101,7 +101,7 @@ export function TermsSection() {
 
         <TermsBlock title={uiText("auto.ui.3e92bce63a")}>
           <p>
-            L&apos;architettura metodologica, il Design System LIMEN, le terminologie dottrinali e i contenuti della Biblioteca d&apos;Ordine sono proprietà intellettuale protetta.
+            L&apos;architettura metodologica, il Design System AUREUS, le terminologie dottrinali e i contenuti della Biblioteca d&apos;Ordine sono proprietà intellettuale protetta.
           </p>
         </TermsBlock>
 
@@ -122,7 +122,7 @@ export function TermsSection() {
 
       <div className="pt-2 border-t border-[#C5A059]/15 text-center">
         <p className="text-[11px] text-muted-foreground/50 font-mono">
-          LIMEN PROTOCOL · Codice & Termini v2.0 · Revisione {TERMS_UPDATED}
+          AUREUS PROTOCOL · Codice & Termini v2.0 · Revisione {TERMS_UPDATED}
         </p>
       </div>
     </div>

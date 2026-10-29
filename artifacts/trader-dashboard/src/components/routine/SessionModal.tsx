@@ -4,7 +4,7 @@ import { readRoutineDraft, routineDraftKey } from "@/lib/routineDraft";
 import { checklistDay } from "@/lib/dailyChecklist";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import confetti from "canvas-confetti";
+import { synestheticConfirm, synestheticClick } from "@/lib/soundFx";
 import { X, ChevronRight, ChevronLeft, SkipForward, Check } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { uiText } from "@/contexts/LanguageContext";
@@ -56,7 +56,7 @@ function RoutineSession({
     try {
       await onComplete(answers);
       try { storage?.removeItem(routineDraftKey(program)); } catch { /* Optional local cache. */ }
-      void confetti({ particleCount: 100, spread: 70, origin: { y: 0.4 }, scalar: 0.9 });
+      synestheticConfirm();
     } catch { setSaveError(true); }
     finally { sending.current = false; setSaving(false); }
   };
@@ -65,7 +65,7 @@ function RoutineSession({
 
   const isLastStep = stepIdx === steps.length - 1;
   const step = steps[stepIdx];
-  const accentColor = program === "morning" ? "#f59e0b" : "#818cf8";
+  const accentColor = "#C5A059";
 
   const canAdvance = () => {
     if (step.type === "emotion-quiz") return !!answers.emotion;
@@ -80,12 +80,16 @@ function RoutineSession({
       void complete();
       return;
     }
+    synestheticClick();
     setStepIdx((i) => i + 1);
     setBreathingReady(false);
   };
 
   const goBack = () => {
-    if (stepIdx > 0) setStepIdx((i) => i - 1);
+    if (stepIdx > 0) {
+      synestheticClick();
+      setStepIdx((i) => i - 1);
+    }
   };
 
   const Icon = step.icon;
@@ -103,7 +107,7 @@ function RoutineSession({
       className="fixed inset-0 z-[200] bg-[hsl(224,71%,2%)]/97 backdrop-blur-sm flex flex-col focus:outline-none"
     >
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border/20 shrink-0">
+      <div className="flex items-center justify-between px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3.5 border-b border-border/20 shrink-0">
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
@@ -113,7 +117,7 @@ function RoutineSession({
           </div>
           <div>
             <p className="text-sm font-bold font-mono leading-tight">
-              {program === "morning" ? "Programma Mattutino" : "Programma Serale"}
+              {program === "morning" ? "Protocollo Mattutino" : "Protocollo Serale"}
             </p>
             <p className="text-xs text-muted-foreground/60 mt-0.5">
               Passo {stepIdx + 1} di {steps.length}
@@ -209,7 +213,7 @@ function RoutineSession({
       {saveError && <p role="alert" className="px-6 py-3 text-sm text-red-300">{uiText("routine.save.failed")}</p>}
 
       {/* Bottom nav — always show back button; hide Avanti only on auto-advancing steps */}
-      <div className="border-t border-border/20 px-4 sm:px-6 py-4 flex items-center justify-between shrink-0">
+      <div className="border-t border-border/20 px-4 sm:px-6 pt-3.5 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] flex items-center justify-between shrink-0">
         <button
           onClick={stepIdx === 0 ? close : goBack}
           disabled={saving}

@@ -70,8 +70,8 @@ export function createDemoAccountAdapter(): AccountAdapter {
     account: {
       login: "DEMO",
       name: "Demo Account",
-      server: "LIMEN Demo",
-      broker: "LIMEN",
+      server: "AUREUS Demo",
+      broker: "AUREUS",
       tradeMode: "demo",
     },
     metrics: { ...INITIAL_METRICS },

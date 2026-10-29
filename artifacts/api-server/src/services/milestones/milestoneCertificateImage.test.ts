@@ -25,7 +25,7 @@ const svg = renderMilestoneCertificateSvg({
 assert.ok(svg.includes("&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt; &amp; Trader"));
 assert.ok(!svg.includes("<script>"));
 assert.ok(svg.includes("GRADO I"));
-assert.ok(svg.includes("LIMEN PROTOCOL"));
+assert.ok(svg.includes("AUREUS PROTOCOL"));
 
 // Grade 5 check
 const svgGrade5 = renderMilestoneCertificateSvg({

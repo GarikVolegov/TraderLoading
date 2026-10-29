@@ -8,6 +8,7 @@ import { authorizeWebSocketUpgrade, rejectWebSocketUpgrade, type WebSocketAuthCo
 import {
   canSend,
   createControlWebSocketServer,
+  createSocketRateLimiter,
   startHeartbeat,
 } from "../webSocketHeartbeat.js";
 import { isAtConnectionCapacity } from "../webSocketCapacity.js";
@@ -57,6 +58,7 @@ export function attachBrokerHubWebSocket(
     requireProAccess: security.requireProAccess ?? defaultRequireBrokerPro,
   };
   const clientAuth = new WeakMap<WebSocket, WebSocketAuthContext>();
+  const allowSocketMessage = createSocketRateLimiter(60, 10_000);
 
   async function ownsProfile(userId: string, profileId: string): Promise<boolean> {
     const profiles = await runtime.listProfiles();
@@ -72,16 +74,6 @@ export function attachBrokerHubWebSocket(
     return true;
   }
 
-  async function sendIfAuthorized(client: WebSocket, event: BrokerEvent): Promise<void> {
-    const profileId = eventProfileId(event);
-    if (!profileId) {
-      send(client, event);
-      return;
-    }
-    const auth = clientAuth.get(client);
-    if (auth && await ownsProfile(auth.userId, profileId)) send(client, event);
-  }
-
   const onUpgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "", "http://localhost");
     if (url.pathname !== "/api/brokers/ws") return;
@@ -91,22 +83,46 @@ export function attachBrokerHubWebSocket(
     }
     void (async () => {
       const auth = await authorizeWebSocketUpgrade(request, socket, socketSecurity);
-      if (!auth) return;
+      if (!auth || socket.destroyed) return;
       wss.handleUpgrade(request, socket, head, (client) => {
         wss.emit("connection", client, request, auth);
       });
-    })();
+    })().catch(() => {
+      rejectWebSocketUpgrade(socket, 503, "Service Unavailable");
+    });
   };
 
   server.on("upgrade", onUpgrade);
 
   const unsubscribe = runtime.onEvent((event) => {
-    for (const client of wss.clients) void sendIfAuthorized(client, event);
+    if (wss.clients.size === 0) return;
+    const profileId = eventProfileId(event);
+    const serialized = JSON.stringify(event);
+    if (!profileId) {
+      for (const client of wss.clients) {
+        if (canSend(client)) client.send(serialized);
+      }
+      return;
+    }
+    void runtime
+      .listProfiles()
+      .then(({ profiles }) => {
+        const ownerUserId = profiles.find((p) => p.id === profileId)?.ownerUserId;
+        if (!ownerUserId) return;
+        for (const client of wss.clients) {
+          const auth = clientAuth.get(client);
+          if (auth && auth.userId === ownerUserId && canSend(client)) {
+            client.send(serialized);
+          }
+        }
+      })
+      .catch(() => {});
   });
 
   wss.on("connection", (client: WebSocket, _request: IncomingMessage, auth: WebSocketAuthContext) => {
     clientAuth.set(client, auth);
     client.on("message", (raw: WebSocket.RawData) => {
+      if (!allowSocketMessage(client)) return;
       const message = parse(raw);
       if (!message) {
         send(client, { type: "broker_error", message: "Invalid broker hub message" });

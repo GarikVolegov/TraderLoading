@@ -48,6 +48,7 @@ import type {
   TradeDirection,
 } from "@/lib/replay/types";
 import { useCandleWindow } from "./useCandleWindow";
+import { generateRandomTradingTimestamp, getYearTradingStart } from "./dateTime";
 
 export const REPLAY_SPEEDS = [0.25, 0.5, 1, 2, 4] as const;
 export const REPLAY_TIMEFRAMES = ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"] as const;
@@ -87,9 +88,20 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
       return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : null;
     } catch { return null; }
   }, [sessionKey]);
-  const [startTime, setStartTime] = useState<number | null>(restored?.startTime ?? requestedStart);
-  const [replayTime, setReplayTime] = useState<number | null>(restored?.replayTime ?? requestedStart);
-  const [anchorTime, setAnchorTime] = useState<number | null>(restored?.replayTime ?? requestedStart);
+  const initialTime = useMemo(() => {
+    if (restored?.replayTime != null && Number.isFinite(restored.replayTime) && restored.replayTime > 0) {
+      return restored.replayTime;
+    }
+    if (restored?.cursorTime != null && Number.isFinite(restored.cursorTime) && restored.cursorTime > 0) {
+      const step = getReplayIntervalSeconds(restored.interval ?? defaultInterval);
+      return restored.cursorTime + step;
+    }
+    return requestedStart;
+  }, [restored?.replayTime, restored?.cursorTime, restored?.interval, defaultInterval, requestedStart]);
+
+  const [startTime, setStartTime] = useState<number | null>(restored?.startTime ?? initialTime ?? requestedStart);
+  const [replayTime, setReplayTime] = useState<number | null>(initialTime);
+  const [anchorTime, setAnchorTime] = useState<number | null>(initialTime);
   const [requestId, setRequestId] = useState(0);
   const startDate = startTime == null ? null : new Date(startTime * 1000).toISOString().slice(0, 10);
   const [executing, setExecuting] = useState(false);
@@ -259,7 +271,17 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
       Math.max(MIN_REVEALED_BARS, Math.floor(candles.length * 0.52)), candles.length, 0,
     )].time + intervalSeconds;
     const time = availableTo == null ? requestedTime : Math.min(requestedTime, availableTo);
-    const index = Math.max(0, cursorAtReplayTime(candles, time));
+    let index = Math.max(0, cursorAtReplayTime(candles, time));
+
+    // Snapshot exact bar recovery: se abbiamo memorizzato il cursorTime esatto di quella barra,
+    // allineiamo l'indice con precisione assoluta al timestamp salvato.
+    if (restored?.cursorTime != null && Number.isFinite(restored.cursorTime)) {
+      const exactIndex = candles.findIndex((c) => c.time === restored.cursorTime);
+      if (exactIndex >= 0) {
+        index = exactIndex;
+      }
+    }
+
     cursorRef.current = index;
     replayTimeRef.current = time;
     setCursor(index);
@@ -268,7 +290,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     setCursorReady(true);
     ensureAhead(index);
   }, [window_.loading, window_.loadedFor, cursorReady, normalizedSymbol, interval, anchorTime,
-      requestId, candles, intervalSeconds, ensureAhead, availableTo]);
+      requestId, candles, intervalSeconds, ensureAhead, availableTo, restored?.cursorTime]);
 
   const revealed = useMemo(() => cursorReady
     ? revealAtReplayTime(candles, replayTime, intervalSeconds, window_.partialCandle)
@@ -520,6 +542,43 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     const time = new Date(`${date}T00:00:00.000Z`);
     if (Number.isFinite(time.getTime()) && time.toISOString().slice(0, 10) === date) jumpToTime(time.getTime() / 1000);
   }, [jumpToTime]);
+
+  // ── Replay Cieco (Blind Mode): l'Operatore non conosce il periodo storico ──
+  const blindKey = `traderloading:backtest-blind:${sessionKey.replace(/^backtest-session-/, "")}`;
+  const [blindMode, setBlindModeState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem(blindKey) === "1"; } catch { return false; }
+  });
+  const [blindRevealed, setBlindRevealed] = useState(false);
+  const setBlindMode = useCallback((value: boolean) => {
+    setBlindModeState(value);
+    setBlindRevealed(false);
+    try {
+      if (value) window.localStorage.setItem(blindKey, "1");
+      else window.localStorage.removeItem(blindKey);
+    } catch { /* Blind mode stays in memory when storage is unavailable. */ }
+  }, [blindKey]);
+  const toggleBlindMode = useCallback(() => setBlindMode(!blindMode), [blindMode, setBlindMode]);
+  const revealBlindPeriod = useCallback(() => setBlindRevealed((value) => !value), []);
+  const blindMasked = blindMode && !blindRevealed;
+
+  const warehouseFirst = window_.meta?.warehouse?.firstTs ?? null;
+  const warehouseLast = window_.meta?.warehouse?.lastTs ?? null;
+  const jumpToRandomDate = useCallback((options?: { blind?: boolean }) => {
+    const ts = generateRandomTradingTimestamp(
+      warehouseFirst != null ? warehouseFirst + 60 : null,
+      warehouseLast != null ? warehouseLast - 30 * 86400 : null,
+      normalizedSymbol,
+      Math.min(intervalSeconds, 3600),
+    );
+    if (options?.blind) setBlindMode(true);
+    else setBlindRevealed(false);
+    jumpToTime(ts);
+  }, [warehouseFirst, warehouseLast, normalizedSymbol, intervalSeconds, jumpToTime, setBlindMode]);
+
+  const jumpToYear = useCallback((year: number) => {
+    jumpToTime(getYearTradingStart(year, warehouseFirst != null ? warehouseFirst + 60 : null, warehouseLast != null ? warehouseLast + 60 : null));
+  }, [jumpToTime, warehouseFirst, warehouseLast]);
 
   const restart = useCallback(() => {
     if (startTime != null) jumpToTime(startTime);
@@ -875,34 +934,47 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   // ── persistence ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined" || window_.loading || window_.error || !cursorReady || !currentBar) return;
-    try {
-      window.localStorage.setItem(
-        storageKey,
-        serializeTerminalState({
-          symbol: normalizedSymbol,
-          interval,
-          cursorTime: currentBar?.time ?? null,
-          replayTime,
-          startTime,
-          indicators,
-          drawings,
-          trades,
-          openPosition: positions[0] ?? null,
-          pendingOrder: pendingOrders[0] ?? null,
-          openPositions: positions,
-          pendingOrders,
-          ticket,
-          settings,
-          initialBalance: restored?.initialBalance ?? INITIAL_BALANCE,
-        }),
-      );
-      const requestedStartKey = `traderloading:backtest-start:${sessionKey.replace(/^backtest-session-/, "")}`;
-      window.localStorage.removeItem(requestedStartKey);
-      window.sessionStorage.removeItem(requestedStartKey);
-    } catch {
-      // Storage can fail (private mode / quota); the in-memory replay stays usable.
+    const persistNow = () => {
+      try {
+        window.localStorage.setItem(
+          storageKey,
+          serializeTerminalState({
+            symbol: normalizedSymbol,
+            interval,
+            cursorTime: currentBar?.time ?? null,
+            replayTime,
+            startTime,
+            indicators,
+            drawings,
+            trades,
+            openPosition: positions[0] ?? null,
+            pendingOrder: pendingOrders[0] ?? null,
+            openPositions: positions,
+            pendingOrders,
+            ticket,
+            settings,
+            initialBalance: restored?.initialBalance ?? INITIAL_BALANCE,
+          }),
+        );
+        const requestedStartKey = `traderloading:backtest-start:${sessionKey.replace(/^backtest-session-/, "")}`;
+        window.localStorage.removeItem(requestedStartKey);
+        window.sessionStorage.removeItem(requestedStartKey);
+      } catch {
+        // Storage can fail (private mode / quota); the in-memory replay stays usable.
+      }
+    };
+
+    if (!playing) {
+      persistNow();
+      return;
     }
+
+    const timer = window.setTimeout(persistNow, 600);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [
+    playing,
     storageKey,
     window_.loading,
     cursorReady,
@@ -922,6 +994,8 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     settings,
     restored?.initialBalance,
   ]);
+
+  const handleBuy = useCallback(() => buy("buy"), [buy]);
 
   return {
     symbol: normalizedSymbol,
@@ -985,12 +1059,20 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     seekToTime,
     jumpToDate,
     jumpToTime,
+    jumpToYear,
+    jumpToRandomDate,
+    blindMode,
+    blindRevealed,
+    blindMasked,
+    setBlindMode,
+    toggleBlindMode,
+    revealBlindPeriod,
     retryHistory,
     ensureHistoryBefore: window_.ensureBefore,
     changeInterval,
     changeSpeed,
     bumpSpeed,
-    buy: () => buy("buy"),
+    buy: handleBuy,
     sell,
     placeOrder,
     executeDrawingOrder,
@@ -1006,6 +1088,7 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     updatePositionLevels,
     deleteTrade,
     setTradeTags,
+    source: window_.source,
     hoveredTradeId,
     setHoveredTradeId,
   };

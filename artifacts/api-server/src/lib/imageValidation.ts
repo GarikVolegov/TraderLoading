@@ -1,3 +1,17 @@
+import fs from "node:fs";
+
+/** Read only the leading magic-byte header of a file without loading multi-MB uploads into RAM. */
+export async function readFileHeader(filePath: string, maxBytes = 64): Promise<Buffer> {
+  const handle = await fs.promises.open(filePath, "r");
+  try {
+    const buf = Buffer.alloc(maxBytes);
+    const { bytesRead } = await handle.read(buf, 0, maxBytes, 0);
+    return buf.subarray(0, bytesRead);
+  } finally {
+    await handle.close();
+  }
+}
+
 /** Permit passive raster formats only; MIME and filename are caller-controlled. */
 export function rasterImageType(bytes: Uint8Array): "png" | "jpeg" | "gif" | "webp" | null {
   const b = Buffer.from(bytes);

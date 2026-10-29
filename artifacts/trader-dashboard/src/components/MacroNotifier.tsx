@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { deliverBrowserNotification, getNotificationCopy, shouldNotifyOnce } from "@/lib/notifications";
+import { synestheticMacroAlert } from "@/lib/soundFx";
 
 function eventTimestamp(value?: string | null): number | null {
   if (!value) return null;
@@ -49,6 +50,8 @@ export function MacroNotifier() {
 
         const label = `${event.country ? `${event.country}: ` : ""}${event.title ?? "High impact"}`;
         const body = copy.messages.macroEvents(1, label);
+
+        synestheticMacroAlert("warning");
 
         void deliverBrowserNotification({
           title: copy.titles.macroAlert,

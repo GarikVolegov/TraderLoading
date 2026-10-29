@@ -903,7 +903,7 @@ export async function getNewsData(input: { noCache?: boolean; pairs?: string; la
       return { ...refreshNewsEvidence(snapshot.payload, pairsStr), sourceStatus: "unavailable", sourceCoverage: fresh.sourceCoverage, analysisStatus: fresh.analysisStatus };
     }
     NEWS_CACHE.set(cacheKey, fresh);
-    void writeNewsSnapshot(cacheKey, fresh);
+    void writeNewsSnapshot(cacheKey, fresh).catch(() => {});
     return refreshNewsEvidence(fresh, pairsStr);
   } catch (err) {
     console.warn("[news] build failed:", err instanceof Error ? err.message : err);
@@ -1036,7 +1036,7 @@ router.get("/news/placeholder", (req, res) => {
     <path d="M 100 290 Q 240 210, 400 230 T 700 130" fill="none" stroke="${accentColor}" stroke-width="2.5" stroke-opacity="0.65"/>
     <text x="400" y="180" text-anchor="middle" fill="${accentColor}" font-family="monospace" font-size="12" font-weight="700" letter-spacing="3">${displayLabel}</text>
     <text x="400" y="222" text-anchor="middle" fill="#F1F5F9" font-family="sans-serif" font-size="20" font-weight="700" letter-spacing="1">${sanitizedTitle}</text>
-    <text x="400" y="365" text-anchor="middle" fill="#64748B" font-family="monospace" font-size="9.5" letter-spacing="2">LIMEN PROTOCOL // OPERATING INTELLIGENCE</text>
+    <text x="400" y="365" text-anchor="middle" fill="#64748B" font-family="monospace" font-size="9.5" letter-spacing="2">AUREUS PROTOCOL // OPERATING INTELLIGENCE</text>
   </svg>`;
 
   res.setHeader("Content-Type", "image/svg+xml");

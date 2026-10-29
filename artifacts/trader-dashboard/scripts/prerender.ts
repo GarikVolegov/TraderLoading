@@ -16,7 +16,7 @@
  * Run via tsx as part of `pnpm build` (after `vite build` + sitemap).
  */
 import { createServer } from "node:http";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AddressInfo } from "node:net";
@@ -36,6 +36,16 @@ async function main() {
     fail(`no build at ${distDir} (run vite build first)`);
   }
 
+  // Remove stale prerendered route directories from prior builds so sirv always
+  // serves the fresh SPA index.html rather than stale HTML pointing to deleted asset hashes.
+  for (const path of Array.from(new Set(allMarketingPaths()))) {
+    if (path === "/") continue;
+    const staleDir = resolve(distDir, path.replace(/^\//, ""));
+    if (existsSync(staleDir)) {
+      rmSync(staleDir, { recursive: true, force: true });
+    }
+  }
+
   let sirv: typeof import("sirv").default;
   let puppeteer: typeof import("puppeteer").default;
   try {
@@ -45,13 +55,26 @@ async function main() {
     fail(`puppeteer/sirv failed to import — ${(err as Error).message}`);
   }
 
+  process.on("uncaughtException", (err: unknown) => {
+    const code = (err as { code?: string })?.code;
+    if (code === "ENOENT" || code === "ERR_STREAM_PREMATURE_CLOSE" || code === "ECONNRESET") {
+      return;
+    }
+    console.error("prerender unhandled error:", err);
+  });
+
   const serveStatic = sirv(distDir, { single: true, dev: false });
-  const server = createServer((req, res) =>
+  const server = createServer((req, res) => {
+    res.on("error", () => {});
+    req.on("error", () => {});
     serveStatic(req, res, () => {
       res.statusCode = 404;
       res.end("not found");
-    }),
-  );
+    });
+  });
+  server.on("clientError", (_err, socket) => {
+    socket.destroy();
+  });
   await new Promise<void>((ok) => server.listen(0, ok));
   const { port } = server.address() as AddressInfo;
   const origin = `http://127.0.0.1:${port}`;
@@ -78,9 +101,16 @@ async function main() {
     for (const path of paths) {
       console.log(`prerender: capturing ${path}`);
       const page = await browser.newPage();
-      page.on("pageerror", (error) =>
-        console.error(`prerender: ${path} client error — ${String(error)}`),
-      );
+      await page.setCacheEnabled(false);
+      page.on("pageerror", (error) => {
+        const msg = String(error);
+        console.error(`prerender: ${path} client error — ${msg}`);
+        // Allow documented expected offline/cross-origin aborted requests during static marketing snapshot
+        const isAllowed = msg.includes("failed_to_load_clerk_js") || msg.includes("Failed to load Clerk JS");
+        if (!isAllowed) {
+          failures.push(`${path} unexpected client error: ${msg}`);
+        }
+      });
       await page.setExtraHTTPHeaders({ "Accept-Language": "en-US,en;q=0.9" });
       // Abort cross-origin requests (Google Fonts, etc.) so rendering is fast and
       // deterministic and never stalls on third-party network.

@@ -41,8 +41,12 @@
 .landing-page h3 {
   font-size: 22px;
 }
-.landing-page p {
+:where(.landing-page) p {
   margin: 0;
+}
+.landing-page p.mx-auto,
+.landing-page .mx-auto {
+  margin-inline: auto !important;
 }
 .landing-page a {
   text-decoration: none;

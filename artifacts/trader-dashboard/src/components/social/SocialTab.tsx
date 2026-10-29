@@ -359,8 +359,8 @@ export function SocialTab({
                         <p className="text-sm font-bold text-white truncate">
                           {u.name}
                         </p>
-                        <p className="text-xs font-mono text-[#C5A059]">
-                          Lv.{u.level} · {u.xp?.toLocaleString()} XP
+                        <p className="text-xs font-mono text-[#C5A059] whitespace-nowrap truncate">
+                          {resolveOperatorGradeBadge(u.level, u.xp).code} · {resolveOperatorGradeBadge(u.level, u.xp).title}
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -853,8 +853,8 @@ export function SocialTab({
                                 <Award className="w-2.5 h-2.5 shrink-0" />
                                 <span className="truncate">{tGrade.code}</span>
                               </p>
-                              <p className="font-mono text-[9px] text-slate-400">
-                                Lv.{entry.level} · {entry.xp.toLocaleString()} XP
+                              <p className="font-mono text-[9px] text-slate-400 truncate">
+                                {tGrade.title}
                               </p>
                             </div>
                           </div>

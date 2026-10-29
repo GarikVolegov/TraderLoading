@@ -546,7 +546,8 @@ audit and runtime stabilization under `/plan`.
 
 ## 8. Conventions & gotchas
 
-- **LIMEN Design System & Inviolable Rules**: Any frontend changes, widgets, modals or copy must strictly adhere to [.agents/rules/limen-design-system.md](.agents/rules/limen-design-system.md) and [GEMINI.md](GEMINI.md) (zero dead voids, no walls of text, `whitespace-nowrap` on monetary/percentage numbers and units, no premature truncation, no debug tags, and strict LIMEN brand ethos).
+- **AUREUS OS Master Memory & Obsidian Vault**: The canonical source of truth for working protocols, lore, strict frontend/backend rules, performance and security resides in [BRAIN.md](BRAIN.md) and [docs/brain/00-ATLAS.md](docs/brain/00-ATLAS.md).
+- **LIMEN / AUREUS Design System & Inviolable Rules**: Any frontend changes, widgets, modals or copy must strictly adhere to [BRAIN.md](BRAIN.md), [.agents/rules/limen-design-system.md](.agents/rules/limen-design-system.md) and [GEMINI.md](GEMINI.md) (zero dead voids, no walls of text, `whitespace-nowrap` on monetary/percentage numbers and units, no premature truncation, no debug tags, and strict AUREUS brand ethos).
 - **`@typescript-eslint/no-explicit-any` = error** in non-test source (tests may use `any`). TS strict mode on.
 - **Semantic commits with scope:** `feat(api):`, `refactor:`, `fix(chat):`, `chore:`, `test:`, `build:`.
 - **pnpm only** (preinstall guard rejects npm/yarn). After a contract change run `pnpm codegen`; after a schema
@@ -563,14 +564,16 @@ audit and runtime stabilization under `/plan`.
 
 ## 9. Where to look first
 
+- [BRAIN.md](BRAIN.md) — Master brain, sovereign operational memory & Obsidian vault index.
 - [README-BRAIN.md](README-BRAIN.md) — run locally (commands, ports, env).
 - [docs/](docs/) and [docs/superpowers/specs/](docs/superpowers/specs/) — strategy & design specs.
 - [.agent.md](.agent.md) — "Production Readiness Auditor" agent persona (use for pre-launch/audit work).
 - [eslint.config.mjs](eslint.config.mjs) — lint discipline.
 
-## 10. Maintaining this file
+## 10. Maintaining this file & Post-Task Proactivity
 
-At the end of a session, if anything material changed — architecture, commands, conventions, a new/removed
+- At the end of a session, if anything material changed — architecture, commands, conventions, a new/removed
 subsystem, infrastructure, or a shift in current focus — **update the relevant section of this file** (especially
 [§7 Active work](#7-active-work--current-focus) and [§5 Infrastructure](#5-infrastructure--deployment)) before
 wrapping up. Keep it concise; link out to deeper docs instead of inlining detail. No `replit.md` references.
+- **Always Propose Next Steps & Improvements**: At task completion, always propose concrete new ideas, UX/UI optimizations, and an orderly step-by-step roadmap to advance the application systematically.

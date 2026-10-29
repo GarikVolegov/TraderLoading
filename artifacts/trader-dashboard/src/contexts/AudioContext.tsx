@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useRef, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { useLoading } from "./LoadingContext";
 
 export type AudioMode = "alpha" | "theta" | "beta" | "gamma" | "deepfocus" | "off";
@@ -179,8 +179,13 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   // An unrelated click never starts audio or delays access to the trading process.
   useEffect(() => { completeLoading(); }, [completeLoading]);
 
+  const contextValue = useMemo(
+    () => ({ mode, setMode, volume, setVolume }),
+    [mode, setMode, volume, setVolume],
+  );
+
   return (
-    <AudioCtx.Provider value={{ mode, setMode, volume, setVolume }}>
+    <AudioCtx.Provider value={contextValue}>
       {children}
     </AudioCtx.Provider>
   );

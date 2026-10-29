@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ChangeEvent } from "react";
+import { useState, useEffect, useRef, useMemo, type ChangeEvent } from "react";
 import { uiText } from "@/contexts/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { Send, Loader2, Trash2, Hash, Settings2, Download, Paperclip, ToggleLeft, ToggleRight, FolderOpen, Flag, Check } from "lucide-react";
@@ -167,18 +167,20 @@ function TextChannelSession({
     }
   };
 
-  const groupedMessages = messages.reduce<
-    { date: string; msgs: CommunityMsg[] }[]
-  >((acc, msg) => {
-    const date = new Date(msg.createdAt).toLocaleDateString("it-IT", {
-      day: "numeric",
-      month: "long",
-    });
-    const last = acc[acc.length - 1];
-    if (last?.date === date) last.msgs.push(msg);
-    else acc.push({ date, msgs: [msg] });
-    return acc;
-  }, []);
+  const groupedMessages = useMemo(
+    () =>
+      messages.reduce<{ date: string; msgs: CommunityMsg[] }[]>((acc, msg) => {
+        const date = new Date(msg.createdAt).toLocaleDateString("it-IT", {
+          day: "numeric",
+          month: "long",
+        });
+        const last = acc[acc.length - 1];
+        if (last?.date === date) last.msgs.push(msg);
+        else acc.push({ date, msgs: [msg] });
+        return acc;
+      }, []),
+    [messages],
+  );
 
   return (
     <div className="flex flex-col h-full bg-[#07080B] text-slate-200">

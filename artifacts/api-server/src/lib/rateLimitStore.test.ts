@@ -104,4 +104,29 @@ function createFakeRedis(): RateLimitRedis & {
   assert.equal(result.totalHits, 1);
 }
 
+// Custom prefixes isolate independent rate limiters sharing the same Redis instance.
+{
+  const redis = createFakeRedis();
+  const globalStore = createRedisRateLimitStore({
+    prefix: "rl:api:",
+    getClient: async () => redis,
+    warn: noopWarn,
+  });
+  const moneyStore = createRedisRateLimitStore({
+    prefix: "rl:money:checkout:",
+    getClient: async () => redis,
+    warn: noopWarn,
+  });
+  globalStore.init?.({ windowMs: 900_000 } as never);
+  moneyStore.init?.({ windowMs: 60_000 } as never);
+
+  for (let i = 0; i < 25; i++) {
+    await globalStore.increment("user:u1");
+  }
+  const moneyHit = await moneyStore.increment("user:u1");
+  assert.equal(moneyHit.totalHits, 1);
+  assert.equal(redis.store.get("rl:api:user:u1")?.hits, 25);
+  assert.equal(redis.store.get("rl:money:checkout:user:u1")?.hits, 1);
+}
+
 console.log("rate-limit store checks passed");

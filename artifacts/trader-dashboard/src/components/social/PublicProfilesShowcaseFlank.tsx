@@ -219,13 +219,11 @@ export function PublicProfilesShowcaseFlank({
                   </span>
                 </p>
                 <div className="flex items-center gap-2 mt-1 font-mono text-[10px] text-slate-400">
-                  <span>Lv.{profile.level ?? 1}</span>
-                  <span>·</span>
-                  <span>{(profile.xp ?? 0).toLocaleString()} XP</span>
+                  <span className="whitespace-nowrap">Indice {(profile.xp ?? 0).toLocaleString()}</span>
                   {streak > 0 && (
                     <>
                       <span>·</span>
-                      <span className="text-amber-300 inline-flex items-center gap-0.5">
+                      <span className="text-amber-300 inline-flex items-center gap-0.5 whitespace-nowrap">
                         <Flame className="w-2.5 h-2.5 text-amber-400" />
                         {streak}g
                       </span>
@@ -508,8 +506,7 @@ export function PublicProfilesShowcaseFlank({
                       )}
                     </div>
                     <p className="font-mono text-[9px] text-[#C5A059]/90 truncate">
-                      {tGrade.code} · Lv.{trader.level} ·{" "}
-                      {trader.xp.toLocaleString()} XP
+                      {tGrade.code} · {tGrade.title}
                     </p>
                   </div>
                 </button>

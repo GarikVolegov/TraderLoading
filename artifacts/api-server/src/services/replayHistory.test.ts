@@ -124,4 +124,15 @@ await assert.rejects(
   ),
   ReplayHistoryError,
 );
+
+// Clamp anchor within 7 days prior to archive bounds (e.g. market open after holiday/weekend)
+const holidayBridge = await readReplayHistory(
+  "EURUSD",
+  "H1",
+  { mode: "replay", anchorTime: day - 2 * 86400, replayTime: day - 2 * 86400 },
+  { read, loadBounds, now: day + 240 * 60 },
+);
+assert.ok(holidayBridge.candles.length > 0);
+assert.equal(holidayBridge.candles[0].time, day);
+
 console.log("canonical replay history checks passed");

@@ -10,9 +10,6 @@ import {
   AlertTriangle,
   Shield,
   Zap,
-  Target,
-  ArrowUpRight,
-  ArrowDownRight,
   RotateCcw,
   Loader2,
   ChevronDown,
@@ -38,6 +35,12 @@ interface CockpitAiSentinelCardProps {
   operativeMemory?: LimenOperativeMemoryState;
   onResetMemory?: () => void;
   interval?: string;
+  onOpenTacticalBreath?: () => void;
+  directionalBias?: {
+    h4MasterBias?: string;
+    edgeTier?: string;
+    antiFadeProtected?: boolean;
+  } | null;
 }
 
 export function CockpitAiSentinelCard({
@@ -53,173 +56,226 @@ export function CockpitAiSentinelCard({
   onToggleAutoAlignCockpit,
   operativeMemory,
   onResetMemory,
+  directionalBias,
 }: CockpitAiSentinelCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("tl_cockpit_sentinel_expanded") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleExpanded = () => {
+    setIsExpanded((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("tl_cockpit_sentinel_expanded", next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   const setup = analysis?.setup;
   const audit = analysis?.checklistAudit;
   const isLong = setup?.direction === "long";
 
   return (
-    <div className="rounded-xl border border-[#C5A059]/30 bg-[#0d0f14]/90 p-2.5 shadow-md backdrop-blur-sm transition-all text-foreground">
-      {/* ── BARRA HUD: Sentinella Visiva Header ── */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+    <div
+      className={`border border-[#C5A059]/30 bg-[#0d0f14]/95 shadow-sm transition-all text-foreground ${
+        isExpanded ? "rounded-xl p-2.5 backdrop-blur-sm" : "rounded-lg px-2.5 py-1.5"
+      }`}
+    >
+      {/* ── BARRA HUD MICRO: Sentinella Visiva Header Compatto ── */}
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           <div
-            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border transition-all ${
+            className={`w-5 h-5 rounded flex items-center justify-center shrink-0 border transition-all ${
               isScanning
-                ? "bg-[#C5A059]/20 border-[#C5A059] text-[#E8C56A] shadow-[0_0_10px_rgba(197,160,89,0.4)]"
+                ? "bg-[#C5A059]/20 border-[#C5A059] text-[#E8C56A] shadow-[0_0_8px_rgba(197,160,89,0.3)]"
                 : setup
                 ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
                 : "bg-white/[0.04] border-white/10 text-[#C5A059]"
             }`}
           >
             {isScanning ? (
-              <Loader2 size={13} className="animate-spin text-[#C5A059]" />
+              <Loader2 size={11} className="animate-spin text-[#C5A059]" />
             ) : (
-              <Eye size={13} className={setup ? "text-emerald-400" : "text-[#C5A059]"} />
+              <Eye size={11} className={setup ? "text-emerald-400" : "text-[#C5A059]"} />
             )}
           </div>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <strong className="text-xs font-semibold tracking-tight text-foreground whitespace-nowrap">
-                Sentinella Visiva
-              </strong>
-              {setup ? (
-                <span
-                  className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-bold border whitespace-nowrap ${
-                    isLong
-                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                      : "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                  }`}
-                >
-                  {setup.direction.toUpperCase()} · {setup.triggerType || "TRIGGER"}
-                </span>
-              ) : (
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#C5A059]/10 text-[#C5A059] border border-[#C5A059]/20 whitespace-nowrap">
-                  STANDBY
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] text-muted-foreground font-mono truncate">
-              {isScanning
-                ? "Scansione candele live..."
-                : setup
-                ? `Entry ${setup.entryPrice} · SL ${setup.stopLossPrice} · 1:${setup.riskRewardRatio} R:R`
-                : "In ascolto del flusso"}
-            </p>
-          </div>
-        </div>
+          <strong className="text-[11px] font-semibold tracking-tight text-foreground whitespace-nowrap">
+            Sentinella Visiva
+          </strong>
 
-        <button
-          type="button"
-          onClick={() => setIsExpanded((prev) => !prev)}
-          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground border border-white/5 hover:border-white/20 transition-all cursor-pointer shrink-0"
-          title={isExpanded ? "Comprimi dettagli" : "Espandi dettagli Audit e Memoria"}
-        >
-          {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-        </button>
-      </div>
-
-      {/* ── BARRA CONTROLLI RAPIDI A GRIGLIA (Zero Overlap) ── */}
-      <div className="grid grid-cols-3 gap-1.5 mt-2 pt-2 border-t border-white/10">
-        {onToggleContinuousAutoScan && (
-          <button
-            type="button"
-            onClick={onToggleContinuousAutoScan}
-            className={`py-1 px-1.5 rounded-md text-[9.5px] font-mono border transition-all cursor-pointer flex items-center justify-center gap-1 min-w-0 ${
-              continuousAutoScan
-                ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-semibold"
-                : "bg-white/[0.02] border-white/10 text-muted-foreground hover:text-foreground"
-            }`}
-            title="Analisi Continua: scansiona in automatico ad ogni nuova candela"
-          >
+          {setup ? (
             <span
-              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                continuousAutoScan ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/40"
-              }`}
-            />
-            <span className="whitespace-nowrap truncate">Analisi Continua</span>
-          </button>
-        )}
-
-        {onToggleAutoAlignCockpit && (
-          <button
-            type="button"
-            onClick={onToggleAutoAlignCockpit}
-            className={`py-1 px-1.5 rounded-md text-[9.5px] font-mono border transition-all cursor-pointer flex items-center justify-center gap-1 min-w-0 ${
-              autoAlignCockpit
-                ? "bg-[#C5A059]/20 border-[#C5A059]/50 text-[#C5A059] font-bold"
-                : "bg-white/[0.02] border-white/10 text-muted-foreground hover:text-foreground"
-            }`}
-            title="Auto-Allinea: adatta automaticamente i parametri dello step al setup"
-          >
-            <Zap size={10} className="shrink-0" />
-            <span className="whitespace-nowrap truncate">Auto-Allinea</span>
-          </button>
-        )}
-
-        <button
-          type="button"
-          disabled={isScanning}
-          onClick={onScan}
-          className="py-1 px-1.5 rounded-md bg-[#C5A059]/20 hover:bg-[#C5A059]/30 border border-[#C5A059]/50 text-[#C5A059] text-[9.5px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-50 min-w-0"
-          title="Scansiona Varco ora"
-        >
-          {isScanning ? (
-            <Loader2 size={10} className="animate-spin shrink-0" />
-          ) : (
-            <Sparkles size={10} className="shrink-0" />
-          )}
-          <span className="whitespace-nowrap truncate">Scansiona Varco</span>
-        </button>
-      </div>
-
-      {/* ── STRIP DI ADOZIONE SETUP (Se presente) ── */}
-      {setup && (
-        <div className="mt-2 pt-2 border-t border-white/10 space-y-1.5">
-          <div className="flex items-center justify-between text-[10px] font-mono">
-            <div className="flex items-center gap-1.5 min-w-0 truncate">
-              <span className="text-muted-foreground">Setup:</span>
-              <span className={isLong ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                {setup.direction.toUpperCase()} @ {setup.entryPrice}
-              </span>
-              <span className="text-muted-foreground">SL: {setup.stopLossPrice}</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={onToggleOverlay}
-              className={`text-[9px] font-mono px-2 py-0.5 rounded border transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
-                showOverlay
-                  ? "bg-[#C5A059]/20 border-[#C5A059]/40 text-[#C5A059]"
-                  : "bg-white/[0.02] border-white/10 text-muted-foreground hover:text-foreground"
+              className={`px-1.5 py-0.2 rounded font-mono text-[8.5px] font-bold border whitespace-nowrap ${
+                isLong
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                  : "bg-rose-500/15 text-rose-300 border-rose-500/30"
               }`}
             >
-              {showOverlay ? "Grafico: On" : "Grafico: Off"}
+              {setup.direction.toUpperCase()} @ {setup.entryPrice}
+            </span>
+          ) : (
+            <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded bg-[#C5A059]/10 text-[#C5A059] border border-[#C5A059]/20 whitespace-nowrap">
+              {isScanning ? "SCANSIONE..." : "STANDBY"}
+            </span>
+          )}
+
+          {directionalBias?.h4MasterBias && (
+            <span
+              className={`text-[8px] font-mono px-1 py-0.2 rounded border whitespace-nowrap hidden sm:inline-block ${
+                directionalBias.h4MasterBias === "BULLISH"
+                  ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/30"
+                  : directionalBias.h4MasterBias === "BEARISH"
+                  ? "bg-rose-950/40 text-rose-400 border-rose-500/30"
+                  : "bg-zinc-800 text-zinc-400 border-zinc-700"
+              }`}
+              title="Bias H4 (HTF TraderWiki)"
+            >
+              H4 {directionalBias.h4MasterBias}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {setup && !isExpanded && (
+            <button
+              type="button"
+              onClick={() => onAdoptSetup(setup, audit?.ltfTrigger.triggerType)}
+              className="py-0.5 px-2 rounded bg-gradient-to-r from-[#C5A059] to-[#d8b167] text-black font-bold text-[9px] font-mono flex items-center gap-1 shadow-sm hover:brightness-105 cursor-pointer whitespace-nowrap"
+              title="Adotta Setup AI nel Varco"
+            >
+              <CheckCircle2 size={10} />
+              <span>Adotta</span>
             </button>
-          </div>
+          )}
 
           <button
             type="button"
-            onClick={() => onAdoptSetup(setup, audit?.ltfTrigger.triggerType)}
-            className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-[#C5A059] to-[#d8b167] text-black font-bold text-[10px] flex items-center justify-center gap-1.5 shadow-sm hover:brightness-105 cursor-pointer transition-all"
+            disabled={isScanning}
+            onClick={onScan}
+            className="py-0.5 px-2 rounded-md bg-[#C5A059]/15 hover:bg-[#C5A059]/25 border border-[#C5A059]/35 text-[#E8C56A] text-[9.5px] font-mono font-semibold flex items-center gap-1 cursor-pointer transition-all disabled:opacity-50 whitespace-nowrap"
+            title="Scansiona Varco ora"
           >
-            <CheckCircle2 size={12} />
-            <span>Adotta Setup AI nel Varco (Auto-Compila)</span>
+            {isScanning ? (
+              <Loader2 size={10} className="animate-spin text-[#C5A059]" />
+            ) : (
+              <Sparkles size={10} className="text-[#C5A059]" />
+            )}
+            <span>Scansiona Varco</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleExpanded}
+            className="p-1 rounded text-muted-foreground hover:text-foreground border border-white/5 hover:border-white/20 transition-all cursor-pointer"
+            title={isExpanded ? "Comprimi Sentinella Visiva" : "Espandi controlli e Audit della Sentinella"}
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </button>
         </div>
-      )}
+      </div>
 
-      {/* ── CASSETTO ESPLORATIVO RIPIEGABILE (Audit 4 Fasi & Memoria Antifragile) ── */}
+      {/* ── DETTAGLI ESTESI QUANDO ESPANSA ── */}
       {isExpanded && (
-        <div className="mt-3 pt-3 border-t border-white/10 space-y-3">
-          {/* Audit Checklist LIMEN */}
+        <div className="mt-2.5 pt-2 border-t border-white/10 space-y-2.5">
+          {/* Subtitle / Stato del Flusso */}
+          <p className="text-[10px] text-muted-foreground font-mono truncate">
+            {isScanning
+              ? "Scansione candele live in corso..."
+              : setup
+              ? `Entry ${setup.entryPrice} · SL ${setup.stopLossPrice} · 1:${setup.riskRewardRatio} R:R`
+              : "In ascolto del flusso algoritmico del mercato"}
+          </p>
+
+          {/* Barra Controlli Rapidi (Analisi Continua & Auto-Allinea) */}
+          <div className="grid grid-cols-2 gap-1.5">
+            {onToggleContinuousAutoScan && (
+              <button
+                type="button"
+                onClick={onToggleContinuousAutoScan}
+                className={`py-1 px-2 rounded-md text-[9.5px] font-mono border transition-all cursor-pointer flex items-center justify-center gap-1.5 min-w-0 ${
+                  continuousAutoScan
+                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-semibold"
+                    : "bg-white/[0.02] border-white/10 text-muted-foreground hover:text-foreground"
+                }`}
+                title="Analisi Continua: scansiona in automatico ad ogni nuova candela"
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    continuousAutoScan ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/40"
+                  }`}
+                />
+                <span className="whitespace-nowrap">Analisi Continua</span>
+              </button>
+            )}
+
+            {onToggleAutoAlignCockpit && (
+              <button
+                type="button"
+                onClick={onToggleAutoAlignCockpit}
+                className={`py-1 px-2 rounded-md text-[9.5px] font-mono border transition-all cursor-pointer flex items-center justify-center gap-1.5 min-w-0 ${
+                  autoAlignCockpit
+                    ? "bg-[#C5A059]/20 border-[#C5A059]/50 text-[#C5A059] font-bold"
+                    : "bg-white/[0.02] border-white/10 text-muted-foreground hover:text-foreground"
+                }`}
+                title="Auto-Allinea: adatta automaticamente i parametri dello step al setup"
+              >
+                <Zap size={10} className="shrink-0" />
+                <span className="whitespace-nowrap">Auto-Allinea</span>
+              </button>
+            )}
+          </div>
+
+          {/* Strip Adozione Setup Esteso */}
+          {setup && (
+            <div className="pt-2 border-t border-white/10 space-y-1.5">
+              <div className="flex items-center justify-between gap-1.5 flex-wrap text-[10px] font-mono">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-muted-foreground">Setup:</span>
+                  <span className={isLong ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                    {setup.direction.toUpperCase()} @ {setup.entryPrice}
+                  </span>
+                  <span className="text-muted-foreground">SL: {setup.stopLossPrice}</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onToggleOverlay}
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded border transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
+                    showOverlay
+                      ? "bg-[#C5A059]/20 border-[#C5A059]/40 text-[#C5A059]"
+                      : "bg-white/[0.02] border-white/10 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {showOverlay ? "Grafico: On" : "Grafico: Off"}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onAdoptSetup(setup, audit?.ltfTrigger.triggerType)}
+                className="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-[#C5A059] to-[#d8b167] text-black font-bold text-[10px] flex items-center justify-center gap-1.5 shadow-sm hover:brightness-105 cursor-pointer transition-all"
+              >
+                <CheckCircle2 size={12} />
+                <span>Adotta Setup AI nel Varco (Auto-Compila)</span>
+              </button>
+            </div>
+          )}
+
+          {/* Audit Checklist AUREUS */}
           {audit && (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 pt-1 border-t border-white/10">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                  Audit Checklist LIMEN
+                  Audit Checklist AUREUS
                 </span>
                 <span className="text-[9px] font-mono text-emerald-400">
                   {analysis?.confidenceScore}% Conforme

@@ -11,6 +11,8 @@ import {
 assert.equal(pipValuePerLot("EUR/USD"), 10);
 assert.equal(pipValuePerLot("USDJPY"), 10);
 assert.equal(pipValuePerLot("XAUUSD"), 10);
+assert.equal(pipValuePerLot("OANDA:XAUUSD"), 10);
+assert.equal(pipValuePerLot("FOREXCOM:XAUUSD"), 10);
 assert.equal(pipValuePerLot("US30"), 1);
 assert.equal(pipValuePerLot("NAS100"), 1);
 assert.equal(pipValuePerLot("BTC/USD"), 1);
@@ -21,10 +23,12 @@ assert.equal(pipValuePerLot("USOIL"), 10);
 assert.equal(pipSize("EURUSD"), 1 / 10000);
 assert.equal(pipSize("USDJPY"), 1 / 100);
 assert.equal(pipSize("XAUUSD"), 1 / 10);
+assert.equal(pipSize("OANDA:XAUUSD"), 1 / 10);
 assert.equal(pipSize("US30"), 1);
 assert.equal(pipSize("BTCUSD"), 1);
 assert.equal(pipSize("USOIL"), 0.01);
 assert.equal(computeLots({ riskAmount: 100, slPips: 20, symbol: "USOIL" }), 0.5);
+assert.equal(computeLots({ riskAmount: 100, slPips: 463.9, symbol: "OANDA:XAUUSD" }), 0.02);
 
 // mockup formula: lots = riskAmount / (slPips · pipValuePerLot), floored to 0.01
 assert.equal(computeLots({ riskAmount: 100, slPips: 20, symbol: "EURUSD" }), 0.5);

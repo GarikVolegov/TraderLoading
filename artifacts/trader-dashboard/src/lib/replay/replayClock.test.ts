@@ -29,5 +29,10 @@ assert.equal(logicalIndexAtTime(bars(3600), origin + 90 * 60, 3600), 1.5, "M1 dr
 assert.equal(logicalIndexAtTime([], origin, 3600), null);
 const shortSeries = bars(3600).slice(0, 10);
 assert.equal(timeAtLogicalIndex(shortSeries, 12, 3600), shortSeries[9].time + 3 * 3600, "future whitespace extrapolates time beyond last bar");
+// Sub-bar continuous fractional resolution (TradingView & FX Replay multi-timeframe exactness)
+const fractionalLogical = 3.25; // 15 mins into bar 3
+const reconstructedTime = timeAtLogicalIndex(shortSeries, fractionalLogical, 3600);
+assert.equal(reconstructedTime, shortSeries[3].time + 900, "fractional logical index 3.25 must resolve to +900s");
+assert.equal(logicalIndexAtTime(shortSeries, reconstructedTime!, 3600), 3.25, "roundtrip logical index must be exact 3.25");
 assert.equal(timeAtLogicalIndex([], 5, 3600), null);
 console.log("replayClock checks passed");

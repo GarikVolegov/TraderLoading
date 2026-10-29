@@ -244,7 +244,7 @@ export const FLUID_LEVELS: FluidLevel[] = [
   },
   {
     id: "era_astrolabio_sovrano",
-    era: "Era IV: L'Astrolabio Trans-Limen",
+    era: "Era IV: L'Astrolabio AUREUS",
     title: "La Confluenza Istituzionale Perfetta",
     subtitle: "Risolvi il circuito a croce con doppio snodo per la consacrazione a Maestro dei Flussi.",
     lore: "La liquidità globale e il controllo conscio convergono in un'architettura indistruttibile.",

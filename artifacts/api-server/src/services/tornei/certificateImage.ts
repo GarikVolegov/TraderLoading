@@ -22,13 +22,13 @@ function xmlText(value: string): string {
 /** Public award artwork deliberately contains no account, wallet, avatar or external resources. */
 export function renderCertificateImage(cert: { tier: string; seasonLabel: string; edition: string; rarity: string }): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="640" viewBox="0 0 1000 640" role="img" aria-labelledby="title desc">
-<title id="title">LIMEN · ${xmlText(cert.tier)}</title>
+<title id="title">AUREUS · ${xmlText(cert.tier)}</title>
 <desc id="desc">Certificato del torneo ${xmlText(cert.seasonLabel)}</desc>
 <rect width="1000" height="640" rx="32" fill="#10191b"/>
-<rect x="28" y="28" width="944" height="584" rx="20" fill="none" stroke="#4ba88e" stroke-width="2"/>
-<path d="M500 94l20 42 46 7-33 32 8 46-41-22-41 22 8-46-33-32 46-7z" fill="#4ba88e"/>
+<rect x="28" y="28" width="944" height="584" rx="20" fill="none" stroke="#C5A059" stroke-width="2"/>
+<path d="M500 94l20 42 46 7-33 32 8 46-41-22-41 22 8-46-33-32 46-7z" fill="#C5A059"/>
 <g font-family="system-ui,sans-serif" text-anchor="middle">
-<text x="500" y="276" fill="#4ba88e" font-size="24" letter-spacing="5">LIMEN</text>
+<text x="500" y="276" fill="#C5A059" font-size="24" letter-spacing="5">AUREUS</text>
 <text x="500" y="344" fill="#f5f7f6" font-size="40">${xmlText(cert.tier)}</text>
 <text x="500" y="399" fill="#c1cfcb" font-size="24">${xmlText(cert.seasonLabel)}</text>
 <text x="500" y="481" fill="#c1cfcb" font-size="20">${xmlText(cert.edition)} · ${xmlText(cert.rarity)}</text>
@@ -77,7 +77,7 @@ export async function renderCertificatePng(cert: {
   ctx.drawImage(baseImg, 0, 0, 1024, 1024);
 
   // 1. Sostituzione impeccabile del placeholder [ NOME UTENTE ]
-  const cleanName = (cert.userName || "TRADER LIMEN").trim().toUpperCase();
+  const cleanName = (cert.userName || "OPERATORE AUREUS").trim().toUpperCase();
   const bgGrad = ctx.createLinearGradient(200, 368, 824, 368);
   bgGrad.addColorStop(0, "rgba(12, 14, 18, 0)");
   bgGrad.addColorStop(0.12, "rgba(14, 17, 23, 0.96)");

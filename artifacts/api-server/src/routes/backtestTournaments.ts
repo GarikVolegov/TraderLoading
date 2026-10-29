@@ -13,8 +13,19 @@ import {
   getCustomLobbyByCode,
   listCandidates,
 } from "../services/backtestTournaments/store.js";
+import { battleRoomManager } from "../services/backtestTournaments/battleRoomManager.js";
 
 const router: IRouter = Router();
+
+function resolveTournamentUserId(req: Request, res: Response): string | null {
+  const userId = getUserId(req);
+  if (userId) return userId;
+  if (process.env.NODE_ENV === "production") {
+    res.status(401).json({ error: "Autenticazione richiesta per operare nelle Arene" });
+    return null;
+  }
+  return "guest_player";
+}
 
 // ── GET /backtest-tournaments: Lista tutti i tornei / battaglie disponibili ──
 router.get("/backtest-tournaments", async (_req: Request, res: Response): Promise<void> => {
@@ -61,10 +72,11 @@ router.get("/backtest-tournaments/:id", async (req: Request, res: Response): Pro
 // ── POST /backtest-tournaments/:id/join: Iscrizione & lancio sessione replay ─
 router.post("/backtest-tournaments/:id/join", async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = getUserId(req) || "guest_player";
+    const userId = resolveTournamentUserId(req, res);
+    if (!userId) return;
     const paramId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const tournamentId = Number(paramId) || 1;
-    const displayName = (req.body?.displayName as string) || (req.body?.name as string) || "Trader";
+    const displayName = String((req.body?.displayName as string) || (req.body?.name as string) || "Operatore").slice(0, 48);
     const avatarUrl = req.body?.avatarUrl as string | undefined;
     const pair = req.body?.pair as string | undefined;
     const timeframe = req.body?.timeframe as string | undefined;
@@ -95,20 +107,24 @@ router.post("/backtest-tournaments/:id/join", async (req: Request, res: Response
 // ── POST /backtest-tournaments/:id/complete: Conclusione battaglia e vittoria ─
 router.post("/backtest-tournaments/:id/complete", async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = getUserId(req) || "guest_player";
+    const userId = resolveTournamentUserId(req, res);
+    if (!userId) return;
     const paramId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const tournamentId = Number(paramId) || 1;
 
-    const initialBalance = Number(req.body?.initialBalance) || 100000;
+    const initialBalance = Number(req.body?.initialBalance) > 0 ? Number(req.body.initialBalance) : 10000;
     const finalBalance = Number(req.body?.finalBalance) || initialBalance;
     const totalProfit = Number(req.body?.totalProfit) || (finalBalance - initialBalance);
-    const profitPct = Number(req.body?.profitPct) || (initialBalance > 0 ? (totalProfit / initialBalance) * 100 : 0);
-    const winTrades = Number(req.body?.winTrades) || 0;
-    const loseTrades = Number(req.body?.loseTrades) || 0;
-    const totalTrades = Number(req.body?.totalTrades) || (winTrades + loseTrades);
-    const winRate = Number(req.body?.winRate) || (totalTrades > 0 ? (winTrades / totalTrades) * 100 : 0);
-    const maxDrawdown = Number(req.body?.maxDrawdown) || 0;
-    const avgTradeProfit = Number(req.body?.avgTradeProfit) || (totalTrades > 0 ? totalProfit / totalTrades : 0);
+    // Enforce computed profitPct from actual monetary balances
+    const calculatedProfitPct = initialBalance > 0 ? ((finalBalance - initialBalance) / initialBalance) * 100 : 0;
+    const profitPct = Math.min(Math.max(calculatedProfitPct, -100), 10000);
+    const winTrades = Math.max(0, Math.floor(Number(req.body?.winTrades) || 0));
+    const loseTrades = Math.max(0, Math.floor(Number(req.body?.loseTrades) || 0));
+    const totalTrades = Math.max(winTrades + loseTrades, Math.floor(Number(req.body?.totalTrades) || 0));
+    const winRate = totalTrades > 0 ? Math.min(100, Math.max(0, (winTrades / totalTrades) * 100)) : 0;
+    const rawDrawdown = Number(req.body?.maxDrawdown) || 0;
+    const maxDrawdown = Math.min(100, Math.max(0, rawDrawdown));
+    const avgTradeProfit = totalTrades > 0 ? totalProfit / totalTrades : 0;
 
     const result = await completeTournamentRun({
       tournamentId,
@@ -145,7 +161,8 @@ router.get("/backtest-tournaments/tribes", async (req: Request, res: Response): 
 // ── POST /backtest-tournaments/tribes: Salva o aggiorna preset tribù ──────────────
 router.post("/backtest-tournaments/tribes", async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = getUserId(req) || "guest_player";
+    const userId = resolveTournamentUserId(req, res);
+    if (!userId) return;
     const {
       id,
       tribeName,
@@ -191,7 +208,8 @@ router.post("/backtest-tournaments/tribes", async (req: Request, res: Response):
 // ── DELETE /backtest-tournaments/tribes/:id: Elimina preset tribù ──────────────────
 router.delete("/backtest-tournaments/tribes/:id", async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = getUserId(req) || "guest_player";
+    const userId = resolveTournamentUserId(req, res);
+    if (!userId) return;
     const paramId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const tribeId = Number(paramId);
     if (!tribeId) {
@@ -209,7 +227,8 @@ router.delete("/backtest-tournaments/tribes/:id", async (req: Request, res: Resp
 // ── POST /backtest-tournaments/custom-lobbies: Crea nuova stanza personalizzata ───
 router.post("/backtest-tournaments/custom-lobbies", async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = getUserId(req) || "guest_player";
+    const userId = resolveTournamentUserId(req, res);
+    if (!userId) return;
     const {
       name,
       hostDisplayName,
@@ -248,6 +267,35 @@ router.post("/backtest-tournaments/custom-lobbies", async (req: Request, res: Re
   }
 });
 
+// ── GET /backtest-tournaments/battle-rooms/:roomId/public: Dettagli pubblici stanza per spettatori ──
+router.get("/backtest-tournaments/battle-rooms/:roomId/public", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawParam = Array.isArray(req.params.roomId) ? req.params.roomId[0] : req.params.roomId;
+    const roomId = rawParam?.trim();
+    if (!roomId) {
+      res.status(400).json({ error: "roomId mancante" });
+      return;
+    }
+    const snapshot = battleRoomManager.getRoomSnapshotData(roomId);
+    if (!snapshot || (snapshot.participants.length === 0 && !snapshot.rules)) {
+      res.status(404).json({ error: "Stanza della Forgia non trovata o conclusa" });
+      return;
+    }
+    res.json({
+      roomId,
+      participants: snapshot.participants,
+      rules: snapshot.rules,
+      isStarting: snapshot.isStarting,
+      matchStartedAt: snapshot.matchStartedAt,
+      matchEndsAt: snapshot.matchEndsAt,
+      durationSeconds: snapshot.durationSeconds,
+      spectatorCount: snapshot.spectatorCount ?? 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 // ── GET /backtest-tournaments/custom-lobbies/:code: Trova stanza per codice ───────
 router.get("/backtest-tournaments/custom-lobbies/:code", async (req: Request, res: Response): Promise<void> => {
   try {
@@ -258,6 +306,38 @@ router.get("/backtest-tournaments/custom-lobbies/:code", async (req: Request, re
       return;
     }
     res.json({ lobby });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// ── POST /backtest-tournaments/custom-lobbies/:code/invite: Invia invito a sfidante ───
+router.post("/backtest-tournaments/custom-lobbies/:code/invite", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const callerId = resolveTournamentUserId(req, res);
+    if (!callerId) return;
+    const code = Array.isArray(req.params.code) ? req.params.code[0] : req.params.code;
+    const { targetUserId } = req.body || {};
+    if (!targetUserId || typeof targetUserId !== "string" || targetUserId.length > 128) {
+      res.status(400).json({ error: "targetUserId mancante o non valido" });
+      return;
+    }
+
+    const lobby = await getCustomLobbyByCode(code);
+    if (!lobby) {
+      res.status(404).json({ error: "Lobby non trovata per il codice indicato" });
+      return;
+    }
+    if (lobby.hostUserId && lobby.hostUserId !== "guest_player" && lobby.hostUserId !== callerId) {
+      res.status(403).json({ error: "Solo il Comandante della stanza può inviare inviti" });
+      return;
+    }
+
+    const roomId = `custom_forgia_${lobby.code}`;
+    const hostName = lobby.hostDisplayName || "Comandante";
+    battleRoomManager.sendInvite(roomId, hostName, targetUserId.trim());
+
+    res.json({ success: true, message: "Invito alla Forgia inviato con successo" });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }

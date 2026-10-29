@@ -2,24 +2,14 @@ import { useEffect, useState } from "react";
 import { LIMEN_MANIFESTO } from "../../../../../contracts/limenLexicon";
 import { LIMEN_GRADES } from "../../../../../contracts/limenGrades";
 import { SigilIcon } from "@/components/ui/SigilIcon";
+import {
+  OPEN_THRESHOLD_EVENT,
+  STORAGE_KEY,
+  hasAcceptedThresholdPact,
+  openThresholdManifesto,
+} from "./thresholdEvents";
 
-const STORAGE_KEY = "limen.threshold_selection_pact.v1";
-const OPEN_EVENT = "limen:open-threshold-manifesto";
-
-export function openThresholdManifesto() {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent(OPEN_EVENT));
-  }
-}
-
-export function hasAcceptedThresholdPact(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) === "accepted";
-  } catch {
-    return true;
-  }
-}
+export { openThresholdManifesto, hasAcceptedThresholdPact };
 
 /**
  * A. Onboarding e Pagina d'Ingresso ("La Soglia di Selezione")
@@ -39,7 +29,7 @@ export function ThresholdOfSelectionModal() {
       setAcknowledged(hasAcceptedThresholdPact());
       setOpen(true);
     };
-    window.addEventListener(OPEN_EVENT, handleExplicitOpen);
+    window.addEventListener(OPEN_THRESHOLD_EVENT, handleExplicitOpen);
 
     // Check URL parameter ?soglia=1 or first-login state
     const params = new URLSearchParams(window.location.search);
@@ -54,7 +44,7 @@ export function ThresholdOfSelectionModal() {
     }
 
     return () => {
-      window.removeEventListener(OPEN_EVENT, handleExplicitOpen);
+      window.removeEventListener(OPEN_THRESHOLD_EVENT, handleExplicitOpen);
     };
   }, []);
 

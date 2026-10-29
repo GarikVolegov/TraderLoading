@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Minimize2, PencilRuler } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
 import { DRAWING_TOOLS, type DrawingToolId } from "./toolRailModel";
 import type { ReplayEngine } from "./useReplayEngine";
@@ -10,6 +10,7 @@ export function FavoriteToolsBar({ engine, activeTool, onToolChange }: {
 }) {
   const { preferences, update } = engine.chartPreferences;
   const ref = useRef<HTMLDivElement>(null);
+  const [collapsed, setCollapsed] = useState(false);
   const [position, setPosition] = useState(preferences.toolbarPosition);
   const [selected, setSelected] = useState<string | null>(null);
   const drag = useRef<{ id: number; x: number; y: number; startX: number; startY: number; tool?: string; moved: boolean } | null>(null);
@@ -24,7 +25,8 @@ export function FavoriteToolsBar({ engine, activeTool, onToolChange }: {
     const parentH = bar?.parentElement?.clientHeight ?? 400;
     let targetX = x;
     let targetY = y;
-    if (x === 16 && y === 64 && parentH > 160) {
+    // Ancoraggio nobile in basso a sinistra se alle coordinate di default per non coprire le candele
+    if ((x <= 120 && y <= 120) || (x === 16 && y === 64)) {
       targetX = 55;
       targetY = Math.max(60, parentH - 75);
     }
@@ -48,6 +50,30 @@ export function FavoriteToolsBar({ engine, activeTool, onToolChange }: {
     return { ...previous, favoriteTools };
   });
   if (engine.settings.showFavoriteToolbar === false || !tools.length) return null;
+
+  if (collapsed) {
+    return (
+      <div
+        ref={ref}
+        className="btm-favorite-bar btm-favorite-bar-collapsed"
+        style={{ left: position.x, top: position.y }}
+        role="button"
+        tabIndex={0}
+        onClick={(event) => {
+          event.stopPropagation();
+          setCollapsed(false);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") setCollapsed(false);
+        }}
+        title="Espandi barra strumenti rapidi"
+        aria-label="Espandi barra strumenti rapidi"
+      >
+        <PencilRuler size={15} style={{ color: "#E8C56A" }} />
+      </div>
+    );
+  }
+
   return <div ref={ref} className="btm-favorite-bar" style={{ left: position.x, top: position.y }} role="toolbar" aria-label={uiText("backtest_terminal.favorite_toolbar")} onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}
     onBlur={event => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSelected(null);
@@ -77,6 +103,18 @@ export function FavoriteToolsBar({ engine, activeTool, onToolChange }: {
       const next = bound(position.x + (event.key === "ArrowLeft" ? -10 : event.key === "ArrowRight" ? 10 : 0), position.y + (event.key === "ArrowUp" ? -10 : event.key === "ArrowDown" ? 10 : 0));
       setPosition(next); update(previous => ({ ...previous, toolbarPosition: next }));
     }}><GripVertical size={18} /></button>
+    <button
+      type="button"
+      className="btm-favorite-minimize"
+      aria-label="Minimizza barra preferiti"
+      title="Minimizza barra strumenti preferiti"
+      onClick={(e) => {
+        e.stopPropagation();
+        setCollapsed(true);
+      }}
+    >
+      <Minimize2 size={13} />
+    </button>
     <div className="btm-favorite-items">
       {tools.map((tool) => (
         <button

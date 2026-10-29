@@ -30,7 +30,7 @@ export const REWARDS: Reward[] = [
     thumbnailUrl: UNSPLASH_MIND,
     url: "https://www.youtube.com/results?search_query=trading+psychology+discipline+mindset",
     duration: "20–30 min",
-    author: "Curatela LIMEN",
+    author: "Curatela AUREUS",
   },
   {
     id: "r05-2",
@@ -51,7 +51,7 @@ export const REWARDS: Reward[] = [
     thumbnailUrl: UNSPLASH_MONEY,
     url: "https://www.youtube.com/results?search_query=professional+risk+management+trading+tutorial",
     duration: "25–40 min",
-    author: "Curatela LIMEN",
+    author: "Curatela AUREUS",
   },
   {
     id: "r10-2",
@@ -72,7 +72,7 @@ export const REWARDS: Reward[] = [
     thumbnailUrl: UNSPLASH_CHART,
     url: "https://www.youtube.com/results?search_query=smart+money+concepts+ICT+order+blocks+explained",
     duration: "30–60 min",
-    author: "Curatela LIMEN",
+    author: "Curatela AUREUS",
   },
   {
     id: "r15-2",
@@ -82,7 +82,7 @@ export const REWARDS: Reward[] = [
     description: "Modello completo di piano di trading: obiettivi, regole d'ingresso/uscita, gestione del rischio, journal e revisione periodica.",
     thumbnailUrl: UNSPLASH_BOOK,
     url: "https://docs.google.com/presentation/d/1_KXbDPEbcexampleTradingPlan/edit?usp=sharing",
-    author: "LIMEN",
+    author: "AUREUS",
   },
   {
     id: "r20-1",
@@ -93,7 +93,7 @@ export const REWARDS: Reward[] = [
     thumbnailUrl: UNSPLASH_DATA,
     url: "https://www.youtube.com/results?search_query=advanced+technical+analysis+wyckoff+market+profile",
     duration: "40–60 min",
-    author: "Curatela LIMEN",
+    author: "Curatela AUREUS",
   },
   {
     id: "r20-2",
@@ -114,7 +114,7 @@ export const REWARDS: Reward[] = [
     thumbnailUrl: UNSPLASH_CHART,
     url: "https://www.youtube.com/results?search_query=order+flow+footprint+chart+trading+tutorial",
     duration: "45–90 min",
-    author: "Curatela LIMEN",
+    author: "Curatela AUREUS",
   },
   {
     id: "r25-2",
@@ -124,7 +124,7 @@ export const REWARDS: Reward[] = [
     description: "Slide deck ispirate a Mark Douglas e Van K. Tharp: come costruire un sistema di credenze che supporti la tua crescita come trader.",
     thumbnailUrl: UNSPLASH_ZEN,
     url: "https://www.youtube.com/results?search_query=mark+douglas+trading+in+the+zone+presentation",
-    author: "Curatela LIMEN",
+    author: "Curatela AUREUS",
   },
   {
     id: "r30-1",
@@ -135,7 +135,7 @@ export const REWARDS: Reward[] = [
     thumbnailUrl: UNSPLASH_DATA,
     url: "https://www.youtube.com/results?search_query=institutional+trading+strategies+IPDA+advanced",
     duration: "60–120 min",
-    author: "Curatela LIMEN",
+    author: "Curatela AUREUS",
   },
   {
     id: "r30-2",

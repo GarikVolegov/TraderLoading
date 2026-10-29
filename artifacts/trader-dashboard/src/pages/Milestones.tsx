@@ -1,5 +1,4 @@
-import { useState, useRef } from "react";
-import { Link } from "wouter";
+import { useState, useRef, useMemo } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from "framer-motion";
 import {
   Lock,
@@ -27,13 +26,16 @@ import {
   ShieldCheck,
   Eye,
   Printer,
-  BookOpen,
-  Flame,
   Activity,
   Info,
+  Link2,
+  Check,
+  BookOpen,
 } from "lucide-react";
+import { toast } from "sonner";
+import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useGetProfile } from "@workspace/api-client-react";
+import { useGetProfile, useGetJournalEntries } from "@workspace/api-client-react";
 import { PageLayout } from "@/components/PageLayout";
 import { apiJSON } from "@/lib/apiFetch";
 import { reportClientError, getClientErrorMessage } from "@/lib/clientErrorReporter";
@@ -49,6 +51,11 @@ import {
   type LimenIntegritySnapshot,
   type LimenGradeDefinition,
 } from "../../../../contracts/limenGrades";
+import {
+  MENTOR_DOCTRINE_TOMES,
+  type MentorDoctrineTome,
+} from "../../../../contracts/academy";
+import { DoctrineExamModal } from "@/components/milestones/DoctrineExamModal";
 import { SigilIcon } from "@/components/ui/SigilIcon";
 import { LimenMedallion } from "@/components/milestones/LimenMedallion";
 import { getGradeMotto } from "@/components/milestones/LimenGradeSigil";
@@ -59,10 +66,15 @@ import {
   type GradeCharacterData,
 } from "@/components/milestones/GradeCharacter3DViewer";
 import {
+  buildShareableCertificateUrl,
   downloadCertificatePng,
   printCertificate,
   type CertificateData,
 } from "@/components/milestones/certificateExport";
+import {
+  MasteryRadarChart,
+  type MasteryPillarData,
+} from "@/components/milestones/MasteryRadarChart";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -341,7 +353,7 @@ const GRADE_RICH_PERKS: Record<number, readonly GradePerkDetail[]> = {
       desc: "Sistema Straight Line applicato alle negoziazioni",
     },
     {
-      title: "Uniforme Riservata LIMEN",
+      title: "Uniforme Riservata AUREUS",
       desc: "Accesso preliminare ai capi sartoriali del Grado III",
     },
     {
@@ -351,7 +363,7 @@ const GRADE_RICH_PERKS: Record<number, readonly GradePerkDetail[]> = {
   ],
   4: [
     {
-      title: "LIMEN B2B Rete Imprenditoriale",
+      title: "AUREUS B2B Rete Imprenditoriale",
       desc: "Segnalazione e chiusura contratti d'impresa alto ticket",
     },
     {
@@ -369,7 +381,7 @@ const GRADE_RICH_PERKS: Record<number, readonly GradePerkDetail[]> = {
   ],
   5: [
     {
-      title: "Cerchia Interna LIMEN",
+      title: "Cerchia Interna AUREUS",
       desc: "Membro permanente del vertice sovrano e decisionale",
     },
     {
@@ -385,6 +397,72 @@ const GRADE_RICH_PERKS: Record<number, readonly GradePerkDetail[]> = {
       desc: "Accesso incondizionato all'eredità tecnologica e riserve",
     },
   ],
+};
+
+const DEFAULT_GRADE_MILESTONE_CONTENT: Record<
+  number,
+  { title: string; description: string; skills: string[]; requirementBadge: string }
+> = {
+  1: {
+    title: "Protocollo d'Iniziazione & Custodia del Rischio",
+    description:
+      "Fondamenta operative del Protocollo AUREUS: allineamento al Patto dell'1%, compilazione rigorosa del Libro della Verità e validazione storica nella Forgia del Passato.",
+    skills: [
+      "Patto di Salvaguardia 1%",
+      "Compilazione Libro della Verità",
+      "Esecuzione Forgia del Passato",
+      "Filtro Pre-Trade Custode della Soglia",
+    ],
+    requirementBadge: "Sblocco Iniziale",
+  },
+  2: {
+    title: "Presidio d'Integrità & Disciplina Incorruttibile",
+    description:
+      "Consolidamento di 30 sessioni integre consecutive al 100% di conformità. Accesso al Tempio Fisico, alle Prove del Fuoco d'Élite e al Mandato di Espansione.",
+    skills: [
+      "30 Sessioni Consecutive Integre",
+      "Protocollo Biologico Tempio Fisico",
+      "Prove del Fuoco d'Élite",
+      "Mandato di Espansione (20% Royalty)",
+    ],
+    requirementBadge: "30 Sessioni · 100%",
+  },
+  3: {
+    title: "Maestria del Tempo & Visione Istituzionale",
+    description:
+      "Padronanza assoluta dell'attesa chirurgica su 60 sessioni con integrità ≥ 95%. Diritto di parola nel Concilio della Domenica e supervisione degli Iniziati.",
+    skills: [
+      "60 Sessioni con Integrità ≥ 95%",
+      "Diritto di Parola al Concilio",
+      "Negoziazione Avanzata Straight Line",
+      "Mentoring Operativo Iniziati",
+    ],
+    requirementBadge: "60 Sessioni · ≥ 95%",
+  },
+  4: {
+    title: "Architettura Esecutiva & Leadership di Divisione",
+    description:
+      "120 sessioni di disciplina sovrana e guida attiva nella Fratellanza. Accesso alla rete imprenditoriale B2B ad alto ticket e ruolo di Garante Seniore.",
+    skills: [
+      "120 Sessioni con Integrità ≥ 95%",
+      "Rete Imprenditoriale AUREUS B2B",
+      "Garante Seniore & Capitale Allocato",
+      "Comando Divisioni Esecutive",
+    ],
+    requirementBadge: "120 Sessioni · ≥ 95%",
+  },
+  5: {
+    title: "Sovranità Totale & Vertice della Cerchia Interna",
+    description:
+      "Custode supremo del Protocollo AUREUS. Diritto di nomina e veto sui Gradi I–IV, accesso incondizionato all'Archivio Arcano e governo strategico dell'Ordine.",
+    skills: [
+      "Seggio Permanente Cerchia Interna",
+      "Sovranità Operativa Totale",
+      "Diritto di Nomina, Sigillo & Veto",
+      "Accesso Archivio Arcano & Riserve",
+    ],
+    requirementBadge: "Investitura Sovrana",
+  },
 };
 
 const RARITY_TIERS = [
@@ -574,18 +652,18 @@ function CertificateCard({
               <button
                 type="button"
                 onClick={onInspect}
-                title="Visualizza Certificato NFT"
+                title="Visualizza Sigillo di Investitura"
                 className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-sm font-mono text-[9px] font-bold uppercase tracking-wider bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 transition-colors"
               >
                 <Eye className="w-3 h-3 text-primary" />
-                <span>Certificato</span>
+                <span>Sigillo di Grado</span>
               </button>
               <button
                 type="button"
                 onClick={onDownload}
                 title="Scarica Certificato PNG HD"
                 className="p-1 rounded-sm bg-white/5 hover:bg-white/15 text-primary border border-border transition-colors"
-                aria-label="Scarica NFT"
+                aria-label="Scarica Sigillo di Investitura"
               >
                 <Download className="w-3 h-3" />
               </button>
@@ -623,13 +701,21 @@ function MilestoneEditor({
 }) {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [title, setTitle] = useState(milestone?.title ?? "");
-  const [description, setDescription] = useState(milestone?.description ?? "");
+  const fallback = DEFAULT_GRADE_MILESTONE_CONTENT[level];
+  const [title, setTitle] = useState(milestone?.title || fallback?.title || "");
+  const [description, setDescription] = useState(
+    milestone?.description || fallback?.description || "",
+  );
   const [skillInput, setSkillInput] = useState("");
-  const [skills, setSkills] = useState<string[]>(parseSkills(milestone?.skills));
-  const [badgeEmoji, setBadgeEmoji] = useState(milestone?.badgeEmoji ?? "🏆");
+  const parsedExistingSkills = parseSkills(milestone?.skills);
+  const [skills, setSkills] = useState<string[]>(
+    parsedExistingSkills.length > 0 ? parsedExistingSkills : [...(fallback?.skills ?? [])],
+  );
+  const [badgeEmoji, setBadgeEmoji] = useState(
+    milestone?.badgeEmoji ?? BADGE_EMOJIS[(level - 1) % BADGE_EMOJIS.length] ?? "I",
+  );
   const [badgeColor, setBadgeColor] = useState(
-    milestone?.badgeColor ?? "#22c55e",
+    milestone?.badgeColor ?? "#C5A059",
   );
   const [operation, setOperation] = useState<"save" | "upload" | "file" | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -699,86 +785,55 @@ function MilestoneEditor({
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mt-3 border border-primary/30 rounded-2xl bg-card/80 backdrop-blur-sm p-4 space-y-4"
+      className="mt-3 border border-primary/40 rounded-lg bg-[#0d0f14] p-4 space-y-4 shadow-[0_0_20px_rgba(197,160,89,0.12)]"
     >
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-primary">
-          {uiText("auto.ui.6ddd3bca3c", { level })}
+      <div className="flex items-center justify-between border-b border-border/60 pb-2">
+        <span className="font-mono text-xs font-bold uppercase tracking-wider text-primary">
+          Configurazione Dotazioni &amp; Contenuti — {LIMEN_GRADES[level - 1]?.code ?? `GRADO ${level}`}
         </span>
         <button
           onClick={() => { if (!busyRef.current) onClose(); }}
           disabled={busy}
           aria-label={uiText("common.close")}
-          className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          className="p-1 rounded-sm hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
-      <fieldset disabled={busy} aria-busy={busy} className="space-y-4 border-0 p-0">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label htmlFor={`milestone-${level}-title`} className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              {uiText("auto.ui.259cbd5e44")}
+      {errorMessage && <p role="alert" className="text-xs font-mono text-destructive">{errorMessage}</p>}
+      <fieldset disabled={busy} aria-busy={busy} className="space-y-3.5 border-0 p-0">
+        <div className="grid grid-cols-1 gap-3">
+          <div className="space-y-1">
+            <label htmlFor={`milestone-${level}-title`} className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+              Titolo del Protocollo / Modulo di Grado
             </label>
             <input
               id={`milestone-${level}-title`}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder={uiText("auto.ui.5a8bc536be")}
-              className="w-full h-9 px-3 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50"
+              placeholder="Es. Protocollo d'Iniziazione & Custodia del Rischio"
+              className="w-full h-9 px-3 rounded-sm border border-border bg-background/80 text-xs font-mono focus:outline-none focus:border-primary/60"
             />
           </div>
-          <div className="flex items-end gap-2">
-            <div className="space-y-1.5 flex-1">
-              <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                {uiText("auto.ui.633288e36d")}
-              </label>
-              <div className="flex flex-wrap gap-1">
-                {BADGE_EMOJIS.map((e) => (
-                  <button
-                    key={e}
-                    onClick={() => setBadgeEmoji(e)}
-                    className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-all ${badgeEmoji === e ? "bg-primary/20 ring-1 ring-primary" : "bg-secondary/30 hover:bg-secondary/60"}`}
-                  >
-                    {e}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              {uiText("auto.ui.6062c61902")}
+
+          <div className="space-y-1">
+            <label htmlFor={`milestone-${level}-description`} className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+              Direttiva Operativa &amp; Descrizione Dotazioni
             </label>
-            <div className="flex flex-wrap gap-2">
-              {BADGE_COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setBadgeColor(c)}
-                  aria-label={c}
-                  aria-pressed={badgeColor === c}
-                  className={`w-7 h-7 rounded-full border-2 transition-all ${badgeColor === c ? "scale-110 border-white" : "border-transparent"}`}
-                  style={{ background: c }}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <label htmlFor={`milestone-${level}-description`} className="text-[10px] text-muted-foreground uppercase tracking-wider">{uiText("auto.ui.07dfa30eec")}</label>
             <textarea
               id={`milestone-${level}-description`}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={uiText("auto.ui.7a0349621f")}
+              placeholder="Inserisci le istruzioni operative, i privilegi sbloccati e i materiali riservati a questo Grado..."
               rows={3}
-              className="w-full px-3 py-2 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50 resize-none"
+              className="w-full px-3 py-2 rounded-sm border border-border bg-background/80 text-xs focus:outline-none focus:border-primary/60 resize-none leading-relaxed"
             />
           </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <label htmlFor={`milestone-${level}-skill`} className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              {uiText("auto.ui.2b7a7f86e7")}
+
+          <div className="space-y-1.5">
+            <label htmlFor={`milestone-${level}-skill`} className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+              Privilegi, Competenze &amp; Strumenti Concessi
             </label>
             <div className="flex gap-2">
               <input
@@ -788,14 +843,16 @@ function MilestoneEditor({
                 onKeyDown={(e) =>
                   e.key === "Enter" && (e.preventDefault(), addSkill())
                 }
-                placeholder={uiText("auto.ui.3e04830784")}
-                className="flex-1 h-9 px-3 rounded-xl border border-border bg-secondary/30 text-sm focus:outline-none focus:border-primary/50"
+                placeholder="Aggiungi privilegio o competenza (premi Invio)..."
+                className="flex-1 h-9 px-3 rounded-sm border border-border bg-background/80 text-xs font-mono focus:outline-none focus:border-primary/60"
               />
               <button
+                type="button"
                 onClick={addSkill}
-                className="h-9 w-9 rounded-xl bg-primary/20 hover:bg-primary/30 text-primary flex items-center justify-center transition-colors"
+                className="h-9 px-3 rounded-sm bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary font-mono text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
+                <span>Aggiungi</span>
               </button>
             </div>
             {skills.length > 0 && (
@@ -803,14 +860,15 @@ function MilestoneEditor({
                 {skills.map((s, i) => (
                   <span
                     key={i}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20"
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-primary/10 text-primary font-mono text-[10px] font-semibold border border-primary/30"
                   >
                     {s}
                     <button
+                      type="button"
                       onClick={() => setSkills(skills.filter((_, j) => j !== i))}
-                      className="text-primary/60 hover:text-primary ml-0.5"
+                      className="text-primary/70 hover:text-destructive ml-0.5"
                     >
-                      <X className="w-2.5 h-2.5" />
+                      <X className="w-3 h-3" />
                     </button>
                   </span>
                 ))}
@@ -820,22 +878,23 @@ function MilestoneEditor({
         </div>
 
         {/* File section */}
-        <div className="space-y-2">
+        <div className="space-y-2 pt-1 border-t border-border/50">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              {uiText("auto.ui.1ccd55f663")}
+            <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+              Documenti, Dispense PDF, Video &amp; Allegati del Grado
             </label>
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/15 hover:bg-primary/25 text-primary transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm font-mono text-[10px] font-bold uppercase tracking-wider bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary transition-colors disabled:opacity-50"
             >
               {uploading ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
                 <Upload className="w-3 h-3" />
               )}
-              {uploading ? uiText("common.loading") : uiText("auto.ui.6cdd9c8c78")}
+              {uploading ? "Caricamento..." : "Carica File / PDF"}
             </button>
             <input
               ref={fileInputRef}
@@ -850,30 +909,32 @@ function MilestoneEditor({
               {files.map((f) => (
                 <div
                   key={f.id}
-                  className="flex items-center gap-2 p-2 rounded-xl border border-border bg-secondary/20 group"
+                  className="flex items-center gap-2 p-2 rounded-sm border border-border bg-background/80 group"
                 >
                   <div className="shrink-0">{fileIcon(f.mimeType)}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate">{f.fileName}</p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs font-mono font-semibold truncate">{f.fileName}</p>
+                    <p className="text-[10px] font-mono text-muted-foreground">
                       {formatFileSize(f.fileSize)}
                     </p>
                   </div>
                   <button
+                    type="button"
                     onClick={() => toggleDownloadable(f.id, f.downloadable)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${f.downloadable ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-sm font-mono text-[9px] font-bold border transition-all ${f.downloadable ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
                   >
                     {f.downloadable ? (
                       <ToggleRight className="w-3 h-3" />
                     ) : (
                       <ToggleLeft className="w-3 h-3" />
                     )}
-                    {f.downloadable ? "DL" : "NO"}
+                    {f.downloadable ? "SCARICABILE" : "BLOCCATO"}
                   </button>
                   <button
+                    type="button"
                     onClick={() => deleteFile(f.id)}
                     aria-label={uiText("common.delete")}
-                    className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                    className="p-1.5 rounded-sm hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -882,24 +943,33 @@ function MilestoneEditor({
             </div>
           )}
           {files.length === 0 && (
-            <p className="text-[11px] text-muted-foreground/50 text-center py-3 border border-dashed border-border rounded-xl">
-              {uiText("auto.ui.133509ea5d")}
+            <p className="font-mono text-[10px] text-muted-foreground/60 text-center py-2.5 border border-dashed border-border/70 rounded-sm">
+              Nessun documento allegato. Usa &quot;Carica File / PDF&quot; per allegare dispense o strumenti a questo Grado.
             </p>
           )}
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2 pt-1">
           <button
+            type="button"
+            onClick={() => { if (!busyRef.current) onClose(); }}
+            disabled={busy}
+            className="px-3 py-1.5 rounded-sm border border-border bg-background/80 text-muted-foreground hover:text-foreground font-mono text-[10px] font-bold uppercase tracking-wider transition-colors"
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
             onClick={save}
             disabled={busy}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-sm bg-primary text-primary-foreground font-mono text-[10px] font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <Save className="w-4 h-4" />
+              <Save className="w-3.5 h-3.5" />
             )}
-            {saving ? uiText("auto.ui.7760459f96") : uiText("auto.ui.157ad75db3")}
+            {saving ? "Salvataggio..." : "Salva Contenuti Grado"}
           </button>
         </div>
       </fieldset>
@@ -914,22 +984,25 @@ function LevelRow({
   currentLevel,
   isAdmin,
   certificates,
+  defaultExpanded = true,
 }: {
   level: number;
   currentLevel: number;
   isAdmin: boolean;
   certificates: Certificate[];
+  defaultExpanded?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [editing, setEditing] = useState(false);
   const [editingBusy, setEditingBusy] = useState(false);
   const editingBusyRef = useRef(false);
-  const isUnlocked = currentLevel >= level;
+  const isUnlocked = isAdmin || currentLevel >= level;
   const isCurrent = currentLevel === level;
   const hasCert = certificates.some((c) => c.level === level);
-  const levelName = getLevelName(level);
+  const gradeDef = LIMEN_GRADES[level - 1];
+  const levelName = gradeDef?.fullTitle ?? getLevelName(level);
   const color = BADGE_COLORS[(level - 1) % BADGE_COLORS.length];
-  const emoji = BADGE_EMOJIS[(level - 1) % BADGE_EMOJIS.length];
+  const fallbackContent = DEFAULT_GRADE_MILESTONE_CONTENT[level];
 
   const { data: detail, isLoading: loadingDetail, isError: detailError, refetch: refetchDetail } = useQuery<{
     milestone: Milestone | null;
@@ -943,28 +1016,32 @@ function LevelRow({
 
   const milestone = detail?.milestone ?? null;
   const files = detail?.files ?? [];
-  const skills: string[] = parseSkills(milestone?.skills);
+  const parsedSkills = parseSkills(milestone?.skills);
+  const effectiveTitle = milestone?.title || fallbackContent?.title || "";
+  const effectiveDescription = milestone?.description || fallbackContent?.description || "";
+  const effectiveSkills = parsedSkills.length > 0 ? parsedSkills : (fallbackContent?.skills ?? []);
 
   return (
     <div
-      className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
+      className={`rounded-lg border transition-all duration-200 overflow-hidden ${
         isCurrent
-          ? "border-primary/50"
+          ? "border-primary/60 bg-primary/[0.03]"
           : isUnlocked
-            ? "border-border hover:border-border/80"
-            : "border-border/30 opacity-60"
-      } bg-card/40 backdrop-blur-sm`}
+            ? "border-border/80 bg-[#0d0f14] hover:border-primary/40"
+            : "border-border/40 bg-[#0d0f14]/60 opacity-75"
+      }`}
     >
       <div className="flex items-center">
         <button
+          type="button"
           onClick={() => { if (!editingBusyRef.current) setExpanded(s => !s); }}
           disabled={editingBusy}
-          className="w-full flex items-center gap-3 p-4 text-left hover:bg-secondary/10 transition-colors"
+          className="w-full flex items-center gap-3 p-3.5 text-left hover:bg-secondary/10 transition-colors"
         >
           {/* Badge */}
           <div className="shrink-0 relative">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl overflow-hidden p-0.5"
+              className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden p-0.5"
               style={{
                 background: isUnlocked
                   ? `radial-gradient(circle, ${color}25 0%, ${color}08 100%)`
@@ -975,56 +1052,57 @@ function LevelRow({
               {isUnlocked ? (
                 <LimenMedallion grade={level} size={34} glow animate={false} />
               ) : (
-                <Lock className="w-4 h-4 text-muted-foreground/30" />
+                <Lock className="w-4 h-4 text-muted-foreground/40" />
               )}
             </div>
             {hasCert && (
-              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-yellow-500 flex items-center justify-center shadow-sm">
-                <Star className="w-2.5 h-2.5 text-white fill-white" />
+              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#C5A059] flex items-center justify-center shadow-sm">
+                <Star className="w-2.5 h-2.5 text-black fill-black" />
               </div>
             )}
           </div>
 
-          {/* Level info */}
+          {/* Grade info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span
-                className="text-[10px] font-bold uppercase tracking-wider"
-                style={{ color: isUnlocked ? color : "rgba(255,255,255,0.3)" }}
+                className="font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap"
+                style={{ color: isUnlocked ? color : "rgba(255,255,255,0.4)" }}
               >
-                LV {level}
+                {gradeDef?.code ?? `GRADO ${level}`}
               </span>
               {isCurrent && (
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-primary/20 text-primary border border-primary/30">
-                  {uiText("auto.ui.a1991c83d4")}
+                <span className="px-1.5 py-0.5 rounded-sm font-mono text-[8.5px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/40 whitespace-nowrap">
+                  Attuale
                 </span>
               )}
               {hasCert && (
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                  {uiText("auto.ui.8a14d6fe3e")}
+                <span className="px-1.5 py-0.5 rounded-sm font-mono text-[8.5px] font-bold uppercase tracking-wider bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/40 whitespace-nowrap">
+                  Sigillato
                 </span>
               )}
             </div>
             <p
-              className={`text-sm font-bold leading-tight truncate ${isUnlocked ? "text-foreground" : "text-muted-foreground/40"}`}
+              className={`text-xs sm:text-sm font-bold leading-snug ${isUnlocked ? "text-foreground" : "text-muted-foreground/50"}`}
             >
               {levelName}
             </p>
-            {milestone?.title && (
-              <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">
-                {milestone.title}
+            {effectiveTitle && (
+              <p className="font-mono text-[10px] text-primary/90 mt-0.5">
+                {effectiveTitle}
               </p>
             )}
           </div>
 
-          {/* XP needed */}
+          {/* Requirement badge instead of XP */}
           <div className="shrink-0 text-right mr-2 hidden sm:block">
-            <p className="text-[10px] text-muted-foreground/50">{uiText("auto.ui.00f59e3a8e")}</p>
-            <p className="text-xs font-mono font-bold text-muted-foreground">
-              {((level - 1) * XP_PER_LEVEL).toLocaleString()}
+            <p className="font-mono text-[8.5px] uppercase tracking-wider text-muted-foreground">
+              Requisito d&apos;Onore
+            </p>
+            <p className="font-mono text-[10px] font-bold text-foreground whitespace-nowrap">
+              {fallbackContent?.requirementBadge ?? gradeDef?.requirementSummary}
             </p>
           </div>
-
 
           {expanded ? (
             <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -1033,23 +1111,23 @@ function LevelRow({
           )}
         </button>
 
-        {/* Admin edit */}
+        {/* Admin edit button */}
         {isAdmin && (
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               if (editingBusyRef.current) return;
               setExpanded(true);
               setEditing((s) => !s);
             }}
-            className="mr-4 shrink-0 p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+            className="mr-3.5 shrink-0 p-2 rounded-sm border border-primary/30 bg-primary/10 hover:bg-primary/25 text-primary transition-colors"
             disabled={editingBusy}
-            title={uiText("auto.ui.d24714bb3d")}
+            title="Configura Contenuti & Documenti del Grado"
           >
             <Edit3 className="w-3.5 h-3.5" />
           </button>
         )}
-
       </div>
 
       <AnimatePresence>
@@ -1061,96 +1139,85 @@ function LevelRow({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-border/30 px-4 pb-4">
+            <div className="border-t border-border/40 px-4 pb-4">
               {loadingDetail ? (
-                <div className="flex justify-center py-6">
+                <div className="flex justify-center py-5">
                   <Loader2 className="w-5 h-5 animate-spin text-primary" />
                 </div>
               ) : detailError ? (
-                <div role="alert"><QueryErrorState onRetry={() => void refetchDetail()} /></div>
-              ) : !milestone && !isAdmin ? (
-                <p className="text-sm text-muted-foreground/50 text-center py-6">
-                  {isUnlocked
-                    ? uiText("auto.ui.8a1c12312a")
-                    : uiText("auto.ui.4def9897d2")}
-                </p>
+                <div role="alert" className="pt-3"><QueryErrorState onRetry={() => void refetchDetail()} /></div>
               ) : (
-                <div className="pt-4 space-y-4">
-                  {/* Content */}
-                  {milestone && (
-                    <>
-                      {milestone.description && (
-                        <p className="text-sm text-foreground/80 leading-relaxed">
-                          {milestone.description}
-                        </p>
-                      )}
-                      {skills.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider font-semibold">
-                            Competenze acquisite
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {skills.map((s, i) => (
-                              <span
-                                key={i}
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border"
-                                style={{
-                                  background: `${color}15`,
-                                  borderColor: `${color}40`,
-                                  color,
-                                }}
-                              >
-                                <CheckCircle className="w-3 h-3" /> {s}
-                              </span>
-                            ))}
+                <div className="pt-3.5 space-y-3.5">
+                  {/* Description & Competencies */}
+                  {effectiveDescription && (
+                    <p className="text-xs text-foreground/90 leading-relaxed border-l-2 border-primary/50 pl-3 py-0.5">
+                      {effectiveDescription}
+                    </p>
+                  )}
+
+                  {effectiveSkills.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider font-bold">
+                        Dotazioni &amp; Competenze Concesse dal Grado
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {effectiveSkills.map((s, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm font-mono text-[10px] font-semibold border border-primary/25 bg-primary/[0.06] text-foreground"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span>{s}</span>
                           </div>
-                        </div>
-                      )}
-                      {files.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider font-semibold">
-                            {uiText("auto.ui.af5851ff1f")}
-                          </p>
-                          <div className="space-y-1.5">
-                            {files.map((f) => (
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {files.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider font-bold">
+                        Documentazione &amp; File Allegati ({files.length})
+                      </p>
+                      <div className="space-y-1.5">
+                        {files.map((f) => (
+                          <div
+                            key={f.id}
+                            className="flex items-center gap-2.5 p-2 rounded-sm border border-border/80 bg-background/80"
+                          >
+                            <div className="shrink-0">
+                              {fileIcon(f.mimeType)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-mono font-semibold truncate">
+                                {f.fileName}
+                              </p>
+                              <p className="text-[10px] font-mono text-muted-foreground">
+                                {formatFileSize(f.fileSize)}
+                              </p>
+                            </div>
+                            {f.downloadable ? (
+                              <a
+                                href={f.fileUrl}
+                                download={f.fileName}
+                                className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-sm font-mono text-[9.5px] font-bold uppercase tracking-wider bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary transition-colors"
+                                title="Scarica Documento"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>Scarica</span>
+                              </a>
+                            ) : (
                               <div
-                                key={f.id}
-                                className="flex items-center gap-2.5 p-2.5 rounded-xl border border-border bg-secondary/20"
+                                className="shrink-0 p-1.5 rounded-sm bg-secondary/30 text-muted-foreground/30"
+                                title="Download riservato"
                               >
-                                <div className="shrink-0">
-                                  {fileIcon(f.mimeType)}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-semibold truncate">
-                                    {f.fileName}
-                                  </p>
-                                  <p className="text-[10px] text-muted-foreground/60">
-                                    {formatFileSize(f.fileSize)}
-                                  </p>
-                                </div>
-                                {f.downloadable ? (
-                                  <a
-                                    href={f.fileUrl}
-                                    download={f.fileName}
-                                    className="shrink-0 p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-                                    title={uiText("auto.ui.bf03edb19e")}
-                                  >
-                                    <Download className="w-3.5 h-3.5" />
-                                  </a>
-                                ) : (
-                                  <div
-                                    className="shrink-0 p-1.5 rounded-lg bg-secondary/30 text-muted-foreground/30"
-                                    title={uiText("auto.ui.c4a952844c")}
-                                  >
-                                    <Download className="w-3.5 h-3.5" />
-                                  </div>
-                                )}
+                                <Lock className="w-3.5 h-3.5" />
                               </div>
-                            ))}
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </>
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   {/* Admin editor */}
@@ -1165,13 +1232,12 @@ function LevelRow({
                   )}
                   {isAdmin && !editing && (
                     <button
+                      type="button"
                       onClick={() => setEditing(true)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-primary/30 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors w-full justify-center"
+                      className="flex items-center gap-2 px-3 py-2 rounded-sm border border-dashed border-primary/40 bg-primary/[0.04] hover:bg-primary/10 text-primary font-mono text-[10px] font-bold uppercase tracking-wider transition-colors w-full justify-center"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
-                      {milestone
-                        ? uiText("auto.ui.8fc65674bd")
-                        : uiText("auto.ui.891575ec6a")}
+                      <span>Personalizza Contenuti, Competenze o Carica File (PDF / Video)</span>
                     </button>
                   )}
                 </div>
@@ -1211,18 +1277,111 @@ export default function Milestones() {
   });
 
   const integrity =
-    serverIntegrity ??
-    computeLimenIntegritySnapshot({
-      legacyLevel: currentLevel,
-      consecutiveIntegralSessions: profile?.streak ?? 0,
-      isAdmin,
-    });
+    serverIntegrity && serverIntegrity.currentGrade
+      ? serverIntegrity
+      : computeLimenIntegritySnapshot({
+          legacyLevel: currentLevel,
+          consecutiveIntegralSessions: profile?.streak ?? 0,
+          isAdmin,
+        });
+
+  const { data: journalEntries } = useGetJournalEntries();
+  const calmTradesCount = useMemo(() => {
+    if (!journalEntries || !Array.isArray(journalEntries)) return 0;
+    return journalEntries.filter((e) => {
+      const tags = (e.tags ?? "").toLowerCase();
+      const content = (e.content ?? "").toLowerCase();
+      return (
+        tags.includes("respiro") ||
+        tags.includes("calma") ||
+        content.includes("respiro tattico")
+      );
+    }).length;
+  }, [journalEntries]);
 
   const [selectedCert, setSelectedCert] = useState<CertificateData | null>(null);
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
   const [isDocumentsModalOpen, setIsDocumentsModalOpen] = useState(false);
   const [inspectingCharacter, setInspectingCharacter] = useState<GradeCharacterData | null>(null);
   const [inspectingPerksGrade, setInspectingPerksGrade] = useState<LimenGradeDefinition | null>(null);
+  const [showRadarModal, setShowRadarModal] = useState(false);
+  const [copiedCertLink, setCopiedCertLink] = useState(false);
+
+  // Stato Esami di Padronanza Dottrinale
+  const [activeDoctrineTome, setActiveDoctrineTome] = useState<MentorDoctrineTome | null>(null);
+  const [passedDoctrineExams, setPassedDoctrineExams] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("aureus_passed_doctrine_exams");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handlePassDoctrineExam = (tomeId: string) => {
+    setPassedDoctrineExams((prev) => {
+      if (prev.includes(tomeId)) return prev;
+      const updated = [...prev, tomeId];
+      try {
+        localStorage.setItem("aureus_passed_doctrine_exams", JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+    toast.success("Sigillo di Padronanza Dottrinale Convalidato!", {
+      description: "Il traguardo è stato registrato ed integrato nel Dossier dell'Operatore.",
+    });
+  };
+
+  const computedPillars = useMemo<MasteryPillarData[]>(() => {
+    const baseIntegrity = integrity.integrityIndex ?? 100;
+    const violationsPenalty = (integrity.recentViolationsCount ?? 0) * 15;
+    const riskScore = Math.max(30, Math.min(100, 100 - violationsPenalty));
+    const patienceScore = Math.max(40, Math.min(100, baseIntegrity - (integrity.driftDetected ? 20 : 0)));
+    const techniqueScore = Math.max(50, Math.min(100, Math.round((baseIntegrity * 0.9) + (integrity.currentGrade.grade * 2))));
+    const composureScore = Math.max(
+      40,
+      Math.min(
+        100,
+        Math.min(100, 70 + Math.min(20, calmTradesCount * 2) + (integrity.consecutiveIntegralSessions * 2))
+      )
+    );
+    const truthScore = Math.max(30, Math.min(100, (integrity.daysSinceLastTruthEntry ?? 0) === 0 ? 98 : Math.max(50, 100 - (integrity.daysSinceLastTruthEntry ?? 0) * 10)));
+
+    return [
+      {
+        id: "patience",
+        name: "Pazienza nell'Attesa",
+        score: patienceScore,
+        description: "Attesa della finestra temporale e del contesto HTF conforme",
+      },
+      {
+        id: "risk",
+        name: "Rispetto del Rischio",
+        score: riskScore,
+        description: "Presenza inderogabile dello stop loss e rischio unitario ≤ 1%",
+      },
+      {
+        id: "technique",
+        name: "Precisione Tecnica",
+        score: techniqueScore,
+        description: "Allineamento rigoroso alle 4 Fasi del Custode della Soglia",
+      },
+      {
+        id: "composure",
+        name: "Fermezza Emotiva",
+        score: composureScore,
+        description: "Assenza di overtrading, controllo del drawdown e respiro tattico",
+      },
+      {
+        id: "integrity",
+        name: "Integrità del Registro",
+        score: truthScore,
+        description: "Compilazione sistematica del Libro della Verità con schematica",
+      },
+    ];
+  }, [integrity]);
 
   const openCertModal = (cert: CertificateData) => {
     setSelectedCert(cert);
@@ -1234,66 +1393,140 @@ export default function Milestones() {
     setSelectedCert(null);
   };
 
+  const buildCurrentGradeCert = (): CertificateData => {
+    const currentG = integrity.currentGrade;
+    const existingCert = certificates.find((c) => c.level === currentG.grade);
+    const effectiveUserName = (profile?.name && profile.name.trim()) || "Operatore";
+    return existingCert
+      ? {
+          ...existingCert,
+          level: currentG.grade,
+          levelName: currentG.fullTitle,
+          userName: effectiveUserName,
+        }
+      : {
+          id: currentG.grade,
+          userId: String(profile?.id ?? "trader"),
+          userName: effectiveUserName,
+          avatarUrl: profile?.avatarUrl || null,
+          level: currentG.grade,
+          levelName: currentG.fullTitle,
+          milestoneTitle: currentG.subtitle,
+          awardedAt: new Date().toISOString(),
+        };
+  };
+
+  const handleCopyShareableCertLink = () => {
+    const targetCert = buildCurrentGradeCert();
+    const url = buildShareableCertificateUrl(targetCert);
+    navigator.clipboard.writeText(url);
+    setCopiedCertLink(true);
+    toast.success("Link condivisibile del Certificato copiato negli appunti!");
+    setTimeout(() => setCopiedCertLink(false), 2500);
+  };
+
   return (
     <PageLayout quiet>
       <div className="flex flex-col lg:h-[calc(100vh-100px)] lg:min-h-0 lg:overflow-hidden pt-1">
         <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-3.5 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
-          {/* ─── PANNELLO SINISTRO: RANGO ATTUALE, INTEGRITÀ, DERIVA & SIGILLI ─── */}
-          <aside className="space-y-2.5 flex flex-col lg:h-full lg:overflow-y-auto pr-0.5">
-            {/* Operator Integrity & Current Grade Status Panel */}
-            <div className="limen-panel-surface p-3.5 space-y-2.5 border border-border/80">
+          {/* ─── PANNELLO SINISTRO: RANGO ATTUALE, INTEGRITÀ & SIGILLI ─── */}
+          <aside className="space-y-2.5 flex flex-col lg:h-full lg:overflow-y-auto pr-0.5 scrollbar-thin scrollbar-thumb-primary/20">
+            {/* Operator Sovereign Cockpit: Current Grade, Integrity & Telemetry Panel */}
+            <div className="limen-panel-surface p-3 space-y-2.5 border border-border/80">
+              {/* Header with Medallion & Title (No overlapping badge, full-width subtitle) */}
               <div className="flex items-center gap-3 border-b border-border pb-2.5">
                 <div className="relative shrink-0">
-                  <LimenMedallion grade={integrity.currentGrade.grade} size={54} glow animate={false} />
+                  <LimenMedallion grade={integrity.currentGrade.grade} size={50} glow animate={false} />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-primary">
+                <div className="min-w-0 flex-1 w-full">
+                  <p className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.18em] text-primary whitespace-nowrap">
                     Rango Attuale dell&apos;Operatore
                   </p>
                   <h2
-                    className="text-sm font-bold uppercase tracking-[0.06em] text-foreground leading-snug"
+                    className="text-sm sm:text-base font-bold uppercase tracking-[0.06em] text-foreground leading-snug whitespace-nowrap"
                     style={{ fontFamily: "var(--font-display)" }}
                   >
-                    {integrity.currentGrade.fullTitle}
+                    {integrity.currentGrade.code}
                   </h2>
-                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                  <p className="w-full text-[10.5px] text-muted-foreground leading-snug mt-0.5">
                     {integrity.currentGrade.subtitle}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="border border-border/80 bg-background/80 p-2 text-center">
-                  <p className="font-mono text-[8.5px] uppercase tracking-wider text-muted-foreground">
+              {/* Drift Warning Alert Banner if drift is active */}
+              {integrity.driftDetected && (
+                <div
+                  role="alert"
+                  className="border border-destructive bg-destructive/15 p-2 rounded-sm text-foreground"
+                >
+                  <div className="flex items-start gap-2">
+                    <SigilIcon variant="drift-warning" size={15} className="mt-0.5 text-destructive shrink-0" />
+                    <div>
+                      <p className="font-mono text-[9.5px] font-bold uppercase tracking-wider text-destructive">
+                        {DRIFT_ALERT_TITLE}
+                      </p>
+                      <p className="mt-0.5 text-[9.5px] leading-tight text-foreground/85">
+                        {integrity.driftAlertMessage ?? DRIFT_ALERT_DESCRIPTION}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 4 Telemetry Metrics Grid */}
+              <div className="grid grid-cols-2 gap-1.5 text-center">
+                <div className="border border-border/80 bg-background/80 p-1.5 rounded-sm">
+                  <p className="font-mono text-[7.5px] uppercase tracking-wider text-muted-foreground">
                     Indice di Integrità
                   </p>
-                  <p className="mt-0.5 font-mono text-lg font-bold text-primary">
+                  <p className="mt-0.5 font-mono text-base font-bold text-primary whitespace-nowrap">
                     {integrity.integrityIndex}%
                   </p>
                 </div>
-                <div className="border border-border/80 bg-background/80 p-2 text-center">
-                  <p className="font-mono text-[8.5px] uppercase tracking-wider text-muted-foreground">
+                <div className="border border-border/80 bg-background/80 p-1.5 rounded-sm">
+                  <p className="font-mono text-[7.5px] uppercase tracking-wider text-muted-foreground">
                     Sessioni Integre
                   </p>
-                  <p className="mt-0.5 font-mono text-lg font-bold text-foreground">
+                  <p className="mt-0.5 font-mono text-base font-bold text-foreground whitespace-nowrap">
                     {integrity.consecutiveIntegralSessions}
                     {integrity.nextGrade && !integrity.nextGrade.adminOnly
                       ? ` / ${integrity.nextGrade.requiredConsecutiveSessions}`
                       : ""}
                   </p>
                 </div>
+                <div className="border border-border/80 bg-background/80 p-1.5 rounded-sm">
+                  <p className="font-mono text-[7.5px] uppercase tracking-wider text-muted-foreground">
+                    Violazioni
+                  </p>
+                  <p className={`mt-0.5 font-mono text-base font-bold whitespace-nowrap ${integrity.recentViolationsCount > 0 ? "text-destructive" : "text-emerald-400"}`}>
+                    {integrity.recentViolationsCount > 0 ? `${integrity.recentViolationsCount}` : "0"}
+                  </p>
+                </div>
+                <div className="border border-border/80 bg-background/80 p-1.5 rounded-sm">
+                  <p className="font-mono text-[7.5px] uppercase tracking-wider text-muted-foreground">
+                    Ultimo Diario
+                  </p>
+                  <p className={`mt-0.5 font-mono text-base font-bold whitespace-nowrap ${(integrity.daysSinceLastTruthEntry ?? 0) > 5 ? "text-amber-400" : "text-primary"}`}>
+                    {integrity.daysSinceLastTruthEntry === 0 ? "Oggi" : `${integrity.daysSinceLastTruthEntry ?? 0}g`}
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <div className="flex items-center justify-between font-mono text-[9.5px]">
-                  <span className="text-muted-foreground truncate pr-2">
-                    {integrity.nextGrade
-                      ? `Ascesa verso ${integrity.nextGrade.code}`
-                      : "Grado Supremo Raggiunto"}
+              {/* Monitoraggio Ascesa / Stato Supremo */}
+              <div className="border border-primary/20 bg-primary/[0.03] p-2 rounded-sm space-y-1">
+                <div className="flex items-center justify-between font-mono text-[8.5px]">
+                  <span className="text-muted-foreground uppercase tracking-wider truncate pr-1">
+                    {integrity.nextGrade ? `Ascesa verso ${integrity.nextGrade.code}` : "Stato Supremo"}
                   </span>
-                  <span className="font-bold text-primary">{integrity.progressToNextGradePct}%</span>
+                  <span className="text-primary font-bold shrink-0 whitespace-nowrap">
+                    {integrity.progressToNextGradePct}%
+                  </span>
                 </div>
-                <div className="h-1.5 bg-background border border-border overflow-hidden">
+                <p className="font-mono text-[9px] text-foreground font-semibold leading-tight truncate">
+                  {integrity.nextGrade ? integrity.nextGrade.title : "Cerchia Interna AUREUS"}
+                </p>
+                <div className="h-1 bg-background border border-border overflow-hidden rounded-full mt-1">
                   <div
                     className="h-full bg-primary transition-all duration-500"
                     style={{ width: `${integrity.progressToNextGradePct}%` }}
@@ -1301,76 +1534,65 @@ export default function Milestones() {
                 </div>
               </div>
 
+              {/* I Tre Vincoli di Salvaguardia */}
+              <div className="space-y-0.5 pt-1 border-t border-border/50 font-mono text-[8px]">
+                <div className="flex items-start gap-1.5 text-muted-foreground leading-tight">
+                  <span className="text-primary font-bold shrink-0">I.</span>
+                  <span><strong className="text-foreground/90 font-semibold">Patto 1%:</strong> Max 1% rischio per trade.</span>
+                </div>
+                <div className="flex items-start gap-1.5 text-muted-foreground leading-tight">
+                  <span className="text-primary font-bold shrink-0">II.</span>
+                  <span><strong className="text-foreground/90 font-semibold">Diario Verità:</strong> Compilazione obbligatoria.</span>
+                </div>
+                <div className="flex items-start gap-1.5 text-muted-foreground leading-tight">
+                  <span className="text-primary font-bold shrink-0">III.</span>
+                  <span><strong className="text-foreground/90 font-semibold">Retrocessione:</strong> Caduta di grado se violi.</span>
+                </div>
+              </div>
+
               {/* Direct Download/Print Certificate for Current Grade */}
               <button
                 type="button"
-                onClick={() => {
-                  const currentG = integrity.currentGrade;
-                  const existingCert = certificates.find((c) => c.level === currentG.grade);
-                  const effectiveUserName = (profile?.name && profile.name.trim()) || "Operatore";
-                  const targetCert: CertificateData = existingCert
-                    ? {
-                        ...existingCert,
-                        level: currentG.grade,
-                        levelName: currentG.fullTitle,
-                        userName: effectiveUserName,
-                      }
-                    : {
-                        id: currentG.grade,
-                        userId: String(profile?.id ?? "trader"),
-                        userName: effectiveUserName,
-                        avatarUrl: profile?.avatarUrl || null,
-                        level: currentG.grade,
-                        levelName: currentG.fullTitle,
-                        milestoneTitle: currentG.subtitle,
-                        awardedAt: new Date().toISOString(),
-                      };
-                  openCertModal(targetCert);
-                }}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm font-mono text-[10px] font-bold uppercase tracking-wider border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary transition-all shadow-sm"
+                onClick={() => openCertModal(buildCurrentGradeCert())}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm font-mono text-[9.5px] font-bold uppercase tracking-wider border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary transition-all shadow-sm whitespace-nowrap"
               >
-                <Award className="w-3.5 h-3.5 text-primary" />
+                <Award className="w-3.5 h-3.5 text-primary shrink-0" />
                 <span>Certificato &amp; Sigillo ({integrity.currentGrade.code})</span>
               </button>
+
+              {/* Dossier Modals: 5 Pilastri & Condividi Link Certificato */}
+              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShowRadarModal(true)}
+                  className="flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-sm font-mono text-[8.5px] font-bold uppercase tracking-wider border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary hover:text-foreground transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                >
+                  <Sparkles className="w-3 h-3 text-primary shrink-0" />
+                  <span>5 Pilastri ↗</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyShareableCertLink}
+                  className="flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-sm font-mono text-[8.5px] font-bold uppercase tracking-wider border border-[#C5A059]/40 bg-gradient-to-r from-[#C5A059]/15 to-[#E8C56A]/15 hover:from-[#C5A059]/25 hover:to-[#E8C56A]/25 text-[#E8C56A] hover:text-white transition-all shadow-[0_0_10px_rgba(197,160,89,0.15)] cursor-pointer whitespace-nowrap"
+                  title="Copia il link pubblico condivisibile del tuo Certificato Ufficiale"
+                >
+                  {copiedCertLink ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <span className="text-emerald-400">Link Copiato!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="w-3 h-3 text-[#E8C56A] shrink-0" />
+                      <span>Condividi Link 🔗</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* Disciplina & Deriva Status (Compact indicator with tooltip) */}
-            {integrity.driftDetected ? (
-              <div
-                role="alert"
-                className="border border-destructive bg-destructive/15 p-2 text-foreground"
-              >
-                <div className="flex items-start gap-2">
-                  <SigilIcon variant="drift-warning" size={15} className="mt-0.5 text-destructive shrink-0" />
-                  <div>
-                    <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-destructive">
-                      {DRIFT_ALERT_TITLE}
-                    </p>
-                    <p className="mt-0.5 text-[10px] leading-tight text-foreground/85">
-                      {integrity.driftAlertMessage ?? DRIFT_ALERT_DESCRIPTION}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="limen-panel-surface border-border/80 px-3 py-1.5 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-foreground">
-                    Disciplina: Integra
-                  </span>
-                </div>
-                <span
-                  className="font-mono text-[9px] text-muted-foreground uppercase cursor-help"
-                  title="Legge di Retrocessione: la violazione delle regole di rischio o l'interruzione del diario comporta il decadimento dell'Indice di Integrità."
-                >
-                  Regola Attiva
-                </span>
-              </div>
-            )}
-
             {/* Sigillo di Investitura (3D Card Showcase) */}
-            <div className="limen-panel-surface p-3 space-y-2.5 border border-border/80">
+            <div className="limen-panel-surface p-3 space-y-2 border border-border/80 flex flex-col justify-between flex-1 min-h-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Award className="w-3.5 h-3.5 text-primary" />
@@ -1386,7 +1608,7 @@ export default function Milestones() {
                   <Loader2 className="w-5 h-5 text-primary animate-spin" />
                 </div>
               ) : certificates.length > 0 ? (
-                <div className="flex justify-center py-0.5">
+                <div className="flex justify-center py-0.5 my-auto">
                   {certificates.slice(0, 1).map((c) => {
                     const personalizedCert: Certificate = {
                       ...c,
@@ -1425,99 +1647,6 @@ export default function Milestones() {
                 <span>Archivio Dotazioni (I – V)</span>
               </button>
             </div>
-
-            {/* ─── MODULO ASSETTO DISCIPLINA & PRESERVAZIONE DEL RANGO ─── */}
-            <div className="limen-panel-surface p-3 space-y-2.5 border border-border/80">
-              <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                  <h3 className="font-mono text-[10px] font-bold uppercase tracking-wider text-foreground">
-                    Assetto Disciplina &amp; Rango
-                  </h3>
-                </div>
-                <span className="flex items-center gap-1 font-mono text-[8px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  AUDIT ATTIVO
-                </span>
-              </div>
-
-              {/* 3 Metric Pills */}
-              <div className="grid grid-cols-3 gap-1.5 text-center">
-                <div className="border border-border/70 bg-background/80 p-1.5 rounded-sm">
-                  <p className="font-mono text-[7.5px] uppercase tracking-wider text-muted-foreground">Sessioni Integre</p>
-                  <p className="font-mono text-xs font-bold text-foreground mt-0.5">
-                    {integrity.consecutiveIntegralSessions}
-                  </p>
-                </div>
-                <div className="border border-border/70 bg-background/80 p-1.5 rounded-sm">
-                  <p className="font-mono text-[7.5px] uppercase tracking-wider text-muted-foreground">Violazioni</p>
-                  <p className={`font-mono text-xs font-bold mt-0.5 ${integrity.recentViolationsCount > 0 ? "text-destructive" : "text-emerald-400"}`}>
-                    {integrity.recentViolationsCount > 0 ? `${integrity.recentViolationsCount}` : "0"}
-                  </p>
-                </div>
-                <div className="border border-border/70 bg-background/80 p-1.5 rounded-sm">
-                  <p className="font-mono text-[7.5px] uppercase tracking-wider text-muted-foreground">Ultimo Diario</p>
-                  <p className={`font-mono text-xs font-bold mt-0.5 ${(integrity.daysSinceLastTruthEntry ?? 0) > 5 ? "text-amber-400" : "text-primary"}`}>
-                    {integrity.daysSinceLastTruthEntry === 0 ? "Oggi" : `${integrity.daysSinceLastTruthEntry ?? 0}g`}
-                  </p>
-                </div>
-              </div>
-
-              {/* Monitoraggio Prossimo Obiettivo */}
-              <div className="border border-primary/20 bg-primary/[0.03] p-2 rounded-sm space-y-1">
-                <div className="flex items-center justify-between font-mono text-[8.5px]">
-                  <span className="text-muted-foreground uppercase tracking-wider truncate pr-1">
-                    {integrity.nextGrade ? `Obiettivo: ${integrity.nextGrade.code}` : "Stato Supremo"}
-                  </span>
-                  <span className="text-primary font-bold shrink-0">
-                    {integrity.progressToNextGradePct}%
-                  </span>
-                </div>
-                <p className="font-mono text-[9.5px] text-foreground font-semibold leading-tight">
-                  {integrity.nextGrade ? integrity.nextGrade.title : "Cerchia Interna LIMEN"}
-                </p>
-                <div className="h-1 bg-background border border-border overflow-hidden rounded-full mt-1">
-                  <div
-                    className="h-full bg-primary transition-all duration-500"
-                    style={{ width: `${integrity.progressToNextGradePct}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* I Tre Vincoli di Salvaguardia */}
-              <div className="space-y-1 pt-1 border-t border-border/50 font-mono text-[8.5px]">
-                <div className="flex items-start gap-1.5 text-muted-foreground leading-tight">
-                  <span className="text-primary font-bold shrink-0">I.</span>
-                  <span><strong className="text-foreground/90 font-semibold">Patto 1%:</strong> Max 1% di rischio per operazione.</span>
-                </div>
-                <div className="flex items-start gap-1.5 text-muted-foreground leading-tight">
-                  <span className="text-primary font-bold shrink-0">II.</span>
-                  <span><strong className="text-foreground/90 font-semibold">Diario Verità:</strong> Compilazione obbligatoria per convalidare.</span>
-                </div>
-                <div className="flex items-start gap-1.5 text-muted-foreground leading-tight">
-                  <span className="text-primary font-bold shrink-0">III.</span>
-                  <span><strong className="text-foreground/90 font-semibold">Retrocessione:</strong> Caduta di grado se violi il codice.</span>
-                </div>
-              </div>
-
-              {/* Azioni Rapide Esecutive */}
-              <div className="pt-1 grid grid-cols-2 gap-1.5">
-                <Link
-                  href="/journal"
-                  className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-sm font-mono text-[9px] font-bold uppercase tracking-wider border border-border/80 bg-background/80 hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-all shadow-sm"
-                >
-                  <BookOpen className="w-3 h-3 text-primary" />
-                  <span>Diario Verità ↗</span>
-                </Link>
-                <Link
-                  href="/backtest"
-                  className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-sm font-mono text-[9px] font-bold uppercase tracking-wider border border-border/80 bg-background/80 hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-all shadow-sm"
-                >
-                  <Flame className="w-3 h-3 text-amber-400" />
-                  <span>Forgia Passato ↗</span>
-                </Link>
-              </div>
-            </div>
           </aside>
 
           {/* ─── PANNELLO PRINCIPALE: I 5 GRADI DI ASCESA (5 COLONNE SIDE-BY-SIDE FIT VIEWPORT) ─── */}
@@ -1544,7 +1673,7 @@ export default function Milestones() {
             </div>
 
             {/* Griglia a 5 Colonne */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5 flex-1 min-h-0 overflow-y-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2.5 flex-1 min-h-0 overflow-y-auto">
               {LIMEN_GRADES.map((gradeDef) => {
                 const unlocked = isAdmin || integrity.currentGrade.grade >= gradeDef.grade;
                 const isCurrent = integrity.currentGrade.grade === gradeDef.grade;
@@ -1613,7 +1742,7 @@ export default function Milestones() {
                           grade={gradeDef.grade}
                           size={gradeDef.grade === 5 ? 72 : 78}
                           glow={isCurrent || unlocked}
-                          animate={true}
+                          animate={isCurrent}
                           alt={gradeDef.title}
                         />
                       </div>
@@ -1700,6 +1829,37 @@ export default function Milestones() {
                         </span>
                       </button>
 
+                      {/* Tasto Prova Dottrinale del Grado (Tomi del Mentore) */}
+                      {gradeDef.associatedTomeId && (() => {
+                        const tome = MENTOR_DOCTRINE_TOMES.find(t => t.id === gradeDef.associatedTomeId);
+                        const isDocPassed = passedDoctrineExams.includes(gradeDef.associatedTomeId);
+                        if (!tome) return null;
+
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setActiveDoctrineTome(tome)}
+                            className={`w-full h-7 flex items-center justify-between px-2.5 my-0.5 rounded-sm border transition-all group shrink-0 shadow-sm ${
+                              isDocPassed
+                                ? "border-emerald-500/40 bg-emerald-950/20 text-emerald-300 hover:bg-emerald-950/40"
+                                : "border-[#C5A059]/40 bg-[#C5A059]/10 text-[#E8C56A] hover:bg-[#C5A059]/20"
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5 font-mono text-[8px] font-bold uppercase tracking-wider whitespace-nowrap">
+                              {isDocPassed ? (
+                                <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+                              ) : (
+                                <BookOpen className="w-3 h-3 text-[#C5A059] shrink-0 group-hover:scale-110 transition-transform" />
+                              )}
+                              <span>{tome.roman} {isDocPassed ? "Doc. OK" : "Dottrina"}</span>
+                            </span>
+                            <span className="font-mono text-[7.5px] font-bold uppercase tracking-wider whitespace-nowrap">
+                              {isDocPassed ? "Convalidato ✓" : "Esame ↗"}
+                            </span>
+                          </button>
+                        );
+                      })()}
+
                       {/* 3D Character Viewport — Clean Figurine without background, blending into app */}
                       <GradeCharacter3DViewer
                         grade={gradeDef.grade}
@@ -1762,6 +1922,43 @@ export default function Milestones() {
         isOpen={isCertModalOpen}
         onClose={closeCertModal}
       />
+
+      {/* Modal Dossier: Il Pentagramma della Maestria AUREUS */}
+      {showRadarModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowRadarModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-lg flex flex-col rounded-2xl border border-[#C5A059]/40 bg-[#07080b] shadow-[0_0_50px_rgba(197,160,89,0.2)] overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-[#0d0f14]">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#E8C56A]" />
+                <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-[#E8C56A]">
+                  Dossier dell'Operatore · I 5 Pilastri
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRadarModal(false)}
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4">
+              <MasteryRadarChart
+                pillars={computedPillars}
+                overallScore={integrity.integrityIndex}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal / Drawer for Secondary Document Endowments */}
       {isDocumentsModalOpen && (
@@ -1896,14 +2093,14 @@ export default function Milestones() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg flex flex-col rounded-lg border border-primary/50 bg-[#0E0F14] text-foreground shadow-2xl overflow-hidden"
+            className="relative w-full max-w-2xl flex flex-col rounded-lg border border-primary/50 bg-[#0E0F14] text-foreground shadow-2xl overflow-hidden"
           >
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-[#14151C]">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
                 <div>
                   <h3 className="font-mono text-xs sm:text-sm font-bold uppercase tracking-wider text-foreground">
-                    {inspectingPerksGrade.code} // DOTAZIONI SBLOCCATE &amp; PRIVILEGI
+                    {inspectingPerksGrade.code} // DOTAZIONI, CONTENUTI &amp; PRIVILEGI
                   </h3>
                   <p className="font-mono text-[9px] uppercase tracking-wider text-primary">
                     {inspectingPerksGrade.fullTitle}
@@ -1919,7 +2116,7 @@ export default function Milestones() {
               </button>
             </div>
 
-            <div className="p-4 sm:p-5 space-y-3 overflow-y-auto max-h-[75vh]">
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[80vh]">
               {/* Medallion & Lore summary */}
               <div className="flex items-center gap-3.5 p-3 rounded-sm border border-primary/25 bg-primary/[0.04]">
                 <LimenMedallion grade={inspectingPerksGrade.grade} size={56} glow animate={false} />
@@ -1943,24 +2140,40 @@ export default function Milestones() {
               {/* 4 Rich Privileges */}
               <div className="space-y-2 pt-1">
                 <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground px-0.5">
-                  Dotazioni &amp; Privilegi Concessi dal Rango
+                  Privilegi Istituzionali del Rango
                 </p>
-                {(GRADE_RICH_PERKS[inspectingPerksGrade.grade] ?? []).map((perk, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-2.5 p-2.5 rounded-sm bg-background/80 border border-border/70 hover:border-primary/40 transition-colors"
-                  >
-                    <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-mono text-[11px] font-bold text-foreground">
-                        {perk.title}
-                      </p>
-                      <p className="text-[10.5px] text-muted-foreground leading-snug mt-0.5 font-sans">
-                        {perk.desc}
-                      </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(GRADE_RICH_PERKS[inspectingPerksGrade.grade] ?? []).map((perk, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-2.5 p-2.5 rounded-sm bg-background/80 border border-border/70 hover:border-primary/40 transition-colors"
+                    >
+                      <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-mono text-[11px] font-bold text-foreground">
+                          {perk.title}
+                        </p>
+                        <p className="text-[10.5px] text-muted-foreground leading-snug mt-0.5 font-sans">
+                          {perk.desc}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              {/* Contenuti Documentali, Competenze & File Personalizzabili per questo Grado */}
+              <div className="space-y-2 pt-2 border-t border-border/60">
+                <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-primary px-0.5">
+                  Contenuti Operativi, Dispense &amp; Documenti Allegati
+                </p>
+                <LevelRow
+                  level={inspectingPerksGrade.grade}
+                  currentLevel={integrity.currentGrade.grade}
+                  isAdmin={isAdmin}
+                  certificates={certificates}
+                  defaultExpanded={true}
+                />
               </div>
             </div>
 
@@ -1976,6 +2189,15 @@ export default function Milestones() {
           </div>
         </div>
       )}
+
+      {/* ─── MODALE PROVA DI PADRONANZA DOTTRINALE ─── */}
+      <DoctrineExamModal
+        isOpen={Boolean(activeDoctrineTome)}
+        onClose={() => setActiveDoctrineTome(null)}
+        tome={activeDoctrineTome}
+        onPassExam={handlePassDoctrineExam}
+        isAlreadyPassed={activeDoctrineTome ? passedDoctrineExams.includes(activeDoctrineTome.id) : false}
+      />
     </PageLayout>
   );
 }

@@ -38,7 +38,7 @@ const COPY: Record<EmailLanguage, EmailCopy> = {
   it: {
     cta: "Apri la conversazione",
     footer:
-      "Ricevi questa email perche hai una richiesta di assistenza su LIMEN.",
+      "Ricevi questa email perche hai una richiesta di assistenza su AUREUS.",
     greeting: "Ciao,",
     ticketCreated: {
       title: "Richiesta ricevuta",
@@ -67,7 +67,7 @@ const COPY: Record<EmailLanguage, EmailCopy> = {
   en: {
     cta: "Open the conversation",
     footer:
-      "You received this email because you have a support request on LIMEN.",
+      "You received this email because you have a support request on AUREUS.",
     greeting: "Hi,",
     ticketCreated: {
       title: "Request received",
@@ -96,7 +96,7 @@ const COPY: Record<EmailLanguage, EmailCopy> = {
   es: {
     cta: "Abrir la conversacion",
     footer:
-      "Recibes este correo porque tienes una solicitud de soporte en LIMEN.",
+      "Recibes este correo porque tienes una solicitud de soporte en AUREUS.",
     greeting: "Hola,",
     ticketCreated: {
       title: "Solicitud recibida",
@@ -125,7 +125,7 @@ const COPY: Record<EmailLanguage, EmailCopy> = {
   fr: {
     cta: "Ouvrir la conversation",
     footer:
-      "Vous recevez cet email car vous avez une demande d'assistance sur LIMEN.",
+      "Vous recevez cet email car vous avez une demande d'assistance sur AUREUS.",
     greeting: "Bonjour,",
     ticketCreated: {
       title: "Demande recue",
@@ -154,7 +154,7 @@ const COPY: Record<EmailLanguage, EmailCopy> = {
   de: {
     cta: "Konversation oeffnen",
     footer:
-      "Du erhaeltst diese E-Mail, weil du eine Supportanfrage bei LIMEN hast.",
+      "Du erhaeltst diese E-Mail, weil du eine Supportanfrage bei AUREUS hast.",
     greeting: "Hallo,",
     ticketCreated: {
       title: "Anfrage erhalten",

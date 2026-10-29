@@ -54,9 +54,9 @@ export function BacktestAiSentinelPanel({
   onExecuteSetup,
   showOverlay,
   onToggleOverlay,
-  autoAuditOnStep = true,
+  autoAuditOnStep = false,
   onToggleAutoAudit,
-  autoExecuteAi = true,
+  autoExecuteAi = false,
   onToggleAutoExecute,
   missedMoveNotice,
   onDismissMissedNotice,
@@ -86,11 +86,11 @@ export function BacktestAiSentinelPanel({
           <div>
             <div className="flex items-center gap-1.5">
               <strong className="text-xs font-semibold text-foreground">Sentinella della Forgia</strong>
-              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#C5A059]/10 text-[#C5A059] border border-[#C5A059]/20">
-                PROCEDURAL AI
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#C5A059]/15 text-[#E8C56A] border border-[#C5A059]/35 font-bold uppercase tracking-wider whitespace-nowrap">
+                PROCEDURALE AUREUS
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground">Audit retrospettivo & ordini Limit</p>
+            <p className="text-[10px] text-muted-foreground whitespace-nowrap">Audit retrospettivo & ordini Limit</p>
           </div>
         </div>
 
@@ -189,18 +189,18 @@ export function BacktestAiSentinelPanel({
 
       {/* ── Stepper Procedurale Finestra Operativa (4 Fasi) ── */}
       {proceduralSteps && proceduralSteps.length > 0 && (
-        <div className="space-y-2 pt-1 border-t border-white/10">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+        <div className="space-y-1.5 pt-1 border-t border-white/10">
+          <div className="flex items-center justify-between text-[10px] font-mono">
+            <span className="uppercase tracking-wider text-muted-foreground flex items-center gap-1">
               <Layers size={11} className="text-[#C5A059]" />
               <span>Procedura a 4 Fasi ({symbol} · {interval})</span>
             </span>
-            <span className="text-[9px] font-mono text-emerald-400">
+            <span className="text-emerald-400 font-bold">
               {analysis?.confidenceScore}% Conforme
             </span>
           </div>
 
-          {/* Tab bottoni delle 4 Fasi */}
+          {/* Pipeline Visuale delle 4 Fasi */}
           <div className="grid grid-cols-4 gap-1">
             {proceduralSteps.map((step) => {
               const isSelected = selectedPhase === step.phase;
@@ -209,7 +209,7 @@ export function BacktestAiSentinelPanel({
                   key={step.phase}
                   type="button"
                   onClick={() => setSelectedPhase(step.phase)}
-                  className={`p-1 rounded text-center transition-all cursor-pointer border text-[10px] font-mono ${
+                  className={`py-1 px-1.5 rounded text-center transition-all cursor-pointer border text-[9.5px] font-mono ${
                     isSelected
                       ? "bg-[#C5A059]/25 border-[#C5A059] text-foreground font-bold shadow-sm"
                       : step.valid
@@ -218,43 +218,51 @@ export function BacktestAiSentinelPanel({
                   }`}
                   title={step.note}
                 >
-                  <div className="flex items-center justify-center gap-0.5">
+                  <div className="flex items-center justify-center gap-1">
                     {step.valid ? (
-                      <CheckCircle2 size={10} className="text-emerald-400" />
+                      <CheckCircle2 size={10} className="text-emerald-400 shrink-0" />
                     ) : (
-                      <AlertTriangle size={10} className="text-amber-400" />
+                      <AlertTriangle size={10} className="text-amber-400 shrink-0" />
                     )}
-                    <span>Fase {step.phase}</span>
+                    <span className="whitespace-nowrap">Fase {step.phase}</span>
                   </div>
                 </button>
               );
             })}
           </div>
 
-          {/* Dettaglio della Fase Selezionata */}
+          {/* Sintesi Chirurgica della Fase Selezionata */}
           {activeStep && (
-            <div className="p-2 rounded-lg bg-black/40 border border-white/10 space-y-1.5 text-[11px]">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-foreground text-xs">{activeStep.title}</span>
+            <div className="p-1.5 rounded-lg bg-black/40 border border-white/5 space-y-1 text-[10.5px]">
+              <div className="flex items-center justify-between gap-1">
+                <span className="font-semibold text-foreground text-[11px] truncate">{activeStep.title}</span>
                 {activeSchematic && (
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-primary/20 text-primary border border-primary/30">
-                    Schematica: {activeSchematic.title}
+                  <span className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-[#C5A059]/15 text-[#E8C56A] border border-[#C5A059]/30 whitespace-nowrap shrink-0">
+                    {activeSchematic.title.startsWith("Trigger:")
+                      ? activeSchematic.title
+                      : `Schematica: ${activeSchematic.title}`}
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                {activeStep.note}
-              </p>
-              {activeSchematic && (
-                <div className="pt-1 border-t border-white/5 text-[9px] text-muted-foreground/80 space-y-0.5 font-mono">
-                  {activeSchematic.keyPoints.slice(0, 2).map((kp, idx) => (
-                    <div key={idx} className="flex items-start gap-1">
-                      <ChevronRight size={10} className="shrink-0 text-[#C5A059] mt-0.5" />
-                      <span>{kp}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <details className="text-[9.5px] text-muted-foreground/80 cursor-pointer pt-0.5">
+                <summary className="hover:text-[#C5A059] transition-colors select-none font-mono text-[9px] flex items-center justify-between">
+                  <span>Nota Analitica Fase {selectedPhase}</span>
+                  <span className="text-[8px] text-muted-foreground">espandi ▾</span>
+                </summary>
+                <p className="mt-1 p-1.5 rounded bg-black/50 border border-white/5 leading-relaxed font-sans text-muted-foreground/90">
+                  {activeStep.note}
+                </p>
+                {activeSchematic && (
+                  <div className="pt-1 border-t border-white/5 text-[9px] text-muted-foreground/80 space-y-0.5 font-mono">
+                    {activeSchematic.keyPoints.slice(0, 2).map((kp, idx) => (
+                      <div key={idx} className="flex items-start gap-1">
+                        <ChevronRight size={10} className="shrink-0 text-[#C5A059] mt-0.5" />
+                        <span>{kp}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </details>
             </div>
           )}
         </div>
@@ -289,7 +297,7 @@ export function BacktestAiSentinelPanel({
               </span>
             </div>
 
-            <span className="text-[10px] font-mono text-muted-foreground">
+            <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">
               R:R <strong className="text-foreground">1:{setup.riskRewardRatio}</strong> · Lotti:{" "}
               <strong className="text-foreground">{setup.lotSize}L</strong>
             </span>
@@ -298,68 +306,96 @@ export function BacktestAiSentinelPanel({
           {/* Badge Le 4 Domande & Router di Zona */}
           <div className="flex flex-wrap items-center gap-1 text-[9px] font-mono">
             {setup.sessionName && (
-              <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted-foreground">
+              <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted-foreground whitespace-nowrap">
                 {setup.sessionName}
               </span>
             )}
             {setup.zoneScenario && (
-              <span className="px-1.5 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#C5A059] font-semibold">
-                Router: {setup.zoneScenario === "valid_zone" ? "Bivio 1 (Zona Mitigata)" : setup.zoneScenario === "no_zone" ? "Bivio 2 (Sola Liquidità)" : "Bivio 3 (Causa 2 · 50% Rischio)"}
+              <span className="px-1.5 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#C5A059] font-semibold whitespace-nowrap">
+                Router: {setup.zoneScenario === "valid_zone" ? "Bivio 1" : setup.zoneScenario === "no_zone" ? "Bivio 2" : "Bivio 3 (Causa 2)"}
               </span>
             )}
             {setup.triggerType && (
-              <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold">
+              <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold whitespace-nowrap">
                 Trigger: {setup.triggerType}
               </span>
             )}
             {setup.imbalancePercent != null && (
-              <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted-foreground">
+              <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted-foreground whitespace-nowrap">
                 SOW/SOS: {setup.imbalancePercent}%
               </span>
             )}
           </div>
 
-          {/* Griglia Livelli Prezzo */}
-          <div className="grid grid-cols-4 gap-1 text-center font-mono text-[10px]">
-            <div className={`p-1 rounded border ${isLimit ? "bg-amber-500/10 border-amber-500/30" : "bg-black/40 border-white/5"}`}>
-              <span className="text-[8px] text-muted-foreground uppercase block">
-                {isLimit ? "Limit Entry" : "Entry Mkt"}
-              </span>
-              <span className={`font-bold ${isLimit ? "text-amber-300" : "text-foreground"}`}>
-                {setup.entryPrice}
-              </span>
+          {/* ── BARRA VISIVA SPETTRO PREZZO / RISCHIO-RENDIMENTO ── */}
+          <div className="p-2 rounded-lg bg-black/50 border border-white/10 space-y-1.5">
+            <div className="flex items-center justify-between text-[9px] font-mono">
+              <span className="text-rose-400 font-bold">SL {setup.stopLossPrice}</span>
+              <span className="text-amber-300 font-bold">ENTRY {setup.entryPrice}</span>
+              <span className="text-amber-400 font-semibold">BE {setup.breakEvenPrice}</span>
+              <span className="text-emerald-400 font-bold">TP1 {setup.takeProfit1Price}</span>
             </div>
-            <div className="p-1 rounded bg-black/40 border border-white/5">
-              <span className="text-[8px] text-rose-400/80 uppercase block">SL ({setup.pipsRisk}p)</span>
-              <span className="text-rose-400 font-bold">{setup.stopLossPrice}</span>
-            </div>
-            <div className="p-1 rounded bg-black/40 border border-white/5">
-              <span className="text-[8px] text-amber-400/80 uppercase block">BE (1:1.5R)</span>
-              <span className="text-amber-300 font-bold">{setup.breakEvenPrice}</span>
-            </div>
-            <div className="p-1 rounded bg-black/40 border border-white/5">
-              <span className="text-[8px] text-emerald-400/80 uppercase block">TP1 (1:3R 50%)</span>
-              <span className="text-emerald-300 font-bold">{setup.takeProfit1Price}</span>
+            <div className="h-2 w-full rounded-full bg-white/10 flex overflow-hidden border border-white/10" title="Spettro Operativo Wyckoff: Stop Loss → Entry → BE 1:1.5R → TP1 1:3R">
+              <div className="bg-rose-500/80 w-[24%]" title={`SL: ${setup.stopLossPrice}`} />
+              <div className="bg-[#C5A059] w-[14%]" title={`Entry: ${setup.entryPrice}`} />
+              <div className="bg-amber-400/80 w-[30%]" title={`BE 1:1.5R: ${setup.breakEvenPrice}`} />
+              <div className="bg-emerald-500 w-[32%]" title={`TP1 1:3R (50%): ${setup.takeProfit1Price}`} />
             </div>
           </div>
 
-          {/* Motivo Ingresso & Invalidazione */}
-          <div className="text-[10px] text-muted-foreground/90 bg-white/[0.02] p-1.5 rounded border border-white/5 space-y-1">
-            {setup.entryReason && (
-              <p className="flex items-start gap-1 text-amber-300/90 font-mono text-[9px]">
-                <Clock size={11} className="shrink-0 mt-0.5 text-amber-400" />
-                <span>{setup.entryReason}</span>
-              </p>
-            )}
-            <p className="flex items-center gap-1 text-muted-foreground font-mono text-[9px]">
-              <Zap size={10} className="shrink-0 text-amber-400" />
-              <span><strong>BE:</strong> {setup.breakEvenRule}</span>
-            </p>
-            <p className="flex items-center gap-1 text-emerald-300/90 font-mono text-[9px]">
-              <Target size={10} className="shrink-0 text-emerald-400" />
-              <span><strong>TP1:</strong> {setup.takeProfit1Rule}</span>
-            </p>
+          {/* ── GRIGLIA PREZZI 2x2 SPAZIOSA E LEGGIBILE (Zero Sovrapposizioni) ── */}
+          <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
+            <div className={`p-2 rounded-lg border flex items-center justify-between ${isLimit ? "bg-amber-500/10 border-amber-500/30" : "bg-black/40 border-white/10"}`}>
+              <span className="text-[9px] text-muted-foreground uppercase">{isLimit ? "Entry Limit" : "Entry Mkt"}</span>
+              <span className={`font-bold whitespace-nowrap ${isLimit ? "text-amber-300" : "text-foreground"}`}>
+                {setup.entryPrice}
+              </span>
+            </div>
+            <div className="p-2 rounded-lg bg-black/40 border border-rose-500/30 flex items-center justify-between">
+              <span className="text-[9px] text-rose-400/80 uppercase">SL ({setup.pipsRisk}p)</span>
+              <span className="text-rose-400 font-bold whitespace-nowrap">{setup.stopLossPrice}</span>
+            </div>
+            <div className="p-2 rounded-lg bg-black/40 border border-amber-500/20 flex items-center justify-between">
+              <span className="text-[9px] text-amber-400/80 uppercase">BE (1:1.5R)</span>
+              <span className="text-amber-300 font-bold whitespace-nowrap">{setup.breakEvenPrice}</span>
+            </div>
+            <div className="p-2 rounded-lg bg-black/40 border border-emerald-500/30 flex items-center justify-between">
+              <span className="text-[9px] text-emerald-400/80 uppercase">TP1 (1:3R)</span>
+              <span className="text-emerald-300 font-bold whitespace-nowrap">{setup.takeProfit1Price}</span>
+            </div>
           </div>
+
+          {/* ── REGOLE DI GESTIONE & INVALIDAZIONE (Accordion a Scomparsa) ── */}
+          <details className="text-[9.5px] font-mono text-muted-foreground bg-white/[0.02] p-2 rounded-lg border border-white/5 cursor-pointer">
+            <summary className="flex items-center justify-between text-[#C5A059] font-bold select-none text-[9px] uppercase tracking-wider">
+              <span>Regole di Gestione Step 04 & Dottrina</span>
+              <span className="text-[8px] text-muted-foreground">dettagli ▾</span>
+            </summary>
+            <div className="pt-2 space-y-1.5 border-t border-white/5 mt-1.5">
+              {setup.entryReason && (
+                <p className="flex items-start gap-1 text-amber-300/90 font-mono text-[9px]">
+                  <Clock size={11} className="shrink-0 mt-0.5 text-amber-400" />
+                  <span>{setup.entryReason}</span>
+                </p>
+              )}
+              <p className="flex items-center gap-1 text-muted-foreground font-mono text-[9px]">
+                <Zap size={10} className="shrink-0 text-amber-400" />
+                <span>
+                  <strong>BE:</strong>{" "}
+                  {setup.breakEvenRule
+                    .replace("sgnt_be", "mgmt_be")
+                    .replace("sgmt_be", "mgmt_be")}
+                </span>
+              </p>
+              <p className="flex items-center gap-1 text-emerald-300/90 font-mono text-[9px]">
+                <Target size={10} className="shrink-0 text-emerald-400" />
+                <span>
+                  <strong>TP1:</strong>{" "}
+                  {setup.takeProfit1Rule.replace("ngst_tp1", "mgmt_tp1")}
+                </span>
+              </p>
+            </div>
+          </details>
 
           {/* Indicatore Auto-Esecuzione & Pulsante d'Azione Primario */}
           {autoExecuteAi && (
@@ -372,10 +408,10 @@ export function BacktestAiSentinelPanel({
           <button
             type="button"
             onClick={() => onExecuteSetup(setup)}
-            className="w-full py-2.5 px-3 rounded-xl bg-[#C5A059] hover:bg-[#d8b167] text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg cursor-pointer transition-all hover:scale-[1.01]"
+            className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#C5A059] to-[#d8b167] hover:brightness-110 text-black font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg cursor-pointer transition-all hover:scale-[1.01]"
           >
             <Play size={14} className="fill-black" />
-            <span>
+            <span className="whitespace-nowrap">
               {isLimit
                 ? `Piazza ${setup.direction === "long" ? "Buy Limit" : "Sell Limit"} nella Forgia`
                 : "Esegui Setup a Mercato nella Forgia"}
@@ -395,111 +431,79 @@ export function BacktestAiSentinelPanel({
         </div>
       )}
 
-      {/* ── Memoria Operativa Antifragile & Statistiche per Singolo Concetto (Piano Operativo) ── */}
+      {/* ── Memoria Operativa Antifragile & Flip Compatta (Micro-Dashboard) ── */}
       {operativeMemory && (() => {
         const insights = deriveConceptInsights(operativeMemory);
         const s4 = operativeMemory.step4CareStats;
         return (
-          <div className="pt-2 border-t border-white/10 space-y-2 text-[10px] font-mono">
-            <div className="flex items-center justify-between">
-              <span className="text-[#C5A059] font-bold uppercase tracking-wider flex items-center gap-1">
+          <div className="pt-2 border-t border-white/10 space-y-1.5 text-[10px] font-mono">
+            <div className="flex items-center justify-between gap-1 flex-wrap">
+              <span className="text-[#C5A059] font-bold uppercase tracking-wider flex items-center gap-1 whitespace-nowrap">
                 <Shield size={11} />
                 <span>Memoria Antifragile & Flip</span>
               </span>
-              <div className="flex items-center gap-2">
-                {operativeMemory.stats.totalTrades > 0 && (
-                  <span className="text-emerald-400 font-bold">
-                    WR: {operativeMemory.stats.winRate}% ({operativeMemory.stats.wins}W/{operativeMemory.stats.losses}L/{operativeMemory.stats.breakevens}BE · {operativeMemory.stats.totalR >= 0 ? "+" : ""}{operativeMemory.stats.totalR}R)
-                  </span>
-                )}
-                {onResetMemory && (
-                  <button
-                    type="button"
-                    onClick={onResetMemory}
-                    className="text-muted-foreground hover:text-foreground cursor-pointer"
-                    title="Resetta memoria operativa per questo asset"
-                  >
-                    <RotateCcw size={10} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {operativeMemory.flipActive && operativeMemory.flipDirection && (
-              <div className="p-1.5 rounded bg-rose-500/15 border border-rose-500/40 text-rose-200 flex items-center gap-1.5">
-                <Zap size={11} className="text-rose-400 shrink-0 animate-pulse" />
-                <span>
-                  <strong>REGOLA DEL FLIP ATTIVA:</strong> Schematica d'inversione violata → Solo continuazione{" "}
-                  <strong>{operativeMemory.flipDirection.toUpperCase()} (JTC / BTI)</strong>
-                </span>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-1 text-[9px] text-muted-foreground">
-              <span className="px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/10">
-                Sbilanciamento min: ≥{operativeMemory.minImbalancePercent}%
-              </span>
-              <span className="px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/10">
-                Max Congestione: {operativeMemory.maxCongestionBars}b
-              </span>
-              <span className="px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/10">
-                Causa 2: Rischio {Math.round(operativeMemory.reaccumRiskMultiplier * 100)}%
-              </span>
-              {operativeMemory.preferPocOnReversal && (
-                <span className="px-1.5 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#C5A059]">
-                  Priorità POC Attiva
-                </span>
+              {onResetMemory && (
+                <button
+                  type="button"
+                  onClick={onResetMemory}
+                  className="text-muted-foreground hover:text-foreground cursor-pointer"
+                  title="Resetta memoria operativa per questo asset"
+                >
+                  <RotateCcw size={10} />
+                </button>
               )}
             </div>
 
-            {/* Statistiche Step 04 Cura Attiva */}
-            {s4 && (s4.beMovedCount > 0 || s4.tp1PartialCount > 0 || s4.invalidationSavesCount > 0 || s4.savedRiskR > 0) && (
-              <div className="grid grid-cols-4 gap-1 text-center text-[8.5px] bg-black/30 p-1 rounded border border-white/5">
-                <div>
-                  <span className="text-muted-foreground block">BE 1:1.5R</span>
-                  <strong className="text-amber-300">{s4.beMovedCount}</strong>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block">TP1 1:3R</span>
-                  <strong className="text-emerald-300">{s4.tp1PartialCount}</strong>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block">Tagli Inv.</span>
-                  <strong className="text-sky-300">{s4.invalidationSavesCount + s4.congestionExitsCount}</strong>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block">R Salvati</span>
-                  <strong className="text-emerald-400">+{s4.savedRiskR}R</strong>
-                </div>
+            {operativeMemory.flipActive && operativeMemory.flipDirection && (
+              <div className="p-1.5 rounded bg-rose-500/15 border border-rose-500/40 text-rose-200 flex items-center gap-1.5 text-[9.5px]">
+                <Zap size={11} className="text-rose-400 shrink-0 animate-pulse" />
+                <span>
+                  <strong>REGOLA DEL FLIP ATTIVA:</strong> Schematica violata → Solo continuazione{" "}
+                  <strong>{operativeMemory.flipDirection.toUpperCase()}</strong>
+                </span>
               </div>
             )}
 
-            {/* Statistiche sui Singoli Concetti del Piano Operativo */}
+            {/* Micro-Dashboard KPI a 3 Colonne Spaziose */}
+            <div className="grid grid-cols-3 gap-1 text-center font-mono text-[9px] p-1.5 rounded-lg bg-black/40 border border-white/5">
+              <div>
+                <span className="text-muted-foreground block text-[8px] uppercase">Win Rate</span>
+                <strong className="text-emerald-400 whitespace-nowrap">{operativeMemory.stats.winRate}%</strong>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[8px] uppercase">Totale R</span>
+                <strong className={`whitespace-nowrap ${operativeMemory.stats.totalR >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {operativeMemory.stats.totalR >= 0 ? "+" : ""}{operativeMemory.stats.totalR}R
+                </strong>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[8px] uppercase">Cura Step 04</span>
+                <strong className="text-amber-300 whitespace-nowrap">+{s4?.savedRiskR ?? 0}R Salvati</strong>
+              </div>
+            </div>
+
+            {/* Statistiche Concetti in Accordion Compatto */}
             {insights.activeConcepts.length > 0 && (
-              <div className="space-y-1 bg-black/40 p-1.5 rounded border border-white/10">
-                <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-                  <span className="uppercase tracking-wider text-foreground font-semibold">
-                    Statistiche per Singolo Concetto
-                  </span>
+              <details className="text-[9px] font-mono text-muted-foreground pt-0.5">
+                <summary className="cursor-pointer text-[#C5A059] hover:underline flex items-center justify-between select-none">
+                  <span>Statistiche Concetti ({insights.activeConcepts.length}) ▾</span>
                   {insights.bestTrigger && (
-                    <span className="text-emerald-400">
-                      Top Trigger: <strong>{insights.bestTrigger}</strong>
-                    </span>
+                    <span className="text-emerald-400">Top: {insights.bestTrigger}</span>
                   )}
-                </div>
-                <div className="max-h-28 overflow-y-auto space-y-1 pr-0.5">
-                  {insights.activeConcepts.slice(0, 8).map((c) => (
+                </summary>
+                <div className="mt-1 max-h-24 overflow-y-auto space-y-0.5 pr-0.5 border border-white/5 p-1 rounded bg-black/40">
+                  {insights.activeConcepts.slice(0, 6).map((c) => (
                     <div
                       key={`${c.category}:${c.key}`}
-                      className="flex items-center justify-between text-[9px] px-1.5 py-0.5 rounded bg-white/[0.02] border border-white/5"
+                      className="flex items-center justify-between text-[8.5px] px-1 py-0.5 rounded bg-white/[0.02]"
                     >
-                      <span className="truncate text-foreground/90 max-w-[145px]" title={c.label}>
+                      <span className="truncate text-foreground/90 max-w-[140px]" title={c.label}>
                         {c.label}
                       </span>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                         <span className="text-muted-foreground">{c.trades}T</span>
                         <span className={c.winRate >= 50 ? "text-emerald-400 font-bold" : "text-amber-300"}>
-                          {c.winRate}% WR
+                          {c.winRate}%
                         </span>
                         <span className={c.expectancyR >= 0 ? "text-emerald-300" : "text-rose-400"}>
                           {c.expectancyR >= 0 ? "+" : ""}{c.expectancyR}R
@@ -508,12 +512,12 @@ export function BacktestAiSentinelPanel({
                     </div>
                   ))}
                 </div>
-              </div>
+              </details>
             )}
 
             {operativeMemory.learnedLessons[0] && (
-              <p className="text-[9.5px] text-muted-foreground/90 bg-black/40 p-1.5 rounded border border-white/5 leading-snug font-sans">
-                <strong className="text-[#C5A059] font-mono">Ultima Lezione:</strong> {operativeMemory.learnedLessons[0]}
+              <p className="text-[9px] text-muted-foreground/90 bg-black/40 p-1.5 rounded border border-white/5 leading-snug font-sans truncate" title={operativeMemory.learnedLessons[0]}>
+                <strong className="text-[#C5A059] font-mono">Lezione:</strong> {operativeMemory.learnedLessons[0]}
               </p>
             )}
           </div>

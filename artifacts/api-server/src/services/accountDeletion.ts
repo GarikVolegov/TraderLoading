@@ -286,6 +286,7 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`DELETE FROM quotes WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM push_subscriptions WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM user_settings WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM honor_seals WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM financial_profiles WHERE user_id = ${userId}`);
     await tx.execute(sql`DELETE FROM login_access WHERE user_id = ${userId}`);
 

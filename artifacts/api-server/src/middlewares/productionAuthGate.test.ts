@@ -72,6 +72,7 @@ assert.deepEqual(
     "/backtest",
     "/checkins",
     "/checklist",
+    "/financial-profile",
     "/ideas",
     "/journal",
     "/mission-templates",

@@ -1,7 +1,7 @@
 import { ensureAcademyIdentity } from "./academyIdentity.js";
 import { LaunchError } from "../lib/launchError.js";
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import {
   db,
   candidateApplicationsTable as applications,
@@ -75,7 +75,9 @@ export async function createCandidate(
         referredBy: input.referredBy,
         selectedServices,
         approvedServices: selectedServices,
-        monthlyFeeCents: pricing.monthlyFeeCents,
+        monthlyFeeCents: pricing.promoActive
+          ? (pricing.promoMonthlyFeeCents ?? 260)
+          : pricing.monthlyFeeCents,
         yearlyFeeCents: pricing.yearlyFeeCents,
         oneTimeFeeCents: pricing.oneTimeFeeCents,
         currency: "EUR",
@@ -100,7 +102,7 @@ export async function createCandidate(
         kind: "candidate",
         recipient: record.email,
         userId: record.userId,
-        subject: "LIMEN · Candidatura ricevuta",
+        subject: "AUREUS · Candidatura ricevuta",
         body: `Abbiamo ricevuto la tua candidatura ${candidateCode}. È in valutazione: non è stato attivato alcun addebito. Dotazione configurata: ${pricing.formattedSummary}. Puoi accedere subito al Varco e al Libro della Verità mentre attendi la revisione del Concilio.`,
         path: "/",
       },
@@ -123,6 +125,7 @@ export async function admitCandidate(
   reviewer: string,
   notes: string,
   approvedServices?: string[],
+  billingCycle?: LimenBillingCycle,
 ) {
   return db.transaction(async (tx) => {
     // One shared lock serializes admissions across instances and prevents overbooking.
@@ -134,11 +137,15 @@ export async function admitCandidate(
       .for("update");
     if (!existing) throw new LaunchError("Candidatura non trovata.", 404);
 
-    const finalApprovedServices =
+    const cycle: LimenBillingCycle =
+      billingCycle ?? (existing.billingCycle === "yearly" ? "yearly" : "monthly");
+    const rawApproved =
       approvedServices && approvedServices.length > 0
         ? Array.from(new Set(["base_protocol", ...approvedServices]))
         : (existing.approvedServices as string[] | null) ??
           (existing.selectedServices as string[] | null) ?? ["base_protocol"];
+    const pricing = calculateLimenServicesPricing(rawApproved, cycle);
+    const finalApprovedServices = [...pricing.selectedIds];
 
     if (existing.status === "ammesso") {
       // If already admitted, update approved services if changed
@@ -146,6 +153,12 @@ export async function admitCandidate(
         .update(applications)
         .set({
           approvedServices: finalApprovedServices,
+          billingCycle: cycle,
+          monthlyFeeCents: pricing.promoActive
+          ? (pricing.promoMonthlyFeeCents ?? 260)
+          : pricing.monthlyFeeCents,
+          yearlyFeeCents: pricing.yearlyFeeCents,
+          oneTimeFeeCents: pricing.oneTimeFeeCents,
           notes: notes || existing.notes,
           reviewedBy: reviewer,
           updatedAt: new Date(),
@@ -178,6 +191,12 @@ export async function admitCandidate(
       .set({
         status: "ammesso",
         approvedServices: finalApprovedServices,
+        billingCycle: cycle,
+        monthlyFeeCents: pricing.promoActive
+          ? (pricing.promoMonthlyFeeCents ?? 260)
+          : pricing.monthlyFeeCents,
+        yearlyFeeCents: pricing.yearlyFeeCents,
+        oneTimeFeeCents: pricing.oneTimeFeeCents,
         userId: user?.id ?? existing.userId ?? null,
         reviewedBy: reviewer,
         reviewedAt: new Date(),
@@ -186,14 +205,18 @@ export async function admitCandidate(
       })
       .where(eq(applications.id, id))
       .returning();
+    const admissionBody =
+      existing.monthlyFeeCents === 260
+        ? "La tua candidatura al Protocollo AUREUS è stata ammessa dal Concilio. La tua Dotazione Operativa (Forgia del Passato + Architettura Patrimoniale) è attiva con la tariffa promozionale di 2,60 € per i primi 14 giorni (poi 10 €/mese). I servizi sono ora sbloccati nella tua dotazione operativa."
+        : "La tua candidatura al Protocollo AUREUS è stata ammessa dal Concilio. I servizi approvati sono ora sbloccati nella tua dotazione operativa.";
     await queueLaunchEmail(
       {
         key: `admission:${id}`,
         kind: "admission",
         recipient: existing.email,
         userId: user?.id,
-        subject: "LIMEN · La tua candidatura è stata ammessa",
-        body: "La tua candidatura al Protocollo LIMEN è stata ammessa dal Concilio. I servizi approvati sono ora sbloccati nella tua dotazione operativa.",
+        subject: "AUREUS · La tua candidatura è stata ammessa",
+        body: admissionBody,
         path: "/",
       },
       tx,
@@ -226,7 +249,9 @@ export async function updateCandidateApprovedServices(
       .set({
         approvedServices: [...pricing.selectedIds],
         billingCycle: cycle,
-        monthlyFeeCents: pricing.monthlyFeeCents,
+        monthlyFeeCents: pricing.promoActive
+          ? (pricing.promoMonthlyFeeCents ?? 260)
+          : pricing.monthlyFeeCents,
         yearlyFeeCents: pricing.yearlyFeeCents,
         oneTimeFeeCents: pricing.oneTimeFeeCents,
         reviewedBy: reviewer,
@@ -243,6 +268,7 @@ export async function updateCandidateApprovedServices(
 export async function getCandidateEntitlementsForUser(
   userId: string | null,
   userEmail?: string | null,
+  candidateCode?: string | null,
 ): Promise<{
   hasApplication: boolean;
   candidateCode: string | null;
@@ -322,13 +348,30 @@ export async function getCandidateEntitlementsForUser(
       .limit(1);
     application = byEmail;
 
-    // Link application to userId if available
+    // Link application to userId ONLY if the user record with userId actually owns this email
     if (application && userId && !application.userId) {
-      await db
-        .update(applications)
-        .set({ userId })
-        .where(eq(applications.id, application.id));
+      const [verifiedUser] = await db
+        .select({ email: usersTable.email })
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .limit(1);
+
+      if (verifiedUser?.email?.toLowerCase() === application.email.toLowerCase()) {
+        await db
+          .update(applications)
+          .set({ userId })
+          .where(eq(applications.id, application.id));
+      }
     }
+  }
+
+  if (!application && candidateCode) {
+    const [byCode] = await db
+      .select()
+      .from(applications)
+      .where(eq(applications.candidateCode, candidateCode))
+      .limit(1);
+    application = byCode;
   }
 
   if (!application) {
@@ -367,6 +410,10 @@ export async function getCandidateEntitlementsForUser(
   };
 }
 export async function isCandidateAdmitted(userId: string) {
+  // Unconditional bypass for Admin users
+  const principal = await getAdminPrincipalForUser(userId);
+  if (principal) return true;
+
   const user = await ensureAcademyIdentity(userId);
   if (!user?.email) return false;
   const [application] = await db
@@ -375,7 +422,10 @@ export async function isCandidateAdmitted(userId: string) {
     .where(
       and(
         eq(applications.status, "ammesso"),
-        sql`lower(${applications.email}) = ${user.email.toLowerCase()}`,
+        or(
+          eq(applications.userId, userId),
+          sql`lower(${applications.email}) = ${user.email.toLowerCase()}`,
+        ),
       ),
     )
     .limit(1);
@@ -395,7 +445,7 @@ export async function createSchoolRequest(input: typeof schoolRequestsTable.$inf
           key: `school:${row.id}`,
           kind: "school",
           recipient: row.email,
-          subject: "LIMEN · Richiesta partnership ricevuta",
+          subject: "AUREUS · Richiesta partnership ricevuta",
           body: "Abbiamo ricevuto la richiesta per la tua scuola. Prepariamo una proposta con setup iniziale, posti concordati per sei mesi e quota per i nuovi ingressi. Il pacchetto riguarda il software e la vostra formazione: il Protocollo e il feedback personale del docente restano separati. Nessun acquisto è stato attivato.",
           path: "/#schools",
         },

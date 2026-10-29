@@ -39,6 +39,7 @@ interface TaxDoctrineModalProps {
   onClose: () => void;
   taxCountry?: TaxCountry;
   taxRegime?: TaxRegimeMode;
+  initialTab?: "regimes" | "assets" | "prop" | "deadlines";
   onSelectRegime?: (regime: TaxRegimeMode) => void;
 }
 
@@ -47,15 +48,22 @@ export const TaxDoctrineModal: React.FC<TaxDoctrineModalProps> = ({
   onClose,
   taxCountry = "IT",
   taxRegime = "DICHIARATIVO",
+  initialTab = "regimes",
   onSelectRegime,
 }) => {
-  const [activeTab, setActiveTab] = useState<"regimes" | "assets" | "prop" | "deadlines">("regimes");
+  const [activeTab, setActiveTab] = useState<"regimes" | "assets" | "prop" | "deadlines">(initialTab);
+
+  React.useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [copiedChecklist, setCopiedChecklist] = useState<boolean>(false);
 
   const doctrine = ITALY_TAX_DOCTRINE;
 
   const handleCopyChecklist = () => {
-    const text = `CHECKLIST ADEMPIMENTI FISCALI TRADING & WEALTH (ITALIA - LIMEN PROTOCOL)
+    const text = `CHECKLIST ADEMPIMENTI FISCALI TRADING & WEALTH (ITALIA - AUREUS PROTOCOL)
 ----------------------------------------------------------------------
 DOCUMENTI PER IL COMMERCIALISTA (MODELLO REDDITI PERSONE FISICHE):
 
@@ -85,7 +93,7 @@ SCADENZE CHIAVE F24:
 - 30 Giugno: Saldo anno precedente + Primo Acconto imposte (Codice 1100 / 4043)
 - 30 Novembre: Secondo Acconto imposte
 ----------------------------------------------------------------------
-Generato dal Banco dell'Architettura Patrimoniale LIMEN`;
+Generato dal Banco dell'Architettura Patrimoniale AUREUS`;
 
     navigator.clipboard.writeText(text);
     setCopiedChecklist(true);
@@ -144,7 +152,7 @@ Generato dal Banco dell'Architettura Patrimoniale LIMEN`;
             </div>
           </div>
           <DialogDescription className="sr-only">
-            Compendio erariale del protocollo LIMEN: disciplina del regime dichiarativo, tassazione per asset class, proventi da prop firm e calendario F24 per l'Italia.
+            Compendio erariale del protocollo AUREUS: disciplina del regime dichiarativo, tassazione per asset class, proventi da prop firm e calendario F24 per l'Italia.
           </DialogDescription>
 
           {/* Navigazione Tabs */}
@@ -378,7 +386,7 @@ Generato dal Banco dell'Architettura Patrimoniale LIMEN`;
                 <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
                   <span className="font-bold text-foreground uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                     <Percent className="h-3.5 w-3.5 text-[#C5A059]" />
-                    <span>Aliquote & Disciplina Fiscale dei 5 Motori LIMEN</span>
+                    <span>Aliquote & Disciplina Fiscale dei 5 Motori AUREUS</span>
                   </span>
                   <span className="text-[9.5px] text-slate-400">Aggiornato TUIR & Prassi Erariale</span>
                 </div>
@@ -508,7 +516,7 @@ Generato dal Banco dell'Architettura Patrimoniale LIMEN`;
                 ))}
               </div>
 
-              {/* Regola Inviolabile LIMEN Prop Firm */}
+              {/* Regola Inviolabile AUREUS Prop Firm */}
               <div className="rounded-xl border border-red-500/40 bg-red-950/20 p-3 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-red-300 font-bold uppercase text-xs">
                   <ShieldAlert className="h-4 w-4 text-red-400 shrink-0" />
@@ -590,7 +598,7 @@ Generato dal Banco dell'Architettura Patrimoniale LIMEN`;
                     Hai bisogno di preparare i dati per il tuo commercialista?
                   </strong>
                   <span className="text-[10px] text-slate-300 block">
-                    Copia la checklist standard LIMEN con l'elenco dei report e dei quadri necessari.
+                    Copia la checklist standard AUREUS con l'elenco dei report e dei quadri necessari.
                   </span>
                 </div>
                 <Button

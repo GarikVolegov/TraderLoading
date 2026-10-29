@@ -62,26 +62,6 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/app-icon-512.png?v=20261021g" />
     <link rel="apple-touch-icon" sizes="180x180" href="/limen-touch-180.png?v=20261021g" />
     <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/limen-touch-180.png?v=20261021g" />
-    <script>
-      (function() {
-        try {
-          var v = '20261021g_' + Date.now();
-          var head = document.head || document.getElementsByTagName('head')[0];
-          var icoLink = document.createElement('link');
-          icoLink.rel = 'icon';
-          icoLink.type = 'image/png';
-          icoLink.sizes = '32x32';
-          icoLink.href = '/limen-tab-32.png?v=' + v;
-          head.appendChild(icoLink);
-
-          var appleLink = document.createElement('link');
-          appleLink.rel = 'apple-touch-icon';
-          appleLink.sizes = '180x180';
-          appleLink.href = '/limen-touch-180.png?v=' + v;
-          head.appendChild(appleLink);
-        } catch(e) {}
-      })();
-    </script>
     <meta name="theme-color" content="#0A0A0C" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -89,6 +69,7 @@
     <meta name="apple-mobile-web-app-title" content="AUREUS" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
@@ -100,6 +81,39 @@
         <div style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:0.32em;color:#F4F4F6;text-transform:uppercase;">AUREUS PROTOCOL</div>
       </div>
     </div>
+    <!-- Fail-safe Pre-React Recovery Handler: Previene definitivamente la schermata nera in caso di chunk 404 durante gli aggiornamenti PWA -->
+    <script>
+      (function() {
+        var hasTriggeredRecovery = false;
+        function triggerEmergencyRecovery(reason) {
+          if (hasTriggeredRecovery) return;
+          hasTriggeredRecovery = true;
+          console.warn("[AUREUS Fail-Safe] Errore di caricamento chunk/modulo:", reason);
+          var splash = document.getElementById("app-splash");
+          if (splash) {
+            splash.removeAttribute("aria-hidden");
+            splash.style.animation = "none";
+            splash.innerHTML =
+              '<div style="max-width:340px;margin:0 auto;text-align:center;padding:24px;color:#F4F4F6;font-family:\'Space Grotesk\',system-ui,sans-serif;">' +
+              '<div style="width:56px;height:56px;margin:0 auto 16px;border-radius:14px;border:1px solid rgba(197,160,89,0.4);background:#11131c;display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(197,160,89,0.2);">' +
+              '<img src="/app-icon-192.png?v=20261021g" alt="AUREUS" width="40" height="40" style="border-radius:8px;" />' +
+              '</div>' +
+              '<div style="font-family:\'Cinzel\',serif;font-size:14px;letter-spacing:0.25em;color:#C5A059;text-transform:uppercase;margin-bottom:8px;font-weight:700;">AUREUS PROTOCOL</div>' +
+              '<p style="font-size:12px;color:#94a3b8;line-height:1.6;margin:0 0 20px;">Nuovo allineamento del software rilevato. Sincronizza per ripristinare il terminale.</p>' +
+              '<button type="button" onclick="if(\'caches\' in window){caches.keys().then(function(keys){return Promise.all(keys.map(function(k){return caches.delete(k);}));}).then(function(){location.reload(true);});}else{location.reload(true);}" style="cursor:pointer;background:#C5A059;color:#07080B;border:none;border-radius:8px;padding:10px 22px;font-weight:700;font-size:11px;font-family:monospace;letter-spacing:0.12em;text-transform:uppercase;box-shadow:0 4px 16px rgba(197,160,89,0.3);">' +
+              'Sincronizza Protocollo' +
+              '</button>' +
+              '</div>';
+          }
+        }
+
+        window.addEventListener("error", function(e) {
+          if (e && e.target && e.target.tagName === "SCRIPT") {
+            triggerEmergencyRecovery("Script tag load failed: " + (e.target.src || "module"));
+          }
+        }, true);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

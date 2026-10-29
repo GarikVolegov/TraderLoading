@@ -27,6 +27,7 @@ const router: IRouter = Router();
 // store when present, else a per-process memory store — same wiring as app.ts.
 const createTicketStore = process.env.REDIS_URL
   ? createRedisRateLimitStore({
+      prefix: "rl:support-ticket:",
       getClient: async () => {
         const pending = getSharedRedisClient();
         return pending ? ((await pending) as unknown as RateLimitRedis) : null;

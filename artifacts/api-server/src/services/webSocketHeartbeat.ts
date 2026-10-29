@@ -15,7 +15,28 @@ import { WebSocket, WebSocketServer } from "ws";
  */
 
 /** Inbound frame cap for control-channel sockets (ws default is 100 MiB). */
-export const CONTROL_WS_MAX_PAYLOAD_BYTES = 1024 * 1024; // 1 MiB
+export const CONTROL_WS_MAX_PAYLOAD_BYTES = 32 * 1024; // 32 KiB
+
+/**
+ * Lightweight per-socket sliding window rate limiter to prevent inbound frame floods
+ * from exhausting CPU or Redis pub/sub bandwidth.
+ */
+export function createSocketRateLimiter(
+  maxMessages = 60,
+  windowMs = 10_000,
+): (socket: object) => boolean {
+  const state = new WeakMap<object, { count: number; resetAt: number }>();
+  return (socket: object): boolean => {
+    const now = Date.now();
+    const entry = state.get(socket);
+    if (!entry || now >= entry.resetAt) {
+      state.set(socket, { count: 1, resetAt: now + windowMs });
+      return true;
+    }
+    entry.count += 1;
+    return entry.count <= maxMessages;
+  };
+}
 
 /** Skip broadcasting to a client whose outbound buffer is backed up past this. */
 export const WS_MAX_BUFFERED_BYTES = 4 * 1024 * 1024; // 4 MiB

@@ -29,6 +29,12 @@ export interface VarcoVisionRequest {
   activeSetup?: VarcoSetupPlan | null;
   enforceSessionWindows?: boolean;
   operativeMemory?: VarcoOperativeMemoryInput | null;
+  directionalBias?: {
+    h4MasterBias: "BULLISH" | "BEARISH" | "NEUTRAL";
+    edgeTier?: string;
+    antiFadeProtected?: boolean;
+    confidenceScore?: number;
+  };
   currentChecks?: {
     htfContext?: boolean;
     turningPoint?: boolean;
@@ -781,11 +787,6 @@ export function analyzeWyckoffSchematicGeometry(
     const lowestSecond = sortedLows[0] ?? scCandle;
     const secondLowestSecond = sortedLows[1] ?? lowestSecond;
 
-    // ST: candela dopo AR con minimo superiore a SC
-    const stCandleCandidate = postArCandles.find((c) => c.low > scCandle.low);
-    const stCandle = stCandleCandidate ?? (postArCandles[0] ?? arCandle);
-    const stPrice = roundPrice(stCandle.low, symbol);
-
     // C'è uno Spring se dopo il SC e un STB intermedio si verifica una caccia di liquidità sotto il minimo del SC
     // (o sotto lo STB sul bordo inferiore della schematica) con riassorbimento del corpo
     const prelimHeight = Math.max(1e-8, arPrice - scCandle.low);
@@ -803,6 +804,41 @@ export function analyzeWyckoffSchematicGeometry(
         ? (sweptBelowSc && secondLowestSecond.time < lowestSecond.time ? secondLowestSecond : (lowestSecond === secondLowestSecond ? scCandle : secondLowestSecond))
         : lowestSecond;
     const springCandle = hasSpring ? lowestSecond : null;
+
+    // Identificazione cronologica di ST (Secondary Test) e 10% (Zona Apollo di Fase B):
+    // In Wyckoff Accumulo, tra AR e STB/Spring:
+    // 1) ST è il trough / minimo di ritracciamento locale (swing low) dopo AR
+    // 2) 10% è il massimo induttivo di Fase B che testa/supera AR prima dello scarico STB
+    const sweepRefCandle = springCandle ?? (stbCandle && stbCandle.time > arCandle.time ? stbCandle : null);
+    const phaseBCandles = sweepRefCandle
+      ? postArCandles.filter((c) => c.time < sweepRefCandle.time)
+      : postArCandles;
+
+    let stCandle: VarcoVisionCandle;
+    let tenPercentCandle: VarcoVisionCandle;
+
+    if (phaseBCandles.length >= 2) {
+      const highestPhaseB = phaseBCandles.reduce((highest, c) => (c.high > highest.high ? c : highest), phaseBCandles[0]);
+      if (highestPhaseB.time > phaseBCandles[0].time) {
+        const pullbackCandles = phaseBCandles.filter((c) => c.time < highestPhaseB.time);
+        stCandle = pullbackCandles.reduce((lowest, c) => (c.low < lowest.low ? c : lowest), pullbackCandles[0]);
+        tenPercentCandle = highestPhaseB;
+      } else {
+        tenPercentCandle = highestPhaseB;
+        const postPeakCandles = phaseBCandles.filter((c) => c.time > highestPhaseB.time);
+        stCandle = postPeakCandles.length > 0
+          ? postPeakCandles.reduce((lowest, c) => (c.low < lowest.low ? c : lowest), postPeakCandles[0])
+          : phaseBCandles[0];
+      }
+    } else if (phaseBCandles.length === 1) {
+      stCandle = phaseBCandles[0];
+      tenPercentCandle = phaseBCandles[0];
+    } else {
+      stCandle = postArCandles[0] ?? arCandle;
+      tenPercentCandle = postArCandles[0] ?? arCandle;
+    }
+
+    const stPrice = roundPrice(stCandle.low, symbol);
 
     // Calcolo Ombra (wick inferiore) di STB e Ombra di SC (Zona di Test)
     const stbBodyLow = Math.min(stbCandle.open, stbCandle.close);
@@ -826,13 +862,7 @@ export function analyzeWyckoffSchematicGeometry(
     const schematicHeight = Math.max(1e-8, arPrice - schematicBottom);
 
     // 4. Identificazione del 10% (Zona Apollo)
-    // Massimo induttivo creato con spinta impulsiva oltre l'AR (o al 76% della schematica)
-    const candidatesAboveAr = postArCandles.filter((c) => c.high >= arPrice);
-    const tenPercentCandle =
-      candidatesAboveAr.length > 0
-        ? candidatesAboveAr.reduce((highest, c) => (c.high > highest.high ? c : highest), candidatesAboveAr[0])
-        : postArCandles.reduce((highest, c) => (c.high > highest.high ? c : highest), postArCandles[0] ?? arCandle);
-
+    // Livello del picco induttivo di Fase B (o calcolo proporzionale al 76% in assenza di sweep)
     const tenPercentLevel = roundPrice(
       tenPercentCandle && tenPercentCandle.high >= arPrice
         ? tenPercentCandle.high
@@ -898,7 +928,22 @@ export function analyzeWyckoffSchematicGeometry(
         ? roundPrice(Math.min(pocZonePrice, schematicBottom + schematicHeight * 0.35), symbol)
         : roundPrice(schematicBottom, symbol);
 
-    // Livelli Strutturali Range Wyckoff
+    // Candela SOS / Rottura:
+    // Se c'è stata espansione dopo STB/Spring, SOS è la candela di spinta con massimo relativo oltre il range
+    const postStbCandles = stbCandle
+      ? cluster.filter((c) => c.time > stbCandle.time)
+      : breakCandles;
+    const sosCandidate =
+      postStbCandles.length > 0
+        ? postStbCandles.reduce((highest, c) => (c.high > highest.high ? c : highest), postStbCandles[0])
+        : (breakCandles[breakCandles.length - 1] ?? candles[candles.length - 1]);
+    const sosCandle =
+      sosCandidate && sosCandidate.high >= tenPercentLevel
+        ? sosCandidate
+        : (breakCandles.find((c) => c.high >= tenPercentLevel) ?? breakCandles[breakCandles.length - 1] ?? candles[candles.length - 1]);
+
+    // Livelli Strutturali Range Wyckoff:
+    // Creek delimita la resistenza superiore Wyckoff (il livello 10% Apollo / AR)
     const creekPrice = roundPrice(Math.max(arPrice, tenPercentLevel), symbol);
     const icePrice = roundPrice(schematicBottom, symbol);
     const equilibriumPrice = roundPrice((creekPrice + icePrice) / 2, symbol);
@@ -915,20 +960,17 @@ export function analyzeWyckoffSchematicGeometry(
 
     const schematicType: WyckoffSchematicType = isReaccumOrRedistrib ? "reaccumulation" : "accumulation";
 
-    // Candela SOS / Rottura
-    const sosCandle =
-      breakCandles.find((c) => c.high >= tenPercentLevel) ??
-      breakCandles[breakCandles.length - 1] ??
-      candles[candles.length - 1];
-
     const schematicPoints: WyckoffPoint[] = [
       ...(psCandle && psCandle.time < scCandle.time ? [{ label: "PS" as const, price: psPrice, time: psCandle.time }] : []),
       { label: "SC", price: scPrice, time: scCandle.time },
       { label: "AR", price: arPrice, time: arCandle.time },
       ...(stCandle && stCandle.time > arCandle.time ? [{ label: "ST" as const, price: stPrice, time: stCandle.time }] : []),
+      ...(tenPercentCandle && tenPercentCandle.time > stCandle.time ? [{ label: "10%" as const, price: tenPercentLevel, time: tenPercentCandle.time }] : []),
       { label: "STB", price: roundPrice(stbCandle.low, symbol), time: stbCandle.time },
       ...(springCandle ? [{ label: "Spring" as const, price: roundPrice(springCandle.low, symbol), time: springCandle.time }] : []),
-      { label: "SOS", price: tenPercentLevel, time: sosCandle.time },
+      ...(sosCandle && sosCandle.time > (springCandle?.time ?? stbCandle.time) && sosCandle.time !== tenPercentCandle.time
+        ? [{ label: "SOS" as const, price: roundPrice(sosCandle.high, symbol), time: sosCandle.time }]
+        : []),
       ...(tenPercent2Candle && tenPercent2Level ? [{ label: "10% 2" as const, price: tenPercent2Level, time: tenPercent2Candle.time }] : []),
     ];
 
@@ -1072,11 +1114,6 @@ export function analyzeWyckoffSchematicGeometry(
     const highestSecond = sortedHighs[0] ?? bcCandle;
     const secondHighestSecond = sortedHighs[1] ?? highestSecond;
 
-    // ST: candela dopo AR con massimo inferiore a BC
-    const stCandleCandidate = postArCandles.find((c) => c.high < bcCandle.high);
-    const stCandle = stCandleCandidate ?? (postArCandles[0] ?? arCandle);
-    const stPrice = roundPrice(stCandle.high, symbol);
-
     // C'è un UT (Upthrust) se dopo il BC e l'AR il prezzo caccia sopra il massimo del BC (o sopra lo ST sul bordo superiore)
     // e rientra nel range chiudendo sotto il massimo
     const prelimHeight = Math.max(1e-8, bcCandle.high - arPrice);
@@ -1114,8 +1151,43 @@ export function analyzeWyckoffSchematicGeometry(
     const hasUtad = utadCandle !== null;
     const utadPrice = utadCandle ? roundPrice(utadCandle.high, symbol) : null;
 
+    // Identificazione cronologica di ST (Secondary Test) e 10% (Zona Apollo Ribassista di Fase B):
+    // In Wyckoff Distribuzione, tra AR e UT/UTAD:
+    // 1) ST è il peak di rimbalzo / pullback rialzista locale (swing high) sotto BC
+    // 2) 10% è il minimo induttivo di Fase B che testa o rompe sotto AR prima del pump verso UT/UTAD
+    const sweepRefCandle = utCandle ?? utadCandle ?? (highestSecond.high > bcCandle.high ? highestSecond : null);
+    const phaseBCandles = sweepRefCandle
+      ? postArCandles.filter((c) => c.time < sweepRefCandle.time)
+      : postArCandles;
+
+    let stCandle: VarcoVisionCandle;
+    let tenPercentCandle: VarcoVisionCandle;
+
+    if (phaseBCandles.length >= 2) {
+      const lowestPhaseB = phaseBCandles.reduce((lowest, c) => (c.low < lowest.low ? c : lowest), phaseBCandles[0]);
+      if (lowestPhaseB.time > phaseBCandles[0].time) {
+        const bounceCandles = phaseBCandles.filter((c) => c.time < lowestPhaseB.time);
+        stCandle = bounceCandles.reduce((highest, c) => (c.high > highest.high ? c : highest), bounceCandles[0]);
+        tenPercentCandle = lowestPhaseB;
+      } else {
+        tenPercentCandle = lowestPhaseB;
+        const postDropCandles = phaseBCandles.filter((c) => c.time > lowestPhaseB.time);
+        stCandle = postDropCandles.length > 0
+          ? postDropCandles.reduce((highest, c) => (c.high > highest.high ? c : highest), postDropCandles[0])
+          : phaseBCandles[0];
+      }
+    } else if (phaseBCandles.length === 1) {
+      stCandle = phaseBCandles[0];
+      tenPercentCandle = phaseBCandles[0];
+    } else {
+      stCandle = postArCandles[0] ?? arCandle;
+      tenPercentCandle = postArCandles[0] ?? arCandle;
+    }
+
+    const stPrice = roundPrice(stCandle.high, symbol);
+
     // Calcolo Ombra superiore (wick) di UT e Ombra superiore di BC (Zona di Test)
-    // Se UTAD è presente, come da diagramma LIMEN, la zona di TEST è ancorata sull'ombra/livello di UT (testata post-UTAD)
+    // Se UTAD è presente, come da diagramma AUREUS, la zona di TEST è ancorata sull'ombra/livello di UT (testata post-UTAD)
     const testRefCandle = utCandle ?? bcCandle;
     const testBodyHigh = Math.max(testRefCandle.open, testRefCandle.close);
     const testWickHeight = Math.max(testRefCandle.high - testBodyHigh, (testRefCandle.high - testRefCandle.low) * 0.3);
@@ -1132,12 +1204,6 @@ export function analyzeWyckoffSchematicGeometry(
     const schematicHeight = Math.max(1e-8, schematicTop - arPrice);
 
     // 4. Identificazione del 10% (Zona Apollo Ribassista)
-    const candidatesBelowAr = postArCandles.filter((c) => c.low <= arPrice);
-    const tenPercentCandle =
-      candidatesBelowAr.length > 0
-        ? candidatesBelowAr.reduce((lowest, c) => (c.low < lowest.low ? c : lowest), candidatesBelowAr[0])
-        : postArCandles.reduce((lowest, c) => (c.low < lowest.low ? c : lowest), postArCandles[0] ?? arCandle);
-
     const sow10Price = roundPrice(
       tenPercentCandle && tenPercentCandle.low <= arPrice
         ? tenPercentCandle.low
@@ -1216,19 +1282,29 @@ export function analyzeWyckoffSchematicGeometry(
     const schematicType: WyckoffSchematicType = isReaccumOrRedistrib ? "redistribution" : "distribution";
 
     // Identificazione precisa della candela di rottura del SOW 10%
+    const postUtCandles = utCandle || utadCandle
+      ? cluster.filter((c) => c.time > (utadCandle?.time ?? utCandle!.time))
+      : breakCandles;
+    const sowCandidate =
+      postUtCandles.length > 0
+        ? postUtCandles.reduce((lowest, c) => (c.low < lowest.low ? c : lowest), postUtCandles[0])
+        : (breakCandles[breakCandles.length - 1] ?? candles[candles.length - 1]);
     const sowCandle =
-      breakCandles.find((c) => c.low <= sow10Price) ??
-      breakCandles[breakCandles.length - 1] ??
-      candles[candles.length - 1];
+      sowCandidate && sowCandidate.low <= sow10Price
+        ? sowCandidate
+        : (breakCandles.find((c) => c.low <= sow10Price) ?? breakCandles[breakCandles.length - 1] ?? candles[candles.length - 1]);
 
     const schematicPoints: WyckoffPoint[] = [
       ...(psyCandle && psyCandle.time < bcCandle.time ? [{ label: "PSY" as const, price: psyPrice, time: psyCandle.time }] : []),
       { label: "BC", price: bcPrice, time: bcCandle.time },
       { label: "AR", price: arPrice, time: arCandle.time },
-      { label: "ST", price: stPrice, time: stCandle.time },
+      ...(stCandle && stCandle.time > arCandle.time ? [{ label: "ST" as const, price: stPrice, time: stCandle.time }] : []),
+      ...(tenPercentCandle && tenPercentCandle.time > stCandle.time ? [{ label: "10%" as const, price: sow10Price, time: tenPercentCandle.time }] : []),
       ...(utCandle ? [{ label: "UT" as const, price: roundPrice(utCandle.high, symbol), time: utCandle.time }] : []),
       ...(utadCandle ? [{ label: "UTAD" as const, price: roundPrice(utadCandle.high, symbol), time: utadCandle.time }] : []),
-      { label: "10%", price: sow10Price, time: sowCandle.time },
+      ...(sowCandle && sowCandle.time > (utadCandle?.time ?? utCandle?.time ?? 0) && sowCandle.time !== tenPercentCandle.time
+        ? [{ label: "SOW" as const, price: roundPrice(sowCandle.low, symbol), time: sowCandle.time }]
+        : []),
       ...(tenPercent2Candle && tenPercent2Level ? [{ label: "10% 2" as const, price: tenPercent2Level, time: tenPercent2Candle.time }] : []),
     ];
 
@@ -1453,7 +1529,7 @@ export function computeDeterministicQuantSetup(req: VarcoVisionRequest): VarcoVi
           phase: 4,
           title: "4. TARGET · Capitale Protetto",
           valid: true,
-          note: `Disciplina Limen: 0 trade inseriti (€${cashRisk} protetti).`,
+          note: `Disciplina AUREUS: 0 trade inseriti (€${cashRisk} protetti).`,
           schematicId: "mgmt_be",
         },
       ],
@@ -1583,6 +1659,23 @@ export function computeDeterministicQuantSetup(req: VarcoVisionRequest): VarcoVi
     zoneScenario = hasLeftHtfZone ? "reaccum" : "no_zone";
     direction = macroTrend;
     wasReversal = false;
+  }
+
+  // Anti-Fade Protection da Macro Bias HTF (TraderWiki -0.13R Rule):
+  // Se il bias H4 è BULLISH e stiamo tentando un reversal SHORT senza esaurimento ciclo o sweep primario,
+  // il sistema impedisce l'entrata in contro-trend.
+  if (req.directionalBias?.antiFadeProtected || (req.directionalBias?.h4MasterBias === "BULLISH" && direction === "short" && !wyckoffCycle.cycleExhausted)) {
+    if (wasReversal) {
+      direction = "long";
+      zoneScenario = "no_zone";
+      wasReversal = false;
+    }
+  } else if (req.directionalBias?.h4MasterBias === "BEARISH" && direction === "long" && !wyckoffCycle.cycleExhausted) {
+    if (wasReversal) {
+      direction = "short";
+      zoneScenario = "no_zone";
+      wasReversal = false;
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1824,7 +1917,7 @@ export function computeDeterministicQuantSetup(req: VarcoVisionRequest): VarcoVi
 
   // ─────────────────────────────────────────────────────────────────────────
   // VALUTAZIONE TIPO ORDINE & FILTRO ANTI-PENDENTI LONTANI DAL MERCATO (NO GHOST LIMIT)
-  // In LIMEN tutti gli ordini pendenti sono tassativamente LIMIT (su ritracciamento/sconto per Buy, o premium per Sell).
+  // In AUREUS tutti gli ordini pendenti sono tassativamente LIMIT (su ritracciamento/sconto per Buy, o premium per Sell).
   // Se il prezzo è già fuggito via verso il target oltre la naturale tolleranza di re-test del timeframe,
   // il setup non viene forzato con un pendente fantasma 200 pips indietro, ma resta in WAITING_TRIGGER.
   // Se il prezzo si trova già nella zona di re-test o l'ha oltrepassata a favore, l'ordine entra subito a Market.
@@ -2099,9 +2192,9 @@ export function computeDeterministicQuantSetup(req: VarcoVisionRequest): VarcoVi
         schematicRef,
         stopLossPrice,
         breakEvenPrice,
-        breakEvenRule: `Regola Limen mgmt_be: Sposta lo stop a Pareggio (${breakEvenPrice}) solo ad almeno 1:1.5 R:R su presa di liquidità intermedia.`,
+        breakEvenRule: `Regola AUREUS mgmt_be: Sposta lo stop a Pareggio (${breakEvenPrice}) solo ad almeno 1:1.5 R:R su presa di liquidità intermedia.`,
         takeProfit1Price,
-        takeProfit1Rule: `Regola Limen mgmt_tp1: Primo parziale (50%) preso tassativamente a 1:3.0 R:R (${takeProfit1Price}). Nessun parziale prematuro sotto 1:3.`,
+        takeProfit1Rule: `Regola AUREUS mgmt_tp1: Primo parziale (50%) preso tassativamente a 1:3.0 R:R (${takeProfit1Price}). Nessun parziale prematuro sotto 1:3.`,
         takeProfit2Price,
         takeProfit2Rule: `Mantieni il restante 50% a BE verso il ${oppositePoolLabel}.`,
         riskRewardRatio: 3.0,
@@ -2141,7 +2234,7 @@ export function computeDeterministicQuantSetup(req: VarcoVisionRequest): VarcoVi
   };
 }
 
-const VISION_SYSTEM_PROMPT = `Sei la Sentinella Visiva del Varco nel protocollo sovrano LIMEN.
+const VISION_SYSTEM_PROMPT = `Sei la Sentinella Visiva del Varco nel protocollo sovrano AUREUS.
 Il tuo compito è analizzare il grafico e le candele usando ESCLUSIVAMENTE le regole del Piano Operativo, della Finestra Operativa e delle Leggi di Wyckoff:
 1. Gerarchia Timeframe: Scalping (H1 -> M15 -> M1) | Swing (Daily/H4 -> H1/M15 -> M5/M1).
 2. Ciclo e Legge di Causa ed Effetto di Wyckoff (Domanda 1 - DOVE):
@@ -2192,7 +2285,7 @@ export async function analyzeVarcoChartVision(req: VarcoVisionRequest): Promise<
   try {
     const symbol = req.symbol || "EURUSD";
     const tf = req.interval || "15";
-    const userPrompt = `Analizza questo grafico di ${symbol} (timeframe ${tf}) seguendo le 4 Domande del Piano Operativo LIMEN e il Router di Zona a 3 Bivi.`;
+    const userPrompt = `Analizza questo grafico di ${symbol} (timeframe ${tf}) seguendo le 4 Domande del Piano Operativo AUREUS e il Router di Zona a 3 Bivi.`;
 
     const response = await visionClient.client.chat.completions.create({
       model: visionClient.model,

@@ -761,12 +761,12 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       {/* ========================================================= */}
       <div className="px-3 py-1.5 bg-[#090b10] border-b border-[#C5A059]/15 flex items-center justify-between gap-2 overflow-x-auto z-10 scrollbar-none">
         {activeMode === "puzzle" ? (
-          <div className="flex items-center gap-3 text-xs w-full justify-between">
+          <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-[10px] text-[#C5A059] uppercase font-bold tracking-widest whitespace-nowrap">
                 Obiettivo:
               </span>
-              <strong className="text-white font-medium text-xs whitespace-nowrap">
+              <strong className="text-white font-medium text-xs truncate max-w-[240px] sm:max-w-md">
                 {currentPuzzle.objectiveText}
               </strong>
               <span className="text-muted-foreground text-[11px] hidden xl:inline italic whitespace-nowrap">

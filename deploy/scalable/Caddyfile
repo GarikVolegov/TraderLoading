@@ -1,0 +1,31 @@
+{$APP_DOMAIN} {
+  encode zstd gzip
+
+  # Realtime WebSocket Gateway Routing
+  @websockets {
+    header Connection *Upgrade*
+    header Upgrade websocket
+  }
+  handle @websockets {
+    reverse_proxy gateway:3002 {
+      transport http {
+        keepalive 300s
+      }
+    }
+  }
+
+  # Realtime SSE Streaming Routing (Unbuffered)
+  @sse {
+    path /api/candles/live*
+  }
+  handle @sse {
+    reverse_proxy api:3001 {
+      flush_interval -1
+    }
+  }
+
+  # REST API & Static Dashboard Frontend Routing
+  handle {
+    reverse_proxy api:3001
+  }
+}

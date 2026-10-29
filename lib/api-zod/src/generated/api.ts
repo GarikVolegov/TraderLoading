@@ -5934,6 +5934,12 @@ export const AnalyzeVarcoVisionBody = zod.object({
   "preferPocOnReversal": zod.boolean().optional(),
   "reaccumRiskMultiplier": zod.number().optional(),
   "quarantinedCombos": zod.array(zod.string()).optional()
+}).optional(),
+  "directionalBias": zod.object({
+  "h4MasterBias": zod.enum(['BULLISH', 'BEARISH', 'NEUTRAL']).optional(),
+  "edgeTier": zod.string().optional(),
+  "antiFadeProtected": zod.boolean().optional(),
+  "confidenceScore": zod.number().optional()
 }).optional()
 })
 

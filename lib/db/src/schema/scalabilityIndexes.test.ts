@@ -45,4 +45,36 @@ assert.match(communitySource, /index\("community_messages_channel_id_idx"\)\.on\
 const socialSource = readSchema("./social.ts");
 assert.match(socialSource, /index\("post_comments_post_created_idx"\)\.on\(t\.postId, t\.createdAt\)/);
 
+const wikiSource = readSchema("./wiki.ts");
+assert.match(wikiSource, /index\("wiki_sources_storage_key_idx"\)\.on\(table\.storageKey\)/);
+
+const backtestTournamentSource = readSchema("./backtestTournament.ts");
+assert.match(backtestTournamentSource, /index\("backtest_tournament_entries_user_idx"\)\.on\(t\.userId\)/);
+assert.match(backtestTournamentSource, /index\("backtest_custom_lobbies_host_idx"\)\.on\(t\.hostUserId\)/);
+
+const torneiSource = readSchema("./tornei.ts");
+assert.match(torneiSource, /index\("tournament_prizes_user_idx"\)\.on\(t\.userId\)/);
+
+const adminSource = readSchema("./admin.ts");
+assert.match(adminSource, /index\("candidate_applications_user_idx"\)\.on\(table\.userId\)/);
+
+const traderProcessSource = readSchema("./traderProcess.ts");
+assert.match(traderProcessSource, /index\("process_evidence_session_idx"\)\.on\(t\.sessionId\)/);
+
+assert.match(communitySource, /index\("community_join_requests_user_idx"\)\.on\(t\.userId\)/);
+assert.match(communitySource, /index\("community_moderation_log_target_idx"\)\.on\(t\.targetUserId\)/);
+
+const academyBillingSource = readSchema("./academyBilling.ts");
+assert.match(academyBillingSource, /index\("academy_payout_affiliate_idx"\)\.on\(t\.affiliateUserId\)/);
+
+const academySource = readSchema("./academy.ts");
+assert.match(academySource, /index\("academy_lessons_module_idx"\)\.on\(table\.moduleId, table\.orderIndex\)/);
+
+const arsenalOrdersSource = readSchema("./arsenalOrders.ts");
+assert.match(arsenalOrdersSource, /index\("arsenal_orders_created_idx"\)\.on\(t\.createdAt\)/);
+
+assert.match(journalSource, /index\("journal_images_file_path_idx"\)\.on\(table\.filePath\)/);
+assert.match(profileSource, /index\("profile_xp_idx"\)\.on\(table\.xp\)/);
+assert.match(traderProcessSource, /index\("process_evidence_user_observed_idx"\)\.on\(t\.userId, t\.observedAt\)/);
+
 console.log("database scalability index checks passed");

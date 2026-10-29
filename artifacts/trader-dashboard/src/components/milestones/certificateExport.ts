@@ -76,6 +76,31 @@ export function computeCertHash(cert: { id: number; level: number; userId: strin
   return (h >>> 0).toString(16).padStart(8, "0");
 }
 
+export function buildShareableCertificateUrl(cert: CertificateData): string {
+  const origin =
+    typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : "https://limen.trade";
+  const grade = Math.max(1, Math.min(5, cert.level || 1));
+  const hash = computeCertHash({ id: cert.id, level: grade, userId: cert.userId });
+  const dateStr =
+    cert.customDate?.trim() ||
+    new Date(cert.awardedAt || Date.now())
+      .toLocaleDateString("it-IT", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+      .toUpperCase();
+  const params = new URLSearchParams({
+    g: String(grade),
+    n: (cert.userName || "OPERATORE").trim(),
+    d: dateStr,
+    id: String(cert.id || grade),
+  });
+  return `${origin}/verifica/0x${hash}?${params.toString()}`;
+}
+
 export function generateQrSvgPath(text: string, x0: number, y0: number, targetSize: number): string {
   try {
     const qr = QRCode.create(text, { errorCorrectionLevel: "M" });
@@ -132,7 +157,7 @@ export function generateCertificateSvg(
       }),
   ).toUpperCase();
 
-  const defaultQrUrl = `https://limen.trade/verify/nft/${gradeNum}/${hash}`;
+  const defaultQrUrl = buildShareableCertificateUrl(cert);
   const qrTarget = cert.customQrCode?.trim() || defaultQrUrl;
   const qrPath = generateQrSvgPath(qrTarget, layout.qrX, layout.qrY, layout.qrSize);
 
@@ -140,7 +165,7 @@ export function generateCertificateSvg(
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 764 1024" width="764" height="1024" role="img" aria-labelledby="cert-title cert-desc">
-  <title id="cert-title">LIMEN PROTOCOL · ${xmlEscape(gradeDef.title)} · ${serial}</title>
+  <title id="cert-title">AUREUS PROTOCOL · ${xmlEscape(gradeDef.title)} · ${serial}</title>
   <desc id="cert-desc">Certificato NFT di Grado conferito a ${xmlEscape(rawName)}</desc>
   <defs>
     <!-- Gold Gradient for Name Text -->
@@ -299,7 +324,7 @@ export async function downloadCertificatePng(
     })
   ).toUpperCase();
 
-  const defaultQrUrl = `https://limen.trade/verify/nft/${gradeNum}/${hash}`;
+  const defaultQrUrl = buildShareableCertificateUrl(cert);
   const qrTarget = cert.customQrCode?.trim() || defaultQrUrl;
 
   return new Promise((resolve, reject) => {
@@ -440,7 +465,7 @@ export function printCertificate(cert: CertificateData, formattedDate?: string):
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Certificato NFT Grado ${gradeNum} - LIMEN PROTOCOL</title>
+        <title>Certificato NFT Grado ${gradeNum} - AUREUS PROTOCOL</title>
         <style>
           @page {
             size: A4 portrait;

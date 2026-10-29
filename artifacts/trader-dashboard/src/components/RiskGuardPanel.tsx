@@ -7,7 +7,7 @@ import { SigilIcon } from "@/components/ui/SigilIcon";
 export function RiskGuardPanel() {
   const { t } = useLanguage();
   const { data, isPending, isError, refetch, isFetching } = useGetJournalEdge({
-    query: { queryKey: getGetJournalEdgeQueryKey(), refetchInterval: 30_000 },
+    query: { queryKey: getGetJournalEdgeQueryKey(), refetchInterval: 60_000, staleTime: 30_000 },
   });
   const guard = data?.guard;
   const unavailable = isError || (!isPending && !guard);

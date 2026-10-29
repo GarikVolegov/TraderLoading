@@ -10,7 +10,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { backtestSessionsTable } from "./backtest.js";
+import { backtestSessionsTable } from "./backtest";
 
 // ── Prove del Fuoco / Tornei di Backtest (Limen Protocol) ─────────────────────
 export const backtestTournamentsTable = pgTable(
@@ -70,6 +70,7 @@ export const backtestTournamentEntriesTable = pgTable(
   (t) => [
     index("backtest_tournament_entries_tourn_score_idx").on(t.tournamentId, t.score),
     index("backtest_tournament_entries_tourn_user_idx").on(t.tournamentId, t.userId),
+    index("backtest_tournament_entries_user_idx").on(t.userId),
   ],
 );
 
@@ -125,6 +126,7 @@ export const backtestCustomLobbiesTable = pgTable(
   (t) => [
     uniqueIndex("backtest_custom_lobbies_code_unique").on(t.code),
     index("backtest_custom_lobbies_status_idx").on(t.status),
+    index("backtest_custom_lobbies_host_idx").on(t.hostUserId),
   ],
 );
 

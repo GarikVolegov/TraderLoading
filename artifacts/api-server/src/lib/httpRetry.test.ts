@@ -88,4 +88,35 @@ const noSleep = async () => {};
   assert.equal(calls, 2); // initial + 1 retry
 }
 
+// Circuit breaker integration with fetchWithRetry
+{
+  const { CircuitBreaker } = await import("./circuitBreaker.js");
+  const breaker = new CircuitBreaker({ name: "http-retry-test", failureThreshold: 2, cooldownMs: 1000 });
+  let attempts = 0;
+  const failingFetch = async () => {
+    attempts++;
+    throw new Error("Upstream server dead");
+  };
+
+  // 1st failure
+  await assert.rejects(
+    () => fetchWithRetry("http://example.com/api", { retries: 0, fetchImpl: failingFetch, sleep: noSleep, circuitBreaker: breaker }),
+    /Upstream server dead/,
+  );
+  // 2nd failure -> trips circuit to OPEN
+  await assert.rejects(
+    () => fetchWithRetry("http://example.com/api", { retries: 0, fetchImpl: failingFetch, sleep: noSleep, circuitBreaker: breaker }),
+    /Upstream server dead/,
+  );
+  assert.equal(breaker.getState(), "OPEN");
+
+  // Next call fails immediately with CircuitBreakerOpenError without invoking fetchImpl
+  const callCountBefore = attempts;
+  await assert.rejects(
+    () => fetchWithRetry("http://example.com/api", { retries: 0, fetchImpl: failingFetch, sleep: noSleep, circuitBreaker: breaker }),
+    (err: any) => err.name === "CircuitBreakerOpenError",
+  );
+  assert.equal(attempts, callCountBefore, "fetchImpl should not be executed when breaker is open");
+}
+
 console.log("http retry checks passed");

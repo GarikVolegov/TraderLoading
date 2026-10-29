@@ -1,3 +1,9 @@
+import {
+  getReplayCandlesFromCache,
+  saveReplayCandlesToCache,
+} from "./replayCandlesCache";
+import { findMatchingOfflineReplayBuffer } from "./replayOfflineBuffer";
+
 export type ReplayCandleRaw = { time: number; open: number; high: number; low: number; close: number; volume?: number };
 
 export type ReplayCandlesResponse = {
@@ -94,10 +100,36 @@ async function parseJsonOrThrow<T>(response: Response): Promise<T> {
 
 export async function fetchReplayCandles(
   input: ReplayCandlesRequest,
-  options: { baseUrl?: string; signal?: AbortSignal } = {},
+  options: { baseUrl?: string; signal?: AbortSignal; skipCache?: boolean } = {},
 ): Promise<ReplayCandlesResponse> {
-  const response = await fetch(createReplayCandlesUrl(input, options), { signal: options.signal });
-  return parseJsonOrThrow<ReplayCandlesResponse>(response);
+  if (!options.skipCache) {
+    const cached = await getReplayCandlesFromCache(input);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  try {
+    const response = await fetch(createReplayCandlesUrl(input, options), { signal: options.signal });
+    const result = await parseJsonOrThrow<ReplayCandlesResponse>(response);
+
+    if (!options.skipCache) {
+      void saveReplayCandlesToCache(input, result);
+    }
+
+    return result;
+  } catch (networkErr) {
+    // Failover: se la rete fallisce o siamo offline, cerca nel buffer di replay offline resiliente
+    try {
+      const buffered = await findMatchingOfflineReplayBuffer(input);
+      if (buffered && buffered.candles.length > 0) {
+        return buffered;
+      }
+    } catch {
+      // Ignora errori di buffer e prosegui con rilancio dell'errore di rete
+    }
+    throw networkErr;
+  }
 }
 
 export async function fetchReplayCandlesMeta(

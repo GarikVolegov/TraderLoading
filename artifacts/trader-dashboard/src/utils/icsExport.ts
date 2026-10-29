@@ -15,7 +15,7 @@ export function buildICS(events: ICSEvent[]): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//LIMEN//LIMEN//IT",
+    "PRODID:-//AUREUS//AUREUS//IT",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
   ];

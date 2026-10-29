@@ -39,7 +39,7 @@ export function CustomLobbyModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
-  const [name, setName] = useState("Forgia di Battaglia Limen");
+  const [name, setName] = useState("Forgia di Battaglia AUREUS");
   const [pair, setPair] = useState("XAU/USD");
   const [timeframe, setTimeframe] = useState("M5");
   const [initialBalance, setInitialBalance] = useState("100000");
@@ -258,7 +258,7 @@ export function CustomLobbyModal({
                   <option value="3.00">3.0% (Chirurgico)</option>
                   <option value="5.00">5.0% (Rigido)</option>
                   <option value="8.00">8.0% (Standard)</option>
-                  <option value="10.00">10.0% (Limen Standard)</option>
+                  <option value="10.00">10.0% (Standard AUREUS)</option>
                   <option value="15.00">15.0% (Aperto)</option>
                 </select>
               </div>

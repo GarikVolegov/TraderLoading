@@ -119,7 +119,7 @@ export function DailyOrderQuickDock() {
         <div className="flex items-center gap-2">
           <SigilIcon variant="arsenal" size={16} className="text-primary" />
           <h2 className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-primary">
-            Dock Rapido dell&apos;Arsenale LIMEN
+            Dock Rapido dell&apos;Arsenale AUREUS
           </h2>
         </div>
         <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">

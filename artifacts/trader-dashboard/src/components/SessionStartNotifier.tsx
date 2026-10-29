@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useBackground, type TradingSessionConfig } from "@/contexts/BackgroundContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { getLocalDateKey, isTradingSession, type MarketSessionConfig } from "@/lib/marketSessions";
 import { deliverBrowserNotification, getNotificationCopy, shouldNotifyOnce } from "@/lib/notifications";
 
@@ -29,12 +30,7 @@ export function SessionStartNotifier() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const push = usePushNotifications();
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 15_000);
-    return () => clearInterval(timer);
-  }, []);
+  const now = useMinuteClock();
 
   const openingSessions = useMemo(() => sessionsOpeningNow(tradingSessions, now), [tradingSessions, now]);
 

@@ -52,7 +52,7 @@ export function WelcomeNotification() {
     };
 
     void deliverBrowserNotification({
-      title: "LIMEN",
+      title: "AUREUS",
       body: lines.join("\n"),
       tag: "welcome-summary",
       showToast,

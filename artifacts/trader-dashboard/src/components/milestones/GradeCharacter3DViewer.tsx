@@ -71,7 +71,7 @@ export const GRADE_CHARACTERS_DATA: Record<number, GradeCharacterData> = {
     src: "/images/grades/grado-4-character.png",
     caption: "Statua 3D Iniziatica: Il Compasso Geometrico & La Mappa del Reale",
     details:
-      "Scultura e render 3D dell'Architetto del Reale (Grado IV): maestro costruttore e ingegnere dell'Ordine in giubba di velluto scuro bordata d'oro, grembiule da maestro in cuoio rinforzato con tasche portastrumenti e occhiali/monocolo di precisione ottica. Nella mano destra impugna il compasso aureo millimetrico e srotola con la sinistra la monumentale planimetria della fortezza e della geometria sacra del mercato, eretto sul piedistallo circolare in bronzo forgiato recante l'incisione «SCALA INIZIATICA // LIMEN — GRADO IV // L'ARCHITETTO DEL REALE».",
+      "Scultura e render 3D dell'Architetto del Reale (Grado IV): maestro costruttore e ingegnere dell'Ordine in giubba di velluto scuro bordata d'oro, grembiule da maestro in cuoio rinforzato con tasche portastrumenti e occhiali/monocolo di precisione ottica. Nella mano destra impugna il compasso aureo millimetrico e srotola con la sinistra la monumentale planimetria della fortezza e della geometria sacra del mercato, eretto sul piedistallo circolare in bronzo forgiato recante l'incisione «SCALA INIZIATICA // AUREUS — GRADO IV // L'ARCHITETTO DEL REALE».",
     highlights: [
       "Grembiule da lavoro in cuoio forgiato con squadra, calibri e lenti di precisione",
       "Grande planimetria architettonica srotolata con schemi di geometria sacra",
@@ -87,7 +87,7 @@ export const GRADE_CHARACTERS_DATA: Record<number, GradeCharacterData> = {
     src: "/images/grades/grado-5-character.png",
     caption: "Statua 3D Iniziatica: Lo Scettro Imperiale & Il Patto Ereditario",
     details:
-      "Scultura e render 3D del Fondatore d'Eredità (Grado V): vertice assoluto dell'Ordine in corona aurea forgiata, possente armatura a piastre intarsiate d'oro e sontuoso mantello cerimoniale bordato di pelliccia in velluto cremisi imperiale damascato. Nella mano sinistra erige lo scettro monumentale col sigillo della triade Limen, mentre nella destra reca il patto costitutivo sigillato con ceralacca scarlatta, con corno di comando e chiavi della cerchia interna al cinturone, eretto sul piedistallo circolare in bronzo forgiato recante l'incisione «GRADO V // IL FONDATORE D'EREDITÀ».",
+      "Scultura e render 3D del Fondatore d'Eredità (Grado V): vertice assoluto dell'Ordine in corona aurea forgiata, possente armatura a piastre intarsiate d'oro e sontuoso mantello cerimoniale bordato di pelliccia in velluto cremisi imperiale damascato. Nella mano sinistra erige lo scettro monumentale col sigillo della triade AUREUS, mentre nella destra reca il patto costitutivo sigillato con ceralacca scarlatta, con corno di comando e chiavi della cerchia interna al cinturone, eretto sul piedistallo circolare in bronzo forgiato recante l'incisione «GRADO V // IL FONDATORE D'EREDITÀ».",
     highlights: [
       "Corona imperiale aurea e armatura cerimoniale a piastre d'acciaio e oro",
       "Manto sovrano in velluto cremisi con bordura in pelliccia e damasco aureo",

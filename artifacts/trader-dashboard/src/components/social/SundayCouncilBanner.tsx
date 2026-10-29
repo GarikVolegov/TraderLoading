@@ -50,6 +50,11 @@ export function SundayCouncilBanner() {
     return () => window.clearInterval(interval);
   }, []);
 
+  // Non invasivo: durante la settimana (più di 12 ore prima), non occupare spazio verticale su tutte le schermate
+  if (!countdown.isLiveWindow && (countdown.days > 0 || countdown.hours > 12)) {
+    return null;
+  }
+
   const pad = (n: number) => String(n).padStart(2, "0");
 
   const countdownTimer = countdown.isLiveWindow ? (

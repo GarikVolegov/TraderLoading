@@ -341,7 +341,7 @@ export function initRiskTableEngine(
     ctx.fillStyle = "#E8C56A";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("LIMEN", 0, -4);
+    ctx.fillText("AUREUS", 0, -4);
     ctx.font = "9px monospace";
     ctx.fillStyle = "#94a3b8";
     ctx.fillText("PROTOCOL", 0, 14);

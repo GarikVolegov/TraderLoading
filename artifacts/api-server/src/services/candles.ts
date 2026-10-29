@@ -3,6 +3,8 @@
 // vision (analisi on-demand + scanner autonomo). Estratta da routes/candles.ts.
 import { PAIR_CATALOG } from "@workspace/pair-catalog";
 import { getJsonCache, setJsonCache } from "../lib/cache.js";
+import { singleFlight } from "../lib/singleFlight.js";
+import { getOrCreateCircuitBreaker } from "../lib/circuitBreaker.js";
 import { aggregateInterval, bucketStart, mergeTail } from "./aggregate.js";
 import { INTERVAL_SECONDS, REPLAY_INSTRUMENTS, RES, SOURCE_ID, symbolId } from "./candleRegistry.js";
 import { readReplayHistory, ReplayHistoryError } from "./replayHistory.js";
@@ -114,10 +116,10 @@ function setMemoryCache(cacheKey: string, data: CachedData): void {
   cache.set(cacheKey, data);
 }
 
-function getMemoryCache(key: string, allowExpired = false): CachedData | undefined {
+function getMemoryCache(key: string, allowExpired = false, maxAgeMs = CACHE_TTL): CachedData | undefined {
   const entry = cache.get(key);
   if (!entry) return undefined;
-  if (!allowExpired && Date.now() - entry.timestamp >= CACHE_TTL) {
+  if (!allowExpired && Date.now() - entry.timestamp >= maxAgeMs) {
     return undefined;
   }
   // Refresh LRU position
@@ -125,6 +127,8 @@ function getMemoryCache(key: string, allowExpired = false): CachedData | undefin
   cache.set(key, entry);
   return entry;
 }
+
+const candlesInFlight = new Map<string, Promise<CandlesResult>>();
 
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume?: number };
 
@@ -359,22 +363,41 @@ async function fetchYahoo(symbol: string, interval: string, options: CandlesRequ
 
   const ts = result.timestamp;
   const q = result.indicators.quote[0];
-  const candles: Candle[] = [];
+  const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
+  const byBucket = new Map<number, Candle>();
 
   for (let i = 0; i < ts.length; i++) {
     const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close?.[i];
     if (o != null && h != null && l != null && c != null) {
-      candles.push({
-        time: ts[i],
-        open: parseFloat(o.toFixed(5)),
-        high: parseFloat(h.toFixed(5)),
-        low: parseFloat(l.toFixed(5)),
-        close: parseFloat(c.toFixed(5)),
-        volume: q.volume?.[i] ?? undefined,
-      });
+      const bucketTime = Math.floor(ts[i] / intervalSecs) * intervalSecs;
+      const existing = byBucket.get(bucketTime);
+      const parsedO = parseFloat(o.toFixed(5));
+      const parsedH = parseFloat(h.toFixed(5));
+      const parsedL = parseFloat(l.toFixed(5));
+      const parsedC = parseFloat(c.toFixed(5));
+      const vol = q.volume?.[i] ?? undefined;
+
+      if (!existing) {
+        byBucket.set(bucketTime, {
+          time: bucketTime,
+          open: parsedO,
+          high: parsedH,
+          low: parsedL,
+          close: parsedC,
+          volume: vol,
+        });
+      } else {
+        existing.high = Math.max(existing.high, parsedH);
+        existing.low = Math.min(existing.low, parsedL);
+        existing.close = parsedC;
+        if (vol != null) {
+          existing.volume = (existing.volume ?? 0) + vol;
+        }
+      }
     }
   }
 
+  const candles: Candle[] = Array.from(byBucket.values()).sort((a, b) => a.time - b.time);
   if (candles.length === 0) throw new Error("Yahoo: no valid candles");
   return candles;
 }
@@ -412,17 +435,35 @@ async function fetchTwelveData(symbol: string, interval: string, options: Candle
   if (json.status === "error") throw new Error(`TwelveData: ${json.message}`);
   if (!json.values?.length) throw new Error("TwelveData: no values");
 
-  const candles: Candle[] = json.values
-    .map((v) => ({
-      time: Math.floor(new Date(v.datetime).getTime() / 1000),
-      open: parseFloat(parseFloat(v.open).toFixed(5)),
-      high: parseFloat(parseFloat(v.high).toFixed(5)),
-      low: parseFloat(parseFloat(v.low).toFixed(5)),
-      close: parseFloat(parseFloat(v.close).toFixed(5)),
-    }))
-    .filter((c) => !isNaN(c.time) && !isNaN(c.open))
-    .sort((a, b) => a.time - b.time);
+  const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
+  const byBucket = new Map<number, Candle>();
 
+  for (const v of json.values) {
+    const rawTime = Math.floor(new Date(v.datetime).getTime() / 1000);
+    const o = parseFloat(parseFloat(v.open).toFixed(5));
+    const h = parseFloat(parseFloat(v.high).toFixed(5));
+    const l = parseFloat(parseFloat(v.low).toFixed(5));
+    const c = parseFloat(parseFloat(v.close).toFixed(5));
+    if (!isNaN(rawTime) && !isNaN(o) && !isNaN(h) && !isNaN(l) && !isNaN(c)) {
+      const bucketTime = Math.floor(rawTime / intervalSecs) * intervalSecs;
+      const existing = byBucket.get(bucketTime);
+      if (!existing) {
+        byBucket.set(bucketTime, {
+          time: bucketTime,
+          open: o,
+          high: h,
+          low: l,
+          close: c,
+        });
+      } else {
+        existing.high = Math.max(existing.high, h);
+        existing.low = Math.min(existing.low, l);
+        existing.close = c;
+      }
+    }
+  }
+
+  const candles: Candle[] = Array.from(byBucket.values()).sort((a, b) => a.time - b.time);
   if (candles.length === 0) throw new Error("TwelveData: no valid candles");
   return candles;
 }
@@ -680,12 +721,12 @@ export async function getCandlesMeta(
       const source = REPLAY_INSTRUMENTS[symbol]?.source ?? (symbol === "BTCUSD" || symbol === "ETHUSD" ? "binance" : "dukascopy");
       const now = Math.floor(Date.now() / 1000);
       const targetTo = Math.floor(now / 86400) * 86400;
-      const start = new Date(targetTo * 1000);
-      start.setUTCFullYear(start.getUTCFullYear() - 5);
-      const coverageKey = `candles:coverage:v2:${symbol}:${targetTo}`;
+      // Target coverage anchors to at least 2020-01-01 (sovereign M1 historical requirement)
+      const targetFrom = Date.UTC(2020, 0, 1) / 1000;
+      const coverageKey = `candles:coverage:v3:${symbol}:${targetFrom}:${targetTo}`;
       const cached = await getJsonCache<CandlesMetaResult>(coverageKey);
       if (cached) return cached;
-      const state = await readCoverage(sid, SOURCE_ID[source], Math.floor(start.getTime() / 1000), targetTo);
+      const state = await readCoverage(sid, SOURCE_ID[source], targetFrom, targetTo);
       const result: CandlesMetaResult = { symbol, warehouseEnabled: true,
         warehouse: state.firstTs == null ? null : { firstTs: state.firstTs, lastTs: state.lastTs },
         source, instrument: REPLAY_INSTRUMENTS[symbol]?.description ?? symbol, coverage: state.coverage };
@@ -726,86 +767,100 @@ async function fetchLiveCandles(
   const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
   const cacheKey = candleCacheKey(symbol, interval, startDate, options);
   const requiredCached = requiredReplayCandles(interval, options);
+  const liveMemoryTtl = startDate != null || isPaged ? CACHE_TTL : 15_000;
   const freshnessOK = (data: CandlesResult) => options.maxAgeMs === undefined ||
     (!data.stale && Number.isFinite(Date.parse(data.fetchedAt ?? "")) &&
       Date.now() - Date.parse(data.fetchedAt!) >= 0 && Date.now() - Date.parse(data.fetchedAt!) <= options.maxAgeMs);
-  const cached = getMemoryCache(cacheKey);
+  const cached = getMemoryCache(cacheKey, false, liveMemoryTtl);
   if (
     cached &&
     freshnessOK(cached.data) &&
-    Date.now() - cached.timestamp < CACHE_TTL &&
+    Date.now() - cached.timestamp < liveMemoryTtl &&
     (isPaged || cached.data.candles.length >= requiredCached)
   ) {
     return cached.data;
   }
 
-  const distributedCached = await getJsonCache<CandlesResult>(cacheKey);
-  if (distributedCached && freshnessOK(distributedCached) && (isPaged || distributedCached.candles.length >= requiredCached)) {
-    setMemoryCache(cacheKey, { data: distributedCached, timestamp: Date.now() });
-    return distributedCached;
-  }
-
-  const errors: string[] = [];
-  let bestCandlesCount = 0;
-  const chain = getFallbackChain(symbol, interval, Boolean(startDate));
-  // On a local workstation Yahoo is reachable and is a single request, while
-  // Dukascopy's daily history can exceed the operating-center deadline. Keep
-  // the production/Railway chain and replay behavior unchanged.
-  if (options.maxAgeMs !== undefined && process.env.NODE_ENV !== "production") {
-    chain.sort((a, b) => Number(b.name === "Yahoo") - Number(a.name === "Yahoo"));
-  }
-
-  for (const { name, fn } of chain) {
-    try {
-      const candles = await fn(symbol, interval, requestOptions);
-      bestCandlesCount = Math.max(bestCandlesCount, candles.length);
-      // The depth guard checks the fetched series, not the sliced page. For a
-      // cursor page the source window is day-anchored to `from` and structurally
-      // cannot hold 120 bars near the live edge (e.g. H1 has ≤24 bars/day), so
-      // any non-empty window is accepted there — a short or empty page is a
-      // legitimate end-of-history answer.
-      const minCandles = isPaged ? 1 : getMinReplayCandles(interval);
-      if (candles.length < minCandles) {
-        throw new Error(`insufficient candles (${candles.length}/${minCandles})`);
-      }
-      console.log(`[candles] ${name} OK: ${symbol} ${interval} → ${candles.length} candles`);
-      // Latest window (no cursor, no startDate): keep the MOST RECENT bars —
-      // head-slicing a deep fetch would serve months-old data as current.
-      const page =
-        isPaged || startDate
-          ? paginateCandles(candles, options, intervalSecs)
-          : { candles: latestWindowCandles(candles, options) };
-      const responseData: CandlesResult = { symbol, interval, source: name.toLowerCase(), ...page, fetchedAt: new Date().toISOString(), stale: false };
-      setMemoryCache(cacheKey, { data: responseData, timestamp: Date.now() });
-      // Cursor pages: full pages are immutable (24h), short/tail pages may
-      // still grow (60s) — mirrors the warehouse TTL rule.
-      const ttl = isPaged
-        ? responseData.nextFrom != null
-          ? 24 * 60 * 60
-          : 60
-        : candleCacheTtlSeconds(interval, normalizeStartDate(options.startDate));
-      await setJsonCache(cacheKey, responseData, ttl);
-      return responseData;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      errors.push(`${name}: ${msg}`);
-      console.warn(`[candles] ${name} failed for ${symbol} ${interval}: ${msg}`);
+  return singleFlight(candlesInFlight, cacheKey, async () => {
+    // Re-check memory cache inside singleFlight in case another concurrent flight just resolved it
+    const mem = getMemoryCache(cacheKey, false, liveMemoryTtl);
+    if (mem && freshnessOK(mem.data) && Date.now() - mem.timestamp < liveMemoryTtl && (isPaged || mem.data.candles.length >= requiredCached)) {
+      return mem.data;
     }
-  }
 
-  const stale = getMemoryCache(cacheKey, true);
-  if (stale && (isPaged || stale.data.candles.length >= requiredCached)) {
-    console.log(`[candles] Serving stale cache for ${symbol} ${interval}`);
-    return { ...stale.data, stale: true };
-  }
+    const distributedCached = await getJsonCache<CandlesResult>(cacheKey);
+    if (distributedCached && freshnessOK(distributedCached) && (isPaged || distributedCached.candles.length >= requiredCached)) {
+      setMemoryCache(cacheKey, { data: distributedCached, timestamp: Date.now() });
+      return distributedCached;
+    }
 
-  if (!isPaged && bestCandlesCount > 0 && bestCandlesCount < getMinReplayCandles(interval)) {
-    throw new Error(insufficientCandlesMessage(symbol, interval, bestCandlesCount));
-  }
+    const errors: string[] = [];
+    let bestCandlesCount = 0;
+    const chain = getFallbackChain(symbol, interval, Boolean(startDate));
+    // On a local workstation Yahoo is reachable and is a single request, while
+    // Dukascopy's daily history can exceed the operating-center deadline. Keep
+    // the production/Railway chain and replay behavior unchanged.
+    if (options.maxAgeMs !== undefined && process.env.NODE_ENV !== "production") {
+      chain.sort((a, b) => Number(b.name === "Yahoo") - Number(a.name === "Yahoo"));
+    }
 
-  if (startDate && isIntradayReplayInterval(interval) && errors.some((error) => error.includes("Yahoo HTTP 422"))) {
-    throw new Error(unavailableIntradayHistoryMessage(symbol, interval, startDate));
-  }
+    for (const { name, fn } of chain) {
+      try {
+        const breaker = getOrCreateCircuitBreaker({
+          name: `candles-provider-${name.toLowerCase()}`,
+          failureThreshold: 3,
+          cooldownMs: 30_000,
+        });
+        const candles = await breaker.execute(() => fn(symbol, interval, requestOptions));
+        bestCandlesCount = Math.max(bestCandlesCount, candles.length);
+        // The depth guard checks the fetched series, not the sliced page. For a
+        // cursor page the source window is day-anchored to `from` and structurally
+        // cannot hold 120 bars near the live edge (e.g. H1 has ≤24 bars/day), so
+        // any non-empty window is accepted there — a short or empty page is a
+        // legitimate end-of-history answer.
+        const minCandles = isPaged ? 1 : getMinReplayCandles(interval);
+        if (candles.length < minCandles) {
+          throw new Error(`insufficient candles (${candles.length}/${minCandles})`);
+        }
+        console.log(`[candles] ${name} OK: ${symbol} ${interval} → ${candles.length} candles`);
+        // Latest window (no cursor, no startDate): keep the MOST RECENT bars —
+        // head-slicing a deep fetch would serve months-old data as current.
+        const page =
+          isPaged || startDate
+            ? paginateCandles(candles, options, intervalSecs)
+            : { candles: latestWindowCandles(candles, options) };
+        const responseData: CandlesResult = { symbol, interval, source: name.toLowerCase(), ...page, fetchedAt: new Date().toISOString(), stale: false };
+        setMemoryCache(cacheKey, { data: responseData, timestamp: Date.now() });
+        // Cursor pages: full pages are immutable (24h), short/tail pages may
+        // still grow (60s) — mirrors the warehouse TTL rule.
+        const ttl = isPaged
+          ? responseData.nextFrom != null
+            ? 24 * 60 * 60
+            : 60
+          : candleCacheTtlSeconds(interval, normalizeStartDate(options.startDate));
+        await setJsonCache(cacheKey, responseData, ttl);
+        return responseData;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`${name}: ${msg}`);
+        console.warn(`[candles] ${name} failed for ${symbol} ${interval}: ${msg}`);
+      }
+    }
 
-  throw new Error(`All data sources failed for ${symbol} ${interval}: ${errors.join("; ")}`);
+    const stale = getMemoryCache(cacheKey, true);
+    if (stale && (isPaged || stale.data.candles.length >= requiredCached)) {
+      console.log(`[candles] Serving stale cache for ${symbol} ${interval}`);
+      return { ...stale.data, stale: true };
+    }
+
+    if (!isPaged && bestCandlesCount > 0 && bestCandlesCount < getMinReplayCandles(interval)) {
+      throw new Error(insufficientCandlesMessage(symbol, interval, bestCandlesCount));
+    }
+
+    if (startDate && isIntradayReplayInterval(interval) && errors.some((error) => error.includes("Yahoo HTTP 422"))) {
+      throw new Error(unavailableIntradayHistoryMessage(symbol, interval, startDate));
+    }
+
+    throw new Error(`All data sources failed for ${symbol} ${interval}: ${errors.join("; ")}`);
+  });
 }

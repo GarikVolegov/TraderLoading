@@ -220,13 +220,60 @@ export function pickChartSettings(value: unknown): ChartSettings {
   }
   return result;
 }
+export const DEFAULT_AUREUS_TEMPLATES: BacktestChartTemplate[] = [
+  {
+    id: "template-silver-bullet",
+    name: "Setup Sovrano Silver Bullet (SMC)",
+    settings: pickChartSettings({
+      chartType: "candles",
+      candleUpColor: "#C5A059",
+      candleDownColor: "#ef4444",
+      showSessions: true,
+      priceScaleMode: "normal",
+    }),
+    indicators: [
+      { id: "vol-def", type: "volume", on: true, color: "#C5A059" },
+      { id: "ema-trend", type: "ema", on: true, period: 50, color: "#C5A059" },
+    ],
+  },
+  {
+    id: "template-pure-price-action",
+    name: "Cartografia Pura (Nuda Price Action)",
+    settings: pickChartSettings({
+      chartType: "candles",
+      candleUpColor: "#f4f4f6",
+      candleDownColor: "#71717a",
+      showSessions: false,
+      priceScaleMode: "normal",
+    }),
+    indicators: [],
+  },
+  {
+    id: "template-macro-trend",
+    name: "Visione Macro Trend & Volatilità",
+    settings: pickChartSettings({
+      chartType: "candles",
+      candleUpColor: "#10b981",
+      candleDownColor: "#ef4444",
+      showSessions: true,
+      priceScaleMode: "normal",
+    }),
+    indicators: [
+      { id: "ema-20", type: "ema", on: true, period: 20, color: "#38bdf8" },
+      { id: "ema-50", type: "ema", on: true, period: 50, color: "#f59e0b" },
+      { id: "ema-200", type: "ema", on: true, period: 200, color: "#8b5cf6" },
+      { id: "vol-def", type: "volume", on: true, color: "#C5A059" },
+    ],
+  },
+];
+
 export function defaultChartPreferences(settings?: unknown): BacktestChartPreferences {
   return {
     version: 1,
     settings: pickChartSettings(settings),
     favoriteTools: [...DEFAULT_FAVORITE_TOOLS],
     favoriteColors: [],
-    templates: [],
+    templates: [...DEFAULT_AUREUS_TEMPLATES],
     toolbarPosition: { x: 16, y: 64 },
   };
 }

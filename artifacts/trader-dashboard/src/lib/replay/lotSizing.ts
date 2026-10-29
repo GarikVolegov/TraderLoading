@@ -5,15 +5,16 @@
 // are shared with the rest of the app via getPipMultiplier; pipValuePerLot
 // absorbs the legacy getPipDollarValue table from ChartReplay (account currency
 // per pip per 1.00 lot).
-import { getPipMultiplier } from "../pipMultiplier";
+import { getPipMultiplier, normalizeSymbol } from "../pipMultiplier";
 import type { RiskMode } from "./types";
 
 /** Account-currency value of one pip for a 1.00 lot position. */
 export function pipValuePerLot(symbol: string): number {
-  const s = symbol.replace("/", "").toUpperCase();
-  if (["US30", "NAS100", "SPX500"].includes(s)) return 1;
-  if (s.includes("BTC") || s.includes("ETH")) return 1;
-  if (s === "USOIL") return 10; // Simulated standard lot: 1000 barrels × $0.01.
+  const s = normalizeSymbol(symbol);
+  if (["US30", "NAS100", "SPX500", "NDX", "DJI", "SPX", "GER40", "DAX", "UK100", "US2000"].some((idx) => s.includes(idx))) return 1;
+  if (s.includes("BTC") || s.includes("ETH") || s.includes("SOL")) return 1;
+  if (s === "USOIL" || s.includes("OIL") || s.includes("WTI")) return 10; // Simulated standard lot: 1000 barrels × $0.01.
+  if (s.includes("XAU") || s.includes("GOLD")) return 10; // 100 oz standard lot × $0.10 pip = $10 / pip.
   return 10;
 }
 

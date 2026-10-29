@@ -44,9 +44,23 @@ export interface ProjectionBands {
 
 export function monteCarloBands(
   rSamples: number[],
-  opts: { steps: number; start: number; sims?: number; seed?: number; samplePathCount?: number },
+  opts: {
+    steps: number;
+    start: number;
+    sims?: number;
+    seed?: number;
+    samplePathCount?: number;
+    riskMultiplier?: number;
+  },
 ): ProjectionBands {
-  const { steps, start, sims = 300, seed = 20260619, samplePathCount = 14 } = opts;
+  const {
+    steps,
+    start,
+    sims = 300,
+    seed = 20260619,
+    samplePathCount = 14,
+    riskMultiplier = 1.0,
+  } = opts;
   const cols: number[][] = Array.from({ length: steps + 1 }, () => []);
   const samplePaths: number[][] = [];
 
@@ -61,7 +75,8 @@ export function monteCarloBands(
     const path = [start];
     cols[0].push(start);
     for (let k = 1; k <= steps; k++) {
-      cum += rSamples[Math.floor(rnd() * rSamples.length)];
+      const rawDelta = rSamples[Math.floor(rnd() * rSamples.length)];
+      cum += rawDelta * riskMultiplier;
       path.push(cum);
       cols[k].push(cum);
     }

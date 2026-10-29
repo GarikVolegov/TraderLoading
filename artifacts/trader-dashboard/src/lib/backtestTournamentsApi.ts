@@ -78,6 +78,7 @@ export interface ArenaRealTelemetry {
   maxDrawdownLimit: number;
   bestTradePnl: number;
   bestSessionLabel: string;
+  liveSpectatorsCount?: number;
 }
 
 export interface BacktestTournamentLeaderboard {

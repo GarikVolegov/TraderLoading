@@ -2121,7 +2121,7 @@ export function CockpitOperativePlanDialog({
           <div className="p-3.5 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 via-[#14151C] to-black/60">
             <span className="font-mono text-[10px] text-primary uppercase tracking-widest font-bold flex items-center gap-1.5">
               <FileText size={13} />
-              Il Codice Strategico Integrale · LIMEN PROTOCOL
+              Il Codice Strategico Integrale · AUREUS PROTOCOL
             </span>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
               Tutti i tuoi appunti, gerarchie dei timeframe, regole di direzionalità, router di zona, filtri di sbilanciamento e protocollo di reattività consultabili prima e durante ogni operazione.
@@ -2456,7 +2456,7 @@ export function CockpitOperativePlanDialog({
             <div>
               <span className="font-mono text-[10px] text-primary uppercase tracking-widest font-bold flex items-center gap-1.5">
                 <BookOpen size={13} />
-                Glossario Ufficiale · LIMEN PROTOCOL
+                Glossario Ufficiale · AUREUS PROTOCOL
               </span>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Il dizionario canonico del metodo, i quattro trigger (Test, POC, JTC, BTI) e le leggi di validazione.

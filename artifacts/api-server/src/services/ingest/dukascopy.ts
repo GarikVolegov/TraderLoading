@@ -49,15 +49,38 @@ type DukascopyTimeframe = "m1" | "d1";
 export async function fetchDukascopyFile(
   url: string,
   fetcher: typeof fetch = fetch,
+  options: { retries?: number } = {},
 ): Promise<Buffer> {
-  const response = await fetcher(url, { signal: AbortSignal.timeout(30000) });
-  if (!response.ok) {
-    const retryAfter = response.headers.get("retry-after");
-    throw new Error(
-      `Dukascopy HTTP ${response.status}${retryAfter ? ` (Retry-After ${retryAfter})` : ""}`,
-    );
+  const maxAttempts = (options.retries ?? 0) + 1;
+  let attempt = 0;
+  // Fallback to plain HTTP on datafeed.dukascopy.com to bypass HTTPS TLS handshake tarpits
+  const targetUrl = url.startsWith("https://datafeed.dukascopy.com")
+    ? url.replace("https://datafeed.dukascopy.com", "http://datafeed.dukascopy.com")
+    : url;
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      const response = await fetcher(targetUrl, { signal: AbortSignal.timeout(30000) });
+      if (!response.ok) {
+        const retryAfter =
+          response.headers.get("retry-after") ?? (response.status === 429 ? "45" : null);
+        if (response.status === 429 && attempt < maxAttempts) {
+          const waitSec = Number(retryAfter ?? "45") || 45;
+          await new Promise((r) => setTimeout(r, waitSec * 1000));
+          continue;
+        }
+        throw new Error(
+          `Dukascopy HTTP ${response.status}${retryAfter ? ` (Retry-After ${retryAfter})` : ""}`,
+        );
+      }
+      return Buffer.from(await response.arrayBuffer());
+    } catch (err) {
+      if (attempt >= maxAttempts) throw err;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
   }
-  return Buffer.from(await response.arrayBuffer());
+  throw new Error("Dukascopy fetch aborted after maximum retry attempts");
 }
 
 async function fetchDukascopyTimeframe(
@@ -90,13 +113,13 @@ async function fetchDukascopyTimeframe(
     startDate,
     endDate,
   });
-  // The SDK's default retry hides HTTP status as "Unknown error" and the old
-  // batchPauseMs setting was ignored. A single lane with the actual option
-  // avoids simultaneous day-file requests and propagates rate limits.
+  // Adaptive pause: 350ms base (2x faster than legacy 750ms), with automatic
+  // 429 retry-after handling in fetchDukascopyFile to respect rate limits.
+  const pauseMs = process.env.DUKASCOPY_PAUSE_MS ? Number(process.env.DUKASCOPY_PAUSE_MS) : 350;
   const downloader = new BufferFetcher({
     batchSize: 1,
-    pauseBetweenBatchesMs: 750,
-    fetcherFn: fetchDukascopyFile,
+    pauseBetweenBatchesMs: pauseMs,
+    fetcherFn: (url: string) => fetchDukascopyFile(url, fetch, { retries: 2 }),
   });
   const files = await downloader.fetch(urls);
   const raw = processData({

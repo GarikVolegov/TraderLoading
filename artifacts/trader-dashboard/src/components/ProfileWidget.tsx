@@ -195,11 +195,12 @@ export function ProfileWidget() {
 
   // Canonical Limen Integrity calculation
   const integrity =
-    serverIntegrity ??
-    computeLimenIntegritySnapshot({
-      legacyLevel: profile.level,
-      consecutiveIntegralSessions: profile.streak ?? 0,
-    });
+    serverIntegrity && serverIntegrity.currentGrade
+      ? serverIntegrity
+      : computeLimenIntegritySnapshot({
+          legacyLevel: profile.level,
+          consecutiveIntegralSessions: profile.streak ?? 0,
+        });
 
   const currentGradeNum = Math.min(5, Math.max(1, integrity.currentGrade.grade)) as LimenGradeNumber;
   const currentGrade = integrity.currentGrade || getLimenGradeByNumber(currentGradeNum);

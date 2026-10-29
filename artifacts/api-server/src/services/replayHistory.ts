@@ -57,20 +57,40 @@ export async function readReplayHistory(
       options.from == null &&
       (archiveBounds == null ||
         anchor > archiveBounds.lastTs + 60 ||
-        anchor < archiveBounds.firstTs)
+        anchor < archiveBounds.firstTs - 7 * 86400)
     ) {
       throw new ReplayHistoryError("La data scelta è fuori dallo storico permanente disponibile.");
     }
+    // Snap anchor to at least archiveBounds.firstTs if selected within 7 days prior to market open
+    const effectiveAnchor = archiveBounds ? Math.max(anchor, archiveBounds.firstTs) : anchor;
     const from =
       options.from != null
         ? bucketStart(options.from + seconds - 1, seconds)
-        : bucketStart(anchor, seconds);
-    const to = Math.min(options.to ?? from + 5000 * seconds * 3, availableTo ?? now, now);
+        : bucketStart(effectiveAnchor, seconds);
+    const to = Math.min(
+      options.to ?? Math.max(from + 5000 * seconds * 3, from + 7 * 86400),
+      availableTo ?? now,
+      now,
+    );
     forward = await read(sid, seconds, from, to, { limit, fromStart: true, sourceId });
     if (
       options.from == null &&
-      ((forward.length === 0 && anchor !== availableTo) ||
-        (forward[0] && forward[0].time > anchor + 4 * 86400))
+      forward.length === 0 &&
+      effectiveAnchor < (availableTo ?? now)
+    ) {
+      // If no candle was found in [from, to), try searching further forward up to 30 days (holiday / extended weekend bridge)
+      forward = await read(
+        sid,
+        seconds,
+        from,
+        Math.min(from + 30 * 86400, availableTo ?? now, now),
+        { limit, fromStart: true, sourceId },
+      );
+    }
+    if (
+      options.from == null &&
+      ((forward.length === 0 && effectiveAnchor !== availableTo) ||
+        (forward[0] && forward[0].time > effectiveAnchor + 7 * 86400))
     ) {
       throw new ReplayHistoryError(
         "Dati permanenti non disponibili per la data scelta. Controlla la copertura o importa lo storico.",
@@ -78,11 +98,17 @@ export async function readReplayHistory(
     }
     const previous =
       options.from == null && warmup > 0
-        ? await read(sid, seconds, from - Math.max(warmup * 3, 5000) * seconds, from, {
-            limit: warmup,
-            fromStart: false,
-            sourceId,
-          })
+        ? await read(
+            sid,
+            seconds,
+            Math.max(archiveBounds?.firstTs ?? 0, from - Math.max(warmup * 3, 5000) * seconds),
+            from,
+            {
+              limit: warmup,
+              fromStart: false,
+              sourceId,
+            },
+          )
         : [];
     candles = [...previous, ...forward];
   } else {
@@ -92,8 +118,9 @@ export async function readReplayHistory(
         ? await loadBounds(sid, sourceId, requestedTo)
         : archiveBounds;
     const to = bounds ? Math.min(requestedTo, bounds.lastTs + 60) : requestedTo;
+    const from = bounds ? bounds.firstTs : 0;
     candles = bounds
-      ? await read(sid, seconds, to - 5000 * seconds * 3, to, { limit, fromStart: false, sourceId })
+      ? await read(sid, seconds, from, to, { limit, fromStart: false, sourceId })
       : [];
     forward = candles;
     if (candles.length === 0 && options.to == null)

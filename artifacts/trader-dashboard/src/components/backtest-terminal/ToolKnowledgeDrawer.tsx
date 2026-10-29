@@ -37,7 +37,7 @@ function ToolVisualPreview({ entry }: { entry: ToolKnowledgeEntry }) {
         <span className="tkd-preview-dot" />
         <span className="tkd-preview-dot" />
         <span className="tkd-preview-dot" />
-        <span className="tkd-preview-symbol">XAUUSD · 1h · LIMEN PRO CHART</span>
+        <span className="tkd-preview-symbol">XAUUSD · 1h · AUREUS PRO CHART</span>
         <span className="tkd-preview-ohlc">O 4.023,70 H 4.094,00 L 4.018,20 C 4.086,50 +1.56%</span>
       </div>
       <svg viewBox="0 0 330 205" className="tkd-preview-svg" role="img">
@@ -443,7 +443,7 @@ export function ToolKnowledgeDrawer({
             <div className="tkd-protip">
               <div className="tkd-protip-head">
                 <Sparkles size={13} className="text-[#d4af37]" />
-                <span>Dettaglio Operativo Limen Pro</span>
+                <span>Dettaglio Operativo AUREUS Pro</span>
               </div>
               <p>{entry.proTip}</p>
             </div>

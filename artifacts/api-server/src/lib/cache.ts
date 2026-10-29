@@ -4,12 +4,27 @@ import logger from "./logger.js";
 export interface CacheStore {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, ttlSeconds: number): Promise<void>;
+  del(key: string): Promise<void>;
+  close?(): Promise<void>;
 }
 
 type MemoryEntry = { value: string; expiresAt: number };
 
-export function createMemoryCacheStore(clock: () => number = () => Date.now()): CacheStore {
+const DEFAULT_MEMORY_MAX_ENTRIES = 5_000;
+
+export function createMemoryCacheStore(
+  clock: () => number = () => Date.now(),
+  maxEntries = DEFAULT_MEMORY_MAX_ENTRIES,
+): CacheStore {
   const entries = new Map<string, MemoryEntry>();
+
+  function sweepExpired(now: number): void {
+    for (const [key, entry] of entries) {
+      if (entry.expiresAt <= now) {
+        entries.delete(key);
+      }
+    }
+  }
 
   return {
     async get(key: string): Promise<string | null> {
@@ -22,7 +37,23 @@ export function createMemoryCacheStore(clock: () => number = () => Date.now()): 
       return entry.value;
     },
     async set(key: string, value: string, ttlSeconds: number): Promise<void> {
-      entries.set(key, { value, expiresAt: clock() + ttlSeconds * 1_000 });
+      const now = clock();
+      if (entries.size >= maxEntries && !entries.has(key)) {
+        sweepExpired(now);
+        if (entries.size >= maxEntries) {
+          const oldestKey = entries.keys().next().value;
+          if (oldestKey !== undefined) {
+            entries.delete(oldestKey);
+          }
+        }
+      }
+      entries.set(key, { value, expiresAt: now + ttlSeconds * 1_000 });
+    },
+    async del(key: string): Promise<void> {
+      entries.delete(key);
+    },
+    async close(): Promise<void> {
+      entries.clear();
     },
   };
 }
@@ -55,6 +86,24 @@ export function createRedisCacheStore(redisUrl: string): CacheStore {
         logger.warn({ err, key }, "Redis cache set failed");
       }
     },
+    async del(key: string): Promise<void> {
+      try {
+        await (await client()).del(key);
+      } catch (err) {
+        logger.warn({ err, key }, "Redis cache del failed");
+      }
+    },
+    async close(): Promise<void> {
+      if (!clientPromise) return;
+      try {
+        const c = await clientPromise;
+        await c.quit();
+      } catch (err) {
+        logger.warn({ err }, "Redis cache quit failed");
+      } finally {
+        clientPromise = null;
+      }
+    },
   };
 }
 
@@ -65,6 +114,13 @@ export function getAppCache(): CacheStore {
     appCache = process.env.REDIS_URL ? createRedisCacheStore(process.env.REDIS_URL) : createMemoryCacheStore();
   }
   return appCache;
+}
+
+export async function closeAppCache(): Promise<void> {
+  if (appCache?.close) {
+    await appCache.close();
+  }
+  appCache = null;
 }
 
 export async function getJsonCache<T>(key: string, cache: CacheStore = getAppCache()): Promise<T | null> {
@@ -85,4 +141,8 @@ export async function setJsonCache<T>(
   cache: CacheStore = getAppCache(),
 ): Promise<void> {
   await cache.set(key, JSON.stringify(value), ttlSeconds);
+}
+
+export async function delJsonCache(key: string, cache: CacheStore = getAppCache()): Promise<void> {
+  await cache.del(key);
 }

@@ -261,7 +261,7 @@ export function NotificationSettings() {
                 disattivarle in qualsiasi momento.
               </span>
               <span className="block">
-                LIMEN userà il permesso solo per avvisi operativi
+                AUREUS userà il permesso solo per avvisi operativi
                 collegati alla tua routine, non per pubblicità.
               </span>
             </AlertDialogDescription>

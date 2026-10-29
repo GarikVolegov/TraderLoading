@@ -63,7 +63,7 @@ export async function renderTorneoCertificateToCanvas(
   ctx.drawImage(baseImg, 0, 0, 1024, 1024);
 
   // 2. Copertura impeccabile dell'area "[ NOME UTENTE ]"
-  const cleanName = (userName?.trim() || "OPERATORE LIMEN").toUpperCase();
+  const cleanName = (userName?.trim() || "OPERATORE AUREUS").toUpperCase();
   const bgGrad = ctx.createLinearGradient(200, 368, 824, 368);
   bgGrad.addColorStop(0, "rgba(12, 14, 18, 0)");
   bgGrad.addColorStop(0.12, "rgba(14, 17, 23, 0.96)");

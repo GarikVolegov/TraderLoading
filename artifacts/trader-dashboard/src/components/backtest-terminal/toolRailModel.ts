@@ -482,3 +482,47 @@ export const DRAWING_TOOLS: DrawingToolMeta[] = [
   { id: "priceRange", Icon: PriceRangeIcon, labelKey: "backtest_terminal.tool_priceRange", category: "measurers" },
   { id: "dateRange", Icon: DateRangeIcon, labelKey: "backtest_terminal.tool_dateRange", category: "measurers" },
 ];
+
+export interface SmcPresetMeta {
+  id: string;
+  name: string;
+  kind: "rect" | "fib";
+  color: string;
+  fillOpacity: number;
+  label: string;
+}
+
+export const SMC_PRESETS: SmcPresetMeta[] = [
+  {
+    id: "fvg_bull",
+    name: "FVG Rialzista (Discount)",
+    kind: "rect",
+    color: "#10b981",
+    fillOpacity: 0.18,
+    label: "BULL FVG",
+  },
+  {
+    id: "fvg_bear",
+    name: "FVG Ribassista (Premium)",
+    kind: "rect",
+    color: "#ef4444",
+    fillOpacity: 0.18,
+    label: "BEAR FVG",
+  },
+  {
+    id: "order_block",
+    name: "Order Block Istituzionale",
+    kind: "rect",
+    color: "#C5A059",
+    fillOpacity: 0.25,
+    label: "ORDER BLOCK",
+  },
+  {
+    id: "liquidity_pool",
+    name: "Bacino di Liquidità (BSL/SSL)",
+    kind: "rect",
+    color: "#38bdf8",
+    fillOpacity: 0.15,
+    label: "LIQUIDITY",
+  },
+];

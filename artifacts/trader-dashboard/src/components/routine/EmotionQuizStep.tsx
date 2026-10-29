@@ -1,37 +1,44 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, Flame, ShieldCheck, Crosshair, Zap, Moon, AlertTriangle, Compass, Award, CheckCircle2, type LucideIcon } from "lucide-react";
 import type { Program, Answers } from "./types";
 
-const EMOTIONS_MORNING = [
-  { id: "anxious",    label: "Ansioso",   emoji: "😰", color: "#ef4444" },
-  { id: "tense",      label: "Teso",      emoji: "😤", color: "#f97316" },
-  { id: "neutral",    label: "Neutro",    emoji: "😐", color: "#6b7280" },
-  { id: "calm",       label: "Calmo",     emoji: "😌", color: "#3b82f6" },
-  { id: "confident",  label: "Fiducioso", emoji: "💪", color: "#10b981" },
-  { id: "energetic",  label: "Energico",  emoji: "⚡", color: "#f59e0b" },
+interface EmotionItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  color: string;
+}
+
+const EMOTIONS_MORNING: EmotionItem[] = [
+  { id: "anxious",    label: "Ansioso / Teso",   icon: AlertTriangle, color: "#ef4444" },
+  { id: "tense",      label: "Pressione Alta",  icon: Flame,         color: "#f97316" },
+  { id: "neutral",    label: "Stato Neutro",    icon: ShieldCheck,   color: "#94a3b8" },
+  { id: "calm",       label: "Calma Lucida",    icon: Crosshair,     color: "#10b981" },
+  { id: "confident",  label: "Centrato",        icon: Compass,       color: "#3b82f6" },
+  { id: "energetic",  label: "Focus Sovrano",   icon: Zap,           color: "#E8C56A" },
 ];
 
-const EMOTIONS_EVENING = [
-  { id: "frustrated", label: "Frustrato", emoji: "😤", color: "#ef4444" },
-  { id: "tired",      label: "Stanco",    emoji: "😴", color: "#6b7280" },
-  { id: "neutral",    label: "Neutro",    emoji: "😐", color: "#6b7280" },
-  { id: "satisfied",  label: "Soddisfatto",emoji: "😊",color: "#3b82f6" },
-  { id: "happy",      label: "Felice",    emoji: "🎉", color: "#10b981" },
-  { id: "proud",      label: "Orgoglioso",emoji: "🏆", color: "#f59e0b" },
+const EMOTIONS_EVENING: EmotionItem[] = [
+  { id: "frustrated", label: "Frustrazione",    icon: AlertTriangle, color: "#ef4444" },
+  { id: "tired",      label: "Affaticato",      icon: Moon,          color: "#64748b" },
+  { id: "neutral",    label: "Stato Neutro",    icon: ShieldCheck,   color: "#94a3b8" },
+  { id: "satisfied",  label: "Disciplinato",    icon: CheckCircle2,  color: "#3b82f6" },
+  { id: "happy",      label: "Conforme al Piano", icon: Crosshair,   color: "#10b981" },
+  { id: "proud",      label: "Integrità Alta",  icon: Award,         color: "#E8C56A" },
 ];
 
 const EMOTION_ADVICE: Record<string, string> = {
-  anxious:    "L'ansia è normale. Respira, segui le regole e riduci il size oggi.",
-  tense:      "La tensione può distorcere le decisioni. Vai più piano, size ridotto.",
-  neutral:    "Stato ottimale. Mantieni la disciplina e segui il piano.",
-  calm:       "Perfetto. La calma è il vantaggio più sottovalutato nel trading.",
-  confident:  "Ottimo. Attenzione all'overconfidence — rispetta i limiti.",
-  energetic:  "Energia alta. Usa questo stato per la disciplina, non per l'overtrading.",
-  frustrated: "Frustrazione visibile. Nessuna operazione prima di sentirti neutro.",
-  tired:      "Stanchezza = errori. Valuta una sessione ridotta o un giorno di pausa.",
-  satisfied:  "Buon umore. Evita il revenge trading o la compiacenza.",
-  happy:      "Ottimo. Ricorda: le emozioni positive portano spesso all'overtrading.",
-  proud:      "Meriti ogni successo. Domani riparti dalla disciplina.",
+  anxious:    "Tensione rilevata. Rallenta il ritmo decisionale, riduci il rischio all'1% e attendi conferme multiple.",
+  tense:      "Pressione emotiva attiva: proteggi il capitale. Opera solo se il Custode della Soglia è al 100%.",
+  neutral:    "Equilibrio operativo ideale. Nessun attaccamento all'esito: esegui solo secondo protocollo.",
+  calm:       "Calma lucida. Lo stato più nobile dell'Operatore: attendi impassibile il Sigillo d'Azione.",
+  confident:  "Fiducia presente. Mantieni l'umiltà stoica ed evita qualsiasi forma di overconfidence.",
+  energetic:  "Focus sovrano. Incanala l'energia nella rigorosa osservanza delle regole de L'Ordine.",
+  frustrated: "Frustrazione post-sessione. Nessun revenge trading: decontamina la mente e stacca i grafici.",
+  tired:      "Affaticamento cognitivo. La seduta è conclusa: il riposo disciplinato rigenera il giudizio.",
+  satisfied:  "Seduta disciplinata. Non cedere alla compiacenza: domani si ricomincia con la stessa sobrietà.",
+  happy:      "Piena conformità. Ricorda che la costanza è il risultato della sottomissione al metodo.",
+  proud:      "Integrità difesa con onore. Sigilla la sessione ne Il Libro della Verità.",
 };
 
 export function EmotionQuizStep({
@@ -44,56 +51,66 @@ export function EmotionQuizStep({
   const advice = selected ? EMOTION_ADVICE[selected] : null;
 
   return (
-    <div className="flex flex-col gap-5 w-full max-w-lg mx-auto">
-      <div className="grid grid-cols-3 gap-3">
-        {emotions.map((e, i) => (
-          <motion.button
-            key={e.id}
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.06, type: "spring", stiffness: 400, damping: 25 }}
-            onClick={() => onChange({ ...answers, emotion: e.id })}
-            className={`relative flex flex-col items-center gap-2 py-4 px-2 rounded-2xl border transition-all duration-200 ${
-              selected === e.id
-                ? "border-2 shadow-lg"
-                : "border-border/40 bg-card/40 hover:border-border/70 hover:bg-card/60"
-            }`}
-            style={selected === e.id ? {
-              borderColor: e.color,
-              backgroundColor: `${e.color}15`,
-              boxShadow: `0 0 20px ${e.color}20`,
-            } : {}}
-            whileTap={{ scale: 0.95 }}
-          >
-            <span className="text-3xl leading-none">{e.emoji}</span>
-            <span
-              className="text-xs font-bold"
-              style={{ color: selected === e.id ? e.color : undefined }}
+    <div className="flex flex-col gap-5 w-full max-w-xl mx-auto">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {emotions.map((e, i) => {
+          const isSelected = selected === e.id;
+          const EmotionIcon = e.icon;
+
+          return (
+            <motion.button
+              key={e.id}
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.04, duration: 0.2 }}
+              onClick={() => onChange({ ...answers, emotion: e.id })}
+              className={`relative flex flex-col items-center gap-2.5 p-4 rounded-xl border transition-all cursor-pointer ${
+                isSelected
+                  ? "border-[#C5A059]/80 bg-[#C5A059]/15 shadow-[0_0_16px_rgba(197,160,89,0.25)]"
+                  : "border-white/10 bg-black/40 hover:border-white/20 hover:bg-white/[0.04]"
+              }`}
+              whileTap={{ scale: 0.97 }}
             >
-              {e.label}
-            </span>
-            {selected === e.id && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: e.color }}
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-lg border transition-transform"
+                style={{
+                  backgroundColor: `${e.color}18`,
+                  borderColor: `${e.color}45`,
+                  color: e.color,
+                }}
               >
-                <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
-              </motion.div>
-            )}
-          </motion.button>
-        ))}
+                <EmotionIcon className="h-5 w-5" />
+              </div>
+
+              <span
+                className={`font-mono text-xs font-bold uppercase tracking-wider text-center ${
+                  isSelected ? "text-[#E8C56A]" : "text-muted-foreground/80"
+                }`}
+              >
+                {e.label}
+              </span>
+
+              {isSelected && (
+                <div
+                  className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center bg-[#C5A059] shadow-sm"
+                >
+                  <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />
+                </div>
+              )}
+            </motion.button>
+          );
+        })}
       </div>
 
       <AnimatePresence>
         {advice && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
-            className="px-4 py-3 rounded-xl border border-border/30 bg-card/60 text-sm text-muted-foreground/80 italic text-center"
+            className="px-4 py-3 rounded-xl border border-[#C5A059]/30 bg-[#0d0f14]/90 text-xs font-mono text-slate-300 leading-relaxed text-center shadow-md"
           >
+            <span className="text-[#E8C56A] font-bold mr-1.5 uppercase">Direttiva:</span>
             {advice}
           </motion.div>
         )}

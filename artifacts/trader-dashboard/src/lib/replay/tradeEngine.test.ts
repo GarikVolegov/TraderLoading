@@ -46,10 +46,15 @@ assert.deepEqual(checkStopHit(buy, bar({ open: 1.1, low: 1.0999, high: 1.1041 })
   exitPrice: buy.takeProfit,
   exitReason: "tp",
 });
-// buy: both in the same bar → conservative SL-first
+// buy: both in the same bar → conservative SL-first when roughly balanced
 assert.deepEqual(checkStopHit(buy, bar({ open: 1.1, low: 1.09, high: 1.11 })), {
   exitPrice: buy.stopLoss,
   exitReason: "sl",
+});
+// buy: both in the same bar but opened immediately adjacent to TP → TP fills
+assert.deepEqual(checkStopHit(buy, bar({ open: 1.1038, low: 1.09, high: 1.11 })), {
+  exitPrice: buy.takeProfit,
+  exitReason: "tp",
 });
 // no touch
 assert.equal(checkStopHit(buy, bar({ open: 1.1, low: 1.0990, high: 1.1030 })), null);

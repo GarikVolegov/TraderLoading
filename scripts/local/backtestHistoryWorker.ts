@@ -24,7 +24,7 @@ while (!stopping) {
   let waitMs = RETRY_MS;
   try {
     await new Promise<void>((resolve, reject) => {
-      child = spawn(process.execPath, ["--import", tsxLoader, ingestEntry, bootstrapped ? "tail" : "seed", "--symbols=XAUUSD,EURUSD,USOIL", ...(!bootstrapped ? ["--years=5", "--resume=true"] : [])], {
+      child = spawn(process.execPath, ["--import", tsxLoader, ingestEntry, bootstrapped ? "tail" : "seed", "--symbols=XAUUSD,EURUSD,USOIL,BTCUSD,ETHUSD", ...(!bootstrapped ? ["--years=7", "--resume=true"] : [])], {
         cwd: repoRoot, env: process.env, stdio: "inherit", shell: false,
       });
       child.once("error", reject);

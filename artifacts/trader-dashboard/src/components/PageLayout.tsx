@@ -27,6 +27,8 @@ const pageVariants = {
 export function PageLayout({ children, fullWidth, quiet = false, className = "" }: PageLayoutProps) {
   const { activeBackgroundUrl, darkness } = useBackground();
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const skipInnerMotion = reduceMotion || isMobile;
 
   return (
     <div
@@ -42,6 +44,8 @@ export function PageLayout({ children, fullWidth, quiet = false, className = "" 
               src={activeBackgroundUrl}
               alt=""
               className="w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
               style={{ opacity: (100 - darkness) / 100 }}
             />
             <div
@@ -57,10 +61,10 @@ export function PageLayout({ children, fullWidth, quiet = false, className = "" 
         className={`app-page-content relative z-10 ${
           fullWidth ? "w-full" : "mx-auto max-w-[1840px]"
         } ${
-          quiet ? "lg:flex lg:h-full lg:flex-col lg:overflow-hidden" : ""
+          quiet ? "flex flex-col lg:h-full lg:overflow-hidden" : ""
         } space-y-2.5 px-3 pt-[calc(var(--safe-top)+3.85rem)] sm:space-y-3 sm:px-5 lg:px-5 lg:pt-[calc(var(--safe-top)+3.65rem)] xl:px-6`}
-        variants={reduceMotion ? { visible: { opacity: 1 } } : pageVariants}
-        initial={reduceMotion ? false : "hidden"}
+        variants={skipInnerMotion ? { visible: { opacity: 1 } } : pageVariants}
+        initial={skipInnerMotion ? false : "hidden"}
         animate="visible"
       >
         <ProcessReturn />

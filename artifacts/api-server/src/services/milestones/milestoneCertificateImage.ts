@@ -148,7 +148,7 @@ export function renderMilestoneCertificateSvg(cert: {
   const fontSize = nameLen > 30 ? 20 : nameLen > 24 ? 24 : nameLen > 18 ? 28 : 32;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 764 1024" width="764" height="1024" role="img" aria-labelledby="cert-title cert-desc">
-  <title id="cert-title">LIMEN PROTOCOL · ${xmlEscape(gradeDef.title)} · ${serial}</title>
+  <title id="cert-title">AUREUS PROTOCOL · ${xmlEscape(gradeDef.title)} · ${serial}</title>
   <desc id="cert-desc">Certificato NFT di Investitura conferito a ${userName}</desc>
   <defs>
     <linearGradient id="g-gold-name" x1="0" y1="${nameY - 20}" x2="0" y2="${nameY + 20}" gradientUnits="userSpaceOnUse">
@@ -214,7 +214,7 @@ export function renderMilestoneCertificateSvg(cert: {
 
   <!-- METADATA & COMPATIBILITY ATTRIBUTES -->
   <g opacity="0" pointer-events="none" font-size="0.1">
-    <text>LIMEN PROTOCOL</text>
+    <text>AUREUS PROTOCOL</text>
     <text>GRADO ${roman}</text>
     <text>${xmlEscape(displayTitle.toUpperCase())}</text>
     <text>GRADO ${roman} · ${userName.toUpperCase()}</text>

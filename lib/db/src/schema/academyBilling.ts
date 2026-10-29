@@ -75,7 +75,10 @@ export const academyPayoutsTable = pgTable("academy_payouts", {
   lastError: text("last_error"),
   createdAt: instant("created_at").notNull().defaultNow(),
   updatedAt: instant("updated_at").notNull().defaultNow(),
-}, t => [uniqueIndex("academy_payout_commission_idx").on(t.commissionId)]);
+}, t => [
+  uniqueIndex("academy_payout_commission_idx").on(t.commissionId),
+  index("academy_payout_affiliate_idx").on(t.affiliateUserId),
+]);
 
 export type AcademySubscription = typeof academySubscriptionsTable.$inferSelect;
 export type AcademyCommission = typeof academyCommissionsTable.$inferSelect;

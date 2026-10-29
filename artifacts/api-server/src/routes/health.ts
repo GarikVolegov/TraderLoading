@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 import logger from "../lib/logger";
+import { getAllCircuitBreakersStats } from "../lib/circuitBreaker.js";
+import { systemWatchdog, type WatchdogTelemetry } from "../lib/systemWatchdog.js";
 
 type CheckStatus = "ok" | "error";
 
@@ -8,6 +10,11 @@ export interface DependencyCheckResult {
   status: CheckStatus;
   latencyMs: number;
   error?: string;
+  pool?: {
+    total: number;
+    idle: number;
+    waiting: number;
+  };
 }
 
 export interface HealthRouterOptions {
@@ -23,6 +30,13 @@ interface StatusResponse {
   timestamp: string;
   uptimeSeconds: number;
   version: string;
+  memoryMb?: {
+    rss: number;
+    heapUsed: number;
+    heapTotal: number;
+  };
+  circuitBreakers?: Record<string, unknown>;
+  watchdog?: WatchdogTelemetry;
   checks: {
     server: { status: "ok" };
     database: DependencyCheckResult;
@@ -38,6 +52,11 @@ async function defaultCheckDatabase(): Promise<DependencyCheckResult> {
     return {
       status: "ok",
       latencyMs: Date.now() - started,
+      pool: {
+        total: pool.totalCount,
+        idle: pool.idleCount,
+        waiting: pool.waitingCount,
+      },
     };
   } catch (err) {
     logger.error({ err }, "Database readiness check failed");
@@ -67,12 +86,24 @@ function sanitizeDependencyCheck(result: DependencyCheckResult, errorCode: strin
  * When configured, PINGs with a short timeout so a hung Redis can't hang /readyz.
  */
 async function defaultCheckRedis(): Promise<DependencyCheckResult | null> {
-  if (!process.env.REDIS_URL) return null;
+  const replicas = Number.parseInt(process.env.EXPECTED_REPLICAS ?? "", 10);
+  const isScaled = Number.isFinite(replicas) && replicas > 1;
+  if (!process.env.REDIS_URL) {
+    if (isScaled && process.env.NODE_ENV === "production") {
+      return { status: "error", latencyMs: 0, error: "redis_required_in_scaled_env" };
+    }
+    return null;
+  }
   const started = Date.now();
   try {
     const { getSharedRedisClient } = await import("../lib/redisClient.js");
     const clientPromise = getSharedRedisClient();
-    if (!clientPromise) return null;
+    if (!clientPromise) {
+      if (isScaled && process.env.NODE_ENV === "production") {
+        return { status: "error", latencyMs: 0, error: "redis_client_uninitialized_in_scaled_env" };
+      }
+      return null;
+    }
     const client = await clientPromise;
     await Promise.race([
       client.ping(),
@@ -101,12 +132,20 @@ async function createStatusResponse(options: Required<HealthRouterOptions>): Pro
   const redisRaw = await options.checkRedis();
   const redis = redisRaw ? sanitizeDependencyCheck(redisRaw, "redis_unavailable") : null;
   const healthy = database.status === "ok" && (redis === null || redis.status === "ok");
+  const mem = process.memoryUsage();
   return {
     status: healthy ? "ok" : "degraded",
     service: "api",
     timestamp: new Date().toISOString(),
     uptimeSeconds: Math.round(process.uptime()),
     version: getVersion(options.version),
+    memoryMb: {
+      rss: Math.round(mem.rss / (1024 * 1024)),
+      heapUsed: Math.round(mem.heapUsed / (1024 * 1024)),
+      heapTotal: Math.round(mem.heapTotal / (1024 * 1024)),
+    },
+    circuitBreakers: getAllCircuitBreakersStats(),
+    watchdog: systemWatchdog.getTelemetry(),
     checks: {
       server: { status: "ok" },
       database,

@@ -16,7 +16,15 @@ import {
   Trash2,
   Eye,
   Plus,
+  Wind,
+  Heart,
+  Watch,
+  AlertTriangle,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
+import { TacticalBreathModal } from "./TacticalBreathModal";
+import { useSmartWatchHeartRate } from "@/hooks/useSmartWatchHeartRate";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +44,8 @@ import {
 } from "@workspace/api-client-react";
 import { addProcessEvidence, fetchTraderProcess, traderProcessKey } from "@/lib/traderProcessApi";
 import { trackEvent } from "@/lib/analytics";
+import { synestheticSealOfAction } from "@/lib/soundFx";
+import { queueOfflineMutation } from "@/lib/journalOfflineSync";
 
 function processDay(date: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -83,6 +93,8 @@ export interface CockpitTradeRegisterModalProps {
   onAddSnapshotImage?: (snapshotId: string, imageDataUrl: string) => void;
   processSessionId?: string;
   methodVersionId?: string;
+  biometricBpm?: number;
+  biometricReason?: string;
   onConfirmCloseSession?: (notes: string, outcome: "confirmed" | "partial" | "invalidated") => Promise<void>;
   onSuccess?: () => void;
 }
@@ -111,6 +123,8 @@ export function CockpitTradeRegisterModal({
   onAddSnapshotImage,
   processSessionId,
   methodVersionId,
+  biometricBpm,
+  biometricReason,
   onConfirmCloseSession,
   onSuccess,
 }: CockpitTradeRegisterModalProps) {
@@ -134,7 +148,34 @@ export function CockpitTradeRegisterModal({
   // Form states
   const [outcome, setOutcome] = useState<"win" | "loss" | "breakeven">("win");
   const [customProfit, setCustomProfit] = useState<string>("");
+
+  // Criteri di Conformità AUREUS (Il Custode della Soglia)
+  const [criteriaStatus, setCriteriaStatus] = useState<{
+    structureBias: boolean;
+    strictRisk: boolean;
+    closedCandleTrigger: boolean;
+    stoicState: boolean;
+  }>({
+    structureBias: true,
+    strictRisk: true,
+    closedCandleTrigger: true,
+    stoicState: true,
+  });
+
+  const allCriteriaMet =
+    criteriaStatus.structureBias &&
+    criteriaStatus.strictRisk &&
+    criteriaStatus.closedCandleTrigger &&
+    criteriaStatus.stoicState;
+
+  const failedCriteria: string[] = [];
+  if (!criteriaStatus.structureBias) failedCriteria.push("Bias/Struttura Disallineati");
+  if (!criteriaStatus.strictRisk) failedCriteria.push("Rischio/Stop Alterato");
+  if (!criteriaStatus.closedCandleTrigger) failedCriteria.push("Trigger Anticipato (FOMO)");
+  if (!criteriaStatus.stoicState) failedCriteria.push("Mente Non Calma (Rivalsa/Tilt)");
   const [tradeNotes, setTradeNotes] = useState<string>(notes);
+  const [userEntryPrice, setUserEntryPrice] = useState<string>(() => (entryPrice && !isNaN(parseFloat(entryPrice)) ? entryPrice : ""));
+  const [userExitPrice, setUserExitPrice] = useState<string>("");
   const [attachedFiles, setAttachedFiles] = useState<(File & { preview: string })[]>([]);
   const [localSnapshots, setLocalSnapshots] = useState<TimeframeSnapshot[]>(timeframeSnapshots);
   const [slotTargetId, setSlotTargetId] = useState<string | null>(null);
@@ -142,16 +183,44 @@ export function CockpitTradeRegisterModal({
   const [isAddingCustomSlot, setIsAddingCustomSlot] = useState(false);
   const [customTfInput, setCustomTfInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [breathModalOpen, setBreathModalOpen] = useState(false);
+  const [breathCompleted, setBreathCompleted] = useState(false);
+  const watch = useSmartWatchHeartRate();
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  // Attivazione Cooldown di Raffreddamento Conscio se lo smartwatch rileva tachicardia (>=90 BPM)
+  useEffect(() => {
+    if (!isOpen || !watch.isLive || watch.zone !== "ruby_drift" || breathCompleted) {
+      return;
+    }
+    setCooldownSeconds(15);
+    const interval = setInterval(() => {
+      setCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isOpen, watch.isLive, watch.zone, breathCompleted]);
 
   const slotFileInputRef = useRef<HTMLInputElement>(null);
   const generalFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (entryPrice && !isNaN(parseFloat(entryPrice))) {
+      setUserEntryPrice(entryPrice);
+    }
+  }, [entryPrice]);
 
   useEffect(() => {
     setLocalSnapshots(timeframeSnapshots);
   }, [timeframeSnapshots]);
 
   // Compute planned R:R and default profit
-  const numEntry = parseFloat(entryPrice) || 0;
+  const numEntry = parseFloat(userEntryPrice) || parseFloat(entryPrice) || 0;
   const numStop = parseFloat(stopLoss) || 0;
   const numRisk = parseFloat(initialRisk) || 5;
 
@@ -348,16 +417,19 @@ export function CockpitTradeRegisterModal({
   }, [isOpen, toast]);
 
   // Clean object URLs on unmount
+  const attachedFilesRef = useRef(attachedFiles);
+  attachedFilesRef.current = attachedFiles;
   useEffect(() => {
     return () => {
-      attachedFiles.forEach((f) => URL.revokeObjectURL(f.preview));
+      attachedFilesRef.current.forEach((f) => URL.revokeObjectURL(f.preview));
     };
-  }, [attachedFiles]);
+  }, []);
 
   // Final submission
   const handleSubmit = async () => {
     if (isSaving) return;
     setIsSaving(true);
+    let tradeData: any = null;
 
     try {
       const isLong = bias === "long" || (bias !== "short" && bias !== "wait");
@@ -367,15 +439,18 @@ export function CockpitTradeRegisterModal({
         ? parsedCustomProfit
         : (outcome === "win" ? numRisk * plannedRR : outcome === "loss" ? -numRisk : 0);
 
-      // Safe numeric prices that satisfy database & zod constraints
-      const safeEntry = numEntry > 0 ? numEntry : 100.0;
-      let estimatedExit = safeEntry;
-      if (outcome === "win") {
-        estimatedExit = numTarget > 0 ? numTarget : (isLong ? safeEntry * 1.015 : safeEntry * 0.985);
-      } else if (outcome === "loss") {
-        estimatedExit = numStop > 0 ? numStop : (isLong ? safeEntry * 0.99 : safeEntry * 1.01);
-      } else {
-        estimatedExit = safeEntry;
+      // Numeric prices: prioritize user input, then props
+      const safeEntry = numEntry > 0 ? numEntry : (parseFloat(userEntryPrice) || null);
+      const explicitExit = parseFloat(userExitPrice);
+      let estimatedExit = !isNaN(explicitExit) && explicitExit > 0 ? explicitExit : safeEntry;
+      if (!estimatedExit && safeEntry) {
+        if (outcome === "win") {
+          estimatedExit = numTarget > 0 ? numTarget : (isLong ? safeEntry * 1.015 : safeEntry * 0.985);
+        } else if (outcome === "loss") {
+          estimatedExit = numStop > 0 ? numStop : (isLong ? safeEntry * 0.99 : safeEntry * 1.01);
+        } else {
+          estimatedExit = safeEntry;
+        }
       }
 
       const safeStop = numStop > 0 ? numStop : null;
@@ -383,28 +458,66 @@ export function CockpitTradeRegisterModal({
       const title = `${market} · ${dir.toUpperCase()} · ${scenario}`;
       const safeTarget = numTarget > 0 ? numTarget : null;
 
+      const effectiveBpm = watch.isLive ? watch.bpm : biometricBpm;
+      const effectiveBandLabel =
+        effectiveBpm != null
+          ? effectiveBpm < 75
+            ? "Assetto Zen"
+            : effectiveBpm < 92
+            ? "Assetto Vigile"
+            : "Rischio Deriva"
+          : "";
+      const effectiveCardioTag =
+        effectiveBpm != null
+          ? effectiveBpm < 75
+            ? "Cardio-Zen"
+            : effectiveBpm < 92
+            ? "Cardio-Vigile"
+            : "Cardio-Deriva"
+          : null;
+
+      const disciplineSummary = allCriteriaMet
+        ? "Disciplina: PROTOCOLLO CONFORME (4/4 Criteri Aureus)"
+        : `Disciplina: ANOMALIA DI DISCIPLINA (${failedCriteria.join(" · ")})`;
+
       // Structured content compatible with parseTradeContent parser in Journal
       const contentLines = [
         `Symbol: ${market}`,
         `Direction: ${dir.toUpperCase()}`,
-        `Entry Price: ${safeEntry}`,
-        `Exit Price: ${estimatedExit}`,
+        safeEntry ? `Entry Price: ${safeEntry}` : "",
+        estimatedExit ? `Exit Price: ${estimatedExit}` : "",
         safeStop ? `Stop Loss: ${safeStop}` : "",
         safeTarget ? `Take Profit: ${safeTarget}` : "",
         `Profit: ${profitNum >= 0 ? `+${profitNum.toFixed(2)}` : profitNum.toFixed(2)}`,
         `Volume: 1.00`,
         `Status: closed`,
         `Currency: ${normalizeCurrencyCode(currency)}`,
+        effectiveBpm != null
+          ? `Biometria: ${effectiveBpm} BPM (${effectiveBandLabel}${watch.isLive && watch.deviceName ? ` · ${watch.deviceName}` : biometricReason ? ` · ${biometricReason}` : ""})`
+          : "",
+        breathCompleted ? "Rituale: Respiro Tattico 4-7-8 Concluso" : "",
+        disciplineSummary,
         "",
         `Setup: ${scenario} · Trigger: ${trigger} · Esito: ${outcome.toUpperCase()}`,
         tradeNotes.trim() ? `\n${tradeNotes.trim()}` : "",
       ].filter((l) => l !== "").join("\n");
 
-      const tags = [market, dir.toUpperCase(), trigger, scenario, "Cockpit", "account-import"].filter(Boolean).join(", ");
+      const tags = [
+        market,
+        dir.toUpperCase(),
+        trigger,
+        scenario,
+        allCriteriaMet ? "DISCIPLINA-AUREUS" : "ANOMALIA-DISCIPLINA",
+        allCriteriaMet ? "PROTOCOLLO-CONFORME" : "INFRAZIONE-PROTOCOLLO",
+        effectiveBpm != null ? `BPM-${effectiveBpm}` : null,
+        effectiveCardioTag,
+        breathCompleted ? "Respiro-478" : null,
+        "AUREUS-Cockpit",
+      ].filter(Boolean).join(", ");
       const nowIso = new Date().toISOString();
-      const openTimeIso = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const openTimeIso = nowIso;
 
-      const tradeData = {
+      tradeData = {
         title,
         content: contentLines,
         tradeDate: processDay(),
@@ -413,8 +526,8 @@ export function CockpitTradeRegisterModal({
         symbol: market,
         executionEnvironment: (contextSession?.mode === "application" ? "real" : "simulation") as "simulation" | "real" | "unknown",
         direction: dir as "buy" | "sell",
-        entryPrice: safeEntry,
-        exitPrice: estimatedExit,
+        entryPrice: safeEntry ?? 0,
+        exitPrice: estimatedExit ?? 0,
         stopLoss: safeStop,
         profit: profitNum,
         openTime: openTimeIso,
@@ -484,6 +597,8 @@ export function CockpitTradeRegisterModal({
       queryClient.invalidateQueries({ queryKey: getGetJournalEdgeQueryKey() });
       queryClient.invalidateQueries({ queryKey: traderProcessKey });
 
+      synestheticSealOfAction();
+
       toast({
         title: "Trade Registrato con Successo!",
         description: `${market} (${outcome.toUpperCase()}) archiviato nel Diario con tutte le metriche e gli scatti.`,
@@ -492,6 +607,25 @@ export function CockpitTradeRegisterModal({
       onSuccess?.();
       onClose();
     } catch (err) {
+      console.warn("Registrazione online non riuscita, tentativo salvataggio in IndexedDB locale:", err);
+      if (tradeData) {
+        try {
+          await queueOfflineMutation({
+            type: "create_entry",
+            payload: { data: tradeData },
+          });
+          synestheticSealOfAction();
+          toast({
+            title: "Trade Sigillato Offline",
+            description: "Connessione assente: operazione salvata in locale. Verrà sincronizzata al ripristino della rete.",
+          });
+          onSuccess?.();
+          onClose();
+          return;
+        } catch (queueErr) {
+          console.error("Fallito salvataggio offline:", queueErr);
+        }
+      }
       toast({
         title: "Errore durante la registrazione",
         description: err instanceof Error ? err.message : "Si è verificato un errore inaspettato.",
@@ -555,7 +689,23 @@ export function CockpitTradeRegisterModal({
             <div className="grid grid-cols-4 gap-2 pt-1 font-mono text-center">
               <div className="p-1.5 rounded bg-black/40 border border-white/5">
                 <span className="text-[9px] text-muted-foreground uppercase block">Entry</span>
-                <strong className="text-foreground text-xs">{entryPrice || "A Mercato"}</strong>
+                <input
+                  type="text"
+                  placeholder="A Mercato"
+                  value={userEntryPrice}
+                  onChange={(e) => setUserEntryPrice(e.target.value)}
+                  className="w-full bg-transparent text-center text-foreground font-bold text-xs focus:outline-none border-b border-[#C5A059]/30 focus:border-[#C5A059]"
+                />
+              </div>
+              <div className="p-1.5 rounded bg-black/40 border border-white/5">
+                <span className="text-[9px] text-muted-foreground uppercase block">Exit</span>
+                <input
+                  type="text"
+                  placeholder="Uscita"
+                  value={userExitPrice}
+                  onChange={(e) => setUserExitPrice(e.target.value)}
+                  className="w-full bg-transparent text-center text-foreground font-bold text-xs focus:outline-none border-b border-[#C5A059]/30 focus:border-[#C5A059]"
+                />
               </div>
               <div className="p-1.5 rounded bg-black/40 border border-white/5">
                 <span className="text-[9px] text-muted-foreground uppercase block">Stop Loss</span>
@@ -636,6 +786,54 @@ export function CockpitTradeRegisterModal({
               </button>
             </div>
 
+            {/* Sentinel Anti-Tilt: Respiro Tattico 4-7-8 se il trade è in perdita */}
+            {outcome === "loss" && (
+              breathCompleted ? (
+                <div className="p-2.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/30 via-[#0d0f14] to-[#0d0f14] flex items-center justify-between gap-3 text-left">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0">
+                      <CheckCircle2 size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10.5px] font-mono font-bold uppercase tracking-wider text-emerald-400">
+                        Centratura Sovrana Raggiunta
+                      </div>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        Ciclo 4-7-8 eseguito con successo. Presenza ripristinata nel Libro della Verità.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-mono text-[9px] font-bold text-emerald-300 uppercase px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 whitespace-nowrap">
+                    Allineato
+                  </span>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-xl border border-rose-500/40 bg-gradient-to-r from-rose-950/30 via-[#0d0f14] to-[#0d0f14] flex items-center justify-between gap-3 text-left">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="p-1.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 shrink-0">
+                      <Wind size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10.5px] font-mono font-bold uppercase tracking-wider text-rose-400">
+                        La Deriva bussa alla Soglia
+                      </div>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        Azzera il cortisolo con il Respiro 4-7-8 prima del prossimo trade.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBreathModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/15 hover:bg-[#C5A059]/25 text-[#E8C56A] font-mono text-[10.5px] font-bold uppercase tracking-wider transition-all shrink-0 cursor-pointer whitespace-nowrap shadow-[0_0_10px_rgba(197,160,89,0.2)]"
+                  >
+                    <Wind size={12} className="text-[#E8C56A]" />
+                    <span>Respiro 4-7-8</span>
+                  </button>
+                </div>
+              )
+            )}
+
             {/* PnL Rapido o Calcolato */}
             <div className="flex items-center justify-between bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs">
               <span className="text-muted-foreground">
@@ -654,12 +852,158 @@ export function CockpitTradeRegisterModal({
             </div>
           </div>
 
+          {/* 2. Il Custode della Soglia: 4 Criteri di Conformità Stoica */}
+          <div className="space-y-2 p-3.5 rounded-xl border border-white/10 bg-white/[0.02]">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                {allCriteriaMet ? (
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                ) : (
+                  <ShieldAlert size={14} className="text-[#C5A059]" />
+                )}
+                <span>2. Il Custode della Soglia (4 Criteri di Disciplina)</span>
+              </Label>
+              <span
+                className={`font-mono text-[9px] font-bold uppercase px-2 py-0.5 rounded border whitespace-nowrap ${
+                  allCriteriaMet
+                    ? "bg-emerald-500/15 border-emerald-500/35 text-emerald-400"
+                    : "bg-[#C5A059]/20 border-[#C5A059]/40 text-[#E8C56A]"
+                }`}
+              >
+                {allCriteriaMet ? "Conforme (4/4)" : "Anomalia Rilevata"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() =>
+                  setCriteriaStatus((prev) => ({ ...prev, structureBias: !prev.structureBias }))
+                }
+                className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
+                  criteriaStatus.structureBias
+                    ? "bg-white/[0.04] border-emerald-500/30 text-white"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      criteriaStatus.structureBias
+                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                        : "bg-black/40 border-rose-500/40 text-rose-400"
+                    }`}
+                  >
+                    {criteriaStatus.structureBias && <CheckCircle2 size={12} />}
+                  </div>
+                  <span className="truncate">Struttura &amp; Bias HTF/ITF</span>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">
+                  {criteriaStatus.structureBias ? "Validato" : "Disatteso"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setCriteriaStatus((prev) => ({ ...prev, strictRisk: !prev.strictRisk }))
+                }
+                className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
+                  criteriaStatus.strictRisk
+                    ? "bg-white/[0.04] border-emerald-500/30 text-white"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      criteriaStatus.strictRisk
+                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                        : "bg-black/40 border-rose-500/40 text-rose-400"
+                    }`}
+                  >
+                    {criteriaStatus.strictRisk && <CheckCircle2 size={12} />}
+                  </div>
+                  <span className="truncate">Stop Rigido &amp; Max 1%</span>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">
+                  {criteriaStatus.strictRisk ? "Definito" : "Violato"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setCriteriaStatus((prev) => ({
+                    ...prev,
+                    closedCandleTrigger: !prev.closedCandleTrigger,
+                  }))
+                }
+                className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
+                  criteriaStatus.closedCandleTrigger
+                    ? "bg-white/[0.04] border-emerald-500/30 text-white"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      criteriaStatus.closedCandleTrigger
+                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                        : "bg-black/40 border-rose-500/40 text-rose-400"
+                    }`}
+                  >
+                    {criteriaStatus.closedCandleTrigger && <CheckCircle2 size={12} />}
+                  </div>
+                  <span className="truncate">Trigger Candela Chiusa</span>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">
+                  {criteriaStatus.closedCandleTrigger ? "Atteso" : "Anticipato"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setCriteriaStatus((prev) => ({ ...prev, stoicState: !prev.stoicState }))
+                }
+                className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
+                  criteriaStatus.stoicState
+                    ? "bg-white/[0.04] border-emerald-500/30 text-white"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      criteriaStatus.stoicState
+                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                        : "bg-black/40 border-rose-500/40 text-rose-400"
+                    }`}
+                  >
+                    {criteriaStatus.stoicState && <CheckCircle2 size={12} />}
+                  </div>
+                  <span className="truncate">Calma Stoica (No Tilt)</span>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">
+                  {criteriaStatus.stoicState ? "Presente" : "Rivalsa"}
+                </span>
+              </button>
+            </div>
+
+            {!allCriteriaMet && (
+              <p className="text-[10.5px] font-mono text-[#E8C56A] bg-[#C5A059]/10 border border-[#C5A059]/20 rounded-lg p-2 leading-relaxed">
+                Il Libro della Verità registrerà il contrassegno di anomalia disciplinare. La trasparenza assoluta è la sola via per superare la Deriva.
+              </p>
+            )}
+          </div>
+
           {/* 3. Scatti Multi-Timeframe dell'Analisi (Step 1 HTF, Step 2 ITF, Step 3 LTF) */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                 <Camera size={13} className="text-primary" />
-                <span>2. Scatti Timeframe & Screenshot del Grafico</span>
+                <span>3. Scatti Timeframe &amp; Screenshot del Grafico</span>
               </Label>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-muted-foreground">
@@ -891,7 +1235,7 @@ export function CockpitTradeRegisterModal({
           {/* 4. Note Finali / Diario Emotivo */}
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
-              3. Note Operative & Psicologia (Opzionale)
+              4. Note Operative &amp; Psicologia (Opzionale)
             </Label>
             <Textarea
               value={tradeNotes}
@@ -900,6 +1244,74 @@ export function CockpitTradeRegisterModal({
               className="h-20 text-xs bg-black/40 border-white/10 rounded-xl resize-none text-foreground focus:border-primary/50"
             />
           </div>
+
+          {/* Bio-Guardrail Smartwatch Live */}
+          {watch.isLive && (
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                5. Bio-Telemetria &amp; Sentinella Cardiaca Live
+              </Label>
+
+              {watch.zone === "ruby_drift" ? (
+                <div className="rounded-xl border border-[#ef4444]/40 bg-[#ef4444]/15 p-3.5 space-y-2.5 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Heart size={16} className="text-[#ef4444] animate-pulse shrink-0" fill="#ef4444" />
+                      <span className="font-mono text-xs font-bold text-[#ef4444] uppercase tracking-wider whitespace-nowrap">
+                        Allarme Cardio: {watch.bpm} BPM (Rischio Deriva)
+                      </span>
+                    </div>
+                    <span className="font-mono text-[10px] text-muted-foreground truncate hidden sm:inline">
+                      {watch.deviceName || "Smartwatch Live"}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] font-mono text-muted-foreground/90 leading-relaxed m-0">
+                    {breathCompleted
+                      ? "Ciclo di Respiro Tattico 4-7-8 concluso con successo. Tono vagale ristabilito: procedi con fermezza e lucidità conscia."
+                      : "Frequenza cardiaca elevata al momento dell'entrata. L'esecuzione in stato tachicardico compromette l'integrità decisionale e induce uscite premature o sovradimensionamento."}
+                  </p>
+
+                  <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                    <Button
+                      type="button"
+                      onClick={() => setBreathModalOpen(true)}
+                      className={`font-mono text-xs font-bold px-3 py-1.5 h-auto rounded-lg shadow cursor-pointer flex items-center gap-1.5 ${
+                        breathCompleted
+                          ? "bg-[#10b981]/20 border border-[#10b981]/40 text-[#10b981]"
+                          : "bg-[#ef4444] hover:bg-[#ef4444]/80 text-white animate-pulse"
+                      }`}
+                    >
+                      <Wind size={13} />
+                      <span>{breathCompleted ? "Respiro 4-7-8 Completato ✓" : "Avvia Respiro Tattico 4-7-8"}</span>
+                    </Button>
+
+                    {cooldownSeconds > 0 && !breathCompleted && (
+                      <span className="text-[11px] font-mono text-[#E8C56A] font-bold">
+                        Riflessione stoica attiva: {cooldownSeconds}s
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : watch.zone === "zen" ? (
+                <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-[#10b981]/30 bg-[#10b981]/10 text-xs font-mono">
+                  <div className="flex items-center gap-2 text-[#10b981]">
+                    <Heart size={14} fill="#10b981" className="shrink-0" />
+                    <span className="font-bold whitespace-nowrap">Assetto Stoico Conforme: {watch.bpm} BPM (Mente Calma)</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground hidden sm:inline">{watch.deviceName || "Smartwatch BLE"}</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-[#C5A059]/30 bg-[#C5A059]/10 text-xs font-mono">
+                  <div className="flex items-center gap-2 text-[#E8C56A]">
+                    <Heart size={14} fill="#C5A059" className="shrink-0" />
+                    <span className="font-bold whitespace-nowrap">Vigilanza Operativa: {watch.bpm} BPM</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground hidden sm:inline">{watch.deviceName || "Smartwatch BLE"}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer con Unico Tasto di Chiusura */}
@@ -917,18 +1329,23 @@ export function CockpitTradeRegisterModal({
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={isSaving}
-            className="bg-[#C5A059] hover:bg-[#d8b167] text-black font-bold text-xs px-6 py-2.5 rounded-xl shadow-lg cursor-pointer flex items-center gap-2"
+            disabled={isSaving || (cooldownSeconds > 0 && !breathCompleted)}
+            className="bg-[#C5A059] hover:bg-[#d8b167] text-black font-bold text-xs px-6 py-2.5 rounded-xl shadow-lg cursor-pointer flex items-center gap-2 disabled:opacity-50"
           >
             {isSaving ? (
               <>
                 <Loader2 size={14} className="animate-spin" />
                 <span>Salvataggio nel Diario...</span>
               </>
+            ) : cooldownSeconds > 0 && !breathCompleted ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                <span>Raffreddamento Conscio ({cooldownSeconds}s)...</span>
+              </>
             ) : (
               <>
                 <CheckCircle2 size={15} />
-                <span>Sigilla & Salva Trade nel Diario</span>
+                <span>Sigilla &amp; Salva Trade nel Diario</span>
               </>
             )}
           </Button>
@@ -960,6 +1377,12 @@ export function CockpitTradeRegisterModal({
             </div>
           </div>
         )}
+        {/* Modale del Rituale del Respiro Tattico 4-7-8 */}
+        <TacticalBreathModal
+          isOpen={breathModalOpen}
+          onClose={() => setBreathModalOpen(false)}
+          onComplete={() => setBreathCompleted(true)}
+        />
       </DialogContent>
     </Dialog>
   );

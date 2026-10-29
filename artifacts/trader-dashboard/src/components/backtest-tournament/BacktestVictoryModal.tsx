@@ -1,9 +1,11 @@
-import React, { useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import { ForgiaEmbersOverlay } from "./ForgiaEmbersOverlay";
 import { playVictoryFanfare } from "@/lib/tournamentSoundEffects";
 import type { TournamentRunSummary } from "@/lib/backtestTournamentsApi";
-import { Trophy, RotateCcw, ShieldCheck, Award, BookOpen } from "lucide-react";
+import { Trophy, RotateCcw, ShieldCheck, Award, BookOpen, Share2 } from "lucide-react";
+import { HonorCardShareModal } from "@/components/honor-card/HonorCardShareModal";
+import type { HonorCardData } from "@/lib/honorCardGenerator";
 import "./tournament.css";
 
 export interface BacktestVictoryModalProps {
@@ -12,6 +14,7 @@ export interface BacktestVictoryModalProps {
   onClose: () => void;
   onViewLeaderboard?: () => void;
   onRematch?: () => void;
+  operatorName?: string;
 }
 
 export function BacktestVictoryModal({
@@ -20,8 +23,10 @@ export function BacktestVictoryModal({
   onClose,
   onViewLeaderboard,
   onRematch,
+  operatorName,
 }: BacktestVictoryModalProps) {
   const firedRef = useRef(false);
+  const [showHonorCard, setShowHonorCard] = useState(false);
 
   useEffect(() => {
     if (!isOpen || firedRef.current) return;
@@ -65,6 +70,32 @@ export function BacktestVictoryModal({
   const isWin = !summary.isDisqualified && summary.totalProfit >= 0;
   const maxAllowed = summary.maxAllowedDrawdown ?? 10;
   const assetLabel = summary.asset ? summary.asset.replace("/", "") : "XAUUSD";
+
+  const opName =
+    operatorName ||
+    (typeof window !== "undefined"
+      ? localStorage.getItem("aureus_nickname") || localStorage.getItem("tl_nickname")
+      : null) ||
+    "Operatore";
+
+  const honorCardData: HonorCardData = {
+    title: isWin ? "PROVA DEL FUOCO SUPERATA" : "PROVA DEL FUOCO CONCLUSA",
+    subtitle: isWin
+      ? "Esecuzione chirurgica e fedeltà al Codice. Nessun cedimento, solo rigore."
+      : summary.isDisqualified
+      ? "Soglia di rischio violata. Ne Il Libro della Verità la disciplina precede il profitto."
+      : "Rendiconto registrato nel protocollo. Disciplina prima del profitto.",
+    operatorName: opName,
+    asset: assetLabel,
+    winRate: summary.winRate,
+    winTrades: summary.winTrades,
+    totalTrades: summary.totalTrades,
+    drawdown: summary.maxDrawdown,
+    maxAllowedDrawdown: maxAllowed,
+    totalProfitFormatted: `${summary.totalProfit >= 0 ? "+" : ""}$${summary.totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    integrityScore: summary.isDisqualified ? 0 : summary.maxDrawdown <= 5 ? 100 : 85,
+    isDisqualified: summary.isDisqualified,
+  };
 
   return (
     <div className="bt-victory-overlay" role="dialog" aria-modal="true">
@@ -223,7 +254,7 @@ export function BacktestVictoryModal({
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <Award size={14} color="#D4AF37" />
-              <span>XP Limen Guadagnati: <strong style={{ color: "#D4AF37" }}>+{Math.max(80, Math.floor(Math.abs(summary.totalProfit) / 25) + 120)} XP</strong></span>
+              <span>Integrità AUREUS Accreditata: <strong style={{ color: "#D4AF37" }}>+{Math.max(80, Math.floor(Math.abs(summary.totalProfit) / 25) + 120)} Pti</strong></span>
             </div>
           </div>
         </div>
@@ -232,6 +263,22 @@ export function BacktestVictoryModal({
         <div className="bt-victory-actions">
           <button type="button" className="bt-btn-victory-close" onClick={onClose}>
             Chiudi
+          </button>
+
+          <button
+            type="button"
+            className="bt-btn-action"
+            onClick={() => setShowHonorCard(true)}
+            style={{
+              padding: "12px 22px",
+              background: "linear-gradient(135deg, rgba(197, 160, 89, 0.22) 0%, rgba(232, 197, 106, 0.12) 100%)",
+              border: "1px solid rgba(197, 160, 89, 0.5)",
+              color: "#E8C56A",
+              boxShadow: "0 0 16px rgba(197, 160, 89, 0.2)",
+            }}
+          >
+            <Share2 size={15} style={{ display: "inline", marginRight: 7, verticalAlign: "-2px" }} />
+            <span>Condividi Scheda d&apos;Onore</span>
           </button>
 
           {onViewLeaderboard && (
@@ -253,6 +300,12 @@ export function BacktestVictoryModal({
             </button>
           )}
         </div>
+
+        <HonorCardShareModal
+          isOpen={showHonorCard}
+          onClose={() => setShowHonorCard(false)}
+          data={honorCardData}
+        />
       </div>
     </div>
   );

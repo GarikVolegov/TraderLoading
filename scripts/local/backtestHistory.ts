@@ -17,7 +17,7 @@ if (!await checkTcp(database.host, database.port)) throw new Error("The configur
 const args = process.argv.slice(2);
 const mode = args[0] === "tail" ? "tail" : args[0] === "import" ? "import" : "seed";
 if (args[0] === "seed" || args[0] === "tail" || args[0] === "import") args.shift();
-if (mode !== "import" && !args.some(arg => arg.startsWith("--symbols="))) args.unshift("--symbols=XAUUSD,EURUSD,USOIL");
+if (mode !== "import" && !args.some(arg => arg.startsWith("--symbols="))) args.unshift("--symbols=XAUUSD,EURUSD,USOIL,BTCUSD,ETHUSD");
 console.log(`[history] ${mode}; durable PostgreSQL storage; ${database.host}:${database.port}`);
 await runCommand("pnpm", ["--filter", "@workspace/api-server", "exec", "tsx", "src/ingest.ts", mode, ...args], {
   cwd: repoRoot,

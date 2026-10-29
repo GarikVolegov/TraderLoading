@@ -5,7 +5,10 @@
   width: 100%;
   height: 100%;
   z-index: 10;
-  overflow: visible;
+  overflow: hidden;
+  transform: translateZ(0);
+  will-change: transform;
+  contain: layout size;
 }
 
 .btm-posoverlay {
@@ -15,7 +18,7 @@
   height: 100%;
   pointer-events: none;
   z-index: 8;
-  overflow: visible;
+  overflow: hidden;
 }
 .btm-posoverlay .btm-handle {
   pointer-events: auto;

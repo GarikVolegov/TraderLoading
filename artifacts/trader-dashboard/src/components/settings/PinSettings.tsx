@@ -1,12 +1,32 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, ChevronRight, Check, Shield, KeyRound, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  X,
+  ChevronRight,
+  Check,
+  Shield,
+  KeyRound,
+  ShieldAlert,
+  ShieldCheck,
+  Fingerprint,
+  ScanFace,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePinLock } from "@/contexts/PinLockContext";
 
 export function PinSettings() {
-  const { isPinSet, setPin, removePin, unlock } = usePinLock();
+  const {
+    isPinSet,
+    setPin,
+    removePin,
+    unlock,
+    isBiometricSupported,
+    isBiometricEnabled,
+    enableBiometrics,
+    disableBiometrics,
+  } = usePinLock();
   const { toast } = useToast();
   const [mode, setMode] = useState<
     "idle" | "set" | "change-old" | "change-new"
@@ -15,6 +35,7 @@ export function PinSettings() {
   const [confirm, setConfirm] = useState("");
   const [oldPin, setOldPin] = useState("");
   const [error, setError] = useState("");
+  const [biometricLoading, setBiometricLoading] = useState(false);
 
   const handleReset = () => {
     setMode("idle");
@@ -75,6 +96,35 @@ export function PinSettings() {
     handleReset();
   };
 
+  const handleToggleBiometrics = async (enabled: boolean) => {
+    if (enabled) {
+      setBiometricLoading(true);
+      try {
+        const ok = await enableBiometrics();
+        if (ok) {
+          toast({
+            title: "Sblocco Biometrico Attivato",
+            description: "Face ID / Touch ID collegato al Secure Enclave di questo dispositivo.",
+          });
+        } else {
+          toast({
+            title: "Configurazione Annullata",
+            description: "Sensore biometrico non rilevato o richiesta annullata.",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        setBiometricLoading(false);
+      }
+    } else {
+      disableBiometrics();
+      toast({
+        title: "Sblocco Biometrico Disattivato",
+        description: "L'accesso rapido biometrico è stato rimosso per questo dispositivo.",
+      });
+    }
+  };
+
   return (
     <div className="rounded-2xl border border-[#C5A059]/25 bg-[#0d0f14] p-5 sm:p-6 space-y-5 shadow-xl shadow-black/40">
       {/* Status banner */}
@@ -92,7 +142,7 @@ export function PinSettings() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-display text-sm font-bold tracking-wide text-[#F4F4F6]">
-                {isPinSet ? "Presidio Cockpit Attivo" : "Nessuna Protezione Locale"}
+                {isPinSet ? "Blocco Schermo Locale Attivo" : "Nessun Blocco Schermo Locale"}
               </span>
               <span
                 className={`inline-flex items-center rounded px-2 py-0.5 font-mono text-[9px] uppercase font-bold tracking-wider border ${
@@ -101,13 +151,13 @@ export function PinSettings() {
                     : "bg-[#07080b] border-[#26262E] text-muted-foreground"
                 }`}
               >
-                {isPinSet ? "Protetto" : "Non impostato"}
+                {isPinSet ? "Locale" : "Non impostato"}
               </span>
             </div>
             <p className="text-xs font-mono text-muted-foreground/80 mt-0.5">
               {isPinSet
-                ? "L'applicazione richiede il PIN numerico a ogni avvio della sessione operativa."
-                : "Configura un PIN di sicurezza per impedire accessi non autorizzati al tuo terminale."}
+                ? "Blocco dello schermo su questo dispositivo. Non protegge l'account."
+                : "Oscura il cockpit su questo dispositivo. Non sostituisce l'accesso all'account."}
             </p>
           </div>
         </div>
@@ -122,6 +172,48 @@ export function PinSettings() {
           />
         </div>
       </div>
+
+      {/* Sblocco Biometrico Sovrano (Face ID / Touch ID) */}
+      {isPinSet && (
+        <div className="rounded-xl border border-[#C5A059]/25 bg-[#07080b] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#E8C56A] shrink-0 mt-0.5">
+              {isBiometricEnabled ? <ScanFace className="w-5 h-5" /> : <Fingerprint className="w-5 h-5" />}
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-display text-xs uppercase font-bold tracking-wider text-[#E8C56A]">
+                  Sblocco Biometrico Sovrano
+                </span>
+                <span
+                  className={`font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+                    isBiometricEnabled
+                      ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
+                      : "border-white/10 bg-white/5 text-slate-400"
+                  }`}
+                >
+                  {isBiometricEnabled ? "Abilitato" : "Disabilitato"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 leading-snug">
+                {isBiometricSupported
+                  ? "Sblocco rapido dello schermo con Face ID, Touch ID o Windows Hello. Solo locale."
+                  : "Sblocco rapido dello schermo. Solo locale."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+            <Switch
+              checked={isBiometricEnabled}
+              onCheckedChange={handleToggleBiometrics}
+              disabled={biometricLoading}
+              aria-label="Abilita sblocco biometrico Face ID o Touch ID"
+              className="data-[state=checked]:bg-[#C5A059]"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Mode IDLE actions */}
       {mode === "idle" && (

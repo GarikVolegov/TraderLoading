@@ -65,6 +65,10 @@ assert.equal(new URL(configured.connectionString!).searchParams.has("options"), 
 assert.equal(new URL(configured.connectionString!).searchParams.get("application_name"), "synthetic-audit");
 assert.equal(configured.options, "-c statement_timeout=1500 -c TimeZone=Europe/Rome -c TimeZone=UTC");
 assert.equal(createPgPoolConfig({ ...baseEnv, PGOPTIONS: "-c lock_timeout=1000" }).options, "-c lock_timeout=1000 -c TimeZone=UTC");
+assert.equal(
+  createPgPoolConfig({ ...baseEnv, PG_STATEMENT_TIMEOUT_MS: "15000" }).options,
+  "-c statement_timeout=15000ms -c TimeZone=UTC",
+);
 assert.throws(
   () => createPgPoolConfig({ DATABASE_URL: "postgres://user:synthetic-secret@" }),
   { message: "DATABASE_URL must be a valid PostgreSQL URL" },

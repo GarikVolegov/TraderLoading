@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@clerk/react";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ interface LimenCandidacyModalProps {
   defaultEmail?: string;
   defaultBillingCycle?: LimenBillingCycle;
   defaultTierId?: LimenTierId;
+  onSelectPlanAndCycle?: (tier: LimenTierId, cycle: LimenBillingCycle) => void;
 }
 
 function getServicesForTier(tierId: LimenTierId): LimenServiceId[] {
@@ -52,8 +54,10 @@ export function LimenCandidacyModal({
   defaultEmail = "",
   defaultBillingCycle = "monthly",
   defaultTierId = "founders_10",
+  onSelectPlanAndCycle,
 }: LimenCandidacyModalProps) {
   const qc = useQueryClient();
+  const { isSignedIn, user } = useUser();
   const requestKey = useRef<string | null>(null);
   const [, navigate] = useLocation();
   const [busy, setBusy] = useState(false);
@@ -146,7 +150,7 @@ export function LimenCandidacyModal({
             </div>
           </div>
           <DialogDescription className="text-xs text-[#94a3b8] leading-relaxed">
-            Seleziona la dotazione iniziale per entrare nel Protocollo LIMEN. L'accesso iniziale
+            Seleziona la dotazione iniziale per entrare nel Protocollo AUREUS. L'accesso iniziale
             include di diritto Il Varco, Il Libro della Verità, La Fratellanza e i 5 Gradi di Ascesa.
           </DialogDescription>
         </DialogHeader>
@@ -290,8 +294,13 @@ export function LimenCandidacyModal({
               <div className="grid gap-2.5 sm:grid-cols-3">
                 {LIMEN_TIERS.map((tier) => {
                   const isActiveTier = pricing.tierId === tier.id;
+                  const isPromoTier = tier.id === "founders_10" && billingCycle === "monthly";
                   const priceLabel =
-                    billingCycle === "yearly" ? tier.yearlyDisplay : tier.monthlyDisplay;
+                    billingCycle === "yearly"
+                      ? tier.yearlyDisplay
+                      : isPromoTier
+                        ? "2,60 € / 14 giorni"
+                        : tier.monthlyDisplay;
 
                   return (
                     <button
@@ -306,8 +315,14 @@ export function LimenCandidacyModal({
                     >
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between gap-1.5">
-                          <span className="rounded border border-[#C5A059]/35 bg-[#C5A059]/15 px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
-                            {tier.badge}
+                          <span
+                            className={`rounded border px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                              isPromoTier
+                                ? "border-[#10b981]/40 bg-[#10b981]/15 text-[#10b981]"
+                                : "border-[#C5A059]/35 bg-[#C5A059]/15 text-[#E8C56A]"
+                            }`}
+                          >
+                            {isPromoTier ? "PROMO 14 GIORNI" : tier.badge}
                           </span>
                           <div
                             className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
@@ -449,130 +464,112 @@ export function LimenCandidacyModal({
               </div>
             </div>
 
-            {/* DATI CANDIDATO */}
-            <div className="space-y-3 border-t border-[#C5A059]/20 pt-4">
-              <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-[#C5A059]">
-                2. Dati dell'Operatore Candidato
-              </span>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block space-y-1 text-xs font-mono tracking-wider text-[#A0A0AA] uppercase">
-                  Nome Completo
-                  <Input
-                    name="name"
-                    autoComplete="name"
-                    required
-                    minLength={2}
-                    maxLength={100}
-                    placeholder="Es. Marco Rossi"
-                    className="bg-[#11131c] border-[#2A2A34] focus:border-[#C5A059] text-[#F4F4F6] text-xs"
-                  />
-                </label>
-
-                <label className="block space-y-1 text-xs font-mono tracking-wider text-[#A0A0AA] uppercase">
-                  Email Account LIMEN
-                  <Input
-                    name="email"
-                    type="email"
-                    defaultValue={defaultEmail}
-                    autoComplete="email"
-                    required
-                    maxLength={254}
-                    placeholder="operatore@esempio.it"
-                    className="bg-[#11131c] border-[#2A2A34] focus:border-[#C5A059] text-[#F4F4F6] text-xs"
-                  />
-                </label>
-
-                <label className="block space-y-1 text-xs font-mono tracking-wider text-[#A0A0AA] uppercase">
-                  Canale di Contatto
-                  <select
-                    name="contactType"
-                    className="w-full h-9 px-3 rounded-md bg-[#11131c] border border-[#2A2A34] text-[#F4F4F6] text-xs focus:border-[#C5A059] outline-none"
-                  >
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="telegram">Telegram</option>
-                  </select>
-                </label>
-
-                <label className="block space-y-1 text-xs font-mono tracking-wider text-[#A0A0AA] uppercase">
-                  Recapito (Numero o @Username)
-                  <Input
-                    name="contactHandle"
-                    required
-                    minLength={2}
-                    maxLength={100}
-                    placeholder="+39 340... o @username"
-                    className="bg-[#11131c] border-[#2A2A34] focus:border-[#C5A059] text-[#F4F4F6] text-xs"
-                  />
-                </label>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 pt-1">
-                <label className="block space-y-1 text-xs font-mono tracking-wider text-[#A0A0AA] uppercase">
-                  Esperienza Operativa
-                  <Textarea
-                    name="situation"
-                    required
-                    maxLength={500}
-                    placeholder="Breve sintesi: da quanto operi e su quali asset?"
-                    className="bg-[#11131c] border-[#2A2A34] focus:border-[#C5A059] text-[#F4F4F6] min-h-[55px] text-xs"
-                  />
-                </label>
-
-                <label className="block space-y-1 text-xs font-mono tracking-wider text-[#A0A0AA] uppercase">
-                  Ostacolo da Risolvere
-                  <Textarea
-                    name="obstacle"
-                    required
-                    maxLength={500}
-                    placeholder="Cosa mina la tua disciplina (es. overtrading, fomo, stop loss)?"
-                    className="bg-[#11131c] border-[#2A2A34] focus:border-[#C5A059] text-[#F4F4F6] min-h-[55px] text-xs"
-                  />
-                </label>
-              </div>
-
-              <label className="flex items-start gap-2.5 text-xs text-[#C0C0C8] leading-relaxed cursor-pointer pt-2">
-                <input
-                  id={`${formUid}-commitment`}
-                  className="mt-0.5 accent-[#C5A059]"
-                  type="checkbox"
-                  required
-                  name="commitment"
-                  value="Confermo adesione volontaria al Protocollo LIMEN"
-                />
-                <span>
-                  Dichiaro di sottopormi volontariamente al Protocollo LIMEN, accettando di
-                  registrare le operazioni con rigore e rispettare L'Ordine Giornaliero.
-                </span>
-              </label>
-
-              <p className="text-[10.5px] text-[#7A7A85] flex items-center justify-between">
-                <span>
-                  Dati gestiti secondo la disciplina di riservatezza.{" "}
-                  <Link href="/privacy" className="text-[#C5A059] underline">
-                    Informativa Privacy
-                  </Link>
-                  .
-                </span>
-                <span className="font-mono text-[#E8C56A] text-[10px]">
-                  Nessun addebito automatico
-                </span>
-              </p>
-
-              {error && (
-                <p role="alert" className="text-xs text-[#ef4444] font-mono">
-                  {error}
+            {/* AZIONE DI CANDIDATURA O SELEZIONE SENZA FORM RIDONDANTI */}
+            {onSelectPlanAndCycle ? (
+              <div className="border-t border-[#C5A059]/20 pt-4 space-y-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    onSelectPlanAndCycle(pricing.tierId, billingCycle);
+                    onClose();
+                  }}
+                  className="w-full bg-gradient-to-r from-[#E8C56A] via-[#C5A059] to-[#B38D45] hover:brightness-110 text-[#07080b] font-mono font-bold tracking-[0.16em] uppercase py-3.5 rounded-lg shadow-[0_0_20px_rgba(197,160,89,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Applica Questa Dotazione al Varco ({pricing.activeDisplay})</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <p className="text-center font-mono text-[10px] text-[#8E8E98]">
+                  La dotazione selezionata verrà sincronizzata istantaneamente sulla tua registrazione.
                 </p>
-              )}
+              </div>
+            ) : !isSignedIn ? (
+              <div className="border-t border-[#C5A059]/20 pt-4 space-y-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate(`/sign-up?plan=${pricing.tierId}&cycle=${billingCycle}`);
+                  }}
+                  className="w-full bg-gradient-to-r from-[#E8C56A] via-[#C5A059] to-[#B38D45] hover:brightness-110 text-[#07080b] font-mono font-bold tracking-[0.16em] uppercase py-3.5 rounded-lg shadow-[0_0_20px_rgba(197,160,89,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Attraversa la Soglia con Questa Dotazione ({pricing.activeDisplay})</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <p className="text-center font-mono text-[10px] text-[#8E8E98]">
+                  La registrazione crea il tuo account sicuro e applica la dotazione selezionata in un unico passaggio.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 border-t border-[#C5A059]/20 pt-4">
+                <div className="rounded-lg border border-[#C5A059]/30 bg-[#07080b] p-3 text-xs font-mono flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#94a3b8]">Operatore Autenticato:</span>
+                    <strong className="text-[#F4F4F6]">{user?.fullName || user?.username || "Operatore"}</strong>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#94a3b8]">Email:</span>
+                    <strong className="text-[#E8C56A]">{user?.primaryEmailAddress?.emailAddress}</strong>
+                  </div>
+                </div>
 
-              <Button
-                type="submit"
-                disabled={busy}
-                className="w-full bg-[#C5A059] hover:bg-[#E8C56A] text-[#07080b] font-mono font-bold tracking-[0.16em] uppercase py-3 rounded-md shadow-[0_0_20px_rgba(197,160,89,0.25)] transition-all"
-              >
-                {busy ? "Registrazione Candidatura…" : "Invia Candidatura & Accedi al Varco"}
-              </Button>
-            </div>
+                <input type="hidden" name="name" value={user?.fullName || user?.username || "Operatore"} />
+                <input type="hidden" name="email" value={user?.primaryEmailAddress?.emailAddress || ""} />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block space-y-1 text-xs font-mono tracking-wider text-[#A0A0AA] uppercase">
+                    Canale di Contatto
+                    <select
+                      name="contactType"
+                      className="w-full h-9 px-3 rounded-md bg-[#11131c] border border-[#2A2A34] text-[#F4F4F6] text-xs focus:border-[#C5A059] outline-none"
+                    >
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="telegram">Telegram</option>
+                    </select>
+                  </label>
+
+                  <label className="block space-y-1 text-xs font-mono tracking-wider text-[#A0A0AA] uppercase">
+                    Recapito (Numero o @Username)
+                    <Input
+                      name="contactHandle"
+                      required
+                      minLength={2}
+                      maxLength={100}
+                      placeholder="+39 340... o @username"
+                      className="bg-[#11131c] border-[#2A2A34] focus:border-[#C5A059] text-[#F4F4F6] text-xs"
+                    />
+                  </label>
+                </div>
+
+                <label className="flex items-start gap-2.5 text-xs text-[#C0C0C8] leading-relaxed cursor-pointer pt-2">
+                  <input
+                    id={`${formUid}-commitment`}
+                    className="mt-0.5 accent-[#C5A059]"
+                    type="checkbox"
+                    required
+                    name="commitment"
+                    value="Confermo adesione volontaria al Protocollo AUREUS"
+                  />
+                  <span>
+                    Dichiaro di sottopormi volontariamente al Protocollo AUREUS, accettando di
+                    registrare le operazioni con rigore e rispettare L'Ordine Giornaliero.
+                  </span>
+                </label>
+
+                {error && (
+                  <p role="alert" className="text-xs text-[#ef4444] font-mono">
+                    {error}
+                  </p>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={busy}
+                  className="w-full bg-[#C5A059] hover:bg-[#E8C56A] text-[#07080b] font-mono font-bold tracking-[0.16em] uppercase py-3 rounded-md shadow-[0_0_20px_rgba(197,160,89,0.25)] transition-all cursor-pointer"
+                >
+                  {busy ? "Registrazione Candidatura…" : "Invia Candidatura & Accedi al Varco"}
+                </Button>
+              </div>
+            )}
           </form>
         )}
       </DialogContent>

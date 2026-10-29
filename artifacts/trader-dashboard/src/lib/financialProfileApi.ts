@@ -52,6 +52,8 @@ export async function saveFinancialProfile(
   const payload = {
     totalNetWorth: Math.round(Number(profile.totalNetWorth) || 0),
     monthlyExpenses: Math.round(Number(profile.monthlyExpenses) || 0),
+    monthlyPac: profile.monthlyPac != null ? Math.round(Number(profile.monthlyPac)) : undefined,
+    targetNetWorth: profile.targetNetWorth != null ? Math.round(Number(profile.targetNetWorth)) : undefined,
     liquidityMonthsCovered: Math.round(Number(profile.liquidityMonthsCovered) || 6),
     externalStableIncome: Math.round(Number(profile.externalStableIncome) || 0),
     hasDependents: Boolean(profile.hasDependents),
@@ -60,6 +62,7 @@ export async function saveFinancialProfile(
     tradingAllocation: Math.round(Number(profile.tradingAllocation) || 0),
     investmentsAllocation: Math.round(Number(profile.investmentsAllocation) || 0),
     futureProjectsAllocation: Math.round(Number(profile.futureProjectsAllocation) || 0),
+    wealthSubAllocations: profile.wealthSubAllocations,
     accountObjective: profile.accountObjective || "GROWTH",
     timeHorizonYears: Number(profile.timeHorizonYears) || 3,
     expectedMonthlyReturnPct: Number(profile.expectedMonthlyReturnPct) || 3,
@@ -80,25 +83,17 @@ export async function saveFinancialProfile(
     updatedAt: new Date().toISOString(),
   };
 
-  // Immediate local persistence guarantees zero data loss
+  // Immediate local cache
   setStoredFinancialProfile(localSaved);
 
-  try {
-    const updated = await apiJSON<FinancialProfile>("financial-profile", {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    });
+  const updated = await apiJSON<FinancialProfile>("financial-profile", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 
-    if (updated && typeof updated === "object") {
-      setStoredFinancialProfile(updated);
-      return updated;
-    }
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    if (errMsg.includes("Validazione fallita") || errMsg.includes("Dati non validi")) {
-      throw err;
-    }
-    console.warn("[saveFinancialProfile] Server update fallback to local storage:", err);
+  if (updated && typeof updated === "object") {
+    setStoredFinancialProfile(updated);
+    return updated;
   }
 
   return localSaved;

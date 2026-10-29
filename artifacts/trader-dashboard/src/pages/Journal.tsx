@@ -58,6 +58,7 @@ import { JournalPlan } from "@/components/journal/JournalPlan";
 import { BrokerWorkspace } from "@/pages/Broker";
 import { updateWorkspaceQuery } from "@/lib/workspaceNavigation";
 import { MarketDecisionReview } from "@/components/journal/MarketDecisionReview";
+import { cacheJournalEntries, initJournalOfflineSync } from "@/lib/journalOfflineSync";
 
 function SyncedTradeDetails({
   content,
@@ -202,6 +203,29 @@ function TradesTab() {
     setRequestedPage(page);
     journalGrid.current?.scrollIntoView({ block: "start" });
   };
+
+  // Cache entries locally in IndexedDB for transparent offline viewing
+  useEffect(() => {
+    if (entries && entries.length > 0) {
+      void cacheJournalEntries(entries);
+    }
+  }, [entries]);
+
+  // Sentinel: Auto-sync queued offline trade mutations on network reconnect
+  useEffect(() => {
+    const unsub = initJournalOfflineSync(({ synced }) => {
+      if (synced > 0) {
+        queryClient.invalidateQueries({ queryKey: getGetJournalEntriesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetJournalEdgeQueryKey() });
+        toast({
+          title: "Sincronizzazione Offline Completata",
+          description: `${synced} annotazioni del Diario allineate con successo nel Libro della Verità.`,
+        });
+      }
+    });
+    return unsub;
+  }, [queryClient, toast]);
+
   // handleDelete's own catch already shows its own toast below — opt out of
   // App.tsx's global mutation-error toast to avoid a double toast.
   const deleteMutation = useDeleteJournalEntry({ mutation: { meta: { suppressGlobalError: true } } });
@@ -343,22 +367,22 @@ function TradesTab() {
                     </div>
 
                     {syncedTrade && (
-                      <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+                      <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-md border border-[#C5A059]/25 bg-[#C5A059]/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider font-bold text-[#E8C56A]">
                         <RefreshCw className="h-3 w-3" />
-                        Sync FX Blue
+                        Registro Sincronizzato
                       </div>
                     )}
 
                     <h3 className="text-xl font-bold mb-2 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
                       {entry.title}
                     </h3>
-                    {entry.manualTrade && <div className="mb-3 text-sm text-muted-foreground">{process.data?.evidence.filter(e => e.accountTradeId === entry.manualTrade?.accountTradeId).slice(0,1).map(e => <span key={e.id}>{e.netPnl == null ? "—" : e.netPnl.toFixed(2)} {e.currency} · {e.costsStatus === "included" && e.initialRisk ? `${e.netR?.toFixed(2)} R` : "—"} · {processText(language, e.provenance)}</span>)}</div>}
+                    {entry.manualTrade && <div className="mb-3 text-sm text-muted-foreground">{process.data?.evidence.filter(e => e.accountTradeId === entry.manualTrade?.accountTradeId).slice(0,1).map(e => <span key={e.id} className="whitespace-nowrap">{e.netPnl == null ? "—" : e.netPnl.toFixed(2)} {e.currency} · {e.costsStatus === "included" && e.initialRisk ? `${e.netR?.toFixed(2)} R` : "—"} · {processText(language, e.provenance)}</span>)}</div>}
 
                     {entry.tags && (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {entry.tags.split(",").map((tag, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 text-muted-foreground text-xs border border-white/5">
-                            <Tag className="w-3 h-3" />
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {entry.tags.split(",").filter((tag) => tag.trim() !== "account-import").map((tag, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#C5A059]/10 border border-[#C5A059]/20 font-mono text-[9px] uppercase font-bold tracking-wider text-[#E8C56A]">
+                            <Tag className="w-2.5 h-2.5" />
                             {tag.trim()}
                           </span>
                         ))}

@@ -18,16 +18,29 @@ assert.equal(baseOnly.tierId, "base_free");
 assert.equal(baseOnly.monthlyFeeCents, 0);
 assert.equal(baseOnly.yearlyFeeCents, 0);
 
-// 3. Verify pricing calculation - Exclusive First Members (10€ monthly / 100€ yearly)
-// Includes Base + Forge of the Past + Financial Architecture
-const foundersMonthly = calculateLimenServicesPricing(
+// 3. Verify pricing calculation - Dotazione Operativa (Founders)
+// During promo (active now): 2,60 € / 14 giorni
+const foundersPromoMonthly = calculateLimenServicesPricing(
   ["base_protocol", "forge_of_the_past", "financial_architecture"],
   "monthly",
 );
-assert.equal(foundersMonthly.tierId, "founders_10");
-assert.equal(foundersMonthly.monthlyFeeCents, 1000);
-assert.equal(foundersMonthly.activeFeeCents, 1000);
-assert.equal(foundersMonthly.activeDisplay, "10 € / mese");
+assert.equal(foundersPromoMonthly.tierId, "founders_10");
+assert.equal(foundersPromoMonthly.monthlyFeeCents, 1000);
+assert.equal(foundersPromoMonthly.activeFeeCents, 260);
+assert.equal(foundersPromoMonthly.promoActive, true);
+assert.equal(foundersPromoMonthly.activeDisplay, "2,60 € / 14 giorni");
+
+// After promo expiry: falls back to 10 € / mese
+const foundersPostPromoMonthly = calculateLimenServicesPricing(
+  ["base_protocol", "forge_of_the_past", "financial_architecture"],
+  "monthly",
+  new Date("2026-11-15T00:00:00.000Z"),
+);
+assert.equal(foundersPostPromoMonthly.tierId, "founders_10");
+assert.equal(foundersPostPromoMonthly.monthlyFeeCents, 1000);
+assert.equal(foundersPostPromoMonthly.activeFeeCents, 1000);
+assert.equal(foundersPostPromoMonthly.promoActive, false);
+assert.equal(foundersPostPromoMonthly.activeDisplay, "10 € / mese");
 
 const foundersYearly = calculateLimenServicesPricing(
   ["base_protocol", "forge_of_the_past", "financial_architecture"],
@@ -36,6 +49,7 @@ const foundersYearly = calculateLimenServicesPricing(
 assert.equal(foundersYearly.tierId, "founders_10");
 assert.equal(foundersYearly.yearlyFeeCents, 10000);
 assert.equal(foundersYearly.activeFeeCents, 10000);
+assert.equal(foundersYearly.promoActive, false);
 assert.equal(foundersYearly.activeDisplay, "100 € / anno");
 assert.equal(foundersYearly.yearlySavingsEur, 20);
 

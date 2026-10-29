@@ -6,36 +6,36 @@ import { uiText } from "@/contexts/LanguageContext";
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
-    q: "Come funziona il sistema di XP e livelli?",
-    a: "Guadagni XP completando missioni giornaliere, mantenendo la streak, aprendo sessioni di check-in e compilando il diario. Ogni 500 XP sali di livello. Ogni 5 livelli sblocchi nuovi contenuti formativi nella Biblioteca.",
+    q: "Come funziona il sistema de I 5 Gradi di Ascesa e l'Indice di Integrità?",
+    a: "L'Indice di Integrità cresce rispettando L'Ordine Giornaliero, mantenendo la costanza operativa, superando Il Custode della Soglia e documentando ogni esecuzione ne Il Libro della Verità. L'ascesa attraverso I 5 Gradi sblocca i manoscritti de La Dottrina del Tempo.",
   },
   {
     q: "Come attivo le notifiche push?",
-    a: "Vai in Impostazioni → Notifiche, poi attiva il toggle principale. Il browser chiederà il permesso una sola volta. Riceverai notifiche quando si aprono le tue sessioni di trading e quando ricevi messaggi in chat.",
+    a: "Vai in Dossier dell'Operatore → Notifiche, poi attiva il toggle principale. Riceverai avvisi solenni all'apertura delle sessioni di mercato e per le comunicazioni de La Fratellanza.",
   },
   {
-    q: "Come funzionano le sessioni di trading?",
-    a: "In Impostazioni → Trading puoi configurare orari personalizzati per ogni sessione (Londra, New York, Asia...). A ogni apertura ricevi un promemoria push con una citazione disciplinare.",
+    q: "Come funzionano le sessioni operative?",
+    a: "In Dossier dell'Operatore → Trading puoi configurare gli orari per Londra, New York e Asia. A ogni apertura riceverai un richiamo disciplinare per presidiare Il Varco.",
   },
   {
-    q: "Dove vengono salvati i miei dati?",
-    a: "Tutti i dati (diario, obiettivi, missioni, profilo) sono salvati in modo persistente nel database dell'app. Puoi accedere tramite autenticazione per sincronizzarli su dispositivi diversi.",
+    q: "Dove vengono custoditi i miei dati?",
+    a: "Tutti i dati (Il Libro della Verità, L'Ordine Giornaliero, Dossier dell'Operatore) sono custoditi in modo persistente nel database crittografato e sincronizzati su tutti i tuoi dispositivi.",
   },
   {
-    q: "Come faccio a guadagnare XP velocemente?",
-    a: "Mantieni la streak giornaliera (bonus crescente), completa tutte le missioni ogni giorno, usa il check-in sessione, compila il diario con riflessioni e utilizza la checklist pre-trade.",
+    q: "Come elevo il mio Indice di Integrità?",
+    a: "Mantieni la costanza giornaliera senza cadere ne La Deriva, completa L'Ordine Giornaliero, valida ogni ingresso con Il Custode della Soglia e sigilla le sessioni ne Il Libro della Verità.",
   },
   {
-    q: "Cosa sono i contenuti della Biblioteca?",
-    a: "Ogni 5 livelli sblocchi video, PDF e presentazioni su psicologia del trading, risk management, Smart Money Concepts, analisi tecnica avanzata e mindset professionale. Si apriranno nel browser.",
+    q: "Cosa sono i manoscritti de La Dottrina del Tempo?",
+    a: "Progredendo lungo I 5 Gradi di Ascesa sblocchi trattati operativi, PDF e lezioni su architettura del rischio, liquidità istituzionale e dominio emotivo.",
   },
   {
-    q: "Come funziona la chat?",
-    a: "La chat ti mette in contatto con altri trader dell'app. Puoi inviare messaggi, immagini, note vocali ed emoji. Nelle storie puoi condividere aggiornamenti quotidiani con reply interattive.",
+    q: "Come funziona La Fratellanza (Agorà dell'Ordine)?",
+    a: "La Fratellanza ti connette agli altri Operatori dell'Ordine. Puoi condividere analisi, dispacci vocali, grafici e consultare La Gerarchia dell'Integrità.",
   },
   {
     q: "Come imposto il PIN di sicurezza?",
-    a: "Vai in Impostazioni → Sicurezza → Imposta PIN. Dopo aver impostato il PIN, l'app lo richiederà ogni volta che viene aperta. Puoi disattivarlo in qualsiasi momento dalla stessa sezione.",
+    a: "Vai in Dossier dell'Operatore → Sicurezza → Imposta PIN. Dopo l'attivazione, il protocollo richiederà il codice di accesso a ogni avvio della sessione.",
   },
 ];
 
@@ -43,33 +43,33 @@ const FEATURE_GUIDES: { icon: ReactNode; title: string; desc: string }[] =
   [
     {
       icon: <BookOpen className="w-4 h-4" />,
-      title: "Diario di Trading",
-      desc: "Registra ogni trade con riflessioni, tag emotivi e immagini. Analizza i pattern del tuo comportamento nel tempo.",
+      title: "Il Libro della Verità",
+      desc: "Sigilla ogni operazione con riflessioni, stato psicofisico e grafici. Estrai pattern oggettivi dalla tua esecuzione.",
     },
     {
       icon: <Target className="w-4 h-4" />,
-      title: "Missioni & Streak",
-      desc: "Completa le missioni giornaliere per guadagnare XP. La streak si azzera se salti un giorno — mantienila per bonus crescenti.",
+      title: "L'Ordine Giornaliero",
+      desc: "Completa i rituali operativi quotidiani per consolidare l'Indice di Integrità e preservare la costanza.",
     },
     {
       icon: <TrendingUp className="w-4 h-4" />,
-      title: "Sessioni & Check-in",
-      desc: "Configura le sessioni di trading. Il check-in apre la sessione con una riflessione mentale e registra il tuo stato emotivo.",
+      title: "Il Custode della Soglia",
+      desc: "Valida ogni operazione prima dell'esecuzione. Nessun ordine entra a mercato senza conformità al protocollo.",
     },
     {
       icon: <Zap className="w-4 h-4" />,
-      title: "Backtest Visuale",
-      desc: "Allenati su grafici storici in modalità replay. Simula operazioni, gestisci lo stop loss e tieni statistiche precise.",
+      title: "La Forgia del Passato",
+      desc: "Addestra l'occhio sul Banco di Forgiatura storico e affronta Le Prove del Fuoco contro altri Operatori.",
     },
     {
       icon: <MessageSquare className="w-4 h-4" />,
-      title: "Chat & Storie",
-      desc: "Connettiti con altri trader. Invia messaggi, vocali, immagini. Pubblica storie quotidiane e rispondi con emoji o testo.",
+      title: "La Fratellanza",
+      desc: "Confrontati nell'Agorà dell'Ordine. Condividi analisi istituzionali e consulta La Gerarchia dell'Integrità.",
     },
     {
       icon: <Library className="w-4 h-4" />,
-      title: "Biblioteca Premi",
-      desc: "Ogni 5 livelli sblocchi contenuti formativi esclusivi: video su mindset, PDF di analisi tecnica, presentazioni avanzate.",
+      title: "La Dottrina del Tempo",
+      desc: "Ascendi lungo I 5 Gradi per sbloccare trattati esclusivi su gestione del rischio, liquidità e disciplina.",
     },
   ];
 
@@ -182,7 +182,7 @@ export function SupportSection() {
           </a>
 
           <a
-            href="mailto:assistenza@traderloading.com?subject=Feedback%20LIMEN"
+            href="mailto:assistenza@traderloading.com?subject=Feedback%20AUREUS"
             className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"
           >
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -202,7 +202,7 @@ export function SupportSection() {
       {/* Version info */}
       <div className="pt-2 border-t border-border/30 text-center">
         <p className="text-xs text-muted-foreground/50 font-mono">
-          LIMEN · v1.0 · Fatto con ♥ per i trader disciplinati
+          AUREUS · v1.0 · Fatto con ♥ per i trader disciplinati
         </p>
       </div>
     </div>

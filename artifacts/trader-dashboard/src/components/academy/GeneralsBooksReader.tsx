@@ -112,7 +112,7 @@ export const GENERALS_BOOKS: GeneralsBook[] = [
         subtitle: "Dalla quiete asiatica all'assalto della City di Londra.",
         dropCap: "L",
         storytellingText:
-          "e banche centrali e i grandi algoritmi interbancari aprono i propri registri a ore determinate. L'Operatore Limen non monitora il grafico a caso: compare sulla soglia solo quando la liquidità si desta e si ritira non appena l'efficienza algoritmica declina nella pausa del mezzodì.",
+          "e banche centrali e i grandi algoritmi interbancari aprono i propri registri a ore determinate. L'Operatore AUREUS non monitora il grafico a caso: compare sulla soglia solo quando la liquidità si desta e si ritira non appena l'efficienza algoritmica declina nella pausa del mezzodì.",
         bulletPoints: [
           {
             title: "Asia · 00:00–08:00 CET",
@@ -283,7 +283,7 @@ export const GENERALS_BOOKS: GeneralsBook[] = [
         subtitle: "Riconoscere l'inganno della compressione e pretendere la presa confermata.",
         dropCap: "L",
         storytellingText:
-          "a massa retail vive nell'illusione di poter indovinare la direzione all'interno del rumore. Il condottiero Limen sa che il mercato è immobile finché non estrae ordini: l'azione scatta unicamente quando la liquidità esterna viene catturata a candela chiusa.",
+          "a massa retail vive nell'illusione di poter indovinare la direzione all'interno del rumore. Il condottiero AUREUS sa che il mercato è immobile finché non estrae ordini: l'azione scatta unicamente quando la liquidità esterna viene catturata a candela chiusa.",
         bulletPoints: [
           {
             title: "Liquidità Sopra e Sotto = NO TRADE",
@@ -507,7 +507,7 @@ export const GENERALS_BOOKS: GeneralsBook[] = [
         figureCaption: "Il Flip del Bias Operativo e il Glossario Ufficiale dei Termini del Metodo.",
         figureIllustrationType: "flip_and_glossary",
         title: "INVALIDAZIONE, FLIP E GLOSSARIO",
-        subtitle: "La gestione della smentita e il dizionario canonico del LIMEN Protocol.",
+        subtitle: "La gestione della smentita e il dizionario canonico del Protocollo AUREUS.",
         dropCap: "L",
         storytellingText:
           "'Iniziato non si ostina mai contro l'evidenza del mercato. Quando una schematica viene violata, il bias viene capovolto all'istante senza rimpianti e il vocabolario del Codice torna a guidare l'azione.",
@@ -732,7 +732,7 @@ function PageThemedIllustration({
             <line x1="60" y1="70" x2="140" y2="70" stroke="#ef4444" strokeWidth="1" strokeDasharray="3 3" />
             <text x="100" y="62" fill="#ef4444" fontSize="8" textAnchor="middle">MSS / FLIP</text>
             <rect x="25" y="135" width="150" height="35" rx="3" fill="#181A22" stroke="#C5A059" strokeWidth="0.8" />
-            <text x="100" y="157" fill="#D4AF37" fontSize="8.5" textAnchor="middle" fontFamily="monospace">GLOSSARIO CANONICO LIMEN</text>
+            <text x="100" y="157" fill="#D4AF37" fontSize="8.5" textAnchor="middle" fontFamily="monospace">GLOSSARIO CANONICO AUREUS</text>
           </svg>
         )}
           </>
@@ -895,7 +895,7 @@ export function GeneralsBooksReader({
 
             {/* Bottom Status bar for covers view */}
             <div className="shrink-0 h-10 px-6 border-t border-[#C5A059]/20 bg-gradient-to-r from-[#14151C] via-[#0E0F14] to-[#14151C] flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-              <span>CANONE TATTICO UFFICIALE // LIMEN PROTOCOL</span>
+              <span>CANONE TATTICO UFFICIALE // AUREUS PROTOCOL</span>
               <span className="text-[#C5A059]">3 VOLUMI INTEGRALI · 12 CAPITOLI</span>
             </div>
           </motion.div>
@@ -927,7 +927,7 @@ export function GeneralsBooksReader({
                 <div className="h-4 w-px bg-[#C5A059]/30" />
                 <div className="min-w-0">
                   <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C5A059] block truncate">
-                    LIMEN PROTOCOL // {activeBook.roman}
+                    AUREUS PROTOCOL // {activeBook.roman}
                   </span>
                   <span className="text-xs font-bold text-foreground truncate block font-display">
                     {activeBook.title}
