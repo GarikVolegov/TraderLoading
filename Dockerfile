@@ -46,7 +46,7 @@ RUN pnpm run build:railway
 RUN pnpm --filter @workspace/api-server deploy --prod /prod/api-server
 
 # Stage 3: Hardened Runtime
-FROM node:24-bookworm-slim AS runtime
+FROM base AS runtime
 
 ENV NODE_ENV=production
 ENV PORT=3001
@@ -59,8 +59,7 @@ RUN useradd --system --uid 10001 --create-home --home-dir /home/trader trader \
   && mkdir -p /app/uploads \
   && chown -R trader:trader /app
 
-COPY --from=build --chown=trader:trader /prod/api-server /app/artifacts/api-server
-COPY --from=build --chown=trader:trader /app/artifacts/trader-dashboard/dist /app/artifacts/trader-dashboard/dist
+COPY --from=build --chown=trader:trader /app /app
 
 WORKDIR /app/artifacts/api-server
 
