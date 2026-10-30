@@ -88,7 +88,7 @@ export function ProgramCard({
               <CardIcon className="h-5.5 w-5.5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-base font-bold uppercase tracking-wide text-foreground truncate">
+              <p className="font-display text-sm sm:text-base font-bold uppercase tracking-wide text-foreground leading-snug">
                 {label}
               </p>
               <p className="mt-0.5 font-mono text-xs font-semibold text-[#C5A059]/80 whitespace-nowrap">
@@ -142,13 +142,13 @@ export function ProgramCard({
       </div>
 
       {/* Footer della Card: Azione o Stato di Completamento */}
-      <div className="mt-5 flex items-center justify-between border-t border-white/5 pt-3.5">
-        <span className="font-mono text-[11px] font-semibold text-muted-foreground/60 whitespace-nowrap">
+      <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 border-t border-white/5 pt-3">
+        <span className="font-mono text-[10.5px] font-semibold text-muted-foreground/70">
           {completed ? "Protocollo archiviato per oggi" : "Esecuzione richiesta dal Protocollo"}
         </span>
 
         {completed ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-emerald-400 whitespace-nowrap">
               <CheckCircle2 className="h-4 w-4 text-emerald-400" />
               {uiText("auto.ui.15d05cfce6")}
@@ -170,7 +170,7 @@ export function ProgramCard({
           <button
             type="button"
             onClick={onStart}
-            className="group/btn inline-flex items-center gap-2 rounded-lg border border-[#C5A059]/60 bg-gradient-to-r from-[#C5A059] via-[#D4AF37] to-[#B38F44] px-4 py-2 font-display text-xs font-bold uppercase tracking-wider text-black shadow-[0_0_16px_rgba(197,160,89,0.22)] transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer whitespace-nowrap"
+            className="group/btn inline-flex items-center justify-center gap-2 rounded-lg border border-[#C5A059]/60 bg-gradient-to-r from-[#C5A059] via-[#D4AF37] to-[#B38F44] px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wider text-black shadow-[0_0_16px_rgba(197,160,89,0.22)] transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer whitespace-nowrap"
           >
             <span>{hasDraft ? uiText("routine.save.resume") : "Apri Protocollo"}</span>
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />

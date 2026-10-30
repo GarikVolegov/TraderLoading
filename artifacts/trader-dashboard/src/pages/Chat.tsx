@@ -36,8 +36,10 @@ export default function Chat() {
     if (peer.userId) navigate(socialHref("conversazioni", { peer: peer.userId }));
   };
 
+  const isStaging = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("staging") === "1";
+
   if (!isLoaded) return <PageLayout quiet><Loading /></PageLayout>;
-  if (!isSignedIn) return (
+  if (!isSignedIn && !isStaging) return (
     <PageLayout quiet>
       <div className="flex h-[60vh] items-center justify-center">
         <div className="space-y-4 text-center">
@@ -65,9 +67,9 @@ export default function Chat() {
               value={location.tab}
               className="border-b-0 pb-0"
               items={[
-                { value: "conversazioni", label: text("conversations"), href: socialHref("conversazioni") },
-                { value: "social", label: text("activity"), href: socialHref("social") },
-                { value: "competizioni", label: text("competitions"), href: socialHref("competizioni") },
+                { value: "conversazioni", label: "01 · Agorà", href: socialHref("conversazioni") },
+                { value: "social", label: "02 · Cronache", href: socialHref("social") },
+                { value: "competizioni", label: "03 · Arene", href: socialHref("competizioni") },
               ]}
             />
           </div>

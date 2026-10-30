@@ -3,9 +3,10 @@
 #
 # Public indexable surface:
 # - Localized landing pages: /, /it, /es, /fr, /de
-# - Dedicated SEO/GEO pillar pages: /trading-journal (/it/diario-trading), /backtesting (/it/backtest),
+# - Dedicated SEO/GEO pillar & comparison pages: /trading-journal (/it/diario-trading), /backtesting (/it/backtest),
 #   /macro-news (/it/notizie-macro), /risk-management (/it/gestione-rischio),
-#   /pricing (/it/prezzi), /guide (/it/guida), /about (/it/chi-siamo), /contact (/it/contatti)
+#   /pricing (/it/prezzi), /guide (/it/guida), /about (/it/chi-siamo), /contact (/it/contatti),
+#   /tradezella-alternative, /edgewonk-alternative, /tradersync-alternative, /fxreplay-alternative, /tradingview-alternative
 # - Public verification & spectator surfaces: /protocollo, /verifica, /verify, /duello, /battle
 # - AI & LLM Knowledge Manifests: /llms.txt, /llms-full.txt
 

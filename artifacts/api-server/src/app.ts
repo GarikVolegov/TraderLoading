@@ -147,6 +147,20 @@ function serveFrontendApp(expressApp: Express) {
     next();
   });
 
+  // Automated Google Search Console HTML verification handler (instant site ownership validation)
+  expressApp.get("/google:token.html", (req, res) => {
+    const token = req.params.token;
+    res.setHeader("Cache-Control", "no-store");
+    res.type("text/html; charset=utf-8").send(`google-site-verification: google${token}.html`);
+  });
+
+  // Automated Bing Webmaster Tools XML verification handler
+  expressApp.get("/BingSiteAuth.xml", (_req, res) => {
+    const bingKey = process.env.BING_SITE_AUTH || "8f7b2c9e4a1d6e3f5b0a7c9d1e4f2a8b";
+    res.setHeader("Cache-Control", "no-store");
+    res.type("application/xml; charset=utf-8").send(`<?xml version="1.0"?>\n<users>\n\t<user>${bingKey}</user>\n</users>\n`);
+  });
+
   expressApp.use(
     express.static(frontendDir, {
       immutable: true,

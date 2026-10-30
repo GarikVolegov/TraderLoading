@@ -916,11 +916,11 @@ export default function FinancialArchitecture() {
 
             {/* Box Residenza Erariale & Regime Fiscale (Italia 🇮🇹) */}
             <div className="rounded-lg border border-[#C5A059]/30 bg-[#07080b]/80 p-2 space-y-1.5 font-mono text-[10.5px]">
-              <div className="flex items-center justify-between gap-1.5">
-                <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                <div className="flex items-center gap-1.5">
                   <Scale className="h-3.5 w-3.5 text-[#C5A059] shrink-0" />
-                  <span className="font-bold text-foreground uppercase tracking-tight text-[11px] truncate">
-                    Residenza Erariale
+                  <span className="font-bold text-foreground uppercase tracking-tight text-[11px] whitespace-nowrap">
+                    Residenza Fiscale
                   </span>
                   <ToolInfoTrigger
                     toolId="taxRegime"
@@ -930,7 +930,7 @@ export default function FinancialArchitecture() {
                   />
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Badge className="bg-[#C5A059]/15 border-[#C5A059]/40 text-[#E8C56A] text-[9.5px] px-1.5 py-0.2 shrink-0">
+                  <Badge className="bg-[#C5A059]/15 border-[#C5A059]/40 text-[#E8C56A] text-[9.5px] px-1.5 py-0.5 shrink-0 whitespace-nowrap">
                     Italia 🇮🇹 (26%)
                   </Badge>
                   <Button
@@ -938,7 +938,7 @@ export default function FinancialArchitecture() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsTaxModalOpen(true)}
-                    className="h-5 px-1.5 text-[9px] text-[#C5A059] hover:bg-[#C5A059]/15 hover:text-[#E8C56A] shrink-0 font-bold gap-1 underline decoration-[#C5A059]/40 underline-offset-2"
+                    className="h-5 px-1.5 text-[9px] text-[#C5A059] hover:bg-[#C5A059]/15 hover:text-[#E8C56A] shrink-0 font-bold gap-1 underline decoration-[#C5A059]/40 underline-offset-2 whitespace-nowrap"
                     title="Consulta il Compendio di Dottrina Fiscale per l'Italia"
                   >
                     <Landmark className="h-2.5 w-2.5" />

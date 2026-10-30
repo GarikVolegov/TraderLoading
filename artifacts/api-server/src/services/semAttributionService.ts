@@ -71,6 +71,25 @@ export async function recordSemAttribution(
   }
 }
 
+export async function getUserLatestAttribution(userId: string) {
+  try {
+    const [row] = await db
+      .select({
+        channel: semAttributionsTable.channel,
+        aiEngine: semAttributionsTable.aiEngine,
+        utmSource: semAttributionsTable.utmSource,
+        utmCampaign: semAttributionsTable.utmCampaign,
+      })
+      .from(semAttributionsTable)
+      .where(eq(semAttributionsTable.userId, userId))
+      .orderBy(desc(semAttributionsTable.createdAt))
+      .limit(1);
+    return row ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getExpansionTelemetryStats(): Promise<ExpansionTelemetryStats> {
   try {
     const [totalRows, channelRows, aiRows, campaignRows] = await Promise.all([

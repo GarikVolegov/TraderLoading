@@ -17,6 +17,7 @@ import { handleAcademyStripeEvent, isAcademySubscription } from "../services/aca
 import { syncConnectAccount } from "../services/payout/payoutService.js";
 import { grantOneTimeEntitlement, grantSubscriptionEntitlement, syncSubscriptionEntitlement, revokeChannelEntitlement } from "../services/community/channelEntitlements.js";
 import { handleArsenalOrderSession } from "./arsenal.js";
+import { getUserLatestAttribution } from "../services/semAttributionService.js";
 
 type SubscriptionLike = {
   plan: string;
@@ -125,6 +126,15 @@ async function defaultCreateCheckoutSession(user: NonNullable<Request["user"]>):
       set: { stripeCustomerId: customerId, updatedAt: new Date() },
     });
 
+  const semAttribution = await getUserLatestAttribution(user.id);
+  const metadata: Record<string, string> = { userId: user.id };
+  if (semAttribution) {
+    if (semAttribution.channel) metadata.sem_channel = semAttribution.channel;
+    if (semAttribution.aiEngine) metadata.sem_engine = semAttribution.aiEngine;
+    if (semAttribution.utmSource) metadata.sem_source = semAttribution.utmSource;
+    if (semAttribution.utmCampaign) metadata.sem_campaign = semAttribution.utmCampaign;
+  }
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     // "embedded" è stato rinominato "embedded_page" dall'API Stripe corrente
@@ -134,8 +144,8 @@ async function defaultCreateCheckoutSession(user: NonNullable<Request["user"]>):
     line_items: [{ price: config.priceId, quantity: 1 }],
     return_url: `${config.appBaseUrl}/billing/return?session_id={CHECKOUT_SESSION_ID}`,
     client_reference_id: user.id,
-    metadata: { userId: user.id },
-    subscription_data: { metadata: { userId: user.id } },
+    metadata,
+    subscription_data: { metadata },
   });
 
   return { clientSecret: session.client_secret };

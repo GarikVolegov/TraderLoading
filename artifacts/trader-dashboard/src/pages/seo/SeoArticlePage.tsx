@@ -26,7 +26,82 @@ const TOPIC_PAGES = new Set<SeoPageKey>([
   "backtest",
   "macro-news",
   "risk-tools",
+  "tradezella-alternative",
+  "edgewonk-alternative",
+  "tradersync-alternative",
+  "fxreplay-alternative",
+  "tradingview-alternative",
 ]);
+
+interface CompetitorMatrixSpec {
+  name: string;
+  priceRetail: string;
+  syncRetail: string;
+  replayRetail: string;
+  guardRetail: string;
+  notaryRetail: string;
+  arenaRetail: string;
+  monteCarloRetail: string;
+  royaltyRetail: string;
+}
+
+const COMPETITOR_MAP: Record<string, CompetitorMatrixSpec> = {
+  "tradezella-alternative": {
+    name: "TradeZella",
+    priceRetail: "29 $ – 49 $ / mese",
+    syncRetail: "Sync cloud / senza certificazione",
+    replayRetail: "Modulo separato a pagamento",
+    guardRetail: "Solo avvisi post-perdita",
+    notaryRetail: "Assente (Screenshot falsificabili)",
+    arenaRetail: "Assenti (Uso solitario)",
+    monteCarloRetail: "Assente",
+    royaltyRetail: "0% Royalty (Modello chiuso)",
+  },
+  "edgewonk-alternative": {
+    name: "Edgewonk",
+    priceRetail: "169 $ / anno",
+    syncRetail: "Manuale / Import CSV",
+    replayRetail: "Non disponibile",
+    guardRetail: "Assente (Nessun blocco ordini)",
+    notaryRetail: "Assente (Dati locali modificabili)",
+    arenaRetail: "Assenti",
+    monteCarloRetail: "Assente",
+    royaltyRetail: "0% Royalty",
+  },
+  "tradersync-alternative": {
+    name: "TraderSync",
+    priceRetail: "29 $ – 79 $ / mese",
+    syncRetail: "Sync base con sovrapprezzi",
+    replayRetail: "Assente o simulatore limitato",
+    guardRetail: "Solo notifiche passive",
+    notaryRetail: "Assente (Report non certificati)",
+    arenaRetail: "Assenti",
+    monteCarloRetail: "Assente",
+    royaltyRetail: "0% Royalty",
+  },
+  "fxreplay-alternative": {
+    name: "FX Replay",
+    priceRetail: "35 $ / mese",
+    syncRetail: "Assente (Nessun diario reale)",
+    replayRetail: "Solo replay senza diario MT4/5",
+    guardRetail: "Assente",
+    notaryRetail: "Assente",
+    arenaRetail: "Assenti (Nessun multiplayer)",
+    monteCarloRetail: "Assente",
+    royaltyRetail: "0% Royalty",
+  },
+  "tradingview-alternative": {
+    name: "TradingView Replay",
+    priceRetail: "15 $ – 60 $ / mese",
+    syncRetail: "Nessun diario R-Multiplo",
+    replayRetail: "M5 bloccato sotto paywall",
+    guardRetail: "Assente (Incentiva over-analisi)",
+    notaryRetail: "Assente",
+    arenaRetail: "Assenti (Nessun duello 1v1)",
+    monteCarloRetail: "Assente",
+    royaltyRetail: "0% Royalty",
+  },
+};
 
 const SECTION_ICONS = [ShieldCheck, Crosshair, Flame] as const;
 
@@ -71,6 +146,7 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
   }));
 
   const related = SEO_TOPIC_KEYS.filter((key) => key !== page);
+  const competitor = COMPETITOR_MAP[page];
 
   const jsonLd: JsonLd[] = [
     aureusKnowledgeGraphJsonLd(language),
@@ -207,6 +283,80 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
             </Link>
           </div>
         </section>
+
+        {/* Sovereign Head-to-Head Comparison Matrix (Active on Competitor Pages) */}
+        {competitor && (
+          <section className="rounded-2xl border border-[#C5A059]/35 bg-[#0d0f14] p-5 sm:p-7 shadow-[0_0_25px_rgba(197,160,89,0.08)] space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#C5A059]/20 pb-4">
+              <div>
+                <span className="font-mono text-[9px] uppercase font-bold tracking-widest text-[#E8C56A] bg-[#C5A059]/15 border border-[#C5A059]/30 px-2 py-0.5 rounded">
+                  MATRICE STRUTTURALE AUREUS OS
+                </span>
+                <h2 className="font-serif text-lg sm:text-2xl font-bold text-white mt-1.5">
+                  Confronto Sovrano: AUREUS PROTOCOL vs {competitor.name}
+                </h2>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-[11px] text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/30 px-2.5 py-1 rounded">
+                <ShieldCheck className="h-3.5 w-3.5 text-[#10b981]" aria-hidden="true" />
+                <span className="font-bold whitespace-nowrap">Vantaggio Asimmetrico Verificato</span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-[#C5A059]/30">
+              <table className="w-full text-left font-mono text-xs border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="border-b border-[#C5A059]/25 text-[10px] text-[#94a3b8] uppercase tracking-wider">
+                    <th className="py-2.5 px-3">Criterio Operativo</th>
+                    <th className="py-2.5 px-3 text-[#E8C56A]">AUREUS PROTOCOL (AUREUS OS)</th>
+                    <th className="py-2.5 px-3 text-[#94a3b8]">{competitor.name}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#C5A059]/15">
+                  <tr className="hover:bg-[#11131c]/50 transition-colors">
+                    <td className="py-3 px-3 text-white font-sans font-semibold">Costo d&apos;Ingresso &amp; Piani</td>
+                    <td className="py-3 px-3 text-[#10b981] font-bold whitespace-nowrap">0 € Base / 10 € Selezione (30 GG)</td>
+                    <td className="py-3 px-3 text-[#ef4444] whitespace-nowrap">{competitor.priceRetail}</td>
+                  </tr>
+                  <tr className="hover:bg-[#11131c]/50 transition-colors">
+                    <td className="py-3 px-3 text-white font-sans font-semibold">Sincronizzazione MT4 / MT5</td>
+                    <td className="py-3 px-3 text-[#10b981] font-bold whitespace-nowrap">Sola Lettura Istantanea &amp; SHA-256</td>
+                    <td className="py-3 px-3 text-[#94a3b8] whitespace-nowrap">{competitor.syncRetail}</td>
+                  </tr>
+                  <tr className="hover:bg-[#11131c]/50 transition-colors">
+                    <td className="py-3 px-3 text-white font-sans font-semibold">Simulatore Replay Candela per Candela</td>
+                    <td className="py-3 px-3 text-[#10b981] font-bold whitespace-nowrap">Incluso (Dukascopy &amp; Binance M5 → D1)</td>
+                    <td className="py-3 px-3 text-[#ef4444] whitespace-nowrap">{competitor.replayRetail}</td>
+                  </tr>
+                  <tr className="hover:bg-[#11131c]/50 transition-colors">
+                    <td className="py-3 px-3 text-white font-sans font-semibold">Circuito Anti-Deriva Pre-Trade</td>
+                    <td className="py-3 px-3 text-[#10b981] font-bold whitespace-nowrap">Il Custode della Soglia (Blocco Attivo)</td>
+                    <td className="py-3 px-3 text-[#ef4444] whitespace-nowrap">{competitor.guardRetail}</td>
+                  </tr>
+                  <tr className="hover:bg-[#11131c]/50 transition-colors">
+                    <td className="py-3 px-3 text-white font-sans font-semibold">Certificazione Notarile dei Trade</td>
+                    <td className="py-3 px-3 text-[#10b981] font-bold whitespace-nowrap">Hash Pubblico SHA-256 su /verifica</td>
+                    <td className="py-3 px-3 text-[#ef4444] whitespace-nowrap">{competitor.notaryRetail}</td>
+                  </tr>
+                  <tr className="hover:bg-[#11131c]/50 transition-colors">
+                    <td className="py-3 px-3 text-white font-sans font-semibold">Arene Multiplayer &amp; Duelli 1v1</td>
+                    <td className="py-3 px-3 text-[#10b981] font-bold whitespace-nowrap">Le Prove del Fuoco Live</td>
+                    <td className="py-3 px-3 text-[#ef4444] whitespace-nowrap">{competitor.arenaRetail}</td>
+                  </tr>
+                  <tr className="hover:bg-[#11131c]/50 transition-colors">
+                    <td className="py-3 px-3 text-white font-sans font-semibold">Architettura Patrimoniale &amp; Monte Carlo</td>
+                    <td className="py-3 px-3 text-[#10b981] font-bold whitespace-nowrap">1.000 Traiettorie &amp; Prop Firm Engine</td>
+                    <td className="py-3 px-3 text-[#ef4444] whitespace-nowrap">{competitor.monteCarloRetail}</td>
+                  </tr>
+                  <tr className="hover:bg-[#11131c]/50 transition-colors">
+                    <td className="py-3 px-3 text-white font-sans font-semibold">Modello Economico Utente (Royalty)</td>
+                    <td className="py-3 px-3 text-[#10b981] font-bold whitespace-nowrap">20% Mandato Espansione (30 € / mese)</td>
+                    <td className="py-3 px-3 text-[#ef4444] whitespace-nowrap">{competitor.royaltyRetail}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {/* Balanced Pillars Grid (Flex-Stretch) */}
         {sections.length > 0 && (

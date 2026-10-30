@@ -262,30 +262,30 @@ export function MentorDoctrineViewer({}: MentorDoctrineViewerProps) {
           </div>
 
           {/* Console Telemetrica Spaziosa */}
-          <div className="grid grid-cols-3 gap-3 shrink-0">
-            <div className="rounded-xl border border-[#C5A059]/35 bg-[#0d0f14] p-4 text-center min-w-[120px] shadow-md">
-              <span className="block font-mono text-[10px] uppercase tracking-wider text-slate-400 mb-1">
-                Padronanza Globale
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full lg:w-auto shrink-0">
+            <div className="rounded-xl border border-[#C5A059]/35 bg-[#0d0f14] p-2.5 sm:p-4 text-center min-w-0 sm:min-w-[120px] shadow-md">
+              <span className="block font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 mb-1 truncate">
+                Padronanza
               </span>
-              <span className="font-mono text-2xl font-bold text-[#E8C56A]">
+              <span className="font-mono text-lg sm:text-2xl font-bold text-[#E8C56A] whitespace-nowrap">
                 {academicMetrics.globalMasteryPct}%
               </span>
             </div>
 
-            <div className="rounded-xl border border-[#C5A059]/35 bg-[#0d0f14] p-4 text-center min-w-[120px] shadow-md">
-              <span className="block font-mono text-[10px] uppercase tracking-wider text-slate-400 mb-1">
-                Tesi Convalidate
+            <div className="rounded-xl border border-[#C5A059]/35 bg-[#0d0f14] p-2.5 sm:p-4 text-center min-w-0 sm:min-w-[120px] shadow-md">
+              <span className="block font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 mb-1 truncate">
+                Convalidate
               </span>
-              <span className="font-mono text-2xl font-bold text-emerald-400">
+              <span className="font-mono text-lg sm:text-2xl font-bold text-emerald-400 whitespace-nowrap">
                 {academicMetrics.validatedCount} / {academicMetrics.totalTheses}
               </span>
             </div>
 
-            <div className="rounded-xl border border-[#C5A059]/35 bg-[#0d0f14] p-4 text-center min-w-[120px] shadow-md">
-              <span className="block font-mono text-[10px] uppercase tracking-wider text-slate-400 mb-1">
+            <div className="rounded-xl border border-[#C5A059]/35 bg-[#0d0f14] p-2.5 sm:p-4 text-center min-w-0 sm:min-w-[120px] shadow-md">
+              <span className="block font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 mb-1 truncate">
                 Media Esami
               </span>
-              <span className="font-mono text-2xl font-bold text-slate-100">
+              <span className="font-mono text-lg sm:text-2xl font-bold text-slate-100 whitespace-nowrap">
                 {academicMetrics.averageScore} <span className="text-xs text-[#C5A059]">pt</span>
               </span>
             </div>
@@ -294,7 +294,7 @@ export function MentorDoctrineViewer({}: MentorDoctrineViewerProps) {
       </div>
 
       {/* ─── NAVIGAZIONE A TAB PRINCIPALI ─── */}
-      <div className="flex flex-wrap items-center gap-2.5 border-b border-[#C5A059]/20 pb-3">
+      <div className="flex items-center gap-2 border-b border-[#C5A059]/20 pb-3 overflow-x-auto scrollbar-none flex-nowrap sm:flex-wrap">
         <button
           onClick={() => setActiveMainTab("curriculum")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-mono text-xs font-bold tracking-wider uppercase transition-all ${

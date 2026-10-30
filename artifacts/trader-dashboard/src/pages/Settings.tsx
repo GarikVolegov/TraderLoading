@@ -468,49 +468,49 @@ export default function Settings() {
     <PageLayout>
       <div className="mx-auto max-w-6xl space-y-6 pb-16 pt-2">
         {/* Solenne Hero Header LIMEN */}
-        <div className="relative overflow-hidden rounded-2xl border border-[#C5A059]/25 bg-gradient-to-r from-[#0d0f14] via-[#11131c] to-[#0d0f14] p-5 sm:p-6 shadow-2xl shadow-black/60">
+        <div className="relative overflow-hidden rounded-2xl border border-[#C5A059]/25 bg-gradient-to-r from-[#0d0f14] via-[#11131c] to-[#0d0f14] p-4 sm:p-6 shadow-2xl shadow-black/60">
           <div className="absolute -top-12 -right-12 h-44 w-44 rounded-full bg-[#C5A059]/10 blur-3xl pointer-events-none" />
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="inline-flex items-center gap-1.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-[#E8C56A]">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                <span className="inline-flex items-center gap-1.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 px-2 py-0.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-[#E8C56A]">
                   <Shield className="w-3 h-3 text-[#C5A059]" />
-                  AUREUS PROTOCOL // CONFIGURAZIONE D'ORDINE
+                  AUREUS PROTOCOL // CONFIGURAZIONE
                 </span>
-                <span className="inline-flex items-center gap-1 rounded border border-[#10b981]/30 bg-[#10b981]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[#10b981]">
+                <span className="inline-flex items-center gap-1 rounded border border-[#10b981]/30 bg-[#10b981]/10 px-2 py-0.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-[#10b981]">
                   <ShieldCheck className="w-3 h-3 text-[#10b981]" />
                   INTEGRITÀ: {integrity.integrityIndex}%
                 </span>
-                <span className="inline-flex items-center gap-1 rounded border border-[#C5A059]/30 bg-[#07080b] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[#E8C56A]">
+                <span className="inline-flex items-center gap-1 rounded border border-[#C5A059]/30 bg-[#07080b] px-2 py-0.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-[#E8C56A]">
                   <SigilIcon name={integrity.currentGrade.sigilId.replace("sigil-", "") as "grade-1"} size={11} />
                   {integrity.currentGrade.code}
                 </span>
               </div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[#F4F4F6]">
-                DOSSIER DELL'OPERATORE & IMPOSTAZIONI
+              <h1 className="font-display text-lg sm:text-3xl font-bold tracking-tight text-[#F4F4F6] uppercase">
+                Dossier dell'Operatore &amp; Impostazioni
               </h1>
-              <p className="mt-1 text-xs sm:text-sm text-muted-foreground/80 font-sans max-w-2xl">
+              <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground/80 font-sans max-w-2xl leading-relaxed">
                 Registro storico d'integrità, governo del rischio, dotazioni e configurazione del cockpit.
               </p>
             </div>
 
             {/* Quick Actions & Navigation to Ascesa / Arsenale */}
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 variant="outline"
                 onClick={() => navigate("/milestones")}
-                className="border-[#C5A059]/35 bg-[#07080b]/80 hover:bg-[#C5A059]/15 hover:border-[#C5A059] text-xs font-mono font-medium text-[#E8C56A] shadow-md transition-all whitespace-nowrap"
+                className="flex-1 sm:flex-initial border-[#C5A059]/35 bg-[#07080b]/80 hover:bg-[#C5A059]/15 hover:border-[#C5A059] text-[11px] sm:text-xs font-mono font-medium text-[#E8C56A] shadow-md transition-all whitespace-nowrap h-8"
               >
-                <Trophy className="w-3.5 h-3.5 mr-1.5 text-[#C5A059]" />
-                I 5 Gradi di Ascesa
+                <Trophy className="w-3 h-3 mr-1 text-[#C5A059]" />
+                <span>I 5 Gradi</span>
               </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate("/wiki?t=unlocked")}
-                className="border-[#C5A059]/35 bg-[#07080b]/80 hover:bg-[#C5A059]/15 hover:border-[#C5A059] text-xs font-mono font-medium text-[#F4F4F6] shadow-md transition-all whitespace-nowrap"
+                className="flex-1 sm:flex-initial border-[#C5A059]/35 bg-[#07080b]/80 hover:bg-[#C5A059]/15 hover:border-[#C5A059] text-[11px] sm:text-xs font-mono font-medium text-[#F4F4F6] shadow-md transition-all whitespace-nowrap h-8"
               >
-                <Shield className="w-3.5 h-3.5 mr-1.5 text-[#C5A059]" />
-                L'Arsenale
+                <Shield className="w-3 h-3 mr-1 text-[#C5A059]" />
+                <span>L'Arsenale</span>
               </Button>
             </div>
           </div>
@@ -648,7 +648,7 @@ export default function Settings() {
 
           {/* Main Operational Panel */}
           <section
-            className="min-w-0 flex-1 rounded-2xl border border-[#C5A059]/25 bg-[#0d0f14] p-5 sm:p-7 min-h-[640px] shadow-2xl shadow-black/50 transition-all"
+            className="min-w-0 flex-1 rounded-2xl border border-[#C5A059]/25 bg-[#0d0f14] p-3.5 sm:p-7 min-h-[640px] shadow-2xl shadow-black/50 transition-all"
             aria-label={activeTab.label}
           >
             {/* Master Hub Header */}
@@ -667,8 +667,8 @@ export default function Settings() {
                 </p>
               </div>
 
-              {/* Top Sub-Tabs Navigation Bar */}
-              <div className="flex items-center gap-1.5 pt-4 overflow-x-auto scrollbar-none">
+              {/* Top Sub-Tabs Navigation Bar (Desktop Only — Mobile uses the dedicated strip above) */}
+              <div className="hidden lg:flex items-center gap-1.5 pt-4 overflow-x-auto scrollbar-none">
                 {activeHub.tabs.map((tab) => {
                   const isCurrent = tab.id === activeTabId;
                   return (

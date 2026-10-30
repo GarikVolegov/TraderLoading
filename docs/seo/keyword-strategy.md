@@ -39,6 +39,11 @@ the end. Everything controllable in the repo is covered here.
 | guide | `/guide` | `/it/guida` | `/es/guia` | `/fr/guide` | `/de/anleitung` |
 | about | `/about` | `/it/chi-siamo` | `/es/sobre-nosotros` | `/fr/a-propos` | `/de/ueber-uns` |
 | contact | `/contact` | `/it/contatti` | `/es/contacto` | `/fr/contact` | `/de/kontakt` |
+| tradezella-alternative | `/tradezella-alternative` | `/it/alternativa-tradezella` | `/es/alternativa-tradezella` | `/fr/alternative-tradezella` | `/de/tradezella-alternative` |
+| edgewonk-alternative | `/edgewonk-alternative` | `/it/alternativa-edgewonk` | `/es/alternativa-edgewonk` | `/fr/alternative-edgewonk` | `/de/edgewonk-alternative` |
+| tradersync-alternative | `/tradersync-alternative` | `/it/alternativa-tradersync` | `/es/alternativa-tradersync` | `/fr/alternative-tradersync` | `/de/tradersync-alternative` |
+| fxreplay-alternative | `/fxreplay-alternative` | `/it/alternativa-fxreplay` | `/es/alternativa-fxreplay` | `/fr/alternative-fxreplay` | `/de/fxreplay-alternative` |
+| tradingview-alternative | `/tradingview-alternative` | `/it/alternativa-tradingview` | `/es/alternativa-tradingview` | `/fr/alternative-tradingview` | `/de/tradingview-alternative` |
 
 ## Keyword clusters → page mapping
 

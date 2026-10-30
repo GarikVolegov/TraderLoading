@@ -787,6 +787,14 @@ function LocalizedMarketingRoute({ lang, slug }: { lang: Language; slug?: string
   );
 }
 
+const COMPETITOR_ROUTE_ALIASES: Record<string, SeoPageKey> = {
+  tradezella: "tradezella-alternative",
+  edgewonk: "edgewonk-alternative",
+  tradersync: "tradersync-alternative",
+  fxreplay: "fxreplay-alternative",
+  tradingview: "tradingview-alternative",
+};
+
 // English keyword/marketing pages at the root, plus a /{lang}/:slug? route per
 // localized language (matches both the localized landing and its keyword pages).
 const marketingRoutes = [
@@ -795,6 +803,20 @@ const marketingRoutes = [
       <MarketingPage lang="en" page={page} />
     </Route>
   )),
+  <Route key="alias-vs" path="/vs/:competitor">
+    {(params: { competitor?: string }) => {
+      const pageKey = params.competitor ? COMPETITOR_ROUTE_ALIASES[params.competitor.toLowerCase()] : undefined;
+      if (pageKey) return <MarketingPage lang="en" page={pageKey} />;
+      return <Suspense fallback={<PageFallback />}><NotFound /></Suspense>;
+    }}
+  </Route>,
+  <Route key="alias-confronto" path="/confronto/:competitor">
+    {(params: { competitor?: string }) => {
+      const pageKey = params.competitor ? COMPETITOR_ROUTE_ALIASES[params.competitor.toLowerCase()] : undefined;
+      if (pageKey) return <MarketingPage lang="it" page={pageKey} />;
+      return <Suspense fallback={<PageFallback />}><NotFound /></Suspense>;
+    }}
+  </Route>,
   ...LOCALIZED_LANGS.map((lang) => (
     <Route key={`loc-${lang}`} path={`/${lang}/:slug?`}>
       {(params: { slug?: string }) => (

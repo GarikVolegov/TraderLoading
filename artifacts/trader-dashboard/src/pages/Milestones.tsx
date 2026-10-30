@@ -1307,6 +1307,10 @@ export default function Milestones() {
   const [showRadarModal, setShowRadarModal] = useState(false);
   const [copiedCertLink, setCopiedCertLink] = useState(false);
 
+  // Stato Navigazione Mobile Sovrana
+  const [mobileMilestoneTab, setMobileMilestoneTab] = useState<"grades" | "status">("grades");
+  const [mobileSelectedGrade, setMobileSelectedGrade] = useState<number>(() => integrity.currentGrade.grade);
+
   // Stato Esami di Padronanza Dottrinale
   const [activeDoctrineTome, setActiveDoctrineTome] = useState<MentorDoctrineTome | null>(null);
   const [passedDoctrineExams, setPassedDoctrineExams] = useState<string[]>(() => {
@@ -1428,9 +1432,37 @@ export default function Milestones() {
   return (
     <PageLayout quiet>
       <div className="flex flex-col lg:h-[calc(100vh-100px)] lg:min-h-0 lg:overflow-hidden pt-1">
+        {/* Mobile Hub Navigation Strip (< lg) */}
+        <div className="flex lg:hidden items-center justify-between gap-1 p-1 rounded-xl border border-[#C5A059]/25 bg-[#0B0D13] font-mono text-[10.5px] mb-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileMilestoneTab("grades")}
+            className={`flex-1 py-1.5 px-2 rounded-lg font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
+              mobileMilestoneTab === "grades"
+                ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            01 · I 5 Gradi di Ascesa
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileMilestoneTab("status")}
+            className={`flex-1 py-1.5 px-2 rounded-lg font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
+              mobileMilestoneTab === "status"
+                ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            02 · Dossier Operatore
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-3.5 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
           {/* ─── PANNELLO SINISTRO: RANGO ATTUALE, INTEGRITÀ & SIGILLI ─── */}
-          <aside className="space-y-2.5 flex flex-col lg:h-full lg:overflow-y-auto pr-0.5 scrollbar-thin scrollbar-thumb-primary/20">
+          <aside className={`space-y-2.5 flex-col lg:h-full lg:overflow-y-auto pr-0.5 scrollbar-thin scrollbar-thumb-primary/20 ${
+            mobileMilestoneTab === "status" ? "!flex" : "!hidden lg:!flex"
+          }`}>
             {/* Operator Sovereign Cockpit: Current Grade, Integrity & Telemetry Panel */}
             <div className="limen-panel-surface p-3 space-y-2.5 border border-border/80">
               {/* Header with Medallion & Title (No overlapping badge, full-width subtitle) */}
@@ -1650,7 +1682,9 @@ export default function Milestones() {
           </aside>
 
           {/* ─── PANNELLO PRINCIPALE: I 5 GRADI DI ASCESA (5 COLONNE SIDE-BY-SIDE FIT VIEWPORT) ─── */}
-          <section className="flex flex-col lg:h-full lg:min-h-0 space-y-2">
+          <section className={`flex-col lg:h-full lg:min-h-0 space-y-2 ${
+            mobileMilestoneTab === "grades" ? "!flex" : "!hidden lg:!flex"
+          }`}>
             {/* Header compatto */}
             <div className="limen-panel-surface px-4 py-2 flex items-center justify-between border-b border-border shrink-0">
               <div className="flex items-center gap-2.5">
@@ -1670,6 +1704,32 @@ export default function Milestones() {
                   {integrity.currentGrade.code} ATTIVO
                 </span>
               </div>
+            </div>
+
+            {/* Mobile Grade Carousel Strip (< sm) */}
+            <div className="flex sm:hidden items-center gap-1.5 p-1 rounded-xl border border-[#C5A059]/25 bg-[#0B0D13] font-mono text-[10px] shrink-0 overflow-x-auto scrollbar-none">
+              {LIMEN_GRADES.map((g) => {
+                const isSelected = mobileSelectedGrade === g.grade;
+                const isCurr = integrity.currentGrade.grade === g.grade;
+                const isUnlocked = isAdmin || integrity.currentGrade.grade >= g.grade;
+                return (
+                  <button
+                    key={g.grade}
+                    type="button"
+                    onClick={() => setMobileSelectedGrade(g.grade)}
+                    className={`flex-1 min-w-[62px] py-1.5 px-2 rounded-lg font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
+                      isSelected
+                        ? "bg-[#C5A059]/25 text-[#E8C56A] border border-[#C5A059]/60 shadow-sm font-bold"
+                        : isUnlocked
+                          ? "text-foreground/85 hover:text-foreground"
+                          : "text-muted-foreground/60 hover:text-muted-foreground"
+                    }`}
+                  >
+                    {g.code}
+                    {isCurr && <span className="ml-1 text-[7px] text-primary">●</span>}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Griglia a 5 Colonne */}
@@ -1694,7 +1754,9 @@ export default function Milestones() {
                 return (
                   <div
                     key={gradeDef.grade}
-                    className={`flex flex-col justify-between p-2.5 sm:p-3 rounded-sm border transition-all duration-300 relative overflow-hidden ${
+                    className={`flex-col justify-between p-2.5 sm:p-3 rounded-sm border transition-all duration-300 relative overflow-hidden ${
+                      mobileSelectedGrade === gradeDef.grade ? "!flex" : "!hidden sm:!flex"
+                    } ${
                       isCurrent
                         ? "border-primary bg-primary/[0.04] shadow-[0_0_24px_rgba(197,160,89,0.15)]"
                         : unlocked

@@ -113,14 +113,14 @@ export function RoutineWorkspace({ embedded = false }: { embedded?: boolean }) {
         )}
 
         {/* Intestazione Sezione Protocolli con micro-telemetria */}
-        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-white/5 pb-2">
           <div className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#C5A059]" />
-            <h2 className="font-display text-sm font-bold uppercase tracking-wider text-[#F4F4F6]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#C5A059] shrink-0" />
+            <h2 className="font-display text-xs sm:text-sm font-bold uppercase tracking-wider text-[#F4F4F6] m-0">
               {uiText("routine.section.guided_programs")}
             </h2>
           </div>
-          <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-muted-foreground/75 whitespace-nowrap">
+          <span className="font-mono text-[9.5px] sm:text-[10px] uppercase font-bold tracking-wider text-muted-foreground/75 whitespace-nowrap">
             {uiText("routine.section.guided_programs_count")}
           </span>
         </div>

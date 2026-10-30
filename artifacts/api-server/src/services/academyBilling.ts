@@ -12,6 +12,7 @@ import { createStripeClient } from "../lib/billing.js";
 import { getAdminPrincipalForUser } from "../lib/adminAuth.js";
 import { hasAdminPermission } from "../lib/adminPermissions.js";
 import { getOperatorIntegrityReport } from "./integrityEngine.js";
+import { getUserLatestAttribution } from "./semAttributionService.js";
 
 export const ACADEMY_TERMS_VERSION = "2026-10-17";
 export const ACADEMY_PRICE_CENTS = 15000;
@@ -240,13 +241,27 @@ export async function createAcademyCheckout(user: { id: string; email?: string |
   for await (const candidate of stripe.checkout.sessions.list({ customer: customerId, limit: 100 })) {
     if (candidate.metadata?.academyAttemptId === attempt.attemptId) { recovered = candidate; break; }
   }
+  const semAttribution = await getUserLatestAttribution(user.id);
+  const metadata: Record<string, string> = {
+    type: "academy",
+    userId: user.id,
+    academyAttemptId: attempt.attemptId,
+  };
+  if (semAttribution) {
+    if (semAttribution.channel) metadata.semChannel = semAttribution.channel;
+    if (semAttribution.aiEngine) metadata.semEngine = semAttribution.aiEngine;
+    if (semAttribution.utmSource) metadata.semSource = semAttribution.utmSource;
+    if (semAttribution.utmCampaign) metadata.semCampaign = semAttribution.utmCampaign;
+  }
+
   const session = recovered ?? await stripe.checkout.sessions.create({
     mode: "subscription", customer: customerId, client_reference_id: user.id,
     line_items: [{ price: config.priceId!, quantity: 1 }], payment_method_types: ["card"],
     consent_collection: { terms_of_service: "required" },
     automatic_tax: { enabled: true }, billing_address_collection: "required", customer_update: { address: "auto", name: "auto" },
     success_url: `${config.appBaseUrl}/academy?checkout=success`, cancel_url: `${config.appBaseUrl}/academy?checkout=cancelled`,
-    metadata: { type: "academy", userId: user.id, academyAttemptId: attempt.attemptId }, subscription_data: { metadata: { type: "academy", userId: user.id } },
+    metadata,
+    subscription_data: { metadata: { type: "academy", userId: user.id } },
   }, { idempotencyKey: `academy:checkout:${attempt.attemptId}` });
   await db.update(subscriptions).set({ stripeCustomerId: customerId, checkoutSessionId: session.id, updatedAt: new Date() }).where(and(eq(subscriptions.userId, user.id), eq(subscriptions.checkoutAttemptId, attempt.attemptId)));
   if (session.status === "complete") throw error("academy_payment_processing");

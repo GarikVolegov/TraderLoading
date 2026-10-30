@@ -615,6 +615,7 @@ export default function Academy() {
   // Active Canone and transmission state
   const [selectedCanoneId, setSelectedCanoneId] = useState<string>("canone-0");
   const [selectedTransmissionId, setSelectedTransmissionId] = useState<string>("c0-t1");
+  const [mobileCanoneTab, setMobileCanoneTab] = useState<"video" | "directives" | "custode">("video");
 
   // Sync from query params if specified
   useEffect(() => {
@@ -771,63 +772,169 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
     <PageLayout quiet>
       <div className="flex flex-col lg:h-full lg:min-h-0 lg:overflow-hidden pt-1 max-w-[1760px] w-full mx-auto">
         {/* ─── BARRA DI NAVIGAZIONE COMPATTA (3 SEZIONI SOVRANE & PONTE FORGIA) ─── */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-2 shrink-0">
-          <div className="w-full sm:w-auto">
+        <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2 shrink-0">
+          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
             <SectionTabs
               ariaLabel="Sezioni della Dottrina del Tempo"
               items={sectionTabs}
               value={activeTab}
               onValueChange={handleTabChange}
+              className="flex-nowrap"
             />
           </div>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 shrink-0 pl-1">
             <Link
               href="/backtest"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs font-bold text-primary border border-primary/40 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 font-mono text-[11px] sm:text-xs font-bold text-primary border border-primary/40 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors whitespace-nowrap"
+              title="Apri La Forgia del Passato per testare questo canone"
             >
               <FlaskConical className="h-3.5 w-3.5" />
-              <span className="whitespace-nowrap">La Forgia del Passato</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">La Forgia</span>
+              <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         </div>
 
         {/* ─── SEZIONE 01: I CANONI OPERATIVI (VISORE TATTICO & CONSOLE DIDATTICA) ─── */}
         {activeTab === "canoni" && (
-          <div className="limen-scroll-pane flex-1 min-h-0 space-y-6 pt-3 pb-8">
+          <div className="limen-scroll-pane flex-1 min-h-0 space-y-4 pt-2 pb-8">
+            {/* ─── MOBILE ONLY: CANON SELECTOR CAROUSEL & SUB-TABS ─── */}
+            <div className="block lg:hidden space-y-2">
+              {/* Row 1: The 6 Canons horizontal strip */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {CANONI_MASTER_DATA.map((group) => {
+                  const isGroupActive = group.id === selectedCanoneId;
+                  return (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCanoneId(group.id);
+                        setSelectedTransmissionId(group.transmissions[0].id);
+                      }}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-left shrink-0 transition-all font-mono text-[10.5px] ${
+                        isGroupActive
+                          ? "border-[#C5A059] bg-[#C5A059]/20 text-[#E8C56A] font-bold shadow-[0_0_10px_rgba(197,160,89,0.25)]"
+                          : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span className="font-bold">{group.roman}</span>
+                      <span className="text-[9.5px] opacity-75 hidden xs:inline truncate max-w-[90px]">{group.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Row 2: Transmissions pills in active Canone */}
+              {(() => {
+                const activeGroup = CANONI_MASTER_DATA.find((g) => g.id === selectedCanoneId) ?? CANONI_MASTER_DATA[0];
+                return (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none px-0.5">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#C5A059] shrink-0 font-bold">
+                      {activeGroup.title}:
+                    </span>
+                    {activeGroup.transmissions.map((t) => {
+                      const isTActive = t.id === selectedTransmissionId;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            if (!t.isFreePreview && !_hasProtocolAccess) {
+                              toast({
+                                title: "Canone Riservato all'Ordine",
+                                description: "Questa trasmissione richiede il Protocollo Attivo.",
+                                variant: "destructive",
+                              });
+                            }
+                            setSelectedTransmissionId(t.id);
+                          }}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono text-[10px] shrink-0 transition-all ${
+                            isTActive
+                              ? "bg-[#C5A059]/30 text-[#fef08a] border border-[#C5A059] font-bold"
+                              : "bg-background/80 text-muted-foreground border border-border/60 hover:text-foreground"
+                          }`}
+                        >
+                          <span>{t.code}</span>
+                          <span className="text-[8.5px] opacity-70">({t.duration})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* Row 3: 3 Segmented Tabs for the view on mobile */}
+              <div className="flex items-center justify-between gap-1 p-1 rounded-xl border border-[#C5A059]/25 bg-[#0B0D13] font-mono text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setMobileCanoneTab("video")}
+                  className={`flex-1 py-1.5 px-2 rounded-lg font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
+                    mobileCanoneTab === "video"
+                      ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  01 · Video
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileCanoneTab("directives")}
+                  className={`flex-1 py-1.5 px-2 rounded-lg font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
+                    mobileCanoneTab === "directives"
+                      ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  02 · Direttive
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileCanoneTab("custode")}
+                  className={`flex-1 py-1.5 px-2 rounded-lg font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
+                    mobileCanoneTab === "custode"
+                      ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  03 · Custode &amp; Note
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Colonna Sinistra / Principale (Visore Tattico, Note & Filtro del Custode) */}
-            <div className="lg:col-span-8 space-y-6 min-w-0">
+            <div className="lg:col-span-8 space-y-5 min-w-0">
               {/* Il Visore Tattico (Video Player) */}
-              <Card className="border-primary/40 bg-card overflow-hidden shadow-2xl">
-                <CardHeader className="p-4 border-b border-border/60 bg-gradient-to-r from-card via-background to-card flex flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="h-8 w-8 rounded-lg border border-primary/40 bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+              <Card className={`border-primary/40 bg-card overflow-hidden shadow-2xl ${mobileCanoneTab === "video" ? "!block" : "!hidden lg:!block"}`}>
+                <CardHeader className="p-3 sm:p-4 border-b border-border/60 bg-gradient-to-r from-card via-background to-card flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+                    <div className="h-8 w-8 rounded-lg border border-primary/40 bg-primary/10 flex items-center justify-center shrink-0 text-primary mt-0.5 sm:mt-0">
                       <Play className="h-4 w-4 fill-primary" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] font-bold text-primary uppercase tracking-wider">
+                        <span className="font-mono text-[9px] sm:text-[10px] font-bold text-primary uppercase tracking-wider">
                           IL VISORE TATTICO // TRASMISSIONE {activeTransmission.code}
                         </span>
-                        <span className="font-mono text-[10px] text-muted-foreground">
+                        <span className="font-mono text-[9px] sm:text-[10px] text-muted-foreground whitespace-nowrap">
                           · {activeTransmission.timeframe}
                         </span>
                       </div>
-                      <h2 className="text-sm sm:text-base font-bold text-foreground truncate font-display">
+                      <h2 className="text-xs sm:text-base font-bold text-foreground leading-snug font-display mt-0.5">
                         {activeTransmission.title}
                       </h2>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-1 sm:pt-0 border-t border-border/40 sm:border-0">
                     <span
-                      className="inline-flex items-center gap-1 font-mono text-[10px] text-[#E8C56A] bg-[#C5A059]/10 px-2 py-0.5 rounded border border-[#C5A059]/30 whitespace-nowrap"
+                      className="inline-flex items-center gap-1 font-mono text-[9px] sm:text-[10px] text-[#E8C56A] bg-[#C5A059]/10 px-2 py-0.5 rounded border border-[#C5A059]/30 whitespace-nowrap"
                       title="Stream protetto con crittografia temporanea e watermark anticlonazione"
                     >
                       <Shield className="h-3 w-3 text-[#E8C56A]" />
                       <span>Stream Protetto</span>
                     </span>
-                    <span className="font-mono text-xs text-muted-foreground bg-background px-2.5 py-1 rounded border border-border whitespace-nowrap">
+                    <span className="font-mono text-[10px] sm:text-xs text-muted-foreground bg-background px-2 py-0.5 sm:px-2.5 sm:py-1 rounded border border-border whitespace-nowrap">
                       {activeTransmission.duration}
                     </span>
                   </div>
@@ -895,7 +1002,7 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
               </Card>
 
               {/* I Punti di Svolta del Canone & Sintesi Operativa */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${mobileCanoneTab === "directives" ? "!grid" : "!hidden lg:!grid"}`}>
                 <Card className="border-border bg-card/80 p-4 space-y-3">
                   <div className="flex items-center gap-2 text-primary border-b border-border/50 pb-2">
                     <Compass className="h-4 w-4" />
@@ -932,7 +1039,7 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
               </div>
 
               {/* Il Filtro del Custode (Checklist Pre-Sessione Interattiva) */}
-              <Card className="border-primary/50 bg-card/90 shadow-xl p-5 space-y-4">
+              <Card className={`border-primary/50 bg-card/90 shadow-xl p-4 sm:p-5 space-y-4 ${mobileCanoneTab === "custode" ? "!block" : "!hidden lg:!block"}`}>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
                   <div className="flex items-center gap-2.5">
                     <div className="h-7 w-7 rounded border border-primary/40 bg-primary/10 flex items-center justify-center text-primary">
@@ -1090,8 +1197,8 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
               </Card>
             </div>
 
-            {/* Colonna Destra (Il Registro dei 6 Canoni con scrollbar interna) */}
-            <div className="lg:col-span-4 space-y-4">
+            {/* Colonna Destra (Il Registro dei 6 Canoni con scrollbar interna — visibile su Desktop) */}
+            <div className="hidden lg:block lg:col-span-4 space-y-4">
               <div className="flex items-center justify-between border-b border-border/60 pb-2">
                 <span className="font-mono text-xs font-bold uppercase tracking-wider text-primary">
                   REGISTRO DEI CANONI (0 — V)

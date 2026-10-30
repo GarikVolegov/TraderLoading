@@ -541,6 +541,306 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://aureus-os.app/it/alternativa-tradezella</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradezella" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradezella-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradezella" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradezella" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradezella-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradezella-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/tradezella-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradezella" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradezella-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradezella" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradezella" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradezella-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradezella-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/es/alternativa-tradezella</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradezella" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradezella-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradezella" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradezella" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradezella-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradezella-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/fr/alternative-tradezella</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradezella" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradezella-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradezella" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradezella" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradezella-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradezella-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/de/tradezella-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradezella" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradezella-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradezella" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradezella" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradezella-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradezella-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/it/alternativa-edgewonk</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/edgewonk-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/edgewonk-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/edgewonk-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/edgewonk-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/edgewonk-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/edgewonk-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/edgewonk-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/es/alternativa-edgewonk</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/edgewonk-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/edgewonk-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/edgewonk-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/fr/alternative-edgewonk</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/edgewonk-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/edgewonk-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/edgewonk-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/de/edgewonk-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/edgewonk-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-edgewonk" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/edgewonk-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/edgewonk-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/it/alternativa-tradersync</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradersync" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradersync-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradersync" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradersync" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradersync-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradersync-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/tradersync-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradersync" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradersync-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradersync" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradersync" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradersync-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradersync-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/es/alternativa-tradersync</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradersync" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradersync-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradersync" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradersync" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradersync-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradersync-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/fr/alternative-tradersync</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradersync" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradersync-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradersync" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradersync" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradersync-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradersync-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/de/tradersync-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradersync" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradersync-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradersync" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradersync" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradersync-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradersync-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/it/alternativa-fxreplay</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/fxreplay-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/fxreplay-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/fxreplay-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/fxreplay-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/fxreplay-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/fxreplay-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/fxreplay-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/es/alternativa-fxreplay</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/fxreplay-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/fxreplay-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/fxreplay-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/fr/alternative-fxreplay</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/fxreplay-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/fxreplay-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/fxreplay-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/de/fxreplay-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/fxreplay-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-fxreplay" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/fxreplay-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/fxreplay-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/it/alternativa-tradingview</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradingview" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradingview-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradingview" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradingview" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradingview-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradingview-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/tradingview-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradingview" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradingview-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradingview" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradingview" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradingview-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradingview-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/es/alternativa-tradingview</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradingview" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradingview-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradingview" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradingview" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradingview-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradingview-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/fr/alternative-tradingview</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradingview" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradingview-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradingview" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradingview" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradingview-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradingview-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://aureus-os.app/de/tradingview-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://aureus-os.app/it/alternativa-tradingview" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://aureus-os.app/tradingview-alternative" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://aureus-os.app/es/alternativa-tradingview" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://aureus-os.app/fr/alternative-tradingview" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://aureus-os.app/de/tradingview-alternative" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://aureus-os.app/tradingview-alternative" />
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://aureus-os.app/protocollo</loc>
     <lastmod>2026-10-30</lastmod>
     <changefreq>weekly</changefreq>

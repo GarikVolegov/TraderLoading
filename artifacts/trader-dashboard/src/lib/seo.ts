@@ -25,6 +25,11 @@ export const SEO_PAGE_KEYS = [
   "guide",
   "about",
   "contact",
+  "tradezella-alternative",
+  "edgewonk-alternative",
+  "tradersync-alternative",
+  "fxreplay-alternative",
+  "tradingview-alternative",
 ] as const;
 export type SeoPageKey = (typeof SEO_PAGE_KEYS)[number];
 
@@ -39,6 +44,11 @@ export const SEO_TOPIC_KEYS: readonly SeoPageKey[] = [
   "macro-news",
   "risk-tools",
   "pricing",
+  "tradezella-alternative",
+  "edgewonk-alternative",
+  "tradersync-alternative",
+  "fxreplay-alternative",
+  "tradingview-alternative",
 ];
 
 /**
@@ -102,6 +112,41 @@ export const SEO_SLUGS: Record<SeoPageKey, Record<Language, string>> = {
     es: "contacto",
     fr: "contact",
     de: "kontakt",
+  },
+  "tradezella-alternative": {
+    en: "tradezella-alternative",
+    it: "alternativa-tradezella",
+    es: "alternativa-tradezella",
+    fr: "alternative-tradezella",
+    de: "tradezella-alternative",
+  },
+  "edgewonk-alternative": {
+    en: "edgewonk-alternative",
+    it: "alternativa-edgewonk",
+    es: "alternativa-edgewonk",
+    fr: "alternative-edgewonk",
+    de: "edgewonk-alternative",
+  },
+  "tradersync-alternative": {
+    en: "tradersync-alternative",
+    it: "alternativa-tradersync",
+    es: "alternativa-tradersync",
+    fr: "alternative-tradersync",
+    de: "tradersync-alternative",
+  },
+  "fxreplay-alternative": {
+    en: "fxreplay-alternative",
+    it: "alternativa-fxreplay",
+    es: "alternativa-fxreplay",
+    fr: "alternative-fxreplay",
+    de: "fxreplay-alternative",
+  },
+  "tradingview-alternative": {
+    en: "tradingview-alternative",
+    it: "alternativa-tradingview",
+    es: "alternativa-tradingview",
+    fr: "alternative-tradingview",
+    de: "tradingview-alternative",
   },
 };
 
