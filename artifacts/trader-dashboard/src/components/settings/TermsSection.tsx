@@ -110,11 +110,11 @@ export function TermsSection() {
             Per questioni relative alla sovranità dei dati personali o note legali d&apos;Ordine:
           </p>
           <a
-            href="mailto:assistenza@traderloading.com"
+            href="mailto:assistenza@aureus-os.app"
             className="inline-flex items-center gap-1.5 text-[#E8C56A] hover:text-[#F3D88C] transition-colors text-xs font-mono font-medium"
           >
             <Mail className="w-3.5 h-3.5 text-[#C5A059]" />
-            assistenza@traderloading.com
+            assistenza@aureus-os.app
             <ExternalLink className="w-3 h-3 text-[#C5A059]" />
           </a>
         </TermsBlock>

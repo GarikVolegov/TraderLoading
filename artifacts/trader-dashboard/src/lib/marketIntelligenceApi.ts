@@ -93,6 +93,104 @@ export function fetchMarketContext(pair: string): Promise<IntelligenceContext> {
 export function fetchDirectionalBias(pair: string): Promise<DirectionalBiasResult> {
   return apiJSON(`tools/directional-bias?${new URLSearchParams({ pair })}`);
 }
+
+export interface LongTermPairRecommendation {
+  pair: string;
+  direction: TrendDirection;
+  edgeTier: BiasTier;
+  alignmentStatus: "TRIPLE_ALIGNED" | "DOUBLE_ALIGNED" | "CONFLICTED" | "NEUTRAL";
+  horizonLabel: "W1 · D1 · H4" | "W1 · D1" | "D1 · H4";
+  confidenceScore: number;
+  longTermScore: number;
+  macroScore: number;
+  rangeZone: "DISCOUNT" | "PREMIUM" | "EQUILIBRIUM";
+  antiFadeProtected: boolean;
+  thesis: string;
+  rankScore: number;
+}
+
+export interface LongTermRecommendationsResponse {
+  generatedAt: string;
+  recommendations: LongTermPairRecommendation[];
+  all: LongTermPairRecommendation[];
+}
+
+export const DEFAULT_LONG_TERM_RECOMMENDATIONS: LongTermPairRecommendation[] = [
+  {
+    pair: "XAUUSD",
+    direction: "BULLISH",
+    edgeTier: "TIER_A_PLUS",
+    alignmentStatus: "TRIPLE_ALIGNED",
+    horizonLabel: "W1 · D1 · H4",
+    confidenceScore: 92,
+    longTermScore: 78,
+    macroScore: 45,
+    rangeZone: "DISCOUNT",
+    antiFadeProtected: false,
+    thesis: "W1·D1·H4 Rialzista · Zona Discount · Bene Rifugio & COT Long",
+    rankScore: 95,
+  },
+  {
+    pair: "BTCUSD",
+    direction: "BULLISH",
+    edgeTier: "TIER_A_PLUS",
+    alignmentStatus: "TRIPLE_ALIGNED",
+    horizonLabel: "W1 · D1 · H4",
+    confidenceScore: 88,
+    longTermScore: 72,
+    macroScore: 38,
+    rangeZone: "DISCOUNT",
+    antiFadeProtected: false,
+    thesis: "W1·D1·H4 Rialzista · Ciclo Liquidità & Domanda Istituzionale",
+    rankScore: 90,
+  },
+  {
+    pair: "NAS100",
+    direction: "BULLISH",
+    edgeTier: "TIER_QUALITY",
+    alignmentStatus: "DOUBLE_ALIGNED",
+    horizonLabel: "W1 · D1",
+    confidenceScore: 84,
+    longTermScore: 66,
+    macroScore: 30,
+    rangeZone: "DISCOUNT",
+    antiFadeProtected: false,
+    thesis: "W1·D1 Rialzista · Zona Discount · Trend Secolare Tech",
+    rankScore: 85,
+  },
+  {
+    pair: "EURUSD",
+    direction: "BULLISH",
+    edgeTier: "TIER_QUALITY",
+    alignmentStatus: "DOUBLE_ALIGNED",
+    horizonLabel: "W1 · D1",
+    confidenceScore: 79,
+    longTermScore: 58,
+    macroScore: 25,
+    rangeZone: "DISCOUNT",
+    antiFadeProtected: false,
+    thesis: "W1·D1 Rialzista · Convergenza Tassi BCE/Fed & Rotazione DXY",
+    rankScore: 78,
+  },
+  {
+    pair: "USDJPY",
+    direction: "BEARISH",
+    edgeTier: "TIER_QUALITY",
+    alignmentStatus: "DOUBLE_ALIGNED",
+    horizonLabel: "W1 · D1",
+    confidenceScore: 80,
+    longTermScore: -60,
+    macroScore: -28,
+    rangeZone: "PREMIUM",
+    antiFadeProtected: false,
+    thesis: "W1·D1 Ribassista · Zona Premium · Rientro Carry Trade BOJ",
+    rankScore: 80,
+  },
+];
+
+export function fetchLongTermRecommendations(): Promise<LongTermRecommendationsResponse> {
+  return apiJSON("tools/long-term-recommendations");
+}
 export function saveMarketDecision(input: { snapshotId: string; choice: "trade" | "wait"; note?: string }): Promise<MarketDecision> {
   return apiJSON("market-decisions", { method: "POST", body: JSON.stringify(input) });
 }

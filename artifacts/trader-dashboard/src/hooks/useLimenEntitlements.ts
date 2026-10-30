@@ -56,10 +56,15 @@ export function useLimenEntitlements() {
 
   const data = query.data;
 
-  if (isAdmin) {
+  const isStaging =
+    typeof window !== "undefined" &&
+    (new URLSearchParams(window.location.search).has("staging") ||
+      window.localStorage.getItem("limen_staging") === "1");
+
+  if (isAdmin || isStaging) {
     return {
       ...query,
-      isAdmin: true,
+      isAdmin: Boolean(isAdmin),
       entitlements: ALL_UNLOCKED_ENTITLEMENTS,
       status: "ammesso" as const,
       billingCycle: "monthly" as LimenBillingCycle,

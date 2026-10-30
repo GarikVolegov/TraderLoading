@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import {
+  AUREUS_OFFERS,
   SEO_PAGE_KEYS,
   SEO_SLUGS,
   SITE_ORIGIN,
   absoluteUrl,
   allMarketingPaths,
+  aureusKnowledgeGraphJsonLd,
   breadcrumbJsonLd,
   faqJsonLd,
   getLanguageFromPath,
@@ -16,6 +18,9 @@ import {
   seoPagePath,
 } from "./seo.ts";
 import { SUPPORTED_LANGUAGES } from "./i18n.ts";
+
+assert.equal(SITE_ORIGIN, "https://aureus-os.app", "canonical site origin must be https://aureus-os.app");
+assert.equal(AUREUS_OFFERS.length, 3, "AUREUS_OFFERS must expose the 3 sovereign access tiers");
 
 // getLanguageFromPath — only the 4 prefixed languages (and explicit /en) resolve.
 assert.equal(getLanguageFromPath("/it"), "it");
@@ -126,5 +131,15 @@ const faq = faqJsonLd("it", [{ question: "Q?", answer: "A." }]) as {
 assert.equal(faq.inLanguage, "it");
 assert.equal(faq.mainEntity[0].name, "Q?");
 assert.equal(faq.mainEntity[0].acceptedAnswer.text, "A.");
+
+// aureusKnowledgeGraphJsonLd
+const kg = aureusKnowledgeGraphJsonLd("it") as {
+  "@graph": Array<{ "@type": string; name?: string; alternateName?: string[] }>;
+};
+assert.ok(Array.isArray(kg["@graph"]), "Knowledge graph must contain @graph array");
+assert.equal(kg["@graph"].length, 4, "Knowledge graph must contain Organization, WebSite, SoftwareApplication, DefinedTermSet");
+assert.equal(kg["@graph"][0]["@type"], "Organization");
+assert.equal(kg["@graph"][0].name, "AUREUS PROTOCOL");
+assert.ok(kg["@graph"][0].alternateName?.includes("AUREUS"));
 
 console.log("seo helpers checks passed");

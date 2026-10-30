@@ -725,65 +725,97 @@ export const SessionDetailInspector = memo(function SessionDetailInspector({
         /* ═══════════════════════════════════════════════════════════
            VISTA A: DOSSIER TATTICO DEL TRADE SELEZIONATO (STORICO)
            ═══════════════════════════════════════════════════════════ */
-        <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
-          {/* Header Strip with Asset, Direction, Hero PnL & Action Triggers */}
-          <div className="shrink-0 flex items-center justify-between gap-2 bg-surface-0/70 rounded-xl border border-border-subtle/80 p-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="font-mono text-sm font-bold text-text-hi whitespace-nowrap">
-                {cleanSymbol}
-              </span>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[9.5px] font-mono font-bold border whitespace-nowrap tracking-wider uppercase",
-                  isLong
-                    ? "border-success/30 bg-success/15 text-success"
-                    : isShort
-                    ? "border-destructive/30 bg-destructive/15 text-destructive"
-                    : "border-border-subtle text-text-lo"
-                )}
-              >
-                {isLong ? <ArrowUpRight size={11} /> : isShort ? <ArrowDownRight size={11} /> : null}
-                <span className="whitespace-nowrap">{direction}</span>
-              </span>
-              <span className="font-mono text-[10px] text-text-lo truncate">
-                {displayDate} {displayTime ? `· ${displayTime}` : ""}
-              </span>
+        <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-0.5">
+          {/* Header Strip with Asset, Direction, Hero PnL & Action Triggers (Adaptive 2-row on mobile, 1-row on desktop) */}
+          <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-surface-0/70 rounded-xl border border-border-subtle/80 p-2 sm:p-2.5">
+            <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-mono text-sm font-bold text-text-hi whitespace-nowrap">
+                  {cleanSymbol}
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[9px] font-mono font-bold border whitespace-nowrap tracking-wider uppercase",
+                    isLong
+                      ? "border-success/30 bg-success/15 text-success"
+                      : isShort
+                      ? "border-destructive/30 bg-destructive/15 text-destructive"
+                      : "border-border-subtle text-text-lo"
+                  )}
+                >
+                  {isLong ? <ArrowUpRight size={10} /> : isShort ? <ArrowDownRight size={10} /> : null}
+                  <span className="whitespace-nowrap">{direction}</span>
+                </span>
+                <span className="font-mono text-[9.5px] text-text-lo truncate">
+                  {displayDate}
+                </span>
+              </div>
+
+              {/* Mobile top-right PnL & Grade */}
+              <div className="flex sm:hidden items-center gap-1 shrink-0">
+                <span
+                  className={cn(
+                    "rounded border px-1.5 py-0.2 font-mono text-[9px] font-bold whitespace-nowrap",
+                    executionGrade.startsWith("A")
+                      ? "border-success/40 bg-success/15 text-success"
+                      : "border-[#C5A059]/40 bg-[#C5A059]/15 text-[#D4AF37]"
+                  )}
+                >
+                  {executionGrade}
+                </span>
+                <span
+                  className={cn(
+                    "font-mono text-[11px] font-bold px-2 py-0.2 rounded border shadow-xs whitespace-nowrap",
+                    pnl != null && pnl > 0
+                      ? "border-success/40 bg-success/20 text-success"
+                      : pnl != null && pnl < 0
+                      ? "border-destructive/40 bg-destructive/20 text-destructive"
+                      : "border-border-subtle text-text-lo bg-surface-2"
+                  )}
+                >
+                  {pnl != null ? `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} €` : "0.00 €"}
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span
-                className={cn(
-                  "rounded border px-2 py-0.5 font-mono text-[10px] font-bold whitespace-nowrap",
-                  executionGrade.startsWith("A")
-                    ? "border-success/40 bg-success/15 text-success"
-                    : "border-[#C5A059]/40 bg-[#C5A059]/15 text-[#D4AF37]"
-                )}
-              >
-                GRADO {executionGrade}
-              </span>
-              <span
-                className={cn(
-                  "font-mono text-xs font-bold px-2 py-0.5 rounded-lg border shadow-xs whitespace-nowrap",
-                  pnl != null && pnl > 0
-                    ? "border-success/40 bg-success/20 text-success"
-                    : pnl != null && pnl < 0
-                    ? "border-destructive/40 bg-destructive/20 text-destructive"
-                    : "border-border-subtle text-text-lo bg-surface-2"
-                )}
-              >
-                {pnl != null ? `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} €` : "0.00 €"}
-              </span>
+            {/* Action Buttons Row */}
+            <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
+              {/* Desktop PnL & Grade */}
+              <div className="hidden sm:flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "rounded border px-2 py-0.5 font-mono text-[10px] font-bold whitespace-nowrap",
+                    executionGrade.startsWith("A")
+                      ? "border-success/40 bg-success/15 text-success"
+                      : "border-[#C5A059]/40 bg-[#C5A059]/15 text-[#D4AF37]"
+                  )}
+                >
+                  GRADO {executionGrade}
+                </span>
+                <span
+                  className={cn(
+                    "font-mono text-xs font-bold px-2 py-0.5 rounded-lg border shadow-xs whitespace-nowrap",
+                    pnl != null && pnl > 0
+                      ? "border-success/40 bg-success/20 text-success"
+                      : pnl != null && pnl < 0
+                      ? "border-destructive/40 bg-destructive/20 text-destructive"
+                      : "border-border-subtle text-text-lo bg-surface-2"
+                  )}
+                >
+                  {pnl != null ? `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} €` : "0.00 €"}
+                </span>
+              </div>
 
               {/* Sigillo del Trade Trigger Button */}
               {honorCardData && (
                 <button
                   type="button"
                   onClick={() => setShareModalOpen(true)}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] hover:bg-[#C5A059]/25 font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all shadow-[0_0_10px_rgba(197,160,89,0.15)] cursor-pointer"
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1 px-2.5 py-1 sm:py-0.5 rounded border border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] hover:bg-[#C5A059]/25 font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all shadow-[0_0_10px_rgba(197,160,89,0.15)] cursor-pointer"
                   title="Genera e scarica la Scheda d'Onore / Pergamena d'Oro di questo trade"
                 >
                   <Award size={12} className="text-[#E8C56A]" />
-                  <span>Sigillo del Trade</span>
+                  <span>Sigillo</span>
                 </button>
               )}
 
@@ -791,11 +823,11 @@ export const SessionDetailInspector = memo(function SessionDetailInspector({
               <button
                 type="button"
                 onClick={() => setBioTensionModalOpen(true)}
-                className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#ef4444]/40 bg-[#ef4444]/15 text-rose-300 hover:bg-[#ef4444]/25 font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all shadow-[0_0_10px_rgba(239,68,68,0.15)] cursor-pointer"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-1 px-2.5 py-1 sm:py-0.5 rounded border border-[#ef4444]/40 bg-[#ef4444]/15 text-rose-300 hover:bg-[#ef4444]/25 font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all shadow-[0_0_10px_rgba(239,68,68,0.15)] cursor-pointer"
                 title="Analisi Termobarica: Frequenza cardiaca e tenuta psicofisica durante il trade"
               >
                 <Heart size={12} className="text-[#ef4444] animate-pulse" />
-                <span>Replay Termobarico (BPM)</span>
+                <span>Replay BPM</span>
               </button>
             </div>
           </div>
@@ -1357,10 +1389,10 @@ export const SessionDetailInspector = memo(function SessionDetailInspector({
             </div>
 
             {/* Module E: Protocol Integrity Barometer Footer */}
-            <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs font-mono text-text-lo shrink-0">
-              <div className="flex items-center gap-2">
-                <span>Integrità Esecutiva:</span>
-                <div className="w-24 h-2 rounded-full bg-surface-2 overflow-hidden border border-border-subtle/70 flex">
+            <div className="pt-2 border-t border-white/[0.06] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-xs font-mono text-text-lo shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="whitespace-nowrap text-[11px]">Integrità:</span>
+                <div className="w-16 sm:w-24 h-2 rounded-full bg-surface-2 overflow-hidden border border-border-subtle/70 flex shrink-0">
                   <div
                     className={cn(
                       "h-full transition-all duration-300",
@@ -1369,11 +1401,13 @@ export const SessionDetailInspector = memo(function SessionDetailInspector({
                     style={{ width: `${integrityScore}%` }}
                   />
                 </div>
-                <strong className={cn("text-xs sm:text-sm font-bold", integrityScore >= 80 ? "text-success" : integrityScore >= 50 ? "text-[#C5A059]" : "text-destructive")}>
+                <strong className={cn("text-xs font-bold whitespace-nowrap", integrityScore >= 80 ? "text-success" : integrityScore >= 50 ? "text-[#C5A059]" : "text-destructive")}>
                   {integrityScore}%
                 </strong>
               </div>
-              <span className="font-bold text-xs text-[#C5A059] tracking-wider">REGISTRATO NEL DIARIO</span>
+              <span className="font-bold text-[10px] sm:text-xs text-[#C5A059] tracking-wider uppercase whitespace-nowrap">
+                REGISTRATO
+              </span>
             </div>
           </div>
         </div>

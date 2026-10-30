@@ -166,7 +166,7 @@ export function SupportSection() {
           </Link>
 
           <a
-            href="mailto:assistenza@traderloading.com"
+            href="mailto:assistenza@aureus-os.app"
             className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"
           >
             <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shrink-0">
@@ -175,14 +175,14 @@ export function SupportSection() {
             <div className="flex-1">
               <p className="text-sm font-semibold">{uiText("settings.support.write")}</p>
               <p className="text-xs text-muted-foreground">
-                assistenza@traderloading.com
+                assistenza@aureus-os.app
               </p>
             </div>
             <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </a>
 
           <a
-            href="mailto:assistenza@traderloading.com?subject=Feedback%20AUREUS"
+            href="mailto:assistenza@aureus-os.app?subject=Feedback%20AUREUS"
             className="flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-secondary/20 hover:border-primary/30 hover:bg-secondary/40 transition-all group"
           >
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">

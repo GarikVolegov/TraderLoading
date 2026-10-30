@@ -1,17 +1,19 @@
-# TraderLoading — SEO & GEO keyword strategy
+# AUREUS (AUREUS PROTOCOL) — SEO, SEM & GEO Keyword Strategy
 
-> Living reference for the keyword targeting behind TraderLoading.com's organic
-> and generative-engine (AI answer) visibility. Implemented in
-> [`src/lib/seo.ts`](../../artifacts/trader-dashboard/src/lib/seo.ts) (URL/hreflang),
+> Living reference for the keyword targeting behind `https://aureus-os.app`'s organic,
+> paid (SEM), and generative-engine (GEO / AI answer) visibility. Implemented in
+> [`src/lib/seo.ts`](../../artifacts/trader-dashboard/src/lib/seo.ts) (URL/hreflang + Knowledge Graph `@graph`),
 > [`src/lib/i18n.ts`](../../artifacts/trader-dashboard/src/lib/i18n.ts) (`seo.*` copy keys, 5 languages),
+> [`src/lib/semAttribution.ts`](../../artifacts/trader-dashboard/src/lib/semAttribution.ts) (UTM / GCLID / AI Search referrer attribution),
 > the dedicated pages in [`src/pages/seo/`](../../artifacts/trader-dashboard/src/pages/seo/),
+> [`public/llms.txt`](../../artifacts/trader-dashboard/public/llms.txt) + [`public/llms-full.txt`](../../artifacts/trader-dashboard/public/llms-full.txt),
 > and the static head in [`index.html`](../../artifacts/trader-dashboard/index.html).
 
 ## Honest expectation
 
-On-page + technical SEO/GEO makes TraderLoading the strongest *possible* candidate and
+On-page + technical SEO/GEO makes AUREUS (`https://aureus-os.app`) the strongest *possible* candidate and
 reliably wins **brand**, **mid/long-tail** and **high-intent** searches plus **AI-engine
-citations**. It cannot, by code alone, guarantee #1 for raw head terms ("trading", "finanza")
+citations** (ChatGPT Search, Perplexity, Claude, Gemini, Copilot). It cannot, by code alone, guarantee #1 for raw head terms ("trading", "finanza")
 — those are won with off-site authority (backlinks, domain age, traffic), see the checklist at
 the end. Everything controllable in the repo is covered here.
 
@@ -41,90 +43,75 @@ the end. Everything controllable in the repo is covered here.
 ## Keyword clusters → page mapping
 
 ### Brand (all pages, esp. landing) — own these outright
-TraderLoading, trader loading, traderloading, traderloading.com, traderloading app,
-traderloading login, trader loading app.
+Aureus, AUREUS, Aureus Protocol, AUREUS PROTOCOL, Aureus OS, aureus-os.app, Protocollo Aureus,
+Aureus trading, Aureus app, La Forgia del Passato, Il Libro della Verità, Il Custode della Soglia,
+Le Prove del Fuoco, Limen Protocol, TraderLoading.
 
 ### English core
 - **trading-journal:** trading journal, automated trading journal, MT4/MT5 trading journal,
-  forex trading journal, trade tracking, R-multiple, equity curve, win rate.
+  forex trading journal, trade tracking, R-multiple, equity curve, win rate, The Book of Truth.
 - **backtest:** backtest, backtesting, chart replay, forex backtesting, backtest trading
-  strategy, trading simulator, candle by candle, strategy testing.
+  strategy, trading simulator, candle by candle, strategy testing, The Forge of the Past.
 - **macro-news:** macro news, macroeconomics, macroeconomic analysis, economic calendar,
-  forex news, market sentiment, financial news, trading analysis, finance.
+  COT report, forex news, market sentiment, financial news, trading analysis, finance.
 - **risk-tools:** risk management, position size calculator, lot size calculator, money
-  management, Monte Carlo, daily loss limit, risk analysis.
-- **landing/pricing:** all-in-one trading workspace, free trading app, trading dashboard.
+  management, Monte Carlo, daily loss limit, risk analysis, The Guardian of the Threshold.
+- **landing/pricing:** sovereign trading operating system, Selection Threshold 10€, Operational Tribute 150€.
 
 ### Italian (primary market — default fallback locale)
-diario di trading, giornale di trading, diario trading automatico, backtest, backtest trading,
-replay grafico, notizie macro, macroeconomia, analisi macroeconomica, calendario economico,
-gestione del rischio, calcolatore lotti, calcolatore position size, disciplina di trading,
-psicologia del trading, dashboard di trading, analisi trading, **trading**, **finanza**.
+Aureus, Protocollo Aureus, diario di trading, giornale di trading, diario trading automatico,
+La Forgia del Passato, backtest, backtest trading, replay grafico, notizie macro, macroeconomia,
+analisi macroeconomica, calendario economico, gestione del rischio, calcolatore lotti,
+calcolatore position size, disciplina finanziaria, psicologia del trading, dashboard di trading,
+analisi trading, **trading**, **finanza**.
 
 ### Spanish / French / German (localized equivalents)
-- **ES:** diario de trading, backtesting, noticias macro, macroeconomía, calendario económico,
+- **ES:** Aureus, diario de trading, backtesting, noticias macro, macroeconomía, calendario económico,
   gestión de riesgo, calculadora de lotes, análisis de trading, finanzas.
-- **FR:** journal de trading, backtest, actus macro, macroéconomie, calendrier économique,
+- **FR:** Aureus, journal de trading, backtest, actus macro, macroéconomie, calendrier économique,
   gestion du risque, calculateur de lot, analyse de trading, finance.
-- **DE:** Trading-Tagebuch, Handelstagebuch, Backtesting, Makro-News, Makroökonomie,
+- **DE:** Aureus, Trading-Tagebuch, Handelstagebuch, Backtesting, Makro-News, Makroökonomie,
   Wirtschaftskalender, Risikomanagement, Positionsgrößenrechner, Trading-Analyse, Finanzen.
 
 ### Long-tail / question (GEO — feeds AI answers + FAQ schema)
-"come tenere un diario di trading", "miglior software di backtest forex", "come calcolare la
-size della posizione", "cos'è l'R-multiple", "how to backtest a trading strategy",
+"cos'è Aureus Protocol", "come tenere un diario di trading", "miglior software di backtest forex",
+"come calcolare la size della posizione", "cos'è l'R-multiple", "how to backtest a trading strategy",
 "best forex macro news aggregator", "how to calculate position size",
-"how does FX Blue account sync work".
+"how does MT4/MT5 read-only account sync work".
 
 ## On-page conventions (applied)
 
-- **Titles:** `Primary keyword — secondary | TraderLoading` (≤ ~60 chars). One `<h1>` per page
-  with the primary keyword; `<h2>`/`<h3>` for sections.
-- **Descriptions:** 1–2 sentences, primary + secondary keywords, ends with "Free"/"Start free".
+- **Titles:** `Primary keyword — secondary | AUREUS` (≤ ~65 chars). One `<h1>` per page
+  with the Dual-Keyword Architecture (AUREUS Lore + High-Volume Search Term); `<h2>`/`<h3>` for sections.
+- **Descriptions:** 1–2 sentences, primary + secondary keywords + AUREUS entity.
 - **Keywords meta:** per-page `seo.<page>.meta.keywords` (low Google weight; some engines/GEO read it).
-- **Structured data (JSON-LD):** site-wide `WebApplication` + `Organization` + `WebSite`
-  (in `index.html`); per page `BreadcrumbList`, `FAQPage` (topic + pricing), `SoftwareApplication`
-  (topics) / `Product` with Free+Pro offers (pricing).
-- **GEO:** `public/llms.txt` lists every page + facts; `robots.txt` explicitly welcomes GPTBot,
-  OAI-SearchBot, PerplexityBot, ClaudeBot, Google-Extended, Applebot-Extended, Bingbot.
+- **Structured data (JSON-LD):** site-wide 4-node `@graph` (`Organization` + `WebSite` + `SoftwareApplication` + `DefinedTermSet`
+  in `index.html` and `aureusKnowledgeGraphJsonLd`); per page `BreadcrumbList`, `FAQPage` (topic + pricing), `SoftwareApplication`
+  (topics) / `Product` with 0€ / 10€ / 150€ offers (pricing).
+- **GEO:** `public/llms.txt` and `public/llms-full.txt` document the full AUREUS encyclopedic corpus; `robots.txt` explicitly welcomes 18 AI/search crawlers (`GPTBot`, `OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`, `ClaudeBot`, `Google-Extended`, `Applebot-Extended`, `Bingbot`, `DuckAssistBot`, `Meta-ExternalAgent`, `YouBot`, `Cohere-ai`).
 - **Prerendering:** `scripts/prerender.ts` snapshots each route × language to static HTML so
   non-JS crawlers see full content (best-effort; never breaks the build).
 
 ## Off-site / operational checklist (NOT in the repo — required for head terms)
 
 - [x] Confirm the production static server serves prerendered `<route>/index.html` directly
-      (no redirect hop) — done in the Phase 1 SEO/GEO technical hardening
-      (`docs/superpowers/specs/2026-07-10-seo-geo-technical-hardening-design.md`):
-      `artifacts/api-server/src/lib/staticSnapshot.ts` resolves the snapshot and
+      (no redirect hop) — `artifacts/api-server/src/lib/staticSnapshot.ts` resolves the snapshot and
       `serveFrontendApp` sends it directly, before `express.static`'s redirect-then-serve default.
 - [ ] Verify domain in **Google Search Console** + **Bing Webmaster Tools**; submit
-      `https://traderloading.com/sitemap.xml`; request indexing for the landing + topic pages.
-      These are user-executed steps (require owning the Google/Bing accounts); nothing here can
-      be automated from the repo. Concrete runbook:
+      `https://aureus-os.app/sitemap.xml`; request indexing for the landing + topic pages.
+      Concrete runbook:
       1. **Google Search Console**: at https://search.google.com/search-console, add property
-         `traderloading.com` (Domain property, or URL-prefix `https://traderloading.com/`). Verify
-         via the **HTML file** method: download the `google<code>.html` file GSC gives you and drop
-         it directly into `artifacts/trader-dashboard/public/` (it's served as a static file with no
-         code change) — commit and deploy, then click "Verify" in GSC. Once verified: Sitemaps →
-         submit `https://traderloading.com/sitemap.xml`; then URL Inspection → request indexing for
-         `/`, `/it`, `/trading-journal`, `/backtesting`, `/guide` (the highest-intent pages) so
-         Google crawls them proactively instead of waiting for organic discovery.
-      2. **Bing Webmaster Tools**: at https://www.bing.com/webmasters, same flow (Bing also serves
-         ChatGPT/Copilot's web search, so this feeds GEO too). Bing supports **importing verified
-         GSC sites directly** — use that instead of a second manual verification.
-      3. **Confirm crawlability post-deploy**: after the Phase 1 code changes ship,
-         `curl -sI https://traderloading.com/about` — expect `HTTP/1.1 200` with no redirect, and
-         `curl -s https://traderloading.com/about | grep -c '<h1'` — expect `1` (confirms the
-         prerendered snapshot, not the empty SPA shell, is what's served).
+         `aureus-os.app` (Domain property, or URL-prefix `https://aureus-os.app/`). Verify
+         via DNS TXT or the **HTML file** method (`artifacts/trader-dashboard/public/`). Once verified: Sitemaps →
+         submit `https://aureus-os.app/sitemap.xml`; then URL Inspection → request indexing for
+         `/`, `/it`, `/trading-journal`, `/backtesting`, `/guide`, `/pricing`, `/about`.
+      2. **Bing Webmaster Tools**: at https://www.bing.com/webmasters, import verified GSC site directly
+         (Bing powers ChatGPT Search and Microsoft Copilot web search, feeding GEO directly) and enable IndexNow.
+      3. **Confirm crawlability post-deploy**:
+         `curl -sI https://aureus-os.app/about` — expect `HTTP/1.1 200` with no redirect, and
+         `curl -s https://aureus-os.app/about | grep -c '<h1'` — expect `1`.
 - [ ] Set **GA4**: create a GA4 property, copy the Measurement ID (`G-XXXXXXX`), set it as
-      `VITE_GA_MEASUREMENT_ID` in the Railway service variables (it's a `[BUILD]`-time var — see
-      `.env.railway.example`), redeploy. Already wired to no-op safely without it
-      (`src/lib/analytics.ts`) and to respect cookie consent once set.
-- [ ] Create + consistently link official social profiles (X, Instagram, YouTube) and add them
-      to the `Organization.sameAs` array in `index.html` once URLs are real.
-- [ ] Earn backlinks: Product Hunt launch, trading communities/forums, broker/affiliate
-      directories, guest posts, comparison articles.
-- [ ] Add real `AggregateRating` JSON-LD only once backed by genuine, verifiable reviews.
-- [ ] Optional next pages to populate for more long-tail coverage: a real blog, a status page,
-      and per-broker / per-pair landing pages (Phase 2 — see
-      `docs/superpowers/specs/2026-07-10-seo-geo-technical-hardening-design.md` for the Phase 1
-      this builds on).
+      `VITE_GA_MEASUREMENT_ID` in the deployment environment variables, and redeploy.
+- [ ] Create + consistently link official social profiles (X, Instagram, YouTube, Discord) and add them
+      to `Organization.sameAs` in `src/lib/seo.ts` and `index.html`.
+- [ ] Earn authoritative citations & backlinks: Product Hunt, Trustpilot (`aureus-os.app`), Crunchbase, G2, AlternativeTo, Reddit (`r/Forex`, `r/Daytrading`, `r/ItaliaPersonalFinance`), TradingView ideas.

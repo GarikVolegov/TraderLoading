@@ -232,7 +232,7 @@ export function HelpSection() {
       {/* Support channel link */}
       <div className="pt-2">
         <a
-          href="mailto:assistenza@traderloading.com?subject=Richiesta%20assistenza"
+          href="mailto:assistenza@aureus-os.app?subject=Richiesta%20assistenza"
           className="flex items-center justify-between p-4 rounded-xl border border-[#C5A059]/30 bg-[#07080b] hover:bg-[#C5A059]/10 hover:border-[#C5A059] transition-all group"
         >
           <div className="flex items-center gap-3">
@@ -242,7 +242,7 @@ export function HelpSection() {
             <div>
               <p className="font-display text-xs font-bold uppercase tracking-wider text-[#F4F4F6]">{uiText("settings.support.contact")}</p>
               <p className="font-mono text-[11px] text-[#C5A059]/80">
-                assistenza@traderloading.com
+                assistenza@aureus-os.app
               </p>
             </div>
           </div>

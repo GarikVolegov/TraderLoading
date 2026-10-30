@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "TraderLoading"
+title = "AUREUS"
 version = "1.0.0"
 id = "artifacts/trader-dashboard"
 router = "path"

@@ -24,6 +24,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 interface SitemapEntry {
   loc: string;
+  lastmod: string;
   changefreq: string;
   priority: string;
   alternates?: HreflangAlternate[];
@@ -31,11 +32,13 @@ interface SitemapEntry {
 
 function buildEntries(): SitemapEntry[] {
   const entries: SitemapEntry[] = [];
+  const lastmod = new Date().toISOString().slice(0, 10);
 
   // Landing, one indexable URL per language, each carrying the full hreflang set.
   for (const lang of SUPPORTED_LANGUAGES) {
     entries.push({
       loc: absoluteUrl(landingPath(lang)),
+      lastmod,
       changefreq: "weekly",
       priority: "1.0",
       alternates: landingAlternates(),
@@ -47,6 +50,7 @@ function buildEntries(): SitemapEntry[] {
     for (const lang of SUPPORTED_LANGUAGES) {
       entries.push({
         loc: absoluteUrl(seoPagePath(page, lang)),
+        lastmod,
         changefreq: "weekly",
         priority: "0.8",
         alternates: seoPageAlternates(page),
@@ -54,10 +58,13 @@ function buildEntries(): SitemapEntry[] {
     }
   }
 
-  // Conversion + legal pages (single URL, no language variants).
-  entries.push({ loc: absoluteUrl("/sign-up"), changefreq: "monthly", priority: "0.7" });
-  entries.push({ loc: absoluteUrl("/privacy"), changefreq: "yearly", priority: "0.2" });
-  entries.push({ loc: absoluteUrl("/terms"), changefreq: "yearly", priority: "0.2" });
+  // Public sovereign gateways, conversion + legal pages.
+  entries.push({ loc: absoluteUrl("/protocollo"), lastmod, changefreq: "weekly", priority: "0.9" });
+  entries.push({ loc: absoluteUrl("/academy"), lastmod, changefreq: "weekly", priority: "0.8" });
+  entries.push({ loc: absoluteUrl("/verifica"), lastmod, changefreq: "monthly", priority: "0.7" });
+  entries.push({ loc: absoluteUrl("/sign-up"), lastmod, changefreq: "monthly", priority: "0.7" });
+  entries.push({ loc: absoluteUrl("/privacy"), lastmod, changefreq: "yearly", priority: "0.2" });
+  entries.push({ loc: absoluteUrl("/terms"), lastmod, changefreq: "yearly", priority: "0.2" });
 
   return entries;
 }
@@ -75,6 +82,7 @@ function renderSitemap(entries: SitemapEntry[]): string {
         "  <url>",
         `    <loc>${entry.loc}</loc>`,
         alts,
+        `    <lastmod>${entry.lastmod}</lastmod>`,
         `    <changefreq>${entry.changefreq}</changefreq>`,
         `    <priority>${entry.priority}</priority>`,
         "  </url>",

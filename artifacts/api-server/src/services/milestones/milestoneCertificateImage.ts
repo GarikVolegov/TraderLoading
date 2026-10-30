@@ -138,7 +138,7 @@ export function renderMilestoneCertificateSvg(cert: {
   const qrY = isGrado2 ? 856 : 848;
   const qrSize = 86;
 
-  const qrTarget = `https://limen.trade/verify/nft/${gradeNum}/${hash}`;
+  const qrTarget = `https://aureus-os.app/verify/nft/${gradeNum}/${hash}`;
   const qrPath = generateQrSvgPath(qrTarget, qrX, qrY, qrSize);
 
   const bgDataUri = getTemplateDataUri(gradeNum);

@@ -154,6 +154,10 @@
 }
 
 @media (max-width: 640px) {
+  .bt-top-bar {
+    padding: 10px 10px;
+    gap: 8px;
+  }
   .bt-quick-join-widget {
     width: 100%;
     justify-content: space-between;

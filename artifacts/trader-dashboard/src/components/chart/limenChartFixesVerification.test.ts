@@ -56,14 +56,21 @@ assert.ok(chartContent.includes("[candles, chartType, chartInstance]"), "La seri
 assert.ok(chartContent.includes("symbol.includes(\":\") ? symbol.split(\":\").pop()! : symbol"), "Il simbolo deve essere pulito da prefissi broker (es. OANDA:)");
 console.log("✓ 3. LimenProprietaryChart.tsx: Sincronizzazione automatica candele & pulizia ticker broker convalidate.");
 
-// 4. Verifica LimenChartHeader.tsx: Rimozione duplicato XAU/USD & filtro preferiti
+// 4. Verifica LimenChartHeader.tsx: Rimozione duplicato XAU/USD, filtro preferiti & Consigliati Lungo Termine dopo Preferiti
 const headerPath = path.join(dashboardRoot, "src/components/chart/LimenChartHeader.tsx");
 const headerContent = fs.readFileSync(headerPath, "utf-8");
 
 assert.ok(headerContent.includes("favSymbols.filter"), "I preferiti devono filtrare il simbolo attivo");
 assert.ok(headerContent.includes("symId !== cleanSym"), "Il simbolo attivo non deve essere duplicato accanto al dropdown primario");
 assert.ok(headerContent.includes("symbol.includes(\":\") ? symbol.split(\":\").pop()! : symbol"), "LimenChartHeader deve ripulire i ticker broker");
-console.log("✓ 4. LimenChartHeader.tsx: Eliminazione duplicato XAU/USD e layout spazioso validati.");
+
+const favSectionIdx = headerContent.indexOf("I Tuoi Preferiti");
+const recSectionIdx = headerContent.indexOf("Consigliati · Lungo Termine");
+const catSectionIdx = headerContent.indexOf("filteredSymbolGroups.map");
+assert.ok(favSectionIdx > 0, "LimenChartHeader deve mostrare la sezione 'I Tuoi Preferiti' nella ricerca pair");
+assert.ok(recSectionIdx > favSectionIdx, "La sezione 'Consigliati · Lungo Termine' deve apparire immediatamente dopo 'I Tuoi Preferiti'");
+assert.ok(catSectionIdx > recSectionIdx, "Il catalogo categorie deve apparire dopo la sezione 'Consigliati · Lungo Termine'");
+console.log("✓ 4. LimenChartHeader.tsx: Sezione Preferiti -> Consigliati a Lungo Termine -> Categorie e layout validati.");
 
 // 5. Verifica FavoriteToolsBar.tsx: Posizione di default discreta in basso a sinistra
 const favBarPath = path.join(dashboardRoot, "src/components/backtest-terminal/FavoriteToolsBar.tsx");

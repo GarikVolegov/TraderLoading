@@ -7,49 +7,92 @@
     <!-- Self-hosted brand fonts remain available when Google Fonts is blocked. -->
     <link rel="stylesheet" href="%BASE_URL%fonts/brand.css" />
 
-    <!-- ─── SEO ──────────────────────────────────────────────────────── -->
-    <title>AUREUS — Il Codice della Presenza e dell'Eredità | AUREUS PROTOCOL</title>
-    <meta name="description" content="AUREUS PROTOCOL: Sistema Operativo di Disciplina, Padronanza Mentale ed Eredità. L'Ordine Giornaliero, Il Custode della Soglia, La Forgia del Passato e Il Libro della Verità." />
-    <meta name="keywords" content="AUREUS, AUREUS PROTOCOL, AUREUS OS, disciplina operativa, padronanza mentale, ordine giornaliero, libro della verità, forgia del passato" />
-    <link rel="canonical" href="https://traderloading.com/" />
-    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <!-- ─── SEO & GEO (AI Search Optimization) ───────────────────────── -->
+    <title>AUREUS — Il Codice della Presenza e dell'Eredità | AUREUS PROTOCOL (AUREUS OS)</title>
+    <meta name="description" content="AUREUS PROTOCOL (AUREUS OS): Sistema Operativo di Disciplina, Padronanza Mentale, Trading e Architettura Patrimoniale. Il Libro della Verità (Diario MT4/MT5), La Forgia del Passato (Backtest Replay), Il Custode della Soglia (Risk Management) e L'Ordine Giornaliero." />
+    <meta name="keywords" content="AUREUS, AUREUS PROTOCOL, AUREUS OS, Protocollo Aureus, Aureus Trading, diario di trading automatico, backtest trading, simulatore trading, gestione del rischio, notizie macro, calendario economico, psicologia del trading, architettura patrimoniale, libro della verità, forgia del passato, custode della soglia" />
+    <meta name="author" content="AUREUS PROTOCOL" />
+    <meta name="application-name" content="AUREUS" />
+    <link rel="canonical" href="https://aureus-os.app/" />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="AUREUS LLM Context" />
+    <link rel="alternate" type="text/plain" href="/llms-full.txt" title="AUREUS Full LLM Knowledge Base" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="AUREUS PROTOCOL" />
-    <meta property="og:title" content="AUREUS — Il Codice della Presenza e dell'Eredità" />
-    <meta property="og:description" content="Sistema Operativo di Disciplina, Padronanza Mentale ed Eredità. Attraversa Il Varco, esci dalla Deriva e governa L'Ordine Giornaliero." />
-    <meta property="og:url" content="https://traderloading.com/" />
-    <meta property="og:image" content="https://traderloading.com/opengraph.jpg" />
+    <meta property="og:title" content="AUREUS — Il Codice della Presenza e dell'Eredità | AUREUS PROTOCOL" />
+    <meta property="og:description" content="Sistema Operativo di Disciplina, Padronanza Mentale, Trading ed Eredità Patrimoniale. Attraversa Il Varco, esci dalla Deriva e governa L'Ordine Giornaliero." />
+    <meta property="og:url" content="https://aureus-os.app/" />
+    <meta property="og:image" content="https://aureus-os.app/opengraph.jpg" />
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="720" />
     <meta property="og:locale" content="it_IT" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:locale:alternate" content="es_ES" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="de_DE" />
 
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="AUREUS — Il Codice della Presenza e dell'Eredità" />
-    <meta name="twitter:description" content="AUREUS PROTOCOL: Sistema Operativo di Disciplina, Padronanza Mentale ed Eredità. L'Ordine Giornaliero, Il Custode della Soglia e Il Libro della Verità." />
-    <meta name="twitter:image" content="https://traderloading.com/opengraph.jpg" />
+    <meta name="twitter:title" content="AUREUS — Il Codice della Presenza e dell'Eredità | AUREUS PROTOCOL" />
+    <meta name="twitter:description" content="AUREUS PROTOCOL (AUREUS OS): Sistema Operativo di Disciplina, Padronanza Mentale ed Eredità. Il Libro della Verità, La Forgia del Passato e Il Custode della Soglia." />
+    <meta name="twitter:image" content="https://aureus-os.app/opengraph.jpg" />
 
-    <!-- Structured data (Schema.org) -->
+    <!-- Structured data (Schema.org Sovereign Knowledge Graph) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "AUREUS PROTOCOL",
-      "url": "https://traderloading.com/",
-      "description": "Sistema Operativo di Disciplina, Padronanza Mentale ed Eredità: Il Varco, L'Ordine Giornaliero, Il Custode della Soglia, La Forgia del Passato e Il Libro della Verità.",
-      "applicationCategory": "FinanceApplication",
-      "operatingSystem": "Web",
-      "offers": [
-        { "@type": "Offer", "price": "150", "priceCurrency": "EUR", "name": "Tributo di Accesso Mensile" }
-      ],
-      "inLanguage": ["it", "en", "es", "fr", "de"],
-      "publisher": {
-        "@type": "Organization",
-        "name": "AUREUS PROTOCOL",
-        "url": "https://traderloading.com/"
-      }
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://aureus-os.app/#organization",
+          "name": "AUREUS PROTOCOL",
+          "legalName": "AUREUS PROTOCOL",
+          "alternateName": ["AUREUS", "AUREUS OS", "Protocollo Aureus", "Aureus Trading", "Limen Protocol", "TraderLoading"],
+          "url": "https://aureus-os.app/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://aureus-os.app/app-icon-512.png",
+            "width": 512,
+            "height": 512
+          },
+          "image": "https://aureus-os.app/opengraph.jpg",
+          "slogan": "Il Codice della Presenza e dell'Eredità",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "assistenza@aureus-os.app",
+            "contactType": "customer support",
+            "availableLanguage": ["it", "en", "es", "fr", "de"]
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://aureus-os.app/#website",
+          "url": "https://aureus-os.app/",
+          "name": "AUREUS — AUREUS PROTOCOL",
+          "alternateName": ["AUREUS", "AUREUS OS", "Protocollo Aureus"],
+          "inLanguage": ["it", "en", "es", "fr", "de"],
+          "publisher": { "@id": "https://aureus-os.app/#organization" }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://aureus-os.app/#application",
+          "name": "AUREUS PROTOCOL",
+          "alternateName": ["AUREUS", "AUREUS OS", "Protocollo Aureus"],
+          "url": "https://aureus-os.app/",
+          "description": "Sistema Operativo di Disciplina, Padronanza Mentale, Trading ed Eredità: Il Varco, L'Ordine Giornaliero, Il Custode della Soglia, La Forgia del Passato, Il Libro della Verità e l'Architettura Patrimoniale.",
+          "applicationCategory": "FinanceApplication",
+          "operatingSystem": "Web, iOS, Android, macOS, Windows",
+          "offers": [
+            { "@type": "Offer", "price": "0", "priceCurrency": "EUR", "name": "Accesso Base (Iniziato)" },
+            { "@type": "Offer", "price": "10", "priceCurrency": "EUR", "name": "Patto della Soglia di Selezione" },
+            { "@type": "Offer", "price": "150", "priceCurrency": "EUR", "name": "Tributo di Accesso Mensile" }
+          ],
+          "inLanguage": ["it", "en", "es", "fr", "de"],
+          "publisher": { "@id": "https://aureus-os.app/#organization" }
+        }
+      ]
     }
     </script>
     <link rel="manifest" href="/manifest.json?v=20261021g" />

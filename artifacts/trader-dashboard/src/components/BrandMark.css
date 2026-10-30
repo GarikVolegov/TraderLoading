@@ -42,6 +42,18 @@
   letter-spacing: 0.24em;
   color: hsl(var(--primary));
 }
+@media (max-width: 639px) {
+  .app-top-nav .tl-brand-wordmark small {
+    display: none;
+  }
+  .app-top-nav .tl-brand-wordmark {
+    font-size: 14px;
+    letter-spacing: 0.14em;
+  }
+  .app-top-nav .tl-brand {
+    gap: 7px;
+  }
+}
 @media (max-width: 400px) {
   .tl-brand-wordmark {
     font-size: 15px;

@@ -34,7 +34,7 @@ import {
 import type { BuiltEmail } from "./ticketEmailContent.js";
 
 function resolveBaseUrl(): string {
-  return (process.env.APP_BASE_URL || "https://traderloading.com").replace(/\/+$/, "");
+  return (process.env.APP_BASE_URL || "https://aureus-os.app").replace(/\/+$/, "");
 }
 
 /** Dark by default: needs both a Resend key and an explicit opt-in flag. */

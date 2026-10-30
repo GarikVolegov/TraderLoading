@@ -5,7 +5,7 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { accountTradesTable, profileTable } from "@workspace/db";
+import { accountTradesTable, profileTable, candidateApplicationsTable, usersTable } from "@workspace/db";
 import { UpdateProfileBody, UpdateProfileResponse, GetProfileResponse, GetLeaderboardResponse } from "@workspace/api-zod";
 import { eq, isNull, and, ne, sql, isNotNull, desc } from "drizzle-orm";
 import { resolveUploadPath } from "../lib/uploads.js";
@@ -159,8 +159,39 @@ async function getOrCreateProfile(userId: string | null) {
     const [existing] = await tx.select().from(profileTable).where(where).limit(1);
     if (existing) return existing;
 
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const name = attempt === 0 ? "Trader" : `Trader${crypto.randomUUID().slice(0, 8)}`;
+    let preferredName: string | null = null;
+    if (userId) {
+      try {
+        const [app] = await tx
+          .select({ name: candidateApplicationsTable.name })
+          .from(candidateApplicationsTable)
+          .where(eq(candidateApplicationsTable.userId, userId))
+          .limit(1);
+        if (app?.name?.trim()) preferredName = app.name.trim();
+
+        if (!preferredName) {
+          const [u] = await tx
+            .select({ firstName: usersTable.firstName, email: usersTable.email })
+            .from(usersTable)
+            .where(eq(usersTable.id, userId))
+            .limit(1);
+          if (u?.firstName?.trim()) preferredName = u.firstName.trim();
+          else if (u?.email?.toLowerCase().includes("garik")) preferredName = "GarikFX";
+        }
+      } catch {
+        // safe fallback
+      }
+    }
+
+    const candidateNames = [
+      preferredName,
+      "Trader",
+      `Trader${crypto.randomUUID().slice(0, 8)}`,
+      `Trader${crypto.randomUUID().slice(0, 8)}`,
+      `Trader${crypto.randomUUID().slice(0, 8)}`,
+    ].filter((n): n is string => Boolean(n));
+
+    for (const name of candidateNames) {
       const [created] = await tx.insert(profileTable).values({
         name, avatarUrl: null, xp: 0, level: 1, userId,
       }).onConflictDoNothing().returning();

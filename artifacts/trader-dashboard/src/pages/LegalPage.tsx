@@ -52,11 +52,11 @@ function PrivacyContent() {
       <LegalBlock title={uiText("legal.privacy_contacts")}>
         <p>{t("legal.privacy.contact_intro")}</p>
         <a
-          href="mailto:assistenza@traderloading.com?subject=Privacy%20AUREUS"
+          href="mailto:assistenza@aureus-os.app?subject=Privacy%20AUREUS"
           className="inline-flex items-center gap-2 font-semibold text-primary hover:text-primary/80"
         >
           <Mail className="h-4 w-4" aria-hidden="true" />
-          assistenza@traderloading.com
+          assistenza@aureus-os.app
         </a>
       </LegalBlock>
     </>
@@ -82,11 +82,11 @@ function TermsContent() {
       <LegalBlock title={uiText("auto.ui.fc7746fb89")}>
         <p>{t("legal.terms.changes1")}</p>
         <a
-          href="mailto:assistenza@traderloading.com?subject=Supporto%20AUREUS"
+          href="mailto:assistenza@aureus-os.app?subject=Supporto%20AUREUS"
           className="inline-flex items-center gap-2 font-semibold text-primary hover:text-primary/80"
         >
           <Mail className="h-4 w-4" aria-hidden="true" />
-          assistenza@traderloading.com
+          assistenza@aureus-os.app
         </a>
       </LegalBlock>
     </>

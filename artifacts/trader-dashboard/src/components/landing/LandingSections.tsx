@@ -71,7 +71,7 @@ export function LandingMission() {
             {t("landing.footer.company.about")}
             <ArrowRight size={16} aria-hidden="true" />
           </Link>
-          <a href="mailto:assistenza@traderloading.com">{t("landing.footer.support")}</a>
+          <a href="mailto:assistenza@aureus-os.app">{t("landing.footer.support")}</a>
           <Link href="/terms">{t("landing.footer.terms")}</Link>
         </div>
       </div>
@@ -565,7 +565,7 @@ export function LandingFooter() {
           </Link>
           <p>{t("landing.footer.tagline")}</p>
           <div className="landing-footer-utilities">
-            <a href="mailto:assistenza@traderloading.com">
+            <a href="mailto:assistenza@aureus-os.app">
               <Mail size={18} aria-hidden="true" />
               {t("landing.footer.support")}
             </a>

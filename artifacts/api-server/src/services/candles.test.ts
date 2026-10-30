@@ -41,11 +41,14 @@ try {
       });
     }
 
+    const intervalSecs = rawUrl.includes("interval=1d") ? 86400 : rawUrl.includes("interval=1h") ? 3600 : rawUrl.includes("interval=5m") ? 300 : 900;
+    const timestamps = yahooCandles.map((_, i) => baseTime + i * intervalSecs);
+
     return Response.json({
       chart: {
         result: [
           {
-            timestamp: yahooCandles.map((c) => c.time),
+            timestamp: timestamps,
             indicators: {
               quote: [
                 {

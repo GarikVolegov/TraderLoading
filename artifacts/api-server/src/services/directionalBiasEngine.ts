@@ -735,3 +735,382 @@ export async function getDirectionalBiasForPair(pair: string, now = new Date()):
     now,
   });
 }
+
+// ── MOTORE RACCOMANDAZIONI A LUNGO TERMINE (IL VARCO — RICERCA PAIR) ─────────
+
+export interface LongTermPairRecommendation {
+  pair: string;
+  direction: TrendDirection;
+  edgeTier: BiasTier;
+  alignmentStatus: DirectionalBiasResult["alignmentStatus"];
+  horizonLabel: "W1 · D1 · H4" | "W1 · D1" | "D1 · H4";
+  confidenceScore: number;
+  longTermScore: number;
+  macroScore: number;
+  rangeZone: "DISCOUNT" | "PREMIUM" | "EQUILIBRIUM";
+  antiFadeProtected: boolean;
+  thesis: string;
+  rankScore: number;
+}
+
+export interface LongTermRecommendationsResponse {
+  generatedAt: string;
+  recommendations: LongTermPairRecommendation[];
+  all: LongTermPairRecommendation[];
+}
+
+export const LONG_TERM_CANDIDATE_PAIRS = [
+  "XAUUSD",
+  "BTCUSD",
+  "EURUSD",
+  "NAS100",
+  "SPX500",
+  "US30",
+  "GBPUSD",
+  "USDJPY",
+  "USDCAD",
+  "USDCHF",
+  "ETHUSD",
+  "USOIL",
+] as const;
+
+interface StructuralLongTermProfile {
+  defaultDirection: TrendDirection;
+  defaultScore: number;
+  defaultConfidence: number;
+  defaultTier: BiasTier;
+  defaultZone: "DISCOUNT" | "PREMIUM" | "EQUILIBRIUM";
+  driverTag: string;
+}
+
+const STRUCTURAL_HTF_PROFILES: Record<string, StructuralLongTermProfile> = {
+  XAUUSD: {
+    defaultDirection: "BULLISH",
+    defaultScore: 78,
+    defaultConfidence: 92,
+    defaultTier: "TIER_A_PLUS",
+    defaultZone: "DISCOUNT",
+    driverTag: "Bene Rifugio & Accumulo Banche Centrali",
+  },
+  BTCUSD: {
+    defaultDirection: "BULLISH",
+    defaultScore: 72,
+    defaultConfidence: 88,
+    defaultTier: "TIER_A_PLUS",
+    defaultZone: "DISCOUNT",
+    driverTag: "Ciclo Liquidità Globale & Domanda Istituzionale",
+  },
+  NAS100: {
+    defaultDirection: "BULLISH",
+    defaultScore: 66,
+    defaultConfidence: 84,
+    defaultTier: "TIER_QUALITY",
+    defaultZone: "DISCOUNT",
+    driverTag: "Trend secolare Tech & Espansione Utili",
+  },
+  EURUSD: {
+    defaultDirection: "BULLISH",
+    defaultScore: 58,
+    defaultConfidence: 79,
+    defaultTier: "TIER_QUALITY",
+    defaultZone: "DISCOUNT",
+    driverTag: "Convergenza Tassi BCE/Fed & Rotazione DXY",
+  },
+  SPX500: {
+    defaultDirection: "BULLISH",
+    defaultScore: 64,
+    defaultConfidence: 82,
+    defaultTier: "TIER_QUALITY",
+    defaultZone: "DISCOUNT",
+    driverTag: "Struttura W1/D1 Rialzista & Flussi Istituzionali",
+  },
+  USDJPY: {
+    defaultDirection: "BEARISH",
+    defaultScore: -60,
+    defaultConfidence: 80,
+    defaultTier: "TIER_QUALITY",
+    defaultZone: "PREMIUM",
+    driverTag: "Normalizzazione Yield BOJ & Rientro Carry Trade",
+  },
+  GBPUSD: {
+    defaultDirection: "BULLISH",
+    defaultScore: 54,
+    defaultConfidence: 76,
+    defaultTier: "TIER_QUALITY",
+    defaultZone: "DISCOUNT",
+    driverTag: "Resilienza Sterlina & Struttura D1 Rialzista",
+  },
+  US30: {
+    defaultDirection: "BULLISH",
+    defaultScore: 56,
+    defaultConfidence: 77,
+    defaultTier: "TIER_QUALITY",
+    defaultZone: "EQUILIBRIUM",
+    driverTag: "Rotazione Industriale & Supporto Macro USA",
+  },
+  ETHUSD: {
+    defaultDirection: "BULLISH",
+    defaultScore: 52,
+    defaultConfidence: 75,
+    defaultTier: "TIER_QUALITY",
+    defaultZone: "DISCOUNT",
+    driverTag: "Accumulo Strutturale D1 & Beta Crypto",
+  },
+  USOIL: {
+    defaultDirection: "BEARISH",
+    defaultScore: -48,
+    defaultConfidence: 72,
+    defaultTier: "TIER_QUALITY",
+    defaultZone: "PREMIUM",
+    driverTag: "Offerta Globale & Resistenza ciclica W1",
+  },
+  USDCAD: {
+    defaultDirection: "BEARISH",
+    defaultScore: -45,
+    defaultConfidence: 70,
+    defaultTier: "NEUTRAL_WAIT",
+    defaultZone: "PREMIUM",
+    driverTag: "Pressione su eccessi Premium D1",
+  },
+  USDCHF: {
+    defaultDirection: "BEARISH",
+    defaultScore: -46,
+    defaultConfidence: 71,
+    defaultTier: "NEUTRAL_WAIT",
+    defaultZone: "PREMIUM",
+    driverTag: "Forza Franco Svizzero come Valuta Rifugio",
+  },
+};
+
+export function buildLongTermRecommendation(bias: DirectionalBiasResult): LongTermPairRecommendation {
+  const { w1, d1, h4 } = bias.timeframes;
+  const hasTechnicalData = w1.score !== 0 || d1.score !== 0 || h4.score !== 0 || bias.referencePrice > 0;
+  const profile = STRUCTURAL_HTF_PROFILES[bias.pair];
+
+  let direction: TrendDirection = bias.h4MasterBias;
+  let edgeTier: BiasTier = bias.edgeTier;
+  let alignmentStatus = bias.alignmentStatus;
+  let confidenceScore = bias.confidenceScore;
+  let rangeZone = d1.rangeZone;
+  let longTermScore = Math.round(w1.score * 0.35 + d1.score * 0.40 + bias.macroScore * 0.25);
+
+  if (!hasTechnicalData && profile) {
+    // Se il mercato è in fase di warm-up iniziale, combina il fattore macro/COT live col profilo strutturale HTF
+    const macroShift = bias.macroScore !== 0 ? Math.round(bias.macroScore * 0.35) : 0;
+    longTermScore = Math.max(-100, Math.min(100, profile.defaultScore + macroShift));
+    direction = longTermScore >= 15 ? "BULLISH" : longTermScore <= -15 ? "BEARISH" : profile.defaultDirection;
+    edgeTier = profile.defaultTier;
+    confidenceScore = profile.defaultConfidence;
+    rangeZone = profile.defaultZone;
+    alignmentStatus = Math.abs(longTermScore) >= 65 ? "TRIPLE_ALIGNED" : "DOUBLE_ALIGNED";
+  } else if (hasTechnicalData) {
+    // Rafforza la visione a lungo termine dando priorità a W1 e D1 rispetto alle oscillazioni intraday
+    if (d1.direction !== "NEUTRAL" && w1.direction === d1.direction) {
+      direction = d1.direction;
+    }
+    if (longTermScore === 0 && bias.compositeScore !== 0) {
+      longTermScore = bias.compositeScore;
+    }
+  }
+
+  const horizonLabel: LongTermPairRecommendation["horizonLabel"] =
+    alignmentStatus === "TRIPLE_ALIGNED"
+      ? "W1 · D1 · H4"
+      : w1.direction !== "NEUTRAL" && w1.direction === d1.direction
+        ? "W1 · D1"
+        : "D1 · H4";
+
+  const dirLabel = direction === "BULLISH" ? "Rialzista" : direction === "BEARISH" ? "Ribassista" : "Neutrale";
+  const zoneLabel =
+    rangeZone === "DISCOUNT"
+      ? "Zona Discount"
+      : rangeZone === "PREMIUM"
+        ? "Zona Premium"
+        : "Equilibrio";
+
+  const cotScore = bias.macroFactors.cotInstitutional.score;
+  const cotTag =
+    cotScore >= 15
+      ? "COT Long"
+      : cotScore <= -15
+        ? "COT Short"
+        : bias.macroScore >= 15
+          ? "Macro Long"
+          : bias.macroScore <= -15
+            ? "Macro Short"
+            : profile?.driverTag.split("&")[0]?.trim() || "Confluenza HTF";
+
+  const thesis = hasTechnicalData
+    ? `${horizonLabel.replace(/\s+/g, "")} ${dirLabel} · ${zoneLabel} · ${cotTag}`
+    : `${horizonLabel.replace(/\s+/g, "")} ${dirLabel} · ${profile?.driverTag ?? zoneLabel}`;
+
+  // Calcolo Rank Score (0..100) per ordinare i migliori asset a lungo termine
+  let rankScore = Math.round(confidenceScore * 0.55 + Math.abs(longTermScore) * 0.45);
+  if (edgeTier === "TIER_A_PLUS") rankScore += 18;
+  else if (edgeTier === "TIER_QUALITY") rankScore += 9;
+
+  if (alignmentStatus === "TRIPLE_ALIGNED") rankScore += 10;
+  else if (alignmentStatus === "DOUBLE_ALIGNED") rankScore += 5;
+
+  if (bias.antiFadeProtected || edgeTier === "COUNTER_TREND_WARNING") {
+    rankScore = Math.max(5, rankScore - 55);
+  } else if (direction === "NEUTRAL") {
+    rankScore = Math.max(10, rankScore - 35);
+  }
+
+  rankScore = Math.max(0, Math.min(100, rankScore));
+
+  return {
+    pair: bias.pair,
+    direction,
+    edgeTier,
+    alignmentStatus,
+    horizonLabel,
+    confidenceScore,
+    longTermScore,
+    macroScore: bias.macroScore,
+    rangeZone,
+    antiFadeProtected: bias.antiFadeProtected,
+    thesis,
+    rankScore,
+  };
+}
+
+export function rankLongTermRecommendations(
+  biases: DirectionalBiasResult[],
+  maxRecommended = 5,
+): LongTermRecommendationsResponse {
+  const evaluated = biases.map(buildLongTermRecommendation);
+  const sortedAll = [...evaluated].sort((a, b) => {
+    if (b.rankScore !== a.rankScore) return b.rankScore - a.rankScore;
+    return b.confidenceScore - a.confidenceScore;
+  });
+
+  const eligible = sortedAll.filter(
+    (item) => item.direction !== "NEUTRAL" && !item.antiFadeProtected && item.edgeTier !== "COUNTER_TREND_WARNING",
+  );
+
+  const recommendations = (eligible.length > 0 ? eligible : sortedAll).slice(0, maxRecommended);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    recommendations,
+    all: sortedAll,
+  };
+}
+
+const LONG_TERM_CACHE_TTL_MS = 5 * 60_000;
+let cachedLongTermResponse: { data: LongTermRecommendationsResponse; timestamp: number } | null = null;
+let longTermRefreshInFlight: Promise<LongTermRecommendationsResponse> | null = null;
+
+async function computeFreshLongTermRecommendations(now = new Date()): Promise<LongTermRecommendationsResponse> {
+  let cotOutlook: CotOutlook | undefined;
+  let calendar: any[] = [];
+  let newsArticles: any[] | undefined;
+  let getCandlesFn: ((symbol: string, interval: string, opts?: any) => Promise<CandlesResult>) | null = null;
+
+  try {
+    const [{ getCandles }, { getCotOutlook }, { getCalendarEvents }, { getNewsData }] = await Promise.all([
+      import("./candles.js"),
+      import("./cot.js"),
+      import("../routes/calendar.js"),
+      import("../routes/news.js"),
+    ]);
+    getCandlesFn = getCandles;
+
+    const [cot, cal, news] = await Promise.all([
+      Promise.race([
+        getCotOutlook().catch(() => undefined),
+        new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 1200)),
+      ]),
+      Promise.race([
+        getCalendarEvents(false, true).catch(() => []),
+        new Promise<any[]>((resolve) => setTimeout(() => resolve([]), 1200)),
+      ]),
+      Promise.race([
+        getNewsData({ lang: "en" }).catch(() => undefined),
+        new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 1200)),
+      ]),
+    ]);
+
+    cotOutlook = cot;
+    calendar = Array.isArray(cal) ? cal : [];
+    newsArticles = news?.articles;
+  } catch {
+    // Fallback su profili strutturali + dati in cache
+  }
+
+  const biases = await Promise.all(
+    LONG_TERM_CANDIDATE_PAIRS.map(async (pair) => {
+      let d1Bars: Candle[] = [];
+      let h1Bars: Candle[] = [];
+
+      if (getCandlesFn) {
+        const [d1Res, h1Res] = await Promise.all([
+          Promise.race([
+            getCandlesFn(pair, "D1", { maxAgeMs: 30 * 60_000 }).catch(() => ({ candles: [] } as Partial<CandlesResult>)),
+            new Promise<Partial<CandlesResult>>((resolve) => setTimeout(() => resolve({ candles: [] }), 900)),
+          ]),
+          Promise.race([
+            getCandlesFn(pair, "H1", { maxAgeMs: 30 * 60_000 }).catch(() => ({ candles: [] } as Partial<CandlesResult>)),
+            new Promise<Partial<CandlesResult>>((resolve) => setTimeout(() => resolve({ candles: [] }), 900)),
+          ]),
+        ]);
+        d1Bars = d1Res.candles ?? [];
+        h1Bars = h1Res.candles ?? [];
+      }
+
+      const h4Bars = aggregateBarsToH4(h1Bars);
+      return computeDirectionalBias({
+        pair,
+        d1Bars,
+        h1Bars,
+        h4Bars,
+        calendar,
+        cot: cotOutlook,
+        newsArticles,
+        now,
+      });
+    }),
+  );
+
+  const response = rankLongTermRecommendations(biases, 5);
+  cachedLongTermResponse = { data: response, timestamp: Date.now() };
+  return response;
+}
+
+export async function getLongTermRecommendations(now = new Date()): Promise<LongTermRecommendationsResponse> {
+  const nowMs = Date.now();
+  if (cachedLongTermResponse && nowMs - cachedLongTermResponse.timestamp < LONG_TERM_CACHE_TTL_MS) {
+    return cachedLongTermResponse.data;
+  }
+
+  if (cachedLongTermResponse) {
+    if (!longTermRefreshInFlight) {
+      longTermRefreshInFlight = computeFreshLongTermRecommendations(now).finally(() => {
+        longTermRefreshInFlight = null;
+      });
+    }
+    return cachedLongTermResponse.data;
+  }
+
+  if (!longTermRefreshInFlight) {
+    longTermRefreshInFlight = computeFreshLongTermRecommendations(now).finally(() => {
+      longTermRefreshInFlight = null;
+    });
+  }
+
+  // Risposta rapida entro 1.5s; se il primo warm-up impiega di più, restituisce subito il calcolo strutturale
+  // mentre il refresh prosegue in background.
+  const fallbackTimeout = new Promise<LongTermRecommendationsResponse>((resolve) => {
+    setTimeout(() => {
+      const fallbackBiases = LONG_TERM_CANDIDATE_PAIRS.map((pair) =>
+        computeDirectionalBias({ pair, now }),
+      );
+      resolve(rankLongTermRecommendations(fallbackBiases, 5));
+    }, 1500);
+  });
+
+  return Promise.race([longTermRefreshInFlight, fallbackTimeout]);
+}
+

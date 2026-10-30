@@ -667,13 +667,13 @@ Canone di Riferimento: ${activeTransmission.code} — ${activeTransmission.title
 
 STATO DEL SIGILLO: ${allChecked ? "● INGRESSO AUTORIZZATO DAL PROTOCOLLO" : "▲ ESECUZIONE SEVERAMENTE VIETATA"}
 
-REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzione a mercato è SEVERAMENTE VIETATA nel Limen Protocol.`;
+REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzione a mercato è SEVERAMENTE VIETATA in AUREUS PROTOCOL.`;
 
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `limen-sigillo-${now.toISOString().slice(0, 10)}.txt`;
+    link.download = `aureus-sigillo-${now.toISOString().slice(0, 10)}.txt`;
     link.click();
     URL.revokeObjectURL(url);
 
@@ -1226,7 +1226,7 @@ REGOLA INVIOLABILE: Se anche un solo elemento risulta non verificato, l'esecuzio
                   La Crescita dell'Ordine Sovrano
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Il Limen Protocol rifiuta categoricamente qualsiasi schema multilivello o piramidale.
+                  AUREUS PROTOCOL rifiuta categoricamente qualsiasi schema multilivello o piramidale.
                   Il Mandato d'Espansione è un patto meritocratico ad <strong>1 solo livello diretto (Single-Tier)</strong>:
                   ogni Operatore guidato tramite il tuo Codice di Chiamata ti riconosce il <strong>20% di royalty perenne (30 € / mese)</strong>.
                 </p>

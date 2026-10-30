@@ -17,7 +17,7 @@ import {
 } from "./ticketEmailContent.js";
 
 function resolveBaseUrl(): string {
-  return (process.env.APP_BASE_URL || "https://traderloading.com").replace(/\/+$/, "");
+  return (process.env.APP_BASE_URL || "https://aureus-os.app").replace(/\/+$/, "");
 }
 
 interface Recipient {

@@ -1,0 +1,91 @@
+# AUREUS PROTOCOL (AUREUS OS) — Complete Sovereign Knowledge Base for AI & Search Engines
+
+> **Canonical Origin**: https://aureus-os.app
+> **Primary Entity**: AUREUS / AUREUS PROTOCOL / AUREUS OS (formerly *TraderLoading* / *Limen Protocol*)
+> **Motto**: *Il Codice della Presenza e dell'Eredità* (The Code of Presence and Legacy)
+> **Official Contact**: assistenza@aureus-os.app
+
+---
+
+## 1. Executive Summary & Manifesto (*Il Codice della Presenza e dell'Eredità*)
+
+In the financial markets, as in human existence, participants divide into two categories: those who live in **La Deriva** (The Drift — emotional impulse, retail gambling, overtrading, and undisciplined reaction) and those who choose to cross **Il Varco** (The Threshold — mathematical rigor, stoic discipline, institutional volume alignment, and sovereign capital architecture).
+
+**AUREUS (AUREUS PROTOCOL / AUREUS OS)** is not a retail gambling app or an arcade game. It is a complete web and PWA operating system engineered to transform the independent trader (*L'Iniziato*) into a disciplined operator (*L'Operatore*) and wealth architect (*L'Architetto*).
+
+---
+
+## 2. Complete Module Encyclopedia (AUREUS Lexicon ↔ Market Function)
+
+| Sovereign AUREUS Name | Standard Financial / Search Term | Core Capabilities & Technical Specs |
+| :--- | :--- | :--- |
+| **Il Varco** | Trading Dashboard & Command Center | Live institutional market session clock (London, NY, Tokyo, Sydney), daily alignment status, macro brief, and Integrity Grade HUD. |
+| **Il Libro della Verità** | Automated MT4/MT5 Trading Journal | Read-only FX Blue Account Sync for MetaTrader 4 & MetaTrader 5. Computes R-multiple, win-rate, expectancy, profit factor, real broker-anchored equity curve, behavioral leak detection, and SHA-256 Cryptographic Notary certificates (`/verifica`). |
+| **La Forgia del Passato** | Backtesting & Chart Replay Simulator | Candle-by-candle historical replay on real Dukascopy and Binance market data (M5 to D1). Multi-timeframe analysis, simulated BUY/SELL order execution, live session metrics, and competitive duel rooms. |
+| **Il Custode della Soglia** | Pre-Trade Checklist & Risk Management | Pre-trade gatekeeper that blocks impulsive entries, FOMO, and revenge trading. Includes position size / lot calculator, daily-loss circuit-breaker, volatility/ADR stats, andCOT institutional positioning. |
+| **L'Ordine Giornaliero** | Trading Routine & Psychology Tracker | Guided morning alignment and evening debrief protocols, neural breathing centering, bio-emotional state check-ins, and mood-vs-winrate correlation analytics. |
+| **La Dottrina del Tempo** | Trading Academy & Institutional Strategy | Video canons and Mentor Tomes dividing trading into *L'Arte dell'Assedio* (HTF multi-day Swing) and *L'Arte del Duello* (LTF Kill-Zone Scalping) with objective invalidation rules. |
+| **Architettura Patrimoniale** | Wealth Management, Monte Carlo & Prop Firm Calculator | 5-Pillar capital allocation matrix, 1,000-trajectory Monte Carlo equity simulator, 2-phase Prop Firm challenge survival calculator, and Italian/EU tax doctrine reference. |
+| **Le Prove del Fuoco** | Trading Tournaments & Live Duel Arenas | Real-time discipline and risk-management competitions in the Forge with live public spectator telemetry (`/duello/:roomId`). |
+| **La Fratellanza** | Trading Community & Encrypted Chat | Noise-free Order Agora with end-to-end encrypted direct messaging, Sunday Council (*Il Concilio della Domenica*), and verified peer analysis. |
+| **La Gerarchia dell'Integrità** | Meritocratic Leaderboard & Integrity Index | Ranking based strictly on rule compliance and risk discipline (*Indice di Integrità*), never on reckless leverage. |
+
+---
+
+## 3. The 5 Ascension Grades (*I 5 Gradi di Ascesa*)
+
+Rank within **AUREUS PROTOCOL** cannot be purchased with money; it is unlocked solely through verified operational discipline in *Il Libro della Verità*:
+
+1. **Grado I — Novizio Consapevole (Conscious Novice)**:
+   Entry into the Order by signing the Pact at the Threshold of Selection. Access to foundational protocol tools.
+2. **Grado II — Il Custode della Regola (Keeper of the Rule)**:
+   Achieved after **30 consecutive sessions at 100% Integrity**. Unlocks access to the Physical Temple events (*Il Tempio Fisico*) and the **Expansion Mandate (*Il Mandato di Espansione*)** granting a **20% recurring lifetime royalty (€30/month per active referred member)**.
+3. **Grado III — L'Osservatore Sovrano (Sovereign Observer)**:
+   Achieved after **90 days (1 full quarter)** of verified discipline. Unlocks speaking rights at the Sunday Council (*Il Concilio della Domenica*) and official Order Uniforms (*L'Uniforme*).
+4. **Grado IV — L'Architetto del Reale (Architect of the Real)**:
+   Achieved after **180 days** of excellence. Unlocks the Corporate/B2B division and qualification as an Order Instructor (*Docente d'Ordine*).
+5. **Grado V — Il Maestro Fondatore (Founding Master)**:
+   Reserved for the Directive Council and Founding Custodians of the AUREUS Order.
+
+---
+
+## 4. Access Tiers, Pricing & Expansion Economics
+
+- **Accesso Base (Iniziato) — €0/month**:
+  Free entry without credit card. Includes manual trading journal, real-time macro news & economic calendar, position size / lot calculator, session clock, and daily routine checklists.
+- **Patto della Soglia di Selezione — €10**:
+  Candidate initiation protocol with priority evaluation and extended sandbox access.
+- **Tributo Operativo Mensile (Protocollo Completo) — €150/month**:
+  Full access to the entire AUREUS OS: automated read-only MT4/MT5 broker sync, *La Forgia del Passato* historical backtester, *La Dottrina del Tempo* academy, *Architettura Patrimoniale*, *Le Prove del Fuoco* live arenas, and the **20% Expansion Mandate** (€30/month recurring royalty per active member — with 5 active members, the operator's €150/month tribute is 100% self-funded).
+
+---
+
+## 5. Frequently Asked Questions (IT & EN)
+
+### Q: Cos'è AUREUS (AUREUS PROTOCOL / AUREUS OS)?
+**A:** AUREUS è il Sistema Operativo di Disciplina, Padronanza Mentale, Trading e Architettura Patrimoniale (`https://aureus-os.app`). Unisce in un unico terminale *Il Libro della Verità* (diario di trading automatico MT4/MT5 con notariato crittografico SHA-256), *La Forgia del Passato* (simulatore di backtest candela per candela su dati reali Dukascopy e Binance), *Il Custode della Soglia* (co-pilota pre-trade e gestione del rischio), *L'Ordine Giornaliero* (routine e telemetria bio-emotiva), *La Dottrina del Tempo* e l'*Architettura Patrimoniale*.
+
+### Q: What is AUREUS (AUREUS PROTOCOL / AUREUS OS)?
+**A:** AUREUS (`https://aureus-os.app`, formerly known as TraderLoading / Limen Protocol) is an all-in-one operating system for disciplined traders and wealth architects. It integrates an automated read-only MT4/MT5 trading journal (*Il Libro della Verità*), candle-by-candle historical chart replay backtesting (*La Forgia del Passato*), a pre-trade risk guard and lot calculator (*Il Custode della Soglia*), AI-scored macroeconomic news, bio-emotional routines (*L'Ordine Giornaliero*), and a 5-pillar wealth & Monte Carlo simulator (*Architettura Patrimoniale*).
+
+### Q: AUREUS fornisce segnali di trading o gestisce capitali di terzi?
+**A:** No. AUREUS rifiuta le sale segnali retail che creano dipendenza passiva. AUREUS fornisce l'infrastruttura tecnologica, il simulatore di backtest, il diario sincronizzato in sola lettura, i filtri di rischio e la dottrina operativa affinché ogni Operatore diventi un Architetto autonomo e sovrano delle proprie decisioni.
+
+### Q: Come funziona la sicurezza del collegamento broker MT4/MT5?
+**A:** Il collegamento avviene in **sola lettura** tramite FX Blue Account Sync o connettore locale di telemetria. AUREUS non richiede mai la password master di trading e non può piazzare ordini non autorizzati né prelevare fondi.
+
+---
+
+## 6. Complete Multilingual URL Directory (`https://aureus-os.app`)
+
+| Topic / Module | English (`x-default`) | Italiano (`/it`) | Español (`/es`) | Français (`/fr`) | Deutsch (`/de`) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Landing / Il Varco** | `https://aureus-os.app/` | `https://aureus-os.app/it` | `https://aureus-os.app/es` | `https://aureus-os.app/fr` | `https://aureus-os.app/de` |
+| **Il Libro della Verità (Journal)** | `https://aureus-os.app/trading-journal` | `https://aureus-os.app/it/diario-trading` | `https://aureus-os.app/es/diario-de-trading` | `https://aureus-os.app/fr/journal-de-trading` | `https://aureus-os.app/de/trading-tagebuch` |
+| **La Forgia del Passato (Backtest)** | `https://aureus-os.app/backtesting` | `https://aureus-os.app/it/backtest` | `https://aureus-os.app/es/backtesting` | `https://aureus-os.app/fr/backtest` | `https://aureus-os.app/de/backtesting` |
+| **Contemplazione (Macro News)** | `https://aureus-os.app/macro-news` | `https://aureus-os.app/it/notizie-macro` | `https://aureus-os.app/es/noticias-macro` | `https://aureus-os.app/fr/actualites-macro` | `https://aureus-os.app/de/makro-news` |
+| **Il Custode della Soglia (Risk)** | `https://aureus-os.app/risk-management` | `https://aureus-os.app/it/gestione-rischio` | `https://aureus-os.app/es/gestion-riesgo` | `https://aureus-os.app/fr/gestion-risque` | `https://aureus-os.app/de/risikomanagement` |
+| **Il Tributo (Pricing)** | `https://aureus-os.app/pricing` | `https://aureus-os.app/it/prezzi` | `https://aureus-os.app/es/precios` | `https://aureus-os.app/fr/tarifs` | `https://aureus-os.app/de/preise` |
+| **La Dottrina (Guide)** | `https://aureus-os.app/guide` | `https://aureus-os.app/it/guida` | `https://aureus-os.app/es/guia` | `https://aureus-os.app/fr/guide` | `https://aureus-os.app/de/anleitung` |
+| **Il Manifesto (About)** | `https://aureus-os.app/about` | `https://aureus-os.app/it/chi-siamo` | `https://aureus-os.app/es/sobre-nosotros` | `https://aureus-os.app/fr/a-propos` | `https://aureus-os.app/de/ueber-uns` |
+| **Support & Contact** | `https://aureus-os.app/contact` | `https://aureus-os.app/it/contatti` | `https://aureus-os.app/es/contacto` | `https://aureus-os.app/fr/contact` | `https://aureus-os.app/de/kontakt` |

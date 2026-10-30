@@ -7,6 +7,7 @@ import { uiText } from "@/contexts/LanguageContext";
 import { getAdminDashboard } from "@/lib/adminApi";
 import { Activity, AlertTriangle, BookOpen, Database, FileText, RefreshCw, UserCheck, Users } from "lucide-react";
 import { AdminErrorState, AuditPreviewList } from "./shared";
+import { AdminExpansionTelemetry } from "./AdminExpansionTelemetry";
 
 export function AdminDashboardPage() {
   const dashboard = useQuery({
@@ -94,6 +95,8 @@ export function AdminDashboardPage() {
               />
             )}
           </div>
+
+          <AdminExpansionTelemetry />
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
             <section className="rounded-lg border border-border bg-card/80 p-4">

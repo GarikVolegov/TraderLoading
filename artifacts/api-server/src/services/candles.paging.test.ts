@@ -152,7 +152,7 @@ try {
   delete process.env.CANDLE_WAREHOUSE;
   process.env.TWELVEDATA_API_KEY = "td_live_key";
   const calls: string[] = [];
-  const baseTime = 1_780_000_000;
+  const baseTime = 1_780_000_200;
   const yahooCandles = makeCandles(130, baseTime, M15);
 
   globalThis.fetch = (async (url: Parameters<typeof fetch>[0]) => {

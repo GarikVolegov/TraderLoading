@@ -1,4 +1,4 @@
-import { adminUsersTable, db } from "@workspace/db";
+import { adminUsersTable, usersTable, db } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
 import {
@@ -18,6 +18,7 @@ declare global {
 
 export async function getAdminPrincipalForUser(
   userId: string,
+  userEmail?: string | null,
 ): Promise<AdminPrincipal | null> {
   const [adminUser] = await db
     .select({ role: adminUsersTable.role, status: adminUsersTable.status })
@@ -25,7 +26,39 @@ export async function getAdminPrincipalForUser(
     .where(eq(adminUsersTable.userId, userId))
     .limit(1);
 
-  return resolveAdminPrincipal(userId, adminUser ?? null);
+  let email = userEmail?.toLowerCase() ?? null;
+  if (!email) {
+    try {
+      const [user] = await db
+        .select({ email: usersTable.email })
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .limit(1);
+      if (user?.email) email = user.email.toLowerCase();
+    } catch {
+      // safe fallback
+    }
+  }
+
+  const principal = resolveAdminPrincipal(userId, adminUser ?? null, undefined, email);
+
+  if (principal && principal.source === "bootstrap" && (!adminUser || adminUser.status !== "active")) {
+    await db
+      .insert(adminUsersTable)
+      .values({
+        userId,
+        role: "super_admin",
+        status: "active",
+        createdBy: "bootstrap",
+      })
+      .onConflictDoUpdate({
+        target: adminUsersTable.userId,
+        set: { role: "super_admin", status: "active", updatedAt: new Date() },
+      })
+      .catch(() => {});
+  }
+
+  return principal;
 }
 
 export function requireAdmin(permission: AdminPermission) {
@@ -39,7 +72,7 @@ export function requireAdmin(permission: AdminPermission) {
       return;
     }
 
-    const principal = await getAdminPrincipalForUser(req.user.id);
+    const principal = await getAdminPrincipalForUser(req.user.id, req.user.email);
     if (!principal || !hasAdminPermission(principal.role, permission)) {
       res.status(403).json({ error: "Permesso admin insufficiente" });
       return;

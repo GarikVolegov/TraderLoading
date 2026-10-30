@@ -170,7 +170,27 @@ import { QuantitativeSynthesisDialog } from "@/components/cockpit/QuantitativeSy
 import { updateWorkspaceQuery } from "@/lib/workspaceNavigation";
 import "./TradingCockpit.css";
 
-const MARKETS = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "NAS100", "SPX500", "BTCUSD", "ETHUSD"];
+const MARKETS = [
+  "XAUUSD",
+  "EURUSD",
+  "GBPUSD",
+  "USDJPY",
+  "USDCAD",
+  "USDCHF",
+  "AUDUSD",
+  "NZDUSD",
+  "EURGBP",
+  "EURJPY",
+  "GBPJPY",
+  "AUDJPY",
+  "US30",
+  "NAS100",
+  "SPX500",
+  "BTCUSD",
+  "ETHUSD",
+  "USOIL",
+  "XAGUSD",
+];
 const MAIN_PAIRS = ["XAUUSD", "BTCUSD", "EURUSD"] as const;
 const CYCLES = [
   ["up", "cockpit.ui.cycle.up"],
@@ -2090,11 +2110,17 @@ function CockpitView({
       <div className="ck-mobile-tabs" role="group" aria-label={ck("cockpit.ui.3a0b9c0415")}>
         {!isFreeTrial && (
           <button aria-pressed={mobileTab === "process"} onClick={() => setMobileTab("process")}>
-            01 · Processo
+            <span>01 · Processo</span>
+            <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-[#E8C56A] border border-white/10">
+              {phase}/4
+            </span>
           </button>
         )}
         <button aria-pressed={mobileTab === "chart"} onClick={() => setMobileTab("chart")}>
-          {isFreeTrial ? "01 · Grafico" : "02 · Grafico"}
+          <span>{isFreeTrial ? "01 · Grafico" : "02 · Grafico"}</span>
+          <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-[#E8C56A] border border-white/10">
+            {a.market.replace("USD", "")}
+          </span>
         </button>
         <button
           aria-pressed={dialog === "protection"}
@@ -2102,7 +2128,10 @@ function CockpitView({
             setDialog("protection");
           }}
         >
-          {isFreeTrial ? "02 · Rischio & Custode" : "03 · Rischio & Custode"}
+          <span>{isFreeTrial ? "02 · Custode" : "03 · Custode"}</span>
+          <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-emerald-400 border border-white/10">
+            {_tradesToday}/{_maxTrades}
+          </span>
         </button>
       </div>
 
@@ -2135,6 +2164,48 @@ function CockpitView({
         {/* COLONNA 1 (SINISTRA): IL FLUSSO GUIDATO (Process Wizard) */}
         {!isFreeTrial && (
           <aside className="ck-process" aria-label={ck("cockpit.ui.157a305253")}>
+          {/* Barra Mobile di Contatto Rapido col Mercato (Asset + Cambio Rapido + Apri Grafico + Registra Trade) */}
+          <div className="flex lg:hidden items-center justify-between gap-1 rounded-xl border border-[#C5A059]/30 bg-[#0c0e15] p-1.5 font-mono">
+            <div className="flex items-center gap-1 min-w-0">
+              {MAIN_PAIRS.map((sym) => (
+                <button
+                  key={sym}
+                  type="button"
+                  onClick={() => onSelectMarket(sym)}
+                  className={`!min-h-[28px] h-7 px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap border transition-colors ${
+                    a.market === sym
+                      ? "border-[#C5A059]/60 bg-[#C5A059]/20 text-[#E8C56A]"
+                      : "border-white/10 bg-black/40 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {sym.replace("USD", "")}
+                </button>
+              ))}
+              {!MAIN_PAIRS.includes(a.market as any) && (
+                <span className="!min-h-[28px] h-7 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap border border-[#C5A059]/60 bg-[#C5A059]/20 text-[#E8C56A]">
+                  {a.market}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setMobileTab("chart")}
+                className="!min-h-[28px] h-7 inline-flex items-center gap-1 rounded-md border border-[#C5A059]/40 bg-[#C5A059]/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap"
+              >
+                <span>Grafico · {tfs[phase - 1] || tfs[0]}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTradeRegisterModalOpen(true)}
+                className="!min-h-[28px] h-7 inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300 whitespace-nowrap"
+              >
+                <BookOpen size={11} className="shrink-0" />
+                <span>Registra</span>
+              </button>
+            </div>
+          </div>
+
           {/* Testata Operativa: Toggle Modalità (Scalp/Swing) + Barra Sovrana Centratura Tattica (Zero Overlap & Zero Overflow) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
@@ -2202,8 +2273,8 @@ function CockpitView({
                       : "text-[#C5A059]"
                   }`}
                 />
-                <span className="truncate">Respiro</span>
-                <kbd className="px-1 py-0.2 rounded bg-black/60 border border-white/10 text-[8px] text-muted-foreground font-mono shrink-0">B</kbd>
+                <span className="whitespace-nowrap">Respiro 4-7-8</span>
+                <kbd className="hidden lg:inline-block px-1 py-0.2 rounded bg-black/60 border border-white/10 text-[8px] text-muted-foreground font-mono shrink-0">B</kbd>
               </button>
               <button
                 type="button"
@@ -2215,8 +2286,8 @@ function CockpitView({
                 }}
               >
                 <Gamepad2 className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
-                <span className="truncate">Decompressione</span>
-                <kbd className="px-1 py-0.2 rounded bg-black/60 border border-white/10 text-[8px] text-muted-foreground font-mono shrink-0">D</kbd>
+                <span className="whitespace-nowrap">Decompressione</span>
+                <kbd className="hidden lg:inline-block px-1 py-0.2 rounded bg-black/60 border border-white/10 text-[8px] text-muted-foreground font-mono shrink-0">D</kbd>
               </button>
             </div>
           </div>
@@ -2411,10 +2482,25 @@ function CockpitView({
                               : "border-white/10 bg-black/40 hover:border-white/20 hover:bg-white/[0.03]"
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="text-[11px] font-semibold text-foreground truncate block">
-                              {ck(l)}
-                            </span>
+                          <div className="flex items-start justify-between gap-1 mb-1.5 min-w-0">
+                            <div className="flex flex-col min-w-0">
+                              <span
+                                className={`inline-flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                                  v === "up" || v === "end_up" ? "text-[#10b981]" : "text-[#ef4444]"
+                                }`}
+                              >
+                                {v === "up"
+                                  ? "▲ IMPULSO LONG"
+                                  : v === "down"
+                                    ? "▼ IMPULSO SHORT"
+                                    : v === "end_up"
+                                      ? "▲ FINE RIALZO"
+                                      : "▼ FINE RIBASSO"}
+                              </span>
+                              <span className="text-[10.5px] font-semibold text-foreground leading-tight">
+                                {ck(l)}
+                              </span>
+                            </div>
                             {sch && (
                               <button
                                 type="button"
@@ -3345,8 +3431,22 @@ function CockpitView({
             )}
           </div>
 
-          {/* Dottrina Operativa Dinamica: riempie lo spazio con regole di fase senza vuoti antiestetici */}
-          <CockpitPhaseDoctrineCard phase={phase} tfs={tfs} />
+          {/* Dottrina Operativa Dinamica: riempie lo spazio su desktop; su mobile è un drawer espandibile a zero ingombro */}
+          <div className="hidden lg:block">
+            <CockpitPhaseDoctrineCard phase={phase} tfs={tfs} />
+          </div>
+          <details className="lg:hidden mt-2 group rounded-lg border border-[#C5A059]/25 bg-[#0d0f14]/90 overflow-hidden">
+            <summary className="px-3 py-2 flex items-center justify-between cursor-pointer select-none list-none text-[11px] font-mono uppercase tracking-wider text-[#E8C56A] font-bold">
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <ShieldCheck size={13} className="text-[#C5A059]" />
+                Canone Operativo · Fase 0{phase}
+              </span>
+              <span className="text-[9px] text-[#94a3b8] group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-2 pb-2 border-t border-white/5">
+              <CockpitPhaseDoctrineCard phase={phase} tfs={tfs} />
+            </div>
+          </details>
 
           {!confirmed && improvement && (
             <div className="ck-notice mt-3">
@@ -3402,7 +3502,7 @@ function CockpitView({
             <LimenProprietaryChart
               symbol={a.market}
               interval={chartTF}
-              onSymbolChange={(sym) => set({ market: sym })}
+              onSymbolChange={(sym) => onSelectMarket(sym)}
               onIntervalChange={(tf) => setChartTF(tf)}
               leftCollapsed={leftCollapsed && !isFreeTrial}
               onToggleLeft={toggleLeft}
@@ -3521,7 +3621,7 @@ function CockpitView({
 
           {/* Bottom Action Dock (Sotto il grafico) */}
           <div className="ck-chart-dock">
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1">
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1 min-w-0">
               {/* 1. Piano Operativo */}
               <button
                 type="button"
@@ -3530,7 +3630,8 @@ function CockpitView({
                 title="Pianificazione operativa pre-market, livelli chiave, R:R e screenshot grafici allegati"
               >
                 <Crosshair size={13} className="text-[#C5A059] shrink-0" />
-                <span>Piano Operativo</span>
+                <span className="sm:hidden">Piano</span>
+                <span className="hidden sm:inline">Piano Operativo</span>
                 {activePlanSummary.hasPlan ? (
                   <span
                     className={`ml-1 px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
@@ -3545,7 +3646,7 @@ function CockpitView({
                     {activePlanSummary.rr ? ` ${activePlanSummary.rr}` : ""}
                   </span>
                 ) : (
-                  <span className="text-[9px] font-mono text-muted-foreground/50 ml-0.5">○ Vuoto</span>
+                  <span className="hidden sm:inline text-[9px] font-mono text-muted-foreground/50 ml-0.5">○ Vuoto</span>
                 )}
               </button>
 
@@ -3557,7 +3658,8 @@ function CockpitView({
                 title="Appunti per la prossima sessione con notifica attiva all'apertura"
               >
                 <Clock size={13} className="text-[#C5A059] shrink-0" />
-                <span>Prossima Sessione</span>
+                <span className="sm:hidden">Sessione</span>
+                <span className="hidden sm:inline">Prossima Sessione</span>
                 {plansCount > 0 ? (
                   <span className="ml-1 px-1.5 py-0.2 bg-primary/20 text-primary text-[10px] font-mono rounded-full border border-primary/30 font-bold">
                     {plansCount}
@@ -3575,7 +3677,8 @@ function CockpitView({
                 title="I tuoi setup personalizzati, regole inviolabili e schemi per schiarirti la mente"
               >
                 <Bookmark size={13} className="text-[#C5A059] shrink-0" />
-                <span>I Miei Esempi</span>
+                <span className="sm:hidden">Esempi</span>
+                <span className="hidden sm:inline">I Miei Esempi</span>
                 <span className="ml-1 px-1.5 py-0.2 bg-white/10 text-muted-foreground text-[10px] font-mono rounded-full border border-white/10">
                   {playbookCount}
                 </span>
@@ -3749,7 +3852,7 @@ function CockpitView({
                 <BookOpen size={15} className="group-hover:scale-110 transition-transform shrink-0" />
               )}
               <span className="font-bold tracking-wide">
-                REGISTRA TRADE<span className="hidden sm:inline"> · IL LIBRO DELLA VERITÀ</span>
+                REGISTRA<span className="hidden sm:inline"> TRADE · IL LIBRO DELLA VERITÀ</span>
               </span>
               {bioLockEvaluation.isLocked ? (
                 <span className="inline-flex items-center gap-1 ml-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#ef4444]/20 border border-[#ef4444]/40 text-[#ef4444] font-bold uppercase whitespace-nowrap">

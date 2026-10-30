@@ -24,7 +24,27 @@ export interface CockpitAnalysis {
   newsDay: string;
   notes: string;
 }
-export const MARKETS = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "NAS100", "SPX500", "BTCUSD", "ETHUSD"] as const;
+export const MARKETS = [
+  "XAUUSD",
+  "EURUSD",
+  "GBPUSD",
+  "USDJPY",
+  "USDCAD",
+  "USDCHF",
+  "AUDUSD",
+  "NZDUSD",
+  "EURGBP",
+  "EURJPY",
+  "GBPJPY",
+  "AUDJPY",
+  "US30",
+  "NAS100",
+  "SPX500",
+  "BTCUSD",
+  "ETHUSD",
+  "USOIL",
+  "XAGUSD",
+] as const;
 export const cockpitDay = (date = new Date()) =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Rome",

@@ -11,7 +11,7 @@ import {
 // { subject, html, text }. No I/O, fully unit-testable (mirrors
 // ticketEmailContent.ts). The I/O send wrappers live in lifecycleEmails.ts.
 
-const baseUrl = "https://traderloading.com";
+const baseUrl = "https://aureus-os.app";
 
 // Every language resolves to a full copy object.
 for (const lang of LIFECYCLE_LANGUAGES) {

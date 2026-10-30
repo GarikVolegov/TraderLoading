@@ -11,7 +11,7 @@ import type { NewsDeepDive } from "../services/newsHub/types.js";
 import { computeRiskRegime } from "../services/newsHub/riskRegime.js";
 import { createSentimentOutlookService } from "../services/sentimentOutlook.js";
 import { attachIntelligence } from "../services/marketIntelligence.js";
-import { getDirectionalBiasForPair } from "../services/directionalBiasEngine.js";
+import { getDirectionalBiasForPair, getLongTermRecommendations } from "../services/directionalBiasEngine.js";
 import { newsSubscriptionKey } from "../services/newsHub/providerCorpus.js";
 import { buildVolatilitySnapshot, volatilityResponse, type VolatilitySnapshot } from "../services/volatilitySnapshot.js";
 import { parseMonteCarloParams } from "../services/monteCarloParams.js";
@@ -214,6 +214,16 @@ router.get("/tools/directional-bias", async (req, res) => {
   } catch (err) {
     console.error("[tools/directional-bias] error:", err);
     res.status(500).json({ error: "Errore durante il calcolo del bias direzionale macro" });
+  }
+});
+
+router.get("/tools/long-term-recommendations", async (_req, res) => {
+  try {
+    const payload = await getLongTermRecommendations();
+    res.json(payload);
+  } catch (err) {
+    console.error("[tools/long-term-recommendations] error:", err);
+    res.status(500).json({ error: "Errore nel calcolo dei pair consigliati a lungo termine" });
   }
 });
 router.get("/tools/sentiment", async (_req, res) => {

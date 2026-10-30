@@ -62,8 +62,8 @@ const QUICK_DOCK_ITEMS: readonly QuickDockItem[] = [
     href: "/backtest",
     icon: FlaskConical,
     sigil: "forge",
-    badge: "TEST",
-    badgeColor: "bg-white/10 text-zinc-300 border-white/20",
+    badge: "FORGIA",
+    badgeColor: "bg-[#C5A059]/15 text-[#C5A059] border-[#C5A059]/30",
   },
   {
     id: "calendar",

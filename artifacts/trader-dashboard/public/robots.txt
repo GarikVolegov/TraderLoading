@@ -1,11 +1,23 @@
-# TraderLoading — https://traderloading.com
-# Public surface: localized landing (/, /it, /es, /fr, /de) + dedicated SEO
-# pages (e.g. /trading-journal, /backtesting, /macro-news, /risk-management,
-# /pricing, /guide, /about, /contact). Authenticated app routes render no
-# indexable content for anonymous crawlers, so they stay disallowed.
+# AUREUS PROTOCOL (AUREUS OS) — https://aureus-os.app
+# Sovereign Operating System of Trading Discipline, Mental Mastery & Wealth Architecture
+#
+# Public indexable surface:
+# - Localized landing pages: /, /it, /es, /fr, /de
+# - Dedicated SEO/GEO pillar pages: /trading-journal (/it/diario-trading), /backtesting (/it/backtest),
+#   /macro-news (/it/notizie-macro), /risk-management (/it/gestione-rischio),
+#   /pricing (/it/prezzi), /guide (/it/guida), /about (/it/chi-siamo), /contact (/it/contatti)
+# - Public verification & spectator surfaces: /protocollo, /verifica, /verify, /duello, /battle
+# - AI & LLM Knowledge Manifests: /llms.txt, /llms-full.txt
 
 User-agent: *
 Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /protocollo
+Allow: /verifica
+Allow: /verify
+Allow: /duello
+Allow: /battle
 Disallow: /journal
 Disallow: /backtest$
 Disallow: /zen
@@ -31,8 +43,9 @@ Disallow: /welcome
 Disallow: /styleguide
 Disallow: /api/
 
-# AI / generative-engine crawlers — explicitly welcomed so TraderLoading can be
-# cited in AI answers (ChatGPT, Perplexity, Claude, Google AI, Bing/Copilot).
+# AI / Generative-Engine & Search Everywhere Crawlers — Explicitly welcomed so
+# AUREUS PROTOCOL (https://aureus-os.app) is indexed and cited across ChatGPT,
+# Perplexity, Claude, Google Gemini/AI Overviews, Microsoft Copilot, Apple Intelligence & DuckAssist.
 User-agent: GPTBot
 Allow: /
 
@@ -45,13 +58,25 @@ Allow: /
 User-agent: PerplexityBot
 Allow: /
 
+User-agent: Perplexity-User
+Allow: /
+
 User-agent: ClaudeBot
 Allow: /
 
 User-agent: Claude-Web
 Allow: /
 
+User-agent: anthropic-ai
+Allow: /
+
 User-agent: Google-Extended
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
+User-agent: Applebot
 Allow: /
 
 User-agent: Applebot-Extended
@@ -60,4 +85,19 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
-Sitemap: https://traderloading.com/sitemap.xml
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: Cohere-ai
+Allow: /
+
+Sitemap: https://aureus-os.app/sitemap.xml

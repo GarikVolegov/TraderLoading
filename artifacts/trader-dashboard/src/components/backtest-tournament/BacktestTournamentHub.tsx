@@ -124,6 +124,7 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
   const [quickMaxDD, setQuickMaxDD] = useState("10.00");
   const [quickTargetProfit, setQuickTargetProfit] = useState("15.00");
   const [quickBlindMode, setQuickBlindMode] = useState(true);
+  const [mobileHubTab, setMobileHubTab] = useState<"challenge" | "lobbies" | "leaderboard">("challenge");
 
   const handleJoinByCode = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -383,13 +384,13 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
       <header className="bt-top-bar">
         {/* ROW 1: Title & Leader Telemetry (Left) + Quick Join & Quick Actions (Right) */}
         <div className="bt-top-bar-upper">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#C5A059]/45 bg-[#C5A059]/12 text-[#E8C56A] shrink-0 shadow-[0_0_15px_rgba(197,160,89,0.2)]">
               <SigilIcon variant="hierarchy" size={17} />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="font-display text-sm sm:text-base font-bold uppercase tracking-wider text-white truncate m-0">
+                <h2 className="font-display text-xs sm:text-base font-bold uppercase tracking-wider text-white m-0">
                   Arene &amp; Gerarchia della Forgia
                 </h2>
                 <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#C5A059]/40 bg-[#C5A059]/12 font-mono text-[9px] font-bold uppercase tracking-widest text-[#E8C56A] whitespace-nowrap">
@@ -407,29 +408,29 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                   <span>{telemetry?.liveSpectatorsCount ?? 0} Spettatori Live</span>
                 </a>
               </div>
-              <p className="font-mono text-[10px] text-[#C5A059]/85 uppercase tracking-widest truncate mt-0.5 m-0">
-                Leader Storico: <strong className="text-[#E8C56A]">{telemetry?.bestSessionLabel ?? "GarikFX · XAU H1 (+52.26%)"}</strong> · Operatore: <strong className="text-white">{operatorDisplayName}</strong>
+              <p className="font-mono text-[9px] sm:text-[10px] text-[#C5A059]/85 uppercase tracking-wider mt-0.5 m-0">
+                <span className="hidden sm:inline">Leader Storico: </span><strong className="text-[#E8C56A]">{telemetry?.bestSessionLabel ?? "GarikFX · +52.26%"}</strong> <span className="opacity-60">·</span> Operatore: <strong className="text-white">{operatorDisplayName}</strong>
               </p>
             </div>
           </div>
 
           {/* Right Controls: Quick Join + Quick Header Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="bt-quick-join-widget">
-              <form onSubmit={handleJoinByCode} className="bt-quick-join-form">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto shrink-0">
+            <div className="bt-quick-join-widget flex-1 sm:w-auto">
+              <form onSubmit={handleJoinByCode} className="bt-quick-join-form w-full">
                 <Swords size={12} className="text-[#E8C56A] shrink-0" />
                 <input
                   type="text"
                   value={roomCodeInput}
                   onChange={(e) => setRoomCodeInput(e.target.value)}
                   placeholder="Codice Stanza es. FORGIA-XXXX"
-                  className="bt-quick-join-input"
+                  className="bt-quick-join-input flex-1 min-w-0"
                   maxLength={20}
                 />
                 <button
                   type="submit"
                   disabled={isJoiningRoom}
-                  className="bt-quick-join-btn"
+                  className="bt-quick-join-btn shrink-0"
                   title="Connettiti alla stanza del confratello tramite codice"
                 >
                   {isJoiningRoom ? "Ricerca…" : "Unisciti"}
@@ -437,58 +438,60 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
               </form>
             </div>
 
-            <button
-              type="button"
-              className={`bt-btn-action py-1.5 px-2.5 ${showPodiumCeremony ? "border-[#E8C56A] bg-[#C5A059]/20 text-[#fef08a]" : ""}`}
-              onClick={() => {
-                playBattleChime();
-                setShowPodiumCeremony((prev) => !prev);
-              }}
-              title="Visualizza la cerimonia del podio e la classifica del torneo terminato"
-            >
-              <Trophy size={13} className="text-[#C5A059]" />
-              <span className="hidden md:inline">{showPodiumCeremony ? "Torna all'Arena" : "Podio"}</span>
-            </button>
-
-            <button
-              type="button"
-              className={`bt-btn-action py-1.5 px-2.5 ${soundEnabled ? "border-[#C5A059]/60 bg-[#C5A059]/15" : ""}`}
-              onClick={toggleSound}
-              aria-label={soundEnabled ? "Mute sound" : "Unmute sound"}
-              title={soundEnabled ? "Musica attiva — Clicca per silenziare" : "Musica disattivata — Clicca per riprodurre"}
-            >
-              {soundEnabled ? <Volume2 size={13} color="#E8C56A" /> : <VolumeX size={13} color="#64748b" />}
-            </button>
-
-            <button
-              type="button"
-              className="bt-btn-action py-1.5 px-2.5"
-              onClick={() => setIsSpectatorModalOpen(true)}
-              title="Tribuna Spettatori: Genera QR Code e link pubblico per invitare osservatori"
-            >
-              <Eye size={13} className="text-[#C5A059]" />
-              <span className="hidden md:inline">Tribuna</span>
-            </button>
-
-            <button
-              type="button"
-              className="bt-btn-action py-1.5 px-2.5"
-              onClick={handleShare}
-              title="Condividi esito con i compagni"
-            >
-              <Share2 size={13} className="text-[#C5A059]" />
-            </button>
-
-            {onExit && (
+            <div className="flex items-center justify-end gap-1.5 shrink-0">
               <button
                 type="button"
-                className="bt-btn-action py-1.5 px-2.5 text-slate-300"
-                onClick={onExit}
-                title="Torna alla Forgia del Passato"
+                className={`bt-btn-action py-1.5 px-2.5 ${showPodiumCeremony ? "border-[#E8C56A] bg-[#C5A059]/20 text-[#fef08a]" : ""}`}
+                onClick={() => {
+                  playBattleChime();
+                  setShowPodiumCeremony((prev) => !prev);
+                }}
+                title="Visualizza la cerimonia del podio e la classifica del torneo terminato"
               >
-                ← Esci
+                <Trophy size={13} className="text-[#C5A059]" />
+                <span className="hidden md:inline">{showPodiumCeremony ? "Torna all'Arena" : "Podio"}</span>
               </button>
-            )}
+
+              <button
+                type="button"
+                className={`bt-btn-action py-1.5 px-2.5 ${soundEnabled ? "border-[#C5A059]/60 bg-[#C5A059]/15" : ""}`}
+                onClick={toggleSound}
+                aria-label={soundEnabled ? "Mute sound" : "Unmute sound"}
+                title={soundEnabled ? "Musica attiva — Clicca per silenziare" : "Musica disattivata — Clicca per riprodurre"}
+              >
+                {soundEnabled ? <Volume2 size={13} color="#E8C56A" /> : <VolumeX size={13} color="#64748b" />}
+              </button>
+
+              <button
+                type="button"
+                className="bt-btn-action py-1.5 px-2.5"
+                onClick={() => setIsSpectatorModalOpen(true)}
+                title="Tribuna Spettatori: Genera QR Code e link pubblico per invitare osservatori"
+              >
+                <Eye size={13} className="text-[#C5A059]" />
+                <span className="hidden md:inline">Tribuna</span>
+              </button>
+
+              <button
+                type="button"
+                className="bt-btn-action py-1.5 px-2.5"
+                onClick={handleShare}
+                title="Condividi esito con i compagni"
+              >
+                <Share2 size={13} className="text-[#C5A059]" />
+              </button>
+
+              {onExit && (
+                <button
+                  type="button"
+                  className="bt-btn-action py-1.5 px-2.5 text-slate-300"
+                  onClick={onExit}
+                  title="Torna alla Forgia del Passato"
+                >
+                  ← Esci
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -496,60 +499,64 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
         <div className="bt-header-telemetry-grid">
           <div className="bt-telemetry-pill">
             <div className="bt-telemetry-pill-head">
-              <Coins size={12} className="text-emerald-400" />
-              <span>Profitto Netto Reale</span>
+              <Coins size={12} className="text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">Profitto Netto Reale</span>
+              <span className="sm:hidden">Profitto Netto</span>
             </div>
-            <div className="bt-telemetry-pill-val">
+            <div className="bt-telemetry-pill-val flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5">
               <strong className="text-emerald-400 whitespace-nowrap">
                 {formatCurrencyCompact(telemetry?.netArenaProfit ?? 67492.71)}
               </strong>
-              <span className="bt-telemetry-sub text-slate-300 whitespace-nowrap">
-                +{(telemetry?.netArenaPips ?? 25002.7).toLocaleString("it-IT")} Pips netti
+              <span className="bt-telemetry-sub text-slate-300 whitespace-nowrap text-[9px]">
+                +{(telemetry?.netArenaPips ?? 25002.7).toLocaleString("it-IT")} Pips
               </span>
             </div>
           </div>
 
           <div className="bt-telemetry-pill">
             <div className="bt-telemetry-pill-head">
-              <Award size={12} className="text-[#E8C56A]" />
-              <span>Profit Factor Reale</span>
+              <Award size={12} className="text-[#E8C56A] shrink-0" />
+              <span className="hidden sm:inline">Profit Factor Reale</span>
+              <span className="sm:hidden">Profit Factor</span>
             </div>
-            <div className="bt-telemetry-pill-val">
+            <div className="bt-telemetry-pill-val flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5">
               <strong className="text-[#E8C56A] whitespace-nowrap">
                 {telemetry ? telemetry.profitFactor.toFixed(2) : "1.81"}
               </strong>
-              <span className="bt-telemetry-sub text-[#C5A059] whitespace-nowrap">
-                Esecuzione Disciplinata
+              <span className="bt-telemetry-sub text-[#C5A059] whitespace-nowrap text-[9px]">
+                Disciplinato
               </span>
             </div>
           </div>
 
           <div className="bt-telemetry-pill">
             <div className="bt-telemetry-pill-head">
-              <Activity size={12} className="text-emerald-400" />
-              <span>Win Rate Reale</span>
+              <Activity size={12} className="text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">Win Rate Reale</span>
+              <span className="sm:hidden">Win Rate</span>
             </div>
-            <div className="bt-telemetry-pill-val">
+            <div className="bt-telemetry-pill-val flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5">
               <strong className="text-emerald-400 whitespace-nowrap">
                 {telemetry ? `${telemetry.avgWinRate.toFixed(1)}%` : "27.7%"}
               </strong>
-              <span className="bt-telemetry-sub text-slate-300 whitespace-nowrap">
-                {totalWins} Vinte · {totalLosses} Perse
+              <span className="bt-telemetry-sub text-slate-300 whitespace-nowrap text-[9px]">
+                {totalWins}W · {totalLosses}L
               </span>
             </div>
           </div>
 
           <div className="bt-telemetry-pill">
             <div className="bt-telemetry-pill-head">
-              <ShieldCheck size={12} className="text-amber-400" />
-              <span>Controllo Drawdown</span>
+              <ShieldCheck size={12} className="text-amber-400 shrink-0" />
+              <span className="hidden sm:inline">Controllo Drawdown</span>
+              <span className="sm:hidden">Max Drawdown</span>
             </div>
-            <div className="bt-telemetry-pill-val">
+            <div className="bt-telemetry-pill-val flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5">
               <strong className="text-white whitespace-nowrap">
                 {telemetry ? `${telemetry.avgDrawdownPct.toFixed(2)}%` : "7.06%"}
               </strong>
-              <span className="bt-telemetry-sub text-amber-300/90 whitespace-nowrap">
-                Limite Sovrano {telemetry?.maxDrawdownLimit ?? 10}%
+              <span className="bt-telemetry-sub text-amber-300/90 whitespace-nowrap text-[9px]">
+                Limite {telemetry?.maxDrawdownLimit ?? 10}%
               </span>
             </div>
           </div>
@@ -868,10 +875,47 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
       ) : (
         /* MAIN BATTLE HUB (WITHOUT PODIUM): BATTLE COMMAND DECK + STRUMENTI OPERATIVI */
         <div className="space-y-3.5">
+          {/* Mobile Section Switcher (< lg): 01 · Configura / 02 · Stanze / 03 · Regole & Classifica */}
+          <div className="flex lg:hidden items-center justify-between gap-1 p-1 rounded-xl border border-[#C5A059]/25 bg-[#0B0D13] font-mono text-[10.5px]">
+            <button
+              type="button"
+              onClick={() => setMobileHubTab("challenge")}
+              className={`flex-1 py-1.5 px-2 rounded-lg font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
+                mobileHubTab === "challenge"
+                  ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              01 · Configura
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileHubTab("lobbies")}
+              className={`flex-1 py-1.5 px-2 rounded-lg font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
+                mobileHubTab === "lobbies"
+                  ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              02 · Stanze
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileHubTab("leaderboard")}
+              className={`flex-1 py-1.5 px-2 rounded-lg font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
+                mobileHubTab === "leaderboard"
+                  ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              03 · Albo &amp; Regole
+            </button>
+          </div>
+
           {/* CENTRAL STAGE: BATTLE COMMAND DECK (MATCHMAKER + MULTIPLAYER LOBBIES) */}
           <section className="bt-battle-deck">
             {/* LEFT COLUMN: BANCO DI FORGIATURA · MATCHMAKER RAPIDO SFIDA */}
-            <div className="bt-battle-config-card">
+            <div className={`bt-battle-config-card ${mobileHubTab === "challenge" ? "!flex" : "!hidden lg:!flex"}`}>
               <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-2.5">
                 <div className="flex items-center gap-2">
                   <Flame size={15} className="text-[#E8C56A]" />
@@ -879,8 +923,8 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
                     Banco di Forgiatura · Configura la Prova
                   </h3>
                 </div>
-                <span className="px-2 py-0.5 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 font-mono text-[9px] font-bold uppercase tracking-widest text-[#E8C56A]">
-                  Personalizzazione Totale
+                <span className="px-2 py-0.5 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 font-mono text-[9px] font-bold uppercase tracking-widest text-[#E8C56A] whitespace-nowrap">
+                  Personalizza
                 </span>
               </div>
 
@@ -985,7 +1029,7 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
               </div>
 
               {/* Rischio, Target & Blind Mode */}
-              <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-[#C5A059]/15">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-[#C5A059]/15">
                 <div>
                   <span className="font-mono text-[9.5px] text-slate-400 uppercase block mb-1">
                     Drawdown Massimo
@@ -1072,7 +1116,7 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
             </div>
 
             {/* RIGHT COLUMN: STANZE ATTIVE DELLA FORGIA (MULTIPLAYER LOBBIES) */}
-            <div className="bt-matrix-card flex flex-col justify-between">
+            <div className={`bt-matrix-card flex flex-col justify-between ${mobileHubTab === "lobbies" ? "!flex" : "!hidden lg:!flex"}`}>
               <div>
                 <div className="bt-matrix-head">
                   <div className="flex items-center gap-2">
@@ -1309,7 +1353,7 @@ export function BacktestTournamentHub({ initialTournamentId = 1, onExit }: Props
           </section>
 
           {/* LOWER DECK: CODICE D'ONORE & ALBO DEI DUELLI CON BOTTONE MOSTRA PODIO */}
-          <section className="bt-bottom-matrix" aria-label="Strumenti per Sfide di Backtest tra Confratelli">
+          <section className={`bt-bottom-matrix ${mobileHubTab === "leaderboard" ? "!grid" : "!hidden lg:!grid"}`} aria-label="Strumenti per Sfide di Backtest tra Confratelli">
             {/* MODULO 1: CODICE D'ONORE & GUARDRAIL DELLA PROVA */}
             <div className="bt-matrix-card flex flex-col justify-between">
               <div>

@@ -22,7 +22,7 @@ for (const path of [
 
 const dockerfile = read("Dockerfile.oracle");
 assert.match(dockerfile, /FROM node:24-bookworm-slim AS base/);
-assert.match(dockerfile, /corepack prepare pnpm@11\.0\.9 --activate/);
+assert.match(dockerfile, /corepack prepare pnpm@(?:9\.12\.0|11\.0\.9) --activate/);
 assert.match(dockerfile, /ARG VITE_CLERK_PUBLISHABLE_KEY/);
 assert.match(dockerfile, /RUN pnpm run build:railway/);
 assert.match(dockerfile, /CMD \["node", "\.\/dist\/index\.cjs"\]/);

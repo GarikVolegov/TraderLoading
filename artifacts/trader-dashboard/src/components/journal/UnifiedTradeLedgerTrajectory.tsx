@@ -480,7 +480,7 @@ export function UnifiedTradeLedgerTrajectory({
           )}
         >
           {/* Header (Decoupled, zero overlap) */}
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-white/[0.06] pb-1.5 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-x-2 gap-y-1.5 border-b border-white/[0.06] pb-1.5 shrink-0">
             <div className="flex items-center gap-2 whitespace-nowrap">
               <img
                 src="/images/emblems/patrimonio.png"
@@ -492,21 +492,21 @@ export function UnifiedTradeLedgerTrajectory({
               </span>
             </div>
 
-            {/* Clean badges with proper spacing */}
-            <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
-              <span className="rounded bg-surface-2 border border-border-subtle px-2 py-0.5 text-text-lo whitespace-nowrap">
+            {/* Clean badges with proper spacing & Horizontally Scrollable Analysis Tools Strip */}
+            <div className="flex items-center gap-1.5 font-mono text-[10px] overflow-x-auto scrollbar-none w-full sm:w-auto py-0.5">
+              <span className="rounded bg-surface-2 border border-border-subtle px-2 py-0.5 text-text-lo whitespace-nowrap shrink-0">
                 <strong className="text-text-hi">{ledgerStats.total}</strong> Trade
               </span>
-              <span className="rounded bg-[#C5A059]/10 border border-[#C5A059]/30 px-2 py-0.5 text-[#C5A059] font-bold whitespace-nowrap">
+              <span className="rounded bg-[#C5A059]/10 border border-[#C5A059]/30 px-2 py-0.5 text-[#C5A059] font-bold whitespace-nowrap shrink-0">
                 Win Rate: {ledgerStats.winRate}%
               </span>
               {ledgerStats.calmCount > 0 && (
                 <span
-                  className="hidden md:inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-emerald-400 font-bold whitespace-nowrap"
+                  className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-emerald-400 font-bold whitespace-nowrap shrink-0"
                   title={`Calma Operativa: ${ledgerStats.calmCount} trade registrati con rituale 4-7-8 (${ledgerStats.calmPct}% del totale). Win Rate con Calma: ${ledgerStats.calmWinRate}%`}
                 >
                   <Wind size={10} className="text-emerald-400" />
-                  <span>Calma: {ledgerStats.calmWinRate}% WR</span>
+                  <span>Calma: {ledgerStats.calmWinRate}%</span>
                 </span>
               )}
               <button
@@ -516,10 +516,10 @@ export function UnifiedTradeLedgerTrajectory({
                   setShowCardioModal(true);
                 }}
                 title="Analisi Correlazione Cardio-Performance (Zen < 75 BPM vs Vigile 75-91 BPM vs Deriva ≥ 92 BPM)"
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-2 border border-border-subtle hover:border-[#C5A059]/40 text-text-lo hover:text-text-hi font-bold transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-2 border border-border-subtle hover:border-[#C5A059]/40 text-text-lo hover:text-text-hi font-bold transition-all shadow-sm cursor-pointer whitespace-nowrap shrink-0"
               >
                 <Heart size={10} className="text-[#ef4444]" />
-                <span className="hidden sm:inline">Cardio · WR</span>
+                <span>Cardio</span>
               </button>
               <button
                 type="button"
@@ -528,10 +528,10 @@ export function UnifiedTradeLedgerTrajectory({
                   setShowRadarModal(true);
                 }}
                 title="Esplora Mappa Radiale Virtù e Leak"
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-2 border border-border-subtle hover:border-[#C5A059]/40 text-text-lo hover:text-text-hi font-bold transition-all shadow-sm"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-2 border border-border-subtle hover:border-[#C5A059]/40 text-text-lo hover:text-text-hi font-bold transition-all shadow-sm shrink-0"
               >
                 <Compass size={10} className="text-[#C5A059]" />
-                <span className="hidden sm:inline">Mappa Disciplina</span>
+                <span>Mappa</span>
               </button>
               <button
                 type="button"
@@ -540,15 +540,15 @@ export function UnifiedTradeLedgerTrajectory({
                   setShowConfessorModal(true);
                 }}
                 title="Il Confessore dell'Integrità · Debriefing di Disciplina Giornaliera"
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border transition-all shadow-sm cursor-pointer whitespace-nowrap ${
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border transition-all shadow-sm cursor-pointer whitespace-nowrap shrink-0 ${
                   todayConfession
                     ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25"
                     : "bg-[#C5A059]/15 border-[#C5A059]/40 text-[#E8C56A] hover:bg-[#C5A059]/25"
                 }`}
               >
                 <ShieldCheck size={10} className={todayConfession ? "text-emerald-400" : "text-[#E8C56A]"} />
-                <span className="hidden sm:inline">
-                  {todayConfession ? `Confessione: ${todayConfession.score}%` : "Il Confessore"}
+                <span>
+                  {todayConfession ? `Confessione: ${todayConfession.score}%` : "Confessore"}
                 </span>
               </button>
               <button
@@ -558,10 +558,10 @@ export function UnifiedTradeLedgerTrajectory({
                   setShowHonorCard(true);
                 }}
                 title="Condividi Scheda d'Onore del Registro"
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 hover:bg-[#C5A059]/25 text-[#E8C56A] font-bold transition-all shadow-sm cursor-pointer"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 hover:bg-[#C5A059]/25 text-[#E8C56A] font-bold transition-all shadow-sm cursor-pointer shrink-0"
               >
                 <Share2 size={10} />
-                <span className="hidden sm:inline">Scheda d&apos;Onore</span>
+                <span>Scheda</span>
               </button>
               <button
                 type="button"
@@ -570,10 +570,10 @@ export function UnifiedTradeLedgerTrajectory({
                   setShowNotaryModal(true);
                 }}
                 title="Attestazione Notarile A4 con firma crittografica SHA-256"
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gradient-to-r from-[#C5A059]/20 to-[#E8C56A]/20 border border-[#C5A059]/45 hover:from-[#C5A059]/35 hover:to-[#E8C56A]/35 text-[#E8C56A] font-bold transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gradient-to-r from-[#C5A059]/20 to-[#E8C56A]/20 border border-[#C5A059]/45 hover:from-[#C5A059]/35 hover:to-[#E8C56A]/35 text-[#E8C56A] font-bold transition-all shadow-sm cursor-pointer whitespace-nowrap shrink-0"
               >
                 <FileCheck2 size={10} className="text-[#E8C56A]" />
-                <span className="hidden sm:inline">Pergamena A4</span>
+                <span>Pergamena</span>
               </button>
             </div>
           </div>
@@ -715,15 +715,15 @@ export function UnifiedTradeLedgerTrajectory({
           </div>
 
           {/* Search & Result Filters */}
-          <div className="flex flex-wrap items-center gap-2 mobile-compact-bar">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mobile-compact-bar w-full">
+            <div className="relative w-full sm:w-44">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-text-lo" />
               <input
                 type="text"
                 placeholder="Cerca per asset, data..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
-                className="mobile-compact-input h-6 w-28 sm:w-40 pl-6 pr-5 text-[11px] font-mono bg-surface-2 border border-border-subtle rounded text-text-hi placeholder:text-text-lo/60 focus:border-[#C5A059]/50 focus:outline-none"
+                className="mobile-compact-input h-7 w-full pl-6 pr-5 text-[11px] font-mono bg-surface-2 border border-border-subtle rounded-md text-text-hi placeholder:text-text-lo/60 focus:border-[#C5A059]/50 focus:outline-none"
               />
               {searchFilter && (
                 <button
@@ -736,7 +736,7 @@ export function UnifiedTradeLedgerTrajectory({
               )}
             </div>
 
-            <div className="flex items-center gap-1 font-mono text-[10px]">
+            <div className="flex items-center gap-1 font-mono text-[10px] overflow-x-auto scrollbar-none w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setResultFilter("all")}
@@ -789,8 +789,100 @@ export function UnifiedTradeLedgerTrajectory({
           </div>
         </div>
 
-        {/* Table Content (CLEAN & EXPANDED: Zero ticket noise, zero tags) */}
-        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0">
+        {/* Mobile-First Trade Cards List (< sm) */}
+        <div className="block sm:hidden flex-1 overflow-y-auto pr-0.5 space-y-1.5 min-h-0">
+          {filteredEntries.length === 0 ? (
+            <div className="py-8 text-center text-text-lo italic text-xs font-mono">
+              Nessun trade archiviato corrispondente ai criteri.
+            </div>
+          ) : (
+            paginatedEntries.map((entry) => {
+              const parsed = parseTradeContent(entry.content ?? "");
+              const isWin = entry.result === "win";
+              const isLoss = entry.result === "loss";
+              const pnl = parsed?.profit;
+              const cleanSymbol = (parsed?.symbol ?? entry.title ?? "ASSET")
+                .replace(/\.R$/, "")
+                .replace(/#\d+/g, "")
+                .trim();
+              const rawDir = parsed?.direction ?? (entry.title.includes("BUY") ? "BUY" : entry.title.includes("SELL") ? "SELL" : "TRADE");
+              const isLong = rawDir === "BUY" || rawDir === "LONG";
+              const isShort = rawDir === "SELL" || rawDir === "SHORT";
+              const isSelected = selectedTradeId != null && String(selectedTradeId) === String(entry.id);
+
+              return (
+                <div
+                  key={entry.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    synestheticClick();
+                    onSelectTrade?.(entry.id);
+                  }}
+                  className={cn(
+                    "p-2.5 rounded-xl border transition-all cursor-pointer select-none flex items-center justify-between gap-2",
+                    isSelected
+                      ? "border-[#C5A059] bg-[#C5A059]/15 shadow-[0_0_12px_rgba(197,160,89,0.2)]"
+                      : "border-white/10 bg-surface-2/60 hover:bg-surface-2"
+                  )}
+                >
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-xs font-bold text-text-hi whitespace-nowrap">
+                        {cleanSymbol}
+                      </span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[8.5px] font-mono font-bold border uppercase tracking-wider whitespace-nowrap",
+                          isLong
+                            ? "border-success/30 bg-success/15 text-success"
+                            : isShort
+                            ? "border-destructive/30 bg-destructive/15 text-destructive"
+                            : "border-border-subtle text-text-lo"
+                        )}
+                      >
+                        {isLong ? "▲ LONG" : isShort ? "▼ SHORT" : rawDir}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[9.5px] text-text-lo mt-0.5">
+                      {entry.tradeDate.slice(0, 10)}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col items-end shrink-0">
+                    <span
+                      className={cn(
+                        "font-mono text-xs font-bold whitespace-nowrap",
+                        pnl != null && pnl > 0
+                          ? "text-success"
+                          : pnl != null && pnl < 0
+                          ? "text-destructive"
+                          : "text-text-lo"
+                      )}
+                    >
+                      {pnl != null ? `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} €` : "—"}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[8.5px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border mt-0.5 whitespace-nowrap",
+                        isWin
+                          ? "border-success/30 bg-success/15 text-success"
+                          : isLoss
+                          ? "border-destructive/30 bg-destructive/15 text-destructive"
+                          : "border-border-subtle text-text-lo"
+                      )}
+                    >
+                      {isWin ? "VITTORIA" : isLoss ? "PERDITA" : "BREAK EVEN"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table Content (CLEAN & EXPANDED: Zero ticket noise, zero tags) */}
+        <div className="hidden sm:block flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0">
           <table className="w-full text-left font-mono text-xs">
             <thead className="sticky top-0 bg-surface-1/95 backdrop-blur text-[10px] text-text-lo uppercase border-b border-border-subtle z-10">
               <tr>

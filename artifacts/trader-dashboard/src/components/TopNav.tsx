@@ -103,7 +103,7 @@ export function TopNav() {
             initial={{ opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.15, duration: 0.35 }}
-            className="lg:hidden shrink-0"
+            className="lg:hidden shrink-0 max-[400px]:[&_.tl-brand-wordmark_small]:hidden"
           >
             <Link href="/">
               <BrandMark />
@@ -113,32 +113,47 @@ export function TopNav() {
           {/* Divider — mobile only */}
           <div className="w-px h-4 bg-border/60 lg:hidden shrink-0" />
 
-          {/* Thematic Philosophical Quote (Desktop) + Live Session Telemetry Pill (Mobile/Tablet) */}
+          {/* Thematic Philosophical Quote (Desktop) + Live Flow Pulse HUD (Mobile/Tablet) */}
           <motion.div
             className="flex-1 min-w-0 overflow-hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.15, duration: 0.3 }}
           >
-            {/* Mobile Live Session Telemetry Pill (Zero Vuoti Ingiustificati) */}
-            <div
-              className="flex lg:hidden items-center gap-1.5 min-w-0"
-              title={`${limenSession.shortName} (${limenSession.hours})`}
-            >
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#C5A059]/30 bg-[#0d0f14]/90 px-2 py-1 font-mono text-[10px] whitespace-nowrap min-w-0">
+            {/* Mobile Live Flow Pulse HUD (Sessione + Integrità + Grado) */}
+            <div className="flex lg:hidden items-center gap-1.5 min-w-0">
+              <span
+                title={`${limenSession.shortName} (${limenSession.hours})`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#C5A059]/30 bg-[#0d0f14]/95 px-2 py-1 font-mono text-[10px] whitespace-nowrap shrink-0"
+              >
                 <span
                   className={`h-1.5 w-1.5 rounded-full shrink-0 ${
                     limenSession.isActive ? "bg-emerald-400 animate-pulse" : "bg-[#C5A059]"
                   }`}
                 />
-                <span className="font-bold uppercase tracking-wider text-[#E8C56A] truncate">
+                <span className="font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
                   {limenSession.shortName}
                 </span>
                 <span className="text-muted-foreground/50 hidden sm:inline">·</span>
-                <span className="font-semibold text-foreground/85 tabular-nums hidden sm:inline">
+                <span className="font-semibold text-foreground/85 tabular-nums hidden sm:inline whitespace-nowrap">
                   {timeString} CET
                 </span>
               </span>
+
+              <Link
+                href="/milestones"
+                title={`${currentCode} · ${currentTitle} — Integrità ${currentIntegrityIndex}%`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/[0.07] hover:bg-emerald-500/15 px-2 py-1 font-mono text-[10px] whitespace-nowrap transition-colors shrink-0"
+              >
+                <Shield className="h-3 w-3 text-[#E8C56A] shrink-0" />
+                <span className="font-bold text-[#E8C56A] whitespace-nowrap">
+                  {currentRoman}
+                </span>
+                <span className="text-white/25">·</span>
+                <span className="font-bold text-emerald-400 tabular-nums whitespace-nowrap">
+                  {currentIntegrityIndex}%
+                </span>
+              </Link>
             </div>
 
             <motion.div

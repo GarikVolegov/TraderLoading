@@ -25,7 +25,7 @@ export function ArenaSpectatorShareModal({
   const origin =
     typeof window !== "undefined" && window.location?.origin
       ? window.location.origin
-      : "https://traderloading.com";
+      : "https://aureus-os.app";
 
   const publicUrl = `${origin}/duello/${encodeURIComponent(roomId)}`;
 

@@ -1,5 +1,23 @@
 import type { ReplayCandle } from "./types";
 
+/** Convert a chart interval identifier (e.g. "1", "15", "60", "240", "D", "W", "H1", "M15") into seconds. */
+export function intervalToSeconds(interval: string): number {
+  const norm = String(interval || "60").trim().toUpperCase();
+  if (norm === "D" || norm === "1D") return 86400;
+  if (norm === "W" || norm === "1W") return 604800;
+  if (norm === "M" || norm === "1M" || norm === "MN") return 2592000;
+  if (norm.startsWith("H")) {
+    const hrs = Number.parseInt(norm.slice(1), 10);
+    return Number.isFinite(hrs) && hrs > 0 ? hrs * 3600 : 3600;
+  }
+  if (norm.startsWith("M")) {
+    const mins = Number.parseInt(norm.slice(1), 10);
+    return Number.isFinite(mins) && mins > 0 ? mins * 60 : 60;
+  }
+  const mins = Number.parseInt(norm, 10);
+  return Number.isFinite(mins) && mins > 0 ? mins * 60 : 3600;
+}
+
 /** Replay time is an exclusive market-data cutoff, never a timeframe label. */
 export function cursorAtReplayTime(candles: ReplayCandle[], replayTime: number): number {
   let lo = 0;

@@ -1012,7 +1012,13 @@ export const DrawingsOverlay = memo(function DrawingsOverlay({
           style={{ cursor }}
         >
           <title>{copy(label)}</title>
-          <circle cx={hx} cy={hy} r={14} fill="transparent" style={{ cursor }} />
+          <circle
+            cx={hx}
+            cy={hy}
+            r={typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches ? 22 : 18}
+            fill="transparent"
+            style={{ cursor }}
+          />
           <circle cx={hx} cy={hy} r={5} fill="#ffffff" stroke={strokeColor} strokeWidth={2} style={{ cursor }} />
         </g>
       );
@@ -1648,6 +1654,110 @@ export const DrawingsOverlay = memo(function DrawingsOverlay({
                     <text x={8.5} y={8.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontWeight={900} fill="#ffffff" pointerEvents="none">
                       ×
                     </text>
+                  </g>
+
+                  {/* ── Sub-Barra Rapida FXReplay: Switcher Rischio % e Tasto Break-Even Diretto ── */}
+                  <g transform={`translate(0, ${pillH + 4})`}>
+                    <rect
+                      width={pillW}
+                      height={19}
+                      rx={9.5}
+                      fill="#07080b"
+                      fillOpacity={0.94}
+                      stroke="rgba(197, 160, 89, 0.4)"
+                      strokeWidth={0.8}
+                      filter="drop-shadow(0 2px 6px rgba(0,0,0,0.85))"
+                    />
+                    <text
+                      x={8}
+                      y={9.5}
+                      dominantBaseline="central"
+                      fontSize={7.2}
+                      fontWeight={700}
+                      fill="#94a3b8"
+                      fontFamily="var(--btm-mono)"
+                      pointerEvents="none"
+                    >
+                      RISCHIO
+                    </text>
+                    {[0.25, 0.5, 1, 2].map((opt, i) => {
+                      const curRisk = item.riskPct ?? engine.ticket?.riskValue ?? 1;
+                      const isCurrent = Math.abs(curRisk - opt) < 0.05;
+                      const btnX = 48 + i * 36;
+                      return (
+                        <g
+                          key={opt}
+                          transform={`translate(${btnX}, 2)`}
+                          style={{ cursor: "pointer" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            engine.setDrawings((prev) =>
+                              prev.map((d) => (d.id === item.id ? { ...d, riskPct: opt } : d)),
+                            );
+                            if (engine.ticket) {
+                              engine.setTicket({ ...engine.ticket, riskValue: opt });
+                            }
+                          }}
+                        >
+                          <rect
+                            width={32}
+                            height={15}
+                            rx={7.5}
+                            fill={isCurrent ? "rgba(197, 160, 89, 0.3)" : "transparent"}
+                            stroke={isCurrent ? "#C5A059" : "rgba(255, 255, 255, 0.12)"}
+                            strokeWidth={isCurrent ? 1 : 0.6}
+                          />
+                          <text
+                            x={16}
+                            y={7.5}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fontSize={7.2}
+                            fontWeight={isCurrent ? 800 : 600}
+                            fill={isCurrent ? "#E8C56A" : "#94a3b8"}
+                            fontFamily="var(--btm-mono)"
+                            pointerEvents="none"
+                          >
+                            {opt}%
+                          </text>
+                        </g>
+                      );
+                    })}
+                    {/* Bottone Rapido Snap BE */}
+                    <g
+                      transform={`translate(${pillW - 48}, 2)`}
+                      style={{ cursor: "pointer" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        engine.setDrawings((prev) =>
+                          prev.map((d) =>
+                            d.id === item.id ? { ...d, slPrice: item.entry.price } : d,
+                          ),
+                        );
+                      }}
+                    >
+                      <rect
+                        width={42}
+                        height={15}
+                        rx={7.5}
+                        fill="rgba(59, 130, 246, 0.22)"
+                        stroke="#3b82f6"
+                        strokeWidth={0.8}
+                      />
+                      <text
+                        x={21}
+                        y={7.5}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fontSize={7.2}
+                        fontWeight={800}
+                        fill="#93c5fd"
+                        fontFamily="var(--btm-mono)"
+                        pointerEvents="none"
+                      >
+                        SET BE
+                      </text>
+                    </g>
                   </g>
                 </g>
               );

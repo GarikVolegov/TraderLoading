@@ -24,6 +24,8 @@
     "backtest:bulk": "pnpm --filter ./scripts exec tsx local/bulkSync.ts",
     "backtest:tail": "pnpm --filter ./scripts exec tsx local/backtestHistory.ts tail",
     "backtest:import": "pnpm --filter ./scripts exec tsx local/backtestHistory.ts import",
+    "build:sitemap": "pnpm --filter @workspace/trader-dashboard run build:sitemap",
+    "indexnow": "pnpm --filter @workspace/trader-dashboard run indexnow",
     "build:railway": "pnpm --filter @workspace/trader-dashboard build && pnpm --filter @workspace/api-server build",
     "start:railway": "pnpm --filter @workspace/api-server start",
     "db:generate": "pnpm --filter @workspace/db generate",

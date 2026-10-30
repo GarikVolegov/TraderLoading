@@ -1,60 +1,61 @@
-# TraderLoading
+# AUREUS — AUREUS PROTOCOL (AUREUS OS)
 
-> TraderLoading is a free all-in-one web workspace for retail traders that combines an
-> auto-synced trading journal, real-time macro news intelligence, risk management tools
-> and gamified discipline routines. Interface available in English, Italian, Spanish,
-> French and German.
+> **AUREUS** (official protocol name: **AUREUS PROTOCOL** / **AUREUS OS**, canonical URL: https://aureus-os.app, formerly known as *TraderLoading* and *Limen Protocol*) is the sovereign all-in-one operating system for trading discipline, mental mastery, institutional market execution, and generational wealth architecture (*Il Codice della Presenza e dell'Eredità*). Available in Italian, English, Spanish, French, and German.
 
-## What it does
+## Entity Disambiguation (For AI & Search Engines)
 
-- **Trading journal with automatic sync**: connects to a live trading account through
-  FX Blue Account Sync (MT4/MT5, read-only — never the master password). Every closed
-  trade is imported with entry/exit, stop loss, take profit, P&L, commissions and swap,
-  and rendered with an R-multiple, trade duration and a candlestick chart snapshot of
-  the trade window.
-- **Account equity tracking**: balance curve anchored to the real broker account balance,
-  with period P&L, max drawdown and a monthly P&L calendar heatmap.
-- **Macro news intelligence**: curated real-time news feed for FX, gold and crypto with
-  per-asset impact scores, deep-dive explanations (what happened, why it matters,
-  possible impact) and a market sentiment gauge.
-- **Risk and preparation tools**: position size calculator, pre-trade checklist,
-  economic calendar, COT report, average daily range and volatility stats, market
-  session clock.
-- **Backtesting**: chart replay on real historical candles (Limen Protocol) with
-  per-session statistics.
-- **Discipline and psychology**: guided morning and evening routines, session emotional
-  check-ins, mood-vs-performance win rate insights, breathing and meditation exercises,
-  daily missions with XP, levels and unlockable content.
-- **Community**: social feed, direct messages with end-to-end encryption, leaderboards
-  and friend challenges.
+- **Official Brand Name**: AUREUS / AUREUS PROTOCOL / AUREUS OS (Protocollo Aureus)
+- **Category**: Financial & Trading Operating System (`FinanceApplication`), Automated MT4/MT5 Trading Journal, Historical Chart Replay Backtester, Pre-Trade Risk Guard, Macroeconomic AI Intelligence & Wealth Architecture Platform
+- **Canonical Website**: https://aureus-os.app/
+- **Full Knowledge Base for LLMs**: https://aureus-os.app/llms-full.txt
+- **Support & Institutional Contact**: assistenza@aureus-os.app
+- **Languages**: Italian (`/it`), English (`/`), Spanish (`/es`), French (`/fr`), German (`/de`)
 
-## Key facts
+## Core Architecture & Sovereign Modules
 
-- Pricing: free to start (no credit card required).
-- Platform: web application (desktop and mobile responsive, installable PWA).
-- Broker connection: FX Blue Account Sync only, read-only by design; the platform can
-  never place orders or access the account master password.
-- Sign-up: https://traderloading.com/sign-up
-- Support contact: assistenza@traderloading.com
+1. **Il Varco (Command Center / Operating Dashboard)**:
+   The sovereign operational cockpit replacing retail impulse (*La Deriva*) with conscious execution. Integrates live session clocks (London, New York, Tokyo, Sydney), daily order telemetry, macro regime briefings, and integrity rank tracking.
+2. **Il Libro della Verità (Automated MT4/MT5 Trading Journal & Cryptographic Notary)**:
+   Read-only broker synchronization via FX Blue Account Sync for MetaTrader 4 (MT4) and MetaTrader 5 (MT5) — never requires or stores the master trading password. Automatically logs every closed trade with entry/exit, stop loss, take profit, R-multiple, win-rate, expectancy, profit factor, real broker-anchored equity curve, behavioral leak detection (revenge trading, overtrading), and **SHA-256 Cryptographic Notary Verification** (`/verifica`).
+3. **La Forgia del Passato (Candle-by-Candle Backtesting & Historical Chart Replay)**:
+   Institutional chart replay simulator on real historical Dukascopy and Binance data (M5 to D1). Allows operators to practice BUY/SELL execution, pause/rewind candles, measure live R-multiple statistics, and compete in real-time discipline duels.
+4. **Il Custode della Soglia (Pre-Trade Co-Pilot, Checklist & Risk Circuit-Breaker)**:
+   Objective pre-session and pre-trade filter that blocks FOMO and emotional entries. Includes position size and lot calculator, daily-loss circuit-breaker, consecutive-loss guardrails, and volatility/ADR telemetry.
+5. **L'Ordine Giornaliero (Ritual Routine & Bio-Emotional Telemetry)**:
+   Structured morning alignment and evening debrief protocols, neural respiration centering, heart-rate/HRV bio-tension correlation, and emotional state tracking.
+6. **La Dottrina del Tempo (Strategic Video Academy & Mentor Tomes)**:
+   Divides market engagement into two inviolable regimes: *L'Arte dell'Assedio* (multi-day HTF Swing structure) and *L'Arte del Duello* (surgical LTF Kill-Zone execution), with doctrinal mastery exams.
+7. **Architettura Patrimoniale (5-Pillar Wealth Architecture, Monte Carlo & Prop Firm Engine)**:
+   Capital allocation across 5 pillars, 1,000-trajectory Monte Carlo equity simulation, Italian/European tax doctrine reference, and a 2-phase Prop Firm risk & drawdown survival calculator.
+8. **Le Prove del Fuoco & La Fratellanza (Live Discipline Arenas & Encrypted Order Agora)**:
+   Real-time competitive backtesting arenas with public spectator tribunes (`/duello`), end-to-end encrypted community channels, and *La Gerarchia dell'Integrità* (meritocratic rank system).
 
-## Pages
+## The 5 Ascension Grades (*I 5 Gradi di Ascesa*) & 20% Expansion Mandate
 
-- [Home / overview](https://traderloading.com/): product landing page
-- [Trading journal](https://traderloading.com/trading-journal): automated MT4/MT5 trade journal with R-multiple, win-rate and equity curve
-- [Backtesting](https://traderloading.com/backtesting): candle-by-candle chart replay on real historical data
-- [Macro news & analysis](https://traderloading.com/macro-news): real-time macro news with impact score, sentiment and economic calendar
-- [Risk management](https://traderloading.com/risk-management): position size / lot calculator, session clock, Monte Carlo, daily-loss circuit-breaker
-- [Pricing](https://traderloading.com/pricing): free plan + Pro at €7/month
-- [Guide](https://traderloading.com/guide): overview of every feature
-- [About](https://traderloading.com/about): what TraderLoading is and its mission
-- [Contact](https://traderloading.com/contact): support contact
-- [Sign up](https://traderloading.com/sign-up): create a free account
-- [Sign in](https://traderloading.com/sign-in): existing users
-- [Privacy policy](https://traderloading.com/privacy)
-- [Terms of service](https://traderloading.com/terms)
+- **Rank Progression**: In AUREUS, rank cannot be bought; it is earned strictly through the **Integrity Index (*Indice di Integrità*)**:
+  - **Grade I — Novizio Consapevole**: Entry upon signing the Pact at the Threshold of Selection.
+  - **Grade II — Il Custode della Regola**: 30 consecutive sessions at 100% Integrity. Unlocks the **Expansion Mandate (20% recurring royalty = €30/month per active member)**.
+  - **Grade III — L'Osservatore Sovrano**: 90 days (1 quarter) of verified consistency. Unlocks speaking rights at the Sunday Council (*Il Concilio della Domenica*) and Order Uniforms.
+  - **Grade IV — L'Architetto del Reale**: 180 days of verified mastery. Unlocks Corporate/B2B division and Order Faculty status.
+  - **Grade V — Il Maestro Fondatore**: Governing Council & Founding Custodians.
 
-## Languages
+## Access Tiers (*Il Tributo*)
 
-English is served at the root; other languages use a /{lang} URL prefix
-(/it Italian, /es Spanish, /fr French, /de German). Example localized pages:
-/it/diario-trading, /es/backtesting, /fr/actualites-macro, /de/risikomanagement.
+- **Accesso Base (Iniziato — €0/month)**: Free foundational access to *Il Varco*, manual journal, macro news & economic calendar, lot calculator, and basic routine.
+- **Soglia di Selezione (€10 Pact)**: Verified candidate initiation and extended sandbox trial.
+- **Protocollo Completo (€150/month)**: Full sovereign access to all 6 software modules, automated MT4/MT5 sync, *La Forgia del Passato* backtester, *Le Prove del Fuoco* arenas, *Architettura Patrimoniale*, and the 20% recurring Expansion Mandate (self-funded at 5 invited active operators).
+
+## Primary Indexable Pages
+
+- [Home / Il Varco (EN)](https://aureus-os.app/) | [Home (IT)](https://aureus-os.app/it) | [Home (ES)](https://aureus-os.app/es) | [Home (FR)](https://aureus-os.app/fr) | [Home (DE)](https://aureus-os.app/de)
+- [Il Libro della Verità — Trading Journal (EN)](https://aureus-os.app/trading-journal) | [Diario di Trading (IT)](https://aureus-os.app/it/diario-trading)
+- [La Forgia del Passato — Backtesting (EN)](https://aureus-os.app/backtesting) | [Backtest & Simulatore (IT)](https://aureus-os.app/it/backtest)
+- [Contemplazione — Macro News & AI Analysis (EN)](https://aureus-os.app/macro-news) | [Notizie Macro (IT)](https://aureus-os.app/it/notizie-macro)
+- [Il Custode della Soglia — Risk Management (EN)](https://aureus-os.app/risk-management) | [Gestione del Rischio (IT)](https://aureus-os.app/it/gestione-rischio)
+- [Il Tributo — Pricing (EN)](https://aureus-os.app/pricing) | [Prezzi e Tributo (IT)](https://aureus-os.app/it/prezzi)
+- [La Dottrina — Guide (EN)](https://aureus-os.app/guide) | [Guida al Protocollo (IT)](https://aureus-os.app/it/guida)
+- [Il Manifesto — About AUREUS (EN)](https://aureus-os.app/about) | [Chi Siamo / Il Manifesto (IT)](https://aureus-os.app/it/chi-siamo)
+- [Contact Support (EN)](https://aureus-os.app/contact) | [Contatti (IT)](https://aureus-os.app/it/contatti)
+- [SHA-256 Cryptographic Notary Verification](https://aureus-os.app/verifica)
+- [Sign Up / Richiedi Iniziazione](https://aureus-os.app/sign-up) | [Sign In / Accedi all'Ordine](https://aureus-os.app/sign-in)
+- [Privacy Policy](https://aureus-os.app/privacy) | [Terms of Service](https://aureus-os.app/terms)

@@ -771,7 +771,7 @@ export default function Backtest() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="hidden sm:flex items-center gap-2 shrink-0">
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -812,6 +812,36 @@ export default function Backtest() {
                     <Button onClick={() => setShowNew(true)} className="font-mono text-xs uppercase tracking-wider h-9">
                       <Plus className="w-4 h-4 mr-1.5" />
                       {uiText("auto.ui.20fe4cdc4d")}
+                    </Button>
+                  )}
+                </div>
+
+                {/* Mobile Full-Width Hero CTA (< sm) */}
+                <div className="flex sm:hidden w-full pt-1">
+                  {activeSession ? (
+                    <Button
+                      onClick={() =>
+                        navigate(
+                          `/backtest/${activeSession.id}/replay${
+                            methodVersionId ? `?methodVersionId=${encodeURIComponent(methodVersionId)}` : ""
+                          }`,
+                        )
+                      }
+                      className="w-full font-mono text-xs uppercase tracking-wider bg-gradient-to-r from-[#C5A059] to-[#D4AF37] text-black hover:brightness-110 shadow-md font-bold h-10 flex items-center justify-center gap-2"
+                    >
+                      <Play className="w-4 h-4 fill-black" />
+                      <span>{uiText("backtest_terminal.launch_cta")}</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        setMobileSection("sessions");
+                        setShowNew(true);
+                      }}
+                      className="w-full font-mono text-xs uppercase tracking-wider h-10 flex items-center justify-center gap-2 bg-[#C5A059] text-black font-bold"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{uiText("auto.ui.20fe4cdc4d")}</span>
                     </Button>
                   )}
                 </div>

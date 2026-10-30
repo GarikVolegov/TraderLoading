@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   BarChart2,
@@ -21,9 +22,16 @@ import {
   Sparkles,
   Star,
   Trash2,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import type { FeedStatus } from "@/lib/chart/tradingViewRealtimeFeed";
 import type { ReplayPriceAlert } from "@/lib/replay/alertModel";
+import {
+  DEFAULT_LONG_TERM_RECOMMENDATIONS,
+  fetchLongTermRecommendations,
+  type LongTermPairRecommendation,
+} from "@/lib/marketIntelligenceApi";
 
 export interface LimenChartHeaderProps {
   symbol: string;
@@ -274,6 +282,102 @@ export function LimenChartHeader({
   const rawSym = symbol.includes(":") ? symbol.split(":").pop()! : symbol;
   const cleanSym = rawSym.trim().toUpperCase().replace(/[\/\-_]/g, "");
 
+  // ── Telemetria Raccomandazioni a Lungo Termine (W1 · D1 · H4 + Macro/COT) ────
+  const longTermRecsQuery = useQuery({
+    queryKey: ["varco-long-term-recommendations"],
+    queryFn: fetchLongTermRecommendations,
+    staleTime: 3 * 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+
+  const symbolCatalogMap = useMemo(() => {
+    const map = new Map<string, { id: string; label: string; sub?: string }>();
+    for (const g of ALL_SYMBOLS) {
+      for (const item of g.items) {
+        map.set(item.id, item);
+      }
+    }
+    return map;
+  }, []);
+
+  const longTermByPair = useMemo(() => {
+    const map = new Map<string, LongTermPairRecommendation>();
+    for (const fallbackItem of DEFAULT_LONG_TERM_RECOMMENDATIONS) {
+      map.set(fallbackItem.pair, fallbackItem);
+    }
+    const liveAll = longTermRecsQuery.data?.all ?? [];
+    for (const item of liveAll) {
+      map.set(item.pair, item);
+    }
+    return map;
+  }, [longTermRecsQuery.data]);
+
+  const favoriteSymbolItems = useMemo(() => {
+    const q = symbolSearchQuery.trim().toLowerCase();
+    return favSymbols
+      .map((id) => {
+        const entry = symbolCatalogMap.get(id) ?? { id, label: id };
+        const rec = longTermByPair.get(id);
+        return { ...entry, rec };
+      })
+      .filter(
+        (item) =>
+          !q ||
+          item.label.toLowerCase().includes(q) ||
+          item.id.toLowerCase().includes(q) ||
+          item.sub?.toLowerCase().includes(q) ||
+          item.rec?.thesis.toLowerCase().includes(q),
+      );
+  }, [favSymbols, symbolCatalogMap, longTermByPair, symbolSearchQuery]);
+
+  const recommendedLongTermItems = useMemo(() => {
+    const q = symbolSearchQuery.trim().toLowerCase();
+    const rawList =
+      longTermRecsQuery.data?.recommendations && longTermRecsQuery.data.recommendations.length > 0
+        ? longTermRecsQuery.data.recommendations
+        : DEFAULT_LONG_TERM_RECOMMENDATIONS;
+
+    const allRanked =
+      longTermRecsQuery.data?.all && longTermRecsQuery.data.all.length > 0
+        ? longTermRecsQuery.data.all
+        : rawList;
+
+    // Combina i raccomandati dando priorità alle opportunità non già nei preferiti,
+    // seguite dai setup sovrani Tier A+ per garantire sempre 4-5 visioni a lungo termine d'eccellenza.
+    const seen = new Set<string>();
+    const ordered: LongTermPairRecommendation[] = [];
+
+    for (const rec of [...rawList, ...allRanked]) {
+      if (rec.direction === "NEUTRAL" || rec.antiFadeProtected) continue;
+      if (!favSymbols.includes(rec.pair) && !seen.has(rec.pair)) {
+        seen.add(rec.pair);
+        ordered.push(rec);
+      }
+    }
+    for (const rec of rawList) {
+      if (rec.direction === "NEUTRAL" || rec.antiFadeProtected) continue;
+      if (!seen.has(rec.pair)) {
+        seen.add(rec.pair);
+        ordered.push(rec);
+      }
+    }
+
+    return ordered
+      .slice(0, 5)
+      .map((rec) => {
+        const entry = symbolCatalogMap.get(rec.pair) ?? { id: rec.pair, label: rec.pair };
+        return { ...entry, rec };
+      })
+      .filter(
+        (item) =>
+          !q ||
+          item.label.toLowerCase().includes(q) ||
+          item.id.toLowerCase().includes(q) ||
+          item.sub?.toLowerCase().includes(q) ||
+          item.rec.thesis.toLowerCase().includes(q),
+      );
+  }, [longTermRecsQuery.data, favSymbols, symbolCatalogMap, symbolSearchQuery]);
+
   const currentSymbolLabel = useMemo(() => {
     for (const g of ALL_SYMBOLS) {
       const found = g.items.find((item) => item.id === cleanSym);
@@ -355,7 +459,7 @@ export function LimenChartHeader({
                 className="fixed inset-0 z-40"
                 onClick={() => setSymbolPickerOpen(false)}
               />
-              <div className="absolute left-0 top-full mt-1.5 w-72 max-w-[calc(100vw-20px)] bg-[#0E0F14] border border-[#26262E] rounded-lg shadow-2xl z-50 overflow-hidden font-mono text-xs">
+              <div className="absolute left-0 top-full mt-1.5 w-80 sm:w-96 max-w-[calc(100vw-20px)] bg-[#0E0F14] border border-[#26262E] rounded-lg shadow-2xl z-50 overflow-hidden font-mono text-xs">
                 <div className="p-2 border-b border-[#1F222E] bg-[#08080A] flex items-center gap-2">
                   <Search size={14} className="text-zinc-400 shrink-0" />
                   <input
@@ -367,7 +471,173 @@ export function LimenChartHeader({
                     autoFocus
                   />
                 </div>
-                <div className="max-h-64 overflow-y-auto p-1 scrollbar-thin">
+                <div className="max-h-[420px] overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-[#C5A059]/30 space-y-1">
+                  {/* ── SEZIONE 1: ★ I TUOI PREFERITI ── */}
+                  {favoriteSymbolItems.length > 0 && (
+                    <div className="py-1 border-b border-[#1F222E]/80">
+                      <div className="px-2 py-1 flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold text-[#E8C56A] tracking-wider uppercase flex items-center gap-1 whitespace-nowrap">
+                          <Star size={11} className="fill-[#C5A059] text-[#C5A059] shrink-0" />
+                          <span>I Tuoi Preferiti</span>
+                        </span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#E8C56A] font-bold whitespace-nowrap">
+                          {favoriteSymbolItems.length} Pair
+                        </span>
+                      </div>
+                      {favoriteSymbolItems.map((item) => {
+                        const isSelected = cleanSym === item.id;
+                        const rec = item.rec;
+                        return (
+                          <div
+                            key={`fav-${item.id}`}
+                            className={`w-full px-2 py-1.5 rounded flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                              isSelected
+                                ? "bg-[#C5A059]/15 text-[#C5A059] font-bold"
+                                : "text-zinc-300 hover:bg-[#161822] hover:text-white"
+                            }`}
+                            onClick={() => {
+                              onSymbolChange(item.id);
+                              setSymbolPickerOpen(false);
+                            }}
+                          >
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold whitespace-nowrap">{item.label}</span>
+                                {rec && rec.direction !== "NEUTRAL" && (
+                                  <span
+                                    className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase tracking-wider whitespace-nowrap border ${
+                                      rec.direction === "BULLISH"
+                                        ? "bg-[#10b981]/15 border-[#10b981]/35 text-[#10b981]"
+                                        : "bg-[#ef4444]/15 border-[#ef4444]/35 text-[#ef4444]"
+                                    }`}
+                                  >
+                                    {rec.direction === "BULLISH" ? "LONG HTF" : "SHORT HTF"}
+                                  </span>
+                                )}
+                              </div>
+                              {item.sub && (
+                                <span className="text-[10px] text-zinc-500">{item.sub}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {rec && (
+                                <span className="text-[9.5px] font-mono text-zinc-400 whitespace-nowrap">
+                                  {rec.confidenceScore}%
+                                </span>
+                              )}
+                              {isSelected && <Check size={13} className="text-[#C5A059]" />}
+                              <button
+                                type="button"
+                                className="p-1 rounded transition-colors text-[#C5A059] hover:text-[#D4AF37]"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavSymbol(item.id);
+                                }}
+                                title="Rimuovi dai preferiti"
+                              >
+                                <Star size={13} className="fill-[#C5A059]" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* ── SEZIONE 2: ⚡ CONSIGLIATI NEL MOMENTO · VISIONE A LUNGO TERMINE ── */}
+                  {recommendedLongTermItems.length > 0 && (
+                    <div
+                      className="py-1.5 px-1 rounded-lg bg-[#11131c]/90 border border-[#C5A059]/25 shadow-[0_0_15px_rgba(197,160,89,0.08)]"
+                      data-testid="varco-recommended-long-term-section"
+                    >
+                      <div className="px-1.5 pb-1.5 flex items-center justify-between gap-2 border-b border-[#C5A059]/15 mb-1">
+                        <span className="text-[10px] font-bold text-[#E8C56A] tracking-wider uppercase flex items-center gap-1.5 whitespace-nowrap">
+                          <Compass size={12} className="text-[#C5A059] shrink-0" />
+                          <span>Consigliati · Lungo Termine</span>
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[#E8C56A] font-mono text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">
+                          W1 · D1 · MACRO
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {recommendedLongTermItems.map((item) => {
+                          const isFav = favSymbols.includes(item.id);
+                          const isSelected = cleanSym === item.id;
+                          const { rec } = item;
+                          const isBull = rec.direction === "BULLISH";
+                          return (
+                            <div
+                              key={`rec-${item.id}`}
+                              className={`w-full px-2 py-1.5 rounded-md flex items-center justify-between gap-2 transition-all cursor-pointer border ${
+                                isSelected
+                                  ? "bg-[#C5A059]/15 border-[#C5A059]/45 text-[#E8C56A]"
+                                  : "bg-[#0d0f14]/90 border-white/5 text-zinc-200 hover:bg-[#161822] hover:border-[#C5A059]/30 hover:text-white"
+                              }`}
+                              onClick={() => {
+                                onSymbolChange(item.id);
+                                setSymbolPickerOpen(false);
+                              }}
+                            >
+                              <div className="flex flex-col min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-xs whitespace-nowrap">{item.label}</span>
+                                  <span
+                                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase tracking-wider whitespace-nowrap border ${
+                                      isBull
+                                        ? "bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]"
+                                        : "bg-[#ef4444]/15 border-[#ef4444]/40 text-[#ef4444]"
+                                    }`}
+                                  >
+                                    {isBull ? (
+                                      <TrendingUp size={10} className="shrink-0" />
+                                    ) : (
+                                      <TrendingDown size={10} className="shrink-0" />
+                                    )}
+                                    <span>{isBull ? "LONG HTF" : "SHORT HTF"}</span>
+                                  </span>
+                                  {rec.edgeTier === "TIER_A_PLUS" ? (
+                                    <span className="px-1.5 py-0.2 rounded bg-[#C5A059]/20 border border-[#C5A059]/45 text-[#E8C56A] font-mono text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">
+                                      TIER A+
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.2 rounded bg-white/5 border border-white/15 text-slate-300 font-mono text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">
+                                      {rec.horizonLabel}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                                  {rec.thesis}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="px-1.5 py-0.5 rounded bg-black/50 border border-white/10 text-[9.5px] font-mono font-bold text-[#E8C56A] whitespace-nowrap">
+                                  {rec.confidenceScore}%
+                                </span>
+                                {isSelected && <Check size={13} className="text-[#C5A059]" />}
+                                <button
+                                  type="button"
+                                  className={`p-1 rounded transition-colors ${
+                                    isFav
+                                      ? "text-[#C5A059] hover:text-[#D4AF37]"
+                                      : "text-zinc-500 hover:text-zinc-200"
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFavSymbol(item.id);
+                                  }}
+                                  title={isFav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+                                >
+                                  <Star size={13} className={isFav ? "fill-[#C5A059]" : ""} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── SEZIONE 3: CATALOGO COMPLETO PER CATEGORIA ── */}
                   {filteredSymbolGroups.map((g) => (
                     <div key={g.group} className="py-1">
                       <div className="px-2 py-1 text-[10px] font-bold text-[#C5A059]/80 tracking-wider">
@@ -376,6 +646,7 @@ export function LimenChartHeader({
                       {g.items.map((item) => {
                         const isFav = favSymbols.includes(item.id);
                         const isSelected = cleanSym === item.id;
+                        const rec = longTermByPair.get(item.id);
                         return (
                           <div
                             key={item.id}
@@ -390,7 +661,20 @@ export function LimenChartHeader({
                             }}
                           >
                             <div className="flex flex-col">
-                              <span className="font-semibold">{item.label}</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold whitespace-nowrap">{item.label}</span>
+                                {rec && rec.direction !== "NEUTRAL" && (
+                                  <span
+                                    className={`px-1 py-0.2 rounded text-[8.5px] font-mono font-bold uppercase tracking-wider whitespace-nowrap border ${
+                                      rec.direction === "BULLISH"
+                                        ? "bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]"
+                                        : "bg-[#ef4444]/10 border-[#ef4444]/30 text-[#ef4444]"
+                                    }`}
+                                  >
+                                    {rec.direction === "BULLISH" ? "LONG" : "SHORT"}
+                                  </span>
+                                )}
+                              </div>
                               {item.sub && (
                                 <span className="text-[10px] text-zinc-500">{item.sub}</span>
                               )}
@@ -427,11 +711,16 @@ export function LimenChartHeader({
           )}
         </div>
 
-        {/* 1.2 Pillole Pair Preferiti (Switch Rapido verso altri preferiti, escluso quello attivo) */}
+        {/* 1.2 Pillole Pair Preferiti (Switch Rapido verso altri preferiti, visibili in vista estesa o schermi ampi) */}
         {favSymbols.filter((id) => id !== cleanSym).length > 0 && (
-          <div className="hidden md:flex items-center bg-[#0B0C10] border border-[#26262E] rounded-md p-0.5 gap-0.5">
+          <div
+            className={`${
+              isFullscreen || leftCollapsed ? "hidden md:flex" : "hidden 2xl:flex"
+            } items-center bg-[#0B0C10] border border-[#26262E] rounded-md p-0.5 gap-0.5`}
+          >
             {favSymbols
               .filter((symId) => symId !== cleanSym)
+              .slice(0, 2)
               .map((symId) => {
                 let label = symId;
                 for (const g of ALL_SYMBOLS) {
@@ -651,7 +940,11 @@ export function LimenChartHeader({
         </div>
 
         {/* 1.5 Chip Rapidi Indicatori Preferiti (★) sulla barra */}
-        <div className="hidden lg:flex items-center gap-1">
+        <div
+          className={`${
+            isFullscreen || leftCollapsed ? "hidden lg:flex" : "hidden 2xl:flex"
+          } items-center gap-1`}
+        >
           {favIndicators.includes("sessions") && (
             <div className="inline-flex items-center rounded border overflow-hidden border-[#26262E] bg-[#0B0C10]">
               <button
@@ -1083,11 +1376,28 @@ export function LimenChartHeader({
           )}
         </div>
 
+        {/* Toggle rapido News Rosse sempre accessibile in barra */}
+        {onToggleRedNews && !imminentRedNews && (
+          <button
+            type="button"
+            className={`hidden sm:flex px-2 py-0.5 text-[10.5px] font-mono rounded border transition-all cursor-pointer whitespace-nowrap items-center gap-1.5 ${
+              showRedNews
+                ? "bg-rose-500/15 text-rose-300 border-rose-500/40 font-bold"
+                : "text-zinc-400 hover:text-white border-[#26262E] bg-[#0B0C10]"
+            }`}
+            onClick={onToggleRedNews}
+            title="Attiva/disattiva Marker Notizie Rosse ad Alto Impatto sul Grafico"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${showRedNews ? "bg-rose-400 animate-pulse" : "bg-zinc-500"}`} />
+            <span>News</span>
+          </button>
+        )}
+
         {/* Pulsante Naked Chart / Price Action Pura (TradingView Pro / Alt+N) */}
         {onClearAllIndicators && (
           <button
             type="button"
-            className={`hidden sm:flex items-center gap-1 px-2 py-1 text-xs font-mono font-bold rounded border transition-all cursor-pointer whitespace-nowrap ${
+            className={`hidden sm:flex items-center gap-1 px-2 py-1 text-[11px] font-mono font-bold rounded border transition-all cursor-pointer whitespace-nowrap ${
               isCleanChart
                 ? "bg-[#C5A059]/15 border-[#C5A059] text-[#E8C56A] shadow-[0_0_10px_rgba(197,160,89,0.2)]"
                 : "border-[#26262E] bg-[#0B0C10] text-zinc-400 hover:text-white hover:border-[#C5A059]/40"
@@ -1101,14 +1411,22 @@ export function LimenChartHeader({
             }}
             title={isCleanChart ? "Ripristina indicatori sovrapposti (Alt+N)" : "Grafico Pulito / Naked Price Action (Alt+N)"}
           >
-            <Compass size={13} className={isCleanChart ? "text-[#E8C56A]" : "text-zinc-400"} />
-            <span className="whitespace-nowrap">{isCleanChart ? "NAKED ATTIVO" : "GRAFICO PULITO"}</span>
+            <Compass size={12} className={isCleanChart ? "text-[#E8C56A]" : "text-zinc-400"} />
+            <span className="whitespace-nowrap">
+              {isCleanChart
+                ? isFullscreen || leftCollapsed
+                  ? "NAKED ATTIVO"
+                  : "NAKED"
+                : isFullscreen || leftCollapsed
+                  ? "GRAFICO PULITO"
+                  : "PULITO"}
+            </span>
           </button>
         )}
       </div>
 
       {/* ── 2. Pillole di Stato, Sentinella IA, Bias e Controlli Rapidi (Destra) ── */}
-      <div className="flex items-center gap-1.5 ml-auto shrink-0">
+      <div className="flex items-center gap-1 ml-auto shrink-0">
         {/* IA Visiva Sentinel Button (Accessibile ESCLUSIVAMENTE agli Amministratori) */}
         {isAdmin && onScanAi && (
           <button
@@ -1172,13 +1490,19 @@ export function LimenChartHeader({
         {imminentRedNews && (
           <button
             type="button"
-            className="flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-mono font-bold rounded border border-rose-500/50 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 transition-all cursor-pointer whitespace-nowrap animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.35)]"
+            className="flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-mono font-bold rounded border border-rose-500/50 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 transition-all cursor-pointer whitespace-nowrap shadow-[0_0_12px_rgba(239,68,68,0.25)]"
             onClick={() => onJumpToEventTime?.(imminentRedNews.time)}
-            title={`News ad Alto Impatto: ${imminentRedNews.title} (${imminentRedNews.country}). Clicca per visualizzare l'evento sul grafico.`}
+            title={`News ad Alto Impatto: ${imminentRedNews.title} (${imminentRedNews.country}). Clicca per centrare l'evento futuro sul grafico.`}
           >
-            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 animate-ping" />
             <span>
-              🔴 NEWS ROSSA {imminentRedNews.countdownMin > 0 ? `TRA ${imminentRedNews.countdownMin}M` : "ORA"}: {imminentRedNews.country}
+              NEWS ROSSA{" "}
+              {imminentRedNews.countdownMin > 60
+                ? `${Math.floor(imminentRedNews.countdownMin / 60)}h ${imminentRedNews.countdownMin % 60}m`
+                : imminentRedNews.countdownMin > 0
+                  ? `${imminentRedNews.countdownMin}m`
+                  : "ORA"}
+              : {imminentRedNews.country}
             </span>
           </button>
         )}

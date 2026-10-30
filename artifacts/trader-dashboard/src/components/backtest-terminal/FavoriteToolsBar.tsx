@@ -10,7 +10,9 @@ export function FavoriteToolsBar({ engine, activeTool, onToolChange }: {
 }) {
   const { preferences, update } = engine.chartPreferences;
   const ref = useRef<HTMLDivElement>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false,
+  );
   const [position, setPosition] = useState(preferences.toolbarPosition);
   const [selected, setSelected] = useState<string | null>(null);
   const drag = useRef<{ id: number; x: number; y: number; startX: number; startY: number; tool?: string; moved: boolean } | null>(null);

@@ -88,7 +88,7 @@ export async function renderTorneoCertificateToCanvas(
   ctx.restore();
 
   // 4. Generazione e posizionamento del QR Code scansionabile e funzionante
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://limen.trade";
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://aureus-os.app";
   const targetVerifyUrl =
     verifyUrl ||
     (certId ? `${origin}/tornei?cert=${certId}` : `${origin}/tornei`);
@@ -136,7 +136,7 @@ export async function downloadTorneoCertificate(
       const cleanName = (options.userName || "Operatore").replace(/[^a-zA-Z0-9_-]/g, "_");
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Limen_Attestato_${options.tier.toUpperCase()}_${cleanName}.png`;
+      a.download = `AUREUS_Attestato_${options.tier.toUpperCase()}_${cleanName}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

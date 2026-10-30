@@ -219,7 +219,7 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
                 Certificato NFT Ufficiale · {gradeDef.code} — {gradeDef.title}
               </h2>
               <p className="text-[11px] text-muted-foreground font-mono">
-                Attestato di Grado Limen Protocol · {effectiveUserName} · Serial {serial}
+                Attestato di Grado AUREUS PROTOCOL · {effectiveUserName} · Serial {serial}
               </p>
             </div>
           </div>

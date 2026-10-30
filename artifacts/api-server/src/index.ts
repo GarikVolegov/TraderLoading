@@ -20,6 +20,7 @@ import { backgroundTasksEnabled } from "./lib/localBackgroundTasks.js";
 import { assertRedisConfigured, closeSharedRedisClient } from "./lib/redisClient.js";
 import { closeAppCache } from "./lib/cache.js";
 import { warmupCache } from "./services/cacheWarmup.js";
+import { bootstrapSovereignAdmins } from "./services/identitySync.js";
 import {
   getServiceRole,
   shouldRunSchedulers,
@@ -201,6 +202,9 @@ process.on("uncaughtException", (err) => {
 
 server.listen(port, () => {
   logger.info({ port, serviceRole }, "Server listening");
+  void bootstrapSovereignAdmins().catch((err) => {
+    logger.warn({ err }, "Initial admin bootstrap execution failed");
+  });
   if (!shouldRunSchedulers(serviceRole)) {
     void cotScheduler
       .close()

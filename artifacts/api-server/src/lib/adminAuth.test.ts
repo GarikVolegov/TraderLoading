@@ -5,6 +5,7 @@ process.env.DATABASE_URL ??= "postgres://user:pass@127.0.0.1:5432/test";
 const {
   ADMIN_PERMISSIONS_BY_ROLE,
   getBootstrapAdminIds,
+  getBootstrapAdminEmails,
   hasAdminPermission,
   resolveAdminPrincipal,
 } = await import("./adminPermissions.js");
@@ -46,6 +47,24 @@ assert.equal(
     new Set(),
   ),
   null,
+);
+
+assert.ok(getBootstrapAdminEmails().has("volegovgarik18@gmail.com"));
+assert.deepEqual(
+  resolveAdminPrincipal("user_garik", null, new Set(), "volegovgarik18@gmail.com"),
+  {
+    userId: "user_garik",
+    role: "super_admin",
+    source: "bootstrap",
+  },
+);
+assert.deepEqual(
+  resolveAdminPrincipal("user_custom", null, new Set(), "custom@admin.org", new Set(["custom@admin.org"])),
+  {
+    userId: "user_custom",
+    role: "super_admin",
+    source: "bootstrap",
+  },
 );
 
 console.log("admin auth helper checks passed");

@@ -11,6 +11,8 @@ import {
   HonorSealLimitError,
 } from "../services/honorCardVerification.js";
 import { renderHonorCardSvg, renderHonorCardHtml } from "../services/honorCardOgRenderer.js";
+import { renderDuelCardSvg } from "../services/duelOgRenderer.js";
+import { getCustomLobbyByCode } from "../services/backtestTournaments/store.js";
 
 const router: IRouter = Router();
 
@@ -25,7 +27,7 @@ function resolveTrustedBaseUrl(): string {
   } catch {
     // fall through
   }
-  return "https://aureus.trade";
+  return "https://aureus-os.app";
 }
 
 interface PublicStatsDto {
@@ -132,6 +134,35 @@ router.get("/public/og-honor/:hash", async (req, res) => {
   } catch (error) {
     logger.warn({ err: error }, "og-honor svg rendering failed");
     res.status(500).send("Errore durante la generazione della scheda OpenGraph");
+  }
+});
+
+// ── GET /public/og-duello/:code: Render OpenGraph vettoriale ad alta definizione per le Arene ──
+router.get("/public/og-duello/:code", async (req, res) => {
+  try {
+    const rawParam = Array.isArray(req.params.code) ? req.params.code[0] : req.params.code;
+    const rawCode = (rawParam || "").replace(/\.(svg|png)$/i, "").trim();
+    if (!rawCode) {
+      res.status(400).send("Codice stanza mancante");
+      return;
+    }
+
+    const lobby = await getCustomLobbyByCode(rawCode);
+    const svg = renderDuelCardSvg({
+      code: rawCode,
+      hostName: lobby?.hostDisplayName ?? "Guerriero Aureus",
+      pair: lobby?.pair ?? "XAUUSD",
+      timeframe: lobby?.timeframe ?? "M5",
+      durationMinutes: Math.round((lobby?.timeLimitSeconds ?? 900) / 60),
+      status: lobby?.status ?? "active",
+    });
+
+    res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400");
+    res.send(svg);
+  } catch (error) {
+    logger.warn({ err: error }, "og-duello svg rendering failed");
+    res.status(500).send("Errore durante la generazione della scheda duello");
   }
 });
 

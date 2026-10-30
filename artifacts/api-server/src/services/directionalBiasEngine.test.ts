@@ -6,6 +6,8 @@ import {
   aggregateBarsToW1,
   analyzeTimeframe,
   evaluateMacroFactors,
+  buildLongTermRecommendation,
+  rankLongTermRecommendations,
 } from "./directionalBiasEngine.js";
 import type { Candle } from "./candles.js";
 
@@ -158,4 +160,45 @@ test("evaluateMacroFactors accounts for Flight to Safety on Gold in risk-off reg
   assert.ok(result.factors.geopolitics.score > 30);
   assert.equal(result.factors.geopolitics.status, "BULLISH");
   assert.ok(result.macroScore > 0);
+});
+
+test("rankLongTermRecommendations ranks Tier A+ aligned pairs first and filters out counter-trend warnings", () => {
+  const d1Bull: Candle[] = [];
+  let p = 2000;
+  for (let i = 0; i < 30; i++) {
+    d1Bull.push({ time: i * 86400, open: p, high: p + 15, low: p - 5, close: p + 10, volume: 1000 });
+    p += 10;
+  }
+
+  const xauBias = computeDirectionalBias({
+    pair: "XAUUSD",
+    currentPrice: 2150,
+    d1Bars: d1Bull,
+    h4Bars: d1Bull.slice(-15),
+  });
+
+  const counterTrendBias = {
+    ...computeDirectionalBias({ pair: "USDCAD", currentPrice: 1.38 }),
+    h4MasterBias: "BULLISH" as const,
+    edgeTier: "COUNTER_TREND_WARNING" as const,
+    antiFadeProtected: true,
+    confidenceScore: 32,
+  };
+
+  const btcBias = computeDirectionalBias({
+    pair: "BTCUSD",
+  });
+
+  const ranked = rankLongTermRecommendations([counterTrendBias, btcBias, xauBias], 5);
+
+  assert.ok(ranked.recommendations.length >= 2);
+  assert.equal(
+    ranked.recommendations.some((r) => r.pair === "USDCAD"),
+    false,
+    "Counter-trend warning pairs must be excluded from top long-term recommendations",
+  );
+  assert.ok(ranked.recommendations[0].rankScore >= ranked.recommendations[1].rankScore);
+  const recXau = buildLongTermRecommendation(xauBias);
+  assert.equal(recXau.direction, "BULLISH");
+  assert.ok(recXau.thesis.length > 0);
 });

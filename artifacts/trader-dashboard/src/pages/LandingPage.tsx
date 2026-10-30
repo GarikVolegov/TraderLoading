@@ -2,7 +2,15 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Seo } from "@/components/Seo";
-import { absoluteUrl, faqJsonLd, landingAlternates, landingPath } from "@/lib/seo";
+import {
+  absoluteUrl,
+  aureusKnowledgeGraphJsonLd,
+  faqJsonLd,
+  landingAlternates,
+  landingPath,
+  seoPagePath,
+  SEO_PAGE_KEYS,
+} from "@/lib/seo";
 import { initialTourState, isTourComplete, tourReducer } from "@/lib/landingTour";
 import { trackEvent } from "@/lib/analytics";
 import { startLandingMotion } from "@/lib/landingMotion";
@@ -1030,7 +1038,7 @@ export default function LandingPage() {
         lang={language}
         canonical={absoluteUrl(landingPath(language))}
         alternates={landingAlternates()}
-        jsonLd={[faqSchema]}
+        jsonLd={[aureusKnowledgeGraphJsonLd(language), faqSchema]}
       />
 
       <a className="landing-skip sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#C5A059] focus:text-[#0A0A0C] focus:font-bold" href="#landing-main">
@@ -2557,12 +2565,50 @@ export default function LandingPage() {
           <div className="pt-6 border-t border-[#24242C]/50 flex flex-wrap items-center justify-center gap-6 text-xs font-mono text-[#8E8E99]">
             <Link href="/" className="hover:text-white transition-colors">PORTALE PRINCIPALE</Link>
             <Link href="/protocollo" className="hover:text-white transition-colors">PROTOCOLLO OPERATIVO</Link>
-            <Link href="/academy" className="hover:text-white transition-colors">ACCADEMIA SANDBOX</Link>
-            <Link href="/sign-in" className="hover:text-white transition-colors">ACCEDI ALL'ORDINE</Link>
+            <Link href="/academy" className="hover:text-white transition-colors">LA DOTTRINA DEL TEMPO</Link>
+            <Link href="/verifica" className="hover:text-white transition-colors">VERIFICA CERTIFICATI ON-CHAIN</Link>
+            <Link href="/sign-in" className="hover:text-white transition-colors">ACCEDI ALL&apos;ORDINE</Link>
           </div>
 
+          {/* Sovereign SEO & Ecosystem Discovery Matrix (Crawled by Googlebot & AI Search Engines) */}
+          <nav
+            aria-label="Architettura e Pilastri del Protocollo AUREUS"
+            className="max-w-5xl mx-auto px-4 pt-6 border-t border-[#24242C]/40 space-y-4"
+          >
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] font-mono text-[#8E8E99]">
+              {SEO_PAGE_KEYS.map((key) => (
+                <Link
+                  key={key}
+                  href={seoPagePath(key, language)}
+                  className="hover:text-[#E8C56A] transition-colors whitespace-nowrap"
+                >
+                  {t(`seo.${key}.eyebrow`)}
+                </Link>
+              ))}
+              <Link href="/privacy" className="hover:text-[#E8C56A] transition-colors whitespace-nowrap">
+                {t("landing.footer.privacy")}
+              </Link>
+              <Link href="/terms" className="hover:text-[#E8C56A] transition-colors whitespace-nowrap">
+                {t("landing.footer.terms")}
+              </Link>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 text-[10px] font-mono text-[#8E8E99]/75">
+              <span className="text-[#C5A059] uppercase tracking-widest">Edizioni Internazionali:</span>
+              <Link href="/it" className="hover:text-white transition-colors whitespace-nowrap">Italiano (IT)</Link>
+              <span>·</span>
+              <Link href="/" className="hover:text-white transition-colors whitespace-nowrap">English (EN)</Link>
+              <span>·</span>
+              <Link href="/es" className="hover:text-white transition-colors whitespace-nowrap">Español (ES)</Link>
+              <span>·</span>
+              <Link href="/fr" className="hover:text-white transition-colors whitespace-nowrap">Français (FR)</Link>
+              <span>·</span>
+              <Link href="/de" className="hover:text-white transition-colors whitespace-nowrap">Deutsch (DE)</Link>
+            </div>
+          </nav>
+
           <div className="font-mono text-[10px] text-slate-600">
-            © 2026 AUREUS PROTOCOL. TUTTI I DIRITTI RISERVATI. ARCHITETTURA E CICLO OPERATIVO.
+            © 2026 AUREUS PROTOCOL (https://aureus-os.app). TUTTI I DIRITTI RISERVATI. ARCHITETTURA E CICLO OPERATIVO.
           </div>
         </footer>
       </main>

@@ -80,7 +80,7 @@ export function buildShareableCertificateUrl(cert: CertificateData): string {
   const origin =
     typeof window !== "undefined" && window.location?.origin
       ? window.location.origin
-      : "https://limen.trade";
+      : "https://aureus-os.app";
   const grade = Math.max(1, Math.min(5, cert.level || 1));
   const hash = computeCertHash({ id: cert.id, level: grade, userId: cert.userId });
   const dateStr =
@@ -245,8 +245,8 @@ export function generateCertificateSvg(
 
   <!-- Embedded Hidden Metadata (Accessible by scrapers/parsers) -->
   <metadata>
-    <limen:certificate
-      xmlns:limen="https://limen.trade/protocol"
+    <aureus:certificate
+      xmlns:aureus="https://aureus-os.app/protocol"
       id="${cert.id}"
       grade="${gradeNum}"
       roman="${roman}"

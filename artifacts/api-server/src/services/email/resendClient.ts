@@ -15,7 +15,7 @@ export interface EmailClient {
 }
 
 function defaultFrom(): string {
-  return process.env.EMAIL_FROM || "AUREUS PROTOCOL <assistenza@traderloading.com>";
+  return process.env.EMAIL_FROM || "AUREUS PROTOCOL <assistenza@aureus-os.app>";
 }
 
 function ensureClient(): EmailClient | null {

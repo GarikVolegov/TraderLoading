@@ -72,7 +72,7 @@ export function parseRSS(xml: string, sourceName: string): NewsArticle[] {
 
 async function fetchFeed(url: string, sourceName: string): Promise<NewsArticle[]> {
   const response = await fetch(url, {
-    headers: { "User-Agent": "TraderLoading/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" },
+    headers: { "User-Agent": "AUREUS/1.0", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" },
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);

@@ -55,3 +55,37 @@ export const reviewPromptStateTable = pgTable("review_prompt_state", {
 
 export type ReviewPromptState = typeof reviewPromptStateTable.$inferSelect;
 export type InsertReviewPromptState = typeof reviewPromptStateTable.$inferInsert;
+
+// Tracciamento sovrano delle conversioni e telemetria GEO / SEM (finestra 60 giorni).
+export const semAttributionsTable = pgTable(
+  "sem_attributions",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id"),
+    channel: varchar("channel", { length: 32 }).notNull(), // ai_search | paid_sem | organic_search | social | referral | direct
+    aiEngine: varchar("ai_engine", { length: 32 }), // chatgpt | perplexity | claude | gemini | copilot | grok | you | phind | meta_ai
+    utmSource: varchar("utm_source", { length: 180 }),
+    utmMedium: varchar("utm_medium", { length: 180 }),
+    utmCampaign: varchar("utm_campaign", { length: 180 }),
+    utmTerm: varchar("utm_term", { length: 180 }),
+    utmContent: varchar("utm_content", { length: 180 }),
+    gclid: varchar("gclid", { length: 180 }),
+    fbclid: varchar("fbclid", { length: 180 }),
+    msclkid: varchar("msclkid", { length: 180 }),
+    ttclid: varchar("ttclid", { length: 180 }),
+    twclid: varchar("twclid", { length: 180 }),
+    referrerHost: varchar("referrer_host", { length: 180 }),
+    landingPath: varchar("landing_path", { length: 255 }).notNull().default("/"),
+    ipHash: varchar("ip_hash", { length: 64 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("sem_attributions_user_id_idx").on(table.userId),
+    channelIdx: index("sem_attributions_channel_idx").on(table.channel),
+    aiEngineIdx: index("sem_attributions_ai_engine_idx").on(table.aiEngine),
+    createdAtIdx: index("sem_attributions_created_at_idx").on(table.createdAt),
+  }),
+);
+
+export type SemAttribution = typeof semAttributionsTable.$inferSelect;
+export type InsertSemAttribution = typeof semAttributionsTable.$inferInsert;

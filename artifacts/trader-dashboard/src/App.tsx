@@ -669,7 +669,10 @@ function AppShell() {
   }
 
   if (!isLoaded) {
-    if (authTimedOut && location === "/") {
+    const hasSessionCookie =
+      typeof document !== "undefined" &&
+      /(?:^|;\s*)(?:__session|__client_uat)=/.test(document.cookie);
+    if (location === "/" && (!hasSessionCookie || authTimedOut)) {
       return (
         <Suspense fallback={<PageFallback />}>
           <LandingPage />

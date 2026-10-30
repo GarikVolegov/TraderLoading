@@ -65,6 +65,15 @@ import type { VarcoSetupPlan } from "@workspace/api-client-react";
 import { getLimenSessionInfo } from "@/lib/limenSession";
 import { computeLots, pipValuePerLot } from "@/lib/replay/lotSizing";
 import { getPipMultiplier } from "@/lib/pipMultiplier";
+import {
+  computeDailyChangeTelemetry,
+  computeLiveAtrPips,
+  formatRelativeHorizonDelta,
+  loadCachedCandles,
+  loadChartMemory,
+  saveCachedCandles,
+  saveChartMemory,
+} from "@/lib/chart/chartMemoryEngine";
 import "./LimenProprietaryChart.css";
 
 export interface PlannedTradeInfo {
@@ -248,19 +257,41 @@ function normalizeToApiInterval(tf: string): string {
   return norm;
 }
 
+function formatCleanPairLabel(sym: string): string {
+  const raw = sym.includes(":") ? sym.split(":").pop()! : sym;
+  const clean = raw.trim().toUpperCase().replace(/[\/\-_]/g, "");
+  if (clean.length === 6 && !clean.includes("30") && !clean.includes("100") && !clean.includes("500")) {
+    return `${clean.slice(0, 3)}/${clean.slice(3, 6)}`;
+  }
+  return clean;
+}
+
+function formatHumanTimeframe(tf: string): string {
+  const norm = tf.trim().toUpperCase();
+  if (norm === "1" || norm === "M1") return "1m";
+  if (norm === "5" || norm === "M5") return "5m";
+  if (norm === "15" || norm === "M15") return "15m";
+  if (norm === "30" || norm === "M30") return "30m";
+  if (norm === "60" || norm === "H1" || norm === "1H") return "1H";
+  if (norm === "240" || norm === "H4" || norm === "4H") return "4H";
+  if (norm === "D" || norm === "D1" || norm === "1D") return "1D";
+  if (norm === "W" || norm === "W1" || norm === "1W") return "1W";
+  return norm;
+}
+
 function getFutureWhitespaceBars(lastTime: number, interval: string): Array<{ time: Time }> {
   const norm = interval.trim().toUpperCase();
   let step = 3600;
-  let count = 48;
+  let count = 160;
 
-  if (norm === "1" || norm === "M1") { step = 60; count = 120; }
-  else if (norm === "5" || norm === "M5") { step = 300; count = 72; }
-  else if (norm === "15" || norm === "M15") { step = 900; count = 48; }
-  else if (norm === "30" || norm === "M30") { step = 1800; count = 48; }
-  else if (norm === "60" || norm === "H1" || norm === "1H") { step = 3600; count = 48; }
-  else if (norm === "240" || norm === "H4" || norm === "4H") { step = 14400; count = 36; }
-  else if (norm === "D" || norm === "D1" || norm === "1D") { step = 86400; count = 30; }
-  else if (norm === "W" || norm === "W1" || norm === "1W") { step = 604800; count = 16; }
+  if (norm === "1" || norm === "M1") { step = 60; count = 240; }
+  else if (norm === "5" || norm === "M5") { step = 300; count = 200; }
+  else if (norm === "15" || norm === "M15") { step = 900; count = 180; }
+  else if (norm === "30" || norm === "M30") { step = 1800; count = 160; }
+  else if (norm === "60" || norm === "H1" || norm === "1H") { step = 3600; count = 160; }
+  else if (norm === "240" || norm === "H4" || norm === "4H") { step = 14400; count = 120; }
+  else if (norm === "D" || norm === "D1" || norm === "1D") { step = 86400; count = 90; }
+  else if (norm === "W" || norm === "W1" || norm === "1W") { step = 604800; count = 52; }
 
   const out: Array<{ time: Time }> = [];
   for (let i = 1; i <= count; i++) {
@@ -303,6 +334,8 @@ export function LimenProprietaryChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const priceSeriesRef = useRef<ISeriesApi<"Candlestick"> | ISeriesApi<"Line"> | null>(null);
+  const futureHorizonSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const catalogSeriesRef = useRef<Map<string, ISeriesApi<"Line">>>(new Map());
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const ema20Ref = useRef<ISeriesApi<"Line"> | null>(null);
   const ema50Ref = useRef<ISeriesApi<"Line"> | null>(null);
@@ -341,47 +374,79 @@ export function LimenProprietaryChart({
   const [settingsIndicatorId, setSettingsIndicatorId] = useState<string | undefined>();
   const [knowledgeToolId, setKnowledgeToolId] = useState<DrawingToolId | null>(null);
 
-  // Stato Dati & Feed
+  // Stato Dati & Feed (con Idratazione Istantanea da Cache Locale < 16ms)
   const [chartInstance, setChartInstance] = useState(0);
-  const [candles, setCandles] = useState<CandleBar[]>([]);
+  const [candles, setCandles] = useState<CandleBar[]>(() => {
+    const rawSym = symbol.includes(":") ? symbol.split(":").pop()! : symbol;
+    const cleanSym = rawSym.trim().toUpperCase().replace(/[\/\-_]/g, "");
+    const cached = loadCachedCandles(cleanSym, normalizeToApiInterval(interval));
+    return cached ?? [];
+  });
   // ── Storico infinito all'indietro (Il Varco) ──
   const candlesRef = useRef<CandleBar[]>([]);
   candlesRef.current = candles;
+  const intervalRef = useRef(interval);
+  intervalRef.current = interval;
   const prependShiftRef = useRef(0);
   const loadOlderRef = useRef<() => void>(() => {});
   const [feedStatus, setFeedStatus] = useState<FeedStatus>("connecting");
   const [statusMessage, setStatusMessage] = useState<string>("");
   const cameraAnchorRef = useRef<{ centerTime: number | null; isNearLive: boolean } | null>(null);
   const chartType = settings.chartType ?? "candles";
-  // ── Gestione Indicatori e Modalità Grafico Pulito (Naked Price Action) ──
+
+  // ── Memoria Totale del Grafico (chartMemoryEngine) & Modalità Grafico Pulito ──
+  const initialMemory = useMemo(() => loadChartMemory(), []);
+
   const [indicators, setIndicators] = useState<IndicatorConfig[]>(() => {
     if (typeof window !== "undefined") {
       const mode = localStorage.getItem("limen_clean_chart_mode");
+      if (mode === "true") {
+        return defaultIndicators().map((ind) => ({ ...ind, on: false }));
+      }
+      if (initialMemory.indicators && initialMemory.indicators.length > 0) {
+        return initialMemory.indicators;
+      }
       if (mode === "false") {
         return defaultIndicators();
       }
     }
-    // Default pulito: indicatori spenti per avere il grafico più pulito possibile (Price Action pura)
     return defaultIndicators().map((ind) => ({ ...ind, on: false }));
   });
 
   const [showSessionsState, setShowSessionsState] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const mode = localStorage.getItem("limen_clean_chart_mode");
+      if (mode === "true") return false;
+      if (initialMemory.updatedAt > 0) return initialMemory.showSessions;
       if (mode === "false") return settings.showSessions ?? false;
-      return false;
     }
     return false;
   });
 
   const showSessions = showSessionsState;
   const showVolume = indicators.some((ind) => ind.on && ind.type === "volume");
-  const [showEma, setShowEma] = useState(false);
-  const [showAutoFvg, setShowAutoFvg] = useState(false);
+  const [showEma, setShowEma] = useState<boolean>(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("limen_clean_chart_mode") === "true") {
+      return false;
+    }
+    return initialMemory.showEma;
+  });
+  const [showAutoFvg, setShowAutoFvg] = useState<boolean>(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("limen_clean_chart_mode") === "true") {
+      return false;
+    }
+    return initialMemory.showAutoFvg;
+  });
 
   // Stato Disegni (sincronizzazione immediata Varco <-> Backtest)
   const [activeTool, setActiveTool] = useState<DrawingToolId>("cursor");
-  const [ticket, setTicket] = useState({ slPips: 25, tpPips: 75, riskMode: "percent" as const, riskValue: 1, comment: "" });
+  const [ticket, setTicket] = useState(() => ({
+    slPips: initialMemory.slPips || 25,
+    tpPips: initialMemory.tpPips || 75,
+    riskMode: "percent" as const,
+    riskValue: initialMemory.riskValue || 1,
+    comment: "",
+  }));
   const [drawings, setDrawingsState] = useState<ReplayDrawing[]>(() =>
     loadChartDrawings(symbol, interval),
   );
@@ -389,6 +454,15 @@ export function LimenProprietaryChart({
   const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 });
   const [hoverBar, setHoverBar] = useState<CandleBar | null>(null);
   const [crosshairY, setCrosshairY] = useState<number | null>(null);
+  const [crosshairDetails, setCrosshairDetails] = useState<{
+    x: number;
+    y: number;
+    time: number;
+    price: number | null;
+    isFuture: boolean;
+    barsDelta: number;
+  } | null>(null);
+  const [isScrolledAway, setIsScrolledAway] = useState(false);
   const [chartContextMenu, setChartContextMenu] = useState<{
     x: number;
     y: number;
@@ -397,7 +471,7 @@ export function LimenProprietaryChart({
   } | null>(null);
   const [objectTreeOpen, setObjectTreeOpen] = useState(false);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
-  const [layout, setLayout] = useState<"1x1" | "1x2" | "2x1" | "2x2">("1x1");
+  const [layout, setLayout] = useState<"1x1" | "1x2" | "2x1" | "2x2">(() => initialMemory.layout || "1x1");
   const [activePane, setActivePane] = useState<"primary" | "secondary">("primary");
 
   // Replay Mode & Scissors Cut Tool (TradingView Pro Image 4)
@@ -415,8 +489,9 @@ export function LimenProprietaryChart({
   const [showLiquidityLevels, setShowLiquidityLevels] = useState(() => {
     if (typeof window !== "undefined") {
       const mode = localStorage.getItem("limen_clean_chart_mode");
+      if (mode === "true") return false;
+      if (initialMemory.updatedAt > 0) return initialMemory.showLiquidityLevels;
       if (mode === "false") return true;
-      return false;
     }
     return false;
   });
@@ -424,8 +499,9 @@ export function LimenProprietaryChart({
   const [showWyckoff, setShowWyckoff] = useState(() => {
     if (typeof window !== "undefined") {
       const mode = localStorage.getItem("limen_clean_chart_mode");
+      if (mode === "true") return false;
+      if (initialMemory.updatedAt > 0) return initialMemory.showWyckoff;
       if (mode === "false") return true;
-      return false;
     }
     return false;
   });
@@ -435,7 +511,7 @@ export function LimenProprietaryChart({
       const saved = localStorage.getItem("limen_chart_show_red_news_v1");
       if (saved != null) return saved === "true";
     } catch {}
-    return true;
+    return initialMemory.showRedNews ?? true;
   });
 
   const [imminentRedNews, setImminentRedNews] = useState<{
@@ -444,6 +520,37 @@ export function LimenProprietaryChart({
     time: number;
     countdownMin: number;
   } | null>(null);
+
+  // Persistenza automatica in chartMemoryEngine ad ogni modifica di configurazione
+  useEffect(() => {
+    saveChartMemory({
+      showSessions: showSessionsState,
+      showLiquidityLevels,
+      showWyckoff,
+      showEma,
+      showAutoFvg,
+      showVolume,
+      showRedNews,
+      indicators,
+      layout,
+      riskValue: ticket.riskValue,
+      slPips: ticket.slPips,
+      tpPips: ticket.tpPips,
+    });
+  }, [
+    showSessionsState,
+    showLiquidityLevels,
+    showWyckoff,
+    showEma,
+    showAutoFvg,
+    showVolume,
+    showRedNews,
+    indicators,
+    layout,
+    ticket.riskValue,
+    ticket.slPips,
+    ticket.tpPips,
+  ]);
 
   const toggleRedNews = useCallback(() => {
     setShowRedNews((prev) => {
@@ -1125,24 +1232,40 @@ export function LimenProprietaryChart({
       priceSeriesRef.current = candleSeries;
     }
 
+    // Serie invisibile di Orizzonte Futuro (WhitespaceData per asse temporale e News future senza interferire con .update() live)
+    futureHorizonSeriesRef.current = chart.addSeries(LineSeries, {
+      color: "rgba(0, 0, 0, 0)",
+      lineWidth: 1,
+      visible: true,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+
     // Indicatori EMA
     ema20Ref.current = chart.addSeries(LineSeries, {
       color: "#3b82f6",
       lineWidth: 1,
       visible: false,
       title: "EMA 20",
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
     ema50Ref.current = chart.addSeries(LineSeries, {
       color: "#f59e0b",
       lineWidth: 1,
       visible: false,
       title: "EMA 50",
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
     ema200Ref.current = chart.addSeries(LineSeries, {
       color: "#8b5cf6",
       lineWidth: 2,
       visible: false,
       title: "EMA 200",
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
 
     // Filigrana discreta TradingView-style
@@ -1152,7 +1275,7 @@ export function LimenProprietaryChart({
         vertAlign: "center",
         lines: [
           {
-            text: `${symbol}  ·  ${interval}`,
+            text: `${formatCleanPairLabel(symbol)}  ·  ${formatHumanTimeframe(interval)}`,
             color: "rgba(255, 255, 255, 0.04)",
             fontSize: 32,
             fontStyle: "bold",
@@ -1161,21 +1284,64 @@ export function LimenProprietaryChart({
       });
     }
 
-    // Crosshair hover listener per OHLC legend (RAF-throttled & deduplicato per 120 FPS)
+    // Crosshair hover listener per OHLC legend + Telemetria Orizzonte Futuro (RAF-throttled & deduplicato per 120 FPS)
     let hoverRaf: number | null = null;
     let pendingHover: CandleBar | null | undefined = undefined;
     let pendingCrosshairY: number | null = null;
+    let pendingCrosshairDetails: {
+      x: number;
+      y: number;
+      time: number;
+      price: number | null;
+      isFuture: boolean;
+      barsDelta: number;
+    } | null = null;
+
     chart.subscribeCrosshairMove((param) => {
-      if (param.point && typeof param.point.y === "number") {
+      if (param.point && typeof param.point.y === "number" && typeof param.point.x === "number") {
         pendingCrosshairY = param.point.y;
+        const curBars = candlesRef.current;
+        const tfSec = timeframeToSeconds(interval);
+        const priceAtY = priceSeriesRef.current?.coordinateToPrice(param.point.y) ?? null;
+        let resolvedTime: number | null =
+          typeof param.time === "number" ? param.time : null;
+        let logicalIdx: number | null =
+          typeof param.logical === "number"
+            ? param.logical
+            : chart.timeScale().coordinateToLogical(param.point.x);
+
+        if (resolvedTime == null && logicalIdx != null && curBars.length > 0) {
+          resolvedTime = timeAtLogicalIndex(curBars as any, logicalIdx, tfSec);
+        }
+
+        if (resolvedTime != null && curBars.length > 0) {
+          const lastBar = curBars[curBars.length - 1]!;
+          const isFuture = resolvedTime > lastBar.time;
+          const barsDelta =
+            logicalIdx != null
+              ? Math.round(logicalIdx - (curBars.length - 1))
+              : Math.round((resolvedTime - lastBar.time) / Math.max(60, tfSec));
+          pendingCrosshairDetails = {
+            x: param.point.x,
+            y: param.point.y,
+            time: resolvedTime,
+            price: priceAtY != null && Number.isFinite(priceAtY) ? priceAtY : null,
+            isFuture,
+            barsDelta,
+          };
+        } else {
+          pendingCrosshairDetails = null;
+        }
       } else {
         pendingCrosshairY = null;
+        pendingCrosshairDetails = null;
       }
+
       if (!param.time || !param.seriesData) {
         pendingHover = null;
       } else {
         const data = param.seriesData.get(priceSeriesRef.current!) as any;
-        if (data) {
+        if (data && (data.close != null || data.value != null)) {
           pendingHover = {
             time: typeof param.time === "number" ? param.time : 0,
             open: data.open ?? data.value,
@@ -1183,12 +1349,27 @@ export function LimenProprietaryChart({
             low: data.low ?? data.value,
             close: data.close ?? data.value,
           };
+        } else {
+          pendingHover = null;
         }
       }
       if (hoverRaf != null) return;
       hoverRaf = requestAnimationFrame(() => {
         hoverRaf = null;
         setCrosshairY((prevY) => (prevY === pendingCrosshairY ? prevY : pendingCrosshairY));
+        setCrosshairDetails((prevD) => {
+          if (prevD === null && pendingCrosshairDetails === null) return prevD;
+          if (
+            prevD &&
+            pendingCrosshairDetails &&
+            prevD.time === pendingCrosshairDetails.time &&
+            Math.abs(prevD.x - pendingCrosshairDetails.x) < 1 &&
+            Math.abs(prevD.y - pendingCrosshairDetails.y) < 1
+          ) {
+            return prevD;
+          }
+          return pendingCrosshairDetails;
+        });
         if (pendingHover === undefined) return;
         const next = pendingHover;
         setHoverBar((prev) => {
@@ -1218,6 +1399,49 @@ export function LimenProprietaryChart({
       });
     };
 
+    // Tracker inerzia cinetica + drag verticale scala prezzi (120 FPS lockstep per i disegni)
+    let kineticRaf: number | null = null;
+    let kineticUntil = 0;
+    let isPointerActive = false;
+    let lastTopPrice: number | null = null;
+    let lastBottomPrice: number | null = null;
+    let lastFromLogical: number | null = null;
+    let lastToLogical: number | null = null;
+
+    const runKineticTick = () => {
+      kineticRaf = null;
+      const pSeries = priceSeriesRef.current;
+      const lRange = chart.timeScale().getVisibleLogicalRange();
+      const topP = pSeries?.coordinateToPrice(0) ?? null;
+      const botP = pSeries?.coordinateToPrice(container.clientHeight || 400) ?? null;
+      const fromL = lRange?.from ?? null;
+      const toL = lRange?.to ?? null;
+
+      if (
+        topP !== lastTopPrice ||
+        botP !== lastBottomPrice ||
+        fromL !== lastFromLogical ||
+        toL !== lastToLogical
+      ) {
+        lastTopPrice = topP;
+        lastBottomPrice = botP;
+        lastFromLogical = fromL;
+        lastToLogical = toL;
+        setRevision((r) => r + 1);
+      }
+
+      if (isPointerActive || performance.now() < kineticUntil) {
+        kineticRaf = requestAnimationFrame(runKineticTick);
+      }
+    };
+
+    const startKineticSync = (tailMs = 650) => {
+      kineticUntil = Math.max(kineticUntil, performance.now() + tailMs);
+      if (kineticRaf == null) {
+        kineticRaf = requestAnimationFrame(runKineticTick);
+      }
+    };
+
     // Resize Observer
     const ro = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -1234,36 +1458,69 @@ export function LimenProprietaryChart({
     const onLogicalRangeChange = (range: { from: number; to: number } | null) => {
       scheduleRevision();
       if (range && range.from < 50) loadOlderRef.current();
+      const total = candlesRef.current.length;
+      if (range && total > 10) {
+        const away = range.to < total - 10 || range.from > total + 4;
+        setIsScrolledAway((prev) => (prev === away ? prev : away));
+      } else {
+        setIsScrolledAway(false);
+      }
     };
     chart.timeScale().subscribeVisibleLogicalRangeChange(onLogicalRangeChange);
     chart.timeScale().subscribeVisibleTimeRangeChange(onVisibleRangeChange);
     setChartInstance((c) => c + 1);
 
+    const onPointerDown = () => {
+      isPointerActive = true;
+      scheduleRevision();
+      startKineticSync(250);
+    };
     const onPointerMove = (e: PointerEvent) => {
-      if (e.buttons > 0) {
+      if (e.buttons > 0 || isPointerActive) {
         scheduleRevision();
+        startKineticSync(350);
       }
     };
+    const onPointerUp = () => {
+      isPointerActive = false;
+      scheduleRevision();
+      startKineticSync(700);
+    };
+    const onWheel = () => {
+      scheduleRevision();
+      startKineticSync(500);
+    };
 
-    container.addEventListener("pointerdown", scheduleRevision);
+    container.addEventListener("pointerdown", onPointerDown);
     container.addEventListener("pointermove", onPointerMove);
-    container.addEventListener("pointerup", scheduleRevision);
-    container.addEventListener("wheel", scheduleRevision, { passive: true });
+    window.addEventListener("pointerup", onPointerUp);
+    container.addEventListener("touchstart", onPointerDown, { passive: true });
+    container.addEventListener("touchmove", onWheel, { passive: true });
+    container.addEventListener("touchend", onPointerUp, { passive: true });
+    container.addEventListener("wheel", onWheel, { passive: true });
+
+    const catalogMap = catalogSeriesRef.current;
 
     return () => {
-      container.removeEventListener("pointerdown", scheduleRevision);
+      container.removeEventListener("pointerdown", onPointerDown);
       container.removeEventListener("pointermove", onPointerMove);
-      container.removeEventListener("pointerup", scheduleRevision);
-      container.removeEventListener("wheel", scheduleRevision);
+      window.removeEventListener("pointerup", onPointerUp);
+      container.removeEventListener("touchstart", onPointerDown);
+      container.removeEventListener("touchmove", onWheel);
+      container.removeEventListener("touchend", onPointerUp);
+      container.removeEventListener("wheel", onWheel);
       if (animFrame != null) cancelAnimationFrame(animFrame);
       if (hoverRaf != null) cancelAnimationFrame(hoverRaf);
+      if (kineticRaf != null) cancelAnimationFrame(kineticRaf);
       ro.disconnect();
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(onLogicalRangeChange);
       chart.timeScale().unsubscribeVisibleTimeRangeChange(onVisibleRangeChange);
       watermarkRef.current?.detach();
+      catalogMap.clear();
       chart.remove();
       chartRef.current = null;
       priceSeriesRef.current = null;
+      futureHorizonSeriesRef.current = null;
       volumeSeriesRef.current = null;
     };
   }, [
@@ -1287,7 +1544,7 @@ export function LimenProprietaryChart({
     settings.showWatermark,
   ]);
 
-  // ── Sincronizzazione Reattiva Dati Serie (Garantisce Candele Sempre Visibili) ──
+  // ── Sincronizzazione Reattiva Dati Serie (Garantisce Candele + Orizzonte Futuro Sempre Visibili) ──
   useEffect(() => {
     if (!priceSeriesRef.current || candles.length === 0) return;
     const isFullReload =
@@ -1312,6 +1569,14 @@ export function LimenProprietaryChart({
           value: b.close,
         })) as any,
       );
+      if (futureHorizonSeriesRef.current && displayBars.length > 0) {
+        const lastBar = displayBars[displayBars.length - 1]!;
+        const futureWhitespace = getFutureWhitespaceBars(lastBar.time, intervalRef.current);
+        futureHorizonSeriesRef.current.setData([
+          { time: lastBar.time as Time, value: lastBar.close },
+          ...futureWhitespace,
+        ] as any);
+      }
       if (volumeSeriesRef.current) {
         volumeSeriesRef.current.setData(
           candles.map((b) => ({
@@ -1353,14 +1618,14 @@ export function LimenProprietaryChart({
             const visibleBars = Math.min(120, totalBars);
             chartRef.current?.timeScale().setVisibleLogicalRange({
               from: Math.max(0, totalBars - visibleBars),
-              to: totalBars + 8,
+              to: totalBars + 20,
             });
           }
         } else {
           const visibleBars = Math.min(120, totalBars);
           chartRef.current?.timeScale().setVisibleLogicalRange({
             from: Math.max(0, totalBars - visibleBars),
-            to: totalBars + 8,
+            to: totalBars + 20,
           });
         }
       }
@@ -1378,7 +1643,7 @@ export function LimenProprietaryChart({
         vertAlign: "center",
         lines: [
           {
-            text: `${symbol}  ·  ${interval}`,
+            text: `${formatCleanPairLabel(symbol)}  ·  ${formatHumanTimeframe(interval)}`,
             color: "rgba(255, 255, 255, 0.04)",
             fontSize: 32,
             fontStyle: "bold",
@@ -1394,6 +1659,12 @@ export function LimenProprietaryChart({
     const rawSym = symbol.includes(":") ? symbol.split(":").pop()! : symbol;
     const cleanSym = rawSym.trim().toUpperCase().replace(/[\/\-_]/g, "");
     const apiTf = normalizeToApiInterval(interval);
+
+    // Idratazione istantanea da cache locale al cambio coppia/timeframe
+    const cached = loadCachedCandles(cleanSym, apiTf);
+    if (cached && cached.length > 0 && candlesRef.current.length === 0) {
+      setCandles(cached);
+    }
 
     const loadHistory = async () => {
       try {
@@ -1427,21 +1698,26 @@ export function LimenProprietaryChart({
             volume: c.volume != null ? Number(c.volume) : undefined,
           }));
 
+          saveCachedCandles(cleanSym, apiTf, bars);
           const displayBars = chartType === "heikin" ? toHeikinAshi(bars) : bars;
           setCandles(bars);
 
           if (priceSeriesRef.current && displayBars.length > 0) {
-            const lastBarTime = displayBars[displayBars.length - 1].time;
+            const lastBar = displayBars[displayBars.length - 1]!;
+            const lastBarTime = lastBar.time;
             const futureWhitespace = getFutureWhitespaceBars(lastBarTime, interval);
-            priceSeriesRef.current.setData([
-              ...displayBars.map((b) => ({
+            priceSeriesRef.current.setData(
+              displayBars.map((b) => ({
                 time: b.time as Time,
                 open: b.open,
                 high: b.high,
                 low: b.low,
                 close: b.close,
                 value: b.close,
-              })),
+              })) as any,
+            );
+            futureHorizonSeriesRef.current?.setData([
+              { time: lastBarTime as Time, value: lastBar.close },
               ...futureWhitespace,
             ] as any);
           }
@@ -1635,56 +1911,98 @@ export function LimenProprietaryChart({
     volumeSeriesRef.current?.applyOptions({ visible: showVolume });
   }, [showVolume]);
 
-  // Calcola e applica EMA
+  // Calcola e applica EMA + Indicatori di Prezzo dal Catalogo (BB, VWAP, SMA, WMA, EMA)
   useEffect(() => {
-    if (!showEma || candles.length < 20) {
-      ema20Ref.current?.applyOptions({ visible: false });
-      ema50Ref.current?.applyOptions({ visible: false });
-      ema200Ref.current?.applyOptions({ visible: false });
-      return;
-    }
-
-    const ema20Out = computeIndicator(
-      { id: "e20", type: "ema", on: true, period: 20, color: "#3b82f6" },
-      candles,
-    );
-    const ema50Out = computeIndicator(
-      { id: "e50", type: "ema", on: true, period: 50, color: "#f59e0b" },
-      candles,
-    );
-    const ema200Out = computeIndicator(
-      { id: "e200", type: "ema", on: true, period: 200, color: "#8b5cf6" },
-      candles,
-    );
-
     const zip = (values: (number | null)[]): { time: Time; value: number }[] => {
       const data: { time: Time; value: number }[] = [];
       for (let i = 0; i < values.length && i < candles.length; i++) {
         const val = values[i];
-        if (val != null) data.push({ time: candles[i].time as Time, value: val });
+        if (val != null && Number.isFinite(val)) {
+          data.push({ time: candles[i].time as Time, value: val });
+        }
       }
       return data;
     };
 
     const savedRange = chartRef.current?.timeScale().getVisibleLogicalRange();
-    if (ema20Ref.current && ema20Out.pane === "price" && ema20Out.lines[0]) {
-      ema20Ref.current.setData(zip(ema20Out.lines[0].values));
-      ema20Ref.current.applyOptions({ visible: true });
+
+    if (!showEma || candles.length < 20) {
+      ema20Ref.current?.applyOptions({ visible: false });
+      ema50Ref.current?.applyOptions({ visible: false });
+      ema200Ref.current?.applyOptions({ visible: false });
+    } else {
+      const ema20Out = computeIndicator(
+        { id: "e20", type: "ema", on: true, period: 20, color: "#3b82f6" },
+        candles,
+      );
+      const ema50Out = computeIndicator(
+        { id: "e50", type: "ema", on: true, period: 50, color: "#f59e0b" },
+        candles,
+      );
+      const ema200Out = computeIndicator(
+        { id: "e200", type: "ema", on: true, period: 200, color: "#8b5cf6" },
+        candles,
+      );
+
+      if (ema20Ref.current && ema20Out.pane === "price" && ema20Out.lines[0]) {
+        ema20Ref.current.setData(zip(ema20Out.lines[0].values));
+        ema20Ref.current.applyOptions({ visible: true });
+      }
+      if (ema50Ref.current && ema50Out.pane === "price" && ema50Out.lines[0]) {
+        ema50Ref.current.setData(zip(ema50Out.lines[0].values));
+        ema50Ref.current.applyOptions({ visible: true });
+      }
+      if (ema200Ref.current && ema200Out.pane === "price" && ema200Out.lines[0]) {
+        ema200Ref.current.setData(zip(ema200Out.lines[0].values));
+        ema200Ref.current.applyOptions({ visible: true });
+      }
     }
-    if (ema50Ref.current && ema50Out.pane === "price" && ema50Out.lines[0]) {
-      ema50Ref.current.setData(zip(ema50Out.lines[0].values));
-      ema50Ref.current.applyOptions({ visible: true });
+
+    // Sincronizza anche tutti gli indicatori "price" attivi nel catalogo (BB, VWAP, SMA, WMA, EMA custom)
+    const chart = chartRef.current;
+    if (chart && candles.length >= 5) {
+      const activeKeys = new Set<string>();
+      for (const cfg of indicators) {
+        if (!cfg.on || cfg.type === "volume") continue;
+        const out = computeIndicator(cfg, candles);
+        if (out.pane !== "price") continue;
+        out.lines.forEach((line, idx) => {
+          const key = `${cfg.id}:${idx}`;
+          activeKeys.add(key);
+          let series = catalogSeriesRef.current.get(key);
+          if (!series) {
+            series = chart.addSeries(LineSeries, {
+              color: line.color,
+              lineWidth: 1,
+              lineStyle: line.dashed ? 2 : 0,
+              priceLineVisible: false,
+              lastValueVisible: false,
+              crosshairMarkerVisible: false,
+            });
+            catalogSeriesRef.current.set(key, series);
+          } else {
+            series.applyOptions({
+              color: line.color,
+              lineStyle: line.dashed ? 2 : 0,
+              visible: true,
+            });
+          }
+          series.setData(zip(line.values));
+        });
+      }
+      for (const [key, series] of catalogSeriesRef.current.entries()) {
+        if (!activeKeys.has(key)) {
+          series.applyOptions({ visible: false });
+        }
+      }
     }
-    if (ema200Ref.current && ema200Out.pane === "price" && ema200Out.lines[0]) {
-      ema200Ref.current.setData(zip(ema200Out.lines[0].values));
-      ema200Ref.current.applyOptions({ visible: true });
-    }
+
     if (savedRange) {
       chartRef.current?.timeScale().setVisibleLogicalRange(savedRange);
     }
-  }, [candles, showEma]);
+  }, [candles, showEma, indicators]);
 
-  // ── 3. Proiettore Coordinate per Overlay SVG ───────────────────────────────────
+  // ── 3. Proiettore Coordinate per Overlay SVG (Sub-Bar + Orizzonte Futuro a 120 FPS) ──
   const projector: ChartProjector | null = useMemo(() => {
     const chart = chartRef.current;
     const price = priceSeriesRef.current;
@@ -1693,14 +2011,18 @@ export function LimenProprietaryChart({
     const timeScaleHeight = chart.timeScale()?.height() || 26;
     const paneWidth = Math.max(0, overlaySize.width - priceScaleWidth);
     const paneHeight = Math.max(0, overlaySize.height - timeScaleHeight);
+    const tfSec = timeframeToSeconds(interval);
 
     return {
       xForTime: (time: number) => {
-        const coordinate = chart.timeScale().timeToCoordinate(time as Time);
-        if (coordinate != null) return coordinate;
-        const tfSec = timeframeToSeconds(interval);
+        // Primary continuous sub-bar & future logical interpolation (never jumps or detaches in empty space)
         const logical = logicalIndexAtTime(candles as any, time, tfSec);
-        return logical == null ? null : chart.timeScale().logicalToCoordinate(logical as Logical);
+        if (logical != null) {
+          const coordFromLogical = chart.timeScale().logicalToCoordinate(logical as Logical);
+          if (coordFromLogical != null) return coordFromLogical;
+        }
+        const coordinate = chart.timeScale().timeToCoordinate(time as Time);
+        return coordinate != null ? coordinate : null;
       },
       yForPrice: (value: number) => {
         const coordinate = price.priceToCoordinate(value);
@@ -1708,11 +2030,13 @@ export function LimenProprietaryChart({
       },
       priceForY: (y: number) => price.coordinateToPrice(y),
       timeForX: (x: number) => {
-        const time = chart.timeScale().coordinateToTime(x);
-        if (typeof time === "number") return time;
         const logical = chart.timeScale().coordinateToLogical(x);
-        const tfSec = timeframeToSeconds(interval);
-        return logical == null ? null : timeAtLogicalIndex(candles as any, logical, tfSec);
+        if (logical != null && candles.length > 0) {
+          const fromLogical = timeAtLogicalIndex(candles as any, logical, tfSec);
+          if (fromLogical != null) return fromLogical;
+        }
+        const time = chart.timeScale().coordinateToTime(x);
+        return typeof time === "number" ? time : null;
       },
       width: overlaySize.width,
       height: overlaySize.height,
@@ -1797,8 +2121,17 @@ export function LimenProprietaryChart({
         high: b.high,
         low: b.low,
         close: b.close,
-      })),
+        value: b.close,
+      })) as any,
     );
+    if (futureHorizonSeriesRef.current && displayBars.length > 0) {
+      const lastBar = displayBars[displayBars.length - 1]!;
+      const futureWhitespace = getFutureWhitespaceBars(lastBar.time, interval);
+      futureHorizonSeriesRef.current.setData([
+        { time: lastBar.time as Time, value: lastBar.close },
+        ...futureWhitespace,
+      ] as any);
+    }
 
     // Automazione Break-Even su TP1 / BE 50% durante l'avanzamento Replay
     if (replayActive && replayCutIndex != null) {
@@ -2032,6 +2365,27 @@ export function LimenProprietaryChart({
         ? candles[candles.length - 1]
         : null;
 
+  // Telemetria Revolut-Style (Variazione Giornaliera % / Pips) + Volatilità ATR(14) in Pips
+  const dailyChange = useMemo(
+    () => computeDailyChangeTelemetry(candles, symbol, liveBar?.close),
+    [candles, symbol, liveBar?.close],
+  );
+  const atrPips = useMemo(() => computeLiveAtrPips(candles, symbol, 14), [candles, symbol]);
+
+  const handleReturnToLive = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart || candles.length === 0) return;
+    const totalBars = candles.length;
+    const visibleBars = Math.min(110, totalBars);
+    chart.timeScale().setVisibleLogicalRange({
+      from: Math.max(0, totalBars - visibleBars),
+      to: totalBars + 22,
+    });
+    chart.priceScale("right").applyOptions({ autoScale: true });
+    setIsScrolledAway(false);
+    setRevision((r) => r + 1);
+  }, [candles.length]);
+
   // Larghezza reale della scala prezzi di destra
   const priceScaleWidth = useMemo(() => {
     try {
@@ -2199,24 +2553,26 @@ export function LimenProprietaryChart({
             }}
           />
 
-          {/* Legenda OHLC Ticking Bar con pulsante ⚙ */}
+          {/* Legenda OHLC Ticking Bar con Telemetria Revolut Daily Delta + ATR(14) + Orizzonte Futuro */}
           {activeBar && (
             <div className="limen-chart-ohlc-legend" aria-hidden="true">
-              <span className="symbol-tag">{resolveTradingViewSymbol(symbol)}</span>
+              <span className="symbol-tag whitespace-nowrap">
+                {formatCleanPairLabel(symbol)} · {formatHumanTimeframe(interval)}
+              </span>
               <div className="ohlc-values">
-                <span className="val-item">
+                <span className="val-item whitespace-nowrap">
                   <span className="val-label">O</span>
                   <span className="val-num">{activeBar.open.toFixed(decimals)}</span>
                 </span>
-                <span className="val-item">
+                <span className="val-item whitespace-nowrap">
                   <span className="val-label">H</span>
                   <span className="val-num">{activeBar.high.toFixed(decimals)}</span>
                 </span>
-                <span className="val-item">
+                <span className="val-item whitespace-nowrap">
                   <span className="val-label">L</span>
                   <span className="val-num">{activeBar.low.toFixed(decimals)}</span>
                 </span>
-                <span className="val-item">
+                <span className="val-item whitespace-nowrap">
                   <span className="val-label">C</span>
                   <span
                     className={`val-num ${
@@ -2227,12 +2583,53 @@ export function LimenProprietaryChart({
                   </span>
                 </span>
                 {activeBar.volume != null && activeBar.volume > 0 && (
-                  <span className="val-item">
+                  <span className="val-item whitespace-nowrap">
                     <span className="val-label">Vol</span>
                     <span className="val-num">{activeBar.volume}</span>
                   </span>
                 )}
               </div>
+
+              {dailyChange && (
+                <span
+                  className={`limen-ohlc-delta-badge whitespace-nowrap ${
+                    dailyChange.diffPrice >= 0 ? "is-up" : "is-down"
+                  }`}
+                  title={`Variazione Sessione: ${dailyChange.diffPct >= 0 ? "+" : ""}${dailyChange.diffPct.toFixed(2)}% (${dailyChange.diffPips >= 0 ? "+" : ""}${dailyChange.diffPips.toFixed(1)} pips) · Max ${dailyChange.dayHigh.toFixed(decimals)} / Min ${dailyChange.dayLow.toFixed(decimals)}`}
+                >
+                  {dailyChange.diffPct >= 0 ? "+" : ""}
+                  {dailyChange.diffPct.toFixed(2)}% · {dailyChange.diffPips >= 0 ? "+" : ""}
+                  {dailyChange.diffPips.toFixed(1)}p
+                </span>
+              )}
+
+              {atrPips != null && (
+                <span
+                  className="limen-ohlc-atr-badge whitespace-nowrap"
+                  title="Volatilità Media Candela ATR(14) espressa in Pips/Punti"
+                >
+                  ATR {atrPips.toFixed(1)}p
+                </span>
+              )}
+
+              {crosshairDetails && crosshairDetails.isFuture && liveBar && (
+                <span className="limen-ohlc-future-badge whitespace-nowrap">
+                  ⏳ FUTURO{" "}
+                  {new Date(crosshairDetails.time * 1000).toLocaleString("it-IT", {
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  })}{" "}
+                  · {formatRelativeHorizonDelta(crosshairDetails.time - liveBar.time)} (+
+                  {Math.max(1, crosshairDetails.barsDelta)}b)
+                  {crosshairDetails.price != null
+                    ? ` · ${formatPriceLocale(crosshairDetails.price, symbol)}`
+                    : ""}
+                </span>
+              )}
+
               <button
                 type="button"
                 className="limen-legend-gear"
@@ -2247,6 +2644,47 @@ export function LimenProprietaryChart({
                 ⚙
               </button>
             </div>
+          )}
+
+          {/* Pillola Asse Temporale Futuro (Visibile quando il cursore esplora lo spazio vuoto a destra) */}
+          {crosshairDetails && crosshairDetails.isFuture && liveBar && projector && (
+            <div
+              className="limen-future-axis-pill whitespace-nowrap"
+              style={{
+                left: `${Math.max(90, Math.min((projector.paneWidth ?? 800) - 90, crosshairDetails.x))}px`,
+              }}
+              aria-hidden="true"
+            >
+              <span className="text-[#E8C56A] font-bold">
+                {new Date(crosshairDetails.time * 1000).toLocaleString("it-IT", {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })}
+              </span>
+              <span className="text-slate-400">·</span>
+              <span className="text-emerald-400 font-bold">
+                {formatRelativeHorizonDelta(crosshairDetails.time - liveBar.time)}
+              </span>
+              <span className="text-slate-500">
+                (+{Math.max(1, crosshairDetails.barsDelta)} barre)
+              </span>
+            </div>
+          )}
+
+          {/* Pulsante Flottante "Torna al Live" quando l'Operatore scorre lontano dalla candela corrente */}
+          {isScrolledAway && (
+            <button
+              type="button"
+              className="limen-return-live-btn whitespace-nowrap"
+              onClick={handleReturnToLive}
+              title="Torna immediatamente alla candela live e all'orizzonte futuro"
+            >
+              <span>TORNA AL LIVE</span>
+              <span className="text-[#E8C56A]">⇥</span>
+            </button>
           )}
 
           {/* Tag Prezzo + Countdown Chiusura Candela su Asse Prezzi a Destra (TradingView Exact Style) */}
@@ -2292,6 +2730,7 @@ export function LimenProprietaryChart({
               projector={projector}
               revision={revision}
               visible={showRedNews}
+              referenceTimeSec={liveBar?.time}
               onImminentEvent={(event) => {
                 setImminentRedNews(event);
                 onImminentNewsChange?.(event);

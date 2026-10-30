@@ -121,7 +121,7 @@ export function SovereignJournalCockpit({
   const [mobileActiveView, setMobileActiveView] = useState<"registro" | "dossier">("registro");
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-var(--app-header-offset)-var(--bottom-nav-clearance)-4.25rem)] lg:h-full min-h-[520px] lg:min-h-0 w-full overflow-hidden pb-1 select-none">
+    <div className="flex flex-col h-auto xl:h-[calc(100dvh-var(--app-header-offset)-var(--bottom-nav-clearance)-4.25rem)] lg:h-full min-h-0 w-full overflow-y-auto xl:overflow-hidden pb-4 select-none">
       {/* ── MOBILE-ONLY VIEW SWITCHER (< xl) ── */}
       <div className="flex xl:hidden items-center justify-between gap-2 border-b border-border-subtle pb-2 mb-2 shrink-0 mobile-compact-bar">
         <div className="flex items-center gap-1 rounded-lg border border-border-subtle bg-surface-1 p-0.5 text-xs font-mono">
@@ -158,11 +158,11 @@ export function SovereignJournalCockpit({
       </div>
 
       {/* ── UNIFIED MASTER COCKPIT: DUAL INTERLOCKING MACRO-BLOCKS ── */}
-      <main className="flex-1 min-h-0 grid grid-cols-12 gap-2.5 overflow-hidden">
+      <main className="flex-1 min-h-0 grid grid-cols-12 gap-2.5 overflow-visible xl:overflow-hidden">
         {/* ── LEFT MACRO-BLOCK (58% Width on Desktop): TRAJECTORY, HEATMAP & LEDGER TABLE ── */}
         <section
           className={cn(
-            "col-span-12 xl:col-span-7 2xl:col-span-7 flex flex-col h-full min-h-0 overflow-hidden",
+            "col-span-12 xl:col-span-7 2xl:col-span-7 flex flex-col h-auto xl:h-full min-h-0 overflow-visible xl:overflow-hidden",
             mobileActiveView === "dossier" ? "hidden xl:flex" : "flex"
           )}
         >
@@ -188,7 +188,7 @@ export function SovereignJournalCockpit({
         {/* ── RIGHT MACRO-BLOCK (42% Width on Desktop): REAL-TIME TACTICAL DOSSIER ── */}
         <section
           className={cn(
-            "col-span-12 xl:col-span-5 2xl:col-span-5 flex flex-col h-full min-h-0 overflow-hidden",
+            "col-span-12 xl:col-span-5 2xl:col-span-5 flex flex-col h-auto xl:h-full min-h-0 overflow-visible xl:overflow-hidden",
             mobileActiveView === "registro" ? "hidden xl:flex" : "flex"
           )}
         >

@@ -278,23 +278,88 @@ export function ReplayChart({
     setOverlaySize({ width: container.clientWidth, height: container.clientHeight });
     setChartEpoch((epoch) => epoch + 1);
 
-    const onPointerMove = (e: PointerEvent) => {
-      if (e.buttons > 0) {
+    // Tracker inerzia cinetica + drag scala prezzi verticale (120 FPS lockstep per i disegni)
+    let kineticRaf: number | null = null;
+    let kineticUntil = 0;
+    let isPointerActive = false;
+    let lastTopPrice: number | null = null;
+    let lastBottomPrice: number | null = null;
+    let lastFromLogical: number | null = null;
+    let lastToLogical: number | null = null;
+
+    const runKineticTick = () => {
+      kineticRaf = null;
+      const pSeries = priceSeriesRef.current?.series;
+      const lRange = chart.timeScale().getVisibleLogicalRange();
+      const topP = pSeries?.coordinateToPrice(0) ?? null;
+      const botP = pSeries?.coordinateToPrice(container.clientHeight || 400) ?? null;
+      const fromL = lRange?.from ?? null;
+      const toL = lRange?.to ?? null;
+
+      if (
+        topP !== lastTopPrice ||
+        botP !== lastBottomPrice ||
+        fromL !== lastFromLogical ||
+        toL !== lastToLogical
+      ) {
+        lastTopPrice = topP;
+        lastBottomPrice = botP;
+        lastFromLogical = fromL;
+        lastToLogical = toL;
         scheduleRevision();
+      }
+
+      if (isPointerActive || performance.now() < kineticUntil) {
+        kineticRaf = requestAnimationFrame(runKineticTick);
       }
     };
 
-    container.addEventListener("pointerdown", scheduleRevision);
+    const startKineticSync = (tailMs = 650) => {
+      kineticUntil = Math.max(kineticUntil, performance.now() + tailMs);
+      if (kineticRaf == null) {
+        kineticRaf = requestAnimationFrame(runKineticTick);
+      }
+    };
+
+    const onPointerDown = () => {
+      isPointerActive = true;
+      scheduleRevision();
+      startKineticSync(250);
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.buttons > 0 || isPointerActive) {
+        scheduleRevision();
+        startKineticSync(350);
+      }
+    };
+    const onPointerUp = () => {
+      isPointerActive = false;
+      scheduleRevision();
+      startKineticSync(700);
+    };
+    const onWheel = () => {
+      scheduleRevision();
+      startKineticSync(500);
+    };
+
+    container.addEventListener("pointerdown", onPointerDown);
     container.addEventListener("pointermove", onPointerMove);
-    container.addEventListener("pointerup", scheduleRevision);
-    container.addEventListener("wheel", scheduleRevision, { passive: true });
+    window.addEventListener("pointerup", onPointerUp);
+    container.addEventListener("touchstart", onPointerDown, { passive: true });
+    container.addEventListener("touchmove", onWheel, { passive: true });
+    container.addEventListener("touchend", onPointerUp, { passive: true });
+    container.addEventListener("wheel", onWheel, { passive: true });
 
     return () => {
-      container.removeEventListener("pointerdown", scheduleRevision);
+      container.removeEventListener("pointerdown", onPointerDown);
       container.removeEventListener("pointermove", onPointerMove);
-      container.removeEventListener("pointerup", scheduleRevision);
-      container.removeEventListener("wheel", scheduleRevision);
+      window.removeEventListener("pointerup", onPointerUp);
+      container.removeEventListener("touchstart", onPointerDown);
+      container.removeEventListener("touchmove", onWheel);
+      container.removeEventListener("touchend", onPointerUp);
+      container.removeEventListener("wheel", onWheel);
       if (animFrame != null) cancelAnimationFrame(animFrame);
+      if (kineticRaf != null) cancelAnimationFrame(kineticRaf);
       resizeObserver.disconnect();
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(onLogicalRangeChange);
       chart.timeScale().unsubscribeVisibleTimeRangeChange(scheduleRevision);
@@ -1079,10 +1144,14 @@ export function ReplayChart({
 
     return {
       xForTime: (time: number) => {
-        const coordinate = chart.timeScale().timeToCoordinate(time as Time);
-        if (coordinate != null) return coordinate;
+        // Continuous sub-bar and future logical interpolation first (prevents drawing detachment)
         const logical = logicalIndexAtTime(revealed, time, engine.intervalSeconds);
-        return logical == null ? null : chart.timeScale().logicalToCoordinate(logical as Logical);
+        if (logical != null) {
+          const coordFromLogical = chart.timeScale().logicalToCoordinate(logical as Logical);
+          if (coordFromLogical != null) return coordFromLogical;
+        }
+        const coordinate = chart.timeScale().timeToCoordinate(time as Time);
+        return coordinate != null ? coordinate : null;
       },
       yForPrice: (value: number) => {
         const coordinate = price.series.priceToCoordinate(value);
@@ -1090,10 +1159,13 @@ export function ReplayChart({
       },
       priceForY: (y: number) => price.series.coordinateToPrice(y),
       timeForX: (x: number) => {
-        const time = chart.timeScale().coordinateToTime(x);
-        if (typeof time === "number") return time;
         const logical = chart.timeScale().coordinateToLogical(x);
-        return logical == null ? null : timeAtLogicalIndex(revealed, logical, engine.intervalSeconds);
+        if (logical != null && revealed.length > 0) {
+          const fromLogical = timeAtLogicalIndex(revealed, logical, engine.intervalSeconds);
+          if (fromLogical != null) return fromLogical;
+        }
+        const time = chart.timeScale().coordinateToTime(x);
+        return typeof time === "number" ? time : null;
       },
       width: overlaySize.width,
       height: overlaySize.height,

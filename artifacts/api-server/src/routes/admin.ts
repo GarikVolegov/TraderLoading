@@ -1,4 +1,5 @@
 import { LaunchError } from "../lib/launchError.js";
+import { getExpansionTelemetryStats } from "../services/semAttributionService.js";
 import { admitCandidate, updateCandidateApprovedServices } from "../services/launchApplications.js";
 import {
   invalidateUserSecurityCache,
@@ -304,6 +305,16 @@ router.get("/admin/dashboard", requireAdmin("dashboard.read"), async (_req, res)
     ],
     recentAudit,
   });
+});
+
+router.get("/admin/expansion-telemetry", requireAdmin("dashboard.read"), async (_req, res) => {
+  try {
+    const stats = await getExpansionTelemetryStats();
+    res.json(stats);
+  } catch (err) {
+    logger.warn({ err }, "Failed to fetch expansion telemetry stats");
+    res.status(500).json({ error: "Failed to fetch expansion telemetry" });
+  }
 });
 
 router.get("/admin/trading/overview", requireAdmin("trading.read"), async (_req, res) => {

@@ -1,8 +1,11 @@
 /**
  * Stealth Attribution & Gatekeeping Tracking Kit
- * Implements 60-day attribution window for partner referrals (?ref=USER_ID)
- * and persistence of Candidate Applications for the Operational Protocol.
+ * Implements 60-day attribution window for partner referrals (?ref=USER_ID),
+ * SEM/GEO AI Search attribution, and persistence of Candidate Applications.
  */
+import { captureSemAttribution, getStoredSemAttribution } from "./semAttribution";
+
+export { captureSemAttribution, getStoredSemAttribution };
 
 export const STEALTH_REF_STORAGE_KEY = "tl_stealth_referral_v1";
 export const STEALTH_APPLICATIONS_STORAGE_KEY = "tl_candidate_applications_v1";
@@ -41,6 +44,8 @@ export interface CandidateApplication {
  */
 export function captureStealthReferral(search?: string): string | null {
   if (typeof window === "undefined") return null;
+
+  captureSemAttribution();
 
   try {
     const query = search !== undefined ? search : window.location.search;

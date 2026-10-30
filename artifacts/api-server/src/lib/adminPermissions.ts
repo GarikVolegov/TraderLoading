@@ -115,12 +115,28 @@ export function getBootstrapAdminIds(
   );
 }
 
+export function getBootstrapAdminEmails(
+  raw = process.env.ADMIN_BOOTSTRAP_EMAILS ?? "",
+): Set<string> {
+  const defaults = ["volegovgarik18@gmail.com", "volegovgarik9@gmail.com"];
+  const list = raw
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  return new Set([...defaults, ...list]);
+}
+
 export function resolveAdminPrincipal(
   userId: string,
   dbAdmin: { role: string; status: string } | null | undefined,
   bootstrapIds = getBootstrapAdminIds(),
+  userEmail?: string | null,
+  bootstrapEmails = getBootstrapAdminEmails(),
 ): AdminPrincipal | null {
   if (bootstrapIds.has(userId)) {
+    return { userId, role: "super_admin", source: "bootstrap" };
+  }
+  if (userEmail && bootstrapEmails.has(userEmail.trim().toLowerCase())) {
     return { userId, role: "super_admin", source: "bootstrap" };
   }
   if (!dbAdmin || dbAdmin.status !== "active" || !isAdminRole(dbAdmin.role)) {

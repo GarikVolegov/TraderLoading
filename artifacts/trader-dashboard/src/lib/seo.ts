@@ -13,7 +13,7 @@
 
 import { SUPPORTED_LANGUAGES, type Language } from "./i18n";
 
-export const SITE_ORIGIN = "https://traderloading.com";
+export const SITE_ORIGIN = "https://aureus-os.app";
 
 /** Canonical keys for the dedicated marketing/keyword pages. */
 export const SEO_PAGE_KEYS = [
@@ -260,10 +260,11 @@ export function faqJsonLd(
   };
 }
 
-/** Free + Pro offers shared across SoftwareApplication / Product schema. */
-const TRADERLOADING_OFFERS = [
-  { "@type": "Offer", price: "0", priceCurrency: "EUR", name: "Free" },
-  { "@type": "Offer", price: "7", priceCurrency: "EUR", name: "Pro" },
+/** Official AUREUS PROTOCOL access tiers shared across SoftwareApplication / Product schema. */
+export const AUREUS_OFFERS = [
+  { "@type": "Offer", price: "0", priceCurrency: "EUR", name: "Accesso Base (Iniziato)" },
+  { "@type": "Offer", price: "10", priceCurrency: "EUR", name: "Patto della Soglia di Selezione" },
+  { "@type": "Offer", price: "150", priceCurrency: "EUR", name: "Tributo Operativo Mensile (Protocollo Completo)" },
 ];
 
 /** schema.org SoftwareApplication for a topic page. */
@@ -277,17 +278,18 @@ export function softwareAppJsonLd(
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name,
+    alternateName: ["AUREUS", "AUREUS PROTOCOL", "AUREUS OS", "Protocollo Aureus"],
     description,
     url,
     applicationCategory: "FinanceApplication",
     operatingSystem: "Web",
     inLanguage: lang,
-    offers: TRADERLOADING_OFFERS,
+    offers: AUREUS_OFFERS,
     publisher: { "@type": "Organization", name: "AUREUS PROTOCOL", url: `${SITE_ORIGIN}/` },
   };
 }
 
-/** schema.org Product (with Free + Pro offers) for the pricing page. */
+/** schema.org Product (with AUREUS offers) for the pricing page. */
 export function pricingProductJsonLd(
   name: string,
   description: string,
@@ -299,7 +301,136 @@ export function pricingProductJsonLd(
     name,
     description,
     url,
-    brand: { "@type": "Brand", name: "AUREUS" },
-    offers: TRADERLOADING_OFFERS,
+    brand: { "@type": "Brand", name: "AUREUS PROTOCOL" },
+    offers: AUREUS_OFFERS,
+  };
+}
+
+/**
+ * Sovereign Schema.org @graph Knowledge Graph for AUREUS (Organization + WebSite +
+ * SoftwareApplication + DefinedTermSet). Disambiguates "AUREUS" for Google Knowledge
+ * Graph and AI/LLM search engines (ChatGPT, Perplexity, Claude, Gemini, Copilot).
+ */
+export function aureusKnowledgeGraphJsonLd(lang: Language): JsonLd {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${SITE_ORIGIN}/#organization`,
+        name: "AUREUS PROTOCOL",
+        legalName: "AUREUS PROTOCOL",
+        alternateName: [
+          "AUREUS",
+          "AUREUS OS",
+          "Protocollo Aureus",
+          "Aureus Trading",
+          "Aureus Operating System",
+          "Limen Protocol",
+          "TraderLoading",
+        ],
+        url: `${SITE_ORIGIN}/`,
+        logo: {
+          "@type": "ImageObject",
+          url: `${SITE_ORIGIN}/app-icon-512.png`,
+          width: 512,
+          height: 512,
+        },
+        image: `${SITE_ORIGIN}/opengraph.jpg`,
+        slogan: "Il Codice della Presenza e dell'Eredità",
+        description:
+          "AUREUS PROTOCOL (AUREUS OS): Sistema Operativo di Disciplina, Padronanza Mentale, Trading Istituzionale ed Eredità Patrimoniale. Riunisce L'Ordine Giornaliero, Il Custode della Soglia, La Forgia del Passato (Backtest), Il Libro della Verità (Trading Journal MT4/MT5) e l'Architettura Patrimoniale.",
+        contactPoint: {
+          "@type": "ContactPoint",
+          email: "assistenza@aureus-os.app",
+          contactType: "customer support",
+          availableLanguage: ["it", "en", "es", "fr", "de"],
+        },
+        knowsAbout: [
+          "Trading Journal",
+          "Diario di Trading Automatico MT4 MT5",
+          "Backtesting",
+          "Chart Replay Simulator",
+          "Risk Management",
+          "Position Size Calculator",
+          "Macroeconomic Analysis",
+          "Economic Calendar",
+          "Trading Psychology",
+          "Bio-Emotional Telemetry",
+          "Prop Firm Risk Management",
+          "Monte Carlo Simulation",
+          "Wealth Architecture",
+        ],
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${SITE_ORIGIN}/#website`,
+        url: `${SITE_ORIGIN}/`,
+        name: "AUREUS — AUREUS PROTOCOL",
+        alternateName: ["AUREUS", "AUREUS OS", "Protocollo Aureus"],
+        inLanguage: ["it", "en", "es", "fr", "de"],
+        publisher: { "@id": `${SITE_ORIGIN}/#organization` },
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${SITE_ORIGIN}/#application`,
+        name: "AUREUS OS — AUREUS PROTOCOL",
+        alternateName: ["AUREUS", "AUREUS PROTOCOL", "Protocollo Aureus"],
+        url: `${SITE_ORIGIN}/`,
+        applicationCategory: "FinanceApplication",
+        operatingSystem: "Web, iOS, Android, macOS, Windows",
+        inLanguage: lang,
+        offers: AUREUS_OFFERS,
+        featureList: [
+          "Il Libro della Verità (Automated MT4/MT5 Trading Journal, R-Multiple & SHA-256 Notary)",
+          "La Forgia del Passato (Candle-by-Candle Backtesting & Historical Chart Replay)",
+          "Il Custode della Soglia (Pre-Trade Checklist, Risk Guard & Circuit-Breaker)",
+          "L'Ordine Giornaliero (Morning/Evening Trading Routine & Bio-Emotional Telemetry)",
+          "La Dottrina del Tempo (Institutional Swing Siege & Intraday Scalp Duel Academy)",
+          "Architettura Patrimoniale (5 Wealth Pillars, 1,000-Trajectory Monte Carlo & Prop Firm Calculator)",
+          "Le Prove del Fuoco & La Fratellanza (Live Discipline Duel Arenas & Encrypted Order Agora)",
+        ],
+        publisher: { "@id": `${SITE_ORIGIN}/#organization` },
+      },
+      {
+        "@type": "DefinedTermSet",
+        "@id": `${SITE_ORIGIN}/#lexicon`,
+        name: "Lessico Ufficiale AUREUS PROTOCOL",
+        description:
+          "Glossario canonico del Protocollo AUREUS che mappa i moduli operativi d'Ordine agli strumenti finanziari di trading e gestione del rischio.",
+        hasDefinedTerm: [
+          {
+            "@type": "DefinedTerm",
+            name: "Il Varco",
+            description: "Centro di Comando operativo di AUREUS: passaggio dalla Deriva emotiva al governo conscio del rischio.",
+          },
+          {
+            "@type": "DefinedTerm",
+            name: "Il Libro della Verità",
+            description: "Diario di trading automatico (MT4/MT5 via FX Blue in sola lettura) con analisi R-Multiplo, curva di equity e certificazione notarile SHA-256.",
+          },
+          {
+            "@type": "DefinedTerm",
+            name: "La Forgia del Passato",
+            description: "Simulatore di backtest professionale con replay storico candela per candela su dati reali Dukascopy e Binance.",
+          },
+          {
+            "@type": "DefinedTerm",
+            name: "Il Custode della Soglia",
+            description: "Co-pilota pre-trade e filtro decisionale con checklist oggettiva, calcolatore lotti e circuit-breaker contro overtrading e FOMO.",
+          },
+          {
+            "@type": "DefinedTerm",
+            name: "L'Ordine Giornaliero",
+            description: "Sequenza rituale mattutina e serale di allineamento operativo, respirazione neurale e monitoraggio bio-emotivo.",
+          },
+          {
+            "@type": "DefinedTerm",
+            name: "La Dottrina del Tempo",
+            description: "Percorso formativo superiore diviso nell'Arte dell'Assedio (Swing HTF) e nell'Arte del Duello (Scalp nelle Kill-Zone).",
+          },
+        ],
+      },
+    ],
   };
 }

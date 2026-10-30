@@ -319,6 +319,7 @@ async function deleteLocalAccountData(database: DatabaseLike, userId: string) {
     await tx.execute(sql`DELETE FROM testimonials WHERE user_id = ${userId}`);
     await tx.execute(sql`UPDATE testimonials SET moderated_by = NULL WHERE moderated_by = ${userId}`);
     await tx.execute(sql`DELETE FROM review_prompt_state WHERE user_id = ${userId}`);
+    await tx.execute(sql`DELETE FROM sem_attributions WHERE user_id = ${userId}`);
 
     // Admin: the user's own admin rows are removed; references to the erased
     // user as actor on OTHER admins' rows are nulled.

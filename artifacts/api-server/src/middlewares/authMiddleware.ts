@@ -7,6 +7,7 @@ import { and, eq, gte } from "drizzle-orm";
 import logger, { requestContext, type RequestContext } from "../lib/logger";
 import { getSession, getSessionId, type SessionData } from "../lib/auth";
 import { createLoginAccessRecorder } from "../services/loginAccessRecorder.js";
+import { syncUserIdentity } from "../services/identitySync.js";
 
 declare global {
   namespace Express {
@@ -55,6 +56,7 @@ type AuthMiddlewareDeps = {
     userAgent: string | undefined,
   ) => Promise<void>;
   warn?: (error: unknown, message: string) => void;
+  syncUserIdentity?: (userId: string) => Promise<AuthUser>;
 };
 
 function setAuthenticatedUser(req: Request, user: AuthUser) {
@@ -86,6 +88,7 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
     deps.getAdminStatus ??
     ((userId: string) => getCachedAdminUserStatus(userId));
   const recordLoginAccess = deps.recordAccess ?? recordAccess;
+  const syncIdentity = deps.syncUserIdentity ?? syncUserIdentity;
   const warn =
     deps.warn ??
     ((error: unknown, message: string) => {
@@ -117,13 +120,21 @@ export function createAuthMiddleware(deps: AuthMiddlewareDeps = {}) {
         _res.status(503).json({ error: "Verifica accesso temporaneamente non disponibile" });
         return;
       }
-      setAuthenticatedUser(req, {
-        id: clerkUserId,
-        email: null,
-        firstName: null,
-        lastName: null,
-        profileImageUrl: null,
-      });
+
+      let user: AuthUser;
+      try {
+        user = await syncIdentity(clerkUserId);
+      } catch (error) {
+        warn(error, "User identity sync failed");
+        user = {
+          id: clerkUserId,
+          email: null,
+          firstName: null,
+          lastName: null,
+          profileImageUrl: null,
+        };
+      }
+      setAuthenticatedUser(req, user);
     } else {
       const sid = getSessionId(req);
       let storedSession: SessionData | null = null;

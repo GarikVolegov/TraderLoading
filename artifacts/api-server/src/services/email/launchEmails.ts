@@ -73,7 +73,7 @@ export async function dispatchLaunchEmails() {
         await tx.update(emails).set({ status: "needs_review" }).where(eq(emails.key, row.key));
         return true;
       }
-      const baseUrl = (process.env.APP_BASE_URL || "https://traderloading.com").replace(/\/+$/, "");
+      const baseUrl = (process.env.APP_BASE_URL || "https://aureus-os.app").replace(/\/+$/, "");
       const result = await sendEmail({
         to: row.recipient,
         subject: row.subject,

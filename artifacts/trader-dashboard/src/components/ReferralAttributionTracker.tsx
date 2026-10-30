@@ -4,6 +4,7 @@ import { useLocation, useSearch } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { createApiUrl } from "@/lib/apiFetch";
 import { attributeSignupReferral, captureSignupReferral, claimSignupReferral } from "@/lib/referralAttribution";
+import { captureSemAttribution } from "@/lib/semAttribution";
 
 /** Persist the signup invitation until the authenticated server confirms its outcome. */
 export function ReferralAttributionTracker() {
@@ -22,7 +23,10 @@ export function ReferralAttributionTracker() {
 
   useEffect(() => {
     if (!isLoaded || userId) return;
-    try { captureSignupReferral(window.sessionStorage, path, search); } catch { /* Storage disabled. */ }
+    try {
+      captureSignupReferral(window.sessionStorage, path, search);
+      captureSemAttribution();
+    } catch { /* Storage disabled. */ }
   }, [isLoaded, userId, path, search]);
 
   useEffect(() => {

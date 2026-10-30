@@ -19,9 +19,10 @@ export function NetworkResilienceSentinel() {
         wasOfflineRef.current = false;
         setShowRestored(true);
 
-        // Silent global refetch across active queries to synchronize data instantly
+        // Scaglionamento intelligente: ricarica solo le query attive a schermo
+        // evitando il Thundering Herd su tabelle e viste non visualizzate
         try {
-          void queryClient.invalidateQueries();
+          void queryClient.invalidateQueries({ refetchType: "active" });
         } catch {
           // Guard against queryClient teardown
         }

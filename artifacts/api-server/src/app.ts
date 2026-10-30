@@ -18,6 +18,7 @@ import { captureError } from "./lib/observability";
 import { classifyApiError } from "./lib/apiError";
 import { getUploadsDir } from "./lib/uploads";
 import { resolveSnapshotIndexPath } from "./lib/staticSnapshot";
+import { socialCrawlerOgMiddleware } from "./middleware/socialCrawlerOg";
 import {
   createCorsOptions,
   createHelmetOptions,
@@ -129,6 +130,8 @@ function serveFrontendApp(expressApp: Express) {
     logger.warn({ frontendDir }, "Frontend build not found; API-only mode enabled");
     return;
   }
+
+  expressApp.use(socialCrawlerOgMiddleware);
 
   expressApp.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") {

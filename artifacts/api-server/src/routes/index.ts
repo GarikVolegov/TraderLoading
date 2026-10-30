@@ -51,6 +51,8 @@ import reviewsRouter from "./reviews.js";
 import financialProfileRouter from "./financial-profile.js";
 import arsenalRouter from "./arsenal.js";
 import candidateApplicationsPublicRouter from "./candidateApplicationsPublic.js";
+import semRouter from "./sem.js";
+import { createAdminIndexNowRouter } from "./adminIndexNow.js";
 import {
   ANONYMOUS_FALLBACK_PREFIXES,
   createProductionAuthGate,
@@ -114,5 +116,7 @@ router.use(wikiRouter);
 router.use(financialProfileRouter);
 router.use(arsenalRouter);
 router.use(candidateApplicationsPublicRouter);
+router.use(semRouter);
+router.use(createAdminIndexNowRouter());
 
 export default router;

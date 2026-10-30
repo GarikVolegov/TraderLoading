@@ -101,7 +101,7 @@ export async function renderCertificatePng(cert: {
   ctx.restore();
 
   // 2. Generazione del QR Code scansionabile con fotocamera
-  const qrUrl = cert.verifyUrl || `https://limen.trade/tornei${cert.id ? `?cert=${cert.id}` : ""}`;
+  const qrUrl = cert.verifyUrl || `https://aureus-os.app/tornei${cert.id ? `?cert=${cert.id}` : ""}`;
   const qrDataUrl = await QRCode.toDataURL(qrUrl, {
     margin: 1,
     color: { dark: colors.qrDark, light: "#0B0D12" },
