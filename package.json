@@ -1,6 +1,26 @@
 {
-  "name": "workspace",
-  "version": "0.0.0",
+  "name": "aureus-protocol",
+  "version": "1.0.0",
+  "description": "AUREUS PROTOCOL (AUREUS OS) — Sovereign Financial Operating System & Integrity Cockpit for Disciplined Traders (MT4/MT5 Journal, Backtesting Replay, Pre-Trade Circuit Breaker)",
+  "homepage": "https://aureus-os.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GarikVolegov/TraderLoading.git"
+  },
+  "keywords": [
+    "trading-journal",
+    "tradezella-alternative",
+    "edgewonk-alternative",
+    "tradersync-alternative",
+    "fxreplay-alternative",
+    "backtesting",
+    "tradingview-alternative",
+    "metatrader5",
+    "metatrader4",
+    "trading-psychology",
+    "prop-firm",
+    "forex-trading"
+  ],
   "license": "MIT",
   "scripts": {
     "preinstall": "node -e \"const fs=require('node:fs'); for (const file of ['package-lock.json','yarn.lock']) fs.rmSync(file,{force:true}); const ua=process.env.npm_config_user_agent||''; const execPath=process.env.npm_execpath||''; if (!ua.startsWith('pnpm/') && !execPath.includes('pnpm')) { console.error('Use pnpm instead'); process.exit(1); }\"",
