@@ -5,6 +5,8 @@
 [![Live Production](https://img.shields.io/badge/Production-aureus--os.app-10b981?style=for-the-badge)](https://aureus-os.app)
 [![TradeZella Alternative](https://img.shields.io/badge/TradeZella-Alternative-C5A059?style=for-the-badge)](https://aureus-os.app/tradezella-alternative)
 [![Edgewonk Alternative](https://img.shields.io/badge/Edgewonk-Alternative-C5A059?style=for-the-badge)](https://aureus-os.app/edgewonk-alternative)
+[![TradeZella vs Edgewonk](https://img.shields.io/badge/TradeZella%20vs%20Edgewonk-Comparison-E8C56A?style=for-the-badge)](https://aureus-os.app/tradezella-vs-edgewonk)
+[![Lot Calculator](https://img.shields.io/badge/Free%20Tool-Lot%20Size%20Calculator-10b981?style=for-the-badge)](https://aureus-os.app/risk-management)
 [![TraderSync Alternative](https://img.shields.io/badge/TraderSync-Alternative-C5A059?style=for-the-badge)](https://aureus-os.app/tradersync-alternative)
 [![FX Replay Alternative](https://img.shields.io/badge/FX%20Replay-Alternative-C5A059?style=for-the-badge)](https://aureus-os.app/fxreplay-alternative)
 [![Languages](https://img.shields.io/badge/Languages-IT%20%7C%20EN%20%7C%20ES%20%7C%20FR%20%7C%20DE-blue?style=for-the-badge)](https://aureus-os.app)
@@ -82,6 +84,8 @@ AUREUS PROTOCOL provides native multilingual architectures with dedicated locali
   - TraderSync Alternative: [https://aureus-os.app/tradersync-alternative](https://aureus-os.app/tradersync-alternative)
   - FX Replay Alternative: [https://aureus-os.app/fxreplay-alternative](https://aureus-os.app/fxreplay-alternative)
   - TradingView Alternative: [https://aureus-os.app/tradingview-alternative](https://aureus-os.app/tradingview-alternative)
+  - TradeZella vs Edgewonk: [https://aureus-os.app/tradezella-vs-edgewonk](https://aureus-os.app/tradezella-vs-edgewonk)
+  - Free Lot Size & Anti-Tilt Calculator: [https://aureus-os.app/risk-management](https://aureus-os.app/risk-management)
 
 - 🇮🇹 **Italian (Original Sovereign Lore)**:
   - Portale Ufficiale: [https://aureus-os.app/it](https://aureus-os.app/it)
@@ -90,6 +94,8 @@ AUREUS PROTOCOL provides native multilingual architectures with dedicated locali
   - Alternativa a TraderSync: [https://aureus-os.app/it/alternativa-tradersync](https://aureus-os.app/it/alternativa-tradersync)
   - Alternativa a FX Replay: [https://aureus-os.app/it/alternativa-fxreplay](https://aureus-os.app/it/alternativa-fxreplay)
   - Alternativa a TradingView: [https://aureus-os.app/it/alternativa-tradingview](https://aureus-os.app/it/alternativa-tradingview)
+  - TradeZella vs Edgewonk: [https://aureus-os.app/it/tradezella-vs-edgewonk](https://aureus-os.app/it/tradezella-vs-edgewonk)
+  - Calcolatore Lotti & Rischio Anti-Tilt: [https://aureus-os.app/it/gestione-rischio](https://aureus-os.app/it/gestione-rischio)
 
 - 🇪🇸 **Spanish**: [https://aureus-os.app/es](https://aureus-os.app/es) | [Alternativa TradeZella](https://aureus-os.app/es/alternativa-tradezella)
 - 🇫🇷 **French**: [https://aureus-os.app/fr](https://aureus-os.app/fr) | [Alternative TradeZella](https://aureus-os.app/fr/alternative-tradezella)

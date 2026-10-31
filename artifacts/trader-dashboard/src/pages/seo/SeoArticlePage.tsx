@@ -1,5 +1,18 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Check, Crosshair, Flame, Globe, Mail, ShieldCheck, Trophy } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Calculator,
+  Check,
+  Crosshair,
+  Flame,
+  Globe,
+  Mail,
+  ShieldCheck,
+  Trophy,
+  Zap,
+} from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Seo } from "@/components/Seo";
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
@@ -31,6 +44,7 @@ const TOPIC_PAGES = new Set<SeoPageKey>([
   "tradersync-alternative",
   "fxreplay-alternative",
   "tradingview-alternative",
+  "tradezella-vs-edgewonk",
 ]);
 
 interface CompetitorMatrixSpec {
@@ -101,6 +115,17 @@ const COMPETITOR_MAP: Record<string, CompetitorMatrixSpec> = {
     monteCarloRetail: "Assente",
     royaltyRetail: "0% Royalty",
   },
+  "tradezella-vs-edgewonk": {
+    name: "TradeZella vs Edgewonk",
+    priceRetail: "29-49 $/m (TZ) / 169 $/a (EW)",
+    syncRetail: "Cloud Sync (TZ) / Manuale CSV (EW)",
+    replayRetail: "Modulo Replay (TZ) / Assente (EW)",
+    guardRetail: "Note post-loss (TZ) / Tiltmeter postumo (EW)",
+    notaryRetail: "Assente su entrambi",
+    arenaRetail: "Assenti su entrambi",
+    monteCarloRetail: "Assente su entrambi",
+    royaltyRetail: "0% Royalty (Solo referral standard)",
+  },
 };
 
 const SECTION_ICONS = [ShieldCheck, Crosshair, Flame] as const;
@@ -123,6 +148,221 @@ function withKeyword(text: string, kw: string | null) {
  * Sovereign AUREUS SEO / GEO Pillar Page driven by `seo.<page>.*` translation keys.
  * Styled in strict Obsidian (#07080b) & Imperial Gold (#C5A059) per limen-design-system.md.
  */
+function PositionSizeCalculatorWidget() {
+  const [balance, setBalance] = useState<number>(10000);
+  const [riskPercent, setRiskPercent] = useState<number>(1.0);
+  const [symbol, setSymbol] = useState<string>("EURUSD");
+  const [stopLossPips, setStopLossPips] = useState<number>(20);
+  const [takeProfitPips, setTakeProfitPips] = useState<number>(40);
+
+  const ASSETS: Record<string, { label: string; pipValuePerLot: number; unitLabel: string }> = {
+    EURUSD: { label: "EUR/USD (Forex Standard)", pipValuePerLot: 10, unitLabel: "Pips" },
+    GBPUSD: { label: "GBP/USD (Forex Standard)", pipValuePerLot: 10, unitLabel: "Pips" },
+    USDJPY: { label: "USD/JPY (Forex JPY)", pipValuePerLot: 6.7, unitLabel: "Pips" },
+    XAUUSD: { label: "XAU/USD (Oro Spot)", pipValuePerLot: 10, unitLabel: "Pips ($0.10)" },
+    US30: { label: "US30 (Dow Jones Index)", pipValuePerLot: 1, unitLabel: "Punti ($1)" },
+    NAS100: { label: "NAS100 (Nasdaq Index)", pipValuePerLot: 1, unitLabel: "Punti ($1)" },
+    BTCUSD: { label: "BTC/USD (Bitcoin Crypto)", pipValuePerLot: 1, unitLabel: "USD ($1)" },
+  };
+
+  const currentAsset = ASSETS[symbol] ?? ASSETS.EURUSD;
+  const safeBalance = Math.max(100, Number.isFinite(balance) ? balance : 10000);
+  const safeRiskPercent = Math.max(0.1, Math.min(10, Number.isFinite(riskPercent) ? riskPercent : 1.0));
+  const safeSl = Math.max(1, Number.isFinite(stopLossPips) ? stopLossPips : 20);
+  const safeTp = Math.max(1, Number.isFinite(takeProfitPips) ? takeProfitPips : 40);
+
+  const monetaryRisk = (safeBalance * safeRiskPercent) / 100;
+  const rawLot = monetaryRisk / (safeSl * currentAsset.pipValuePerLot);
+  const recommendedLot = Math.max(0.01, Math.round(rawLot * 100) / 100);
+  const potentialReward = recommendedLot * (safeTp * currentAsset.pipValuePerLot);
+  const rrRatio = (safeTp / safeSl).toFixed(2);
+  const isHighRisk = safeRiskPercent > 2.0;
+  const isOptimalRisk = safeRiskPercent <= 1.0;
+
+  return (
+    <section className="rounded-2xl border border-[#C5A059]/35 bg-[#0d0f14] p-5 sm:p-7 shadow-[0_0_30px_rgba(197,160,89,0.1)] space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#C5A059]/20 pb-4">
+        <div>
+          <span className="inline-flex items-center gap-1.5 font-mono text-[9px] uppercase font-bold tracking-widest text-[#E8C56A] bg-[#C5A059]/15 border border-[#C5A059]/30 px-2 py-0.5 rounded">
+            <Calculator className="h-3 w-3 text-[#C5A059]" />
+            STRUMENTO PUBBLICO // CUSTODE DELLA SOGLIA
+          </span>
+          <h2 className="font-serif text-lg sm:text-2xl font-bold text-white mt-1.5">
+            Calcolatore di Position Size &amp; Lotti Anti-Tilt
+          </h2>
+          <p className="text-xs text-[#94a3b8] mt-0.5 max-w-xl">
+            Calcola la dimensione del lotto per Forex, Oro, Indici e Crypto con gestione scientifica del rischio.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 font-mono text-[11px] text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/30 px-2.5 py-1 rounded">
+          <ShieldCheck className="h-3.5 w-3.5 text-[#10b981]" aria-hidden="true" />
+          <span className="font-bold whitespace-nowrap">Formula R-Multiplo Certificata</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Form Controls */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Balance */}
+            <div>
+              <label className="block text-[10px] font-mono uppercase text-[#94a3b8] tracking-wider mb-1.5">
+                Capitale del Conto ($ / €)
+              </label>
+              <input
+                type="number"
+                min={100}
+                step={500}
+                value={balance}
+                onChange={(e) => setBalance(parseFloat(e.target.value) || 0)}
+                className="w-full rounded-xl border border-[#C5A059]/30 bg-[#07080b] px-3.5 py-2 font-mono text-sm text-white focus:border-[#C5A059] focus:outline-none"
+              />
+            </div>
+
+            {/* Asset Selector */}
+            <div>
+              <label className="block text-[10px] font-mono uppercase text-[#94a3b8] tracking-wider mb-1.5">
+                Strumento Finanziario
+              </label>
+              <select
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value)}
+                className="w-full rounded-xl border border-[#C5A059]/30 bg-[#07080b] px-3.5 py-2 font-mono text-xs text-white focus:border-[#C5A059] focus:outline-none"
+              >
+                {Object.entries(ASSETS).map(([sym, item]) => (
+                  <option key={sym} value={sym} className="bg-[#07080b] text-white">
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Risk Selector */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[10px] font-mono uppercase text-[#94a3b8] tracking-wider">
+                Rischio per Operazione: <span className="text-[#E8C56A] font-bold">{safeRiskPercent}%</span>
+              </label>
+              <div className="flex items-center gap-1">
+                {[0.5, 1.0, 1.5, 2.0].map((pct) => (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => setRiskPercent(pct)}
+                    className={`px-2 py-0.5 text-[10px] font-mono rounded border transition-colors ${
+                      safeRiskPercent === pct
+                        ? "bg-[#C5A059] text-black border-[#C5A059] font-bold"
+                        : "border-[#C5A059]/30 bg-[#07080b] text-[#94a3b8] hover:text-white"
+                    }`}
+                  >
+                    {pct}%
+                  </button>
+                ))}
+              </div>
+            </div>
+            <input
+              type="range"
+              min={0.25}
+              max={5.0}
+              step={0.25}
+              value={safeRiskPercent}
+              onChange={(e) => setRiskPercent(parseFloat(e.target.value))}
+              className="w-full accent-[#C5A059] cursor-pointer"
+            />
+          </div>
+
+          {/* Stop Loss & Take Profit */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-mono uppercase text-[#94a3b8] tracking-wider mb-1.5">
+                Stop Loss ({currentAsset.unitLabel})
+              </label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={stopLossPips}
+                onChange={(e) => setStopLossPips(parseFloat(e.target.value) || 1)}
+                className="w-full rounded-xl border border-[#C5A059]/30 bg-[#07080b] px-3.5 py-2 font-mono text-sm text-white focus:border-[#C5A059] focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-mono uppercase text-[#94a3b8] tracking-wider mb-1.5">
+                Take Profit ({currentAsset.unitLabel})
+              </label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={takeProfitPips}
+                onChange={(e) => setTakeProfitPips(parseFloat(e.target.value) || 1)}
+                className="w-full rounded-xl border border-[#C5A059]/30 bg-[#07080b] px-3.5 py-2 font-mono text-sm text-white focus:border-[#C5A059] focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Telemetry Output Bento */}
+        <div className="lg:col-span-5 rounded-xl border border-[#C5A059]/25 bg-[#07080b] p-4 sm:p-5 flex flex-col justify-between space-y-4">
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[#94a3b8] block mb-1">
+              RISULTATO DI CALIBRAZIONE
+            </span>
+            <div className="flex items-baseline justify-between border-b border-[#C5A059]/15 pb-3">
+              <span className="text-xs font-sans text-white">Lotto Consigliato:</span>
+              <span className="font-mono text-2xl sm:text-3xl font-black text-[#E8C56A] tracking-tight whitespace-nowrap">
+                {recommendedLot} <span className="text-xs text-[#94a3b8] font-normal">Lotti</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2 text-xs font-mono">
+            <div className="flex items-center justify-between text-[#94a3b8]">
+              <span>Rischio Monetario (-1R):</span>
+              <span className="text-[#ef4444] font-bold whitespace-nowrap">-${monetaryRisk.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between text-[#94a3b8]">
+              <span>Rendimento Atteso (+{rrRatio}R):</span>
+              <span className="text-[#10b981] font-bold whitespace-nowrap">+${potentialReward.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between text-[#94a3b8]">
+              <span>Rapporto Rischio/Rendimento:</span>
+              <span className="text-white font-bold whitespace-nowrap">1 : {rrRatio}</span>
+            </div>
+          </div>
+
+          {/* Anti-Tilt Telemetry Guard */}
+          {isHighRisk ? (
+            <div className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 p-2.5 text-[11px] text-[#ef4444] flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                <strong>Circuito Anti-Deriva:</strong> Rischio &gt; 2% per trade espone il capitale a rovina asimmetrica. Riduci l&apos;esposizione.
+              </span>
+            </div>
+          ) : isOptimalRisk ? (
+            <div className="rounded-lg border border-[#10b981]/40 bg-[#10b981]/10 p-2.5 text-[11px] text-[#10b981] flex items-start gap-2">
+              <Check className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                <strong>Parametro Virtuoso:</strong> Rischio &le; 1% conforme ai Canoni d&apos;Integrità dell&apos;Ordine AUREUS.
+              </span>
+            </div>
+          ) : null}
+
+          <Link
+            href="/sign-up"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#C5A059] to-[#E8C56A] px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-[#07080b] shadow-[0_0_15px_rgba(197,160,89,0.3)] transition-all hover:brightness-110 whitespace-nowrap"
+          >
+            <Zap className="h-3.5 w-3.5" />
+            <span>Attiva il Custode su AUREUS OS (0 €)</span>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
   const { language, t } = useLanguage();
 
@@ -283,6 +523,9 @@ export default function SeoArticlePage({ page }: { page: SeoPageKey }) {
             </Link>
           </div>
         </section>
+
+        {/* Interactive Public Tool: Position Size & Anti-Tilt Calculator */}
+        {page === "risk-tools" && <PositionSizeCalculatorWidget />}
 
         {/* Sovereign Head-to-Head Comparison Matrix (Active on Competitor Pages) */}
         {competitor && (

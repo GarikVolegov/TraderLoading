@@ -7,7 +7,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { synestheticClick } from "@/lib/soundFx";
 import { ROOT_ITEMS, rootDestination, SECONDARY_ITEMS } from "@/lib/navHubs";
-import { MoreHorizontal, GraduationCap, Shield, Coins, LifeBuoy, ChevronDown, ChevronRight, MessageSquare, ScrollText, Trophy, Layers, BookOpen, Award, Sunrise, Gamepad2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { MoreHorizontal, GraduationCap, Shield, Coins, LifeBuoy, ChevronDown, ChevronRight, MessageSquare, ScrollText, Trophy, Layers, BookOpen, Award, Sunrise, Gamepad2, PanelLeftClose, PanelLeftOpen, Globe2 } from "lucide-react";
+import { useMarketGlobe } from "@/contexts/MarketGlobeContext";
+import { triggerHaptic } from "@/lib/hapticPulse";
 import { LimenPageEmblem, type LimenEmblemVariant } from "@/components/ui/LimenPageEmblem";
 import { SigilIcon } from "@/components/ui/SigilIcon";
 import { parseSocialLocation } from "@/lib/chatTabs";
@@ -76,6 +78,7 @@ export function BottomNav() {
   const { t, language } = useLanguage();
   const { isFreeTrial } = useFreeTrial();
   const [location] = useLocation();
+  const { openMarketGlobe } = useMarketGlobe();
   const search = useSearch();
   const active = rootDestination(location, search);
   const activePair = new URLSearchParams(search).get("pair");
@@ -713,10 +716,17 @@ export function BottomNav() {
           align="end"
           className="mobile-more-menu w-[calc(100vw-24px)] max-w-sm max-h-[75dvh] overflow-y-auto rounded-xl border border-[#C5A059]/35 bg-[#0b0d13]/98 backdrop-blur-xl p-2.5 shadow-[0_16px_48px_rgba(0,0,0,0.85)] scrollbar-thin scrollbar-thumb-[#C5A059]/30"
         >
-          {/* Header Telemetrico compatto */}
-          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-[#C5A059]/25 bg-[#07080b] px-2.5 py-2 font-mono">
+          {/* Header Telemetrico compatto con trigger Sfera dei Mercati */}
+          <div
+            onClick={() => {
+              triggerHaptic("selection");
+              openMarketGlobe();
+            }}
+            className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-[#C5A059]/30 bg-[#07080b] hover:border-[#C5A059]/70 hover:bg-[#12141f] px-2.5 py-2 font-mono cursor-pointer transition-all active:scale-[0.98]"
+            title="Clicca per aprire La Sfera dei Mercati 3D"
+          >
             <div className="flex items-center gap-1.5 min-w-0">
-              <SigilIcon variant="limen" size={12} className="text-[#C5A059] shrink-0" />
+              <Globe2 className="h-3.5 w-3.5 text-[#C5A059] shrink-0" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#E8C56A] truncate">
                 {limenSession.shortName}
               </span>
@@ -730,9 +740,10 @@ export function BottomNav() {
                 {limenSession.isActive ? "Aperto" : "Chiuso"}
               </span>
             </div>
-            <span className="text-[11px] font-bold text-[#E8C56A] tabular-nums whitespace-nowrap">
-              {timeString} CET
-            </span>
+            <div className="flex items-center gap-1 text-[11px] font-bold text-[#E8C56A] tabular-nums whitespace-nowrap">
+              <span>{timeString} CET</span>
+              <span className="text-[10px] text-[#C5A059]">✦ 3D</span>
+            </div>
           </div>
 
           <div className="px-2 pb-1 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#C5A059]/85">
@@ -1062,6 +1073,19 @@ export function BottomNav() {
                   </span>
                 </div>
               </div>
+
+              {/* Trigger Rapido Sfera dei Mercati 3D */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  openMarketGlobe();
+                }}
+                className="mt-2 w-full py-1.5 px-2 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 hover:border-[#C5A059] text-[#E8C56A] font-mono text-[9.5px] uppercase font-bold tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Globe2 className="h-3 w-3 text-[#C5A059]" />
+                <span>La Sfera dei Mercati 3D →</span>
+              </button>
             </div>
           );
         })()}

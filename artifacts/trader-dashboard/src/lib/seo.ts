@@ -30,6 +30,7 @@ export const SEO_PAGE_KEYS = [
   "tradersync-alternative",
   "fxreplay-alternative",
   "tradingview-alternative",
+  "tradezella-vs-edgewonk",
 ] as const;
 export type SeoPageKey = (typeof SEO_PAGE_KEYS)[number];
 
@@ -49,6 +50,7 @@ export const SEO_TOPIC_KEYS: readonly SeoPageKey[] = [
   "tradersync-alternative",
   "fxreplay-alternative",
   "tradingview-alternative",
+  "tradezella-vs-edgewonk",
 ];
 
 /**
@@ -147,6 +149,13 @@ export const SEO_SLUGS: Record<SeoPageKey, Record<Language, string>> = {
     es: "alternativa-tradingview",
     fr: "alternative-tradingview",
     de: "tradingview-alternative",
+  },
+  "tradezella-vs-edgewonk": {
+    en: "tradezella-vs-edgewonk",
+    it: "tradezella-vs-edgewonk",
+    es: "tradezella-vs-edgewonk",
+    fr: "tradezella-vs-edgewonk",
+    de: "tradezella-vs-edgewonk",
   },
 };
 

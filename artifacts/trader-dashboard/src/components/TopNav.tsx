@@ -20,7 +20,10 @@ import {
   ChevronRight,
   Sunrise,
   Gamepad2,
+  Globe2,
 } from "lucide-react";
+import { useMarketGlobe } from "@/contexts/MarketGlobeContext";
+import { triggerHaptic } from "@/lib/hapticPulse";
 import { useAudio } from "@/contexts/AudioContext";
 import { useGetProfile } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -82,6 +85,7 @@ export function TopNav() {
   const currentIntegrityIndex = integritySnapshot?.integrityIndex ?? 100;
 
   const now = useMinuteClock();
+  const { openMarketGlobe } = useMarketGlobe();
   const limenSession = getLimenSessionInfo(now);
   const timeString = now.toLocaleTimeString("it-IT", {
     hour: "2-digit",
@@ -122,9 +126,14 @@ export function TopNav() {
           >
             {/* Mobile Live Flow Pulse HUD (Sessione + Integrità + Grado) */}
             <div className="flex lg:hidden items-center gap-1.5 min-w-0">
-              <span
-                title={`${limenSession.shortName} (${limenSession.hours})`}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#C5A059]/30 bg-[#0d0f14]/95 px-2 py-1 font-mono text-[10px] whitespace-nowrap shrink-0"
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  openMarketGlobe();
+                }}
+                title={`${limenSession.shortName} (${limenSession.hours}) — Clicca per aprire La Sfera dei Mercati 3D`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#C5A059]/30 bg-[#0d0f14]/95 hover:border-[#C5A059]/70 hover:bg-[#151722] px-2 py-1 font-mono text-[10px] whitespace-nowrap shrink-0 cursor-pointer transition-all active:scale-95"
               >
                 <span
                   className={`h-1.5 w-1.5 rounded-full shrink-0 ${
@@ -138,7 +147,7 @@ export function TopNav() {
                 <span className="font-semibold text-foreground/85 tabular-nums hidden sm:inline whitespace-nowrap">
                   {timeString} CET
                 </span>
-              </span>
+              </button>
 
               <Link
                 href="/milestones"
@@ -188,6 +197,20 @@ export function TopNav() {
             >
               <ScrollText className="h-3.5 w-3.5 text-primary" />
               <span>{"Il Manifesto"}</span>
+            </button>
+
+            {/* La Sfera dei Mercati 3D quick trigger */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("selection");
+                openMarketGlobe();
+              }}
+              title="La Sfera dei Mercati — Telemetria Globale 3D"
+              className="hidden lg:inline-flex h-9 items-center gap-1.5 rounded-md border border-[#C5A059]/40 bg-[#0d0f14] px-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8C56A] transition-colors hover:border-[#E8C56A] hover:bg-[#151722] cursor-pointer"
+            >
+              <Globe2 className="h-3.5 w-3.5 text-[#C5A059]" />
+              <span>Mercati 3D</span>
             </button>
 
             {/* Architettura Patrimoniale quick pill */}

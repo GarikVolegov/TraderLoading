@@ -191,7 +191,17 @@ process.on("unhandledRejection", (reason) => {
   });
 });
 
-process.on("uncaughtException", (err) => {
+process.on("uncaughtException", (err: any) => {
+  const isTransientDbNetError =
+    err?.code === "ECONNRESET" ||
+    err?.code === "EPIPE" ||
+    (typeof err?.message === "string" && err.message.includes("Connection terminated unexpectedly"));
+
+  if (isTransientDbNetError) {
+    logger.warn({ err }, "Transient network/DB connection drop intercepted in uncaughtException; pool will recover");
+    return;
+  }
+
   captureError(err, { surface: "process", kind: "uncaughtException" });
   logger.error({ err }, "Uncaught exception");
   void shutdown("uncaughtException", 1).finally(async () => {

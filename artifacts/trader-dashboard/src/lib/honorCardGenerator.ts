@@ -425,7 +425,7 @@ export function renderHonorCardToCanvas(data: HonorCardData): HTMLCanvasElement 
   ctx.textAlign = "right";
   ctx.font = "bold 11px ui-monospace, monospace";
   ctx.fillStyle = "#E8C56A";
-  ctx.fillText("AUREUS PROTOCOL · aureus.trade", logicalW - 52, footerY);
+  ctx.fillText("AUREUS PROTOCOL · aureus-os.app", logicalW - 52, footerY);
   ctx.font = "9.5px ui-monospace, monospace";
   ctx.fillStyle = "#71717a";
   ctx.fillText("IL CODICE DELLA PRESENZA E DELL'EREDITÀ", logicalW - 52, footerY + 18);
@@ -483,7 +483,7 @@ export async function shareHonorCard(data: HonorCardData): Promise<{
   const fileName = `AUREUS-SCHEDA-ONORE-${cleanOpName}.png`;
   const shareTitle = `AUREUS PROTOCOL — Scheda d'Onore: ${data.operatorName}`;
   const hash = data.verificationHash || computeHonorHash(data);
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://aureus.trade";
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://aureus-os.app";
   const verifyUrl = `${origin}/api/public/verify-honor/${encodeURIComponent(hash)}`;
   const shareText = `Prova del Fuoco superata ne Il Protocollo Aureus. Operatore: ${data.operatorName}. Win Rate: ${data.winRate ?? 100}%. Disciplina prima del profitto.`;
 

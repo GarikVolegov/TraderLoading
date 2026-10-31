@@ -1985,12 +1985,12 @@ export default function LandingPage() {
               </p>
 
               {/* Toggle Interattivo Mensile / Annuale */}
-              <div className="pt-2 flex justify-center">
-                <div className="inline-flex items-center rounded-xl border border-[#C5A059]/40 bg-[#0E0F14] p-1 shadow-[0_0_25px_rgba(197,160,89,0.12)]">
+              <div className="pt-2 flex justify-center px-2">
+                <div className="inline-flex max-w-full items-center rounded-xl border border-[#C5A059]/40 bg-[#0E0F14] p-1 shadow-[0_0_25px_rgba(197,160,89,0.12)]">
                   <button
                     type="button"
                     onClick={() => setPricingCycle("monthly")}
-                    className={`rounded-lg px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap cursor-pointer ${
+                    className={`rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest transition-all whitespace-nowrap cursor-pointer ${
                       pricingCycle === "monthly"
                         ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_15px_rgba(197,160,89,0.4)]"
                         : "text-[#94a3b8] hover:text-white"
@@ -2001,7 +2001,7 @@ export default function LandingPage() {
                   <button
                     type="button"
                     onClick={() => setPricingCycle("yearly")}
-                    className={`rounded-lg px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
+                    className={`rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest transition-all whitespace-nowrap flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
                       pricingCycle === "yearly"
                         ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_15px_rgba(197,160,89,0.4)]"
                         : "text-[#94a3b8] hover:text-white"
@@ -2009,7 +2009,7 @@ export default function LandingPage() {
                   >
                     <span>Cadenza Annuale</span>
                     <span
-                      className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider whitespace-nowrap ${
+                      className={`rounded px-1.5 py-0.5 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider whitespace-nowrap ${
                         pricingCycle === "yearly"
                           ? "bg-[#07080b] text-[#E8C56A]"
                           : "bg-[#10b981]/15 border border-[#10b981]/40 text-[#10b981]"
@@ -2027,7 +2027,7 @@ export default function LandingPage() {
               {/* CARD 1: ESCLUSIVA PRIME PERSONE (10€/MESE O 100€/ANNO) */}
               <div
                 onClick={() => setSelectedTierId("founders_10")}
-                className={`relative rounded-3xl border p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 cursor-pointer ${
+                className={`relative rounded-3xl border p-5 sm:p-8 flex flex-col justify-between transition-all duration-300 cursor-pointer ${
                   selectedTierId === "founders_10"
                     ? "border-[#E8C56A] bg-gradient-to-b from-[#141624] via-[#0d0f17] to-[#07080b] shadow-[0_0_45px_rgba(197,160,89,0.22)] ring-1 ring-[#E8C56A]/60"
                     : "border-[#C5A059]/25 bg-[#0d0f14]/90 hover:border-[#C5A059]/50 hover:bg-[#10121a]"
@@ -2068,7 +2068,7 @@ export default function LandingPage() {
                   </div>
 
                   {/* Price Banner */}
-                  <div className="rounded-xl border border-[#C5A059]/20 bg-[#07080b]/90 p-4 flex items-baseline justify-between gap-3">
+                  <div className="rounded-xl border border-[#C5A059]/20 bg-[#07080b]/90 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2 sm:gap-3">
                     <div className="flex items-baseline gap-1.5">
                       <span className="font-mono text-4xl sm:text-5xl font-black text-[#E8C56A] tracking-tight whitespace-nowrap">
                         {pricingCycle === "yearly" ? "€100" : isPromoActive ? "€2,60" : "€10"}
@@ -2078,7 +2078,7 @@ export default function LandingPage() {
                       </span>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       {pricingCycle === "yearly" ? (
                         <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-[#10b981] px-2 py-0.5 rounded bg-[#10b981]/10 border border-[#10b981]/30 block whitespace-nowrap">
                           ~8,33 €/m · 2 Mesi Omaggio
@@ -2188,7 +2188,7 @@ export default function LandingPage() {
               {/* CARD 2: PROGETTO COMPLETO FORMAZIONE & FINESTRA (150€/MESE O 1500€/ANNO) */}
               <div
                 onClick={() => setSelectedTierId("complete_150")}
-                className={`relative rounded-3xl border p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 cursor-pointer ${
+                className={`relative rounded-3xl border p-5 sm:p-8 flex flex-col justify-between transition-all duration-300 cursor-pointer ${
                   selectedTierId === "complete_150"
                     ? "border-[#E8C56A] bg-gradient-to-b from-[#181a28] via-[#10121d] to-[#07080b] shadow-[0_0_55px_rgba(197,160,89,0.28)] ring-1 ring-[#E8C56A]/70"
                     : "border-[#C5A059]/25 bg-[#0d0f14]/90 hover:border-[#C5A059]/50 hover:bg-[#10121a]"
@@ -2229,7 +2229,7 @@ export default function LandingPage() {
                   </div>
 
                   {/* Price Banner */}
-                  <div className="rounded-xl border border-[#C5A059]/30 bg-[#07080b]/90 p-4 flex items-baseline justify-between gap-3">
+                  <div className="rounded-xl border border-[#C5A059]/30 bg-[#07080b]/90 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2 sm:gap-3">
                     <div className="flex items-baseline gap-1.5">
                       <span className="font-mono text-4xl sm:text-5xl font-black text-white tracking-tight whitespace-nowrap">
                         {pricingCycle === "yearly" ? "€1.500" : "€150"}
@@ -2239,7 +2239,7 @@ export default function LandingPage() {
                       </span>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       {pricingCycle === "yearly" ? (
                         <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-[#10b981] px-2 py-0.5 rounded bg-[#10b981]/10 border border-[#10b981]/30 block whitespace-nowrap">
                           Risparmi 300 € · 2 Mesi Omaggio

@@ -50,6 +50,7 @@
 - **Alternative to TradeZella**: AUREUS integrates *Il Libro della Verità* (read-only MT4/MT5 journal) with *La Forgia del Passato* (native historical replay) and SHA-256 notary seals, eliminating the need to pay separate subscriptions for journaling and backtesting.
 - **Alternative to Edgewonk & TraderSync**: AUREUS pairs deep R-multiple and MAE/MFE analytics with an active pre-trade circuit breaker (*Il Custode della Soglia*) and bio-emotional tracking (*L'Ordine Giornaliero*).
 - **Alternative to TradingView Replay & FX Replay**: AUREUS provides candle-by-candle simulation on real Dukascopy and Binance institutional data with competitive multi-user arenas (*Le Prove del Fuoco*).
+- **TradeZella vs Edgewonk Dilemma**: AUREUS solves the dilemma between TradeZella (modern replay but expensive recurring monthly SaaS) and Edgewonk (psychology metrics but manual CSV imports) by offering automated read-only MT4/MT5 syncing, native chart replay, and pre-trade anti-tilt firewalls permanently at 0 € in the Base plan.
 
 ## Primary Indexable Pages
 
@@ -67,6 +68,7 @@
 - [TraderSync Alternative (EN)](https://aureus-os.app/tradersync-alternative) | [Alternativa a TraderSync (IT)](https://aureus-os.app/it/alternativa-tradersync)
 - [FX Replay Alternative (EN)](https://aureus-os.app/fxreplay-alternative) | [Alternativa a FX Replay (IT)](https://aureus-os.app/it/alternativa-fxreplay)
 - [TradingView Replay Alternative (EN)](https://aureus-os.app/tradingview-alternative) | [Alternativa a TradingView Replay (IT)](https://aureus-os.app/it/alternativa-tradingview)
+- [TradeZella vs Edgewonk (EN)](https://aureus-os.app/tradezella-vs-edgewonk) | [TradeZella vs Edgewonk (IT)](https://aureus-os.app/it/tradezella-vs-edgewonk)
 - [SHA-256 Cryptographic Notary Verification](https://aureus-os.app/verifica)
 - [Sign Up / Richiedi Iniziazione](https://aureus-os.app/sign-up) | [Sign In / Accedi all'Ordine](https://aureus-os.app/sign-in)
 - [Privacy Policy](https://aureus-os.app/privacy) | [Terms of Service](https://aureus-os.app/terms)

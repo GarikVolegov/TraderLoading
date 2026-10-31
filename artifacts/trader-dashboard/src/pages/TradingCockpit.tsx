@@ -35,6 +35,7 @@ import {
   Wind,
 } from "lucide-react";
 import { isUserTypingInEditableElement } from "@/lib/pwaAutoUpdater";
+import { triggerHaptic } from "@/lib/hapticPulse";
 import { useSmartWatchHeartRate } from "@/hooks/useSmartWatchHeartRate";
 import {
   loadBioLockConfig,
@@ -261,7 +262,10 @@ function Tick({
       <input
         type="checkbox"
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        onChange={(e) => {
+          triggerHaptic(e.target.checked ? "medium" : "light");
+          onChange(e.target.checked);
+        }}
         disabled={disabled}
       />
       <span>{ck(label)}</span>

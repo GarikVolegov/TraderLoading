@@ -19,6 +19,7 @@ import { BackgroundProvider } from "./contexts/BackgroundContext";
 import { LoadingProvider } from "./contexts/LoadingContext";
 import { PinLockProvider } from "./contexts/PinLockContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { MarketGlobeProvider } from "./contexts/MarketGlobeContext";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { AuthPageShell } from "./components/AuthPageShell";
 import { CookieConsentPopup } from "./components/CookieConsentPopup";
@@ -793,6 +794,8 @@ const COMPETITOR_ROUTE_ALIASES: Record<string, SeoPageKey> = {
   tradersync: "tradersync-alternative",
   fxreplay: "fxreplay-alternative",
   tradingview: "tradingview-alternative",
+  "tradezella-vs-edgewonk": "tradezella-vs-edgewonk",
+  "edgewonk-vs-tradezella": "tradezella-vs-edgewonk",
 };
 
 // English keyword/marketing pages at the root, plus a /{lang}/:slug? route per
@@ -927,13 +930,15 @@ function App() {
           <LanguageProvider>
             <LoadingProvider>
               <AudioProvider>
-                <WouterRouter base={basePath}>
-                  <ScrollToTop />
-                  <ClerkProviderWithRoutes />
-                </WouterRouter>
-                <NetworkResilienceSentinel />
-                <PwaUpdateNotificationBanner />
-                <Toaster />
+                <MarketGlobeProvider>
+                  <WouterRouter base={basePath}>
+                    <ScrollToTop />
+                    <ClerkProviderWithRoutes />
+                  </WouterRouter>
+                  <NetworkResilienceSentinel />
+                  <PwaUpdateNotificationBanner />
+                  <Toaster />
+                </MarketGlobeProvider>
               </AudioProvider>
             </LoadingProvider>
           </LanguageProvider>

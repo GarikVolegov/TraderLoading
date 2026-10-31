@@ -45,11 +45,11 @@ test("renderHonorCardSvg: handles null seal gracefully with fallback hash", () =
 });
 
 test("renderHonorCardHtml: produces complete HTML with OpenGraph and Twitter cards", () => {
-  const html = renderHonorCardHtml(mockSeal, "https://aureus.trade", mockSeal.hash);
+  const html = renderHonorCardHtml(mockSeal, "https://aureus-os.app", mockSeal.hash);
 
   assert.ok(html.includes("<!DOCTYPE html>"), "Must be a complete HTML5 document");
   assert.ok(html.includes('<meta property="og:type" content="website" />'), "Must contain og:type");
-  assert.ok(html.includes('<meta property="og:image" content="https://aureus.trade/api/public/og-honor/0x9F4C2A1E8B0D7C3F.svg" />'), "Must point og:image to SVG endpoint");
+  assert.ok(html.includes('<meta property="og:image" content="https://aureus-os.app/api/public/og-honor/0x9F4C2A1E8B0D7C3F.svg" />'), "Must point og:image to SVG endpoint");
   assert.ok(html.includes('<meta name="twitter:card" content="summary_large_image" />'), "Must use summary_large_image for Twitter");
   assert.ok(html.includes("0x9F4C2A1E8B0D7C3F"), "Must display hash in card");
   assert.ok(html.includes("VERIFICATO MATEMATICAMENTE"), "Must show verified status");
