@@ -28,8 +28,6 @@ import {
   CheckCircle2,
   Check,
   ShieldCheck,
-  Lock,
-  Unlock,
   ChevronDown,
   ChevronUp,
   Menu,
@@ -46,7 +44,6 @@ import {
   Crosshair,
   Flame,
   Layers,
-  Info,
   Trophy,
 } from "lucide-react";
 import "./LandingPage.css";
@@ -119,6 +116,78 @@ export const FAQ_ITEMS: readonly FaqItemDef[] = [
   },
 ] as const;
 
+export interface BlindSpotItem {
+  readonly id: "revenge" | "fomo" | "overtrading";
+  readonly number: string;
+  readonly badge: string;
+  readonly title: string;
+  readonly trigger: string;
+  readonly unseenDoor: string;
+  readonly shieldModule: {
+    readonly number: string;
+    readonly title: string;
+    readonly actionBadge: string;
+    readonly howItWorks: string;
+  };
+  readonly openQuestion: string;
+  readonly cta: string;
+  readonly gatekeepingReason: string;
+}
+
+export const BLIND_SPOTS: readonly BlindSpotItem[] = [
+  {
+    id: "revenge",
+    number: "01",
+    badge: "LA RABBIA DOPO IL DISSANGUE",
+    title: "La Fretta di Recuperare",
+    trigger: "Chiudi un'operazione in perdita e ne apri subito un'altra per non andare a dormire sconfitto.",
+    unseenDoor: "Perché quando spegni il computer la tua lucidità torna all'istante, ma davanti ai grafici diventi furia cieca? Non è sfortuna: è il tuo ego che rifiuta di ammettere un limite.",
+    shieldModule: {
+      number: "MODULO III",
+      title: "Il Custode della Soglia",
+      actionBadge: "BLOCCO AUTOMATICO 60 MINUTI",
+      howItWorks: "Rileva la frequenza anomala degli ordini dopo uno stop loss e ti toglie fisicamente le chiavi di mano. Nessun ordine può partire finché il tuo battito non torna calmo.",
+    },
+    openQuestion: "Se ieri qualcuno ti avesse fisicamente impedito quel singolo secondo clic, quanto capitale e quante notti di serenità avresti risparmiato?",
+    cta: "METTI QUESTO SCUDO TRA TE E L'ERRORE",
+    gatekeepingReason: "Diagnosi Punto Cieco: La Fretta di Recuperare (Custode della Soglia)",
+  },
+  {
+    id: "fomo",
+    number: "02",
+    badge: "L'INVIDIA DEI SOCIAL",
+    title: "La Paura di Restare a Guardare",
+    trigger: "Vedi un prezzo esplodere o gli altri esultare online e compri in ritardo, esattamente sui massimi.",
+    unseenDoor: "Comprare quando tutti festeggiano non è fiuto: è cadere nella trappola di chi sta vendendo proprio a te. Se compri spinto dall'ansia di restare a guardare, chi sta davvero decidendo per la tua vita?",
+    shieldModule: {
+      number: "MODULO II",
+      title: "La Forgia del Passato",
+      actionBadge: "SIMULATORE A RISCHIO ZERO",
+      howItWorks: "Prima di rischiare anche un solo centesimo reale, rivivi 50 volte la stessa identica scena sui mercati storici. Scopri cosa accade a chi entra in ritardo prima di pagare il conto.",
+    },
+    openQuestion: "Cosa cambierebbe nella tua sicurezza se potessi vedere il finale del film prima di comprare il biglietto?",
+    cta: "IMPARA A VEDERE IL FINALE A RISCHIO ZERO",
+    gatekeepingReason: "Diagnosi Punto Cieco: La Paura di Restare Fuori (Forgia del Passato)",
+  },
+  {
+    id: "overtrading",
+    number: "03",
+    badge: "L'ILLUSIONE DELL'AZIONE",
+    title: "La Noia dei Giorni Calmi",
+    trigger: "I mercati non si muovono e non ci sono occasioni chiare, ma senti il bisogno irrefrenabile di fare qualcosa.",
+    unseenDoor: "Chi ha stabilito che per essere un professionista bisogna cliccare ogni giorno? Un cecchino spara a casaccio o attende per ore il bersaglio perfetto? Rimanere fermi è l'atto di forza più puro.",
+    shieldModule: {
+      number: "MODULO IV & I",
+      title: "L'Ordine Giornaliero & La Dottrina del Tempo",
+      actionBadge: "TETTO MASSIMO DI SESSIONE",
+      howItWorks: "Imposta un tetto insuperabile di operazioni consentite. Raggiunta la quota o concluse le ore d'oro, la piattaforma si serra e il tuo conto resta intatto.",
+    },
+    openQuestion: "Cosa faresti del tuo tempo libero se il trading smettesse di essere una gabbia mentale e diventasse un protocollo di venti minuti?",
+    cta: "SCOPRI IL CODICE DI DISCIPLINA",
+    gatekeepingReason: "Diagnosi Punto Cieco: La Noia dei Giorni Calmi (L'Ordine Giornaliero)",
+  },
+] as const;
+
 export interface SoftwareModule {
   id: string;
   number: string;
@@ -142,14 +211,14 @@ export const SOFTWARE_MODULES: SoftwareModule[] = [
   {
     id: "modulo-1",
     number: "MODULO I",
-    category: "FORMAZIONE VIDEO",
+    category: "STRATEGIA & TEMPO",
     title: "La Dottrina del Tempo",
     description: (
       <>
-        L'arte di dividere l'operatività in due regimi inviolabili: l'<strong>Assedio</strong> per i movimenti macroscopici multi-day su HTF e il <strong>Duello</strong> per l'esecuzione chirurgica al minuto durante le Kill-Zone.
+        E se il tuo vero errore non fosse cosa fai, ma il fatto che operi nelle ore in cui dovresti solo restare a guardare?
       </>
     ),
-    criterion: "CRITERIO: Regole di invalidazione oggettive prima dell'ingresso.",
+    criterion: "DOMANDA APERTA: Quanta ansia risparmieresti se sapessi esattamente quando non toccare nulla?",
     sigilVariant: "doctrine",
     model3d: {
       src: "/images/modules/modulo-1-dottrina.jpg",
@@ -157,25 +226,25 @@ export const SOFTWARE_MODULES: SoftwareModule[] = [
       alt: "La Dottrina del Tempo - Modello 3D Blender & Gemini Image",
       badge: "MODELLO 3D // BLENDER",
       title: "La Dottrina del Tempo",
-      details: "Diorama tridimensionale del Cronografo-Astrolabio Sacro: cassa circolare in bronzo brunito, cristallo zaffiro con lancette a sestante alchemico, movimento a tourbillon a vista con clessidra interna in ottone per la suddivisione esatta dei due regimi inviolabili dell'Assedio e del Duello.",
+      details: "Diorama tridimensionale del Cronografo Sacro: cassa circolare in bronzo brunito, cristallo zaffiro con lancette a sestante, movimento a vista e clessidra in ottone per scandire la perfetta separazione tra attesa strategica ed esecuzione istantanea.",
       highlights: [
-        "Lancette a Sestante & Astrolabio: tracciamento millimetrico delle Kill-Zone e coordinate temporali",
-        "Clessidra & Tourbillon Meccanico: separazione sacra tra Assedio (macro HTF) e Duello (micro LTF)",
-        "Ghiera Incisa & Targhette in Bronzo: formalizzazione delle regole oggettive di invalidazione temporale",
+        "Lancette a Sestante: le uniche finestre della giornata in cui i mercati offrono vero valore",
+        "Clessidra di Precisione: l'arte dell'attesa rilassata prima dell'azione chirurgica al minuto",
+        "Ghiera Incisa: regole nitide per non farsi mai cogliere dal dubbio",
       ],
     },
   },
   {
     id: "modulo-2",
     number: "MODULO II",
-    category: "SIMULATORE",
+    category: "PALESTRA A RISCHIO ZERO",
     title: "La Forgia del Passato",
     description: (
       <>
-        Addestramento nell'ombra. Affila la visione e testa le regole su centinaia di sessioni storiche senza rischiare capitale fino a raggiungere la perfezione biomeccanica dell'occhio.
+        Un pilota volerebbe mai senza simulatore? Perché tu continui a rischiare i tuoi sacrifici per imparare?
       </>
     ),
-    criterion: "CRITERIO: Replay candela per candela e audit matematico.",
+    criterion: "DOMANDA APERTA: Come cambierebbe la tua sicurezza se potessi ripetere una scena 100 volte a costo zero?",
     sigilVariant: "forge",
     model3d: {
       src: "/images/modules/modulo-2-forgia.jpg",
@@ -183,25 +252,25 @@ export const SOFTWARE_MODULES: SoftwareModule[] = [
       alt: "La Forgia del Passato - Modello 3D Blender & Gemini Image",
       badge: "MODELLO 3D // BLENDER",
       title: "La Forgia del Passato",
-      details: "Diorama tridimensionale dell'Officina Meccanica di Simulazione: incudine d'acciaio brunito, candele incandescenti forgiate a fuoco vivo, clessidra alchemica di sabbia dorata per il riavvolgimento temporale e turbine a vapore per il replay storico continuo.",
+      details: "Diorama tridimensionale dell'Officina Meccanica di Simulazione: incudine d'acciaio temprato, grafici forgiati a fuoco vivo e clessidra di sabbia dorata per riavvolgere il tempo e allenarsi a mercato chiuso.",
       highlights: [
-        "Candele Incandescenti a Fuoco: simulazione cinetica e forgia della visione biomeccanica a grafico spento",
-        "Clessidra Alchemica del Replay: controllo assoluto del flusso temporale candela per candela",
-        "Incudine & Maglio Operativo: battitura ripetuta delle regole senza rischiare capitale reale",
+        "Grafici Storici a Fuoco: simulazione reale per allenare l'occhio senza fretta né ansia",
+        "Clessidra del Replay: riavvolgi, rallenta o accelera il flusso del tempo a tuo piacimento",
+        "Incudine Protetta: perfeziona il tuo metodo senza esporre un solo centesimo reale",
       ],
     },
   },
   {
     id: "modulo-3",
     number: "MODULO III",
-    category: "CO-PILOTA PRE-TRADE",
+    category: "SCUDO AUTOMATICO",
     title: "Il Custode della Soglia",
     description: (
       <>
-        Il guardiano invisibile che blocca l'ingresso se non sono soddisfatte tutte le condizioni oggettive. Domanda chirurgica pre-sessione: stai agendo per lucidità o per debolezza emotiva?
+        Chi ti toglie le chiavi di mano quando la rabbia dopo uno sbaglio ti spinge a fare scelte assurde?
       </>
     ),
-    criterion: "CRITERIO: Blocco automatico dell'overtrading e fomo.",
+    criterion: "DOMANDA APERTA: Quanto capitale avresti salvato se un guardiano avesse bloccato i tuoi 3 errori peggiori?",
     sigilVariant: "keeper",
     model3d: {
       src: "/images/modules/modulo-3-custode.jpg",
@@ -209,25 +278,25 @@ export const SOFTWARE_MODULES: SoftwareModule[] = [
       alt: "Il Custode della Soglia - Modello 3D Blender & Gemini Image",
       badge: "MODELLO 3D // BLENDER",
       title: "Il Custode della Soglia",
-      details: "Diorama tridimensionale del Portale Blindato del Protocollo: mastodontica grata in ferro battuto con barre d'acciaio temperate, catene tese con snodi d'arresto, stella a quattro punte centrale con ingranaggi rotanti e indicatori ambrati di convalida pre-sessione.",
+      details: "Diorama tridimensionale del Portale Blindato del Protocollo: grata in ferro battuto con barre d'acciaio, snodi di blocco automatico e indicatori luminosi di lucidità mentale prima di ogni decisione.",
       highlights: [
-        "Serratura a Stella & Ingranaggi di Blocco: impedisce l'accesso al mercato se anche una sola regola è violata",
-        "Grata d'Acciaio & Catene: barriera impenetrabile contro overtrading, fomo e revenge trading",
-        "Indicatori Ambrati di Convalida: autorizzazione all'esecuzione solo con lucidità chirurgica confermata",
+        "Serratura di Blocco: sbarra il passaggio se rileva foga emotiva o stanchezza",
+        "Grata d'Acciaio: barriera invalicabile contro la tentazione di fare troppe operazioni",
+        "Indicatori di Lucidità: accesso consentito solo a mente fredda, calma e riposata",
       ],
     },
   },
   {
     id: "modulo-4",
     number: "MODULO IV",
-    category: "JOURNAL D'INTEGRITÀ",
+    category: "SPECCHIO DELLE ABITUDINI",
     title: "Il Libro della Verità",
     description: (
       <>
-        Cronaca spietata di ogni click, emotività e scostamento dal piano. Non un semplice diario contabile, ma una misurazione scientifica del tuo Indice di Integrità e della disciplina.
+        Sei pronto a guardare in faccia l'unica cosa che continui a giustificare e a nascondere a te stesso?
       </>
     ),
-    criterion: "CRITERIO: I numeri e i fatti non mentono mai.",
+    criterion: "DOMANDA APERTA: Gestiresti un'azienda senza registrare le perdite? Perché lo fai con la tua vita?",
     sigilVariant: "book-of-truth",
     model3d: {
       src: "/images/modules/modulo-4-verita.jpg",
@@ -235,25 +304,25 @@ export const SOFTWARE_MODULES: SoftwareModule[] = [
       alt: "Il Libro della Verità - Modello 3D Blender & Gemini Image",
       badge: "MODELLO 3D // BLENDER",
       title: "Il Libro della Verità",
-      details: "Diorama tridimensionale del Grande Tomo Meccanico dell'Integrità: pagine d'acciaio con metriche e curve di performance, catene con lucchetto di blocco emotivo, ingranaggi di calcolo e calibro di precisione sotto il motto 'I numeri e i fatti non mentono mai'.",
+      details: "Diorama tridimensionale del Grande Tomo della Chiarezza: pagine metalliche incise con i dati reali delle tue scelte, catene contro le auto-illusioni e calibri di precisione sotto il motto 'I fatti non mentono mai'.",
       highlights: [
-        "Pagine di Metallo & Curve di Equity: tracciamento oggettivo ed eliminazione delle illusioni cognitive",
-        "Catene & Meccanismi di Blocco: sigillatura del diario contro la manipolazione o la negazione degli errori",
-        "Calibro & Strumenti di Precisione: misurazione millimetrica dell'Indice di Integrità operativa",
+        "Pagine Incise: tracciamento trasparente che azzera gli alibi e mostra la realtà",
+        "Mappa delle Abitudini: individua all'istante l'errore ricorrente che ti costa più caro",
+        "Indice di Integrità: misura quanto sei capace di mantenere la parola data a te stesso",
       ],
     },
   },
   {
     id: "modulo-5",
     number: "MODULO V",
-    category: "CLASSIFICHE & ARENE",
+    category: "SFIDE DI DISCIPLINA TRA PARI",
     title: "La Gerarchia e Le Prove del Fuoco",
     description: (
       <>
-        Il rango non si compra: si conquista. Competizioni meritocratiche basate sulla disciplina, drawdown controllato e rispetto delle regole, non sui favori effimeri della sorte.
+        È facile credersi forti nella propria stanza. Ma cosa succede quando ti misuri con chi non sgarra mai?
       </>
     ),
-    criterion: "CRITERIO: Avanzamento di grado per integrità dimostrata.",
+    criterion: "DOMANDA APERTA: Vuoi l'illusione di un colpo fortunato o l'autorevolezza che non crolla mai?",
     sigilVariant: "hierarchy",
     model3d: {
       src: "/images/modules/modulo-5-gerarchia.jpg",
@@ -261,25 +330,25 @@ export const SOFTWARE_MODULES: SoftwareModule[] = [
       alt: "La Gerarchia e Le Prove del Fuoco - Modello 3D Blender & Gemini Image",
       badge: "MODELLO 3D // BLENDER",
       title: "La Gerarchia e Le Prove del Fuoco",
-      details: "Diorama tridimensionale della Ziggurat delle Prove: scalinate rituali ad ascesa progressiva, fiumi di lava vulcanica, bracieri sacri e altare sommitale del sigillo gerarchico per la selezione meritocratica dei ranghi.",
+      details: "Diorama tridimensionale della Ziggurat delle Prove: scalinate monumentali ad ascesa progressiva, bracieri accesi e altare sommitale del sigillo di merito per chi dimostra reale costanza nel tempo.",
       highlights: [
-        "Altare Sommitale del Fuoco: sigillo del rango supremo conquistato per rigore matematico",
-        "Scalinate delle Prove: avanzamento di grado candela dopo candela senza scorciatoie",
-        "Fiumi di Lava & Bracieri: purificazione dagli impulsi distruttivi e dal drawdown emotivo",
+        "Altare del Merito: riconoscimento del traguardo raggiunto grazie alla pura disciplina",
+        "Scalinate delle Prove: avanzamento di livello passo dopo passo, senza scorciatoie",
+        "Fuoco Purificatore: liberazione dalle cattive abitudini e dalla fretta compulsiva",
       ],
     },
   },
   {
     id: "modulo-6",
     number: "MODULO VI",
-    category: "RITO SETTIMANALE LIVE",
+    category: "ALLEANZA STRATEGICA LIVE",
     title: "Il Concilio della Domenica",
     description: (
       <>
-        Ogni domenica sera a mercati chiusi: mappatura corale della settimana entrante con la Cerchia dei membri per definire i livelli chiave di liquidità e azzerare le incertezze operative.
+        Come cambia il tuo lunedì mattina se la domenica sera hai già previsto ogni possibile scenario insieme agli altri?
       </>
     ),
-    criterion: "CRITERIO: Analisi preventiva e visione istituzionale.",
+    criterion: "DOMANDA APERTA: Preferisci farti sorprendere dai mercati o aspettarli al varco con totale calma?",
     sigilVariant: "brotherhood",
     model3d: {
       src: "/images/modules/modulo-6-concilio.jpg",
@@ -287,11 +356,11 @@ export const SOFTWARE_MODULES: SoftwareModule[] = [
       alt: "Il Concilio della Domenica - Modello 3D Blender & Gemini Image",
       badge: "MODELLO 3D // BLENDER",
       title: "Il Concilio della Domenica",
-      details: "Diorama tridimensionale templare: maestosa cupola a cassettoni, sfera armillare olografica dorata per la proiezione delle traiettorie di liquidità, bracieri sacri rituali, tavola rotonda con mappe tattiche e basamento in bronzo cesellato.",
+      details: "Diorama tridimensionale della Sala delle Mappe: cupola a volta, tavola rotonda con mappe strategiche, bracieri e sfera centrale dorata per pianificare la settimana con calma e visione lucida.",
       highlights: [
-        "Sfera Armillare Olografica: mappatura rotazione della liquidità e livelli chiave macroeconomici",
-        "Tavola Rotonda Operativa: confronto corale e allineamento della Cerchia a mercati chiusi",
-        "Architettura dell'Ordine: cupola templare e bracieri cerimoniali per azzerare l'ansia da esecuzione",
+        "Sfera di Visione: orientamento chiaro sulle dinamiche economiche prima dell'apertura",
+        "Tavola Rotonda: confronto live e allineamento con la cerchia prima che i mercati aprano",
+        "Ambiente di Serenità: azzera i dubbi per iniziare la settimana a mente sgombra",
       ],
     },
   },
@@ -315,15 +384,15 @@ export const GRADE_3D_MODELS: Record<LimenGradeNumber, Grade3DModelData | null> 
     alt: "Grado I — Novizio Consapevole: Scena Visiva 3D Blender & Gemini Image",
     badge: "MODELLO 3D // BLENDER",
     title: "GRADO I — NOVIZIO CONSAPEVOLE",
-    subtitle: "SCALA INIZIATICA // AUREUS",
-    caption: "Diorama Iniziativo: Sottoscrizione de Il Patto & La Soglia del Fuoco",
+    subtitle: "IL PRIMO PASSO // AUREUS",
+    caption: "Diorama Iniziativo: La Promessa con Se Stessi & La Soglia di Partenza",
     details:
-      "Scena visiva rappresentativa e rendering 3D dell'Ingresso nell'Ordine: l'operatore novizio, vestito dell'abito cerimoniale dell'iniziato, sottoscrive Il Patto di Ingresso sul leggio meccanico ornato da ingranaggi in bronzo, pergamena sacra e candele rituali. Sullo sfondo, la monumentale grata blindata in ferro battuto protegge l'accesso ai fuochi incandescenti de La Forgia del Passato, sormontata dal cartiglio bronzeo sospeso a catene della Scala Iniziatica.",
+      "Scena visiva rappresentativa dell'Ingresso nell'Ordine: l'operatore muove i suoi primi passi verso il cambiamento, sottoscrivendo una promessa di disciplina sul leggio illuminato da candele. Sullo sfondo, il portale blindato protegge l'accesso alla Forgia del Passato, dove ci si allena senza rischiare denaro reale.",
     highlights: [
-      "Sottoscrizione de Il Patto di Ingresso: consacrazione formale alla disciplina, all'eliminazione dell'emotività e al Codice operativo",
-      "Leggio Meccanico ad Orologeria & Candele: simbologia del rigore analitico e della misurazione oggettiva del tempo di esecuzione",
-      "Soglia Blindata & Forgia del Fuoco: la barriera invalicabile tra l'anarchia emotiva del retail e la maestria dell'Ordine",
-      "Cartiglio Bronzeo Forgiato: identificazione imperitura del Grado I — Novizio Consapevole con i sacri sigilli templari",
+      "La Promessa di Rispetto: impegno sincero verso se stessi per smettere di agire impulsivamente",
+      "Il Leggio di Studio: riscoprire il valore dell'attesa, della calma e dell'apprendimento paziente",
+      "La Soglia Protetta: la separazione netta tra il disordine dell'azzardo e la serenità del metodo",
+      "Il Sigillo del Novizio: l'inizio del cammino verso la vera padronanza personale",
     ],
   },
   2: {
@@ -331,15 +400,15 @@ export const GRADE_3D_MODELS: Record<LimenGradeNumber, Grade3DModelData | null> 
     alt: "Grado II — Il Custode della Regola: Scena Visiva 3D Blender & Gemini Image",
     badge: "MODELLO 3D // BLENDER",
     title: "GRADO II — IL CUSTODE DELLA REGOLA",
-    subtitle: "SCALA INIZIATICA // AUREUS",
-    caption: "Diorama Iniziativo: Il Ponte sul Baratro & Il Guardiano del Codice",
+    subtitle: "LA COSTANZA DIMOSTRATA // AUREUS",
+    caption: "Diorama Iniziativo: Il Ponte sulla Paura & Il Guardiano del Metodo",
     details:
-      "Scena visiva rappresentativa e rendering 3D della Prova del Fuoco: l'iniziato avanza lungo il ponte di pietra sospeso su un abisso di lava ardente verso la soglia sorvegliata da Il Custode della Regola, imponente guerriero in armatura a piastre con spadone a due mani dinanzi alla grata serrata. Sullo sfondo a volta gotica si apre la monumentale biblioteca degli archivi del Codice, sotto il possente cartiglio bronzeo sospeso a catene.",
+      "Scena visiva rappresentativa della Prova di Costanza: l'operatore attraversa con passo fermo il ponte di pietra sospeso sul baratro delle emozioni verso la porta sorvegliata dal Custode della Regola. Sullo sfondo si aprono gli archivi della conoscenza condivisa, accessibili solo a chi dimostra fedeltà duratura alle proprie regole.",
     highlights: [
-      "Il Ponte sul Baratro di Fuoco: superamento dell'abisso emotivo attraverso 30 sessioni consecutive al 100% di Integrità",
-      "Il Custode in Armatura & Spada: barriera inflessibile che non ammette eccezioni, mezze verità o deviazioni dal piano",
-      "Grata Blindata & Ingranaggi di Blocco: accesso concesso unicamente a chi ha dimostrato fedeltà assoluta al Codice",
-      "Biblioteca degli Archivi & Tempio: diritto di trasmissione delle regole e attivazione de Il Mandato di Espansione (Royalty 20%)",
+      "Il Ponte sulla Paura: superare l'ansia e il dubbio attraverso 30 sessioni consecutive di piena coerenza",
+      "Il Guardiano del Metodo: una guida inflessibile che ricorda che le regole servono a proteggerti",
+      "Il Portale della Costanza: accesso concesso solo a chi ha dimostrato di non cedere alle tentazioni emotive",
+      "L'Apertura alla Comunità: diritto di trasmettere il metodo ad altri e azzerare i costi del proprio percorso",
     ],
   },
   3: {
@@ -347,15 +416,15 @@ export const GRADE_3D_MODELS: Record<LimenGradeNumber, Grade3DModelData | null> 
     alt: "Grado III — L'Osservatore Sovrano: Scena Visiva 3D Blender & Gemini Image",
     badge: "MODELLO 3D // BLENDER",
     title: "GRADO III — L'OSSERVATORE SOVRANO",
-    subtitle: "SCALA INIZIATICA // AUREUS",
-    caption: "La Visione Distaccata e il Controllo dall'Alto",
+    subtitle: "LA CALMA INTERIORE // AUREUS",
+    caption: "La Visione Distaccata e la Mente Serena",
     details:
-      "Scena visiva rappresentativa e rendering 3D dell'Osservatorio Sovrano: l'operatore veterano domina la terrazza astronomica gotica scrutando le traiettorie celesti attraverso un monumentale telescopio in ottone e acciaio su basamento dentato. Attorno, astrolabi alchemici, sfere armillari dorate, tavola tattica con mappe cartografiche e veduta notturna sulla rocca, sotto il sacro cartiglio bronzeo de L'Osservatore Sovrano.",
+      "Scena visiva rappresentativa dell'Osservatorio: l'operatore domina la terrazza panoramica contemplando i grandi movimenti con un monumentale telescopio. Circondato da mappe e strumenti di precisione, osserva il fluire delle cose senza farsi travolgere dalla fretta o dalle illusioni momentanee.",
     highlights: [
-      "Il Telescopio Monumentale ad Ingranaggi: visione macroscopica distaccata e anticipazione strategica delle Kill-Zone senza fomo",
-      "Sfere Armillari & Astrolabi: governo trimestrale del tempo, del ritmo biologico e della disciplina operativa",
-      "Tavola Rotonda con Mappe Tattiche: preparazione analitica e diritto di parola a «Il Concilio della Domenica»",
-      "La Terrazza sulla Fortezza: elevazione al di sopra del rumore retail verso il controllo freddo e sovrano",
+      "Il Grande Telescopio: capacità di guardare lontano e cogliere i momenti propizi senza alcuna ansia",
+      "Armonia del Ritmo: padronanza del proprio tempo, del riposo e della lucidità mentale",
+      "La Tavola di Pianificazione: preparazione serena e partecipazione attiva agli incontri della domenica",
+      "La Terrazza sulla Fortezza: elevarsi al di sopra del caos per decidere con distacco e chiarezza",
     ],
   },
   4: {
@@ -363,15 +432,15 @@ export const GRADE_3D_MODELS: Record<LimenGradeNumber, Grade3DModelData | null> 
     alt: "Grado IV — L'Architetto del Reale: Scena Visiva 3D Blender & Gemini Image",
     badge: "MODELLO 3D // BLENDER",
     title: "GRADO IV — L'ARCHITETTO DEL REALE",
-    subtitle: "SCALA INIZIATICA // AUREUS",
-    caption: "La Progettazione e la Maestria della Realtà",
+    subtitle: "LA MAESTRIA DELLA VITA // AUREUS",
+    caption: "Dalla Precisione dei Grafici alla Solidità Reale",
     details:
-      "Scena visiva rappresentativa e rendering 3D dell'Officina dell'Architetto: il maestro costruttore in armatura cerimoniale dorata progetta con compasso di precisione, calibri e pergamene tecniche sul grande tavolo di quercia. Sullo sfondo, il cantiere monumentale dell'Ordine con gru a catena, ponteggi e schemi architettonici sospesi, sotto il maestoso cartiglio bronzeo de L'Architetto del Reale.",
+      "Scena visiva rappresentativa dell'Officina dell'Architetto: il costruttore esperto disegna con compasso e righe millimetriche su pergamene tecniche. Sullo sfondo, il cantiere della vita in espansione testimonia la trasformazione dell'autocontrollo in stabilità economica tangibile per sé e per i propri cari.",
     highlights: [
-      "Il Compasso di Precisione & Progetti: trasmutazione della maestria grafica in solide strutture economiche e imprenditoriali",
-      "Il Cantiere dell'Ordine & Gru Meccaniche: espansione concreta del capitale attraverso la rete B2B e progetti ad alto impatto",
-      "Trattati & Modelli di Fortezza: standardizzazione del metodo e rango di Garante Seniore ne La Fratellanza",
-      "Lente d'Ingrandimento & Calibri: verifica spietata della profittabilità e superamento delle prove avanzate Straight Line",
+      "Il Compasso di Precisione: trasformare l'autodisciplina quotidiana in solide fondamenta finanziarie",
+      "Il Cantiere del Futuro: costruzione paziente e duratura di sicurezza economica nel mondo reale",
+      "La Voce dell'Esperienza: punto di riferimento e guida saggia all'interno della fratellanza",
+      "Verifica Costante: rigore continuo per mantenere standard elevati senza mai abbassare la guardia",
     ],
   },
   5: {
@@ -379,15 +448,69 @@ export const GRADE_3D_MODELS: Record<LimenGradeNumber, Grade3DModelData | null> 
     alt: "Grado V — Il Fondatore d'Eredità: Scena Visiva 3D Blender & Gemini Image",
     badge: "MODELLO 3D // BLENDER",
     title: "GRADO V — IL FONDATORE D'EREDITÀ",
-    subtitle: "SCALA INIZIATICA // AUREUS",
-    caption: "La Trasmissione del Codice e la Consacrazione dell'Impero",
+    subtitle: "IL VALORE CONDIVISO // AUREUS",
+    caption: "La Trasmissione del Valore e la Consacrazione del Percorso",
     details:
-      "Scena visiva rappresentativa e rendering 3D della Sala del Trono della Cerchia Interna: il Fondatore d'Eredità, veterano in armatura imperiale e manto regale, consacra il Grande Tomo del Protocollo apponendo il sacro sigillo in ceralacca rossa. Attorno, la cattedrale gotica con guardie cerimoniali in armatura, stendardi araldici, bracieri monumentali, piramide d'oro e immensa biblioteca dell'Impero, sotto il solenne cartiglio bronzeo sospeso a catene.",
+      "Scena visiva rappresentativa della Sala del Sigillo: il Fondatore d'Eredità appone il sigillo di ceralacca sul grande libro della saggezza operativa. La grande sala con le sue volte e la biblioteca simboleggia il compimento del viaggio: l'esperienza individuale diventa patrimonio comune e guida per chi muove i primi passi.",
     highlights: [
-      "Apposizione del Sigillo di Ceralacca: consacrazione suprema del Codice, investitura della Cerchia Interna e perpetuazione della discendenza",
-      "Il Grande Tomo della Sovranità: sintesi imperitura di tutti i protocolli, regole di rischio e verità matematiche dell'Ordine",
-      "La Sala del Trono & Bracieri Monumentali: sovranità assoluta su tutte le divisioni dell'Ecosistema AUREUS",
-      "Piramide d'Oro & Stendardi Araldici: simbolo del compimento della Scala Iniziatica e della trasmutazione del capitale in eredità eterna",
+      "Il Sigillo della Saggezza: consacrazione di un percorso vissuto con integrità e rispetto assoluto delle regole",
+      "Il Grande Libro dei Principi: la sintesi di tutte le lezioni apprese, a disposizione delle future generazioni",
+      "La Sala dei Valori: serenità interiore, sicurezza materiale e gratitudine per il cammino percorso",
+      "L'Eredità Eterna: la certezza che la vera ricchezza consiste nella persona che sei diventato",
+    ],
+  },
+};
+
+export interface LandingGradeInfo {
+  requirement: string;
+  privileges: string[];
+}
+
+export const LANDING_GRADE_INFO: Record<LimenGradeNumber, LandingGradeInfo> = {
+  1: {
+    requirement:
+      "Hai il coraggio di ammettere che l'istinto ti sabota e accetti di allenarti a rischio zero prima di toccare un solo euro?",
+    privileges: [
+      "Palestra a Rischio Zero: sbaglia e sperimenta mille volte senza spendere un centesimo",
+      "La Mappa del Tempo: scopri quando agire e quando è vitale non fare assolutamente nulla",
+      "Scudo Anti-Fretta: un blocco automatico prima di pentirti delle tue azioni impulsive",
+      "Registro delle Scelte: scopri chi sei veramente quando sei sotto pressione",
+    ],
+  },
+  2: {
+    requirement:
+      "Riesci a rispettare la tua parola per 30 sessioni consecutive senza cedere nemmeno una volta all'impulso?",
+    privileges: [
+      "Il Tempio Fisico: gestione dell'energia corporea, del sonno e della lucidità mentale",
+      "Mandato di Espansione: condividi il metodo e azzera il tuo canone a vita con 5 persone",
+      "Sfide tra Membri: confrontati nelle prove di pura costanza e autocontrollo tra pari",
+    ],
+  },
+  3: {
+    requirement:
+      "90 giorni di calma assoluta: il mercato si muove forte, ma la tua mente resta impassibile.",
+    privileges: [
+      "Accesso prioritario e confronto diretto durante Il Concilio della Domenica sera",
+      "Protocolli avanzati di distacco emotivo per decisioni critiche ad alto valore",
+      "Riconoscimento ufficiale tra i membri anziani della fratellanza",
+    ],
+  },
+  4: {
+    requirement:
+      "La disciplina interiore diventa sicurezza economica tangibile nel mondo reale per te e la tua famiglia.",
+    privileges: [
+      "Diventi mentore e guida per chi sta affrontando le tempeste che tu hai già superato",
+      "Pianificazione avanzata per proteggere e far fruttare il capitale nel lungo termine",
+      "Invito ai tavoli ristretti di progettazione strategica dell'Ordine",
+    ],
+  },
+  5: {
+    requirement:
+      "Piena maestria: hai dominato te stesso e la tua esperienza è diventata una guida per le generazioni future.",
+    privileges: [
+      "Iscrizione permanente nell'Albo d'Onore di AUREUS PROTOCOL",
+      "Partecipazione alle scelte evolutive della piattaforma e del metodo",
+      "La certezza che la vera ricchezza è la libertà personale che hai conquistato",
     ],
   },
 };
@@ -409,52 +532,52 @@ export const MANIFESTO_SCENES: Record<number, ManifestoSceneData | null> = {
   1: {
     id: 1,
     src: "/images/manifesto/la-deriva.jpg",
-    alt: "Stato Inconscio // La Massa - I // La Deriva: Scena Visiva 3D Blender & Gemini Image",
+    alt: "Stato Inconscio // Il Caos - I // La Deriva: Scena Visiva 3D Blender & Gemini Image",
     badge: "MODELLO 3D // BLENDER",
-    title: "I — LA DERIVA (STATO INCONSCIO // LA MASSA)",
+    title: "I — LA DERIVA (IL CAOS EMOTIVO)",
     subtitle: "IL MANIFESTO DELL'ORDINE // SCENA I",
-    caption: "Diorama Visivo: La tempesta della liquidità retail e la deriva degli inconsapevoli",
+    caption: "Diorama Visivo: La tempesta delle illusioni e la deriva di chi agisce d'impulso",
     details:
-      "Scena visiva rappresentativa e rendering 3D dello Stato Inconscio (La Deriva): una chiatta industriale scura in ferro battuto naviga in balia di una tempesta implacabile e onde d'inchiostro nero. Una folla indistinta di operatori retail con sguardi fissi su schermi e candlestick caotici insegue segnali illusori e prezzi in fuga, illuminata solo da bagliori rossi e verdi d'emergenza. Sopra di loro, il cartiglio metallico industriale sospeso a catene reca l'avviso perenne: STATO INCONSCIO // LA MASSA - I // LA DERIVA.",
+      "Scena visiva rappresentativa dello Stato di Caos: una chiatta industriale naviga in balia di una tempesta violenta e onde scure. Una folla disorientata di persone con sguardi ansiosi insegue segnali illusori e prezzi impazziti, illuminata solo da bagliori d'allarme, priva di un timone e di una rotta.",
     highlights: [
-      "La Chiatta Industriale nella Tempesta: navigazione alla cieca senza timone né protocollo, metafora dell'anarchia emotiva e dell'assenza di un modello di rischio",
-      "La Folla Retail Ipnotizzata: operatori retail attratti dal rumore, da breakout tardivi e dall'ansia compulsiva di recupero perdite (revenge trading)",
-      "Monitor e Candlestick di Disperazione: schermi intermittenti e grafici frammentati che divorano il capitale dei non disciplinati",
-      "Il Cartiglio d'Allarme Industriale: avvertimento eterno sulla sorte del 95% del mercato, carburante e liquidità per gli algoritmi istituzionali",
+      "La Chiatta nella Tempesta: muoversi alla cieca senza un metodo né una rotta sicura, in balia della paura",
+      "L'Inseguimento delle Illusioni: farsi attrarre da false promesse di guadagni facili e cadere nella rabbia dopo ogni perdita",
+      "Gli Schermi dell'Ansia: notti insonni e ore rubate alla vita davanti ai grafici senza mai trovare serenità",
+      "Il Risultato del Disordine: il motivo per cui il 95% delle persone si arrende e brucia i propri sacrifici",
     ],
   },
   2: {
     id: 2,
     src: "/images/manifesto/il-varco.jpg",
-    alt: "La Decisione // L'Iniziato - II // Il Varco: Scena Visiva 3D Blender & Gemini Image",
+    alt: "La Scelta // Il Varco: Scena Visiva 3D Blender & Gemini Image",
     badge: "MODELLO 3D // BLENDER",
-    title: "II — IL VARCO (LA DECISIONE // L'INIZIATO)",
+    title: "II — IL VARCO (LA SCELTA CONSAPEVOLE)",
     subtitle: "IL MANIFESTO DELL'ORDINE // SCENA II",
-    caption: "Diorama Visivo: L'abbandono del caos e il varco della monumentale soglia fortificata",
+    caption: "Diorama Visivo: L'abbandono del caos e il passaggio verso la sicurezza del metodo",
     details:
-      "Scena visiva rappresentativa e rendering 3D de La Decisione (Il Varco): l'operatore iniziato volta definitivamente le spalle al naufragio della folla retail per incamminarsi sul molo d'acciaio verso la monumentale saracinesca d'accesso in pietra ciclopica e ferro battuto. Ai lati, le sentinelle armate vegliano sui bracieri ardenti, mentre al leggio cerimoniale gli scribi e custodi dell'Ordine registrano l'avvenuto ingresso nel Libro della Verità sotto il solenne cartiglio d'acciaio: LA DECISIONE // L'INIZIATO - II // IL VARCO [IL MOMENTO CHIAVE].",
+      "Scena visiva rappresentativa della Decisione: l'operatore volta definitivamente le spalle alla tempesta disordinata per incamminarsi verso il monumentale portale di pietra e ferro. Ai lati, i guardiani vegliano sui bracieri, mentre al leggio viene registrata la scelta di vivere secondo regole chiare e trasparenti.",
     highlights: [
-      "La Camminata dell'Iniziato: l'abbandono consapevole del rumore di mercato, dell'impulsività e delle illusioni del trading casuale",
-      "La Saracinesca Monumentale & I Guardiani: accesso custodito e invalicabile, sbloccabile unicamente mediante rispetto ferreo della Regola e del rischio",
-      "I Bracieri Cerimoniali & Il Fuoco della Forgia: purificazione psicologica ed eliminazione totale dell'avidità emotiva",
-      "La Registrazione sul Libro della Verità: tracciamento immutabile di ogni eseguito sul leggio sacro, inizio della trasformazione in operatore meccanico",
+      "Il Passo Decisivo: l'abbandono del gioco d'azzardo, della fretta compulsiva e delle promesse vuote",
+      "Il Portale Protetto: una barriera invalicabile creata per difendere i tuoi risparmi dalle scelte emotive",
+      "I Fuochi della Determinazione: la riscoperta della pazienza, dell'onestà e della calma mentale",
+      "La Scrittura delle Scelte: registrare ogni decisione per imparare davvero e non mentire mai a se stessi",
     ],
   },
   3: {
     id: 3,
     src: "/images/manifesto/gli-architetti.jpg",
-    alt: "Sovranità Operativa // L'Ordine - III // Gli Architetti: Scena Visiva 3D Blender & Gemini Image",
+    alt: "Padronanza Assoluta // Gli Architetti: Scena Visiva 3D Blender & Gemini Image",
     badge: "MODELLO 3D // BLENDER",
-    title: "III — GLI ARCHITETTI (SOVRANITÀ OPERATIVA // L'ORDINE)",
+    title: "III — GLI ARCHITETTI (LA VERA PADRONANZA)",
     subtitle: "IL MANIFESTO DELL'ORDINE // SCENA III",
-    caption: "Diorama Visivo: Il Consiglio Strategico degli Architetti e la Sala della Sovranità Operativa",
+    caption: "Diorama Visivo: La Sala della Serenità e la Padronanza del Proprio Futuro",
     details:
-      "Scena visiva rappresentativa e rendering 3D della Sovranità Operativa (Gli Architetti): all'interno della grandiosa sala gotico-industriale della Cittadella, il Consiglio degli Architetti in armature da parata e mantelli cerimoniali siede attorno alla monumentale tavola rotonda strategica. Al centro, il plastico architettonico dell'Impero e le carte topografiche con sestanti e lenti di precisione; sullo sfondo, le lavagne nere con grafici quantitativi e matrici numeriche, monumentali ingranaggi ad orologeria e le imponenti vetrate ad arco affacciate sull'oceano in tempesta, sotto il cartiglio bronzeo forgiato: SOVRANITÀ OPERATIVA // L'ORDINE - III // GLI ARCHITETTI.",
+      "Scena visiva rappresentativa della Serenità Operativa: nella grandiosa sala con vista sull'orizzonte, gli Architetti siedono attorno alla tavola di progettazione. Mappe chiare, compassi di precisione e mente distaccata: fuori la tempesta continua a infuriare, ma all'interno regna una calma assoluta e incrollabile.",
     highlights: [
-      "La Tavola Rotonda Strategica: pianificazione meticolosa degli scenari HTF prima dell'apertura di qualsiasi posizione di mercato",
-      "Plastico Architettonico & Compassi di Precisione: dimensionamento millimetrico del rischio, calcolo oggettivo del valore atteso e compounding del capitale",
-      "Matrici Numeriche & Ingranaggi ad Orologeria: sincronizzazione perfetta con le Kill-Zone e automazione disciplinata dell'esecuzione",
-      "La Sala Protetta & Le Vetrate sulla Tempesta: padronanza sovrana, calma interiore e distacco impassibile dal caos che infuria nel mercato retail",
+      "La Tavola di Progettazione: pianificare ogni azione con calma prima di compiere qualsiasi passo",
+      "Strumenti di Precisione: calcolare sempre il rischio per proteggere il capitale e farlo crescere nel tempo",
+      "Il Momento Perfetto: agire solo quando le condizioni sono favorevoli, senza esitare e senza rimpianti",
+      "La Calma Olimpica: vivere i mercati con serenità interiore, liberi dall'ansia che logora la massa",
     ],
   },
 };
@@ -477,18 +600,18 @@ export const EXPANSION_SCENE: ExpansionSceneData = {
   webp: "/images/expansion/mandato-espansione.webp",
   alt: "Ufficio del Tesoro e dei Mandati dell'Ordine: Il Sigillo dell'Autofinanziamento e la Regola dei 5 Membri",
   badge: "MODELLO 3D // BLENDER",
-  title: "L'UFFICIO DEL TESORO & DEI MANDATI",
-  subtitle: "IL MANDATO DI ESPANSIONE // ROYALTY 20%",
-  caption: "Diorama Visivo: Il Sigillo dell'Autofinanziamento e l'Azzeramento del Tributo",
+  title: "LA REGOLA DEI 5 // VALORE CONDIVISO",
+  subtitle: "PERCHÉ PAGARE SE IL SOFTWARE PUÒ PAGARE TE?",
+  caption: "Diorama Visivo: Il Sigillo dell'Autofinanziamento e l'Accesso Gratuito a Vita",
   details:
-    "Scena visiva rappresentativa e rendering 3D dell'Ufficio del Tesoro e dei Mandati dell'Ordine: in una maestosa sala a volte colma di archivi, l'Alto Cancelliere dell'Ordine in armatura e velluto cerimoniale siede al massiccio banco di calcolo e trascrizione. Sta apponendo il sigillo di ceralacca dorato sul Grande Registro dei Mandati, ratificando formalmente l'azzeramento del debito mensile dell'operatore meritevole. Sulla sinistra, un veterano introduce la fila dei cinque nuovi iniziati pronti a essere integrati nell'Ordine sotto la sorveglianza delle sentinelle. In primo piano, le pesanti bilance di precisione attestano il saldo netto a zero tra canone dovuto e royalty maturate, dinanzi al vassoio di velluto con le cinque chiavi cerimoniali d'oro e al contatore meccanico a scatti.",
-  criterion: "REGOLA DEI 5 MEMBRI: 5 Iniziati Attivi × 30€/m = 150€/m azzerati al 100% a vita. Dal 6° iniziato: Rendita Perpetua di Merito.",
+    "Scena visiva dell'Ufficio dei Mandati: il cancelliere appone il sigillo sul registro, ratificando l'azzeramento definitivo del canone mensile per l'operatore che ha condiviso il metodo. Sulla bilancia di precisione, il costo dell'abbonamento viene perfettamente bilanciato dalle royalty maturate.",
+  criterion: "LA REGOLA DEI 5: 5 Compagni di Viaggio × 30€/m = costo azzerato al 100% per sempre. Dalla 6ª persona in poi: rendita mensile netta per te.",
   highlights: [
-    "Le 5 Grandi Chiavi d'Oro sul Vassoio: simbolo fisico dei 5 iniziati necessari per sbloccare l'immunità finanziaria e il canone a zero",
-    "Le Bilance di Precisione: perfetto equilibrio matematico tra tributo dovuto (150€) e royalty maturate (5 × 30€ = 150€), costo netto zero",
-    "L'Alto Cancelliere & Il Sigillo d'Oro: ratifica solenne nel Libro dei Mandati, elevando la crescita organica a decreto di merito cavalleresco",
-    "L'Ingresso dei 5 Fratelli: selezione rigorosa e fratellanza operativa tra pari, lontana da schemi di affiliazione retail e fuffaguru",
-    "Il Contatore Meccanico a Scatti: monitoraggio oggettivo e trasparente delle royalty ricorrenti accreditate ogni mese direttamente dal protocollo",
+    "Le 5 Chiavi sul Vassoio: simbolo tangibile delle 5 persone necessarie per rendere l'abbonamento gratuito a vita",
+    "La Bilancia in Perfetto Equilibrio: equilibrio esatto tra quota mensile dovuta (150€) e royalty maturate (5 × 30€ = 150€), costo netto zero",
+    "Il Sigillo Ufficiale: registrazione trasparente nel proprio profilo, premiando la crescita organica e l'aiuto reciproco",
+    "Fratellanza tra Pari: una cerchia selezionata di persone motivate che condividono lo stesso ideale di libertà",
+    "Trasparenza Meccanica: monitoraggio chiaro e immediato delle royalty accreditate ogni mese direttamente sul tuo account",
   ],
 };
 
@@ -923,9 +1046,9 @@ export default function LandingPage() {
   // State for Gatekeeping Modal & Interactive Sections
   const [isGatekeepingOpen, setIsGatekeepingOpen] = useState(false);
   const [gatekeepingReason, setGatekeepingReason] = useState<string | undefined>(undefined);
+  const [selectedBlindSpot, setSelectedBlindSpot] = useState<"revenge" | "fomo" | "overtrading">("revenge");
   const [pricingCycle, setPricingCycle] = useState<"monthly" | "yearly">("monthly");
   const [selectedTierId, setSelectedTierId] = useState<"base_free" | "founders_10" | "complete_150">("founders_10");
-  const [activeFeatureHover, setActiveFeatureHover] = useState<{ title: string; detail: string } | null>(null);
   const [showComparisonMatrix, setShowComparisonMatrix] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeGrade, setActiveGrade] = useState<LimenGradeNumber>(1);
@@ -1026,6 +1149,7 @@ export default function LandingPage() {
     { label: "FAQ", href: "#faq" },
   ];
 
+  const activeSpot = BLIND_SPOTS.find((s) => s.id === selectedBlindSpot) ?? BLIND_SPOTS[0];
   const currentGradeDef = LIMEN_GRADES.find((g) => g.grade === activeGrade) ?? LIMEN_GRADES[0];
   const currentGradeModel3d = GRADE_3D_MODELS[activeGrade] ?? null;
 
@@ -1167,96 +1291,55 @@ export default function LandingPage() {
         {/* =====================================================================
             2. HERO SECTION MONUMENTALE ED EMOZIONALE
             ===================================================================== */}
-        <section className="relative pt-10 sm:pt-20 lg:pt-24 pb-16 sm:pb-28 lg:pb-36 overflow-hidden border-b border-[#24242C]/70 bg-[#060709]" aria-labelledby="hero-title">
+        <section className="relative pt-6 sm:pt-10 lg:pt-14 pb-12 sm:pb-16 lg:pb-20 overflow-hidden border-b border-[#24242C]/70 bg-[#060709]" aria-labelledby="hero-title">
           {/* Immersive Cathedral Atmosphere: Lateral Blender + Nano Banana Columns & Zenith Light */}
           <HeroAtmosphere />
 
           <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center z-10">
-            {/* Top Monospace Protocol Badge with Pulsing Live Singularity */}
-            <div className="inline-flex items-center gap-2 sm:gap-2.5 px-3 sm:px-5 py-1.5 sm:py-2 rounded-[4px] border border-[#C5A059]/45 bg-[#0E0F14]/95 text-[#C5A059] font-mono text-[9px] sm:text-[11px] tracking-[0.16em] sm:tracking-[0.24em] uppercase shadow-[0_0_20px_rgba(197,160,89,0.18)] backdrop-blur-md max-w-full">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A059] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#C5A059]"></span>
-              </span>
-              <SigilIcon variant="threshold" size={13} className="text-[#C5A059] shrink-0" />
-              <span className="truncate">IL CODICE DELLA PRESENZA E DELL'EREDITÀ // CICLO OPERATIVO</span>
-            </div>
-
             {/* Monumental Headline with Clean Unobstructed Center Stage */}
-            <div className="relative w-full max-w-4xl mx-auto mt-6 sm:mt-10 lg:mt-12">
+            <div className="relative w-full max-w-5xl mx-auto mt-1 sm:mt-3">
               <h1
                 id="hero-title"
-                className="landing-hero-title font-cinzel text-[1.5rem] xs:text-[1.85rem] sm:text-[2.65rem] lg:text-[3.25rem] font-bold text-[#F4F4F6] text-center leading-[1.18]"
+                className="landing-hero-title font-cinzel font-bold text-[#F4F4F6] text-center"
               >
-                <span className="block text-[#F4F4F6] sm:whitespace-nowrap drop-shadow-[0_4px_18px_rgba(0,0,0,0.9)]">
-                  LA MASSA OFFRE IL TRIBUTO.
+                <span className="block text-[#F4F4F6] lg:whitespace-nowrap drop-shadow-[0_4px_18px_rgba(0,0,0,0.9)]">
+                  DOVE IL CAOS BRUCIA I TUOI SOGNI.
                 </span>
-                <span className="hero-gold-gradient block mt-2.5 sm:mt-4 font-black tracking-[0.03em] sm:tracking-[0.06em]">
-                  GLI ARCHITETTI DISEGNANO IL VARCO.
+                <span className="hero-gold-gradient block mt-1.5 sm:mt-2.5 font-black tracking-[0.02em] sm:tracking-[0.04em] lg:whitespace-nowrap">
+                  LA DISCIPLINA COSTRUISCE LA TUA LIBERTÀ.
                 </span>
               </h1>
             </div>
 
-            {/* Philosophical-Operational Sub-headline with Generous Margins */}
-            <div className="max-w-2xl mx-auto mt-6 sm:mt-11 lg:mt-13 text-center">
-              <p className="text-xs sm:text-base lg:text-[17px] text-neutral-300/90 leading-[1.75] font-sans font-normal">
-                Nel rumore dei mercati, chi agisce per istinto non è un operatore: è il{" "}
-                <strong className="text-[#C44D4D] font-semibold tracking-wide">combustibile della struttura</strong>. Oltre la soglia di{" "}
-                <strong className="text-[#C5A059] font-medium tracking-wide">AUREUS</strong> non esistono scommesse, ma solo rito, allineamento geometrico ai volumi istituzionali e silenziosa esecuzione chirurgica.
+            {/* Surgical Tactical Hook - Max 1-2 Lines */}
+            <div className="max-w-3xl mx-auto mt-3.5 sm:mt-4 lg:mt-5 text-center px-4">
+              <p className="text-sm sm:text-base lg:text-lg text-[#B0B0BC] font-sans font-normal leading-relaxed">
+                E se il tuo vero errore non fosse ciò che fai sui mercati, ma le porte che non sai ancora chiudere?
               </p>
             </div>
 
-            {/* 3-Pillar Institutional Micro-Anchor Bar with Clear Separation */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-2 sm:gap-3.5 mt-6 sm:mt-10 lg:mt-12 font-mono text-[9px] sm:text-[11px] tracking-[0.12em] sm:tracking-[0.14em] uppercase">
-              <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-[4px] bg-[#101015]/95 border border-[#C5A059]/30 text-[#C5A059] whitespace-nowrap shadow-sm">
-                01. DECODIFICA DEI VOLUMI
-              </span>
-              <span className="text-[#C5A059]/40 hidden sm:inline">•</span>
-              <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-[4px] bg-[#101015]/95 border border-[#C5A059]/30 text-[#C5A059] whitespace-nowrap shadow-sm">
-                02. DISCIPLINA CHIRURGICA
-              </span>
-              <span className="text-[#C5A059]/40 hidden sm:inline">•</span>
-              <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-[4px] bg-[#101015]/95 border border-[#C5A059]/30 text-[#C5A059] whitespace-nowrap shadow-sm">
-                03. IMMUNITÀ DAL CAOS
-              </span>
-            </div>
-
-            {/* CTA Action Area: Monumental Gold Button & Obsidian Glass */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-8 sm:mt-12 lg:mt-15 w-full">
+            {/* CTA Action Area: Perfectly Symmetrical & Centered Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-5 sm:mt-7 w-full max-w-2xl mx-auto px-4">
               <button
                 type="button"
                 onClick={() => openGatekeeping("Ammissione Diretta - Eroe Principale")}
-                className="hero-gold-btn group w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-10 rounded-[6px] text-[#0A0A0C] font-mono text-xs sm:text-sm font-black tracking-[0.16em] sm:tracking-[0.18em] uppercase inline-flex items-center justify-center gap-3 whitespace-nowrap cursor-pointer shadow-[0_0_25px_rgba(197,160,89,0.35)]"
+                className="hero-gold-btn group w-full sm:w-[260px] md:w-[280px] h-12 sm:h-13 px-4 rounded-[6px] text-[#0A0A0C] font-mono text-xs sm:text-sm font-black tracking-[0.12em] sm:tracking-[0.14em] uppercase inline-flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer shadow-[0_0_25px_rgba(197,160,89,0.35)] transition-all"
               >
-                <span>VARCA LA SOGLIA — INIZIA L'ASCESA</span>
+                <span>VARCA LA SOGLIA</span>
                 <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
               </button>
 
               <a
-                href="#manifesto"
-                className="hero-obsidian-btn w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 rounded-[6px] text-[#C4C4CD] font-mono text-xs sm:text-sm font-semibold tracking-[0.14em] sm:tracking-[0.16em] uppercase inline-flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
+                href="#punto-cieco"
+                className="hero-obsidian-btn w-full sm:w-[260px] md:w-[280px] h-12 sm:h-13 px-4 rounded-[6px] text-[#C4C4CD] font-mono text-xs sm:text-sm font-semibold tracking-[0.1em] sm:tracking-[0.12em] uppercase inline-flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer border border-[#C5A059]/30 hover:border-[#C5A059]/60 hover:text-white transition-all"
               >
-                <span>LEGGI IL MANIFESTO</span>
+                <span>SCOPRI IL PUNTO CIECO</span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-[#C5A059]" />
               </a>
             </div>
 
-            {/* Curated Institutional Trust & Tribute Strip */}
-            <div className="inline-flex flex-wrap items-center justify-center gap-2.5 sm:gap-5 mt-9 sm:mt-11 lg:mt-12 px-5 py-2.5 rounded-[4px] bg-[#0D0E12]/90 border border-[#24242C] font-mono text-[10px] sm:text-[11px] text-[#8E8E99] tracking-[0.12em] uppercase backdrop-blur-md">
-              <span className="flex items-center gap-1.5 text-[#E4E4EC]">
-                <ShieldCheck className="h-3.5 w-3.5 text-[#C5A059] shrink-0" />
-                <span>TRIBUTO DI MANTENIMENTO:</span>
-                <span className="text-[#C5A059] font-bold">150€ / MESE</span>
-              </span>
-              <span className="text-[#24242C] hidden sm:inline">|</span>
-              <span className="text-[#A8A8B4] flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-[#C5A059] shrink-0" />
-                <span>DISDICI CON UN CLIC // NESSUN VINCOLO</span>
-              </span>
-            </div>
-
-            {/* Spazio Puro Dedicato al Film Master — Cornice a Filo Sottile Dorato con Respiro Maestoso */}
-            <div className="mt-10 sm:mt-20 lg:mt-32 max-w-4xl w-full mx-auto">
+            {/* Spazio Dedicato al Film Master — Cornice a Filo Sottile Dorato con Respiro Maestoso */}
+            <div className="mt-8 sm:mt-10 lg:mt-12 max-w-4xl w-full mx-auto">
               <div className="relative rounded-2xl overflow-hidden border border-[#C5A059]/40 shadow-[0_0_50px_rgba(197,160,89,0.15)] bg-[#0A0A0C] aspect-video group">
                 <video
                   src="/videos/limen-scene1.mp4"
@@ -1271,7 +1354,7 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => setIsAudioMuted(!isAudioMuted)}
-                  className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20 flex items-center gap-2 px-3 py-2 sm:py-1.5 rounded-full bg-[#0A0A0C]/85 hover:bg-[#0A0A0C] border border-[#C5A059]/60 text-[#C5A059] font-mono text-[9px] sm:text-[10px] tracking-widest uppercase backdrop-blur-md transition-all shadow-[0_4px_15px_rgba(0,0,0,0.8)] cursor-pointer touch-manipulation"
+                  className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20 flex items-center gap-2 px-3 py-1.5 sm:py-2 rounded-full bg-[#0A0A0C]/85 hover:bg-[#0A0A0C] border border-[#C5A059]/60 text-[#C5A059] font-mono text-[9px] sm:text-[10px] tracking-widest uppercase backdrop-blur-md transition-all shadow-[0_4px_15px_rgba(0,0,0,0.8)] cursor-pointer touch-manipulation"
                   aria-label={isAudioMuted ? "Attiva audio narrazione" : "Disattiva audio"}
                 >
                   {isAudioMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5 animate-pulse" />}
@@ -1282,37 +1365,145 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Thin vertical line connecting to Auto-Diagnosi */}
+        <div className="w-[1px] h-8 sm:h-12 lg:h-16 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#C5A059] shadow-[0_0_10px_#C5A059]" />
+        </div>
+
+        {/* =====================================================================
+            2.5 AUTO-DIAGNOSI INTERATTIVA ("LO SPECCHIO DEL PUNTO CIECO")
+            ===================================================================== */}
+        <section
+          id="punto-cieco"
+          className="py-12 sm:py-18 lg:py-24 relative border-t border-[#24242C]/40 bg-[#08080C]"
+          aria-labelledby="punto-cieco-title"
+        >
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 lg:space-y-10">
+            {/* Editorial Heading */}
+            <div className="text-center space-y-2.5 sm:space-y-3 max-w-3xl mx-auto">
+              <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full border border-[#C5A059]/40 bg-[#121216] font-mono text-[9px] sm:text-[10px] font-bold text-[#C5A059] uppercase tracking-[0.16em] sm:tracking-[0.2em] shadow-[0_0_20px_rgba(197,160,89,0.15)]">
+                <SigilIcon variant="threshold" size={13} />
+                <span>AUTO-DIAGNOSI // LO SPECCHIO DELLA VERITÀ</span>
+              </div>
+              <h2
+                id="punto-cieco-title"
+                className="text-2xl sm:text-4xl lg:text-5xl font-serif font-black text-white tracking-tight leading-tight"
+              >
+                Qual è il punto cieco che ti è costato di più finora?
+              </h2>
+              <p className="text-xs sm:text-sm text-[#8E8E99] font-sans max-w-xl mx-auto leading-relaxed">
+                Tocca l'impulso in cui ti riconosci. Scopri la porta che non hai mai aperto e lo scudo matematico che ti impedisce di ricaderci.
+              </p>
+            </div>
+
+            {/* 3 Streamlined Selector Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+              {BLIND_SPOTS.map((spot) => {
+                const isSelected = selectedBlindSpot === spot.id;
+                return (
+                  <button
+                    key={spot.id}
+                    type="button"
+                    onClick={() => setSelectedBlindSpot(spot.id)}
+                    className={`p-3.5 sm:p-5 lg:p-6 rounded-xl border text-left transition-all duration-300 cursor-pointer select-none ${
+                      isSelected
+                        ? "border-[#E8C56A] bg-[#141624] shadow-[0_0_25px_rgba(197,160,89,0.18)]"
+                        : "border-[#24242C] bg-[#0E0F14] hover:border-[#C5A059]/40 hover:bg-[#12141c]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`font-mono text-xs font-bold ${isSelected ? "text-[#E8C56A]" : "text-[#71717A]"}`}>
+                        {spot.number}.
+                      </span>
+                      <h3 className={`font-serif font-bold text-sm sm:text-base leading-tight ${isSelected ? "text-white" : "text-[#D0D0D8]"}`}>
+                        {spot.title}
+                      </h3>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-[#8E8E99] mt-1.5 sm:mt-2 leading-relaxed">
+                      «{spot.trigger}»
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Unified Architectural Reveal Card */}
+            {activeSpot && (
+              <div className="relative rounded-2xl border border-[#C5A059]/40 bg-[#0E0F14] p-4 sm:p-6 lg:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.85)]">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-8 items-center">
+                  {/* Left Column: The Truth & The Piercing Question */}
+                  <div className="lg:col-span-7 space-y-2.5 sm:space-y-3.5">
+                    <span className="font-mono text-[9px] sm:text-[10px] font-bold text-[#C5A059] uppercase tracking-[0.16em] sm:tracking-[0.2em] block">
+                      L'INGANNO INCONSCIO &amp; LA PORTA NASCOSTA
+                    </span>
+                    <p className="text-base sm:text-lg text-white font-serif leading-snug">
+                      {activeSpot.unseenDoor}
+                    </p>
+                    <div className="border-l-2 border-[#C5A059] pl-3.5 sm:pl-4 py-1 text-sm sm:text-base italic text-[#E8C56A] font-serif leading-relaxed">
+                      «{activeSpot.openQuestion}»
+                    </div>
+                  </div>
+
+                  {/* Right Column: The AUREUS Shield & Action */}
+                  <div className="lg:col-span-5 space-y-3 sm:space-y-4 lg:border-l lg:border-[#24242C] lg:pl-6 xl:pl-8">
+                    <div className="space-y-1 sm:space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-[#C5A059] shrink-0" />
+                        <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
+                          {activeSpot.shieldModule.number} // {activeSpot.shieldModule.title}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#94a3b8] leading-relaxed">
+                        {activeSpot.shieldModule.howItWorks}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openGatekeeping(activeSpot.gatekeepingReason)}
+                      className="w-full py-3 sm:py-3.5 px-4 rounded-xl bg-[#C5A059] hover:bg-[#E8C56A] text-[#07080b] font-mono text-xs font-bold tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(197,160,89,0.3)] flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>{activeSpot.cta}</span>
+                      <ArrowRight className="h-4 w-4 shrink-0" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Thin vertical line connecting to the Manifesto */}
-        <div className="w-[1px] h-20 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
+        <div className="w-[1px] h-8 sm:h-12 lg:h-16 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#C5A059] shadow-[0_0_10px_#C5A059]" />
         </div>
 
         {/* =====================================================================
             3. SEZIONE STORYTELLING ("LO SPECCHIO DELLA VERITÀ")
             ===================================================================== */}
-        <section id="manifesto" className="py-20 sm:py-28 relative" aria-labelledby="manifesto-title">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+        <section id="manifesto" className="py-12 sm:py-18 lg:py-24 relative" aria-labelledby="manifesto-title">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-10 lg:space-y-14">
             {/* Editorial Heading */}
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <div className="text-center space-y-2.5 sm:space-y-3.5 max-w-3xl mx-auto">
               <span className="font-mono text-xs font-bold text-[#C5A059] tracking-[0.25em] uppercase">
-                IL MANIFESTO DELL'ORDINE // LO SPECCHIO DELLA VERITÀ
+                IL MANIFESTO // L'ERRORE INVISIBILE
               </span>
               <h2
                 id="manifesto-title"
                 className="text-2xl sm:text-4xl lg:text-5xl font-serif font-black text-white tracking-tight leading-tight"
               >
-                Il Grafico come Radiografia dell'Anima Umana
+                Hai mai notato che l'errore più disastroso lo fai sempre quando credi di aver ragione?
               </h2>
-              <p className="text-sm sm:text-base text-[#8E8E99] leading-relaxed font-sans">
-                Il mercato non è un gioco di numeri o di previsioni magiche. È uno specchio morale inflessibile. Non premia i desideri: punisce l'ingordigia, la fretta e la debolezza interiore. Chi non sa dominare se stesso nel silenzio viene sistematicamente stritolato dalla folla rumorosa che alimenta la liquidità dei market maker.
+              <p className="text-xs sm:text-base text-[#8E8E99] leading-relaxed font-sans">
+                Il mercato non combatte contro di te. Riflette solo ciò che non riesci a dominare. Tre stadi separano chi finisce svuotato da chi conquista la sovranità della propria vita. Tu dove ti trovi in questo momento?
               </p>
             </div>
 
             {/* The 3 Cards of the States of Man */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 items-stretch">
               {/* Card 1: La Deriva */}
-              <div className="rounded-2xl border border-[#24242C] bg-[#121216] p-6 sm:p-7 flex flex-col justify-between space-y-6 hover:border-red-900/50 transition-all duration-300 relative group">
-                <div className="space-y-4">
+              <div className="rounded-2xl border border-[#24242C] bg-[#121216] p-4 sm:p-6 lg:p-7 flex flex-col justify-between space-y-4 sm:space-y-5 hover:border-red-900/50 transition-all duration-300 relative group">
+                <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="font-serif text-2xl font-black text-[#8E8E99] tracking-widest">
                       I
@@ -1324,9 +1515,9 @@ export default function LandingPage() {
 
                   <div>
                     <span className="font-mono text-[10px] tracking-[0.2em] font-bold text-red-400 uppercase">
-                      STATO INCONSCIO // LA MASSA
+                      STATO I // IL VICOLO CIECO
                     </span>
-                    <h3 className="text-xl font-serif font-bold text-white mt-1">
+                    <h3 className="text-lg sm:text-xl font-serif font-bold text-white mt-1">
                       La Deriva
                     </h3>
                   </div>
@@ -1344,7 +1535,7 @@ export default function LandingPage() {
                           webp: scene.webp,
                           badge: scene.badge,
                           description: scene.details,
-                          criterion: "DESTINO: Il 95% funge da carburante e liquidità per gli algoritmi istituzionali.",
+                          criterion: "DESTINO: Il 95% delle persone si ferma qui: deluso, confuso e svuotato dal disordine emotivo.",
                           highlights: scene.highlights,
                         })
                       }
@@ -1352,22 +1543,14 @@ export default function LandingPage() {
                   )}
 
                   <p className="text-xs sm:text-sm text-[#8E8E99] leading-relaxed">
-                    Reagire agli impulsi, inseguire i breakout in ritardo, acquistare indicatori miracolosi e cercare vendetta contro il mercato dopo ogni perdita. Assenza di rito, assenza di disciplina.
+                    Quante volte hai giurato «questa è l'ultima volta che agisco d'istinto»? Perché ogni volta che provi a recuperare una perdita finisci per raddoppiarla? Non stai sfidando il mercato: stai solo scommettendo contro le tue stesse debolezze.
                   </p>
-                </div>
-
-                <div className="pt-4 border-t border-[#24242C] font-mono text-[11px] text-red-400/90 leading-tight">
-                  DESTINO: Il 95% funge da carburante e liquidità per gli algoritmi istituzionali.
                 </div>
               </div>
 
               {/* Card 2: Il Varco */}
-              <div className="rounded-2xl border border-[#C5A059]/50 bg-[#121216] p-6 sm:p-7 flex flex-col justify-between space-y-6 shadow-[0_0_30px_rgba(197,160,89,0.1)] relative group">
-                <div className="absolute top-0 right-0 -mt-2 -mr-2 px-3 py-0.5 rounded-full bg-[#C5A059] text-[#0A0A0C] font-mono text-[10px] font-black uppercase tracking-wider">
-                  IL MOMENTO CHIAVE
-                </div>
-
-                <div className="space-y-4">
+              <div className="rounded-2xl border border-[#C5A059]/50 bg-[#121216] p-4 sm:p-6 lg:p-7 flex flex-col justify-between space-y-4 sm:space-y-5 shadow-[0_0_30px_rgba(197,160,89,0.1)] relative group">
+                <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="font-serif text-2xl font-black text-[#C5A059] tracking-widest">
                       II
@@ -1379,9 +1562,9 @@ export default function LandingPage() {
 
                   <div>
                     <span className="font-mono text-[10px] tracking-[0.2em] font-bold text-[#C5A059] uppercase">
-                      LA DECISIONE // L'INIZIATO
+                      STATO II // IL BIVIO CRUCIALE
                     </span>
-                    <h3 className="text-xl font-serif font-bold text-white mt-1">
+                    <h3 className="text-lg sm:text-xl font-serif font-bold text-white mt-1">
                       Il Varco
                     </h3>
                   </div>
@@ -1398,7 +1581,7 @@ export default function LandingPage() {
                           webp: scene.webp,
                           badge: scene.badge,
                           description: scene.details,
-                          criterion: "DESTINO: Uscita dal rumore. Trasformazione da scommettitore impulsivo a operatore meccanico.",
+                          criterion: "DESTINO: Uscita dal caos. La trasformazione da scommettitore ansioso a persona lucida, calma e metodica.",
                           highlights: scene.highlights,
                         })
                       }
@@ -1412,18 +1595,14 @@ export default function LandingPage() {
                   )}
 
                   <p className="text-xs sm:text-sm text-[#8E8E99] leading-relaxed">
-                    Rinuncia al richiamo dell'effimero e sottomissione volontaria alla Regola. Adozione de L'Ordine Giornaliero, rispetto del Custode della Soglia e registrazione inflessibile ne Il Libro della Verità.
+                    Cosa accadrebbe se decidessi che difendere i tuoi risparmi vale più del tuo orgoglio? Cosa proveresti se un sistema bloccasse i tuoi accessi non appena rileva agitazione? La regola non limita la tua libertà: è l'unico scudo che ti impedisce di distruggerla.
                   </p>
-                </div>
-
-                <div className="pt-4 border-t border-[#C5A059]/30 font-mono text-[11px] text-[#C5A059] leading-tight">
-                  DESTINO: Uscita dal rumore. Trasformazione da scommettitore impulsivo a operatore meccanico.
                 </div>
               </div>
 
               {/* Card 3: Gli Architetti */}
-              <div className="rounded-2xl border border-[#24242C] bg-[#121216] p-6 sm:p-7 flex flex-col justify-between space-y-6 hover:border-[#C5A059]/40 transition-all duration-300 relative group">
-                <div className="space-y-4">
+              <div className="rounded-2xl border border-[#24242C] bg-[#121216] p-4 sm:p-6 lg:p-7 flex flex-col justify-between space-y-4 sm:space-y-5 hover:border-[#C5A059]/40 transition-all duration-300 relative group">
+                <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="font-serif text-2xl font-black text-[#8E8E99] tracking-widest">
                       III
@@ -1435,9 +1614,9 @@ export default function LandingPage() {
 
                   <div>
                     <span className="font-mono text-[10px] tracking-[0.2em] font-bold text-[#C5A059] uppercase">
-                      SOVRANITÀ OPERATIVA // L'ORDINE
+                      STATO III // LA MAESTRIA
                     </span>
-                    <h3 className="text-xl font-serif font-bold text-white mt-1">
+                    <h3 className="text-lg sm:text-xl font-serif font-bold text-white mt-1">
                       Gli Architetti
                     </h3>
                   </div>
@@ -1454,7 +1633,7 @@ export default function LandingPage() {
                           webp: scene.webp,
                           badge: scene.badge,
                           description: scene.details,
-                          criterion: "DESTINO: Padronanza del tempo e del capitale. Avanzamento nella Gerarchia e Cerchia Interna.",
+                          criterion: "DESTINO: Libertà, rispetto di sé e controllo duraturo del proprio destino finanziario.",
                           highlights: scene.highlights,
                         })
                       }
@@ -1468,12 +1647,8 @@ export default function LandingPage() {
                   )}
 
                   <p className="text-xs sm:text-sm text-[#8E8E99] leading-relaxed">
-                    Esecuzione al minuto priva di esitazioni dopo validazione dello scenario HTF. Gestione millimetrica del rischio, estrazione sistematica di capitale e costruzione di eredità nel tempo.
+                    Come cambierebbe la tua giornata se ti bastassero venti minuti di lucidità invece di passare ore col batticuore davanti allo schermo? Pochi gesti misurati. La calma olimpica di chi ha già ripetuto ogni scenario cento volte nel simulatore prima di rischiare un solo euro.
                   </p>
-                </div>
-
-                <div className="pt-4 border-t border-[#24242C] font-mono text-[11px] text-[#C5A059] leading-tight">
-                  DESTINO: Padronanza del tempo e del capitale. Avanzamento nella Gerarchia e Cerchia Interna.
                 </div>
               </div>
             </div>
@@ -1481,32 +1656,32 @@ export default function LandingPage() {
         </section>
 
         {/* Thin vertical line connecting to L'Ordine */}
-        <div className="w-[1px] h-20 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
+        <div className="w-[1px] h-8 sm:h-12 lg:h-16 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#C5A059] shadow-[0_0_10px_#C5A059]" />
         </div>
 
         {/* =====================================================================
             4. SEZIONE ARCHITETTURA SOFTWARE ("L'ORDINE GIORNALIERO")
             ===================================================================== */}
-        <section id="features" className="py-20 sm:py-28 relative border-t border-[#24242C]/40" aria-labelledby="software-title">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
+        <section id="features" className="py-12 sm:py-18 lg:py-24 relative border-t border-[#24242C]/40" aria-labelledby="software-title">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-10 lg:space-y-14">
+            <div className="text-center space-y-2.5 sm:space-y-3.5 max-w-3xl mx-auto">
               <span className="font-mono text-xs font-bold text-[#C5A059] tracking-[0.25em] uppercase">
-                ARCHITETTURA SOFTWARE // I 6 PILASTRI DELL'ORDINE
+                LE 6 PORTE DI PROTEZIONE
               </span>
               <h2
                 id="software-title"
-                className="text-2xl sm:text-4xl lg:text-5xl font-serif font-black text-white tracking-tight"
+                className="text-2xl sm:text-4xl lg:text-5xl font-serif font-black text-white tracking-tight leading-tight"
               >
-                L'Ordine Giornaliero: L'Infrastruttura dell'Architetto
+                Cosa Faresti Se Qualcuno Ti Impedisse di Sbagliare?
               </h2>
-              <p className="text-sm sm:text-base text-[#8E8E99] leading-relaxed font-sans">
-                Nessuna azione fuori dal protocollo. L'ecosistema software che trasforma la psicologia caotica in una catena di montaggio rigida, verificata e priva di margini per l'errore emotivo.
+              <p className="text-xs sm:text-base text-[#8E8E99] leading-relaxed font-sans">
+                Gli strumenti tradizionali ti mostrano solo il danno dopo che hai perso soldi. AUREUS interviene prima: sei blocchi tattici per proteggere la tua mente e rendere la disciplina un riflesso incondizionato.
               </p>
             </div>
 
             {/* Bento Grid a 6 Blocchi */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 items-stretch">
               {SOFTWARE_MODULES.map((module) => {
                 const has3d = !!module.model3d;
 
@@ -1515,11 +1690,11 @@ export default function LandingPage() {
                     key={module.id}
                     className={`rounded-2xl border transition-all duration-300 group flex flex-col justify-between ${
                       has3d
-                        ? "border-[#C5A059]/40 bg-gradient-to-b from-[#14141A] to-[#0E0F14] p-5 sm:p-6 shadow-[0_4px_30px_rgba(0,0,0,0.5)] hover:border-[#C5A059]/80 hover:shadow-[0_0_35px_rgba(197,160,89,0.22)]"
-                        : "border-[#24242C] bg-[#121216] p-7 hover:border-[#C5A059]/50"
+                        ? "border-[#C5A059]/40 bg-gradient-to-b from-[#14141A] to-[#0E0F14] p-4 sm:p-5 lg:p-6 shadow-[0_4px_30px_rgba(0,0,0,0.5)] hover:border-[#C5A059]/80 hover:shadow-[0_0_35px_rgba(197,160,89,0.22)]"
+                        : "border-[#24242C] bg-[#121216] p-4 sm:p-6 hover:border-[#C5A059]/50"
                     }`}
                   >
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-3.5">
                       {has3d && module.model3d ? (
                         /* =========================================================
                            3D MODEL SHOWCASE (replaces emoji and empty space)
@@ -1580,13 +1755,13 @@ export default function LandingPage() {
                           </picture>
 
                           {/* Top-right Hover Expand Button */}
-                          <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1 px-2 py-1 rounded-[4px] bg-[#0E0F14]/90 border border-[#C5A059]/50 text-[#C5A059] hover:bg-[#C5A059] hover:text-[#0A0A0C] transition-colors shadow-lg text-[10px] font-mono font-bold">
-                            <Maximize2 className="h-3 w-3" />
+                          <div className="absolute top-2.5 right-2.5 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-[#0E0F14]/90 border border-[#C5A059]/50 text-[#C5A059] hover:bg-[#C5A059] hover:text-[#0A0A0C] transition-colors shadow-lg text-[9px] font-mono font-bold">
+                            <Maximize2 className="h-2.5 w-2.5" />
                             <span className="hidden sm:inline">ISPEZIONA</span>
                           </div>
 
                           {/* Subtle bottom fade vignette */}
-                          <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#14141A] via-[#14141A]/40 to-transparent pointer-events-none z-10" />
+                          <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#14141A] via-[#14141A]/40 to-transparent pointer-events-none z-10" />
                         </div>
                       ) : (
                         /* =========================================================
@@ -1598,10 +1773,10 @@ export default function LandingPage() {
                       )}
 
                       <div>
-                        <span className="font-mono text-[10px] tracking-[0.2em] font-bold text-[#C5A059] uppercase">
+                        <span className="font-mono text-[9.5px] sm:text-[10px] tracking-[0.18em] sm:tracking-[0.2em] font-bold text-[#C5A059] uppercase">
                           {module.number} // {module.category}
                         </span>
-                        <h3 className="text-lg font-serif font-bold text-white mt-1 group-hover:text-[#F5E5C9] transition-colors">
+                        <h3 className="text-base sm:text-lg font-serif font-bold text-white mt-0.5 sm:mt-1 group-hover:text-[#F5E5C9] transition-colors">
                           {module.title}
                         </h3>
                       </div>
@@ -1609,10 +1784,6 @@ export default function LandingPage() {
                       <p className="text-xs text-[#8E8E99] leading-relaxed">
                         {module.description}
                       </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-[#24242C]/60 font-mono text-[11px] text-[#C5A059]">
-                      {module.criterion}
                     </div>
                   </div>
                 );
@@ -1622,54 +1793,54 @@ export default function LandingPage() {
         </section>
 
         {/* Thin vertical line connecting to I 5 Gradi */}
-        <div className="w-[1px] h-20 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
+        <div className="w-[1px] h-8 sm:h-12 lg:h-16 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#C5A059] shadow-[0_0_10px_#C5A059]" />
         </div>
 
         {/* =====================================================================
             5. TIMELINE INTERATTIVA DEI "5 GRADI DI ASCESA"
             ===================================================================== */}
-        <section id="how" className="py-20 sm:py-28 relative border-t border-[#24242C]/40" aria-labelledby="ladder-title">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
+        <section id="how" className="py-12 sm:py-18 lg:py-24 relative border-t border-[#24242C]/40" aria-labelledby="ladder-title">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-10 lg:space-y-14">
+            <div className="text-center space-y-2.5 sm:space-y-3.5 max-w-3xl mx-auto">
               <span className="font-mono text-xs font-bold text-[#C5A059] tracking-[0.25em] uppercase">
-                SCALA INIZIATICA // MERITOCRAZIA OPERATIVA
+                LA SCALA DELLA PADRONANZA // IL VALORE GUADAGNATO
               </span>
               <h2
                 id="ladder-title"
-                className="text-2xl sm:text-4xl lg:text-5xl font-serif font-black text-white tracking-tight"
+                className="text-2xl sm:text-4xl lg:text-5xl font-serif font-black text-white tracking-tight leading-tight"
               >
-                I 5 Gradi di Ascesa: Il Rango non si Compra
+                I 5 Gradi: Il Rispetto non si Compra con il Denaro
               </h2>
-              <p className="text-sm sm:text-base text-[#8E8E99] leading-relaxed font-sans">
-                Nel mondo retail paghi per vantare titoli vuoti. In AUREUS, ogni livello, privilegio avanzato e mandato di espansione si sblocca esclusivamente dimostrando fedeltà assoluta al Codice.
+              <p className="text-xs sm:text-base text-[#8E8E99] leading-relaxed font-sans">
+                Chiunque può vantarsi sui social o comprare titoli vuoti. Ma puoi comprare la capacità di non farti prendere dal panico? In AUREUS, ogni livello è una conquista visibile di autocontrollo.
               </p>
             </div>
 
             {/* Active Grade Detailed View with Integrated Progression & 3D Model */}
-            <div className="rounded-2xl border border-[#C5A059]/40 bg-[#121216] p-6 sm:p-8 lg:p-10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] relative">
+            <div className="rounded-2xl border border-[#C5A059]/40 bg-[#121216] p-4 sm:p-6 lg:p-8 shadow-[0_10px_40px_rgba(0,0,0,0.8)] relative">
               {/* Grade Header with Integrated Grade Progression Selector in Top-Right */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-[#24242C] pb-6 mb-8">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-5 border-b border-[#24242C] pb-4 sm:pb-5 mb-5 sm:mb-7">
                 {/* Left: Active Grade Title & Subtitle */}
-                <div className="flex items-center gap-4 min-w-0 flex-1 pr-4">
-                  <span className="font-serif text-3xl sm:text-4xl lg:text-5xl font-black text-[#C5A059] border-r border-[#24242C] pr-5 shrink-0">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 pr-0 lg:pr-4">
+                  <span className="font-serif text-3xl sm:text-4xl lg:text-5xl font-black text-[#C5A059] border-r border-[#24242C] pr-3.5 sm:pr-5 shrink-0">
                     {currentGradeDef.roman}
                   </span>
                   <div className="min-w-0">
-                    <div className="font-mono text-xs font-bold tracking-widest text-[#C5A059] uppercase truncate">
+                    <div className="font-mono text-[10px] sm:text-xs font-bold tracking-widest text-[#C5A059] uppercase truncate">
                       {currentGradeDef.code}
                     </div>
-                    <h3 className="text-xl sm:text-2xl lg:text-3xl font-serif font-black text-white mt-0.5 truncate">
+                    <h3 className="text-base sm:text-2xl lg:text-3xl font-serif font-black text-white mt-0.5">
                       {currentGradeDef.title}
                     </h3>
-                    <p className="text-xs sm:text-sm text-[#8E8E99] mt-1 line-clamp-2">
+                    <p className="text-xs sm:text-sm text-[#8E8E99] mt-0.5 sm:mt-1 line-clamp-2">
                       {currentGradeDef.subtitle}
                     </p>
                   </div>
                 </div>
 
                 {/* Right: Integrated Grade Progression Selector (I, II, III, IV, V) */}
-                <div className="shrink-0 flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 lg:pb-0">
+                <div className="shrink-0 flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none pb-1 lg:pb-0 w-full lg:w-auto -mx-1 px-1">
                   {LIMEN_GRADES.map((gradeDef) => {
                     const isSelected = activeGrade === gradeDef.grade;
                     return (
@@ -1677,24 +1848,24 @@ export default function LandingPage() {
                         key={gradeDef.grade}
                         type="button"
                         onClick={() => setActiveGrade(gradeDef.grade)}
-                        className={`min-w-[64px] sm:min-w-[74px] px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border text-center transition-all shrink-0 ${
+                        className={`flex-1 sm:flex-initial min-w-[58px] sm:min-w-[72px] lg:min-w-[76px] px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border text-center transition-all shrink-0 cursor-pointer ${
                           isSelected
                             ? "border-[#C5A059] bg-[#C5A059]/15 text-[#C5A059] shadow-[0_0_20px_rgba(197,160,89,0.25)]"
                             : "border-[#24242C] bg-[#0A0A0C] text-[#8E8E99] hover:border-[#C5A059]/40 hover:text-white hover:bg-[#141418]"
                         }`}
                         aria-label={`Seleziona ${gradeDef.code} - ${gradeDef.title}`}
                       >
-                        <div className="flex items-center justify-center gap-1.5">
-                          <span className="font-serif text-sm sm:text-base font-bold">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="font-serif text-xs sm:text-sm font-bold">
                             {gradeDef.roman}
                           </span>
                           <SigilIcon
                             variant={gradeDef.sigilId}
-                            size={13}
+                            size={12}
                             className={isSelected ? "text-[#C5A059]" : "text-[#8E8E99]/60"}
                           />
                         </div>
-                        <div className="text-[9.5px] sm:text-[10px] font-mono tracking-wider font-semibold uppercase mt-0.5 truncate">
+                        <div className="text-[8px] sm:text-[10px] font-mono tracking-tight sm:tracking-wider font-semibold uppercase mt-0.5 whitespace-nowrap">
                           {gradeDef.grade === 1
                             ? "Novizio"
                             : gradeDef.grade === 2
@@ -1712,7 +1883,7 @@ export default function LandingPage() {
               </div>
 
               {/* Main Content: 3D Scene + Requirements/Privileges */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-8 items-start">
                 {/* Left Column: Interactive 3D Model Showcase */}
                 <div className="lg:col-span-7">
                   <Grade3DCard
@@ -1726,57 +1897,48 @@ export default function LandingPage() {
                         webp: model.webp,
                         badge: model.badge,
                         description: model.details,
-                        criterion: `REQUISITO: ${currentGradeDef.requirementSummary}`,
+                        criterion: `TRAGUARDO: ${LANDING_GRADE_INFO[activeGrade].requirement}`,
                         highlights: model.highlights,
                       })
                     }
                   />
                 </div>
 
-                {/* Right Column: Requirements, Privileges & Action */}
-                <div className="lg:col-span-5 space-y-4">
-                  {/* Requisito di Merito */}
-                  <div className="rounded-xl border border-[#24242C] bg-[#0A0A0C] p-4 sm:p-5 font-mono text-xs space-y-2">
-                    <div className="flex items-center justify-between text-[#8E8E99]">
-                      <span>REQUISITO DI MERITO INDISPENSABILE:</span>
-                      <span className="text-[#C5A059] font-bold">AUDIT D'INTEGRITÀ</span>
+                {/* Right Column: Unified Requirements & Privileges Panel */}
+                <div className="lg:col-span-5 rounded-2xl border border-[#24242C] bg-[#0A0A0C] p-4 sm:p-5 lg:p-6 flex flex-col justify-between space-y-4 sm:space-y-5">
+                  <div className="space-y-3.5 sm:space-y-4">
+                    {/* Requisito di Merito */}
+                    <div className="space-y-1.5 sm:space-y-2 border-b border-[#24242C] pb-3.5 sm:pb-4">
+                      <span className="font-mono text-[9px] sm:text-[10px] text-[#C5A059] font-bold uppercase tracking-widest block">
+                        TRAGUARDO DI DISCIPLINA · GRADO {currentGradeDef.roman}
+                      </span>
+                      <p className="text-white font-sans text-xs sm:text-sm leading-relaxed">
+                        {LANDING_GRADE_INFO[activeGrade].requirement}
+                      </p>
                     </div>
-                    <div className="text-white font-sans text-xs sm:text-sm leading-relaxed">
-                      {currentGradeDef.requirementSummary}
+
+                    {/* Privilegi Sbloccati */}
+                    <div className="space-y-2 sm:space-y-2.5">
+                      <span className="font-mono text-[9px] sm:text-[10px] text-[#8E8E99] font-bold uppercase tracking-widest block">
+                        COSA CONQUISTI A QUESTO LIVELLO:
+                      </span>
+                      <ul className="space-y-1.5 sm:space-y-2 text-xs text-[#8E8E99]">
+                        {LANDING_GRADE_INFO[activeGrade].privileges.map((privilege, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-[#C5A059] shrink-0 mt-0.5" />
+                            <span className="text-[#F4F4F6] font-sans">{privilege}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
-
-                  {/* Privilegi Sbloccati */}
-                  <div className="rounded-xl border border-[#24242C] bg-[#0A0A0C] p-4 sm:p-5 space-y-3.5">
-                    <div className="font-mono text-xs font-bold tracking-widest text-[#C5A059] uppercase border-b border-[#24242C] pb-2.5 flex items-center gap-2">
-                      <Unlock className="h-4 w-4 text-[#C5A059]" />
-                      <span>PRIVILEGI SBLOCCATI AL GRADO {currentGradeDef.roman}:</span>
-                    </div>
-
-                    <ul className="space-y-2.5 text-xs text-[#8E8E99]">
-                      {currentGradeDef.unlockedPrivileges.map((privilege, idx) => (
-                        <li key={idx} className="flex items-start gap-2.5">
-                          <CheckCircle2 className="h-4 w-4 text-[#C5A059] shrink-0 mt-0.5" />
-                          <span className="text-[#F4F4F6] font-sans">{privilege}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Locked Notice */}
-                  {currentGradeDef.lockedNotice && (
-                    <div className="flex items-center gap-2 text-xs font-mono text-amber-400 bg-amber-950/20 border border-amber-900/40 rounded-xl p-3 sm:p-3.5">
-                      <Lock className="h-4 w-4 shrink-0 text-amber-400" />
-                      <span>{currentGradeDef.lockedNotice}</span>
-                    </div>
-                  )}
 
                   {/* CTA Button */}
-                  <div className="pt-1">
+                  <div className="pt-2">
                     <button
                       type="button"
                       onClick={() => openGatekeeping(`Ammissione per scalata al ${currentGradeDef.code}`)}
-                      className="w-full py-3 rounded-xl border border-[#C5A059]/50 bg-[#C5A059]/15 hover:bg-[#C5A059] text-[#C5A059] hover:text-[#0A0A0C] font-mono text-xs font-bold tracking-wider uppercase transition-all shadow-[0_4px_20px_rgba(197,160,89,0.15)] hover:shadow-[0_0_25px_rgba(197,160,89,0.35)]"
+                      className="w-full py-3 sm:py-3.5 rounded-xl bg-[#C5A059] hover:bg-[#E8C56A] text-[#0A0A0C] font-mono text-xs font-bold tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(197,160,89,0.25)] cursor-pointer"
                     >
                       CANDIDATI PER ACCEDERE ALLA SCALA
                     </button>
@@ -1788,34 +1950,34 @@ export default function LandingPage() {
         </section>
 
         {/* Thin vertical line connecting to Espansione 20% */}
-        <div className="w-[1px] h-20 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
+        <div className="w-[1px] h-8 sm:h-12 lg:h-16 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#C5A059] shadow-[0_0_10px_#C5A059]" />
         </div>
 
         {/* =====================================================================
             6. SEZIONE "IL MANDATO DI ESPANSIONE (ROYALTY 20%)"
             ===================================================================== */}
-        <section id="espansione" className="py-16 sm:py-24 relative border-t border-[#24242C]/40" aria-labelledby="expansion-title">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+        <section id="espansione" className="py-12 sm:py-18 lg:py-24 relative border-t border-[#24242C]/40" aria-labelledby="expansion-title">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 lg:space-y-10">
             {/* Section Header */}
-            <div className="text-center space-y-3 max-w-3xl mx-auto flex flex-col items-center">
+            <div className="text-center space-y-2 sm:space-y-3 max-w-3xl mx-auto flex flex-col items-center">
               <span className="font-mono text-xs font-bold text-[#C5A059] tracking-[0.25em] uppercase flex items-center justify-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 text-[#C5A059]" />
-                IL MANDATO DI ESPANSIONE // ROYALTY RICORRENTE 20%
+                LA REGOLA DEI 5 // VALORE CONDIVISO
               </span>
               <h2
                 id="expansion-title"
-                className="text-2xl sm:text-3xl lg:text-4xl font-serif font-black text-white tracking-tight text-center"
+                className="text-2xl sm:text-3xl lg:text-4xl font-serif font-black text-white tracking-tight text-center leading-tight"
               >
-                Azzeramento del Tributo &amp; Rendita di Merito
+                Perché Pagare per un Software che Può Pagare Te?
               </h2>
               <p className="text-xs sm:text-sm text-[#8E8E99] leading-relaxed font-sans max-w-2xl mx-auto text-center">
-                Un mandato cavalleresco di crescita organica. Per ogni iniziato introdotto che supera Il Varco, ricevi una <strong className="text-white">Royalty del 20% (€30/mese a vita)</strong>. Con 5 iniziati, il Tributo mensile è azzerato al 100%.
+                Se trovi una porta che ti salva dal caos, la tieni per te o la mostri a chi stimi? Per ogni persona che coinvolgi ricevi il 20% (€30/mese a persona per sempre). Con sole 5 persone il tuo percorso è a costo zero a vita. Dalla sesta in poi, genera una rendita per te.
               </p>
             </div>
 
             {/* Split Screen Master Cockpit: Artwork + Calculator */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-8 items-center">
               {/* Left Column: Artwork Stage (Compact & Sharp) */}
               <div className="lg:col-span-6">
                 <ExpansionSceneCard
@@ -1836,31 +1998,31 @@ export default function LandingPage() {
               </div>
 
               {/* Right Column: Pure Interactive Calculator Console */}
-              <div className="lg:col-span-6 rounded-2xl border border-[#C5A059]/40 bg-[#121216] p-6 sm:p-7 shadow-[0_15px_40px_rgba(0,0,0,0.8)] space-y-5">
+              <div className="lg:col-span-6 rounded-2xl border border-[#C5A059]/40 bg-[#121216] p-4 sm:p-5 lg:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.8)] space-y-4 sm:space-y-5">
                 {/* 5 Ceremonial Keys Progress Rack */}
-                <div className="flex items-center justify-between pb-4 border-b border-[#24242C]">
-                  <div className="flex items-center gap-2.5">
-                    <Key className="h-4 w-4 text-[#C5A059]" />
-                    <span className="font-mono text-xs font-bold text-white tracking-wider uppercase">
+                <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#24242C]">
+                  <div className="flex items-center gap-2">
+                    <Key className="h-4 w-4 text-[#C5A059] shrink-0" />
+                    <span className="font-mono text-[10px] sm:text-xs font-bold text-white tracking-wider uppercase">
                       {invitedMembers >= 5
-                        ? "✦ TRIBUTO AZZERATO (5 CHIAVI)"
-                        : `${invitedMembers}/5 INIZIATI AL VARCO`}
+                        ? "✦ TRAGUARDO RAGGIUNTO: COSTO ZERO A VITA"
+                        : `MANCANO ${5 - invitedMembers} PERSONE PER AZZERARE`}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                     {[1, 2, 3, 4, 5].map((keyIdx) => {
                       const isActive = invitedMembers >= keyIdx;
                       return (
                         <div
                           key={keyIdx}
-                          className={`flex items-center justify-center h-7 w-7 rounded-md border transition-all duration-200 ${
+                          className={`flex items-center justify-center h-6 w-6 sm:h-7 sm:w-7 rounded-md border transition-all duration-200 ${
                             isActive
                               ? "border-[#C5A059] bg-[#C5A059]/20 text-[#C5A059] shadow-[0_0_10px_rgba(197,160,89,0.3)] scale-105"
                               : "border-[#24242C] bg-[#0A0A0C] text-[#454552]"
                           }`}
-                          title={`Chiave ${keyIdx}${keyIdx === 5 ? " — Azzeramento Tributo" : ""}`}
+                          title={`Chiave ${keyIdx}${keyIdx === 5 ? " — Abbonamento Gratuito" : ""}`}
                         >
-                          <Key className={`h-3.5 w-3.5 ${isActive ? "text-[#C5A059]" : "text-[#454552]"}`} />
+                          <Key className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${isActive ? "text-[#C5A059]" : "text-[#454552]"}`} />
                         </div>
                       );
                     })}
@@ -1868,13 +2030,13 @@ export default function LandingPage() {
                 </div>
 
                 {/* Slider Input Group */}
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between">
-                    <label htmlFor="member-slider" className="font-mono text-xs font-bold text-[#8E8E99] tracking-wider uppercase flex items-center gap-2">
-                      <Users className="h-4 w-4 text-[#C5A059]" />
-                      <span>INIZIATI INTRODOTTI AL VARCO:</span>
+                    <label htmlFor="member-slider" className="font-mono text-[11px] sm:text-xs font-bold text-[#8E8E99] tracking-wider uppercase flex items-center gap-1.5 sm:gap-2">
+                      <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#C5A059]" />
+                      <span>AMICI COINVOLTI:</span>
                     </label>
-                    <span className="font-mono text-xl sm:text-2xl font-black text-[#C5A059] bg-[#C5A059]/15 border border-[#C5A059]/30 px-3.5 py-0.5 rounded-lg shadow-[0_0_15px_rgba(197,160,89,0.25)]">
+                    <span className="font-mono text-lg sm:text-2xl font-black text-[#C5A059] bg-[#C5A059]/15 border border-[#C5A059]/30 px-3 py-0.5 rounded-lg shadow-[0_0_15px_rgba(197,160,89,0.25)]">
                       {invitedMembers}
                     </span>
                   </div>
@@ -1892,28 +2054,28 @@ export default function LandingPage() {
                 </div>
 
                 {/* Math Breakdown Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono">
-                  <div className="p-3.5 rounded-xl border border-[#24242C] bg-[#0A0A0C]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 font-mono">
+                  <div className="p-3 sm:p-3.5 rounded-xl border border-[#24242C] bg-[#0A0A0C]">
                     <div className="text-[10px] text-[#8E8E99] uppercase tracking-wider mb-1 flex items-center gap-1.5">
                       <Coins className="h-3 w-3 text-[#C5A059]" />
                       <span>ROYALTY MENSILE</span>
                     </div>
-                    <div className="text-xl font-bold text-white whitespace-nowrap">
+                    <div className="text-lg sm:text-xl font-bold text-white whitespace-nowrap">
                       €{monthlyRoyalty} <span className="text-xs text-[#8E8E99] font-normal whitespace-nowrap">/ mese</span>
                     </div>
                     <div className="mt-0.5 text-[10px] text-[#8E8E99]">
-                      {invitedMembers} iniziati × €30 (20%)
+                      {invitedMembers} compagni × €30 (20%)
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-[#24242C] bg-[#0A0A0C]">
+                  <div className="p-3 sm:p-3.5 rounded-xl border border-[#24242C] bg-[#0A0A0C]">
                     <div className="text-[10px] text-[#8E8E99] uppercase tracking-wider mb-1 flex items-center gap-1.5">
                       <Scale className="h-3 w-3 text-[#C5A059]" />
-                      <span>COSTO NETTO TRIBUTO</span>
+                      <span>IL TUO COSTO NETTO</span>
                     </div>
                     {invitedMembers < 5 ? (
                       <div>
-                        <div className="text-xl font-bold text-amber-400 whitespace-nowrap">
+                        <div className="text-lg sm:text-xl font-bold text-amber-400 whitespace-nowrap">
                           €{netTributeCost} <span className="text-xs text-[#8E8E99] font-normal whitespace-nowrap">/ mese</span>
                         </div>
                         <div className="mt-0.5 text-[10px] text-amber-400/80">
@@ -1922,7 +2084,7 @@ export default function LandingPage() {
                       </div>
                     ) : invitedMembers === 5 ? (
                       <div>
-                        <div className="text-xl font-black text-[#C5A059] whitespace-nowrap">
+                        <div className="text-lg sm:text-xl font-black text-[#C5A059] whitespace-nowrap">
                           €0 / MESE
                         </div>
                         <div className="mt-0.5 text-[10px] font-bold text-[#C5A059]">
@@ -1931,7 +2093,7 @@ export default function LandingPage() {
                       </div>
                     ) : (
                       <div>
-                        <div className="text-xl font-black text-[#D4AF37] whitespace-nowrap">
+                        <div className="text-lg sm:text-xl font-black text-[#D4AF37] whitespace-nowrap">
                           +€{netRecurringProfit} / MESE
                         </div>
                         <div className="mt-0.5 text-[10px] font-bold text-[#D4AF37]">
@@ -1946,9 +2108,9 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => openGatekeeping("Candidatura per Mandato di Espansione 20%")}
-                  className="w-full py-3.5 rounded-xl border border-[#C5A059] bg-[#C5A059] text-[#0A0A0C] font-mono text-xs font-bold tracking-[0.2em] uppercase hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(197,160,89,0.25)]"
+                  className="w-full py-3 sm:py-3.5 rounded-xl border border-[#C5A059] bg-[#C5A059] text-[#0A0A0C] font-mono text-xs font-bold tracking-[0.16em] sm:tracking-[0.2em] uppercase hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(197,160,89,0.25)] cursor-pointer"
                 >
-                  <span>RICHIEDI IL MANDATO DI ESPANSIONE</span>
+                  <span>APRI IL TUO MANDATO DI CONDIVISIONE</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
@@ -1957,31 +2119,31 @@ export default function LandingPage() {
         </section>
 
         {/* Thin vertical line connecting to Il Tributo */}
-        <div className="w-[1px] h-20 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
+        <div className="w-[1px] h-8 sm:h-12 lg:h-16 bg-gradient-to-b from-[#C5A059]/40 via-[#C5A059] to-transparent mx-auto relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#C5A059] shadow-[0_0_10px_#C5A059]" />
         </div>
 
         {/* =====================================================================
             7. SEZIONE FINALE PRICING ("DOTAZIONE PRIME PERSONE 10€ & PROGETTO COMPLETO 150€")
             ===================================================================== */}
-        <section id="pricing" className="py-20 sm:py-28 relative border-t border-[#24242C]/40 overflow-hidden bg-[#060709]" aria-labelledby="pricing-title">
+        <section id="pricing" className="py-12 sm:py-18 lg:py-24 relative border-t border-[#24242C]/40 overflow-hidden bg-[#060709]" aria-labelledby="pricing-title">
           {/* Colonnato Monumentale 3D Laterale & Luce Zenitale */}
           <PricingAtmosphere />
 
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10 relative z-10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 lg:space-y-10 relative z-10">
             {/* Header d'Ordine */}
-            <div className="text-center space-y-4 max-w-3xl mx-auto flex flex-col items-center">
+            <div className="text-center space-y-2.5 sm:space-y-3.5 max-w-3xl mx-auto flex flex-col items-center">
               <span className="font-mono text-xs font-bold text-[#C5A059] tracking-[0.25em] uppercase">
-                L'AMMISSIONE ALL'ORDINE // SCELTA DELLA DOTAZIONE
+                LA TUA SCELTA DI LIBERTÀ
               </span>
               <h2
                 id="pricing-title"
-                className="text-3xl sm:text-5xl font-serif font-black text-white tracking-tight text-center drop-shadow-[0_4px_18px_rgba(0,0,0,0.95)]"
+                className="text-2xl sm:text-4xl lg:text-5xl font-serif font-black text-white tracking-tight text-center drop-shadow-[0_4px_18px_rgba(0,0,0,0.95)] leading-tight"
               >
-                Configura la Tua Dotazione
+                Qual è il Vero Prezzo di Continuare a Sbagliare da Solo?
               </h2>
-              <p className="text-sm sm:text-base text-[#8E8E99] leading-relaxed font-sans max-w-2xl mx-auto text-center [text-wrap:balance]">
-                L'ingresso è selettivo. Sblocca la dotazione operativa per testare il tuo rigore a grafico spento, oppure accedi al progetto completo di formazione e finestra temporale bancaria.
+              <p className="text-xs sm:text-base text-[#8E8E99] leading-relaxed font-sans max-w-2xl mx-auto text-center [text-wrap:balance]">
+                Un solo errore impulsivo sui mercati costa spesso centinaia o migliaia di euro. Qui ti proteggiamo a partire da un caffè a settimana. Scegli da quale porta entrare.
               </p>
 
               {/* Toggle Interattivo Mensile / Annuale */}
@@ -2023,11 +2185,11 @@ export default function LandingPage() {
             </div>
 
             {/* Dual Cockpit Cards (Interactive Selection & Balanced Heights) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 items-stretch">
               {/* CARD 1: ESCLUSIVA PRIME PERSONE (10€/MESE O 100€/ANNO) */}
               <div
                 onClick={() => setSelectedTierId("founders_10")}
-                className={`relative rounded-3xl border p-5 sm:p-8 flex flex-col justify-between transition-all duration-300 cursor-pointer ${
+                className={`relative rounded-3xl border p-4 sm:p-6 lg:p-8 flex flex-col justify-between transition-all duration-300 cursor-pointer ${
                   selectedTierId === "founders_10"
                     ? "border-[#E8C56A] bg-gradient-to-b from-[#141624] via-[#0d0f17] to-[#07080b] shadow-[0_0_45px_rgba(197,160,89,0.22)] ring-1 ring-[#E8C56A]/60"
                     : "border-[#C5A059]/25 bg-[#0d0f14]/90 hover:border-[#C5A059]/50 hover:bg-[#10121a]"
@@ -2063,7 +2225,7 @@ export default function LandingPage() {
                       Dotazione Operativa
                     </h3>
                     <p className="font-mono text-xs text-[#94a3b8] mt-1">
-                      Banco di Forgiatura &amp; Fondamenta di Rischio
+                      Simulatore a Rischio Zero &amp; Protezione del Capitale
                     </p>
                   </div>
 
@@ -2091,82 +2253,49 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  {/* Modular Feature Badges (Compact, Zero Walls of Text) */}
-                  <div className="space-y-2 pt-1">
+                  {/* Clean Inclusions List (No nested boxed buttons / No scattered tags) */}
+                  <div className="space-y-3.5 pt-2">
                     {[
                       {
-                        id: "forgia",
                         icon: <FlaskConical className="h-4 w-4 text-[#C5A059]" />,
                         title: "La Forgia del Passato",
-                        badge: "SIMULATORE",
-                        detail: "Replay storico candela per candela tick-by-tick senza limiti per allenare la vista a grafico spento.",
+                        detail: "Simulatore a rischio zero sui dati storici di mercato.",
                       },
                       {
-                        id: "patrimonio",
                         icon: <Coins className="h-4 w-4 text-[#C5A059]" />,
-                        title: "Architettura Patrimoniale",
-                        badge: "RISCHIO",
-                        detail: "Barriere matematiche di drawdown, calcolo della perdita massima ammissibile e salvaguardia del capitale.",
+                        title: "Protezione del Capitale",
+                        detail: "Freno matematico per calcolare il rischio prima di ogni azione.",
                       },
                       {
-                        id: "varco",
                         icon: <ShieldCheck className="h-4 w-4 text-[#10b981]" />,
                         title: "Il Varco & Libro della Verità",
-                        badge: "DI DIRITTO",
-                        detail: "Centro decisionale con checklist pre-trade anti-overtrading e registro spietato con Indice d'Integrità.",
+                        detail: "Checklist di lucidità mentale e registro immutabile delle scelte.",
                       },
                       {
-                        id: "fratellanza",
                         icon: <Users className="h-4 w-4 text-[#10b981]" />,
-                        title: "La Fratellanza & I 5 Gradi",
-                        badge: "DI DIRITTO",
-                        detail: "Agorà riservata dell'Ordine e ascesa meritocratica nei ranghi in base alla disciplina dimostrata.",
+                        title: "La Cerchia & I 5 Gradi",
+                        detail: "Avanzamento reale basato sulla disciplina e rispetto delle regole.",
                       },
-                    ].map((item) => (
-                      <div
-                        key={item.id}
-                        onMouseEnter={() => setActiveFeatureHover({ title: item.title, detail: item.detail })}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveFeatureHover({ title: item.title, detail: item.detail });
-                        }}
-                        className="group/feat flex items-center justify-between gap-2 p-2.5 rounded-lg border border-white/5 bg-[#07080b]/60 hover:border-[#C5A059]/40 hover:bg-[#151722] transition-all cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-[#C5A059]/30 bg-[#07080b] group-hover/feat:border-[#C5A059]">
-                            {item.icon}
-                          </span>
-                          <span className="font-mono text-xs font-semibold text-[#F4F4F6] truncate group-hover/feat:text-[#E8C56A]">
-                            {item.title}
-                          </span>
-                        </div>
-                        <span className="font-mono text-[8.5px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#E8C56A] shrink-0 whitespace-nowrap">
-                          {item.badge}
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-start gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-[#C5A059]/30 bg-[#07080b] mt-0.5">
+                          {item.icon}
                         </span>
+                        <div className="min-w-0">
+                          <p className="font-mono text-xs font-bold text-[#F4F4F6] leading-snug">
+                            {item.title}
+                          </p>
+                          <p className="text-[11px] text-[#8E8E99] leading-snug mt-0.5">
+                            {item.detail}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Footer Controls: Live Telemetry Inspector & CTA */}
-                <div className="mt-5 space-y-4 pt-4 border-t border-[#24242C]">
-                  {/* Tactical Micro-Inspector */}
-                  <div className="min-h-[44px] rounded-lg border border-[#C5A059]/20 bg-[#07080b]/90 px-3 py-2 flex items-center gap-2.5 text-xs text-[#C0C0C8]">
-                    <Info className="h-4 w-4 text-[#C5A059] shrink-0" />
-                    <div className="text-[11px] leading-snug">
-                      {activeFeatureHover ? (
-                        <>
-                          <strong className="text-[#E8C56A]">{activeFeatureHover.title}:</strong>{" "}
-                          <span>{activeFeatureHover.detail}</span>
-                        </>
-                      ) : (
-                        <span className="text-[#94a3b8] italic">
-                          Tocca o passa su un modulo per ispezionarne l'operatività tattica.
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
+                {/* Footer Controls: Clean CTA */}
+                <div className="mt-6 pt-4 border-t border-[#24242C]">
                   {/* Clean CTA Button (No text truncation / No overflow) */}
                   <button
                     type="button"
@@ -2177,9 +2306,9 @@ export default function LandingPage() {
                         "founders_10",
                       );
                     }}
-                    className="w-full py-4 px-4 rounded-xl border border-[#C5A059] bg-[#C5A059]/20 hover:bg-[#C5A059] text-[#E8C56A] hover:text-[#07080b] font-mono text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(197,160,89,0.2)] group cursor-pointer"
+                    className="w-full py-3.5 sm:py-4 px-4 rounded-xl border border-[#C5A059] bg-[#C5A059]/20 hover:bg-[#C5A059] text-[#E8C56A] hover:text-[#07080b] font-mono text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(197,160,89,0.2)] group cursor-pointer"
                   >
-                    <span>CANDIDATI CON DOTAZIONE OPERATIVA</span>
+                    <span>ATTIVA LA TUA PROTEZIONE</span>
                     <ArrowRight className="h-4 w-4 shrink-0 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
@@ -2188,7 +2317,7 @@ export default function LandingPage() {
               {/* CARD 2: PROGETTO COMPLETO FORMAZIONE & FINESTRA (150€/MESE O 1500€/ANNO) */}
               <div
                 onClick={() => setSelectedTierId("complete_150")}
-                className={`relative rounded-3xl border p-5 sm:p-8 flex flex-col justify-between transition-all duration-300 cursor-pointer ${
+                className={`relative rounded-3xl border p-4 sm:p-6 lg:p-8 flex flex-col justify-between transition-all duration-300 cursor-pointer ${
                   selectedTierId === "complete_150"
                     ? "border-[#E8C56A] bg-gradient-to-b from-[#181a28] via-[#10121d] to-[#07080b] shadow-[0_0_55px_rgba(197,160,89,0.28)] ring-1 ring-[#E8C56A]/70"
                     : "border-[#C5A059]/25 bg-[#0d0f14]/90 hover:border-[#C5A059]/50 hover:bg-[#10121a]"
@@ -2201,7 +2330,7 @@ export default function LandingPage() {
                   </>
                 )}
 
-                <div className="space-y-5">
+                <div className="space-y-4 sm:space-y-5">
                   {/* Status chip & Selector status */}
                   <div className="flex items-center justify-between gap-2 border-b border-[#24242C]/60 pb-3">
                     <span className="font-mono text-[9px] sm:text-[10px] uppercase font-bold tracking-widest px-2.5 py-0.5 rounded border border-[#C5A059]/50 bg-[#C5A059]/20 text-[#E8C56A] whitespace-nowrap">
@@ -2224,7 +2353,7 @@ export default function LandingPage() {
                       Progetto Completo
                     </h3>
                     <p className="font-mono text-xs text-[#94a3b8] mt-1">
-                      Formazione, Finestra Operativa, Concilio &amp; Forgia
+                      Tutti gli Strumenti, Video Accademia, Orari Chiave &amp; Live
                     </p>
                   </div>
 
@@ -2252,89 +2381,54 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  {/* Modular Feature Badges (Compact, Zero Walls of Text) */}
-                  <div className="space-y-2 pt-1">
+                  {/* Clean Inclusions List (No nested boxed buttons / No scattered tags) */}
+                  <div className="space-y-3 sm:space-y-3.5 pt-1 sm:pt-2">
                     {[
                       {
-                        id: "dotazione_totale",
                         icon: <Sparkles className="h-4 w-4 text-[#E8C56A]" />,
                         title: "Tutta la Dotazione Operativa",
-                        badge: "FORGIA + PATRIMONIO",
-                        detail: "Tutti gli strumenti della Dotazione Prime Persone inclusi senza costi aggiuntivi.",
+                        detail: "Simulatore illimitato e scudi di protezione sempre inclusi.",
                       },
                       {
-                        id: "dottrina",
                         icon: <GraduationCap className="h-4 w-4 text-[#C5A059]" />,
                         title: "La Dottrina del Tempo",
-                        badge: "ACCADEMIA VIDEO",
-                        detail: "Libreria video d'Ordine completa: regimi di Assedio (Swing macro) e Duello (Scalp micro).",
+                        detail: "Video accademia completa per dominare l'attesa strategica.",
                       },
                       {
-                        id: "finestra",
                         icon: <Crosshair className="h-4 w-4 text-[#C5A059]" />,
-                        title: "La Finestra Operativa",
-                        badge: "KILL-ZONE",
-                        detail: "Coordinate orarie precise dei cicli di liquidità bancaria e finestre operative ad alta probabilità.",
+                        title: "Gli Orari Chiave dei Mercati",
+                        detail: "Mappa esatta delle finestre in cui operare senza foga.",
                       },
                       {
-                        id: "concilio",
                         icon: <Flame className="h-4 w-4 text-[#C5A059]" />,
                         title: "Il Concilio della Domenica",
-                        badge: "RITO LIVE",
-                        detail: "Analisi live settimanale a mercati chiusi per mappare la rotazione monetaria e azzerare i dubbi.",
+                        detail: "Incontro strategico live settimanale per preparare la settimana.",
                       },
                       {
-                        id: "tornei",
                         icon: <Trophy className="h-4 w-4 text-[#E8C56A]" />,
-                        title: "Prove del Fuoco & Royalty 20%",
-                        badge: "TORNEI & ESPANSIONE",
-                        detail: "Accesso alle Arene Trimestrali d'Onore e attivazione del Mandato di Espansione dal Grado II.",
+                        title: "Sfide tra Membri & Royalty 20%",
+                        detail: "Sfide di costanza tra pari e azzeramento quota con 5 persone.",
                       },
-                    ].map((item) => (
-                      <div
-                        key={item.id}
-                        onMouseEnter={() => setActiveFeatureHover({ title: item.title, detail: item.detail })}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveFeatureHover({ title: item.title, detail: item.detail });
-                        }}
-                        className="group/feat flex items-center justify-between gap-2 p-2.5 rounded-lg border border-white/5 bg-[#07080b]/60 hover:border-[#C5A059]/40 hover:bg-[#151722] transition-all cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-[#C5A059]/30 bg-[#07080b] group-hover/feat:border-[#C5A059]">
-                            {item.icon}
-                          </span>
-                          <span className="font-mono text-xs font-semibold text-[#F4F4F6] truncate group-hover/feat:text-[#E8C56A]">
-                            {item.title}
-                          </span>
-                        </div>
-                        <span className="font-mono text-[8.5px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 text-[#E8C56A] shrink-0 whitespace-nowrap">
-                          {item.badge}
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-start gap-2.5 sm:gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-[#C5A059]/30 bg-[#07080b] mt-0.5">
+                          {item.icon}
                         </span>
+                        <div className="min-w-0">
+                          <p className="font-mono text-xs font-bold text-[#F4F4F6] leading-snug">
+                            {item.title}
+                          </p>
+                          <p className="text-[11px] text-[#8E8E99] leading-snug mt-0.5">
+                            {item.detail}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Footer Controls: Live Telemetry Inspector & CTA */}
-                <div className="mt-5 space-y-4 pt-4 border-t border-[#24242C]">
-                  {/* Tactical Micro-Inspector */}
-                  <div className="min-h-[44px] rounded-lg border border-[#C5A059]/20 bg-[#07080b]/90 px-3 py-2 flex items-center gap-2.5 text-xs text-[#C0C0C8]">
-                    <Info className="h-4 w-4 text-[#C5A059] shrink-0" />
-                    <div className="text-[11px] leading-snug">
-                      {activeFeatureHover ? (
-                        <>
-                          <strong className="text-[#E8C56A]">{activeFeatureHover.title}:</strong>{" "}
-                          <span>{activeFeatureHover.detail}</span>
-                        </>
-                      ) : (
-                        <span className="text-[#94a3b8] italic">
-                          Tocca o passa su un modulo per ispezionarne l'operatività tattica.
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
+                {/* Footer Controls: Clean CTA */}
+                <div className="mt-5 sm:mt-6 pt-3.5 sm:pt-4 border-t border-[#24242C]">
                   {/* Clean CTA Button (No text truncation / No overflow) */}
                   <button
                     type="button"
@@ -2345,9 +2439,9 @@ export default function LandingPage() {
                         "complete_150",
                       );
                     }}
-                    className="w-full py-4 px-4 rounded-xl border-2 border-[#C5A059] bg-[#C5A059] hover:bg-[#E8C56A] text-[#07080b] font-mono text-xs sm:text-sm font-black tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_35px_rgba(197,160,89,0.45)] group cursor-pointer"
+                    className="w-full py-3.5 sm:py-4 px-4 rounded-xl border-2 border-[#C5A059] bg-[#C5A059] hover:bg-[#E8C56A] text-[#07080b] font-mono text-xs sm:text-sm font-black tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_35px_rgba(197,160,89,0.45)] group cursor-pointer"
                   >
-                    <span>ATTRAVERSA IL VARCO · PROGETTO COMPLETO</span>
+                    <span>ENTRA NEL PROGETTO COMPLETO</span>
                     <ArrowRight className="h-4 w-4 shrink-0 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
@@ -2355,12 +2449,12 @@ export default function LandingPage() {
             </div>
 
             {/* Interactive Module Comparison Table */}
-            <div className="space-y-4 pt-1">
+            <div className="space-y-3 sm:space-y-4 pt-1">
               <div className="flex justify-center">
                 <button
                   type="button"
                   onClick={() => setShowComparisonMatrix(!showComparisonMatrix)}
-                  className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full border border-[#C5A059]/40 bg-[#07080b] hover:bg-[#12141c] hover:border-[#C5A059] text-[#E8C56A] font-mono text-xs font-bold tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(0,0,0,0.6)] cursor-pointer"
+                  className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full border border-[#C5A059]/40 bg-[#07080b] hover:bg-[#12141c] hover:border-[#C5A059] text-[#E8C56A] font-mono text-xs font-bold tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(0,0,0,0.6)] cursor-pointer"
                 >
                   <Layers className="h-4 w-4 text-[#C5A059]" />
                   <span>{showComparisonMatrix ? "Nascondi Matrice Moduli" : "Confronta Dotazioni a Colpo d'Occhio"}</span>
@@ -2369,9 +2463,9 @@ export default function LandingPage() {
               </div>
 
               {showComparisonMatrix && (
-                <div className="rounded-2xl border border-[#C5A059]/30 bg-[#0d0f14]/95 p-5 sm:p-7 shadow-[0_0_40px_rgba(0,0,0,0.8)] overflow-x-auto animate-in fade-in slide-in-from-top-4 duration-300">
-                  <div className="text-center mb-4 space-y-1">
-                    <h4 className="font-serif text-lg font-bold text-white">Matrice di Accesso ai Moduli d'Ordine</h4>
+                <div className="rounded-2xl border border-[#C5A059]/30 bg-[#0d0f14]/95 p-4 sm:p-6 lg:p-7 shadow-[0_0_40px_rgba(0,0,0,0.8)] overflow-x-auto animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="text-center mb-3 sm:mb-4 space-y-1">
+                    <h4 className="font-serif text-base sm:text-lg font-bold text-white">Matrice di Accesso ai Moduli d'Ordine</h4>
                     <p className="font-mono text-xs text-[#94a3b8]">Confronto analitico tra i 3 gradi di dotazione</p>
                     <p className="font-mono text-[10px] text-[#C5A059] block sm:hidden">← Scorri orizzontalmente per confrontare i dettagli →</p>
                   </div>
@@ -2379,7 +2473,7 @@ export default function LandingPage() {
                   <table className="w-full min-w-[560px] text-xs font-mono text-left">
                     <thead>
                       <tr className="border-b border-[#24242C] text-[#94a3b8]">
-                        <th className="py-2.5 px-3">Modulo di Protocollo</th>
+                        <th className="py-2.5 px-3">Strumenti e Moduli Inclusi</th>
                         <th className="py-2.5 px-3 text-center">Soglia Base (0€)</th>
                         <th className="py-2.5 px-3 text-center text-[#E8C56A] whitespace-nowrap">Dotazione Operativa (2,60€)</th>
                         <th className="py-2.5 px-3 text-center text-white">Progetto Completo (150€/m)</th>
@@ -2387,37 +2481,37 @@ export default function LandingPage() {
                     </thead>
                     <tbody className="divide-y divide-[#24242C]/60 text-[#D0D0D8]">
                       <tr>
-                        <td className="py-2.5 px-3 font-sans font-medium text-white">Il Varco (Cockpit Pre-Trade)</td>
+                        <td className="py-2.5 px-3 font-sans font-medium text-white">Il Varco (Checklist Pre-Decisione)</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
                       </tr>
                       <tr>
-                        <td className="py-2.5 px-3 font-sans font-medium text-white">Il Libro della Verità &amp; 5 Gradi</td>
+                        <td className="py-2.5 px-3 font-sans font-medium text-white">Il Libro della Verità &amp; 5 Gradi (Diario)</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
                       </tr>
                       <tr>
-                        <td className="py-2.5 px-3 font-sans font-medium text-white">La Forgia del Passato (Simulatore Replay)</td>
+                        <td className="py-2.5 px-3 font-sans font-medium text-white">La Forgia del Passato (Simulatore a Rischio Zero)</td>
                         <td className="py-2.5 px-3 text-center text-[#555]">—</td>
                         <td className="py-2.5 px-3 text-center text-[#E8C56A] font-bold">✓ Incluso</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
                       </tr>
                       <tr>
-                        <td className="py-2.5 px-3 font-sans font-medium text-white">Architettura Patrimoniale (Rischio)</td>
+                        <td className="py-2.5 px-3 font-sans font-medium text-white">Protezione del Capitale (Scudo Matematico)</td>
                         <td className="py-2.5 px-3 text-center text-[#555]">—</td>
                         <td className="py-2.5 px-3 text-center text-[#E8C56A] font-bold">✓ Incluso</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
                       </tr>
                       <tr>
-                        <td className="py-2.5 px-3 font-sans font-medium text-white">La Dottrina del Tempo (Video Assedio &amp; Duello)</td>
+                        <td className="py-2.5 px-3 font-sans font-medium text-white">La Dottrina del Tempo (Video Accademia)</td>
                         <td className="py-2.5 px-3 text-center text-[#555]">—</td>
                         <td className="py-2.5 px-3 text-center text-[#555]">—</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
                       </tr>
                       <tr>
-                        <td className="py-2.5 px-3 font-sans font-medium text-white">La Finestra Operativa (Kill-Zone Bancarie)</td>
+                        <td className="py-2.5 px-3 font-sans font-medium text-white">Gli Orari Chiave dei Mercati (Mappa Oraria)</td>
                         <td className="py-2.5 px-3 text-center text-[#555]">—</td>
                         <td className="py-2.5 px-3 text-center text-[#555]">—</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
@@ -2429,7 +2523,7 @@ export default function LandingPage() {
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
                       </tr>
                       <tr>
-                        <td className="py-2.5 px-3 font-sans font-medium text-white">Prove del Fuoco (Tornei) &amp; Royalty 20%</td>
+                        <td className="py-2.5 px-3 font-sans font-medium text-white">Sfide tra Membri &amp; Royalty 20% (Merito)</td>
                         <td className="py-2.5 px-3 text-center text-[#555]">—</td>
                         <td className="py-2.5 px-3 text-center text-[#555]">—</td>
                         <td className="py-2.5 px-3 text-center text-[#10b981] font-bold">✓ Incluso</td>
@@ -2441,11 +2535,11 @@ export default function LandingPage() {
             </div>
 
             {/* Strip Informativa Soglia Iniziale Base */}
-            <div className="rounded-2xl border border-[#C5A059]/30 bg-[#0d0f14]/90 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3 text-left">
+            <div className="rounded-2xl border border-[#C5A059]/30 bg-[#0d0f14]/90 px-4 sm:px-6 py-3.5 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-2.5 sm:gap-3 text-left">
                 <ShieldCheck className="h-5 w-5 text-[#C5A059] shrink-0" />
                 <p className="text-xs text-[#D0D0D8]">
-                  <strong>Soglia Iniziale del Protocollo (0 €):</strong> Puoi inviare la candidatura anche partendo dalla sola dotazione base inclusa (<em>Il Varco, Il Libro della Verità, La Fratellanza e i 5 Gradi di Ascesa</em>) e sbloccare i moduli successivi in ogni momento.
+                  <strong>Soglia Iniziale Gratuita (0 €):</strong> Puoi iniziare anche esplorando la piattaforma con la dotazione base inclusa (<em>Il Varco, Il Libro della Verità, La Comunità e i 5 Gradi di Ascesa</em>) e sbloccare gli strumenti successivi quando ti sentirai pronto.
                 </p>
               </div>
               <button
@@ -2453,24 +2547,24 @@ export default function LandingPage() {
                 onClick={() =>
                   openGatekeeping("Candidatura Soglia Base (0€)", "base_free")
                 }
-                className="shrink-0 rounded-lg border border-[#C5A059]/40 bg-[#07080b] px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-[#E8C56A] hover:border-[#C5A059] hover:bg-[#C5A059]/10 transition-all whitespace-nowrap cursor-pointer"
+                className="shrink-0 rounded-lg border border-[#C5A059]/40 bg-[#07080b] px-3.5 sm:px-4 py-2 font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#E8C56A] hover:border-[#C5A059] hover:bg-[#C5A059]/10 transition-all whitespace-nowrap cursor-pointer"
               >
-                Configura Candidatura Base →
+                Inizia la Prova Gratuita →
               </button>
             </div>
 
             {/* Embedded FAQ Accordion Section */}
-            <div id="faq" className="pt-16 sm:pt-20 space-y-10 max-w-3xl mx-auto">
+            <div id="faq" className="pt-10 sm:pt-14 lg:pt-18 space-y-6 sm:space-y-8 max-w-3xl mx-auto">
               {/* Header with Sigil Emblem & Altar glow */}
-              <div className="text-center space-y-3 relative">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full border border-[#C5A059]/40 bg-[#141418] text-[#C5A059] shadow-[0_0_25px_rgba(197,160,89,0.25)] mx-auto mb-1">
-                  <SigilIcon variant="threshold" size={24} className="text-[#C5A059]" />
+              <div className="text-center space-y-2 sm:space-y-3 relative">
+                <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-[#C5A059]/40 bg-[#141418] text-[#C5A059] shadow-[0_0_25px_rgba(197,160,89,0.25)] mx-auto mb-1">
+                  <SigilIcon variant="threshold" size={22} className="text-[#C5A059]" />
                 </div>
                 <div className="font-mono text-xs font-bold text-[#C5A059] tracking-[0.25em] uppercase">
                   {t("landing.faq.eyebrow")}
                 </div>
                 <h3 className="text-2xl sm:text-4xl font-serif font-black text-white tracking-tight">
-                  Chiarimenti sull'Ammissione &amp; la Regola
+                  Le Verità che Nessuno Ti Dice
                 </h3>
                 <p className="text-xs sm:text-sm text-[#8E8E99] font-sans max-w-xl mx-auto leading-relaxed">
                   {t("landing.faq.subheading")}
@@ -2479,7 +2573,7 @@ export default function LandingPage() {
               </div>
 
               {/* Centered Monolithic Accordion Cards */}
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {FAQ_ITEMS.map((item, index) => {
                   const isOpen = openFaqIndex === index;
                   return (
@@ -2499,7 +2593,7 @@ export default function LandingPage() {
                       <button
                         type="button"
                         onClick={() => setOpenFaqIndex(isOpen ? null : index)}
-                        className="w-full p-6 sm:p-7 text-center flex flex-col items-center justify-center gap-2.5 transition-colors group cursor-pointer"
+                        className="w-full p-4 sm:p-5 lg:p-6 text-center flex flex-col items-center justify-center gap-2 sm:gap-2.5 transition-colors group cursor-pointer"
                         aria-expanded={isOpen}
                       >
                         {/* Roman numeral badge */}
@@ -2508,13 +2602,13 @@ export default function LandingPage() {
                         </span>
 
                         {/* Centered Question */}
-                        <h4 className="font-serif font-bold text-base sm:text-lg text-white group-hover:text-[#F4F4F6] transition-colors leading-snug max-w-2xl px-2">
+                        <h4 className="font-serif font-bold text-sm sm:text-base lg:text-lg text-white group-hover:text-[#F4F4F6] transition-colors leading-snug max-w-2xl px-2">
                           {t(item.questionKey)}
                         </h4>
 
                         {/* Circular expand indicator */}
                         <div
-                          className={`mt-1 w-7 h-7 rounded-full border flex items-center justify-center transition-all duration-300 ${
+                          className={`mt-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full border flex items-center justify-center transition-all duration-300 ${
                             isOpen
                               ? "border-[#C5A059] bg-[#C5A059]/20 text-[#C5A059] rotate-180"
                               : "border-[#24242C] bg-[#16161C] text-[#8E8E99] group-hover:border-[#C5A059]/50 group-hover:text-[#C5A059]"
@@ -2525,21 +2619,14 @@ export default function LandingPage() {
                       </button>
 
                       {isOpen && (
-                        <div className="px-6 sm:px-10 pb-7 pt-1 text-center animate-in fade-in duration-300 space-y-4">
+                        <div className="px-4 sm:px-7 lg:px-8 pb-5 sm:pb-6 pt-1 text-center animate-in fade-in duration-300 space-y-3">
                           {/* Delicate Gilded Divider */}
-                          <div className="w-24 h-[1px] bg-gradient-to-r from-transparent via-[#C5A059]/40 to-transparent mx-auto" />
+                          <div className="w-20 sm:w-24 h-[1px] bg-gradient-to-r from-transparent via-[#C5A059]/40 to-transparent mx-auto" />
 
                           {/* Centered Answer Text */}
                           <p className="text-xs sm:text-sm text-[#A0A0AA] font-sans leading-relaxed max-w-2xl mx-auto text-center">
                             {t(item.answerKey)}
                           </p>
-
-                          {/* Contextual canon tag */}
-                          <div className="pt-2">
-                            <span className="inline-block font-mono text-[10px] text-[#C5A059]/80 tracking-[0.2em] uppercase px-3 py-1 rounded-full border border-[#C5A059]/20 bg-[#C5A059]/5">
-                              {t(item.tagKey)}
-                            </span>
-                          </div>
                         </div>
                       )}
                     </div>
@@ -2551,18 +2638,18 @@ export default function LandingPage() {
         </section>
 
         {/* Solemn Quote Footer */}
-        <footer className="py-16 border-t border-[#24242C] bg-[#0A0A0C] text-center space-y-6">
-          <div className="max-w-3xl mx-auto px-4 space-y-3">
+        <footer className="py-10 sm:py-14 lg:py-16 border-t border-[#24242C] bg-[#0A0A0C] text-center space-y-5 sm:space-y-6">
+          <div className="max-w-3xl mx-auto px-4 space-y-2.5 sm:space-y-3">
             <SigilIcon variant="threshold" size={28} className="text-[#C5A059] mx-auto opacity-70" />
-            <p className="font-serif italic text-sm sm:text-base text-[#8E8E99]">
+            <p className="font-serif italic text-xs sm:text-sm md:text-base text-[#8E8E99]">
               "Aureus non est finis, sed initium virtutis. Chi cerca la scorciatoia trova la rovina; chi rispetta la regola conquista la sovranità."
             </p>
-            <div className="font-mono text-[11px] text-[#C5A059] tracking-[0.2em] uppercase">
+            <div className="font-mono text-[10px] sm:text-[11px] text-[#C5A059] tracking-[0.16em] sm:tracking-[0.2em] uppercase">
               AUREUS PROTOCOL // IL CODICE DELLA PRESENZA E DELL'EREDITÀ
             </div>
           </div>
 
-          <div className="pt-6 border-t border-[#24242C]/50 flex flex-wrap items-center justify-center gap-6 text-xs font-mono text-[#8E8E99]">
+          <div className="pt-4 sm:pt-6 border-t border-[#24242C]/50 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-[11px] sm:text-xs font-mono text-[#8E8E99]">
             <Link href="/" className="hover:text-white transition-colors">PORTALE PRINCIPALE</Link>
             <Link href="/protocollo" className="hover:text-white transition-colors">PROTOCOLLO OPERATIVO</Link>
             <Link href="/academy" className="hover:text-white transition-colors">LA DOTTRINA DEL TEMPO</Link>
@@ -2573,9 +2660,9 @@ export default function LandingPage() {
           {/* Sovereign SEO & Ecosystem Discovery Matrix (Crawled by Googlebot & AI Search Engines) */}
           <nav
             aria-label="Architettura e Pilastri del Protocollo AUREUS"
-            className="max-w-5xl mx-auto px-4 pt-6 border-t border-[#24242C]/40 space-y-4"
+            className="max-w-5xl mx-auto px-4 pt-4 sm:pt-6 border-t border-[#24242C]/40 space-y-3 sm:space-y-4"
           >
-            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] font-mono text-[#8E8E99]">
+            <div className="flex flex-wrap items-center justify-center gap-x-3.5 sm:gap-x-5 gap-y-1.5 sm:gap-y-2 text-[10px] sm:text-[11px] font-mono text-[#8E8E99]">
               {SEO_PAGE_KEYS.map((key) => (
                 <Link
                   key={key}
@@ -2593,7 +2680,7 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-3 text-[10px] font-mono text-[#8E8E99]/75">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-[9.5px] sm:text-[10px] font-mono text-[#8E8E99]/75">
               <span className="text-[#C5A059] uppercase tracking-widest">Edizioni Internazionali:</span>
               <Link href="/it" className="hover:text-white transition-colors whitespace-nowrap">Italiano (IT)</Link>
               <span>·</span>
@@ -2607,7 +2694,7 @@ export default function LandingPage() {
             </div>
           </nav>
 
-          <div className="font-mono text-[10px] text-slate-600">
+          <div className="font-mono text-[9.5px] sm:text-[10px] text-slate-600">
             © 2026 AUREUS PROTOCOL (https://aureus-os.app). TUTTI I DIRITTI RISERVATI. ARCHITETTURA E CICLO OPERATIVO.
           </div>
         </footer>

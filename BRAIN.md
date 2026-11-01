@@ -43,6 +43,8 @@ graph TD
         BACKEND["[[docs/brain/04-BACKEND-CONTRACTS|04-BACKEND-CONTRACTS (Architettura & OpenAPI)]]"]
         PERF["[[docs/brain/05-OPTIMIZATION-PERFORMANCE|05-OPTIMIZATION-PERFORMANCE (Efficienza & Scale)]]"]
         SEC["[[docs/brain/06-SECURITY-HARDENING|06-SECURITY-HARDENING (Sicurezza, Auth & GDPR)]]"]
+        AGENTS["[[docs/brain/07-MULTI-AGENT-SYSTEM|07-MULTI-AGENT-SYSTEM (Il Concilio Autonomo 95/5)]]"]
+        MEMORY["[[docs/brain/08-SOVEREIGN-MEMORY-MATRIX|08-SOVEREIGN-MEMORY-MATRIX (Memoria & Benchmark)]]"]
     end
 
     MASTER --> ATLAS
@@ -52,6 +54,8 @@ graph TD
     ATLAS --> BACKEND
     ATLAS --> PERF
     ATLAS --> SEC
+    ATLAS --> AGENTS
+    ATLAS --> MEMORY
 
     WORKFLOW -.->|Gate 'pnpm verify'| BACKEND
     WORKFLOW -.->|Gate 'pnpm verify'| FRONTEND

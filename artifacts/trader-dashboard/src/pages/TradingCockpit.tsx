@@ -56,6 +56,10 @@ import {
   subscribeDeepWorkAmbience,
   synestheticClick,
   synestheticConfirm,
+  synestheticChecklistValidation,
+  synestheticSwipe,
+  synestheticCinemaToggle,
+  synestheticSealOfAction,
   setRiskResonanceLevel,
   modulateDeepWorkByBpm,
 } from "@/lib/soundFx";
@@ -1235,6 +1239,64 @@ function CockpitView({
     }
   });
 
+  // ── Auto-Landscape Pivot & Fullscreen Cinema Mode ──
+  const [isLandscapeCinema, setIsLandscapeCinema] = useState(false);
+  const [manualCinema, setManualCinema] = useState(false);
+  const isCinemaActive = isLandscapeCinema || manualCinema || focusMode;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(orientation: landscape) and (max-height: 540px) and (max-width: 1023px)");
+    const handleOrientation = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) {
+        setIsLandscapeCinema(true);
+        setMobileTab("chart");
+      } else {
+        setIsLandscapeCinema(false);
+      }
+    };
+    handleOrientation(mq);
+    mq.addEventListener("change", handleOrientation);
+    return () => mq.removeEventListener("change", handleOrientation);
+  }, []);
+
+  // ── Gesture Swipe Inerziale Tattile (Processo <-> Grafico) ──
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("input, textarea, select, canvas, [data-prevent-swipe]")) return;
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    if (e.changedTouches.length !== 1) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("input, textarea, select, canvas, [data-prevent-swipe]")) return;
+
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const dx = endX - touchStartXRef.current;
+    const dy = endY - touchStartYRef.current;
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+      if (dx < 0 && mobileTab === "process" && !isFreeTrial) {
+        synestheticSwipe();
+        setMobileTab("chart");
+      } else if (dx > 0 && mobileTab === "chart" && !isFreeTrial) {
+        synestheticSwipe();
+        setMobileTab("process");
+      }
+    }
+  }, [mobileTab, isFreeTrial]);
+
   const sanitizeNumberOrShort = (val: string | undefined) => {
     if (!val) return "";
     if (val.length > 15 && val.includes(" ")) return "";
@@ -1855,7 +1917,7 @@ function CockpitView({
       // ignore
     }
     setTradeActive(true);
-    synestheticConfirm();
+    synestheticSealOfAction();
     setReviewPhase(null);
 
     set(sealedCockpit);
@@ -2109,18 +2171,98 @@ function CockpitView({
     <main
       className="trading-cockpit"
       data-testid="trading-cockpit"
+      data-cinema-mode={isCinemaActive ? "true" : undefined}
       onClickCapture={navigateAfterSave}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
+      {/* ── CINEMA HUD (Mobile Landscape Pivot / Fullscreen TradingView mode) ── */}
+      {isCinemaActive && (
+        <aside
+          aria-label="Controlli Cinematografici"
+          className="fixed top-2.5 right-2.5 z-50 flex items-center gap-1.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.85)] font-mono select-none"
+        >
+          {/* Asset Badge */}
+          <span className="px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[10px] font-bold text-[#E8C56A] uppercase tracking-wider whitespace-nowrap">
+            {a.market.replace("USD", "")} · {chartTF}
+          </span>
+
+          {/* Quick Timeframes Switcher */}
+          <div className="flex items-center gap-1">
+            {["M15", "H1", "H4"].map((tf) => (
+              <button
+                key={tf}
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setChartTF(tf as any);
+                }}
+                className={`px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap border ${
+                  chartTF === tf
+                    ? "border-[#C5A059] bg-[#C5A059]/25 text-[#E8C56A]"
+                    : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-4 w-px bg-[#C5A059]/25" />
+
+          {/* Registra Trade Button */}
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("selection");
+              setTradeRegisterModalOpen(true);
+            }}
+            title="Registra Trade"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold uppercase tracking-wider hover:bg-emerald-500/30 transition-colors whitespace-nowrap cursor-pointer"
+          >
+            <BookOpen size={11} />
+            <span className="hidden sm:inline">Trade</span>
+          </button>
+
+          {/* Exit Cinema Mode */}
+          <button
+            type="button"
+            onClick={() => {
+              synestheticCinemaToggle(false);
+              setIsLandscapeCinema(false);
+              setManualCinema(false);
+              if (focusMode) toggleFocus();
+            }}
+            title="Esci da Schermo Intero / Ripristina Vista"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] hover:bg-[#C5A059]/25 transition-colors cursor-pointer"
+          >
+            <Minimize2 size={13} />
+          </button>
+        </aside>
+      )}
+
       <div className="ck-mobile-tabs" role="group" aria-label={ck("cockpit.ui.3a0b9c0415")}>
         {!isFreeTrial && (
-          <button aria-pressed={mobileTab === "process"} onClick={() => setMobileTab("process")}>
+          <button
+            aria-pressed={mobileTab === "process"}
+            onClick={() => {
+              triggerHaptic("selection");
+              setMobileTab("process");
+            }}
+          >
             <span>01 · Processo</span>
             <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-[#E8C56A] border border-white/10">
               {phase}/4
             </span>
           </button>
         )}
-        <button aria-pressed={mobileTab === "chart"} onClick={() => setMobileTab("chart")}>
+        <button
+          aria-pressed={mobileTab === "chart"}
+          onClick={() => {
+            triggerHaptic("selection");
+            setMobileTab("chart");
+          }}
+        >
           <span>{isFreeTrial ? "01 · Grafico" : "02 · Grafico"}</span>
           <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-[#E8C56A] border border-white/10">
             {a.market.replace("USD", "")}
@@ -2129,6 +2271,7 @@ function CockpitView({
         <button
           aria-pressed={dialog === "protection"}
           onClick={() => {
+            triggerHaptic("selection");
             setDialog("protection");
           }}
         >
@@ -2136,6 +2279,20 @@ function CockpitView({
           <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-emerald-400 border border-white/10">
             {_tradesToday}/{_maxTrades}
           </span>
+        </button>
+        <button
+          type="button"
+          aria-label="Modalità Cinematografica"
+          title="Schermo Intero Cinematografico (TradingView)"
+          onClick={() => {
+            const nextCinema = !manualCinema;
+            synestheticCinemaToggle(nextCinema);
+            setManualCinema(nextCinema);
+            setMobileTab("chart");
+          }}
+          className="!min-w-[34px] !w-9 !px-0 inline-flex items-center justify-center text-[#E8C56A] hover:bg-white/10"
+        >
+          <Maximize2 className="h-3.5 w-3.5 text-[#E8C56A]" />
         </button>
       </div>
 
@@ -2479,7 +2636,14 @@ function CockpitView({
                           key={v}
                           role="button"
                           tabIndex={confirmed ? -1 : 0}
-                          onClick={confirmed ? undefined : () => set({ cycle: v as CockpitAnalysis["cycle"] })}
+                          onClick={
+                            confirmed
+                              ? undefined
+                              : () => {
+                                  synestheticChecklistValidation("pass");
+                                  set({ cycle: v as CockpitAnalysis["cycle"] });
+                                }
+                          }
                           className={`group p-2 rounded-lg border text-left transition-all cursor-pointer relative select-none ${
                             isSelected
                               ? "border-primary bg-primary/10 shadow-[0_0_12px_rgba(197,160,89,0.15)] ring-1 ring-primary/40"
@@ -2579,7 +2743,10 @@ function CockpitView({
                       disabled={confirmed}
                       title={l}
                       subtitle={d}
-                      onClick={() => set({ context: v })}
+                      onClick={() => {
+                        synestheticChecklistValidation("pass");
+                        set({ context: v });
+                      }}
                       onInspect={(sch) => setInspectSchematic(sch)}
                     />
                   ))}
@@ -2590,6 +2757,7 @@ function CockpitView({
                   className="ck-primary w-full mt-3.5"
                   disabled={!cockpitContextReady(a)}
                   onClick={() => {
+                    synestheticChecklistValidation("pass");
                     set({ phase: 2 });
                     setChartTF("15");
                   }}
@@ -2652,6 +2820,7 @@ function CockpitView({
                         title={ck(l)}
                         subtitle={ck(d)}
                         onClick={() => {
+                          synestheticChecklistValidation("pass");
                           set({ scenario: v, itfSchema: true });
                           setChartTF(a.execTF === "M5" ? "5" : "1");
                         }}
@@ -2666,7 +2835,10 @@ function CockpitView({
                     label={`Ciclo ${tfs[1]} chiuso con schematica valida`}
                     checked={a.itfSchema}
                     disabled={confirmed}
-                    onChange={(itfSchema) => set({ itfSchema })}
+                    onChange={(itfSchema) => {
+                      synestheticChecklistValidation(itfSchema ? "pass" : "fail");
+                      set({ itfSchema });
+                    }}
                   />
                   {COCKPIT_SCHEMATICS.itf_schematic && (
                     <button
@@ -2685,6 +2857,7 @@ function CockpitView({
                   className="ck-primary w-full mt-3.5"
                   disabled={!a.scenario || !a.itfSchema}
                   onClick={() => {
+                    synestheticChecklistValidation("pass");
                     set({ phase: 3 });
                     setChartTF(a.execTF === "M5" ? "5" : "1");
                   }}
@@ -2747,7 +2920,10 @@ function CockpitView({
                     label={`Schematica d'ingresso ${tfs[2]} valida`}
                     checked={a.ltfSchema}
                     disabled={confirmed}
-                    onChange={(ltfSchema) => set({ ltfSchema })}
+                    onChange={(ltfSchema) => {
+                      synestheticChecklistValidation(ltfSchema ? "pass" : "fail");
+                      set({ ltfSchema });
+                    }}
                   />
 
                   <div>
@@ -2767,7 +2943,10 @@ function CockpitView({
                           <div
                             key={trigger}
                             onClick={() => {
-                              if (!isDisabled) set({ trigger });
+                              if (!isDisabled) {
+                                synestheticChecklistValidation("pass");
+                                set({ trigger });
+                              }
                             }}
                             className={`p-1.5 rounded-md border text-center transition-all flex flex-col justify-between items-center select-none cursor-pointer ${
                               isDisabled
@@ -3479,6 +3658,36 @@ function CockpitView({
 
         {/* COLONNA 2 (CENTRO/DESTRA): GRAFICO DOMINANTE E ACTION BAR */}
         <section className="ck-chart-area" aria-label={ck("cockpit.ui.31175df55f")}>
+          {/* Barra Mobile di Stato Flusso e Salto Rapido (Visibile solo in modalità Grafico su Mobile) */}
+          <div className="flex lg:hidden items-center justify-between gap-1.5 px-2.5 py-1.5 border-b border-[#C5A059]/30 bg-[#07080b]/95 backdrop-blur-md font-mono text-[10px] shrink-0 select-none">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-bold text-[#E8C56A] uppercase tracking-wider bg-[#C5A059]/15 border border-[#C5A059]/35 px-1.5 py-0.5 rounded whitespace-nowrap">
+                Fase {phase}/4
+              </span>
+              <span className="text-foreground/90 font-semibold truncate">
+                {tfs[phase - 1] || "M15"} · Bias {score >= 0 ? `+${score}` : score}%
+              </span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setMobileTab("process")}
+                className="inline-flex items-center gap-1 rounded-md border border-[#C5A059]/40 bg-[#C5A059]/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap transition-colors"
+              >
+                <span>Checklist</span>
+                <ChevronLeft className="h-3 w-3 rotate-180" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTradeRegisterModalOpen(true)}
+                className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-emerald-300 whitespace-nowrap transition-colors"
+              >
+                <BookOpen size={10} />
+                <span>Trade</span>
+              </button>
+            </div>
+          </div>
+
           {/* Banner Coprifuoco Volatilità (Custode della Soglia) */}
           {imminentRedNews && imminentRedNews.countdownMin <= 15 && imminentRedNews.countdownMin >= -5 && (
             <div className="mx-2 mb-1.5 px-3 py-1.5 rounded-lg bg-[#ef4444]/10 border border-[#ef4444]/40 shadow-[0_0_15px_rgba(239,68,68,0.12)] flex items-center justify-between text-xs font-mono shrink-0">

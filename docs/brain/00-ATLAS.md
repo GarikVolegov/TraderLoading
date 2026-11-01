@@ -32,6 +32,8 @@ graph TD
     BACKEND["[[04-BACKEND-CONTRACTS]] — Contratti, ORM & API"]
     PERF["[[05-OPTIMIZATION-PERFORMANCE]] — Efficienza & Scaling"]
     SEC["[[06-SECURITY-HARDENING]] — Sicurezza, Auth & GDPR"]
+    AGENTS["[[07-MULTI-AGENT-SYSTEM]] — Il Concilio Autonomo & Regola 95/5"]
+    MEMORY["[[08-SOVEREIGN-MEMORY-MATRIX]] — Memoria Sovrana, Visione & Benchmark"]
 
     ATLAS --> WORKFLOW
     ATLAS --> BRAND
@@ -39,7 +41,13 @@ graph TD
     ATLAS --> BACKEND
     ATLAS --> PERF
     ATLAS --> SEC
+    ATLAS --> AGENTS
+    ATLAS --> MEMORY
 
+    AGENTS -.->|Guida & Critica Spietata| WORKFLOW
+    AGENTS -.->|Standard Limen UI| FRONTEND
+    AGENTS -.->|Contratti & Egress| BACKEND
+    MEMORY -.->|Visione & Benchmark| AGENTS
     WORKFLOW -.->|Gate di Rilascio| BACKEND
     WORKFLOW -.->|Gate di Rilascio| FRONTEND
     BRAND -.->|Lessico e Stile| FRONTEND
@@ -90,6 +98,18 @@ graph TD
    - Cascata GDPR di cancellazione completa (`accountDeletion.ts`).
    - Upload protetti: validazione MIME reale e URL firmati a scadenza (Cloudflare Stream/S3).
    - Igiene assoluta delle credenziali e flags spenti di default.
+
+7. **[[07-MULTI-AGENT-SYSTEM]]** — *Il Concilio Autonomo & La Regola 95/5*
+   - Filosofia di governo: 95% esecuzione manuale autonoma, 5% decisioni sovrane dell'Utente.
+   - Gerarchia a 3 livelli: Dirigente Sovrano (C-Suite), Manager di Linea (Critica Spietata: Tech, Design, QA), Ingegneri Esecutivi.
+   - Sorveglianza perpetua: daemon schedulato via timer per verifiche automatiche continue.
+   - Protocollo dei Decision Memo e comandi di gestione rapida (`pnpm council`).
+
+8. **[[08-SOVEREIGN-MEMORY-MATRIX]]** — *Memoria Sovrana, Visione & Benchmark Globale*
+   - Memoria stabile e leggera dello stato dell'unione (570 test, 75 route, typecheck, daemon).
+   - Gerarchia tripartita: Dirigenti (Visione), Manager (Garanzia Completezza), Agenti (Esecuzione).
+   - Benchmark comparativo coi top software mondiali: TradingView, Linear, Bloomberg, TradeZella, Bookmap.
+   - Strumenti, skill set d'eccellenza e frontiera attiva del monorepo.
 
 ---
 

@@ -33,6 +33,7 @@ import {
   synestheticAlert,
   synestheticTrophy,
   synestheticSealOfAction,
+  synestheticChecklistValidation,
   synestheticArenaTradeWin,
   synestheticArenaDisqualification,
   synestheticArenaLaunch,
@@ -137,6 +138,15 @@ export function SoundFxSettings() {
       icon: Shield,
       accent: "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10",
       chip: "528Hz • Alpha 1.4Hz",
+    },
+    {
+      id: "checklist_noble",
+      title: "Il Rintocco della Soglia",
+      description: "Risonanza armonica sacra a 432 Hz con armonica a 864 Hz e doppio impulso aptico per la validazione delle regole del Custode.",
+      action: () => synestheticChecklistValidation("pass"),
+      icon: Shield,
+      accent: "border-[#C5A059]/40 text-[#E8C56A] hover:bg-[#C5A059]/15",
+      chip: "432Hz • Aptica II",
     },
     {
       id: "confirm",

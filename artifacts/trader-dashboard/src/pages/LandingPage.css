@@ -1789,11 +1789,11 @@
   .landing-container {
     width: calc(100% - 40px);
   }
-  .landing-page h1 {
-    font-size: clamp(48px, 11vw, 68px);
+  .landing-page h1:not(.landing-hero-title) {
+    font-size: clamp(28px, 7vw, 38px);
   }
   .landing-page h2 {
-    font-size: 44px;
+    font-size: clamp(20px, 5.5vw, 28px);
   }
   .landing-page section[id] {
     scroll-margin-top: calc(var(--landing-header-height) + 24px);
@@ -2184,22 +2184,24 @@
 
 .landing-hero-title {
   font-family: var(--font-display, 'Cinzel', 'Cormorant Garamond', Georgia, serif) !important;
-  letter-spacing: 0.04em;
+  font-size: clamp(21px, 3.2vw, 42px);
+  letter-spacing: 0.03em;
   line-height: 1.22;
   text-wrap: balance;
 }
 
 @media (min-width: 640px) {
   .landing-hero-title {
-    letter-spacing: 0.06em;
-    line-height: 1.26;
+    letter-spacing: 0.04em;
+    line-height: 1.24;
   }
 }
 
 @media (min-width: 1024px) {
   .landing-hero-title {
-    letter-spacing: 0.07em;
-    line-height: 1.28;
+    font-size: clamp(30px, 2.8vw, 42px);
+    letter-spacing: 0.045em;
+    line-height: 1.25;
   }
 }
 

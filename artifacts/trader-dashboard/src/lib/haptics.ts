@@ -32,6 +32,26 @@ export function hapticMedium(): boolean {
   return vibrate(20);
 }
 
+/** Micro-impulso inerziale per swipe gestuale (12ms) */
+export function hapticSwipe(): boolean {
+  return vibrate(12);
+}
+
+/** Scatto meccanico per toggle modalità Cinema (28ms) */
+export function hapticCinemaToggle(): boolean {
+  return vibrate(28);
+}
+
+/** Doppia conferma aptica per validazione regola checklist (15ms - 25ms - 20ms) */
+export function hapticChecklistValidation(): boolean {
+  return vibrate([15, 25, 20]);
+}
+
+/** Allerta aptica disciplinare per violazione o deroga (35ms - 30ms - 45ms) */
+export function hapticViolation(): boolean {
+  return vibrate([35, 30, 45]);
+}
+
 /** Conferma positiva (20ms - pausa 30ms - 20ms): salvataggio piano, conferma regola */
 export function hapticSuccess(): boolean {
   return vibrate([20, 30, 20]);

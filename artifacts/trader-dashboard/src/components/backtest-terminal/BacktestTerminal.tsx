@@ -899,7 +899,7 @@ function BacktestTerminalSession({
                 onClick={() => handleSelectPanelTab("journal")}
               >
                 <BookOpen size={13} />
-                <span>Diario</span>
+                <span>Il Libro della Verità</span>
                 {engine.trades.length > 0 && (
                   <span className="btm-panel-tab-badge font-mono">{engine.trades.length}</span>
                 )}
@@ -984,7 +984,7 @@ function BacktestTerminalSession({
                 onClick={() => handleSelectPanelTab("journal")}
               >
                 <BookOpen size={13} />
-                <span>Diario</span>
+                <span>Il Libro della Verità</span>
                 {engine.trades.length > 0 && (
                   <span className="btm-panel-tab-badge font-mono">{engine.trades.length}</span>
                 )}

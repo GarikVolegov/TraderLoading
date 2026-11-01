@@ -1076,7 +1076,7 @@
   }
   .btm-playback-controls { flex-shrink: 0; gap: 4px; }
   .btm-clock { flex: 1 1 180px; min-width: 0; }
-  .btm-clock-time { white-space: normal; }
+  .btm-clock-time { white-space: nowrap; font-variant-numeric: tabular-nums; }
   .btm-scrub-input { flex: 1 1 60px; min-width: 44px; min-height: 24px; }
   .btm-speed-select { width: 64px; min-width: 64px; }
   .btm-jump-trigger { min-height: 44px; }
@@ -1090,13 +1090,15 @@
   .btm-notice { font-size: 12px; padding-right: 48px; }
   .btm-notice-dismiss { position: absolute; right: 0; top: 0; }
 }
-@media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
-  .btm-header { flex-wrap: nowrap; }
+@media (max-width: 1023px) and (max-height: 520px) and (orientation: landscape) {
+  .btm-header { flex-wrap: nowrap; padding: 2px 6px; min-height: 36px; }
   .btm-header .btm-tfgroup { flex: 1; width: auto; order: 0; }
-  .btm-header .btm-chips { width: auto; gap: 0; }
-  .btm-header > .btm-symbol { flex: 0 0 auto; }
+  .btm-header .btm-chips { width: auto; gap: 4px; }
+  .btm-header > .btm-symbol { flex: 0 0 auto; font-size: 11px; }
   .btm-header > .btm-coverage { display: none; }
-  .btm-transport { max-height: 30%; }
+  .btm-transport { max-height: 42px; padding: 2px 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .btm-playback-controls { flex-shrink: 0; gap: 2px; }
+  .btm-transport-btn { min-width: 32px; min-height: 32px; }
 }
 @media (max-width: 1023px) {
   .btm-help-backdrop { position:fixed !important; inset:0 !important; z-index:110 !important; padding:12px; }

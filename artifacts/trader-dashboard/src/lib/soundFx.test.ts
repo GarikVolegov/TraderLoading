@@ -14,6 +14,7 @@ import {
   soundTrophy,
   soundSealOfAction,
   soundMacroAlert,
+  soundChecklistNoble,
   synestheticClick,
   synestheticCheck,
   synestheticConfirm,
@@ -21,6 +22,9 @@ import {
   synestheticTrophy,
   synestheticSealOfAction,
   synestheticMacroAlert,
+  synestheticChecklistValidation,
+  synestheticSwipe,
+  synestheticCinemaToggle,
   soundArenaTradeWin,
   soundArenaTradeLoss,
   soundArenaDisqualification,
@@ -99,6 +103,12 @@ assert.doesNotThrow(() => {
   synestheticArenaDisqualification();
   synestheticArenaLaunch();
   synestheticArenaCountdown(3);
+  soundChecklistNoble();
+  synestheticChecklistValidation("pass");
+  synestheticChecklistValidation("fail");
+  synestheticChecklistValidation("neutral");
+  synestheticSwipe();
+  synestheticCinemaToggle(true);
   startDeepWorkAmbience();
   setRiskResonanceLevel(0.65);
   assert.equal(getRiskResonanceLevel(), 0.65);
@@ -359,6 +369,11 @@ try {
   synestheticAlert();
   synestheticTrophy();
   synestheticSealOfAction();
+  soundChecklistNoble();
+  synestheticChecklistValidation("pass");
+  synestheticChecklistValidation("fail");
+  synestheticSwipe();
+  synestheticCinemaToggle(true);
   assert.ok(oscillatorsCreated > oscBeforeSynesthetic, "Synesthetic functions must trigger audio components");
   assert.ok(startCalls > 0 && stopCalls > 0, "Oscillators must have their start and stop envelopes executed");
 

@@ -28,7 +28,15 @@ export function MarketGlobeModal({ isOpen, onClose }: MarketGlobeModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          triggerHaptic("selection");
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+    >
       <div
         role="dialog"
         aria-modal="true"

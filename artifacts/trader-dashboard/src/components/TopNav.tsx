@@ -100,14 +100,14 @@ export function TopNav() {
       transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.0 }}
       className="app-top-nav fixed top-0 left-0 right-0 z-40 lg:left-[var(--app-inset-left)]"
     >
-      <div className="bg-background/95 backdrop-blur-md border-b border-border pt-[var(--safe-top)]">
-        <div className="mx-auto flex h-[var(--app-header-height)] max-w-[1840px] items-center gap-2 px-3 sm:gap-3 sm:px-5 lg:px-5 xl:px-7">
+      <div className="bg-[#07080b]/92 backdrop-blur-xl border-b border-[#C5A059]/25 pt-[var(--safe-top)] shadow-sm">
+        <div className="mx-auto flex h-[var(--app-header-height)] max-w-[1840px] items-center gap-1.5 px-2.5 sm:gap-3 sm:px-5 lg:px-5 xl:px-7">
           {/* Brand — mobile/tablet only */}
           <motion.div
             initial={{ opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.15, duration: 0.35 }}
-            className="lg:hidden shrink-0 max-[400px]:[&_.tl-brand-wordmark_small]:hidden"
+            className="lg:hidden shrink-0 max-[400px]:[&_.tl-brand-wordmark_small]:hidden max-[360px]:scale-90"
           >
             <Link href="/">
               <BrandMark />
@@ -115,7 +115,7 @@ export function TopNav() {
           </motion.div>
 
           {/* Divider — mobile only */}
-          <div className="w-px h-4 bg-border/60 lg:hidden shrink-0" />
+          <div className="w-px h-4 bg-[#C5A059]/25 lg:hidden shrink-0" />
 
           {/* Thematic Philosophical Quote (Desktop) + Live Flow Pulse HUD (Mobile/Tablet) */}
           <motion.div
@@ -125,7 +125,7 @@ export function TopNav() {
             transition={{ delay: 0.15, duration: 0.3 }}
           >
             {/* Mobile Live Flow Pulse HUD (Sessione + Integrità + Grado) */}
-            <div className="flex lg:hidden items-center gap-1.5 min-w-0">
+            <div className="flex lg:hidden items-center gap-1 sm:gap-1.5 min-w-0">
               <button
                 type="button"
                 onClick={() => {
@@ -133,7 +133,7 @@ export function TopNav() {
                   openMarketGlobe();
                 }}
                 title={`${limenSession.shortName} (${limenSession.hours}) — Clicca per aprire La Sfera dei Mercati 3D`}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#C5A059]/30 bg-[#0d0f14]/95 hover:border-[#C5A059]/70 hover:bg-[#151722] px-2 py-1 font-mono text-[10px] whitespace-nowrap shrink-0 cursor-pointer transition-all active:scale-95"
+                className="inline-flex items-center gap-1 sm:gap-1.5 rounded-md border border-[#C5A059]/35 bg-[#0d0f14]/95 hover:border-[#C5A059]/70 hover:bg-[#151722] px-1.5 sm:px-2 py-1 font-mono text-[9.5px] sm:text-[10px] whitespace-nowrap shrink-0 cursor-pointer transition-all active:scale-95 shadow-sm"
               >
                 <span
                   className={`h-1.5 w-1.5 rounded-full shrink-0 ${
@@ -152,7 +152,7 @@ export function TopNav() {
               <Link
                 href="/milestones"
                 title={`${currentCode} · ${currentTitle} — Integrità ${currentIntegrityIndex}%`}
-                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/[0.07] hover:bg-emerald-500/15 px-2 py-1 font-mono text-[10px] whitespace-nowrap transition-colors shrink-0"
+                className="inline-flex items-center gap-1 sm:gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/[0.08] hover:bg-emerald-500/15 px-1.5 sm:px-2 py-1 font-mono text-[9.5px] sm:text-[10px] whitespace-nowrap transition-colors shrink-0 shadow-sm"
               >
                 <Shield className="h-3 w-3 text-[#E8C56A] shrink-0" />
                 <span className="font-bold text-[#E8C56A] whitespace-nowrap">
@@ -183,7 +183,7 @@ export function TopNav() {
 
           {/* Right controls */}
           <motion.div
-            className="flex items-center gap-1.5 sm:gap-2 shrink-0"
+            className="flex items-center gap-1 sm:gap-2 shrink-0"
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.35 }}
@@ -193,7 +193,7 @@ export function TopNav() {
               type="button"
               onClick={openThresholdManifesto}
               title={"Il Manifesto — La Soglia di Selezione"}
-              className="hidden lg:inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              className="hidden lg:inline-flex h-9 items-center gap-1.5 rounded-md border border-[#C5A059]/30 bg-card px-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:border-[#C5A059] hover:text-[#E8C56A]"
             >
               <ScrollText className="h-3.5 w-3.5 text-primary" />
               <span>{"Il Manifesto"}</span>
@@ -237,10 +237,10 @@ export function TopNav() {
               aria-label={isPlaying ? "Disattiva audio focus" : "Attiva audio focus"}
               whileTap={{ scale: 0.88 }}
               onClick={() => setMode(isPlaying ? "off" : "deepfocus")}
-              className={`flex h-10 w-10 items-center justify-center rounded-md border transition-colors ${
+              className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border transition-all ${
                 isPlaying
-                  ? "border-primary/40 bg-primary/15 text-primary"
-                  : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-primary"
+                  ? "border-[#C5A059]/60 bg-[#C5A059]/20 text-[#E8C56A] shadow-[0_0_12px_rgba(197,160,89,0.25)]"
+                  : "border-border/80 bg-card/70 text-muted-foreground hover:border-[#C5A059]/40 hover:text-[#E8C56A]"
               }`}
               title={isPlaying ? "Frequenza Operativa Attiva" : "Frequenza Operativa Spenta"}
             >
@@ -255,7 +255,7 @@ export function TopNav() {
                     type="button"
                     aria-label={t("profile.open_settings")}
                     title={t("profile.settings")}
-                    className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-border bg-card transition-colors hover:border-primary hover:bg-primary/10"
+                    className="relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center overflow-hidden rounded-lg border border-border/80 bg-card/70 transition-all hover:border-[#C5A059] hover:bg-[#C5A059]/10"
                   >
                     <ProfileAvatar
                       name={profileName}

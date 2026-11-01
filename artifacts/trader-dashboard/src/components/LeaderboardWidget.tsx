@@ -61,12 +61,12 @@ export function LeaderboardWidget() {
         <CardHeader className="border-b border-border/50 bg-secondary/10 pb-3">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
-            Classifica Pro
+            La Gerarchia dell'Integrità
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 p-4">
           <div className="rounded-lg border border-border/40 bg-secondary/20 px-3 py-3 text-xs text-muted-foreground">
-            Confronta XP, livelli e progressi con gli altri trader nel piano Pro.
+            Confronta l'Indice di Integrità e i 5 Gradi di Ascesa con gli Operatori nel piano Pro.
           </div>
           <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/10 px-3 py-2">
             <span className="text-xs font-bold text-primary">{uiText("leaderboard.pro_price")}</span>
@@ -104,7 +104,7 @@ function LeaderboardWidgetInner() {
             </div>
           ) : !leaderboard || leaderboard.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground font-medium">
-              Nessun trader in classifica.
+              Nessun Operatore nella Gerarchia dell'Integrità.
             </div>
           ) : (
             <div className="divide-y divide-border/50 max-h-[400px] overflow-y-auto">

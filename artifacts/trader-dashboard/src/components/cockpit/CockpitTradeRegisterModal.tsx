@@ -44,7 +44,7 @@ import {
 } from "@workspace/api-client-react";
 import { addProcessEvidence, fetchTraderProcess, traderProcessKey } from "@/lib/traderProcessApi";
 import { trackEvent } from "@/lib/analytics";
-import { synestheticSealOfAction } from "@/lib/soundFx";
+import { synestheticSealOfAction, synestheticChecklistValidation } from "@/lib/soundFx";
 import { queueOfflineMutation } from "@/lib/journalOfflineSync";
 
 function processDay(date: Date = new Date()): string {
@@ -878,7 +878,11 @@ export function CockpitTradeRegisterModal({
               <button
                 type="button"
                 onClick={() =>
-                  setCriteriaStatus((prev) => ({ ...prev, structureBias: !prev.structureBias }))
+                  setCriteriaStatus((prev) => {
+                    const next = !prev.structureBias;
+                    synestheticChecklistValidation(next ? "pass" : "fail");
+                    return { ...prev, structureBias: next };
+                  })
                 }
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                   criteriaStatus.structureBias
@@ -906,7 +910,11 @@ export function CockpitTradeRegisterModal({
               <button
                 type="button"
                 onClick={() =>
-                  setCriteriaStatus((prev) => ({ ...prev, strictRisk: !prev.strictRisk }))
+                  setCriteriaStatus((prev) => {
+                    const next = !prev.strictRisk;
+                    synestheticChecklistValidation(next ? "pass" : "fail");
+                    return { ...prev, strictRisk: next };
+                  })
                 }
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                   criteriaStatus.strictRisk
@@ -934,10 +942,11 @@ export function CockpitTradeRegisterModal({
               <button
                 type="button"
                 onClick={() =>
-                  setCriteriaStatus((prev) => ({
-                    ...prev,
-                    closedCandleTrigger: !prev.closedCandleTrigger,
-                  }))
+                  setCriteriaStatus((prev) => {
+                    const next = !prev.closedCandleTrigger;
+                    synestheticChecklistValidation(next ? "pass" : "fail");
+                    return { ...prev, closedCandleTrigger: next };
+                  })
                 }
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                   criteriaStatus.closedCandleTrigger
@@ -965,7 +974,11 @@ export function CockpitTradeRegisterModal({
               <button
                 type="button"
                 onClick={() =>
-                  setCriteriaStatus((prev) => ({ ...prev, stoicState: !prev.stoicState }))
+                  setCriteriaStatus((prev) => {
+                    const next = !prev.stoicState;
+                    synestheticChecklistValidation(next ? "pass" : "fail");
+                    return { ...prev, stoicState: next };
+                  })
                 }
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                   criteriaStatus.stoicState

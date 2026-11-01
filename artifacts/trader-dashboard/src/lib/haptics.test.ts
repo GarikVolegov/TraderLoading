@@ -6,6 +6,10 @@ import {
   isHapticSupported,
   hapticLight,
   hapticMedium,
+  hapticSwipe,
+  hapticCinemaToggle,
+  hapticChecklistValidation,
+  hapticViolation,
   hapticSuccess,
   hapticWarning,
   hapticSovereign,
@@ -21,6 +25,10 @@ assert.ok(fs.existsSync(hapticsFile), "haptics.ts must exist");
 assert.equal(isHapticSupported(), false, "isHapticSupported should return false in Node test environment");
 assert.equal(hapticLight(), false, "hapticLight should safely return false without crashing");
 assert.equal(hapticMedium(), false, "hapticMedium should safely return false without crashing");
+assert.equal(hapticSwipe(), false, "hapticSwipe should safely return false without crashing");
+assert.equal(hapticCinemaToggle(), false, "hapticCinemaToggle should safely return false without crashing");
+assert.equal(hapticChecklistValidation(), false, "hapticChecklistValidation should safely return false without crashing");
+assert.equal(hapticViolation(), false, "hapticViolation should safely return false without crashing");
 assert.equal(hapticSuccess(), false, "hapticSuccess should safely return false without crashing");
 assert.equal(hapticWarning(), false, "hapticWarning should safely return false without crashing");
 assert.equal(hapticSovereign(), false, "hapticSovereign should safely return false without crashing");
@@ -50,6 +58,18 @@ try {
 
   assert.equal(hapticMedium(), true);
   assert.equal(lastVibratePattern, 20, "hapticMedium should trigger 20ms pulse");
+
+  assert.equal(hapticSwipe(), true);
+  assert.equal(lastVibratePattern, 12, "hapticSwipe should trigger 12ms inertial pulse");
+
+  assert.equal(hapticCinemaToggle(), true);
+  assert.equal(lastVibratePattern, 28, "hapticCinemaToggle should trigger 28ms tactile snap");
+
+  assert.equal(hapticChecklistValidation(), true);
+  assert.deepEqual(lastVibratePattern, [15, 25, 20], "hapticChecklistValidation should trigger double validation pulse");
+
+  assert.equal(hapticViolation(), true);
+  assert.deepEqual(lastVibratePattern, [35, 30, 45], "hapticViolation should trigger alert pattern");
 
   assert.equal(hapticSuccess(), true);
   assert.deepEqual(lastVibratePattern, [20, 30, 20], "hapticSuccess should trigger affirmative vibration sequence");

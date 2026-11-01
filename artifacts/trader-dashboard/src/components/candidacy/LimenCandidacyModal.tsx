@@ -150,8 +150,7 @@ export function LimenCandidacyModal({
             </div>
           </div>
           <DialogDescription className="text-xs text-[#94a3b8] leading-relaxed">
-            Seleziona la dotazione iniziale per entrare nel Protocollo AUREUS. L'accesso iniziale
-            include di diritto Il Varco, Il Libro della Verità, La Fratellanza e i 5 Gradi di Ascesa.
+            La disciplina non si improvvisa: si difende con gli strumenti giusti. Seleziona la dotazione con cui varcare la soglia: ogni piano include l'allenamento a rischio zero e la protezione del capitale.
           </DialogDescription>
         </DialogHeader>
 
@@ -566,7 +565,7 @@ export function LimenCandidacyModal({
                   disabled={busy}
                   className="w-full bg-[#C5A059] hover:bg-[#E8C56A] text-[#07080b] font-mono font-bold tracking-[0.16em] uppercase py-3 rounded-md shadow-[0_0_20px_rgba(197,160,89,0.25)] transition-all cursor-pointer"
                 >
-                  {busy ? "Registrazione Candidatura…" : "Invia Candidatura & Accedi al Varco"}
+                  {busy ? "Registrazione Candidatura…" : "Invia Candidatura & Varca la Soglia"}
                 </Button>
               </div>
             )}

@@ -376,8 +376,8 @@ export function BottomNav() {
                     ? "shadow-[0_0_16px_rgba(197,160,89,0.12)]"
                     : "hover:bg-secondary/60"
                 }`
-              : `relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md px-1 text-xs font-medium transition-colors ${
-                  selected ? "text-primary font-semibold" : "text-muted-foreground"
+              : `relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-medium transition-colors ${
+                  selected ? "text-[#E8C56A] font-bold" : "text-slate-400 hover:text-slate-200"
                 }`
           }
         >
@@ -387,7 +387,7 @@ export function BottomNav() {
               className={
                 desktop
                   ? "absolute inset-0 rounded-lg border border-[#C5A059]/40 bg-gradient-to-r from-[#C5A059]/16 via-[#C5A059]/08 to-transparent shadow-[0_0_14px_rgba(197,160,89,0.18)]"
-                  : "absolute inset-0 rounded-md border border-primary/35 bg-primary/12"
+                  : "absolute inset-0 rounded-lg border border-[#C5A059]/50 bg-gradient-to-t from-[#C5A059]/20 via-[#C5A059]/10 to-transparent shadow-[0_0_12px_rgba(197,160,89,0.18)]"
               }
               transition={{ type: "spring", stiffness: 400, damping: 34 }}
             />
@@ -409,15 +409,15 @@ export function BottomNav() {
               <LimenPageEmblem
                 variant={item.emblemVariant}
                 size={22}
-                className={selected ? "filter drop-shadow-[0_0_6px_rgba(212,175,55,0.6)]" : "opacity-80"}
+                className={selected ? "filter drop-shadow-[0_0_8px_rgba(212,175,55,0.7)] scale-105" : "opacity-75"}
               />
             </div>
           )}
           <span className={`relative z-10 ${
             desktop
               ? "whitespace-nowrap font-display text-[12px] font-bold uppercase tracking-[0.03em] text-foreground/85 group-hover:text-[#F4F4F6] transition-colors"
-              : "block max-w-full truncate text-center px-0.5 text-[10px]"
-          } ${selected && desktop ? "!text-[#D4AF37] font-extrabold drop-shadow-[0_0_8px_rgba(212,175,55,0.3)]" : ""}`}>
+              : "block max-w-full truncate text-center px-0.5 text-[10px] font-display uppercase tracking-wider"
+          } ${selected ? "!text-[#E8C56A] font-bold drop-shadow-[0_0_6px_rgba(212,175,55,0.4)]" : "text-slate-400"}`}>
             {desktop ? t(item.labelKey) : MOBILE_ROOT_LABELS[language][index]}
           </span>
           {desktop && item.id === "today" && (
@@ -698,23 +698,48 @@ export function BottomNav() {
 
   const moreMobile = () => {
     const limenSession = getLimenSessionInfo(now);
+    const isOrderActive = !ROOT_ITEMS.some((item) => item.id === active);
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
             aria-label={t("process.nav.more")}
-            data-active={!ROOT_ITEMS.some(item => item.id === active)}
-            className="flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md px-1 text-xs text-muted-foreground data-[active=true]:bg-primary/12 data-[active=true]:text-primary"
+            data-active={isOrderActive}
+            onClick={() => synestheticClick()}
+            className={`group relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs transition-colors ${
+              isOrderActive
+                ? "text-[#E8C56A] font-bold"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
           >
-            <MoreHorizontal className="h-5 w-5" />
-            <span className="block max-w-full truncate text-center text-[10px]">{t("process.nav.more")}</span>
+            {isOrderActive && (
+              <motion.span
+                layoutId="limen-mobile-active-pill"
+                className="absolute inset-0 rounded-lg border border-[#C5A059]/50 bg-gradient-to-t from-[#C5A059]/20 via-[#C5A059]/10 to-transparent shadow-[0_0_12px_rgba(197,160,89,0.18)]"
+                transition={{ type: "spring", stiffness: 400, damping: 34 }}
+              />
+            )}
+            <div className="relative z-10 shrink-0">
+              <MoreHorizontal
+                className={`h-5 w-5 transition-transform group-hover:scale-110 ${
+                  isOrderActive ? "text-[#E8C56A] drop-shadow-[0_0_6px_rgba(212,175,55,0.6)]" : "text-slate-400"
+                }`}
+              />
+            </div>
+            <span
+              className={`relative z-10 block max-w-full truncate text-center px-0.5 text-[10px] font-display uppercase tracking-wider ${
+                isOrderActive ? "!text-[#E8C56A] font-bold drop-shadow-[0_0_6px_rgba(212,175,55,0.4)]" : "text-slate-400"
+              }`}
+            >
+              {t("process.nav.more")}
+            </span>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           side="top"
           align="end"
-          className="mobile-more-menu w-[calc(100vw-24px)] max-w-sm max-h-[75dvh] overflow-y-auto rounded-xl border border-[#C5A059]/35 bg-[#0b0d13]/98 backdrop-blur-xl p-2.5 shadow-[0_16px_48px_rgba(0,0,0,0.85)] scrollbar-thin scrollbar-thumb-[#C5A059]/30"
+          className="mobile-more-menu w-[calc(100vw-24px)] max-w-sm max-h-[78dvh] overflow-y-auto rounded-2xl border border-[#C5A059]/40 bg-[#07080b]/98 backdrop-blur-2xl p-3 shadow-[0_20px_60px_rgba(0,0,0,0.95)] scrollbar-thin scrollbar-thumb-[#C5A059]/35"
         >
           {/* Header Telemetrico compatto con trigger Sfera dei Mercati */}
           <div
@@ -865,7 +890,7 @@ export function BottomNav() {
       <nav
         aria-label={t("workspace.navigation")}
         data-mobile-navigation=""
-        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] inset-x-3 z-50 rounded-xl border border-border bg-card shadow-lg lg:hidden"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] inset-x-3 z-50 rounded-xl border border-[#C5A059]/30 bg-card shadow-lg backdrop-blur-xl shadow-black/85 lg:hidden"
       >
         <div className="mx-auto flex max-w-lg gap-1 p-1">
           {renderItems(false)}

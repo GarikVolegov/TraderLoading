@@ -243,7 +243,7 @@ function ChecklistTagPanel({ activeTags, onAdd }: ChecklistTagPanelProps) {
     <div className="space-y-1.5 pt-2 border-t border-border/30">
       <p className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-wider flex items-center gap-1.5">
         <ClipboardCheck className="w-3 h-3 text-primary" />
-        Importa dalla Checklist Pre-Trade
+        Importa da Il Custode della Soglia
       </p>
       <div className="flex flex-wrap gap-1.5">
         {items.map(item => {

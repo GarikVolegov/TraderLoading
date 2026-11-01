@@ -12,6 +12,10 @@
 import {
   hapticLight,
   hapticMedium,
+  hapticSwipe,
+  hapticCinemaToggle,
+  hapticChecklistValidation,
+  hapticViolation,
   hapticSuccess,
   hapticWarning,
   hapticSovereign,
@@ -813,6 +817,70 @@ export function soundArenaCountdownTick(secondsLeft: number): void {
   }
 }
 
+/**
+ * 12. IL RINTOCCO DELLA SOGLIA (Risonanza Aurea Sacra a 432 Hz)
+ * Campana di raccoglimento puro per la validazione di ogni regola del Custode della Soglia.
+ * - Fondamentale aurea pura: 432.0 Hz
+ * - Prima armonica cristallina: 864.0 Hz
+ * - Shimmer sottile: 1296.0 Hz
+ * - Smorzamento esponenziale naturale (420ms) a zero fatica uditiva
+ */
+export function soundChecklistNoble(): void {
+  if (!isSoundEnabled()) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const t = ctx.currentTime;
+    const master = createMasterOut(ctx);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.18, t + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(2400, t);
+    filter.frequency.exponentialRampToValueAtTime(650, t + 0.42);
+
+    gain.connect(filter);
+    filter.connect(master);
+
+    // Fondamentale 432.0 Hz
+    const osc432 = ctx.createOscillator();
+    osc432.type = "sine";
+    osc432.frequency.setValueAtTime(432.0, t);
+    osc432.connect(gain);
+    osc432.start(t);
+    osc432.stop(t + 0.45);
+
+    // Armonica 864.0 Hz
+    const osc864 = ctx.createOscillator();
+    osc864.type = "sine";
+    osc864.frequency.setValueAtTime(864.0, t);
+    const gain864 = ctx.createGain();
+    gain864.gain.setValueAtTime(0.35, t);
+    osc864.connect(gain864);
+    gain864.connect(gain);
+    osc864.start(t);
+    osc864.stop(t + 0.42);
+
+    // Shimmer 1296.0 Hz
+    const osc1296 = ctx.createOscillator();
+    osc1296.type = "sine";
+    osc1296.frequency.setValueAtTime(1296.0, t);
+    const gain1296 = ctx.createGain();
+    gain1296.gain.setValueAtTime(0.12, t);
+    osc1296.connect(gain1296);
+    gain1296.connect(gain);
+    osc1296.start(t);
+    osc1296.stop(t + 0.35);
+  } catch {
+    // Guard
+  }
+}
+
 // ── SINESTESIA MULTISENSORIALE (Fusione Tattico-Acustica) ───────────────────
 
 /** Tocco sinestetico leggero: micro-scatto d'ossidiana + micro-impulso 10ms */
@@ -899,6 +967,35 @@ export function synestheticArenaCountdown(secondsLeft: number): void {
   } else {
     hapticLight();
   }
+}
+
+/**
+ * Validazione sinestetica per Il Custode della Soglia (Risonanza Aurea 432 Hz + doppio impulso aptico)
+ * status: "pass" = risonanza dorata 432 Hz + doppio tocco; "fail" = allerta disciplinare 108 Hz + allerta aptica; "neutral" = tocco leggero
+ */
+export function synestheticChecklistValidation(status: "pass" | "fail" | "neutral" = "pass"): void {
+  if (status === "pass") {
+    soundChecklistNoble();
+    hapticChecklistValidation();
+  } else if (status === "fail") {
+    soundAlert();
+    hapticViolation();
+  } else {
+    soundClick();
+    hapticLight();
+  }
+}
+
+/** Micro-interazione sinestetica per swipe gestuale mobile (processo <-> grafico) */
+export function synestheticSwipe(): void {
+  soundClick();
+  hapticSwipe();
+}
+
+/** Micro-interazione sinestetica per attivazione/disattivazione Modalità Cinema Landscape */
+export function synestheticCinemaToggle(isActive?: boolean): void {
+  soundClick();
+  hapticCinemaToggle();
 }
 
 // ── ATMOSFERA ACUSTICA CONTINUA: DEEP WORK ZEN (432 Hz + Flusso Alpha) ─────

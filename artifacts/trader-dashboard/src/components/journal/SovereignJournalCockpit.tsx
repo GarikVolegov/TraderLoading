@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { ShieldCheck, Activity, Sparkles } from "lucide-react";
 import { useTraderProcess } from "@/hooks/useTraderProcess";
 import {
   useGetJournalEntries,
@@ -120,19 +121,164 @@ export function SovereignJournalCockpit({
   // Mobile-only view state (< xl)
   const [mobileActiveView, setMobileActiveView] = useState<"registro" | "dossier">("registro");
 
+  // Real-time Sovereign Telemetry calculations
+  const telemetry = useMemo(() => {
+    const total = sortedEntries.length;
+    if (total === 0) {
+      return {
+        total: 0,
+        winRate: "0.0",
+        profitFactor: "—",
+        integrityPct: 100,
+        hrvStatus: "Elevata" as const,
+      };
+    }
+
+    let wins = 0;
+    let grossWin = 0;
+    let grossLoss = 0;
+    let disciplinedTrades = 0;
+
+    for (const e of sortedEntries) {
+      const isWin = e.result === "win";
+      if (isWin) wins++;
+
+      const rawTags = typeof e.tags === "string" ? e.tags.split(",") : Array.isArray(e.tags) ? (e.tags as string[]) : [];
+      const tags = rawTags.map((t: string) => t.trim().toLowerCase());
+      const hasLeak = tags.some((t: string) =>
+        ["fomo", "revenge", "anticipazione", "uscita_prematura", "esitazione"].includes(t)
+      );
+      if (!hasLeak) disciplinedTrades++;
+
+      const pnl = e.manualTrade?.profit ?? 0;
+      if (pnl > 0) grossWin += pnl;
+      else if (pnl < 0) grossLoss += Math.abs(pnl);
+    }
+
+    const winRate = ((wins / total) * 100).toFixed(1);
+    const profitFactor = grossLoss > 0 ? (grossWin / grossLoss).toFixed(2) : grossWin > 0 ? "MAX" : "1.00";
+    const integrityPct = Math.round((disciplinedTrades / total) * 100);
+    const hrvStatus = integrityPct >= 85 ? "Elevata" : integrityPct >= 70 ? "Vigile" : "Inibita";
+
+    return {
+      total,
+      winRate,
+      profitFactor,
+      integrityPct,
+      hrvStatus,
+    };
+  }, [sortedEntries]);
+
   return (
     <div className="flex flex-col h-auto xl:h-[calc(100dvh-var(--app-header-offset)-var(--bottom-nav-clearance)-4.25rem)] lg:h-full min-h-0 w-full overflow-y-auto xl:overflow-hidden pb-4 select-none">
+      {/* ── SOVEREIGN TELEMETRY COMMAND BAR (Desktop & Large Viewports) ── */}
+      <div className="hidden xl:flex items-center justify-between gap-3 px-3 py-1.5 mb-2 rounded-lg border border-[#C5A059]/25 bg-[#07080b]/90 backdrop-blur-md shadow-sm shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] font-bold text-[#E8C56A] uppercase tracking-wider bg-[#C5A059]/15 border border-[#C5A059]/35 px-2 py-0.5 rounded whitespace-nowrap">
+            👑 IL LIBRO DELLA VERITÀ
+          </span>
+          <span className="text-xs font-mono text-[#94a3b8] whitespace-nowrap">
+            Registro Monastico d'Integrità
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-tight whitespace-nowrap">Campione:</span>
+            <span className="text-xs font-mono font-bold text-[#E8C56A] whitespace-nowrap">{telemetry.total} Trade</span>
+          </div>
+
+          <div className="h-3 w-[1px] bg-[#C5A059]/20" />
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-tight whitespace-nowrap">Win Rate:</span>
+            <span className={cn("text-xs font-mono font-bold whitespace-nowrap", Number(telemetry.winRate) >= 50 ? "text-[#10b981]" : "text-[#ef4444]")}>
+              {telemetry.winRate}%
+            </span>
+          </div>
+
+          <div className="h-3 w-[1px] bg-[#C5A059]/20" />
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-tight whitespace-nowrap">Profit Factor:</span>
+            <span className="text-xs font-mono font-bold text-[#E8C56A] whitespace-nowrap">
+              PF {telemetry.profitFactor}
+            </span>
+          </div>
+
+          <div className="h-3 w-[1px] bg-[#C5A059]/20" />
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-tight whitespace-nowrap">Integrità:</span>
+            <span className="inline-flex items-center gap-1 text-xs font-mono font-bold text-[#10b981] whitespace-nowrap">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" />
+              {telemetry.integrityPct}%
+            </span>
+          </div>
+
+          <div className="h-3 w-[1px] bg-[#C5A059]/20" />
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-tight whitespace-nowrap">Bio-Coerenza:</span>
+            <span className="inline-flex items-center gap-1 text-xs font-mono font-bold text-[#E8C56A] whitespace-nowrap">
+              <Activity className="w-3.5 h-3.5 text-[#E8C56A]" />
+              {telemetry.hrvStatus}
+            </span>
+          </div>
+
+          <div className="h-3 w-[1px] bg-[#C5A059]/20" />
+
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#10b981]/15 border border-[#10b981]/35 text-[#10b981] whitespace-nowrap">
+              CUSTODE: ATTIVO
+            </span>
+          </div>
+        </div>
+      </div>
+      {/* ── MOBILE SOVEREIGN TELEMETRY RIBBON (< xl) ── */}
+      <div className="flex xl:hidden items-center gap-2 overflow-x-auto scrollbar-none px-2.5 py-1.5 mb-2 rounded-lg border border-[#C5A059]/30 bg-[#07080b]/95 backdrop-blur-md shrink-0 select-none shadow-sm">
+        <span className="font-mono text-[9px] font-bold text-[#E8C56A] uppercase tracking-wider bg-[#C5A059]/15 border border-[#C5A059]/35 px-1.5 py-0.5 rounded whitespace-nowrap">
+          👑 LA VERITÀ
+        </span>
+        <div className="flex items-center gap-1 font-mono text-[10px] whitespace-nowrap">
+          <span className="text-muted-foreground uppercase text-[9px]">Trade:</span>
+          <span className="font-bold text-[#E8C56A]">{telemetry.total}</span>
+        </div>
+        <div className="h-3 w-[1px] bg-[#C5A059]/20 shrink-0" />
+        <div className="flex items-center gap-1 font-mono text-[10px] whitespace-nowrap">
+          <span className="text-muted-foreground uppercase text-[9px]">WR:</span>
+          <span className={cn("font-bold", Number(telemetry.winRate) >= 50 ? "text-[#10b981]" : "text-[#ef4444]")}>
+            {telemetry.winRate}%
+          </span>
+        </div>
+        <div className="h-3 w-[1px] bg-[#C5A059]/20 shrink-0" />
+        <div className="flex items-center gap-1 font-mono text-[10px] whitespace-nowrap">
+          <span className="text-muted-foreground uppercase text-[9px]">PF:</span>
+          <span className="font-bold text-[#E8C56A]">{telemetry.profitFactor}</span>
+        </div>
+        <div className="h-3 w-[1px] bg-[#C5A059]/20 shrink-0" />
+        <div className="flex items-center gap-1 font-mono text-[10px] whitespace-nowrap">
+          <ShieldCheck className="w-3 h-3 text-[#10b981]" />
+          <span className="font-bold text-[#10b981]">{telemetry.integrityPct}%</span>
+        </div>
+        <div className="h-3 w-[1px] bg-[#C5A059]/20 shrink-0" />
+        <div className="flex items-center gap-1 font-mono text-[10px] whitespace-nowrap">
+          <Activity className="w-3 h-3 text-[#E8C56A]" />
+          <span className="font-bold text-[#E8C56A]">{telemetry.hrvStatus}</span>
+        </div>
+      </div>
+
       {/* ── MOBILE-ONLY VIEW SWITCHER (< xl) ── */}
-      <div className="flex xl:hidden items-center justify-between gap-2 border-b border-border-subtle pb-2 mb-2 shrink-0 mobile-compact-bar">
-        <div className="flex items-center gap-1 rounded-lg border border-border-subtle bg-surface-1 p-0.5 text-xs font-mono">
+      <div className="flex xl:hidden items-center justify-between gap-2 border-b border-[#C5A059]/20 pb-2 mb-2 shrink-0 mobile-compact-bar">
+        <div className="flex items-center gap-1 rounded-lg border border-[#C5A059]/30 bg-[#0d0f14] p-0.5 text-xs font-mono">
           <button
             type="button"
             onClick={() => setMobileActiveView("registro")}
             className={cn(
-              "px-2.5 sm:px-3 py-1 rounded font-semibold transition-all whitespace-nowrap",
+              "px-2.5 sm:px-3 py-1 rounded-md font-semibold transition-all whitespace-nowrap",
               mobileActiveView === "registro"
-                ? "bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/40 font-bold"
-                : "text-text-lo hover:text-text-hi"
+                ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 font-bold shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             Registro &amp; Traiettoria
@@ -141,17 +287,17 @@ export function SovereignJournalCockpit({
             type="button"
             onClick={() => setMobileActiveView("dossier")}
             className={cn(
-              "px-2.5 sm:px-3 py-1 rounded font-semibold transition-all whitespace-nowrap",
+              "px-2.5 sm:px-3 py-1 rounded-md font-semibold transition-all whitespace-nowrap",
               mobileActiveView === "dossier"
-                ? "bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/40 font-bold"
-                : "text-text-lo hover:text-text-hi"
+                ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 font-bold shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             Dossier Tattico
           </button>
         </div>
         {sortedEntries.length > 0 && (
-          <span className="font-mono text-[10px] text-[#E8C56A] bg-[#C5A059]/10 border border-[#C5A059]/30 px-2 py-0.5 rounded font-bold whitespace-nowrap">
+          <span className="font-mono text-[10px] text-[#E8C56A] bg-[#C5A059]/15 border border-[#C5A059]/35 px-2 py-0.5 rounded font-bold whitespace-nowrap">
             #{tradeIndex + 1}/{sortedEntries.length} Trade
           </span>
         )}
