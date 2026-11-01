@@ -20,6 +20,8 @@ import {
   Activity,
   Play,
   Square,
+  ArrowDownLeft,
+  ArrowUpRight,
 } from "lucide-react";
 import {
   isSoundEnabled,
@@ -31,6 +33,7 @@ import {
   synestheticCheck,
   synestheticConfirm,
   synestheticAlert,
+  synestheticSpatialSweepAlert,
   synestheticTrophy,
   synestheticSealOfAction,
   synestheticChecklistValidation,
@@ -210,6 +213,24 @@ export function SoundFxSettings() {
       icon: AlertTriangle,
       accent: "border-rose-500/35 text-rose-400 hover:bg-rose-500/10",
       chip: "Gong 144Hz • Sub 72Hz",
+    },
+    {
+      id: "spatial_sweep_ssl",
+      title: "Allerta Spaziale SSL",
+      description: "Pan sinistro (-0.75) con discesa tellurica 216 Hz → 108 Hz e sub a 54 Hz. Segnala assorbimento Sell-Side Liquidity.",
+      action: () => synestheticSpatialSweepAlert("ssl"),
+      icon: ArrowDownLeft,
+      accent: "border-rose-500/35 text-rose-400 hover:bg-rose-500/10",
+      chip: "Pan L • 216→108Hz",
+    },
+    {
+      id: "spatial_sweep_bsl",
+      title: "Allerta Spaziale BSL",
+      description: "Pan destro (+0.75) con ascesa aurea 432 Hz → 864 Hz e shimmer a 1296 Hz. Segnala assorbimento Buy-Side Liquidity.",
+      action: () => synestheticSpatialSweepAlert("bsl"),
+      icon: ArrowUpRight,
+      accent: "border-emerald-500/35 text-emerald-400 hover:bg-emerald-500/10",
+      chip: "Pan R • 432→864Hz",
     },
     {
       id: "heartbeat_calm",

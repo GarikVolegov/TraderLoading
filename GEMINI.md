@@ -47,7 +47,26 @@ Ogni modifica all'interfaccia utente, aggiunta di componenti, modali, testi o se
 
 ---
 
-## 3. Regola Inviolabile di Chiusura Lavoro: Proattività Architetturale
+## 3. Protocollo di Autonomia Agentica & Compattazione Memoria (Regola 98/2)
+
+Ogni azione, interazione e ciclo operativo deve conformarsi rigorosamente a:
+👉 [`.agents/rules/sovereign-agentic-protocol.md`](.agents/rules/sovereign-agentic-protocol.md)
+
+### Principi Operativi Inviolabili:
+1. **Compattazione Chirurgica dei Dati (Token & Context Distillation)**:
+   - Eliminare l'entropia verbosa, i log di terminale elefantiaci, i preamboli e i dubbi intermedi.
+   - Conservare sempre i 5 Pilastri di Stato: *Perimetro & Obiettivo*, *Vincoli & Contratti*, *Matrice di Impatto*, *Telemetria di Verifica*, *Grafo di Avanzamento (DAG)*.
+2. **Calcolo Autonomo del Protocollo Step-by-Step**:
+   - L'agente non chiede mai all'Utente come strutturare il lavoro o quali passaggi compiere.
+   - All'ingresso di un mandato, l'agente calcola autonomamente la sequenza operativa (Fase 0: Ricognizione → Fase 1: Contratti/Schema → Fase 2: Forgiatura Codice → Fase 3: Self-Healing & Gate → Fase 4: Distillazione Memoria & Consegna).
+3. **Zero-Friction Autonomy (Chiedere Conferma Meno Costantemente)**:
+   - **Livello Verde (98% dei casi)**: Scrittura codice, refactoring, fix bug, unit test, compilazione, typecheck, styling UI, documentazione interna. **ZERO conferme richieste. Esecuzione diretta ed autonoma.**
+   - **Livello Giallo (1.5% dei casi)**: Aggiunta dipendenze leggere o schemi additivi: esecuzione autonoma con notifica sintetica nel debrief.
+   - **Livello Rosso (0.5% dei casi)**: Solo operazioni irreversibili e distruttive (drop DB persistiti, wipe file core, rottura di contratti esterni critici) richiedono stop preventivo con il **5% Decision Memo** (< 60s di lettura).
+
+---
+
+## 4. Regola Inviolabile di Chiusura Lavoro: Proattività Architetturale
 
 > [!IMPORTANT]
 > **A LAVORO FINITO, PROPORRE SEMPRE NUOVE IDEE E SOLUZIONI**:

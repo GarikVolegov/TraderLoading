@@ -14,11 +14,13 @@ import {
   soundTrophy,
   soundSealOfAction,
   soundMacroAlert,
+  soundSpatialSweepAlert,
   soundChecklistNoble,
   synestheticClick,
   synestheticCheck,
   synestheticConfirm,
   synestheticAlert,
+  synestheticSpatialSweepAlert,
   synestheticTrophy,
   synestheticSealOfAction,
   synestheticMacroAlert,
@@ -79,6 +81,12 @@ assert.doesNotThrow(() => {
   soundSealOfAction();
   soundMacroAlert("warning");
   soundMacroAlert("imminent");
+  soundSpatialSweepAlert("ssl");
+  soundSpatialSweepAlert("bsl");
+  soundSpatialSweepAlert("center");
+  synestheticSpatialSweepAlert("ssl");
+  synestheticSpatialSweepAlert("bsl");
+  synestheticSpatialSweepAlert("center");
   synestheticClick();
   synestheticCheck();
   synestheticConfirm();
@@ -199,6 +207,8 @@ try {
 let oscillatorsCreated = 0;
 let gainNodesCreated = 0;
 let filterNodesCreated = 0;
+let stereoPannersCreated = 0;
+let lastPanValue = 0;
 let startCalls = 0;
 let stopCalls = 0;
 
@@ -252,6 +262,14 @@ class MockBiquadFilterNode extends MockAudioNode {
   }
 }
 
+class MockStereoPannerNode extends MockAudioNode {
+  pan = new MockAudioParam();
+  constructor() {
+    super();
+    stereoPannersCreated++;
+  }
+}
+
 class MockAudioBufferSourceNode extends MockAudioNode {
   buffer: unknown = null;
   loop = false;
@@ -277,6 +295,15 @@ class MockAudioContext {
   }
   createBiquadFilter() {
     return new MockBiquadFilterNode();
+  }
+  createStereoPanner() {
+    const panner = new MockStereoPannerNode();
+    const origSet = panner.pan.setValueAtTime.bind(panner.pan);
+    panner.pan.setValueAtTime = (val: number, time: number) => {
+      lastPanValue = val;
+      origSet(val, time);
+    };
+    return panner;
   }
   createBuffer(_channels: number, length: number, _sampleRate: number) {
     return {
@@ -349,6 +376,33 @@ try {
   soundMacroAlert("imminent");
   assert.equal(oscillatorsCreated, oscBeforeMacroImm + 4, "soundMacroAlert imminent must create 4 oscillators (3 strikes + sub)");
 
+  // Test 3D Spatial Audio Sweep Alerts (Stereo Panning)
+  // 1. SSL (Sell-Side Liquidity): Pan Left (-0.75), 2 oscillators (216Hz + 54Hz sub) + 1 filter
+  const pannersBeforeSSL = stereoPannersCreated;
+  const oscBeforeSSL = oscillatorsCreated;
+  const filterBeforeSSL = filterNodesCreated;
+  soundSpatialSweepAlert("ssl");
+  assert.equal(stereoPannersCreated, pannersBeforeSSL + 1, "soundSpatialSweepAlert must create StereoPannerNode");
+  assert.equal(lastPanValue, -0.75, "SSL sweep must set pan to -0.75 (Left Channel)");
+  assert.equal(oscillatorsCreated, oscBeforeSSL + 2, "SSL sweep must create 2 oscillators (216Hz + 54Hz sub-body)");
+  assert.equal(filterNodesCreated, filterBeforeSSL + 1, "SSL sweep must use resonant lowpass filter");
+
+  // 2. BSL (Buy-Side Liquidity): Pan Right (+0.75), 2 oscillators (432Hz fundamental + 864Hz shimmer)
+  const pannersBeforeBSL = stereoPannersCreated;
+  const oscBeforeBSL = oscillatorsCreated;
+  soundSpatialSweepAlert("bsl");
+  assert.equal(stereoPannersCreated, pannersBeforeBSL + 1, "BSL sweep must create StereoPannerNode");
+  assert.equal(lastPanValue, 0.75, "BSL sweep must set pan to +0.75 (Right Channel)");
+  assert.equal(oscillatorsCreated, oscBeforeBSL + 2, "BSL sweep must create 2 oscillators (432Hz + 864Hz shimmer)");
+
+  // 3. Center Sweep (Neutral / Both): Pan Center (0.0), 2 oscillators (432Hz + 216Hz)
+  const pannersBeforeCenter = stereoPannersCreated;
+  const oscBeforeCenter = oscillatorsCreated;
+  soundSpatialSweepAlert("center");
+  assert.equal(stereoPannersCreated, pannersBeforeCenter + 1, "Center sweep must create StereoPannerNode");
+  assert.equal(lastPanValue, 0.0, "Center sweep must set pan to 0.0 (Center Channel)");
+  assert.equal(oscillatorsCreated, oscBeforeCenter + 2, "Center sweep must create 2 balanced harmonic oscillators");
+
   // Test that when muted, no oscillators are created
   setSoundEnabled(false);
   const oscBeforeMuted = oscillatorsCreated;
@@ -356,6 +410,7 @@ try {
   soundCheck();
   soundSuccess();
   soundAlert();
+  soundSpatialSweepAlert("ssl");
   soundTrophy();
   soundSealOfAction();
   assert.equal(oscillatorsCreated, oscBeforeMuted, "Muted state must prevent any audio synthesis");
@@ -367,6 +422,8 @@ try {
   synestheticCheck();
   synestheticConfirm();
   synestheticAlert();
+  synestheticSpatialSweepAlert("ssl");
+  synestheticSpatialSweepAlert("bsl");
   synestheticTrophy();
   synestheticSealOfAction();
   soundChecklistNoble();

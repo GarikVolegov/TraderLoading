@@ -99,11 +99,13 @@ graph TD
    - Upload protetti: validazione MIME reale e URL firmati a scadenza (Cloudflare Stream/S3).
    - Igiene assoluta delle credenziali e flags spenti di default.
 
-7. **[[07-MULTI-AGENT-SYSTEM]]** — *Il Concilio Autonomo & La Regola 95/5*
-   - Filosofia di governo: 95% esecuzione manuale autonoma, 5% decisioni sovrane dell'Utente.
-   - Gerarchia a 3 livelli: Dirigente Sovrano (C-Suite), Manager di Linea (Critica Spietata: Tech, Design, QA), Ingegneri Esecutivi.
+7. **[[07-MULTI-AGENT-SYSTEM]]** — *Il Concilio Autonomo & La Regola 98/2*
+   - Filosofia di governo: 98% esecuzione manuale autonoma a zero frizioni, 2% decisioni sovrane dell'Utente.
+   - Compattatore di Memoria Sovrana: distillazione automatica del contesto (conservazione dei 5 Pilastri di Stato ed eliminazione del rumore).
+   - Calcolatore autonomo del protocollo step-by-step (DAG a 5 fasi senza interruzioni).
+   - Matrice di autorizzazione: zero conferme futili su compiti tecnici, stop solo su bivi irreversibili di Livello Rosso.
    - Sorveglianza perpetua: daemon schedulato via timer per verifiche automatiche continue.
-   - Protocollo dei Decision Memo e comandi di gestione rapida (`pnpm council`).
+   - Comandi di gestione rapida (`pnpm council`, `pnpm council:protocol`, `pnpm council:compact`).
 
 8. **[[08-SOVEREIGN-MEMORY-MATRIX]]** — *Memoria Sovrana, Visione & Benchmark Globale*
    - Memoria stabile e leggera dello stato dell'unione (570 test, 75 route, typecheck, daemon).

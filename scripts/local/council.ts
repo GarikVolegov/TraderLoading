@@ -116,15 +116,21 @@ async function showStatus() {
   }
 
   console.log(`${ANSI.gold}----------------------------------------------------------------------${ANSI.reset}`);
-  console.log(`${ANSI.bold}Regola di Sovranità:${ANSI.reset}`);
-  console.log(`  • ${ANSI.goldBright}95% Esecuzione Autonoma:${ANSI.reset} Ingegneri + Manager guidano e correggono senza tregua.`);
-  console.log(`  • ${ANSI.emerald}5% Decisione Sovrana:${ANSI.reset} L'Utente interviene solo per approvazioni strategiche e bivi chiave.\n`);
+  console.log(`${ANSI.bold}Regola di Sovranità & Protocollo di Autonomia (Regola 98/2):${ANSI.reset}`);
+  console.log(`  • ${ANSI.goldBright}98% Esecuzione Autonoma (Zero Frizione):${ANSI.reset} Calcolo autonomo step-by-step, refactoring, test e gate.`);
+  console.log(`  • ${ANSI.emerald}2% Decisione Sovrana (Decision Memo 5%):${ANSI.reset} Interruzione dell'Utente solo su bivi irreversibili di Livello Rosso.`);
+  console.log(`  • ${ANSI.goldBright}Compattatore di Memoria:${ANSI.reset} Distillazione di contesto ad alta densità (zero rumore verboso).\n`);
 
   // Ispezione file di configurazione
   const councilDocsPath = resolve(repoRoot, ".agents/council");
   if (existsSync(councilDocsPath)) {
     const files = readdirSync(councilDocsPath).filter((f) => f.endsWith(".md"));
     console.log(`${ANSI.emerald}✓ Fascicoli di comando caricati in .agents/council/ (${files.length} profili attivi)${ANSI.reset}`);
+  }
+
+  const agentRulePath = resolve(repoRoot, ".agents/rules/sovereign-agentic-protocol.md");
+  if (existsSync(agentRulePath)) {
+    console.log(`${ANSI.emerald}✓ Regola di Autonomia e Compattazione attiva: .agents/rules/sovereign-agentic-protocol.md${ANSI.reset}`);
   }
 
   const vaultDoc = resolve(repoRoot, "docs/brain/07-MULTI-AGENT-SYSTEM.md");
@@ -202,10 +208,140 @@ async function runVerify() {
   }
 }
 
+async function runProtocol(objective?: string) {
+  printBanner("CALCOLATORE AUTONOMO DEL PROTOCOLLO (REGOLA 98/2)");
+  const target = objective || "Esecuzione Mandato Operativo";
+  console.log(`${ANSI.goldBright}${ANSI.bold}Mandato Ricevuto:${ANSI.reset} ${target}\n`);
+
+  console.log(`${ANSI.obsidian}Sintesi del Protocollo Step-by-Step Calcolato Autonomamente:${ANSI.reset}\n`);
+
+  const phases = [
+    {
+      phase: "Fase 0: Ricognizione & Snapshot Contesto",
+      owner: "aureus-director & aureus-market-scout",
+      actions: [
+        "Verifica stato git e modifiche pendenti nel monorepo",
+        "Distillazione delle invarianti e perimetro d'impatto (zero rumore verboso)",
+        "Ispezione dei contratti OpenAPI e schemi DB correlati",
+      ],
+      gate: "Snapshot di stato consolidato",
+    },
+    {
+      phase: "Fase 1: Allineamento Contratti & Schema (Contract-First)",
+      owner: "aureus-tech-manager & aureus-backend-engineer",
+      actions: [
+        "Se necessario: estensione lib/api-spec/openapi.yaml",
+        "Esecuzione pnpm codegen (Zod + React Query client)",
+        "Se necessario: migrazioni Drizzle in lib/db/src/schema e pnpm db:generate",
+      ],
+      gate: "Contratti OpenAPI 3.1 tipati al 100%",
+    },
+    {
+      phase: "Fase 2: Forgiatura Esecutiva (Batching Continuo)",
+      owner: "aureus-frontend-engineer & aureus-backend-engineer",
+      actions: [
+        "Implementazione logica Express 5 con multi-tenant isolation",
+        "Costruzione componenti React 19 secondo Limen Design System",
+        "Garanzia di whitespace-nowrap su dati numerici, zero vuoti, monospace finanziario",
+      ],
+      gate: "Codice scritto con tolleranza zero regressioni",
+    },
+    {
+      phase: "Fase 3: Autocura & Gate Reattivo (Self-Healing Loop)",
+      owner: "aureus-qa-manager & aureus-qa-engineer",
+      actions: [
+        "Esecuzione autonoma pnpm typecheck (zero errori)",
+        "Esecuzione suite di test (pnpm test)",
+        "Diagnosi e auto-risoluzione immediata di anomalie senza interruzioni esterne",
+      ],
+      gate: "Gate 100% verde (pnpm verify o typecheck)",
+    },
+    {
+      phase: "Fase 4: Distillazione Memoria & Consegna Proattiva",
+      owner: "aureus-director",
+      actions: [
+        "Compattazione dello stato nella Sovereign Memory Matrix (docs/brain/08-SOVEREIGN-MEMORY-MATRIX.md)",
+        "Debrief operativo chirurgico (< 60s di lettura)",
+        "Presentazione proattiva dei prossimi passi strategici",
+      ],
+      gate: "Aggiornamento memoria sovrana completato",
+    },
+  ];
+
+  for (const p of phases) {
+    console.log(`  ${ANSI.goldBright}${ANSI.bold}▶ ${p.phase}${ANSI.reset}`);
+    console.log(`    ${ANSI.obsidian}Responsabili:${ANSI.reset} ${p.owner}`);
+    for (const a of p.actions) {
+      console.log(`    ${ANSI.emerald}•${ANSI.reset} ${a}`);
+    }
+    console.log(`    ${ANSI.gold}Gate Criterio:${ANSI.reset} ${p.gate}\n`);
+  }
+
+  console.log(`${ANSI.gold}----------------------------------------------------------------------${ANSI.reset}`);
+  console.log(`${ANSI.bold}Tassonomia di Autorizzazione Autonoma:${ANSI.reset}`);
+  console.log(`  • ${ANSI.emerald}🟢 Livello Verde (98%):${ANSI.reset} Esecuzione autonoma continua. ZERO conferme richieste all'Utente.`);
+  console.log(`  • ${ANSI.goldBright}🟡 Livello Giallo (1.5%):${ANSI.reset} Modifiche schema additive: autonomia con notifica finale.`);
+  console.log(`  • ${ANSI.crimson}🔴 Livello Rosso (0.5%):${ANSI.reset} Solo operazioni distruttive irreversibili richiedono il 5% Decision Memo.\n`);
+}
+
+async function runCompact() {
+  printBanner("COMPATTAZIONE SOVRANA DEI DATI (HIGH-DENSITY STATE DISTILLATION)");
+
+  console.log(`${ANSI.obsidian}Ispezione telemetria vitale del monorepo...${ANSI.reset}\n`);
+
+  // 1. Stato Git distillato
+  const gitRes = await runCommand("git", ["status", "--porcelain"], { stdio: "pipe" });
+  const rawLines = gitRes.stdout.trim().split("\n").filter(Boolean);
+  const staged = rawLines.filter((l) => l.startsWith("M ") || l.startsWith("A "));
+  const untracked = rawLines.filter((l) => l.startsWith("??"));
+  const modified = rawLines.filter((l) => l.startsWith(" M") || l.startsWith(" D"));
+
+  console.log(`${ANSI.goldBright}${ANSI.bold}1. MATRICE D'IMPATTO (GIT STATE COMPATTATO):${ANSI.reset}`);
+  console.log(`   File Modificati: ${modified.length} | Staged: ${staged.length} | Non tracciati: ${untracked.length}`);
+  if (rawLines.length > 0) {
+    const preview = rawLines.slice(0, 8);
+    for (const p of preview) {
+      console.log(`   ${ANSI.obsidian}${p}${ANSI.reset}`);
+    }
+    if (rawLines.length > 8) {
+      console.log(`   ${ANSI.obsidian}... (+${rawLines.length - 8} altri file compattati)${ANSI.reset}`);
+    }
+  } else {
+    console.log(`   ${ANSI.emerald}✓ Workspace completamente pulito e tracciato.${ANSI.reset}`);
+  }
+
+  // 2. Telemetria Typecheck
+  console.log(`\n${ANSI.goldBright}${ANSI.bold}2. TELEMETRIA DI VERIFICA (GATE TS):${ANSI.reset}`);
+  try {
+    await runCommand("pnpm", ["typecheck"], { stdio: "pipe" });
+    console.log(`   ${ANSI.emerald}✓ Typecheck strict: 0 ERRORI (100% GREEN)${ANSI.reset}`);
+  } catch {
+    console.log(`   ${ANSI.crimson}✗ Typecheck ha rilevato errori: autocura richiesta.${ANSI.reset}`);
+  }
+
+  // 3. I 5 Pilastri di Stato Sovrano
+  console.log(`\n${ANSI.goldBright}${ANSI.bold}3. I 5 PILASTRI DI STATO CONSERVATI:${ANSI.reset}`);
+  console.log(`   [1] ${ANSI.bold}Perimetro:${ANSI.reset} AUREUS OS Cockpit, Forgia, Journal & Protocolli di Disciplina`);
+  console.log(`   [2] ${ANSI.bold}Vincoli:${ANSI.reset} Limen Design System, zero vuoti, whitespace-nowrap, multi-tenant strict`);
+  console.log(`   [3] ${ANSI.bold}Contratti:${ANSI.reset} OpenAPI 3.1 sorgente in lib/api-spec/openapi.yaml, Drizzle ORM`);
+  console.log(`   [4] ${ANSI.bold}Autonomia:${ANSI.reset} Regola 98/2 attiva — zero conferme futili, decisione autonoma`);
+  console.log(`   [5] ${ANSI.bold}Frontiera:${ANSI.reset} Sovereign Memory Matrix in docs/brain/08-SOVEREIGN-MEMORY-MATRIX.md`);
+
+  console.log(`\n${ANSI.gold}----------------------------------------------------------------------${ANSI.reset}`);
+  console.log(`${ANSI.emerald}${ANSI.bold}✓ Compattazione completata: rumore eliminato, segnale operativo al 100%.${ANSI.reset}\n`);
+}
+
 // Entrypoint CLI
 const command = process.argv[2] ?? "status";
+const argument = process.argv.slice(3).join(" ");
 
 switch (command) {
+  case "protocol":
+    await runProtocol(argument);
+    break;
+  case "compact":
+    await runCompact();
+    break;
   case "critique":
     await runCritique();
     break;

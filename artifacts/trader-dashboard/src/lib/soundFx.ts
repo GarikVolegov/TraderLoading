@@ -598,6 +598,163 @@ export function soundMacroAlert(severity: "warning" | "imminent" = "warning"): v
   }
 }
 
+export type SweepDirection = "bsl" | "ssl" | "center";
+
+/**
+ * 7b. ALLERTA SPAZIALE 3D — Rilevamento Sweep di Liquidità di Sessione
+ *
+ * Applica stereofonia procedurale avanzata (StereoPannerNode) per dare
+ * feedback direzionale istintivo all'Operatore:
+ * - "ssl" (Sell-Side Liquidity / Low Sweep): Panning a sinistra (-0.75),
+ *   discesa tellurica 216 Hz -> 108 Hz con sub a 54 Hz smorzato da filtro passa-basso.
+ * - "bsl" (Buy-Side Liquidity / High Sweep): Panning a destra (+0.75),
+ *   ascesa aurea pura 432 Hz -> 864 Hz con shimmer armonico a 1296 Hz.
+ * - "center" (Neutral / Double Sweep): Panning al centro (0.0),
+ *   accordo aureo bilanciato (432 Hz fondamentale + 216 Hz gravitas).
+ *
+ * Durata totale: ~350ms, decadimento esponenziale chirurgico senza fatica acustica.
+ */
+export function soundSpatialSweepAlert(direction: SweepDirection = "center"): void {
+  if (!isSoundEnabled()) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const t = ctx.currentTime;
+    const master = createMasterOut(ctx);
+    const duration = 0.35; // 350ms
+
+    // Calcolo del panning direzionale: -0.75 (L/SSL), +0.75 (R/BSL), 0.0 (Centro)
+    const panValue = direction === "ssl" ? -0.75 : direction === "bsl" ? 0.75 : 0.0;
+
+    let panner: StereoPannerNode | null = null;
+    if (typeof ctx.createStereoPanner === "function") {
+      try {
+        panner = ctx.createStereoPanner();
+        panner.pan.setValueAtTime(panValue, t);
+        panner.connect(master);
+      } catch {
+        panner = null;
+      }
+    }
+    const outputNode: AudioNode = panner ?? master;
+
+    // Bus di guadagno pre-panning
+    const busGain = ctx.createGain();
+    busGain.gain.setValueAtTime(1.0, t);
+    busGain.connect(outputNode);
+
+    if (direction === "ssl") {
+      // SSL: Discesa tellurica 216 Hz -> 108 Hz
+      const osc = ctx.createOscillator();
+      const oscGain = ctx.createGain();
+      osc.type = "sawtooth";
+
+      // Filtro passa-basso per smussare l'onda e dare consistenza bronzea
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(320, t);
+      filter.frequency.exponentialRampToValueAtTime(120, t + duration);
+
+      osc.frequency.setValueAtTime(216, t);
+      osc.frequency.exponentialRampToValueAtTime(108, t + duration * 0.85);
+
+      oscGain.gain.setValueAtTime(0.0001, t);
+      oscGain.gain.linearRampToValueAtTime(0.22, t + 0.008);
+      oscGain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+
+      osc.connect(filter);
+      filter.connect(oscGain);
+      oscGain.connect(busGain);
+
+      // Sub-ancora a 54 Hz per corpo fisico
+      const subOsc = ctx.createOscillator();
+      const subGain = ctx.createGain();
+      subOsc.type = "sine";
+      subOsc.frequency.setValueAtTime(72, t);
+      subOsc.frequency.exponentialRampToValueAtTime(54, t + duration);
+
+      subGain.gain.setValueAtTime(0.0001, t);
+      subGain.gain.linearRampToValueAtTime(0.18, t + 0.01);
+      subGain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+
+      subOsc.connect(subGain);
+      subGain.connect(busGain);
+
+      osc.start(t);
+      subOsc.start(t);
+      osc.stop(t + duration);
+      subOsc.stop(t + duration);
+    } else if (direction === "bsl") {
+      // BSL: Ascesa cristallina 432 Hz -> 864 Hz
+      const osc = ctx.createOscillator();
+      const oscGain = ctx.createGain();
+      osc.type = "sine";
+
+      osc.frequency.setValueAtTime(432, t);
+      osc.frequency.exponentialRampToValueAtTime(864, t + duration * 0.7);
+
+      oscGain.gain.setValueAtTime(0.0001, t);
+      oscGain.gain.linearRampToValueAtTime(0.20, t + 0.006);
+      oscGain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+
+      osc.connect(oscGain);
+      oscGain.connect(busGain);
+
+      // Shimmer armonico superiore (1296 Hz)
+      const shimmerOsc = ctx.createOscillator();
+      const shimmerGain = ctx.createGain();
+      shimmerOsc.type = "triangle";
+      shimmerOsc.frequency.setValueAtTime(864, t);
+      shimmerOsc.frequency.exponentialRampToValueAtTime(1296, t + duration * 0.6);
+
+      shimmerGain.gain.setValueAtTime(0.0001, t);
+      shimmerGain.gain.linearRampToValueAtTime(0.10, t + 0.008);
+      shimmerGain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+
+      shimmerOsc.connect(shimmerGain);
+      shimmerGain.connect(busGain);
+
+      osc.start(t);
+      shimmerOsc.start(t);
+      osc.stop(t + duration);
+      shimmerOsc.stop(t + duration);
+    } else {
+      // CENTER: Armonia bilanciata 432 Hz e 216 Hz
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(432, t);
+
+      gain1.gain.setValueAtTime(0.0001, t);
+      gain1.gain.linearRampToValueAtTime(0.18, t + 0.008);
+      gain1.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+
+      osc1.connect(gain1);
+      gain1.connect(busGain);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(216, t);
+
+      gain2.gain.setValueAtTime(0.0001, t);
+      gain2.gain.linearRampToValueAtTime(0.14, t + 0.008);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+
+      osc2.connect(gain2);
+      gain2.connect(busGain);
+
+      osc1.start(t);
+      osc2.start(t);
+      osc1.stop(t + duration);
+      osc2.stop(t + duration);
+    }
+  } catch {
+    // Guard
+  }
+}
+
 /**
  * 8. TELEMETRIA ACUSTICA DELLE ARENE: VITTORIA TRADE (432 Hz + 864 Hz)
  * Rintocco armonico cristallino pitagorico all'esecuzione di un trade in profitto.
@@ -996,6 +1153,21 @@ export function synestheticSwipe(): void {
 export function synestheticCinemaToggle(isActive?: boolean): void {
   soundClick();
   hapticCinemaToggle();
+}
+
+/**
+ * Allerta sinestetica di sweep spazializzato 3D (Audio direzionale + Feedback Aptico calibrato)
+ * - "ssl": Audio a sinistra (-0.75) + aptica warning
+ * - "bsl": Audio a destra (+0.75) + aptica warning
+ * - "center": Audio al centro (0.0) + aptica medium
+ */
+export function synestheticSpatialSweepAlert(direction: SweepDirection = "center"): void {
+  soundSpatialSweepAlert(direction);
+  if (direction === "center") {
+    hapticMedium();
+  } else {
+    hapticWarning();
+  }
 }
 
 // ── ATMOSFERA ACUSTICA CONTINUA: DEEP WORK ZEN (432 Hz + Flusso Alpha) ─────

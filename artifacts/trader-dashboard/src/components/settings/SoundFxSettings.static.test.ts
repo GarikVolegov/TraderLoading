@@ -77,6 +77,16 @@ assert.ok(
   "Must provide test triggers for physiological calibration"
 );
 
+// 5b. Verify 3D Spatial Audio Panning profiles (SSL / BSL)
+assert.ok(
+  source.includes("synestheticSpatialSweepAlert"),
+  "Must import synestheticSpatialSweepAlert from soundFx"
+);
+assert.ok(
+  source.includes("Allerta Spaziale SSL") && source.includes("Allerta Spaziale BSL"),
+  "Must render 3D spatial sweep audio profiles for SSL and BSL"
+);
+
 // 6. Verify design system compliance (obsidian & gold, no forbidden words)
 assert.ok(
   source.includes("#C5A059") && source.includes("#0d0f14"),

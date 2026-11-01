@@ -2,7 +2,7 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
     <!-- Self-hosted brand fonts remain available when Google Fonts is blocked. -->
     <link rel="stylesheet" href="%BASE_URL%fonts/brand.css" />
@@ -105,11 +105,16 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/app-icon-512.png?v=20261021g" />
     <link rel="apple-touch-icon" sizes="180x180" href="/limen-touch-180.png?v=20261021g" />
     <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/limen-touch-180.png?v=20261021g" />
-    <meta name="theme-color" content="#0A0A0C" />
+    <meta name="theme-color" content="#07080b" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#07080b" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#07080b" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="AUREUS" />
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
+    <meta name="msapplication-TileColor" content="#07080b" />
+    <meta name="msapplication-tap-highlight" content="no" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
@@ -119,7 +124,7 @@
     <div id="root">
       <!-- Pre-React AUREUS architectural threshold sigil splash -->
       <style>@keyframes tl-splash{0%,100%{opacity:.75;transform:scale(0.98)}50%{opacity:1;transform:scale(1.02)}}</style>
-      <div id="app-splash" aria-hidden="true" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#0A0A0C;">
+      <div id="app-splash" aria-hidden="true" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#07080b;">
         <img src="/app-icon-192.png?v=20261021g" alt="AUREUS" width="76" height="76" style="border-radius:14px;border:1px solid rgba(197,160,89,0.35);box-shadow:0 0 28px rgba(197,160,89,0.22);animation:tl-splash 2.2s ease-in-out infinite;object-fit:cover;" />
         <div style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:0.32em;color:#F4F4F6;text-transform:uppercase;">AUREUS PROTOCOL</div>
       </div>

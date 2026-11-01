@@ -26,7 +26,7 @@ Questa nota costituisce la **memoria stabile, incorruttibile e ad alta densità*
 
 | Dimensione | Stato Verificato | Dettaglio Tecnico & Garanzia |
 | :--- | :---: | :--- |
-| **Suite di Collaudo** | `570 / 570 PASS (100%)` | Zero fallimenti su api-server, trader-dashboard, api-zod, db, scripts |
+| **Suite di Collaudo** | `572 / 572 PASS (100%)` | Zero fallimenti su api-server, trader-dashboard, api-zod, db, scripts |
 | **Typecheck Strict** | `0 ERRORI` | Compilazione TypeScript rigorosa `tsc --build --force` immacolata |
 | **Camera dei Manager (`council:critique`)** | `APPROVATO CON LODE` | Design Manager, Tech Manager e QA Manager concordi |
 | **Guardiano della Notte (`aureus-daemon`)** | `ATTIVO & VIGILE` | Cron job schedulato in background con audit periodico automatico |
@@ -34,8 +34,11 @@ Questa nota costituisce la **memoria stabile, incorruttibile e ad alta densità*
 | **Cockpit Operativo (Il Varco)** | `FLUIDO & BIDIREZIONALE` | Mobile Flow Ribbon con fase e bias in vista Grafico, zero cecità operativa |
 | **Il Libro della Verità (Journal)** | `TELEMETRIA ATTIVA` | Mobile Sovereign Telemetry Ribbon (Win Rate, PF, Integrità, Bio-Coerenza) |
 | **Risuonatore & Motore Aptico** | `SINESTESIA 432 HZ ATTIVA` | Risonanza armonica sacra a 432 Hz, doppio impulso aptico mobile per validazioni checklist Custode della Soglia, feedback swipe inerziale e cinema mode snap |
+| **PWA Standalone & Fullscreen** | `NATIVO ADERENTE AL 100%` | Manifest con `display: standalone`, `orientation: any`, rimozione barre browser, splash screen ossidiana, 4 scorciatoie operative e hook `usePwaStandalone` |
+| **Audio Spaziale 3D & Stereo Panning** | `STEREOFONIA PROCEDURALE ATTIVA` | Panning direzionale 3D via `StereoPannerNode` su Web Audio API: SSL a sinistra (-0.75, discesa tellurica 216→108Hz + sub 54Hz) e BSL a destra (+0.75, ascesa aurea 432→864Hz + shimmer 1296Hz), integrato in `SessionOpensOverlay`, `TradingCockpit` e `SoundFxSettings` |
 | **Lessico & Lore AUREUS** | `MONASTICO & STOICO` | Bonifica totale di gergo retail in `dict.it.ts`, Leaderboard e Cockpit |
 | **Compilazione Vite & Prerender** | `75 / 75 ROUTES OK` | Build SSR/SSG di produzione impeccabile con sitemap generata |
+| **Protocollo di Autonomia Agentica** | `REGOLA 98/2 ATTIVA` | Calcolo autonomo step-by-step, compattazione chirurgica dati, zero interruzioni futili |
 
 ---
 

@@ -167,3 +167,31 @@ pnpm council:watch
 - **/teamwork**: Attiva la cooperazione simultanea tra i subagenti del concilio per affrontare task complessi su larga scala.
 - **/goal**: Mette la squadra in modalità autonoma continua senza interruzioni fino al raggiungimento completo dell'obiettivo e superamento del gate.
 - **/schedule**: Imposta routine ricorrenti di monitoraggio e audit da parte di `aureus-daemon`.
+
+---
+
+## 8. 🧠 IL MOTORE DI COMPATTAZIONE DATI & AUTONOMIA 98/2 (ZERO-FRICTION PROTOCOL)
+
+Per garantire la massima efficienza dei token e proteggere la concentrazione dell'Architetto Sovrano, il Concilio adotta il **Protocollo di Autonomia 98/2** formalizzato in [[.agents/rules/sovereign-agentic-protocol]]:
+
+### A. Compattazione Chirurgica dei Dati (Distillazione di Stato)
+- **Zero Entropia Verbosa**: L'agente elimina sistematicamente output di comandi non necessari, preamboli cerimoniosi e log di debug intermedi.
+- **I 5 Pilastri di Stato Sovrano**: Vengono conservati soltanto:
+  1. *Perimetro & Obiettivo Operativo*
+  2. *Vincoli Architetturali e di Lore Inviolabili*
+  3. *Matrice di Impatto sui File & Contratti*
+  4. *Telemetria di Verifica (esito Typecheck e Test)*
+  5. *Grafo di Avanzamento (Milestones e DAG)*
+
+### B. Calcolo Autonomo del Protocollo Step-by-Step
+L'agente sintetizza internamente il flusso end-to-end senza interrogare l'Utente su dettagli tecnici:
+1. **Fase 0 — Ricognizione & Snapshot Contesto**: Ispezione mirata dei file e baseline git.
+2. **Fase 1 — Contratti OpenAPI & Schemi DB**: Modifica schemi, `pnpm codegen`, migrazioni.
+3. **Fase 2 — Forgiatura Esecutiva**: Scrittura codice React 19 / Express 5 con Limen Design System.
+4. **Fase 3 — Autocura & Gate Reattivo (Self-Healing Loop)**: Fix autonomo di eventuali errori TypeScript o test senza interruzioni esterne.
+5. **Fase 4 — Compattazione Memoria & Snapshot Sovrano**: Registrazione sintetica dell'avanzamento.
+
+### C. Matrice di Autorizzazione a Frizioni Zero (Chiedere Conferma Meno Costantemente)
+- **🟢 Livello Verde (98%)**: Codice, refactoring, test, build, stili, fix errori. **Nessuna conferma richiesta**. Esecuzione autonoma continua.
+- **🟡 Livello Giallo (1.5%)**: Nuove dipendenze o tabelle schema additive. Autonomia con menzione nel debrief finale.
+- **🔴 Livello Rosso (0.5%)**: Solo modifiche distruttive irreversibili (drop DB, cancellazione file core, rottura API esterne). Interruzione mirata tramite **5% Decision Memo** (< 60s).

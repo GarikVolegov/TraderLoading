@@ -1178,8 +1178,14 @@ function CockpitView({
           : detail.levelPrice >= 10
             ? detail.levelPrice.toFixed(3)
             : detail.levelPrice.toFixed(5);
+      const sweepSideLabel =
+        detail.direction === "bsl" || detail.side === "MAX"
+          ? "BSL (Massimo)"
+          : detail.direction === "ssl" || detail.side === "MIN"
+            ? "SSL (Minimo)"
+            : detail.side;
       toast({
-        title: `⚡ Sweep ${detail.side} ${detail.sessionLabel} Rilevato`,
+        title: `⚡ Sweep ${sweepSideLabel} ${detail.sessionLabel} Rilevato`,
         description: `Il livello ${formattedPrice} su ${detail.symbol || a.market} è stato violato. Liquidità istituzionale assorbita.`,
       });
     };

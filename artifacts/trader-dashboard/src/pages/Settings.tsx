@@ -41,6 +41,7 @@ import { useAuth, useClerk } from "@clerk/react";
 import { usePinLock } from "@/contexts/PinLockContext";
 import { useLanguage, LANGUAGES, uiText } from "@/contexts/LanguageContext";
 import { FontSettings } from "@/components/settings/FontSettings";
+import { PwaInstallCard } from "@/components/settings/PwaInstallCard";
 import { DarknessSettings } from "@/components/settings/DarknessSettings";
 import { TradingSettings } from "@/components/settings/TradingSettings";
 import { QuotesSettings } from "@/components/settings/QuotesSettings";
@@ -418,6 +419,7 @@ export default function Settings() {
     missioni: <MissionTemplatesSettings />,
     aspetto: (
       <div className="space-y-6">
+        <PwaInstallCard />
         <FontSettings />
         <DarknessSettings />
         <BackgroundPresetsManager />

@@ -4,7 +4,7 @@
 // and vertically from the highest High to the lowest Low of that session.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getPipMultiplier } from "@/lib/pipMultiplier";
-import { synestheticAlert } from "@/lib/soundFx";
+import { synestheticSpatialSweepAlert, type SweepDirection } from "@/lib/soundFx";
 import {
   getCustomSessionRangeForTime,
   hexToRgba,
@@ -25,6 +25,7 @@ export interface SessionSweepAlertDetail {
   symbol: string;
   sessionLabel: string;
   side: "MAX" | "MIN";
+  direction: SweepDirection;
   levelPrice: number;
   sweepTime: number;
 }
@@ -272,6 +273,7 @@ export function SessionOpensOverlay({
 
     const currentSym = engine.symbol || "";
     let newlySwept = false;
+    let sweepSide: "MAX" | "MIN" | "BOTH" | null = null;
 
     for (const session of allRecentSessions) {
       if (session.sweptHighTime != null) {
@@ -280,10 +282,12 @@ export function SessionOpensOverlay({
           triggeredSweepKeysRef.current.add(key);
           if (!initialMountRef.current) {
             newlySwept = true;
+            sweepSide = sweepSide === null ? "MAX" : "BOTH";
             const detail: SessionSweepAlertDetail = {
               symbol: currentSym,
               sessionLabel: session.def.shortLabel,
               side: "MAX",
+              direction: "bsl",
               levelPrice: session.highPrice,
               sweepTime: session.sweptHighTime,
             };
@@ -298,10 +302,12 @@ export function SessionOpensOverlay({
           triggeredSweepKeysRef.current.add(key);
           if (!initialMountRef.current) {
             newlySwept = true;
+            sweepSide = sweepSide === null ? "MIN" : "BOTH";
             const detail: SessionSweepAlertDetail = {
               symbol: currentSym,
               sessionLabel: session.def.shortLabel,
               side: "MIN",
+              direction: "ssl",
               levelPrice: session.lowPrice,
               sweepTime: session.sweptLowTime,
             };
@@ -312,7 +318,9 @@ export function SessionOpensOverlay({
     }
 
     if (newlySwept && prefs.soundAlertOnSweep !== false) {
-      synestheticAlert();
+      const spatialDir: SweepDirection =
+        sweepSide === "MAX" ? "bsl" : sweepSide === "MIN" ? "ssl" : "center";
+      synestheticSpatialSweepAlert(spatialDir);
     }
 
     if (initialMountRef.current) {

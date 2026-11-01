@@ -7,9 +7,75 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "theme_color": "#0A0A0C",
-  "background_color": "#0A0A0C",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "theme_color": "#07080b",
+  "background_color": "#07080b",
+  "prefer_related_applications": false,
+  "categories": [
+    "finance",
+    "productivity",
+    "utilities",
+    "business"
+  ],
+  "shortcuts": [
+    {
+      "name": "Il Varco",
+      "short_name": "Il Varco",
+      "description": "Cockpit decisionale e guardrail operativi",
+      "url": "/cockpit",
+      "icons": [
+        {
+          "src": "/app-icon-192.png?v=20261021g",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "La Forgia del Passato",
+      "short_name": "La Forgia",
+      "description": "Terminale di backtest e replay storico",
+      "url": "/terminal",
+      "icons": [
+        {
+          "src": "/app-icon-192.png?v=20261021g",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Il Libro della Verità",
+      "short_name": "Il Libro",
+      "description": "Diario di trading e telemetria analitica",
+      "url": "/journal",
+      "icons": [
+        {
+          "src": "/app-icon-192.png?v=20261021g",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "L'Ordine Giornaliero",
+      "short_name": "L'Ordine",
+      "description": "Routine stoica e centratura pre-sessione",
+      "url": "/routine",
+      "icons": [
+        {
+          "src": "/app-icon-192.png?v=20261021g",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
   "screenshots": [
     {
       "src": "/opengraph.jpg",
@@ -37,6 +103,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "categories": ["finance", "productivity"]
+  ]
 }
