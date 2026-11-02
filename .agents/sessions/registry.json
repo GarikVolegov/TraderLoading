@@ -1,0 +1,54 @@
+{
+  "parentSessionId": "aureus-director-regia",
+  "directorRole": "aureus-director (La Sessione Regia / Chat Mamma)",
+  "objective": "Orchestrazione Sovrana Monorepo AUREUS",
+  "updatedAt": "2026-11-02T00:17:47.716Z",
+  "nestedSessions": [
+    {
+      "id": "sub-tech-contracts",
+      "role": "Lead Architect & DB Engineer",
+      "agentId": "aureus-backend-engineer",
+      "scope": "lib/api-spec & lib/db",
+      "mandate": "Allineamento contratti OpenAPI 3.1 e schemi Drizzle multi-tenant",
+      "workspaceMode": "inherit",
+      "status": "COMPLETED",
+      "startedAt": "2026-11-02T00:17:47.715Z",
+      "completedAt": "2026-11-02T00:17:47.715Z",
+      "summary": "OpenAPI 3.1 convalidato, schemi Zod e client Orval sincronizzati",
+      "deliverables": [
+        "lib/api-spec/openapi.yaml",
+        "lib/db/src/schema"
+      ]
+    },
+    {
+      "role": "Design Principal & UI Craftsman",
+      "id": "sub-design-ui",
+      "agentId": "aureus-frontend-engineer",
+      "scope": "artifacts/trader-dashboard",
+      "mandate": "Limen Design System, whitespace-nowrap, zero vuoti e mobile dock",
+      "workspaceMode": "inherit",
+      "status": "COMPLETED",
+      "startedAt": "2026-11-02T00:17:47.715Z",
+      "completedAt": "2026-11-02T00:17:47.715Z",
+      "summary": "Componenti conformi, monospace finanziario e zero parole orfane",
+      "deliverables": [
+        "artifacts/trader-dashboard/src/components"
+      ]
+    },
+    {
+      "id": "sub-qa-sentinel",
+      "role": "Quality Sentinel & Gatekeeper",
+      "agentId": "aureus-qa-engineer",
+      "scope": "scripts/local & test runners",
+      "mandate": "Verifica 100% verde di typecheck strict e suite di 572 test",
+      "workspaceMode": "inherit",
+      "status": "COMPLETED",
+      "startedAt": "2026-11-02T00:17:47.715Z",
+      "completedAt": "2026-11-02T00:17:47.715Z",
+      "summary": "572 / 572 test passati con 0 errori TypeScript",
+      "deliverables": [
+        "scripts/local/verify.ts"
+      ]
+    }
+  ]
+}

@@ -1262,42 +1262,83 @@ function CockpitView({
   });
   const isCinemaActive = rawCinemaActive || focusMode;
 
-  // ── Gesture Swipe Inerziale Tattile (Processo <-> Grafico) ──
+  // ── Gesture Swipe Inerziale Tattile (Processo ↔ Grafico ↔ Custode) ──
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
+  const isEdgeTouchRef = useRef<"left" | "right" | null>(null);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+    const windowWidth = typeof window !== "undefined" ? window.innerWidth : 400;
+
+    const isLeftEdge = clientX <= 36;
+    const isRightEdge = clientX >= windowWidth - 36;
+    isEdgeTouchRef.current = isLeftEdge ? "left" : isRightEdge ? "right" : null;
+
     const target = e.target as HTMLElement | null;
-    if (target?.closest("input, textarea, select, canvas, [data-prevent-swipe]")) return;
-    touchStartXRef.current = e.touches[0].clientX;
-    touchStartYRef.current = e.touches[0].clientY;
+    if (target?.closest("input, textarea, select, [data-prevent-swipe]")) return;
+
+    // Allow bezel edge swipes (<=36px or >= width-36px) even when dragging over canvas
+    if (target?.closest("canvas") && !isLeftEdge && !isRightEdge) return;
+
+    touchStartXRef.current = clientX;
+    touchStartYRef.current = clientY;
   }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (touchStartXRef.current === null || touchStartYRef.current === null) return;
-    if (e.changedTouches.length !== 1) return;
-    const target = e.target as HTMLElement | null;
-    if (target?.closest("input, textarea, select, canvas, [data-prevent-swipe]")) return;
+    if (e.changedTouches.length !== 1) {
+      touchStartXRef.current = null;
+      touchStartYRef.current = null;
+      isEdgeTouchRef.current = null;
+      return;
+    }
 
-    const endX = e.changedTouches[0].clientX;
-    const endY = e.changedTouches[0].clientY;
-    const dx = endX - touchStartXRef.current;
-    const dy = endY - touchStartYRef.current;
+    const startX = touchStartXRef.current;
+    const startY = touchStartYRef.current;
+    const isEdge = isEdgeTouchRef.current;
 
     touchStartXRef.current = null;
     touchStartYRef.current = null;
+    isEdgeTouchRef.current = null;
 
-    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.3) {
-      if (dx < 0 && mobileTab === "process" && !isFreeTrial) {
-        synestheticSwipe();
-        setMobileTab("chart");
-      } else if (dx > 0 && mobileTab === "chart" && !isFreeTrial) {
-        synestheticSwipe();
-        setMobileTab("process");
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("input, textarea, select, [data-prevent-swipe]")) return;
+    if (target?.closest("canvas") && !isEdge) return;
+
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const dx = endX - startX;
+    const dy = endY - startY;
+
+    // Fluid inertial threshold
+    if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+      // Swipe Left (Advance: Processo -> Grafico -> Custode)
+      if (dx < -44) {
+        if (mobileTab === "process" && !isFreeTrial) {
+          synestheticSwipe();
+          setMobileTab("chart");
+        } else if (mobileTab === "chart" && dialog === null) {
+          synestheticSwipe();
+          setDialog("protection");
+        }
+      }
+      // Swipe Right (Back: Custode -> Grafico -> Processo)
+      else if (dx > 44) {
+        if (dialog === "protection") {
+          synestheticSwipe();
+          setDialog(null);
+          setMobileTab("chart");
+        } else if (mobileTab === "chart" && !isFreeTrial) {
+          synestheticSwipe();
+          setMobileTab("process");
+        }
       }
     }
-  }, [mobileTab, isFreeTrial]);
+  }, [mobileTab, isFreeTrial, dialog]);
 
   const sanitizeNumberOrShort = (val: string | undefined) => {
     if (!val) return "";
@@ -2321,6 +2362,26 @@ function CockpitView({
           <Maximize2 className="h-3.5 w-3.5 text-[#E8C56A]" />
         </button>
       </div>
+
+      {/* ── Mobile Edge Affordance Hints (Swipe Processo ↔ Grafico ↔ Custode) ── */}
+      {mobileTab === "chart" && dialog === null && !isCinemaActive && (
+        <>
+          {/* Left bezel hint: Swipe right to return to Process */}
+          {!isFreeTrial && (
+            <div
+              aria-hidden="true"
+              className="fixed left-0 top-1/2 -translate-y-1/2 w-1.5 h-16 rounded-r-md bg-gradient-to-r from-[#C5A059]/60 to-transparent pointer-events-none z-30 md:hidden opacity-75 animate-pulse"
+              title="Trascina verso destra per tornare al Processo"
+            />
+          )}
+          {/* Right bezel hint: Swipe left to open Custode Sentinel */}
+          <div
+            aria-hidden="true"
+            className="fixed right-0 top-1/2 -translate-y-1/2 w-1.5 h-16 rounded-l-md bg-gradient-to-l from-emerald-500/60 to-transparent pointer-events-none z-30 md:hidden opacity-75 animate-pulse"
+            title="Trascina dal bordo destro per aprire il Custode"
+          />
+        </>
+      )}
 
       {isFreeTrial && (
         <div className="mx-3 mt-2 mb-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-200">
@@ -4114,7 +4175,11 @@ function CockpitView({
           if (!open) setDialog(null);
         }}
       >
-        <DialogContent className={`ck-dialog ${dialog === "operative_plan" || dialog === "user_playbook" ? "ck-dialog-plan-modal max-w-5xl md:max-w-6xl w-[96vw]" : "max-w-4xl"} max-h-[88vh] overflow-y-auto`}>
+        <DialogContent
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className={`ck-dialog ${dialog === "operative_plan" || dialog === "user_playbook" ? "ck-dialog-plan-modal max-w-5xl md:max-w-6xl w-[96vw]" : "max-w-4xl"} max-h-[88vh] overflow-y-auto`}
+        >
           <DialogHeader>
             <DialogTitle>
               {dialog === "protection"

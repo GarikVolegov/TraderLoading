@@ -64,6 +64,7 @@ graph TD
    - Comandi canonici (`pnpm verify`, `pnpm codegen`, `pnpm typecheck`).
    - Gestione database e migrazioni Drizzle (divieto di `push-force`).
    - Stack locale, test runner e disciplina pre-rilascio.
+   - Metodo di lavoro su Antigravity: La Chat Mamma (Sessione Regia) e sessioni annidate.
 
 2. **[[02-BRAND-AND-LORE]]** — *L'Ordine Operativo & Spirituale*
    - Ethos AUREUS: architettura sovrana, rigore monastico, stoicismo.
@@ -105,7 +106,8 @@ graph TD
    - Calcolatore autonomo del protocollo step-by-step (DAG a 5 fasi senza interruzioni).
    - Matrice di autorizzazione: zero conferme futili su compiti tecnici, stop solo su bivi irreversibili di Livello Rosso.
    - Sorveglianza perpetua: daemon schedulato via timer per verifiche automatiche continue.
-   - Comandi di gestione rapida (`pnpm council`, `pnpm council:protocol`, `pnpm council:compact`).
+   - Comandi di gestione rapida (`pnpm council`, `pnpm council:protocol`, `pnpm council:compact`, `pnpm council:sessions`).
+   - Architettura a Sessioni Annidate: La Sessione Regia (Chat Mamma) e Session Rail per sottotask isolati in parallelo.
 
 8. **[[08-SOVEREIGN-MEMORY-MATRIX]]** — *Memoria Sovrana, Visione & Benchmark Globale*
    - Memoria stabile e leggera dello stato dell'unione (570 test, 75 route, typecheck, daemon).

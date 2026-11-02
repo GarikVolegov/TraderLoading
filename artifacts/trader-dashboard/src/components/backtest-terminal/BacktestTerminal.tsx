@@ -34,6 +34,7 @@ import { type DrawingToolId } from "./toolRailModel";
 import { ToolRail } from "./ToolRail";
 import { TransportBar } from "./TransportBar";
 import { OfflineStorageModal } from "./OfflineStorageModal";
+import { QuickOrderDrawer } from "./QuickOrderDrawer";
 import { ReplayBiometricVignetteOverlay } from "./ReplayBiometricVignetteOverlay";
 import { computeReplayTelemetry } from "./ReplayBioTelemetryHUD";
 import { useReplayEngine } from "./useReplayEngine";
@@ -158,13 +159,20 @@ function BacktestTerminalSession({
 
   const { language } = useLanguage();
   const compact = useMediaQuery("(max-width: 1023px)");
+  const [quickOrderDrawerOpen, setQuickOrderDrawerOpen] = useState(false);
   const {
     isLandscape,
     manualCinema,
     isCinemaActive,
     toggleManualCinema,
     exitCinema,
-  } = useAutoLandscapeCinema();
+  } = useAutoLandscapeCinema({
+    onCinemaChange: (isActive) => {
+      if (!isActive) {
+        setQuickOrderDrawerOpen(false);
+      }
+    },
+  });
   const [toolsOpen, setToolsOpen] = useState(false);
   const [ticketDraft, setTicketDraft] = useState<OrderTicketDraft>({ pendingMode: false, orderPrice: "", profileName: "" });
   const engine = useReplayEngine({ sessionKey, symbol, initialInterval });
@@ -790,18 +798,25 @@ function BacktestTerminalSession({
 
           <div className="h-4 w-px bg-[#C5A059]/25" />
 
-          {/* Ticket Ordini button */}
+          {/* Quick Order Drawer Lateral Button */}
           <button
             type="button"
-            onClick={() => {
-              setPanelOpen(true);
-              handleSelectPanelTab("ticket");
-            }}
-            title="Apri Ticket Ordini"
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold uppercase tracking-wider hover:bg-emerald-500/30 transition-colors whitespace-nowrap cursor-pointer"
+            onClick={() => setQuickOrderDrawerOpen((prev) => !prev)}
+            title="Apri Forgia Rapida Ordini"
+            aria-expanded={quickOrderDrawerOpen}
+            className={`flex h-7 px-2.5 items-center gap-1.5 rounded-lg border font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+              quickOrderDrawerOpen
+                ? "border-emerald-500 bg-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.35)]"
+                : "border-emerald-500/40 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
+            }`}
           >
             <Layers size={11} />
-            <span className="hidden sm:inline">Ticket</span>
+            <span>Ticket</span>
+            {engine.positions.length > 0 && (
+              <span className="ml-0.5 px-1 rounded bg-black/60 text-[9px] text-emerald-300 border border-emerald-500/30">
+                {engine.positions.length}
+              </span>
+            )}
           </button>
 
           {/* Exit Cinema Mode */}
@@ -1209,6 +1224,13 @@ function BacktestTerminalSession({
         isOpen={offlineStorageOpen}
         onClose={() => setOfflineStorageOpen(false)}
         engine={engine}
+      />
+
+      {/* Quick Order Drawer Laterale (Landscape & Mobile HUD) */}
+      <QuickOrderDrawer
+        engine={engine}
+        isOpen={quickOrderDrawerOpen}
+        onClose={() => setQuickOrderDrawerOpen(false)}
       />
     </div>
   );

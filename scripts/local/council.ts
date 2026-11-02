@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { repoRoot } from "./lib/env.js";
 import { runCommand } from "./lib/process.js";
+import { loadSessionRail, spawnNestedSession, completeNestedSession } from "./lib/nestedSessions.js";
 
 const ANSI = {
   reset: "\x1b[0m",
@@ -331,11 +332,60 @@ async function runCompact() {
   console.log(`${ANSI.emerald}${ANSI.bold}✓ Compattazione completata: rumore eliminato, segnale operativo al 100%.${ANSI.reset}\n`);
 }
 
+async function runSessions(subcommand?: string, extraArgs?: string) {
+  printBanner("SESSION RAIL — ORCHESTRAZIONE SESSIONI ANNIDATE (REGOLA 98/2)");
+  const state = loadSessionRail();
+
+  console.log(`${ANSI.goldBright}${ANSI.bold}🏛️ 1. LA SESSIONE REGIA (LA CHAT MAMMA):${ANSI.reset}`);
+  console.log(`   ID Sessione:    ${ANSI.bold}${state.parentSessionId}${ANSI.reset}`);
+  console.log(`   Ruolo Regista:  ${state.directorRole}`);
+  console.log(`   Obiettivo Core: ${ANSI.emerald}${state.objective}${ANSI.reset}`);
+  console.log(`   Ultimo Sync:    ${ANSI.obsidian}${state.updatedAt}${ANSI.reset}\n`);
+
+  console.log(`${ANSI.goldBright}${ANSI.bold}🌿 2. SESSION RAIL: ALBERO DELLE SOTTOSESSIONI ATTIVE E COMPLETATE:${ANSI.reset}\n`);
+
+  for (let i = 0; i < state.nestedSessions.length; i++) {
+    const s = state.nestedSessions[i];
+    const isLast = i === state.nestedSessions.length - 1;
+    const branch = isLast ? "└──" : "├──";
+    const pipe = isLast ? "   " : "│  ";
+
+    const statusBadge =
+      s.status === "COMPLETED"
+        ? `${ANSI.emerald}[COMPLETED]${ANSI.reset}`
+        : s.status === "RUNNING"
+          ? `${ANSI.goldBright}[RUNNING]${ANSI.reset}`
+          : `${ANSI.crimson}[${s.status}]${ANSI.reset}`;
+
+    console.log(`  ${ANSI.gold}${branch}${ANSI.reset} ${statusBadge} ${ANSI.bold}${s.role}${ANSI.reset} (${s.agentId})`);
+    console.log(`  ${ANSI.gold}${pipe}${ANSI.reset}    ${ANSI.obsidian}ID:${ANSI.reset} ${s.id} | ${ANSI.obsidian}Workspace:${ANSI.reset} ${s.workspaceMode} | ${ANSI.obsidian}Scope:${ANSI.reset} ${s.scope}`);
+    console.log(`  ${ANSI.gold}${pipe}${ANSI.reset}    ${ANSI.obsidian}Mandato:${ANSI.reset} ${s.mandate}`);
+    if (s.summary) {
+      console.log(`  ${ANSI.gold}${pipe}${ANSI.reset}    ${ANSI.emerald}Deliverable:${ANSI.reset} ${s.summary}`);
+    }
+    if (s.deliverables && s.deliverables.length > 0) {
+      console.log(`  ${ANSI.gold}${pipe}${ANSI.reset}    ${ANSI.obsidian}File prodotti:${ANSI.reset} ${s.deliverables.join(", ")}`);
+    }
+    console.log("");
+  }
+
+  console.log(`${ANSI.gold}----------------------------------------------------------------------${ANSI.reset}`);
+  console.log(`${ANSI.bold}I Canoni delle Sessioni Annidate (Claude 2.0 / Stack Moderno):${ANSI.reset}`);
+  console.log(`  • ${ANSI.goldBright}1. La Sessione Regia (Chat Mamma):${ANSI.reset} L'utente interagisce con una sola regia; il contesto resta leggero e lucido.`);
+  console.log(`  • ${ANSI.emerald}2. Sottosessioni Annidate Scoped:${ANSI.reset} Task delegati in contesti isolati; zero contaminazione di log tra agenti.`);
+  console.log(`  • ${ANSI.goldBright}3. Workspace Mode Flessibile:${ANSI.reset} 'inherit' per modifiche atomiche, 'branch' per rami isolati senza collisioni.`);
+  console.log(`  • ${ANSI.emerald}4. Compact Return Protocol:${ANSI.reset} Le chat figlie restituiscono alla mamma solo sintesi operative, non verbose chat.\n`);
+}
+
 // Entrypoint CLI
 const command = process.argv[2] ?? "status";
 const argument = process.argv.slice(3).join(" ");
 
 switch (command) {
+  case "sessions":
+  case "rail":
+    await runSessions(process.argv[3], process.argv.slice(4).join(" "));
+    break;
   case "protocol":
     await runProtocol(argument);
     break;

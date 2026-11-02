@@ -117,4 +117,53 @@ assert.ok(
   "Both CSS files must use modern dynamic viewport height (100dvh)"
 );
 
-console.log("Auto-Landscape Pivot & Fullscreen Cinema Mode tests passed with 100% precision!");
+// 6. Verify Option B: Inertial Touch Gesture Swipe (Processo ↔ Grafico ↔ Custode)
+assert.ok(
+  cockpitSource.includes("isEdgeTouchRef") &&
+    cockpitSource.includes("clientX <= 36") &&
+    cockpitSource.includes("isLeftEdge"),
+  "TradingCockpit must support bezel edge detection for touch swipe navigation"
+);
+assert.ok(
+  cockpitSource.includes('setDialog("protection")') &&
+    cockpitSource.includes('dialog === "protection"'),
+  "TradingCockpit must support 3-way fluid navigation to Custode Sentinel"
+);
+assert.ok(
+  cockpitSource.includes("Trascina verso destra per tornare al Processo") &&
+    cockpitSource.includes("Trascina dal bordo destro per aprire il Custode"),
+  "TradingCockpit must render subtle mobile edge affordance hints"
+);
+
+// 7. Verify Option C: QuickOrderDrawer implementation
+const quickOrderDrawerPath = path.join(
+  __dirname,
+  "components",
+  "backtest-terminal",
+  "QuickOrderDrawer.tsx"
+);
+assert.ok(fs.existsSync(quickOrderDrawerPath), "QuickOrderDrawer.tsx must exist");
+const drawerSource = fs.readFileSync(quickOrderDrawerPath, "utf-8");
+assert.ok(
+  drawerSource.includes("QuickOrderDrawer") &&
+    drawerSource.includes("submitOrder") &&
+    drawerSource.includes("applyRiskPreset") &&
+    drawerSource.includes("applyRrPreset"),
+  "QuickOrderDrawer must implement one-tap execution, risk, and R:R presets"
+);
+assert.ok(
+  drawerSource.includes("synestheticSealOfAction") &&
+    drawerSource.includes("bioLockEval"),
+  "QuickOrderDrawer must enforce Bio-Lock discipline and synesthetic feedback"
+);
+assert.ok(
+  drawerSource.includes("Tutte a BE") && drawerSource.includes("Chiudi Tutte"),
+  "QuickOrderDrawer must provide fast active positions management"
+);
+assert.ok(
+  terminalSource.includes("QuickOrderDrawer") &&
+    terminalSource.includes("quickOrderDrawerOpen"),
+  "BacktestTerminal must wire QuickOrderDrawer with quickOrderDrawerOpen toggle"
+);
+
+console.log("Auto-Landscape Pivot, Inertial Swipe & Quick Order Drawer tests passed with 100% precision!");

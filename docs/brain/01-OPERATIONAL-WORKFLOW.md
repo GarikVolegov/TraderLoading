@@ -156,3 +156,15 @@ Prima di terminare qualsiasi sessione di lavoro:
 > 1. **Anticipare Miglioramenti**: Identificare opportunità per incrementare l'eleganza estetica, le performance, la copertura dei test o la chiarezza dell'informazione.
 > 2. **Formulare Soluzioni Concrete**: Delineare architetture e opzioni attuabili senza creare debito tecnico.
 > 3. **Definire una Scaletta Passo-Passo**: Presentare una sequenza progressiva, ordinata e a basso rischio per continuare a sviluppare il sistema con rigore monastico.
+
+---
+
+## 8. Il Metodo di Lavoro su Antigravity (La Chat Mamma & Le Sessioni Annidate)
+
+> [!NOTE]
+> Questa sezione disciplina esclusivamente l'ergonomia operativa dell'IDE Antigravity e la cooperazione tra l'Utente e l'Agente.
+
+- **La Chat Mamma (Sessione Regia)**: La conversazione principale rimane sempre snella e lucida. Non viene mai intasata da letture massive di file o log di debug prolissi.
+- **Sottosessioni Annidate (`invoke_subagent`)**: Per task specifici o ricerche articolate, la Regia apre sottosessioni con contesto isolato e workspace mode appropriato (`inherit`, `branch` o `share`).
+- **Session Rail & Tracciamento**: L'avanzamento dei compiti delegati è consultabile istantaneamente con `pnpm council:sessions`.
+- **Ritorno Reattivo Compatto**: Al termine del proprio incarico, la sottosessione consegna alla Chat Mamma unicamente il deliverable verificato, risvegliando il flusso principale senza alcun polling.

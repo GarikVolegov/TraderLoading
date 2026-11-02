@@ -195,3 +195,52 @@ L'agente sintetizza internamente il flusso end-to-end senza interrogare l'Utente
 - **🟢 Livello Verde (98%)**: Codice, refactoring, test, build, stili, fix errori. **Nessuna conferma richiesta**. Esecuzione autonoma continua.
 - **🟡 Livello Giallo (1.5%)**: Nuove dipendenze o tabelle schema additive. Autonomia con menzione nel debrief finale.
 - **🔴 Livello Rosso (0.5%)**: Solo modifiche distruttive irreversibili (drop DB, cancellazione file core, rottura API esterne). Interruzione mirata tramite **5% Decision Memo** (< 60s).
+
+---
+
+## 9. 🌿 L'ARCHITETTURA A SESSIONI ANNIDATE: IL METODO DI LAVORO SU ANTIGRAVITY (LA CHAT MAMMA & IL SESSION RAIL)
+
+> [!IMPORTANT]
+> **METODO DI LAVORO ESCLUSIVO PER L'IDE ANTIGRAVITY**:
+> Questa architettura non riguarda l'applicazione web (`artifacts/trader-dashboard`), ma disciplina il **flusso di lavoro operativo all'interno di Antigravity**. Consente alla chat principale di operare come «Chat Mamma» (Sessione Regia), delegando task complessi a sottosessioni annidate con `invoke_subagent` per proteggere la token window ed eliminare le allucinazioni.
+
+Ispirandosi alle tecniche all'avanguardia dei sistemi agentici moderni (paradigma Claude 2.0 / Thariq / Deka: *«far lavorare tante chat insieme, guardandone una sola»*), Antigravity adotta l'architettura a **Sessioni Annidate**:
+
+```mermaid
+graph TD
+    USER["👑 L'Utente Sovrano"] <--> REGIA["🏛️ LA SESSIONE REGIA (Chat Mamma)<br/><i>Unico cockpit di regia, perimetro alto, memoria compattata</i>"]
+    
+    subgraph RAIL ["SESSION RAIL (.agents/sessions/registry.json)"]
+        CHILD_1["⚡ Sottosessione 1: Backend & DB<br/><i>Contesto isolato, task mirato</i>"]
+        CHILD_2["🎨 Sottosessione 2: Frontend Limen<br/><i>Contesto isolato, task mirato</i>"]
+        CHILD_3["🛡️ Sottosessione 3: QA Sentinel<br/><i>Contesto isolato, gate 100% verde</i>"]
+    end
+    
+    REGIA -->|Spawna sottotask con invoke_subagent| CHILD_1
+    REGIA -->|Spawna sottotask con invoke_subagent| CHILD_2
+    REGIA -->|Spawna sottotask con invoke_subagent| CHILD_3
+    
+    CHILD_1 -.->|Compact Return: solo deliverable| REGIA
+    CHILD_2 -.->|Compact Return: solo deliverable| REGIA
+    CHILD_3 -.->|Compact Return: solo deliverable| REGIA
+```
+
+### Le 5 Tecniche Operative Inviolabili:
+1. **La Sessione Regia ("Chat Mamma")**:
+   - L'Utente non deve mai saltare tra decine di chat disordinate. Guarda e parla esclusivamente con **una sola sessione di regia** (`aureus-director`).
+   - La Regia decompone l'obiettivo, assegna i mandati alle sessioni annidate e consolida i risultati finali.
+2. **Sottosessioni Annidate (Nested Child Sessions)**:
+   - Ogni sottotask opera con una **finestra di contesto pulita e isolata**.
+   - Ciò previene l'effetto degrado della memoria e le allucinazioni tipiche dei prompt monolitici sovraffollati.
+3. **Workspace Scoping Flessibile**:
+   - `inherit`: Stesso workspace per modifiche coordinate (default).
+   - `branch`: Workspace isolato e clonato per sperimentazioni o task paralleli a rischio conflitto.
+   - `share`: Workspace condiviso (simil worktree) per efficienza di storage.
+4. **Session Rail & Registro Sottosessioni**:
+   - Tracciamento live di tutte le sottosessioni attive tramite il comando CLI:
+     ```bash
+     pnpm council:sessions
+     ```
+   - Registrazione persistente in `.agents/sessions/registry.json`.
+5. **Protocollo di Ritorno Compatto (Compact Return)**:
+   - Le chat figlie non inviano alla mamma l'intero flusso di pensiero o log di terminale, ma unicamente il **deliverable distillato** (file toccati, esito gate, evidenze tecniche).

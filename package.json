@@ -38,6 +38,7 @@
     "council": "pnpm --filter ./scripts exec tsx local/council.ts",
     "council:protocol": "pnpm --filter ./scripts exec tsx local/council.ts protocol",
     "council:compact": "pnpm --filter ./scripts exec tsx local/council.ts compact",
+    "council:sessions": "pnpm --filter ./scripts exec tsx local/council.ts sessions",
     "council:critique": "pnpm --filter ./scripts exec tsx local/council.ts critique",
     "council:verify": "pnpm --filter ./scripts exec tsx local/council.ts verify",
     "council:daemon": "pnpm --filter ./scripts exec tsx local/councilDaemon.ts",

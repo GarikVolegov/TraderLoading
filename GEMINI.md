@@ -63,6 +63,10 @@ Ogni azione, interazione e ciclo operativo deve conformarsi rigorosamente a:
    - **Livello Verde (98% dei casi)**: Scrittura codice, refactoring, fix bug, unit test, compilazione, typecheck, styling UI, documentazione interna. **ZERO conferme richieste. Esecuzione diretta ed autonoma.**
    - **Livello Giallo (1.5% dei casi)**: Aggiunta dipendenze leggere o schemi additivi: esecuzione autonoma con notifica sintetica nel debrief.
    - **Livello Rosso (0.5% dei casi)**: Solo operazioni irreversibili e distruttive (drop DB persistiti, wipe file core, rottura di contratti esterni critici) richiedono stop preventivo con il **5% Decision Memo** (< 60s di lettura).
+4. **Sessioni Annidate & La Chat Mamma (Sessione Regia & Session Rail)**:
+   - La chat principale opera come **Cabina di Regia** (Chat Mamma): l'Utente interagisce con una sola interfaccia lucida e ad alto livello.
+   - Per compiti complessi, la Regia genera ed esegue **Sottosessioni Annidate Scoped** (subagenti con contesto isolato in workspace `inherit`, `branch` o `share`).
+   - Il progresso è tracciato sul **Session Rail** (`pnpm council:sessions`) e le chat figlie restituiscono alla mamma solo deliverable compatti e verificati (zero context-bloat).
 
 ---
 
