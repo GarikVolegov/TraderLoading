@@ -167,38 +167,62 @@ export function MobileJournalTradeList({
       </div>
 
       {/* ── Top Mobile KPI Sticky Capsule Ribbon (Dynamic for visible period) ── */}
-      <div className="sticky top-1 z-20 grid grid-cols-3 gap-2 p-2.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl shadow-[0_6px_24px_rgba(0,0,0,0.85)]">
-        <div className="text-center border-r border-white/10 pr-1">
-          <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
-            Win Rate
+      <div className="sticky top-1 z-20 p-2.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl shadow-[0_6px_24px_rgba(0,0,0,0.85)] flex flex-col gap-2">
+        <div className="grid grid-cols-3 gap-2">
+          <div className="text-center border-r border-white/10 pr-1">
+            <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
+              Win Rate
+            </div>
+            <div className={`text-xs font-bold mt-0.5 ${kpis.winRate >= 50 ? "text-emerald-400" : "text-[#E8C56A]"}`}>
+              {kpis.winRate}%
+            </div>
           </div>
-          <div className={`text-xs font-bold mt-0.5 ${kpis.winRate >= 50 ? "text-emerald-400" : "text-[#E8C56A]"}`}>
-            {kpis.winRate}%
+
+          <div className="text-center border-r border-white/10 pr-1">
+            <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
+              Trade
+            </div>
+            <div className="text-xs font-bold text-slate-200 mt-0.5">
+              {kpis.total}
+            </div>
+          </div>
+
+          <div className="text-center">
+            <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
+              P&L Netto
+            </div>
+            <div
+              className={`text-xs font-bold mt-0.5 whitespace-nowrap ${
+                kpis.totalPnl >= 0 ? "text-emerald-400" : "text-rose-400"
+              }`}
+            >
+              {kpis.totalPnl >= 0 ? "+" : ""}
+              {kpis.totalPnl.toFixed(2)} {currencySymbol}
+            </div>
           </div>
         </div>
 
-        <div className="text-center border-r border-white/10 pr-1">
-          <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
-            Trade
-          </div>
-          <div className="text-xs font-bold text-slate-200 mt-0.5">
-            {kpis.total}
-          </div>
-        </div>
-
-        <div className="text-center">
-          <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
-            P&L Netto
-          </div>
+        {/* Mini-Mappa Cinetica dei Risultati (Streak Timeline) */}
+        {filteredEntries.length > 0 && (
           <div
-            className={`text-xs font-bold mt-0.5 whitespace-nowrap ${
-              kpis.totalPnl >= 0 ? "text-emerald-400" : "text-rose-400"
-            }`}
+            aria-label="Sequenza Risultati Trade"
+            className="flex items-center gap-0.5 h-1.5 w-full bg-black/60 rounded-full overflow-hidden p-0.5 border border-white/10"
           >
-            {kpis.totalPnl >= 0 ? "+" : ""}
-            {kpis.totalPnl.toFixed(2)} {currencySymbol}
+            {filteredEntries.slice(0, 36).map((entry, idx) => (
+              <div
+                key={entry.id || idx}
+                title={`${entry.title || "Trade"}: ${entry.result?.toUpperCase() || "N/D"}`}
+                className={`h-full flex-1 rounded-sm transition-all ${
+                  entry.result === "win"
+                    ? "bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]"
+                    : entry.result === "loss"
+                      ? "bg-rose-500 shadow-[0_0_4px_rgba(244,63,94,0.5)]"
+                      : "bg-[#C5A059]"
+                }`}
+              />
+            ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── Compact Trade Rows List ── */}

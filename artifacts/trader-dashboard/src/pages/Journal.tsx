@@ -38,6 +38,7 @@ import {
 } from "@workspace/api-client-react";
 import { downloadICS } from "@/utils/icsExport";
 import { useLanguage, useDateLocale, uiText } from "@/contexts/LanguageContext";
+import { synestheticClick } from "@/lib/soundFx";
 import { getJournalRecapPeriod, isJournalRecapEditable } from "@/lib/journalRecapPeriods";
 import { parseTradeContent, tradeDuration, tradeRMultiple } from "@/lib/parseTradeContent";
 import { PnlHeatmap } from "@/components/PnlHeatmap";
@@ -180,6 +181,50 @@ function SyncedTradeDetails({
         <p className="border-t border-border/30 pt-2 text-sm text-muted-foreground/80 line-clamp-2 whitespace-pre-wrap">
           {parsed.comment}
         </p>
+      )}
+    </div>
+  );
+}
+
+function TradeCardImages({ images }: { images: { id: number; url: string; caption?: string }[] }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  if (!images || images.length === 0) return null;
+
+  const current = images[activeIdx] || images[0];
+
+  return (
+    <div className="mb-4 aspect-video w-full rounded-lg overflow-hidden border border-white/10 relative group/img bg-black/40">
+      <img
+        src={current.url}
+        alt={current.caption || "Screenshot Trade"}
+        className="w-full h-full object-cover opacity-85 group-hover/img:opacity-100 transition-opacity"
+      />
+      {images.length > 1 && (
+        <div className="absolute bottom-2 inset-x-2 flex items-center justify-between pointer-events-auto">
+          <div className="flex items-center gap-1 bg-black/85 backdrop-blur-md rounded-lg p-0.5 border border-white/10">
+            {images.map((img, i) => (
+              <button
+                key={img.id || i}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  synestheticClick();
+                  setActiveIdx(i);
+                }}
+                className={`px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold uppercase transition-all ${
+                  activeIdx === i
+                    ? "bg-[#C5A059] text-black shadow-sm"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                {i === 0 ? "Pre" : i === 1 ? "Post" : `#${i + 1}`}
+              </button>
+            ))}
+          </div>
+          <span className="bg-black/75 px-1.5 py-0.5 rounded text-[9px] font-mono text-slate-300 border border-white/10">
+            {activeIdx + 1}/{images.length}
+          </span>
+        </div>
       )}
     </div>
   );
@@ -403,14 +448,7 @@ function TradesTab() {
                     )}
 
                     {entry.images && entry.images.length > 0 && (
-                      <div className="mb-4 aspect-video w-full rounded-lg overflow-hidden border border-white/10 relative">
-                        <img src={entry.images[0].url} alt="Thumbnail" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                        {entry.images.length > 1 && (
-                          <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-1 rounded text-xs text-white flex items-center gap-1">
-                            <ImageIcon className="w-3 h-3" />+{entry.images.length - 1}
-                          </div>
-                        )}
-                      </div>
+                      <TradeCardImages images={entry.images} />
                     )}
 
                     {syncedTrade && entry.content && parseTradeContent(entry.content) ? (
