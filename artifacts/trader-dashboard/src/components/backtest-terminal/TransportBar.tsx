@@ -100,7 +100,7 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
             engine.restart();
           }}
           disabled={engine.loading || engine.executing}
-          title={uiText("backtest_terminal.restart")}
+          title={`${uiText("backtest_terminal.restart")} (R)`}
           aria-label={uiText("backtest_terminal.restart")}
         >
           <RotateCcw size={17} />
@@ -113,7 +113,7 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
             engine.stepBack();
           }}
           disabled={engine.loading || engine.executing || engine.noData}
-          title={uiText("backtest_terminal.step_back")}
+          title={`${uiText("backtest_terminal.step_back")} (←)`}
           aria-label={uiText("backtest_terminal.step_back")}
         >
           <ChevronLeft size={19} />
@@ -126,7 +126,7 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
             engine.togglePlay();
           }}
           disabled={engine.loading || engine.noData}
-          title={uiText(engine.playing ? "backtest_terminal.pause" : "backtest_terminal.play")}
+          title={`${uiText(engine.playing ? "backtest_terminal.pause" : "backtest_terminal.play")} (Space)`}
           aria-label={uiText(engine.playing ? "backtest_terminal.pause" : "backtest_terminal.play")}
         >
           {engine.playing ? <Pause size={18} /> : <Play size={18} />}
@@ -139,7 +139,7 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
             engine.stepForward();
           }}
           disabled={engine.loading || engine.executing || engine.noData}
-          title={uiText("backtest_terminal.step_forward")}
+          title={`${uiText("backtest_terminal.step_forward")} (→)`}
           aria-label={uiText("backtest_terminal.step_forward")}
         >
           <ChevronRight size={19} />

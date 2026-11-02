@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { LimenServiceLockGate } from "@/components/candidacy/LimenServiceLockGate";
 import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
 import { useEdgeSwipe } from "@/hooks/useEdgeSwipe";
+import { LimenPullToRefresh } from "@/components/ui/LimenPullToRefresh";
 import { countdownParts, pad2 } from "@/components/tornei/format";
 import {
   fetchTorneiCurrent,
@@ -161,6 +162,10 @@ export function TorneiWorkspace({ embedded = false }: { embedded?: boolean }) {
     : [currentQuery, meQuery, hallQuery];
   const failed = visibleQueries.some((query) => query.isError);
 
+  const handleTorneiRefresh = async () => {
+    await Promise.all(visibleQueries.map((query) => query.refetch()));
+  };
+
   if (!isAdmin && !entitlements.quarterlyTournaments) {
     return (
       <div className={embedded ? "p-4 flex items-center justify-center min-h-[360px]" : "py-8 flex items-center justify-center"}>
@@ -292,45 +297,47 @@ export function TorneiWorkspace({ embedded = false }: { embedded?: boolean }) {
           onTouchStart={onTorneiTouchStart}
           onTouchEnd={onTorneiTouchEnd}
         >
-          {dir === "battaglie" ? (
-            <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#C5A059]/30">
-              <BacktestTournamentHub />
-            </div>
-          ) : failed ? (
-            <div role="alert" className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center my-auto">
-              <p>{t("common.load_error")}</p>
-              <Button
-                variant="outline"
-                disabled={visibleQueries.some((query) => query.isFetching)}
-                onClick={() => { void Promise.all(visibleQueries.map((query) => query.refetch())); }}
-              >
-                {t("common.retry")}
-              </Button>
-            </div>
-          ) : currentQuery.isPending || !current ? (
-            <div className="flex items-center justify-center flex-1 min-h-0 text-slate-400 font-mono text-sm">
-              {t("tornei.loading")}
-            </div>
-          ) : dir === "arena" ? (
-            <ArenaView
-              current={current}
-              standings={standingsQuery.data}
-              metric={metric}
-              onMetric={setMetric}
-              enrolling={enrollMutation.isPending}
-              onEnroll={handleEnroll}
-            />
-          ) : (
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <PercorsoView
-                me={meQuery.data}
-                hall={hallQuery.data?.entries ?? []}
+          <LimenPullToRefresh onRefresh={handleTorneiRefresh} className="flex-1 min-h-0 flex flex-col">
+            {dir === "battaglie" ? (
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#C5A059]/30">
+                <BacktestTournamentHub />
+              </div>
+            ) : failed ? (
+              <div role="alert" className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center my-auto">
+                <p>{t("common.load_error")}</p>
+                <Button
+                  variant="outline"
+                  disabled={visibleQueries.some((query) => query.isFetching)}
+                  onClick={() => { void Promise.all(visibleQueries.map((query) => query.refetch())); }}
+                >
+                  {t("common.retry")}
+                </Button>
+              </div>
+            ) : currentQuery.isPending || !current ? (
+              <div className="flex items-center justify-center flex-1 min-h-0 text-slate-400 font-mono text-sm">
+                {t("tornei.loading")}
+              </div>
+            ) : dir === "arena" ? (
+              <ArenaView
+                current={current}
+                standings={standingsQuery.data}
+                metric={metric}
+                onMetric={setMetric}
                 enrolling={enrollMutation.isPending}
                 onEnroll={handleEnroll}
-                onCertClick={setSelectedCert}
               />
-            </div>
-          )}
+            ) : (
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <PercorsoView
+                  me={meQuery.data}
+                  hall={hallQuery.data?.entries ?? []}
+                  enrolling={enrollMutation.isPending}
+                  onEnroll={handleEnroll}
+                  onCertClick={setSelectedCert}
+                />
+              </div>
+            )}
+          </LimenPullToRefresh>
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { motion } from "framer-motion";
@@ -37,6 +38,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
+import { synestheticClick } from "@/lib/soundFx";
 import { useQuery } from "@tanstack/react-query";
 import { apiJSON } from "@/lib/apiFetch";
 import { getLimenPageQuote } from "@/lib/limenPageQuotes";
@@ -47,6 +50,7 @@ export function TopNav() {
   const [location, navigate] = useLocation();
   const search = useSearch();
   const pageQuote = getLimenPageQuote(location, search);
+  const [mobileDossierOpen, setMobileDossierOpen] = useState(false);
   const { data: financialProfile } = useFinancialProfile();
   const { isFreeTrial } = useFreeTrial();
   const { data: adminStatus } = useQuery<{ isAdmin: boolean }>({
@@ -247,8 +251,8 @@ export function TopNav() {
               {isPlaying ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
             </motion.button>
 
-            {/* Operator Dossier avatar */}
-            <motion.div whileTap={{ scale: 0.88 }} className="flex items-center">
+            {/* Operator Dossier avatar — Desktop Dropdown */}
+            <motion.div whileTap={{ scale: 0.88 }} className="hidden lg:flex items-center">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -541,9 +545,354 @@ export function TopNav() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </motion.div>
+            {/* Operator Dossier avatar — Mobile Tactile Bottom Sheet Trigger */}
+            <motion.div whileTap={{ scale: 0.88 }} className="flex lg:hidden items-center">
+              <button
+                type="button"
+                aria-label={t("profile.open_settings")}
+                title={t("profile.settings")}
+                onClick={() => {
+                  triggerHaptic("selection");
+                  synestheticClick();
+                  setMobileDossierOpen(true);
+                }}
+                className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-border/80 bg-card/70 transition-all hover:border-[#C5A059] hover:bg-[#C5A059]/10"
+              >
+                <ProfileAvatar
+                  name={profileName}
+                  src={avatarSrc}
+                  alt={t("profile.alt", { name: profileName })}
+                  className="h-full w-full object-cover"
+                />
+                <span className="absolute inset-x-0 bottom-0 bg-[#0A0A0C]/85 py-px text-center font-mono text-[7px] font-bold uppercase tracking-wider text-primary">
+                  {currentRoman}
+                </span>
+              </button>
+            </motion.div>
           </motion.div>
         </div>
       </div>
+
+      {/* ── Mobile Operator Dossier (Ergonomic Bottom Sheet with Thumb Reach) ── */}
+      <LimenResponsiveDrawer
+        open={mobileDossierOpen}
+        onOpenChange={setMobileDossierOpen}
+        title="Dossier dell'Operatore"
+        subtitle={`${currentCode} · ${currentTitle}`}
+      >
+        <div className="space-y-4 font-mono text-xs pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
+          {/* OPERATOR DOSSIER PROFILE CARD */}
+          <div className="p-3.5 rounded-xl border border-[#C5A059]/30 bg-gradient-to-b from-[#181924] via-[#0F1017] to-[#0A0B0E] shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="relative shrink-0">
+                <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#C5A059]/60 shadow-md bg-black">
+                  <ProfileAvatar
+                    name={profileName}
+                    src={avatarSrc}
+                    alt={t("profile.alt", { name: profileName })}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <span className="absolute -bottom-1 -right-1 px-1.5 py-px rounded-sm bg-[#C5A059] text-black font-mono text-[8px] font-black shadow-sm">
+                  {currentRoman}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1.5">
+                  <p className="font-bold text-sm text-[#F4F4F6] truncate tracking-wide">
+                    {profileName}
+                  </p>
+                  <span className="px-1.5 py-0.5 rounded-sm font-mono text-[8.5px] font-bold uppercase tracking-wider bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/30 shrink-0">
+                    {currentCode}
+                  </span>
+                </div>
+                <p className="font-mono text-[10px] text-muted-foreground truncate">
+                  {currentTitle}
+                </p>
+                <div className="mt-1 flex items-center gap-2 font-mono text-[9.5px]">
+                  <span className="text-emerald-400 font-semibold whitespace-nowrap">
+                    Integrità: {currentIntegrityIndex}%
+                  </span>
+                  <span className="text-muted-foreground/60">·</span>
+                  <span className="text-[#C5A059] font-medium whitespace-nowrap">
+                    Streak: {profile?.streak ?? 0} gg
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 1: RANGO & IDENTITÀ */}
+          <div className="space-y-1">
+            <div className="px-1 text-[9px] font-bold uppercase tracking-[0.16em] text-[#C5A059]/90">
+              Rango &amp; Identità
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setMobileDossierOpen(false);
+                navigate("/settings?section=profilo");
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-white/5 hover:border-[#C5A059]/40 hover:bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40 text-[#C5A059]">
+                <Shield className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-xs truncate">Dossier dell&apos;Operatore</p>
+                <p className="text-[10px] text-muted-foreground">Profilo, credenziali e licenza</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setMobileDossierOpen(false);
+                navigate("/milestones");
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-white/5 hover:border-[#C5A059]/40 hover:bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40 text-[#C5A059]">
+                <Award className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-xs truncate">I 5 Gradi di Ascesa</p>
+                <p className="text-[10px] text-muted-foreground">Sigilli di Investitura &amp; NFT</p>
+              </div>
+              <span className="px-1.5 py-0.5 rounded font-mono text-[8.5px] font-bold uppercase bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/30 shrink-0">
+                {integritySnapshot.currentGrade.code}
+              </span>
+            </button>
+          </div>
+
+          {/* SECTION 2: METODO & DOTTRINA */}
+          <div className="space-y-1">
+            <div className="px-1 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+              Dottrina &amp; Operatività
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setMobileDossierOpen(false);
+                navigate("/backtest");
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-white/5 hover:border-[#C5A059]/40 hover:bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40 text-[#C5A059]">
+                <FlaskConical className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-xs truncate">La Forgia del Passato</p>
+                <p className="text-[10px] text-muted-foreground">Simulazione storica e backtest</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setMobileDossierOpen(false);
+                navigate("/protocollo");
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-white/5 hover:border-[#C5A059]/40 hover:bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40 text-[#C5A059]">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-xs truncate">Protocollo Scalp &amp; Swing</p>
+                <p className="text-[10px] text-muted-foreground">Schematiche e modelli operativi</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setMobileDossierOpen(false);
+                navigate("/academy");
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-white/5 hover:border-[#C5A059]/40 hover:bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40 text-[#C5A059]">
+                <BookOpen className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-xs truncate">La Dottrina del Tempo</p>
+                <p className="text-[10px] text-muted-foreground">Sessioni e finestre di liquidità</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setMobileDossierOpen(false);
+                navigate("/routine");
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-white/5 hover:border-[#C5A059]/40 hover:bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40 text-[#C5A059]">
+                <Sunrise className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-xs truncate">L&apos;Ordine Giornaliero</p>
+                <p className="text-[10px] text-muted-foreground">Routine mattutina &amp; serale</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setMobileDossierOpen(false);
+                navigate("/decompressione");
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-white/5 hover:border-[#C5A059]/40 hover:bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40 text-[#C5A059]">
+                <Gamepad2 className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-xs truncate">Oasi di Decompressione</p>
+                <p className="text-[10px] text-muted-foreground">Cronache del distacco conscio</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+            </button>
+          </div>
+
+          {/* SECTION 3: ARCHITETTURA PATRIMONIALE */}
+          {!isFreeTrial && (
+            <div className="space-y-1">
+              <div className="px-1 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                Patrimonio &amp; Dotazioni
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  synestheticClick();
+                  setMobileDossierOpen(false);
+                  navigate("/patrimonio");
+                }}
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-white/5 hover:border-[#C5A059]/40 hover:bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40 text-[#C5A059]">
+                  <Coins className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground text-xs truncate">Architettura Patrimoniale</p>
+                  <p className="text-[10px] text-muted-foreground">Pilastri e riserve di capitale</p>
+                </div>
+                <span
+                  className={`px-1.5 py-0.5 rounded font-mono text-[8.5px] font-bold uppercase shrink-0 ${
+                    financialProfile?.isCompleted
+                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                      : "bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/30"
+                  }`}
+                >
+                  {financialProfile?.isCompleted ? "Attivo" : "Setup"}
+                </span>
+              </button>
+            </div>
+          )}
+
+          {/* SECTION 4: MANIFESTO & PREFERENZE */}
+          <div className="space-y-1">
+            <div className="px-1 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+              Manifesto &amp; Preferenze
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setMobileDossierOpen(false);
+                openThresholdManifesto();
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-white/5 hover:border-[#C5A059]/40 hover:bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40 text-[#C5A059]">
+                <ScrollText className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-xs truncate">La Soglia di Selezione</p>
+                <p className="text-[10px] text-muted-foreground">Il Manifesto di Ingresso</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setMobileDossierOpen(false);
+                navigate("/settings?section=lingua");
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-white/5 hover:border-[#C5A059]/40 hover:bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-white/10 bg-black/40 text-[#C5A059]">
+                <Globe className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-xs truncate">Lingua / Language</p>
+                <p className="text-[10px] text-muted-foreground">Preferenze di localizzazione</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+            </button>
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  synestheticClick();
+                  setMobileDossierOpen(false);
+                  navigate("/admin");
+                }}
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-[#C5A059]/30 bg-[#C5A059]/10 text-left transition-all active:scale-[0.99]"
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-[#C5A059]/40 bg-[#C5A059]/20 text-[#E8C56A]">
+                  <Shield className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground text-xs truncate">Pannello di Controllo</p>
+                  <p className="text-[10px] text-muted-foreground">Console Amministrazione</p>
+                </div>
+                <span className="px-1.5 py-0.5 rounded font-mono text-[8.5px] font-bold uppercase bg-primary/20 text-primary border border-primary/30 shrink-0">
+                  Admin
+                </span>
+              </button>
+            )}
+          </div>
+
+          {/* SECTION 5: DISCONNESSIONE */}
+          <div className="pt-2 border-t border-white/10">
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setMobileDossierOpen(false);
+                void signOut({ redirectUrl: "/" });
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-rose-500/25 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-rose-500/40 bg-rose-500/20 text-rose-400">
+                <LogOut className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-xs">Disconnetti Sessione</p>
+                <p className="text-[10px] text-muted-foreground">Esci in sicurezza dal Protocollo</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </LimenResponsiveDrawer>
     </motion.header>
   );
 }
