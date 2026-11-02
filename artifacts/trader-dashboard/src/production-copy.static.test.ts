@@ -181,6 +181,7 @@ const legacyHardcodedCopyFiles = new Set<string>([
   "components/cockpit/CockpitVisualChoice.tsx",
   "components/JournalEntryModal.tsx",
   "components/journal/JournalGadgets.tsx",
+  "components/journal/MobileJournalTradeList.tsx",
   "components/journal/SessionDetailInspector.tsx",
   "components/journal/SessionJournal.tsx",
   "components/journal/SovereignJournalCockpit.tsx",

@@ -711,14 +711,25 @@ export default function Backtest() {
                             <SessionMetric label="R:R" value={sessionStats.avgRR ?? "--"} color={avgRRColor} />
                             <SessionMetric label={uiText("auto.ui.82907d818c")} value={formatSignedPips(sessionStats.totalPips)} color={profitColor} />
                           </div>
-                          <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                          <div className="flex items-center justify-between pt-1.5 border-t border-border/40">
                             <span className="font-mono text-[8.5px] text-muted-foreground/65">
                               {format(parseISO(session.createdAt), "d MMM yyyy", { locale: dateLocale })}
                             </span>
-                            <span className="inline-flex items-center gap-0.5 font-mono text-[9px] uppercase text-primary">
-                              <span>{isSelected ? "Attiva" : "Apri"}</span>
-                              <ChevronRight className="w-3 h-3" />
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <Link
+                                href={`/backtest/${session.id}/replay`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[#E8C56A] hover:bg-[#C5A059]/25 text-[9px] font-bold uppercase tracking-wider font-mono whitespace-nowrap transition-colors"
+                                title="Avvia Replay Immediato"
+                              >
+                                <Play size={9} className="fill-current" />
+                                <span>Replay</span>
+                              </Link>
+                              <span className="inline-flex items-center gap-0.5 font-mono text-[9px] uppercase text-primary">
+                                <span>{isSelected ? "Attiva" : "Dettagli"}</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </span>
+                            </div>
                           </div>
                         </div>
                       );

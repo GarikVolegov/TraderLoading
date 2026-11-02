@@ -109,6 +109,7 @@ const ALLOWLIST = new Set([
   "src/components/PairSelectionModal.tsx", // full-screen bottom sheet (overlay)
   "src/components/ui/sheet.tsx",           // overlay primitive
   "src/components/ui/drawer.tsx",          // overlay primitive
+  "src/components/ui/LimenResponsiveDrawer.tsx", // universal adaptive overlay primitive
   "src/components/ui/toast.tsx",           // toast viewport
   "src/components/social/StoryViewer.tsx", // full-screen story overlay
   "src/components/academy/GeneralsBooksReader.tsx", // full-screen book reader overlay

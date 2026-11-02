@@ -25,5 +25,9 @@ assert.ok(
   listSource.includes("Win Rate") && listSource.includes("P&L Netto"),
   "Must render top KPI summary ribbon"
 );
+assert.ok(
+  listSource.includes("Questa Settimana") && listSource.includes("periodFilter"),
+  "Must provide time interval carousel filter"
+);
 
 console.log("MobileJournalTradeList static test passed with 100% precision!");

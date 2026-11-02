@@ -2381,6 +2381,56 @@ function CockpitView({
             className="fixed right-0 top-1/2 -translate-y-1/2 w-1.5 h-16 rounded-l-md bg-gradient-to-l from-emerald-500/60 to-transparent pointer-events-none z-30 md:hidden opacity-75 animate-pulse"
             title="Trascina dal bordo destro per aprire il Custode"
           />
+
+          {/* ── Mobile Floating Tactical Action Dock (Thumb Zone on Chart) ── */}
+          <aside
+            aria-label="Dock Tattica Mobile"
+            className="fixed right-3 bottom-[var(--bottom-nav-clearance)] mb-3 z-40 flex items-center gap-1.5 p-1.5 rounded-2xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl shadow-[0_12px_36px_rgba(0,0,0,0.9),0_0_20px_rgba(197,160,89,0.18)] font-mono select-none md:hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
+          >
+            {/* Quick Checklist Button */}
+            {!isFreeTrial && (
+              <button
+                type="button"
+                onClick={() => {
+                  synestheticClick();
+                  setMobileTab("process");
+                }}
+                title="Torna alla Checklist del Processo"
+                className="flex h-8 px-2 items-center gap-1 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:text-white font-bold text-[9.5px] uppercase tracking-wider transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+              >
+                <ChevronLeft size={12} className="text-[#C5A059]" />
+                <span>Fase {phase}/4</span>
+              </button>
+            )}
+
+            {/* Quick Custode Sentinel Button */}
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setDialog("protection");
+              }}
+              title="Apri Custode della Soglia"
+              className="flex h-8 px-2 items-center gap-1 rounded-xl border border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] font-bold text-[9.5px] uppercase tracking-wider transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+            >
+              <ShieldCheck size={12} />
+              <span>{_tradesToday}/{_maxTrades}</span>
+            </button>
+
+            {/* Quick Register Trade Button */}
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setTradeRegisterModalOpen(true);
+              }}
+              title="Registra Trade Eseguito"
+              className="flex h-8 px-2.5 items-center gap-1 rounded-xl border border-emerald-500/50 bg-emerald-500/25 text-emerald-300 hover:bg-emerald-500/35 font-bold text-[9.5px] uppercase tracking-wider shadow-[0_0_12px_rgba(16,185,129,0.3)] transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+            >
+              <BookOpen size={12} />
+              <span>Trade</span>
+            </button>
+          </aside>
         </>
       )}
 

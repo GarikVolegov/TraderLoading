@@ -34,6 +34,9 @@ export interface MobileJournalTradeListProps {
   currencySymbol?: string;
 }
 
+type PeriodFilter = "all" | "this_week" | "last_week" | "month";
+type ResultFilter = "all" | "win" | "loss";
+
 export function MobileJournalTradeList({
   entries,
   onEditEntry,
@@ -43,14 +46,47 @@ export function MobileJournalTradeList({
   const { t, language } = useLanguage();
   const dateLocale = useDateLocale();
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
+  const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
 
-  // Compute quick summary KPIs
+  // Filter entries based on period and outcome
+  const filteredEntries = useMemo(() => {
+    const now = Date.now();
+    const oneDay = 86_400_000;
+    const sevenDays = 7 * oneDay;
+    const thirtyDays = 30 * oneDay;
+
+    return entries.filter((entry) => {
+      // Result filter
+      if (resultFilter === "win" && entry.result !== "win") return false;
+      if (resultFilter === "loss" && entry.result !== "loss") return false;
+
+      // Period filter
+      if (periodFilter === "all") return true;
+
+      const tradeTs = parseISO(entry.tradeDate).getTime();
+      const diff = now - tradeTs;
+
+      if (periodFilter === "this_week") {
+        return diff <= sevenDays && diff >= -oneDay;
+      }
+      if (periodFilter === "last_week") {
+        return diff > sevenDays && diff <= 14 * oneDay;
+      }
+      if (periodFilter === "month") {
+        return diff <= thirtyDays && diff >= -oneDay;
+      }
+      return true;
+    });
+  }, [entries, periodFilter, resultFilter]);
+
+  // Compute summary KPIs dynamically on filtered subset
   const kpis = useMemo(() => {
     let wins = 0;
     let losses = 0;
     let totalPnl = 0;
 
-    for (const e of entries) {
+    for (const e of filteredEntries) {
       if (e.result === "win") wins++;
       else if (e.result === "loss") losses++;
 
@@ -62,10 +98,10 @@ export function MobileJournalTradeList({
       }
     }
 
-    const total = entries.length;
+    const total = filteredEntries.length;
     const winRate = total > 0 ? Math.round((wins / (wins + losses || 1)) * 100) : 0;
     return { wins, losses, total, winRate, totalPnl };
-  }, [entries]);
+  }, [filteredEntries]);
 
   const selectedParsed = useMemo(() => {
     if (!selectedEntry?.content) return null;
@@ -74,7 +110,63 @@ export function MobileJournalTradeList({
 
   return (
     <div className="md:hidden space-y-3 font-mono select-none">
-      {/* ── Top Mobile KPI Ribbon ── */}
+      {/* ── Period Carousel & Outcome Switcher ── */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+          {[
+            { id: "all", label: "Tutti i Trade" },
+            { id: "this_week", label: "Questa Settimana" },
+            { id: "last_week", label: "Settimana Scorsa" },
+            { id: "month", label: "Ultimi 30 Giorni" },
+          ].map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setPeriodFilter(chip.id as PeriodFilter);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[9.5px] font-bold uppercase tracking-wider whitespace-nowrap border transition-all cursor-pointer ${
+                periodFilter === chip.id
+                  ? "border-[#C5A059] bg-[#C5A059]/25 text-[#E8C56A] shadow-[0_0_10px_rgba(197,160,89,0.3)]"
+                  : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {[
+            { id: "all", label: "Tutti" },
+            { id: "win", label: "Solo Win" },
+            { id: "loss", label: "Solo Loss" },
+          ].map((res) => (
+            <button
+              key={res.id}
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setResultFilter(res.id as ResultFilter);
+              }}
+              className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider whitespace-nowrap border transition-all cursor-pointer ${
+                resultFilter === res.id
+                  ? res.id === "win"
+                    ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
+                    : res.id === "loss"
+                      ? "border-rose-500 bg-rose-500/20 text-rose-400"
+                      : "border-[#C5A059] bg-[#C5A059]/20 text-[#E8C56A]"
+                  : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+              }`}
+            >
+              {res.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Top Mobile KPI Ribbon (Dynamic for visible period) ── */}
       <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl border border-[#C5A059]/30 bg-[#07080b]/90 backdrop-blur-md shadow-sm">
         <div className="text-center border-r border-white/10 pr-1">
           <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
@@ -110,8 +202,13 @@ export function MobileJournalTradeList({
       </div>
 
       {/* ── Compact Trade Rows List ── */}
-      <div className="space-y-1.5">
-        {entries.map((entry) => {
+      {filteredEntries.length === 0 ? (
+        <div className="p-6 rounded-xl border border-dashed border-white/15 bg-white/5 text-center text-xs text-slate-400">
+          Nessun trade registrato per i filtri selezionati.
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {filteredEntries.map((entry) => {
           const parsed = entry.content ? parseTradeContent(entry.content) : null;
           const isWin = entry.result === "win";
           const isLoss = entry.result === "loss";
@@ -211,6 +308,7 @@ export function MobileJournalTradeList({
           );
         })}
       </div>
+      )}
 
       {/* ── Trade Detail Dossier (Bottom Sheet) ── */}
       <LimenResponsiveDrawer
