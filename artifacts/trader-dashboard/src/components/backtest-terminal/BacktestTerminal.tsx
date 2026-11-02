@@ -1,6 +1,6 @@
 import { useAuth, useUser } from "@clerk/react";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { Modal } from "@/components/ui/modal";
+import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import { FavoriteToolsBar } from "./FavoriteToolsBar";
 // ─── Backtest replay terminal shell ──────────────────────────────────────────
 // Full-screen grid per the Claude Design mockup: 46px header / main (46px tool
@@ -1038,94 +1038,143 @@ function BacktestTerminalSession({
                 onClose={() => setSettingsOpen(false)}
               />
             )}
+
+            {/* Mobile Portrait Floating Action Dock per Accesso Immediato al Cockpit / Ticket */}
+            {compact && !isCinemaActive && !panelOpen && (
+              <aside
+                aria-label="Controlli Rapidi Cockpit Mobile"
+                className="absolute right-3 bottom-3 z-30 flex items-center gap-2 pointer-events-auto"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    synestheticClick();
+                    setActivePanelTab("ticket");
+                    setPanelOpen(true);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-mono font-bold tracking-wider shadow-lg backdrop-blur-md transition-transform active:scale-95 ${
+                    engine.positions.length > 0
+                      ? "border-emerald-500/60 bg-emerald-950/80 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                      : "border-[#C5A059]/40 bg-[#0d0f14]/90 text-[#E8C56A] shadow-[0_0_15px_rgba(197,160,89,0.2)]"
+                  }`}
+                  aria-label="Apri Cockpit Operativo"
+                >
+                  <Layers size={13} className={engine.positions.length > 0 ? "text-emerald-400" : "text-[#C5A059]"} />
+                  <span className="whitespace-nowrap font-serif text-[11px] uppercase tracking-wider">Cockpit</span>
+                  {engine.positions.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[10px] text-emerald-300 font-mono whitespace-nowrap">
+                      {engine.positions.length}
+                    </span>
+                  )}
+                  {aiSetup && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#E8C56A] shadow-[0_0_6px_#E8C56A] ml-0.5 animate-pulse" />
+                  )}
+                </button>
+              </aside>
+            )}
           </div>
         </div>
 
         {compact ? (
-          <Modal isOpen={panelOpen} onClose={() => setPanelOpen(false)} title={uiText("backtest_terminal.panel")} className="btm-root-colors btm-mobile-panel">
-            <div className="btm-panel-tabs" role="tablist" aria-label="Sezioni del Cockpit Operativo">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePanelTab === "sentinel"}
-                className={`btm-panel-tab ${activePanelTab === "sentinel" ? "btm-panel-tab-active" : ""}`}
-                onClick={() => handleSelectPanelTab("sentinel")}
-              >
-                <Eye size={13} />
-                <span>Sentinella</span>
-                {aiSetup && <span className="btm-panel-tab-dot" />}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePanelTab === "ticket"}
-                className={`btm-panel-tab ${activePanelTab === "ticket" ? "btm-panel-tab-active" : ""}`}
-                onClick={() => handleSelectPanelTab("ticket")}
-              >
-                <Layers size={13} />
-                <span>Ticket</span>
-                {(engine.positions.length > 0 || engine.pendingOrders.length > 0) && (
-                  <span className="btm-panel-tab-badge font-mono">
-                    {engine.positions.length + engine.pendingOrders.length}
-                  </span>
+          <LimenResponsiveDrawer
+            open={panelOpen}
+            onOpenChange={setPanelOpen}
+            title={
+              <div className="flex items-center gap-2">
+                <span className="font-serif tracking-wider text-[#C5A059] uppercase text-sm font-bold">Cockpit Operativo</span>
+                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#E8C56A] uppercase font-bold tracking-wider whitespace-nowrap">
+                  {engine.symbol} · {engine.interval}
+                </span>
+              </div>
+            }
+            subtitle="Sentinella, Ticket, Dossier & Il Libro della Verità"
+            mobileClassName="max-h-[85vh] bg-[#07080b]/98 border-t border-[#C5A059]/30 backdrop-blur-2xl p-0 flex flex-col overflow-hidden"
+          >
+            <div className="flex flex-col h-full min-h-0 overflow-hidden btm-root-colors">
+              <div className="btm-panel-tabs border-b border-[#C5A059]/15 shrink-0" role="tablist" aria-label="Sezioni del Cockpit Operativo">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activePanelTab === "sentinel"}
+                  className={`btm-panel-tab ${activePanelTab === "sentinel" ? "btm-panel-tab-active" : ""}`}
+                  onClick={() => handleSelectPanelTab("sentinel")}
+                >
+                  <Eye size={13} />
+                  <span>Sentinella</span>
+                  {aiSetup && <span className="btm-panel-tab-dot" />}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activePanelTab === "ticket"}
+                  className={`btm-panel-tab ${activePanelTab === "ticket" ? "btm-panel-tab-active" : ""}`}
+                  onClick={() => handleSelectPanelTab("ticket")}
+                >
+                  <Layers size={13} />
+                  <span>Ticket</span>
+                  {(engine.positions.length > 0 || engine.pendingOrders.length > 0) && (
+                    <span className="btm-panel-tab-badge font-mono whitespace-nowrap">
+                      {engine.positions.length + engine.pendingOrders.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activePanelTab === "account"}
+                  className={`btm-panel-tab ${activePanelTab === "account" ? "btm-panel-tab-active" : ""}`}
+                  onClick={() => handleSelectPanelTab("account")}
+                >
+                  <Wallet size={13} />
+                  <span>Dossier</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activePanelTab === "journal"}
+                  className={`btm-panel-tab ${activePanelTab === "journal" ? "btm-panel-tab-active" : ""}`}
+                  onClick={() => handleSelectPanelTab("journal")}
+                >
+                  <BookOpen size={13} />
+                  <span>Il Libro della Verità</span>
+                  {engine.trades.length > 0 && (
+                    <span className="btm-panel-tab-badge font-mono whitespace-nowrap">{engine.trades.length}</span>
+                  )}
+                </button>
+              </div>
+              <div className="btm-panel-content flex-1 min-h-0 overflow-y-auto">
+                {activePanelTab === "sentinel" && (
+                  <BacktestAiSentinelPanel
+                    isScanning={isAiScanning}
+                    analysis={aiAnalysis}
+                    onScan={() => handleScanReplayAi(false)}
+                    onExecuteSetup={handleExecuteReplaySetup}
+                    showOverlay={showAiOverlay}
+                    onToggleOverlay={() => setShowAiOverlay((prev) => !prev)}
+                    autoAuditOnStep={continuousAutoScan}
+                    onToggleAutoAudit={() => setContinuousAutoScan((prev) => !prev)}
+                    autoExecuteAi={autoExecuteAi}
+                    onToggleAutoExecute={() => setAutoExecuteAi((prev) => !prev)}
+                    missedMoveNotice={missedMoveNotice}
+                    onDismissMissedNotice={() => setMissedMoveNotice(null)}
+                    operativeMemory={operativeMemory}
+                    onResetMemory={handleResetOperativeMemory}
+                    symbol={engine.symbol}
+                    interval={engine.interval}
+                  />
                 )}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePanelTab === "account"}
-                className={`btm-panel-tab ${activePanelTab === "account" ? "btm-panel-tab-active" : ""}`}
-                onClick={() => handleSelectPanelTab("account")}
-              >
-                <Wallet size={13} />
-                <span>Dossier</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePanelTab === "journal"}
-                className={`btm-panel-tab ${activePanelTab === "journal" ? "btm-panel-tab-active" : ""}`}
-                onClick={() => handleSelectPanelTab("journal")}
-              >
-                <BookOpen size={13} />
-                <span>Il Libro della Verità</span>
-                {engine.trades.length > 0 && (
-                  <span className="btm-panel-tab-badge font-mono">{engine.trades.length}</span>
+                {activePanelTab === "ticket" && (
+                  <OrderTicket engine={engine} draft={ticketDraft} onDraftChange={patch => setTicketDraft(previous => ({ ...previous, ...patch }))} />
                 )}
-              </button>
+                {activePanelTab === "account" && (
+                  <AccountPanel engine={engine} />
+                )}
+                {activePanelTab === "journal" && (
+                  <JournalPanel engine={engine} />
+                )}
+              </div>
             </div>
-            <div className="btm-panel-content">
-              {activePanelTab === "sentinel" && (
-                <BacktestAiSentinelPanel
-                  isScanning={isAiScanning}
-                  analysis={aiAnalysis}
-                  onScan={() => handleScanReplayAi(false)}
-                  onExecuteSetup={handleExecuteReplaySetup}
-                  showOverlay={showAiOverlay}
-                  onToggleOverlay={() => setShowAiOverlay((prev) => !prev)}
-                  autoAuditOnStep={continuousAutoScan}
-                  onToggleAutoAudit={() => setContinuousAutoScan((prev) => !prev)}
-                  autoExecuteAi={autoExecuteAi}
-                  onToggleAutoExecute={() => setAutoExecuteAi((prev) => !prev)}
-                  missedMoveNotice={missedMoveNotice}
-                  onDismissMissedNotice={() => setMissedMoveNotice(null)}
-                  operativeMemory={operativeMemory}
-                  onResetMemory={handleResetOperativeMemory}
-                  symbol={engine.symbol}
-                  interval={engine.interval}
-                />
-              )}
-              {activePanelTab === "ticket" && (
-                <OrderTicket engine={engine} draft={ticketDraft} onDraftChange={patch => setTicketDraft(previous => ({ ...previous, ...patch }))} />
-              )}
-              {activePanelTab === "account" && (
-                <AccountPanel engine={engine} />
-              )}
-              {activePanelTab === "journal" && (
-                <JournalPanel engine={engine} />
-              )}
-            </div>
-          </Modal>
+          </LimenResponsiveDrawer>
         ) : panelOpen && (
           <aside className="btm-panel" aria-label={uiText("backtest_terminal.panel")}>
             <div className="btm-panel-tabs" role="tablist" aria-label="Sezioni del Cockpit Operativo">
