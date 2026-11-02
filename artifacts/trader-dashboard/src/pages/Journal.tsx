@@ -58,6 +58,7 @@ import { JournalPlan } from "@/components/journal/JournalPlan";
 import { BrokerWorkspace } from "@/pages/Broker";
 import { updateWorkspaceQuery } from "@/lib/workspaceNavigation";
 import { MarketDecisionReview } from "@/components/journal/MarketDecisionReview";
+import { MobileJournalTradeList } from "@/components/journal/MobileJournalTradeList";
 import { cacheJournalEntries, initJournalOfflineSync } from "@/lib/journalOfflineSync";
 
 function SyncedTradeDetails({
@@ -342,9 +343,21 @@ function TradesTab() {
       ) : isError ? (
         <QueryErrorState onRetry={() => void refetch()} />
       ) : entries && entries.length > 0 ? (
-        <div ref={journalGrid} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 scroll-mt-24">
-          <AnimatePresence initial={false}>
-            {visible.entries.map((entry, idx) => {
+        <>
+          {/* ── Mobile-Optimized Trade Ledger (Zero endless scrolling, Bottom Sheet detail) ── */}
+          <MobileJournalTradeList
+            entries={visible.entries}
+            onEditEntry={(entry) => {
+              setEditingEntry(entry);
+              setIsModalOpen(true);
+            }}
+            onDeleteEntry={(id) => void handleDelete(id)}
+          />
+
+          {/* ── Desktop 3-Column Bento Grid ── */}
+          <div ref={journalGrid} className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 scroll-mt-24">
+            <AnimatePresence initial={false}>
+              {visible.entries.map((entry, idx) => {
                 const resConfig = getResultConfig(entry.result);
                 const syncedTrade = isSyncedTrade(entry);
                 return (
@@ -426,8 +439,9 @@ function TradesTab() {
                   </motion.div>
                 );
               })}
-          </AnimatePresence>
-        </div>
+            </AnimatePresence>
+          </div>
+        </>
       ) : (
         <Card className="bg-card/60 backdrop-blur-sm border-dashed border-border/30">
           <CardContent className="p-16 text-center">

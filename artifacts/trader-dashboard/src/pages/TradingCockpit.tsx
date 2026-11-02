@@ -164,6 +164,7 @@ import {
 import { fetchMarketContext } from "@/lib/marketIntelligenceApi";
 import { SessionDraftStatus } from "@/components/process/SessionDraftStatus";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import { Badge } from "@/components/ui/badge";
 import { dailyProcessRisk } from "@/lib/processGuidance";
 import { cockpitImprovement } from "@/lib/cockpitPresentation";
@@ -4168,48 +4169,46 @@ function CockpitView({
         </section>
       </div>
 
-      {/* ── MODALS / DRAWERS ── */}
-      <Dialog
+      {/* ── MODALS / RESPONSIVE BOTTOM SHEETS (Divergente Desktop vs Mobile) ── */}
+      <LimenResponsiveDrawer
         open={dialog !== null}
         onOpenChange={(open) => {
           if (!open) setDialog(null);
         }}
+        title={
+          dialog === "protection"
+            ? ck("cockpit.ui.dialog.protection")
+            : dialog === "context"
+              ? `Sintesi Quantitativa & Catalizzatori · ${a.market}`
+              : dialog === "news"
+                ? `Calendario Economico & Catalizzatori Macro`
+                : dialog === "user_playbook"
+                  ? `I Miei Esempi Operativi · AUREUS Playbook`
+                  : dialog === "operative_plan"
+                    ? `Piano Operativo di Sessione · ${a.market}`
+                    : dialog === "favorite_tools"
+                      ? `Strumenti Grafico Rapidi & Calcolatore Rischio`
+                      : dialog === "examples"
+                        ? `Playbook Setup Istituzionali`
+                        : dialog === "next_session_plan"
+                          ? `Pianificatore Prossima Sessione · Mission Planner`
+                          : dialog === "chart_prefs"
+                            ? `Strumenti & Preferenze Grafico TradingView`
+                            : dialog === "notes"
+                              ? ck("cockpit.ui.dialog.notes")
+                              : dialog === "confirm"
+                                ? "Sigillo del Trade & Inizio Gestione · AUREUS PROTOCOL"
+                                : dialog === "protocol"
+                                  ? "Protocollo Operativo & Regole Inviolabili"
+                                  : ck("cockpit.ui.dialog.default")
+        }
+        desktopClassName={
+          dialog === "operative_plan" || dialog === "user_playbook"
+            ? "max-w-5xl md:max-w-6xl w-[96vw]"
+            : "max-w-4xl"
+        }
       >
-        <DialogContent
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          className={`ck-dialog ${dialog === "operative_plan" || dialog === "user_playbook" ? "ck-dialog-plan-modal max-w-5xl md:max-w-6xl w-[96vw]" : "max-w-4xl"} max-h-[88vh] overflow-y-auto`}
-        >
-          <DialogHeader>
-            <DialogTitle>
-              {dialog === "protection"
-                ? ck("cockpit.ui.dialog.protection")
-                : dialog === "context"
-                  ? `Sintesi Quantitativa & Catalizzatori · ${a.market}`
-                  : dialog === "news"
-                    ? `Calendario Economico & Catalizzatori Macro`
-                    : dialog === "user_playbook"
-                      ? `I Miei Esempi Operativi · AUREUS Playbook`
-                      : dialog === "operative_plan"
-                        ? `Piano Operativo di Sessione · ${a.market}`
-                        : dialog === "favorite_tools"
-                          ? `Strumenti Grafico Rapidi & Calcolatore Rischio`
-                          : dialog === "examples"
-                            ? `Playbook Setup Istituzionali`
-                            : dialog === "next_session_plan"
-                              ? `Pianificatore Prossima Sessione · Mission Planner`
-                              : dialog === "chart_prefs"
-                                ? `Strumenti & Preferenze Grafico TradingView`
-                                : dialog === "notes"
-                                  ? ck("cockpit.ui.dialog.notes")
-                                  : dialog === "confirm"
-                                    ? "Sigillo del Trade & Inizio Gestione · AUREUS PROTOCOL"
-                                    : dialog === "protocol"
-                                      ? "Protocollo Operativo & Regole Inviolabili"
-                                      : ck("cockpit.ui.dialog.default")}
-            </DialogTitle>
-          </DialogHeader>
-
+        <div className="space-y-4">
           {dialog === "protection" && (
             <>
               <Protection
@@ -4432,8 +4431,8 @@ function CockpitView({
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </div>
+      </LimenResponsiveDrawer>
 
       {/* ── MODALE LIBRO DELLA VERITÀ (IN-PLACE SENZA LASCIARE IL GRAFICO) ── */}
       {journalModalOpen && (
