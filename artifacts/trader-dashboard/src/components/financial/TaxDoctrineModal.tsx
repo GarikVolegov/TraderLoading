@@ -1,7 +1,6 @@
 import React, { useState } from "react";
+import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import {
-  Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -105,8 +104,14 @@ Generato dal Banco dell'Architettura Patrimoniale AUREUS`;
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] bg-[#0d0f14] border border-[#C5A059]/30 text-foreground p-0 flex flex-col overflow-hidden shadow-2xl">
+    <LimenResponsiveDrawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      desktopClassName="max-w-4xl max-h-[90vh] bg-[#0d0f14] border border-[#C5A059]/30 text-foreground p-0 flex flex-col overflow-hidden shadow-2xl"
+      mobileClassName="max-h-[92dvh] bg-[#0d0f14] border-t border-[#C5A059]/40 text-foreground p-0 flex flex-col overflow-hidden"
+      showCloseButton={false}
+    >
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Header Istituzionale */}
         <DialogHeader className="p-4 sm:p-5 border-b border-border/60 bg-[#07080b]/90 shrink-0">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -156,7 +161,7 @@ Generato dal Banco dell'Architettura Patrimoniale AUREUS`;
           </DialogDescription>
 
           {/* Navigazione Tabs */}
-          <div className="grid grid-cols-4 gap-1.5 pt-3 font-mono text-[10.5px]">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-3 font-mono text-[10.5px]">
             <button
               type="button"
               onClick={() => setActiveTab("regimes")}
@@ -630,7 +635,7 @@ Generato dal Banco dell'Architettura Patrimoniale AUREUS`;
             Chiudi Compendio
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </LimenResponsiveDrawer>
   );
 };

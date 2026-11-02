@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, Loader2, CheckCircle, AlertTriangle, Download, Share2, Check } from "lucide-react";
+import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { NftCertificate, type CertTier } from "./NftCertificate";
 import { downloadTorneoCertificate } from "./torneoCertificateExport";
@@ -39,26 +40,15 @@ export function CertModal({ cert, claiming, hasWallet, mintEnabled, onClaim, onC
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 60,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-        background: "rgba(10, 10, 12, 0.85)",
-        backdropFilter: "blur(6px)",
-      }}
+    <LimenResponsiveDrawer
+      open={Boolean(cert)}
+      onOpenChange={(open) => !open && onClose()}
+      desktopClassName="max-w-md p-6 bg-[#07080b]/98 border border-[#C5A059]/40 shadow-2xl"
+      mobileClassName="max-h-[92dvh] p-4 bg-[#07080b]/98 border-t border-[#C5A059]/40"
+      showCloseButton={false}
     >
       <div
-        className="trn-page"
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: "min(440px, 100%)", display: "flex", flexDirection: "column", gap: 14 }}
+        className="trn-page w-full flex flex-col gap-3.5"
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
@@ -205,6 +195,6 @@ export function CertModal({ cert, claiming, hasWallet, mintEnabled, onClaim, onC
           </>
         )}
       </div>
-    </div>
+    </LimenResponsiveDrawer>
   );
 }

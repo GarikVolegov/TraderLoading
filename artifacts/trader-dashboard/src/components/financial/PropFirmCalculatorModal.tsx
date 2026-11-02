@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
+import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import {
-  Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -142,8 +141,14 @@ export const PropFirmCalculatorModal: React.FC<PropFirmCalculatorModalProps> = (
   }, [userPrefs]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto bg-[#07080b] border border-[#C5A059]/40 text-foreground p-4 sm:p-6 shadow-2xl scrollbar-thin scrollbar-thumb-[#C5A059]/30">
+    <LimenResponsiveDrawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      desktopClassName="max-w-4xl max-h-[92vh] overflow-y-auto bg-[#07080b] border border-[#C5A059]/40 text-foreground p-4 sm:p-6 shadow-2xl scrollbar-thin scrollbar-thumb-[#C5A059]/30"
+      mobileClassName="max-h-[92dvh] overflow-y-auto bg-[#07080b] border-t border-[#C5A059]/40 text-foreground p-4 shadow-2xl"
+      showCloseButton={false}
+    >
+      <div className="space-y-4">
         <DialogHeader className="pb-3 border-b border-border/60">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -1049,7 +1054,7 @@ export const PropFirmCalculatorModal: React.FC<PropFirmCalculatorModalProps> = (
             </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </LimenResponsiveDrawer>
   );
 };

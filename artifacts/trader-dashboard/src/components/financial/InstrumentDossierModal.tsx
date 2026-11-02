@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
+import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import {
-  Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -569,8 +568,14 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
   if (!dossier) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl sm:max-w-4xl bg-[#0d0f14] border border-[#C5A059]/35 text-foreground shadow-[0_0_50px_rgba(0,0,0,0.9)] p-0 overflow-hidden">
+    <LimenResponsiveDrawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      desktopClassName="max-w-3xl sm:max-w-4xl bg-[#0d0f14] border border-[#C5A059]/35 text-foreground shadow-[0_0_50px_rgba(0,0,0,0.9)] p-0 overflow-hidden"
+      mobileClassName="max-h-[92dvh] bg-[#0d0f14] border-t border-[#C5A059]/40 text-foreground p-0 overflow-hidden"
+      showCloseButton={false}
+    >
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Header con codice, categoria e selettore Tab */}
         <div className="bg-[#11131c] border-b border-[#C5A059]/25 p-4 sm:p-5 pb-3">
           <div className="flex items-center justify-between gap-3 mb-2">
@@ -1244,7 +1249,7 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
             Chiudi Dossier
           </button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </LimenResponsiveDrawer>
   );
 };

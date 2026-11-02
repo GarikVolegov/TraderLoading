@@ -4,9 +4,7 @@ import { format } from "date-fns";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, UploadCloud, Loader2, Image as ImageIcon, Tag, Plus, Star, Hash, ClipboardCheck, Target, Zap } from "lucide-react";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle
-} from "@/components/ui/dialog";
+import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -549,13 +547,15 @@ export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketD
   useEffect(() => () => pendingFilesRef.current.forEach(file => URL.revokeObjectURL(file.preview)), []);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !isSaving && !open && onClose()}>
-      <DialogContent className="sm:max-w-[700px] bg-card/95 backdrop-blur-xl border-border max-h-[90vh] overflow-y-auto hide-scrollbar">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-mono text-foreground flex items-center gap-2">
-            {entry ? t("journal_modal.edit") : t("journal_modal.new")}
-          </DialogTitle>
-        </DialogHeader>
+    <LimenResponsiveDrawer
+      open={isOpen}
+      onOpenChange={(open) => !isSaving && !open && onClose()}
+      title={entry ? t("journal_modal.edit") : t("journal_modal.new")}
+      desktopClassName="sm:max-w-[700px] bg-card/95 backdrop-blur-xl border border-primary/30 max-h-[90vh] overflow-y-auto"
+      mobileClassName="max-h-[92dvh] bg-[#07080b]/98 backdrop-blur-2xl border-t border-[#C5A059]/40"
+      showCloseButton={!isSaving}
+    >
+      <div className="space-y-4">
         {!entry && marketDecisionId && <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">{t("intelligence.linked_note")}</p>}
         {processContext && <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2 text-sm">
           <p className="font-medium">{copy("processEvidence")}</p>
@@ -837,7 +837,7 @@ export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketD
             )}
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </LimenResponsiveDrawer>
   );
 }
