@@ -14,6 +14,7 @@ import { BacktestTournamentHub } from "@/components/backtest-tournament/Backtest
 import { Button } from "@/components/ui/button";
 import { LimenServiceLockGate } from "@/components/candidacy/LimenServiceLockGate";
 import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
+import { useEdgeSwipe } from "@/hooks/useEdgeSwipe";
 import { countdownParts, pad2 } from "@/components/tornei/format";
 import {
   fetchTorneiCurrent,
@@ -116,6 +117,15 @@ export function TorneiWorkspace({ embedded = false }: { embedded?: boolean }) {
       }
     },
     onError: () => toast({ title: t("tornei.enroll.error.generic"), variant: "destructive" }),
+  });
+
+  const { onTouchStart: onTorneiTouchStart, onTouchEnd: onTorneiTouchEnd } = useEdgeSwipe({
+    onSwipeLeft: () => {
+      if (dir === "arena") setDir("percorso");
+    },
+    onSwipeRight: () => {
+      if (dir === "percorso") setDir("arena");
+    },
   });
 
   // enrollTornei's `consent` param is recorded server-side as the user's
@@ -277,7 +287,11 @@ export function TorneiWorkspace({ embedded = false }: { embedded?: boolean }) {
         </header>
 
         {/* Contenuto Principale: Cockpit Zero-Scroll */}
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
+        <div
+          className="flex-1 min-h-0 flex flex-col overflow-hidden w-full"
+          onTouchStart={onTorneiTouchStart}
+          onTouchEnd={onTorneiTouchEnd}
+        >
           {dir === "battaglie" ? (
             <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#C5A059]/30">
               <BacktestTournamentHub />

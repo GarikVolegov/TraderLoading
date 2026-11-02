@@ -92,20 +92,68 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
   return (
     <footer className="btm-transport">
       <div className="btm-playback-controls" role="group" aria-label={uiText("backtest_terminal.playback_controls")}>
-        <button type="button" className="btm-transport-btn" onClick={engine.restart} disabled={engine.loading || engine.executing}
-          title={uiText("backtest_terminal.restart")} aria-label={uiText("backtest_terminal.restart")}><RotateCcw size={17} /></button>
-        <button type="button" className="btm-transport-btn" onClick={engine.stepBack} disabled={engine.loading || engine.executing || engine.noData}
-          title={uiText("backtest_terminal.step_back")} aria-label={uiText("backtest_terminal.step_back")}><ChevronLeft size={19} /></button>
-        <button type="button" className="btm-transport-btn btm-play" onClick={engine.togglePlay} disabled={engine.loading || engine.noData}
+        <button
+          type="button"
+          className="btm-transport-btn"
+          onClick={() => {
+            synestheticClick();
+            engine.restart();
+          }}
+          disabled={engine.loading || engine.executing}
+          title={uiText("backtest_terminal.restart")}
+          aria-label={uiText("backtest_terminal.restart")}
+        >
+          <RotateCcw size={17} />
+        </button>
+        <button
+          type="button"
+          className="btm-transport-btn"
+          onClick={() => {
+            synestheticClick();
+            engine.stepBack();
+          }}
+          disabled={engine.loading || engine.executing || engine.noData}
+          title={uiText("backtest_terminal.step_back")}
+          aria-label={uiText("backtest_terminal.step_back")}
+        >
+          <ChevronLeft size={19} />
+        </button>
+        <button
+          type="button"
+          className="btm-transport-btn btm-play"
+          onClick={() => {
+            synestheticClick();
+            engine.togglePlay();
+          }}
+          disabled={engine.loading || engine.noData}
           title={uiText(engine.playing ? "backtest_terminal.pause" : "backtest_terminal.play")}
-          aria-label={uiText(engine.playing ? "backtest_terminal.pause" : "backtest_terminal.play")}>
+          aria-label={uiText(engine.playing ? "backtest_terminal.pause" : "backtest_terminal.play")}
+        >
           {engine.playing ? <Pause size={18} /> : <Play size={18} />}
         </button>
-        <button type="button" className="btm-transport-btn" onClick={engine.stepForward} disabled={engine.loading || engine.executing || engine.noData}
-          title={uiText("backtest_terminal.step_forward")} aria-label={uiText("backtest_terminal.step_forward")}><ChevronRight size={19} /></button>
+        <button
+          type="button"
+          className="btm-transport-btn"
+          onClick={() => {
+            synestheticClick();
+            engine.stepForward();
+          }}
+          disabled={engine.loading || engine.executing || engine.noData}
+          title={uiText("backtest_terminal.step_forward")}
+          aria-label={uiText("backtest_terminal.step_forward")}
+        >
+          <ChevronRight size={19} />
+        </button>
       </div>
-      <select className="btm-speed-select" value={engine.speed} onChange={(event) => engine.changeSpeed(Number(event.target.value))}
-        aria-label={uiText("backtest_terminal.speed")}>
+      <select
+        className="btm-speed-select"
+        value={engine.speed}
+        onChange={(event) => {
+          synestheticClick();
+          engine.changeSpeed(Number(event.target.value));
+        }}
+        aria-label={uiText("backtest_terminal.speed")}
+      >
         {REPLAY_SPEEDS.map((value) => <option key={value} value={value}>{value}×</option>)}
       </select>
       <span

@@ -37,6 +37,7 @@ import { ReplayEquityCurve } from "@/components/backtest-terminal/ReplayEquityCu
 import { BacktestBattlesDrawer } from "@/components/backtest-tournament/BacktestBattlesDrawer";
 import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
 import { LimenServiceLockGate } from "@/components/candidacy/LimenServiceLockGate";
+import { useEdgeSwipe } from "@/hooks/useEdgeSwipe";
 
 const BacktestTournamentHub = lazy(() =>
   import("@/components/backtest-tournament/BacktestTournamentHub").then((m) => ({
@@ -482,6 +483,15 @@ export default function Backtest() {
     return trades;
   }, [trades, tradeFilter]);
 
+  const { onTouchStart: onBacktestTouchStart, onTouchEnd: onBacktestTouchEnd } = useEdgeSwipe({
+    onSwipeLeft: () => {
+      if (mobileSection === "workbench") setMobileSection("sessions");
+    },
+    onSwipeRight: () => {
+      if (mobileSection === "sessions") setMobileSection("workbench");
+    },
+  });
+
   if (!entitlements.forgeOfThePast) {
     return (
       <PageLayout>
@@ -511,7 +521,11 @@ export default function Backtest() {
   return (
     <PageLayout quiet fullWidth className="lg:h-[100dvh]">
       <ProUpgradeGate feature="backtest" fillViewport>
-        <div className="flex flex-col flex-1 min-h-0 lg:h-full lg:overflow-hidden">
+        <div
+          className="flex flex-col flex-1 min-h-0 lg:h-full lg:overflow-hidden"
+          onTouchStart={onBacktestTouchStart}
+          onTouchEnd={onBacktestTouchEnd}
+        >
           {/* ── Mobile Section Switcher (< 1024px): Banco & KPI / Sessioni / Prove del Fuoco ── */}
           <div className="flex lg:hidden items-center justify-between gap-1.5 mb-2.5 pb-2 border-b border-[#C5A059]/20 shrink-0 mobile-compact-bar">
             <div className="flex items-center gap-1 rounded-lg border border-[#C5A059]/25 bg-[#0B0D13] p-0.5 text-[11px] font-mono flex-1">
