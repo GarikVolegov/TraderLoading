@@ -10,6 +10,10 @@ import {
   X,
   Check,
   Trash2,
+  ArrowUpRight,
+  ArrowDownRight,
+  Plus,
+  Minus,
 } from "lucide-react";
 import {
   CandlestickSeries,
@@ -282,16 +286,16 @@ function formatHumanTimeframe(tf: string): string {
 function getFutureWhitespaceBars(lastTime: number, interval: string): Array<{ time: Time }> {
   const norm = interval.trim().toUpperCase();
   let step = 3600;
-  let count = 160;
+  let count = 28;
 
-  if (norm === "1" || norm === "M1") { step = 60; count = 240; }
-  else if (norm === "5" || norm === "M5") { step = 300; count = 200; }
-  else if (norm === "15" || norm === "M15") { step = 900; count = 180; }
-  else if (norm === "30" || norm === "M30") { step = 1800; count = 160; }
-  else if (norm === "60" || norm === "H1" || norm === "1H") { step = 3600; count = 160; }
-  else if (norm === "240" || norm === "H4" || norm === "4H") { step = 14400; count = 120; }
-  else if (norm === "D" || norm === "D1" || norm === "1D") { step = 86400; count = 90; }
-  else if (norm === "W" || norm === "W1" || norm === "1W") { step = 604800; count = 52; }
+  if (norm === "1" || norm === "M1") { step = 60; count = 60; }
+  else if (norm === "5" || norm === "M5") { step = 300; count = 36; }
+  else if (norm === "15" || norm === "M15") { step = 900; count = 32; }
+  else if (norm === "30" || norm === "M30") { step = 1800; count = 28; }
+  else if (norm === "60" || norm === "H1" || norm === "1H") { step = 3600; count = 28; }
+  else if (norm === "240" || norm === "H4" || norm === "4H") { step = 14400; count = 16; }
+  else if (norm === "D" || norm === "D1" || norm === "1D") { step = 86400; count = 10; }
+  else if (norm === "W" || norm === "W1" || norm === "1W") { step = 604800; count = 8; }
 
   const out: Array<{ time: Time }> = [];
   for (let i = 1; i <= count; i++) {
@@ -669,7 +673,8 @@ export function LimenProprietaryChart({
       const accountBalance = d.accountSize ?? 10000;
       const riskPct = d.riskPct ?? ticket.riskValue ?? 1;
       const cashRisk = Math.max(1, (accountBalance * riskPct) / 100);
-      const lots = computeLots({ riskAmount: cashRisk, slPips, symbol: cleanSym });
+      const calculatedLots = computeLots({ riskAmount: cashRisk, slPips, symbol: cleanSym });
+      const lots = typeof d.lots === "number" && d.lots > 0 ? d.lots : calculatedLots;
       totalLots += lots;
       totalRisk += lots > 0 ? lots * slPips * pipVal : cashRisk;
       totalReward += lots > 0 ? lots * tpPips * pipVal : cashRisk * (slPips > 0 ? tpPips / slPips : 1);
@@ -851,7 +856,8 @@ export function LimenProprietaryChart({
       const tpPips = Math.abs(d.tpPrice - d.entry.price) * pipMult;
       const riskPct = d.riskPct ?? ticket.riskValue ?? 1;
       const cashRisk = Math.max(1, (replayCapitalSize * riskPct) / 100);
-      const lots = computeLots({ riskAmount: cashRisk, slPips, symbol: cleanSym });
+      const calculatedLots = computeLots({ riskAmount: cashRisk, slPips, symbol: cleanSym });
+      const lots = typeof d.lots === "number" && d.lots > 0 ? d.lots : calculatedLots;
       const maxReward = lots > 0 ? lots * tpPips * pipVal : cashRisk * (slPips > 0 ? tpPips / slPips : 1);
       const maxRisk = lots > 0 ? lots * slPips * pipVal : cashRisk;
       const isLong = d.direction === "buy";
@@ -940,6 +946,111 @@ export function LimenProprietaryChart({
       closedTradesList,
     };
   }, [drawings, symbol, ticket.riskValue, replayActive, replayCutIndex, candles, replayCapitalSize]);
+
+  // Lottaggio Replay & Esecuzione Rapida (Ispirazione FXReplay)
+  const [replayLots, setReplayLots] = useState<number>(() => {
+    if (typeof window === "undefined") return 1.0;
+    const saved = localStorage.getItem("limen_replay_lots_v1");
+    const num = saved ? parseFloat(saved) : 1.0;
+    return Number.isFinite(num) && num > 0 ? num : 1.0;
+  });
+
+  const updateReplayLots = useCallback((nextVal: number) => {
+    const clamped = Math.max(0.01, Math.min(100, Math.round(nextVal * 100) / 100));
+    setReplayLots(clamped);
+    try {
+      localStorage.setItem("limen_replay_lots_v1", String(clamped));
+    } catch {}
+  }, []);
+
+  const handleExecuteInstantReplayTrade = useCallback(
+    (direction: "buy" | "sell") => {
+      if (!candles || candles.length === 0) return;
+
+      const effectiveIndex =
+        replayActive && replayCutIndex != null
+          ? Math.min(candles.length - 1, Math.max(0, replayCutIndex))
+          : candles.length - 1;
+
+      if (!replayActive) {
+        setReplayActive(true);
+        setReplayCutIndex(effectiveIndex);
+        setReplayScissorsMode(false);
+      }
+
+      const currentBar = candles[effectiveIndex] || candles[candles.length - 1];
+      if (!currentBar) return;
+
+      const rawSym = symbol.includes(":") ? symbol.split(":").pop()! : symbol;
+      const cleanSym = rawSym.trim().toUpperCase().replace(/[\/\-_]/g, "");
+      const pipMult = getPipMultiplier(cleanSym);
+      const dec = priceDecimals(symbol);
+
+      const entryPrice = currentBar.close;
+      const entryTime = currentBar.time;
+
+      // Impostazione SL e TP intelligenti basati sull'asset con R:R 1:2
+      // Oro (XAU): 20 pips ($2.00) / Forex: 20 pips (0.0020) / Crypto-Indici: 20 pips (20 pt)
+      const slPipsDefault = 20;
+      const tpPipsDefault = 40;
+      const slDist = slPipsDefault / pipMult;
+      const tpDist = tpPipsDefault / pipMult;
+
+      const isBuy = direction === "buy";
+      const slPrice = Number((isBuy ? entryPrice - slDist : entryPrice + slDist).toFixed(dec));
+      const tpPrice = Number((isBuy ? entryPrice + tpDist : entryPrice - tpDist).toFixed(dec));
+
+      const barSecs = timeframeToSeconds(interval);
+      const endTime = entryTime + barSecs * 15;
+
+      const newPosition: ReplayDrawing = {
+        id: `pos-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        kind: "position",
+        direction,
+        entry: { time: entryTime, price: entryPrice },
+        slPrice,
+        tpPrice,
+        endTime,
+        color: isBuy ? "#10b981" : "#ef4444",
+        stopColor: "#ef4444",
+        targetColor: "#10b981",
+        fillOpacity: 0.16,
+        accountSize: replayCapitalSize,
+        riskPct: ticket.riskValue || 1,
+        lots: replayLots,
+        showStats: true,
+        compactLabels: false,
+      };
+
+      handleUpdateDrawings((prev) => [...prev, newPosition]);
+      synestheticAlert();
+
+      if (onTradePlanned) {
+        const risk = Math.abs(entryPrice - slPrice);
+        const reward = Math.abs(tpPrice - entryPrice);
+        const rr = risk > 0 ? parseFloat((reward / risk).toFixed(2)) : 2.0;
+        onTradePlanned({
+          direction,
+          entryPrice,
+          stopLoss: slPrice,
+          takeProfit: tpPrice,
+          riskReward: rr,
+        });
+      }
+    },
+    [
+      candles,
+      replayActive,
+      replayCutIndex,
+      symbol,
+      interval,
+      replayCapitalSize,
+      ticket.riskValue,
+      replayLots,
+      handleUpdateDrawings,
+      onTradePlanned,
+    ],
+  );
 
   // ── Sentinella di Prezzo: Alert Sonori Sinestesici sui Livelli Tracciati ────
   const triggeredAlertsRef = useRef<Map<string, number>>(new Map());
@@ -1800,7 +1911,7 @@ export function LimenProprietaryChart({
           const res = await fetch(`/api/backtest/candles?${query}&mode=replay`);
           if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data?.candles)) return parseBars(data.candles);
+            if (Array.isArray(data?.candles) && data.candles.length > 0) return parseBars(data.candles);
           }
         } catch { /* fall through to the generic window */ }
         const res = await fetch(`/api/backtest/candles?${query}`);
@@ -2541,6 +2652,23 @@ export function LimenProprietaryChart({
             onToolChange={setActiveTool}
           />
 
+          {/* Skeleton / Loading Forge Overlay AUREUS (Zero Schermi Neri o Vuoti) */}
+          {feedStatus === "connecting" && candles.length === 0 && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#07080b]/85 backdrop-blur-xs pointer-events-none transition-opacity duration-300">
+              <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-[#0d0f14]/95 border border-[#C5A059]/35 shadow-2xl shadow-black">
+                <div className="w-4 h-4 rounded-full border-2 border-[#C5A059] border-t-transparent animate-spin shrink-0" />
+                <div className="flex flex-col">
+                  <span className="font-mono text-xs font-bold text-[#E8C56A] uppercase tracking-wider whitespace-nowrap">
+                    Forgiatura Candele AUREUS
+                  </span>
+                  <span className="font-mono text-[10px] text-zinc-400 whitespace-nowrap">
+                    {formatCleanPairLabel(symbol)} · {formatHumanTimeframe(interval)} · Connessione Flusso
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div
             ref={containerRef}
             className="limen-chart-canvas-container"
@@ -2826,10 +2954,79 @@ export function LimenProprietaryChart({
             </div>
           )}
 
-          {/* Floating Replay Transport Dock (TradingView Pro con Telemetria Conto Base 10k) */}
+          {/* Floating Replay Transport & Quick Execution Dock (FXReplay Elegance + Aureus Ethos) */}
           {(replayActive || replayScissorsMode) && (
-            <div className="limen-replay-floating-dock flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
+            <div className="limen-replay-floating-dock flex items-center gap-2 flex-nowrap">
+              {/* Gruppo 1: Esecuzione Rapida Ordini Istantanei (Buy / Sell / Lotti) */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  className="limen-replay-buy-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleExecuteInstantReplayTrade("buy");
+                  }}
+                  title="Esegui Ordine Long (Buy) alla candela corrente"
+                >
+                  <ArrowUpRight size={13} className="stroke-[2.5]" />
+                  <span className="whitespace-nowrap">BUY</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="limen-replay-sell-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleExecuteInstantReplayTrade("sell");
+                  }}
+                  title="Esegui Ordine Short (Sell) alla candela corrente"
+                >
+                  <ArrowDownRight size={13} className="stroke-[2.5]" />
+                  <span className="whitespace-nowrap">SELL</span>
+                </button>
+
+                {/* Selettore Lotti con Stepper e Input */}
+                <div className="limen-replay-lots-control" title="Lottaggio operativo della posizione">
+                  <button
+                    type="button"
+                    className="limen-replay-lot-step"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateReplayLots(Math.max(0.01, replayLots - (replayLots > 1 ? 0.5 : 0.1)));
+                    }}
+                    title="Riduci lotti"
+                  >
+                    <Minus size={10} />
+                  </button>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.01"
+                    max="100"
+                    value={replayLots}
+                    onChange={(e) => updateReplayLots(parseFloat(e.target.value) || 0.1)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="limen-replay-lot-input font-mono"
+                    title="Lotti impostati"
+                  />
+                  <button
+                    type="button"
+                    className="limen-replay-lot-step"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateReplayLots(replayLots + (replayLots >= 1 ? 0.5 : 0.1));
+                    }}
+                    title="Aumenta lotti"
+                  >
+                    <Plus size={10} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="h-4 w-px bg-white/15 shrink-0 mx-0.5" />
+
+              {/* Gruppo 2: Controlli Temporali & Player */}
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
                   className={`limen-replay-dock-btn ${replayScissorsMode ? "is-active-cut" : ""}`}
@@ -2905,8 +3102,8 @@ export function LimenProprietaryChart({
                 </button>
               </div>
 
-              {/* Telemetria Sovrana Conto Base Replay (La Forgia del Passato) */}
-              <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-white/15 font-mono text-[10.5px]">
+              {/* Gruppo 3: Telemetria Sovrana Conto Base Replay & Sigillo */}
+              <div className="hidden sm:flex items-center gap-2 pl-1 border-l border-white/15 font-mono text-[10.5px] shrink-0">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -3031,14 +3228,43 @@ export function LimenProprietaryChart({
 
       {/* ── TradingView Pro Bottom Bar (1D 5D 1M 3M 6M YTD 1Y Tutto · UTC+2 Clock · % log auto) ── */}
       <div className="limen-bottom-bar" role="toolbar" aria-label="Controlli vista grafico">
-        <div className="limen-bottom-ranges">
-          <button type="button" onClick={() => setRangeBars(1)} title="Ultimo giorno">1D</button>
-          <button type="button" onClick={() => setRangeBars(5)} title="Ultimi 5 giorni">5D</button>
-          <button type="button" onClick={() => setRangeBars(30)} title="Ultimo mese">1M</button>
-          <button type="button" onClick={() => setRangeBars(90)} title="Ultimi 3 mesi">3M</button>
-          <button type="button" onClick={() => setRangeBars(180)} title="Ultimi 6 mesi">6M</button>
-          <button type="button" onClick={() => setRangeBars(365)} title="Ultimo anno">1Y</button>
-          <button type="button" onClick={() => chartRef.current?.timeScale().fitContent()} title="Tutti i dati">Tutto</button>
+        <div className="flex items-center gap-2">
+          {/* Quick Trade Triggers (Ispirazione FXReplay) */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="limen-bottom-quick-buy"
+              onClick={() => handleExecuteInstantReplayTrade("buy")}
+              title="Acquista (Buy / Long) istantaneo al prezzo corrente"
+            >
+              <ArrowUpRight size={11} className="stroke-[2.5]" />
+              <span className="whitespace-nowrap">BUY</span>
+            </button>
+            <button
+              type="button"
+              className="limen-bottom-quick-sell"
+              onClick={() => handleExecuteInstantReplayTrade("sell")}
+              title="Vendi (Sell / Short) istantaneo al prezzo corrente"
+            >
+              <ArrowDownRight size={11} className="stroke-[2.5]" />
+              <span className="whitespace-nowrap">SELL</span>
+            </button>
+            <div className="limen-bottom-lots-badge whitespace-nowrap font-mono text-[9.5px]">
+              {replayLots}L
+            </div>
+          </div>
+
+          <div className="h-3 w-px bg-white/10 hidden sm:block" />
+
+          <div className="limen-bottom-ranges">
+            <button type="button" onClick={() => setRangeBars(1)} title="Ultimo giorno">1D</button>
+            <button type="button" onClick={() => setRangeBars(5)} title="Ultimi 5 giorni">5D</button>
+            <button type="button" onClick={() => setRangeBars(30)} title="Ultimo mese">1M</button>
+            <button type="button" onClick={() => setRangeBars(90)} title="Ultimi 3 mesi">3M</button>
+            <button type="button" onClick={() => setRangeBars(180)} title="Ultimi 6 mesi">6M</button>
+            <button type="button" onClick={() => setRangeBars(365)} title="Ultimo anno">1Y</button>
+            <button type="button" onClick={() => chartRef.current?.timeScale().fitContent()} title="Tutti i dati">Tutto</button>
+          </div>
         </div>
 
         <div className="limen-bottom-right relative">

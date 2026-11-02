@@ -342,17 +342,10 @@ function buildYahooChartUrl(symbol: string, interval: string, options: CandlesRe
   const earliestAllowed = Math.max(0, now - maxReachFromNow);
 
   if (startDate) {
-    const startTs = unixDayStart(startDate);
-    if (startTs <= earliestAllowed && interval !== "D1" && interval !== "W1") {
-      throw new Error(`Yahoo: intraday reach exceeded before ${new Date(earliestAllowed * 1000).toISOString().slice(0, 10)}`);
-    }
-    params.set("period1", String(startTs));
+    params.set("period1", String(unixDayStart(startDate)));
     params.set("period2", String(now));
   } else if (options.to != null) {
     const to = options.to;
-    if (to <= earliestAllowed && interval !== "D1" && interval !== "W1") {
-      throw new Error(`Yahoo: data not available for interval ${interval} before ${new Date(earliestAllowed * 1000).toISOString().slice(0, 10)}`);
-    }
     const lookback =
       interval === "M1"
         ? 5 * 86400
@@ -361,13 +354,10 @@ function buildYahooChartUrl(symbol: string, interval: string, options: CandlesRe
         : interval === "H1" || interval === "H4"
         ? 180 * 86400
         : 3650 * 86400;
-    const from = Math.max(earliestAllowed, options.from ?? (to - lookback));
+    const from = options.from ?? (to - lookback);
     params.set("period1", String(from));
     params.set("period2", String(to));
   } else if (options.from != null) {
-    if (options.from <= earliestAllowed && interval !== "D1" && interval !== "W1") {
-      throw new Error(`Yahoo: intraday reach exceeded before ${new Date(earliestAllowed * 1000).toISOString().slice(0, 10)}`);
-    }
     params.set("period1", String(options.from));
     params.set("period2", String(now));
   } else {
@@ -710,7 +700,22 @@ export async function getCandles(
         result = { symbol, interval, source: "warehouse", ...page };
       } else if (options.to != null) {
         // Bounded window ending at `to`: historical, no live tail, no cursor.
-        result = { symbol, interval, source: "warehouse", candles: latestWindowCandles(warehouse, options) };
+        // If warehouse has fewer bars than requested limit, backfill with live.
+        if (warehouse.length < clampPageLimit(options.limit)) {
+          try {
+            const live = await fetchLiveCandles(symbol, interval, options);
+            result = {
+              symbol,
+              interval,
+              source: "warehouse+live",
+              candles: latestWindowCandles(mergeTail(warehouse, live.candles), options),
+            };
+          } catch {
+            result = { symbol, interval, source: "warehouse", candles: latestWindowCandles(warehouse, options) };
+          }
+        } else {
+          result = { symbol, interval, source: "warehouse", candles: latestWindowCandles(warehouse, options) };
+        }
       } else {
         // Latest window: best-effort splice of a fresh live tail.
         try {
@@ -996,7 +1001,7 @@ async function fetchLiveCandles(
       return { ...stale.data, stale: true };
     }
 
-    if (interval !== "D1" && interval !== "W1") {
+    if ((options.mode === "replay" || options.to != null) && interval !== "D1" && interval !== "W1") {
       try {
         console.log(`[candles] Deep historical synthesis fallback engaged for ${symbol} ${interval}`);
         const synth = await fetchDeepIntradaySynthesized(symbol, interval, options);
@@ -1014,7 +1019,11 @@ async function fetchLiveCandles(
       throw new Error(insufficientCandlesMessage(symbol, interval, bestCandlesCount));
     }
 
-    if (startDate && isIntradayReplayInterval(interval) && errors.some((error) => error.includes("Yahoo HTTP 422"))) {
+    if (
+      startDate &&
+      isIntradayReplayInterval(interval) &&
+      errors.some((error) => error.includes("Yahoo HTTP 422") || error.includes("intraday reach exceeded"))
+    ) {
       throw new Error(unavailableIntradayHistoryMessage(symbol, interval, startDate));
     }
 

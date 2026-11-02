@@ -650,13 +650,166 @@
   z-index: 80;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 30px;
-  background: rgba(13, 15, 20, 0.95);
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(13, 15, 20, 0.96);
   border: 1px solid rgba(197, 160, 89, 0.4);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(197, 160, 89, 0.2);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(197, 160, 89, 0.18);
+  backdrop-filter: blur(12px);
+  max-width: calc(100% - 32px);
+  overflow-x: auto;
+}
+
+.limen-replay-buy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.55);
+  color: #34d399;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+  user-select: none;
+}
+.limen-replay-buy-btn:hover {
+  background: rgba(16, 185, 129, 0.32);
+  border-color: #10b981;
+  color: #6ee7b7;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+.limen-replay-buy-btn:active {
+  transform: translateY(0);
+}
+
+.limen-replay-sell-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  color: #f87171;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+  user-select: none;
+}
+.limen-replay-sell-btn:hover {
+  background: rgba(239, 68, 68, 0.32);
+  border-color: #ef4444;
+  color: #fca5a5;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
+  transform: translateY(-1px);
+}
+.limen-replay-sell-btn:active {
+  transform: translateY(0);
+}
+
+.limen-replay-lots-control {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(197, 160, 89, 0.35);
+  border-radius: 6px;
+  padding: 1px 3px;
+  gap: 1px;
+}
+.limen-replay-lot-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  transition: all 0.12s;
+}
+.limen-replay-lot-step:hover {
+  background: rgba(197, 160, 89, 0.2);
+  color: #E8C56A;
+}
+.limen-replay-lot-input {
+  width: 38px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: #E8C56A;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  outline: none;
+}
+
+.limen-bottom-quick-buy {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.limen-bottom-quick-buy:hover {
+  background: rgba(16, 185, 129, 0.28);
+  color: #6ee7b7;
+  border-color: #10b981;
+}
+.limen-bottom-quick-sell {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.limen-bottom-quick-sell:hover {
+  background: rgba(239, 68, 68, 0.28);
+  color: #fca5a5;
+  border-color: #ef4444;
+}
+.limen-bottom-lots-badge {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(197, 160, 89, 0.12);
+  border: 1px solid rgba(197, 160, 89, 0.3);
+  color: #E8C56A;
+  font-weight: 700;
 }
 
 .limen-replay-dock-btn {

@@ -1047,22 +1047,6 @@ export function LimenChartHeader({
               FVG
             </button>
           )}
-
-          {onToggleRedNews && (
-            <button
-              type="button"
-              className={`px-2 py-0.5 text-[11px] font-mono rounded border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                showRedNews
-                  ? "bg-rose-500/15 text-rose-300 border-rose-500/40 font-bold"
-                  : "text-zinc-400 hover:text-white border-[#26262E] bg-[#0B0C10]"
-              }`}
-              onClick={onToggleRedNews}
-              title="Attiva/disattiva Marker Notizie Rosse ad Alto Impatto sul Grafico"
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${showRedNews ? "bg-rose-400 animate-pulse" : "bg-zinc-500"}`} />
-              <span>News Rosse</span>
-            </button>
-          )}
         </div>
 
         {/* 1.6 Menu Indicatori Completo (fx) con Stelline ★ */}

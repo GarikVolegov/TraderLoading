@@ -125,6 +125,23 @@ function m5(index: number, withVolume = true): Candle {
 
   assert.deepEqual(mergeTail([], live), live, "empty warehouse → live as-is");
   assert.deepEqual(mergeTail(warehouse, []), warehouse, "empty live → warehouse as-is");
+
+  // Deep history backfill: live bars before warehouse[0] must be preserved
+  const deepLive = [
+    hourly(-2, 8),
+    hourly(-1, 9),
+    hourly(1, 99),
+    hourly(2, 12.5),
+    hourly(3, 13),
+  ];
+  const mergedDeep = mergeTail(warehouse, deepLive);
+  assert.equal(mergedDeep.length, 6, "2 deep historical bars backfilled + 3 warehouse bars + 1 live tail bar");
+  assert.equal(mergedDeep[0].close, 8, "deep historical bar -2 kept");
+  assert.equal(mergedDeep[1].close, 9, "deep historical bar -1 kept");
+  assert.equal(mergedDeep[2].close, 10, "warehouse bar 0 kept");
+  assert.equal(mergedDeep[3].close, 11, "warehouse bar 1 kept (live 99 ignored)");
+  assert.equal(mergedDeep[4].close, 12.5, "cutoff bar 2 updated by live");
+  assert.equal(mergedDeep[5].close, 13, "live bar 3 appended");
 }
 
 console.log("aggregate.test.ts: all assertions passed");

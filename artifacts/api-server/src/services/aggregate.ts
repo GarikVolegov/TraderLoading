@@ -89,18 +89,28 @@ export function aggregateInterval(base: Candle[], interval: string): Candle[] {
 }
 
 /**
- * Splice a fresh live tail onto the warehouse series. Live bars at or after the
- * warehouse's last bar win (they carry the forming/most-recent candle), older
- * live bars are ignored. Both inputs must be ascending by `time`; the result is
- * ascending and de-duplicated by bucket time.
+ * Splice a fresh live tail onto the warehouse series, and backfill older historical
+ * bars if the warehouse only holds a recent window.
+ * - Live bars before warehouse's first bar backfill deep history.
+ * - Warehouse bars are authoritative for their covered range.
+ * - Live bars at or after warehouse's last bar win (they carry the forming/most-recent candle).
+ * Both inputs must be ascending by `time`; the result is ascending and de-duplicated.
  */
 export function mergeTail(warehouse: Candle[], live: Candle[]): Candle[] {
   if (warehouse.length === 0) return [...live];
   if (live.length === 0) return [...warehouse];
 
+  const warehouseStart = warehouse[0].time;
   const cutoff = warehouse[warehouse.length - 1].time;
   const byTime = new Map<number, Candle>();
+
+  // 1. Backfill deep history from live if warehouse starts later
+  for (const candle of live) {
+    if (candle.time < warehouseStart) byTime.set(candle.time, candle);
+  }
+  // 2. Authoritative warehouse bars
   for (const candle of warehouse) byTime.set(candle.time, candle);
+  // 3. Fresh live tail at or after cutoff
   for (const candle of live) {
     if (candle.time >= cutoff) byTime.set(candle.time, candle);
   }

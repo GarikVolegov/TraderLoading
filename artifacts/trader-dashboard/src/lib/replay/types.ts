@@ -420,6 +420,7 @@ export type ReplayDrawing = DrawingCommonMeta & (
       riskPct?: number;
       showStats?: boolean;
       compactLabels?: boolean;
+      lots?: number;
     }
 );
 

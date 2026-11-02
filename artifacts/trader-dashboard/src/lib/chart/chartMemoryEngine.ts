@@ -35,8 +35,8 @@ export interface PersistedChartMemory {
 }
 
 const CHART_MEMORY_KEY = "limen:varco:chart-memory:v2";
-const CANDLE_CACHE_PREFIX = "limen:varco:candle-cache:v1:";
-const MAX_CACHED_CANDLES = 450;
+const CANDLE_CACHE_PREFIX = "limen:varco:candle-cache:v2:";
+const MAX_CACHED_CANDLES = 1500;
 
 export const DEFAULT_CHART_MEMORY: PersistedChartMemory = {
   version: 2,
