@@ -28,6 +28,7 @@ const PERMISSION_ALLOWLIST: Record<string, readonly ForbiddenPattern[]> = {
   "components/social/MessaggiTab.tsx": ["getUserMedia("],
   "components/social/StoryViewer.tsx": ["getUserMedia("],
   "components/social/VoiceChannelView.tsx": ["getUserMedia(", "getDisplayMedia("],
+  "components/backtest-terminal/TalkToJournalModal.tsx": ["getUserMedia("],
   "lib/smartwatchBle.ts": [".requestDevice("],
   "lib/replayOfflineBuffer.ts": ["storage.persist("],
 };

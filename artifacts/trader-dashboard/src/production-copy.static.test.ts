@@ -311,6 +311,10 @@ const legacyHardcodedCopyFiles = new Set<string>([
   "components/backtest-terminal/BacktestTerminal.tsx",
   "components/backtest-terminal/ChartAlertsOverlay.tsx",
   "components/backtest-terminal/FavoriteToolsBar.tsx",
+  "components/backtest-terminal/JournalPanel.tsx",
+  "components/backtest-terminal/ReplayNewsPanel.tsx",
+  "components/backtest-terminal/ReplayWatchlistPanel.tsx",
+  "components/backtest-terminal/TalkToJournalModal.tsx",
   "components/cockpit/QuantitativeSynthesisDialog.tsx",
 ]);
 

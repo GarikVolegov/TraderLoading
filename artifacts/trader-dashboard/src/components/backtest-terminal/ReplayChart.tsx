@@ -40,6 +40,8 @@ import { formatPrice, priceDecimals, terminalLocale } from "./format";
 import { PositionOverlay, type ChartProjector } from "./PositionOverlay";
 import { SessionOpensOverlay } from "./SessionOpensOverlay";
 import { LimenAiSetupOverlay } from "../chart/LimenAiSetupOverlay";
+import { ReplayOrderFlowOverlay } from "./ReplayOrderFlowOverlay";
+import { RedNewsOverlay } from "../chart/RedNewsOverlay";
 import type { VarcoSetupPlan } from "@workspace/api-client-react";
 import type { DrawingToolId } from "./toolRailModel";
 import type { ReplayEngine } from "./useReplayEngine";
@@ -106,6 +108,8 @@ export function ReplayChart({
   onAdoptAiSetup,
   onToggleAiOverlay,
   alertsApi,
+  showOrderFlow = false,
+  showNewsOverlay = true,
 }: {
   engine: ReplayEngine;
   apiRef?: React.MutableRefObject<ReplayChartApi | null>;
@@ -119,6 +123,8 @@ export function ReplayChart({
   onAdoptAiSetup?: () => void;
   onToggleAiOverlay?: () => void;
   alertsApi?: ReplayAlertsApi;
+  showOrderFlow?: boolean;
+  showNewsOverlay?: boolean;
 }) {
   const { language, t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1325,6 +1331,23 @@ export function ReplayChart({
           onUpdateSetup={onUpdateAiSetup}
           onAdoptSetup={onAdoptAiSetup}
           onClose={onToggleAiOverlay}
+        />
+      )}
+      {projector && showOrderFlow && (
+        <ReplayOrderFlowOverlay
+          engine={engine}
+          projector={projector}
+          revision={revision}
+          visible={showOrderFlow}
+        />
+      )}
+      {projector && showNewsOverlay && (
+        <RedNewsOverlay
+          symbol={engine.symbol}
+          projector={projector}
+          revision={revision}
+          referenceTimeSec={engine.replayTime}
+          visible={showNewsOverlay}
         />
       )}
     </>

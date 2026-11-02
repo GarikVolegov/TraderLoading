@@ -1,11 +1,32 @@
 // ─── Terminal header ─────────────────────────────────────────────────────────
 // Mockup layout: back/logo + badge, session symbol, timeframe tabs, account
 // chips (Saldo/Equity/P&L/DD) and the panel/help toggles on the right.
-import { PencilRuler, ArrowLeft, Camera, Eye, EyeOff, Keyboard, PanelRight, Settings2, Flame, Users, Clock, Sparkles, Loader2, HardDrive, Bell, Maximize2, Minimize2 } from "lucide-react";
+import {
+  PencilRuler,
+  ArrowLeft,
+  Camera,
+  Eye,
+  EyeOff,
+  Keyboard,
+  PanelRight,
+  Settings2,
+  Flame,
+  Users,
+  Clock,
+  Sparkles,
+  Loader2,
+  HardDrive,
+  Bell,
+  Maximize2,
+  Minimize2,
+  Mic,
+  BarChart3,
+} from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { formatMoney, formatPercent, formatSignedMoney } from "./format";
 import { CoverageStatus } from "./CoverageStatus";
 import { REPLAY_TIMEFRAMES, type ReplayEngine } from "./useReplayEngine";
+import { synestheticClick } from "@/lib/soundFx";
 
 export function TerminalHeader({
   engine,
@@ -35,6 +56,10 @@ export function TerminalHeader({
   onOpenOfflineStorage,
   isCinemaActive,
   onToggleCinema,
+  showOrderFlow,
+  onToggleOrderFlow,
+  onOpenTalkToJournal,
+  notesCount,
 }: {
   engine: ReplayEngine;
   sessionName: string;
@@ -63,6 +88,10 @@ export function TerminalHeader({
   onOpenOfflineStorage?: () => void;
   isCinemaActive?: boolean;
   onToggleCinema?: () => void;
+  showOrderFlow?: boolean;
+  onToggleOrderFlow?: () => void;
+  onOpenTalkToJournal?: () => void;
+  notesCount?: number;
 }) {
   const { language } = useLanguage();
   const { account, openProfit } = engine;
@@ -210,7 +239,50 @@ export function TerminalHeader({
         </div>
 
         {/* Cluster Azioni & Controlli Cockpit */}
-        <div className="btm-actions-cluster">
+        <div className="btm-actions-cluster flex items-center gap-1.5">
+          {/* Order Flow [NEW] Toggle Button (FX Replay Style) */}
+          {onToggleOrderFlow && (
+            <button
+              type="button"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-mono text-[10.5px] font-bold tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+                showOrderFlow
+                  ? "border-emerald-500 bg-emerald-500/25 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.35)]"
+                  : "border-[#C5A059]/35 bg-[#C5A059]/10 text-slate-300 hover:border-[#C5A059] hover:text-white"
+              }`}
+              onClick={() => {
+                synestheticClick();
+                onToggleOrderFlow();
+              }}
+              title="Attiva/Disattiva Order Flow sul grafico (Volume Profile & Delta Footprint)"
+            >
+              <BarChart3 size={12} className={showOrderFlow ? "text-emerald-400" : "text-[#C5A059]"} />
+              <span className="hidden sm:inline">Order Flow</span>
+              <span className="text-[8.5px] px-1 rounded bg-[#C5A059] text-black font-extrabold tracking-tight">NEW</span>
+            </button>
+          )}
+
+          {/* Talk to Journal AI Audio Button (FX Replay Style) */}
+          {onOpenTalkToJournal && (
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] hover:bg-[#C5A059]/25 hover:border-[#C5A059] font-mono text-[10.5px] font-bold tracking-wider transition-all cursor-pointer whitespace-nowrap shadow-[0_0_10px_rgba(197,160,89,0.15)]"
+              onClick={() => {
+                synestheticClick();
+                onOpenTalkToJournal();
+              }}
+              title="Talk to Journal · Esprimi i tuoi pensieri a voce per registrarli nel Libro della Verità"
+            >
+              <Mic size={12} className="text-[#C5A059]" />
+              <span className="hidden md:inline">Talk to Journal</span>
+              <span className="md:hidden">Voce</span>
+              {notesCount != null && notesCount > 0 && (
+                <span className="px-1 rounded bg-[#C5A059] text-black text-[9px] font-bold">
+                  {notesCount}
+                </span>
+              )}
+            </button>
+          )}
+
           <button
             type="button"
             className="btm-iconbtn"

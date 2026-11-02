@@ -1,8 +1,8 @@
 // ─── Journal panel ───────────────────────────────────────────────────────────
 // Trade count, Win Rate / Net R / Expectancy tiles, the W/BE/L split bar and
 // the scrollable trade list (direction, entry→exit, exit reason, P&L, R).
-import { useMemo, useState } from "react";
-import { BookOpen, Download, Plus, Trash2, TrendingDown, TrendingUp, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, Download, Plus, Trash2, TrendingDown, TrendingUp, X, Mic, Volume2 } from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { monteCarloBands } from "@/lib/equityProjection";
 import {
@@ -14,6 +14,12 @@ import {
 import type { ClosedTrade } from "@/lib/replay/types";
 import { formatPrice, formatSignedMoney } from "./format";
 import type { ReplayEngine } from "./useReplayEngine";
+import {
+  loadSessionNotes,
+  deleteSessionNote,
+  type ReplaySessionNote,
+} from "@/lib/replay/sessionNotes";
+import { synestheticClick } from "@/lib/soundFx";
 
 /** Inline tag editor for a journal row: chips + add-input. */
 function TradeTags({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
@@ -154,9 +160,35 @@ const RESULT_COLOR: Record<ClosedTrade["result"], string> = {
   breakeven: "hsl(38 92% 50%)",
 };
 
-export function JournalPanel({ engine }: { engine: ReplayEngine }) {
+export function JournalPanel({
+  engine,
+  sessionKey,
+  onOpenTalkToJournal,
+}: {
+  engine: ReplayEngine;
+  sessionKey?: string;
+  onOpenTalkToJournal?: () => void;
+}) {
   const { language } = useLanguage();
   const { stats, trades } = engine;
+
+  const [sessionNotes, setSessionNotes] = useState<ReplaySessionNote[]>(() =>
+    sessionKey ? loadSessionNotes(sessionKey) : [],
+  );
+
+  useEffect(() => {
+    if (!sessionKey) return;
+    const refresh = () => setSessionNotes(loadSessionNotes(sessionKey));
+    refresh();
+    window.addEventListener("aureus-session-notes-updated", refresh);
+    return () => window.removeEventListener("aureus-session-notes-updated", refresh);
+  }, [sessionKey]);
+
+  const handleDeleteNote = (noteId: string) => {
+    if (!sessionKey) return;
+    synestheticClick();
+    deleteSessionNote(sessionKey, noteId);
+  };
 
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const allTags = useMemo(() => collectTags(trades), [trades]);
@@ -197,6 +229,83 @@ export function JournalPanel({ engine }: { engine: ReplayEngine }) {
           </button>
         )}
       </h3>
+
+      {/* ── Sezione Talk to Journal (Note Vocali AI di Sessione) ── */}
+      <div className="flex flex-col gap-2 p-2.5 mb-3 rounded-lg bg-[#11131c] border border-[#C5A059]/25 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Volume2 size={13} className="text-[#C5A059]" />
+            <span className="font-serif text-[11px] uppercase tracking-wider text-[#C5A059] font-bold">
+              Talk to Journal
+            </span>
+            {sessionNotes.length > 0 && (
+              <span className="font-mono text-[9px] px-1 rounded bg-[#C5A059]/20 text-[#E8C56A] font-bold">
+                {sessionNotes.length}
+              </span>
+            )}
+          </div>
+          {onOpenTalkToJournal && (
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                onOpenTalkToJournal();
+              }}
+              className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/40 text-[#E8C56A] text-[10px] font-mono hover:bg-[#C5A059]/25 transition-colors cursor-pointer"
+            >
+              <Mic size={10} />
+              <span>Nuova Nota</span>
+            </button>
+          )}
+        </div>
+
+        {sessionNotes.length === 0 ? (
+          <p className="text-[10px] text-slate-400 italic">
+            Nessuna nota vocale registrata. Parla al microfono durante il replay per fissare le tue considerazioni.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#C5A059]/30">
+            {sessionNotes.map((note) => (
+              <div
+                key={note.id}
+                className="p-2 rounded bg-[#07080b] border border-white/5 flex flex-col gap-1 text-[11px]"
+              >
+                <div className="flex items-center justify-between text-[9px] font-mono text-slate-400">
+                  <span className="text-[#E8C56A] font-bold">
+                    {formatPrice(note.price, note.symbol)} · {note.symbol}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span>{note.formattedTime}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteNote(note.id)}
+                      className="text-slate-500 hover:text-rose-400 cursor-pointer"
+                      title="Elimina nota"
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  </div>
+                </div>
+                <p className="text-slate-200 text-[10.5px] leading-relaxed font-sans">
+                  "{note.transcript}"
+                </p>
+                {note.tags && note.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {note.tags.map((t) => (
+                      <span
+                        key={t}
+                        className="text-[8.5px] font-mono px-1 py-0.2 rounded bg-[#C5A059]/10 text-[#C5A059] border border-[#C5A059]/20"
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {stats.total === 0 ? (
         <div style={{ fontSize: 11.5, color: "var(--btm-mut)", lineHeight: 1.5 }}>

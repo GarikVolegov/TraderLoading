@@ -9,7 +9,21 @@ import { FavoriteToolsBar } from "./FavoriteToolsBar";
 // land in the trading phase, drawings in the final phase.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { X, BookOpen, Eye, Layers, Wallet, Play, Pause, ChevronRight, Minimize2 } from "lucide-react";
+import {
+  X,
+  BookOpen,
+  Eye,
+  Layers,
+  Wallet,
+  Play,
+  Pause,
+  ChevronRight,
+  Minimize2,
+  ListFilter,
+  Newspaper,
+  SlidersHorizontal,
+  Globe,
+} from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { useAutoLandscapeCinema } from "@/hooks/useAutoLandscapeCinema";
 import { formatBlindReplayDisplay } from "./dateTime";
@@ -43,6 +57,11 @@ import { useReplayHotkeys } from "./useReplayHotkeys";
 import { BacktestAiSentinelPanel } from "./BacktestAiSentinelPanel";
 import { useVarcoVisionSentinel } from "@/hooks/useVarcoVisionSentinel";
 import { useToast } from "@/hooks/use-toast";
+import { TalkToJournalModal } from "./TalkToJournalModal";
+import { ReplayWatchlistPanel } from "./ReplayWatchlistPanel";
+import { ReplayNewsPanel } from "./ReplayNewsPanel";
+import { ChartObjectTreeModal } from "../chart/ChartObjectTreeModal";
+import { loadSessionNotes } from "@/lib/replay/sessionNotes";
 import type { VarcoSetupPlan } from "@workspace/api-client-react";
 import {
   loadOperativeMemory,
@@ -74,6 +93,7 @@ export interface BacktestTerminalProps {
   onTradeClosed?: (trade: ClosedTrade) => void;
   persistenceStatus?: ReactNode;
   tournamentId?: number;
+  onSelectSymbol?: (symbol: string) => void;
 }
 
 export function BacktestTerminal(props: BacktestTerminalProps) {
@@ -90,6 +110,7 @@ function BacktestTerminalSession({
   onTradeClosed,
   persistenceStatus,
   tournamentId,
+  onSelectSymbol,
 }: BacktestTerminalProps) {
   const [, navigate] = useLocation();
   const isBattle = Boolean(tournamentId || sessionName.startsWith("[Battle]"));
@@ -175,7 +196,51 @@ function BacktestTerminalSession({
   });
   const [toolsOpen, setToolsOpen] = useState(false);
   const [ticketDraft, setTicketDraft] = useState<OrderTicketDraft>({ pendingMode: false, orderPrice: "", profileName: "" });
-  const engine = useReplayEngine({ sessionKey, symbol, initialInterval });
+  const [currentSymbol, setCurrentSymbol] = useState(symbol);
+  const [talkToJournalOpen, setTalkToJournalOpen] = useState(false);
+  const [showOrderFlow, setShowOrderFlow] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("aureus_replay_show_orderflow") === "true";
+  });
+  const [showNewsOverlay, setShowNewsOverlay] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem("aureus_replay_show_news") !== "false";
+  });
+  const [notesCount, setNotesCount] = useState(() => loadSessionNotes(sessionKey).length);
+  const [objectTreeModalOpen, setObjectTreeModalOpen] = useState(false);
+
+  useEffect(() => {
+    const refresh = () => setNotesCount(loadSessionNotes(sessionKey).length);
+    refresh();
+    window.addEventListener("aureus-session-notes-updated", refresh);
+    return () => window.removeEventListener("aureus-session-notes-updated", refresh);
+  }, [sessionKey]);
+
+  const toggleOrderFlow = () => {
+    synestheticClick();
+    setShowOrderFlow((prev) => {
+      const next = !prev;
+      try { window.localStorage.setItem("aureus_replay_show_orderflow", String(next)); } catch {}
+      return next;
+    });
+  };
+
+  const toggleNewsOverlay = () => {
+    synestheticClick();
+    setShowNewsOverlay((prev) => {
+      const next = !prev;
+      try { window.localStorage.setItem("aureus_replay_show_news", String(next)); } catch {}
+      return next;
+    });
+  };
+
+  const handleSelectSymbol = (newSym: string) => {
+    synestheticClick();
+    setCurrentSymbol(newSym);
+    onSelectSymbol?.(newSym);
+  };
+
+  const engine = useReplayEngine({ sessionKey, symbol: currentSymbol, initialInterval });
   const alertsApi = useReplayAlerts({ engine, sessionKey });
   const chartApiRef = useRef<ReplayChartApi | null>(null);
   const [panelOpen, setPanelOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 1100);
@@ -188,11 +253,11 @@ function BacktestTerminalSession({
   const [knowledgeToolId, setKnowledgeToolId] = useState<DrawingToolId | null>(null);
 
   // ── Tab Navigation per il Pannello Destro AUREUS ──
-  type TerminalRightPanelTab = "sentinel" | "ticket" | "account" | "journal";
+  type TerminalRightPanelTab = "sentinel" | "ticket" | "account" | "journal" | "watchlist" | "news";
   const [activePanelTab, setActivePanelTab] = useState<TerminalRightPanelTab>(() => {
     try {
       const saved = localStorage.getItem("aureus_forge_panel_tab");
-      if (saved === "sentinel" || saved === "ticket" || saved === "account" || saved === "journal") {
+      if (saved === "sentinel" || saved === "ticket" || saved === "account" || saved === "journal" || saved === "watchlist" || saved === "news") {
         return saved;
       }
     } catch {}
@@ -922,6 +987,10 @@ function BacktestTerminalSession({
           setSettingsOpen(true);
         }}
         onOpenOfflineStorage={() => setOfflineStorageOpen(true)}
+        showOrderFlow={showOrderFlow}
+        onToggleOrderFlow={toggleOrderFlow}
+        onOpenTalkToJournal={() => setTalkToJournalOpen(true)}
+        notesCount={notesCount}
       />
 
       <div className="btm-main" data-tools-open={toolsOpen}>
@@ -982,6 +1051,8 @@ function BacktestTerminalSession({
               onUpdateAiSetup={updateAiSetup}
               onAdoptAiSetup={() => aiSetup && handleExecuteReplaySetup(aiSetup)}
               onToggleAiOverlay={() => setShowAiOverlay((prev) => !prev)}
+              showOrderFlow={showOrderFlow}
+              showNewsOverlay={showNewsOverlay}
             />
             <ReplayBiometricVignetteOverlay engine={engine} />
             <ToolKnowledgeDrawer
@@ -1087,22 +1158,11 @@ function BacktestTerminalSession({
                 </span>
               </div>
             }
-            subtitle="Sentinella, Ticket, Dossier & Il Libro della Verità"
+            subtitle="Sentinella, Ticket, Watchlist, Notizie, Diario & Dossier"
             mobileClassName="max-h-[85vh] bg-[#07080b]/98 border-t border-[#C5A059]/30 backdrop-blur-2xl p-0 flex flex-col overflow-hidden"
           >
             <div className="flex flex-col h-full min-h-0 overflow-hidden btm-root-colors">
-              <div className="btm-panel-tabs border-b border-[#C5A059]/15 shrink-0" role="tablist" aria-label="Sezioni del Cockpit Operativo">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activePanelTab === "sentinel"}
-                  className={`btm-panel-tab ${activePanelTab === "sentinel" ? "btm-panel-tab-active" : ""}`}
-                  onClick={() => handleSelectPanelTab("sentinel")}
-                >
-                  <Eye size={13} />
-                  <span>Sentinella</span>
-                  {aiSetup && <span className="btm-panel-tab-dot" />}
-                </button>
+              <div className="btm-panel-tabs border-b border-[#C5A059]/15 shrink-0 overflow-x-auto scrollbar-none" role="tablist" aria-label="Sezioni del Cockpit Operativo">
                 <button
                   type="button"
                   role="tab"
@@ -1121,12 +1181,33 @@ function BacktestTerminalSession({
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={activePanelTab === "account"}
-                  className={`btm-panel-tab ${activePanelTab === "account" ? "btm-panel-tab-active" : ""}`}
-                  onClick={() => handleSelectPanelTab("account")}
+                  aria-selected={activePanelTab === "watchlist"}
+                  className={`btm-panel-tab ${activePanelTab === "watchlist" ? "btm-panel-tab-active" : ""}`}
+                  onClick={() => handleSelectPanelTab("watchlist")}
                 >
-                  <Wallet size={13} />
-                  <span>Dossier</span>
+                  <ListFilter size={13} />
+                  <span>Watchlist</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activePanelTab === "news"}
+                  className={`btm-panel-tab ${activePanelTab === "news" ? "btm-panel-tab-active" : ""}`}
+                  onClick={() => handleSelectPanelTab("news")}
+                >
+                  <Newspaper size={13} />
+                  <span>Notizie</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activePanelTab === "sentinel"}
+                  className={`btm-panel-tab ${activePanelTab === "sentinel" ? "btm-panel-tab-active" : ""}`}
+                  onClick={() => handleSelectPanelTab("sentinel")}
+                >
+                  <Eye size={13} />
+                  <span>Sentinella</span>
+                  {aiSetup && <span className="btm-panel-tab-dot" />}
                 </button>
                 <button
                   type="button"
@@ -1136,13 +1217,37 @@ function BacktestTerminalSession({
                   onClick={() => handleSelectPanelTab("journal")}
                 >
                   <BookOpen size={13} />
-                  <span>Il Libro della Verità</span>
+                  <span>Diario</span>
                   {engine.trades.length > 0 && (
                     <span className="btm-panel-tab-badge font-mono whitespace-nowrap">{engine.trades.length}</span>
                   )}
                 </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activePanelTab === "account"}
+                  className={`btm-panel-tab ${activePanelTab === "account" ? "btm-panel-tab-active" : ""}`}
+                  onClick={() => handleSelectPanelTab("account")}
+                >
+                  <Wallet size={13} />
+                  <span>Dossier</span>
+                </button>
               </div>
               <div className="btm-panel-content flex-1 min-h-0 overflow-y-auto">
+                {activePanelTab === "ticket" && (
+                  <OrderTicket engine={engine} draft={ticketDraft} onDraftChange={patch => setTicketDraft(previous => ({ ...previous, ...patch }))} />
+                )}
+                {activePanelTab === "watchlist" && (
+                  <ReplayWatchlistPanel currentSymbol={engine.symbol} onSelectSymbol={handleSelectSymbol} />
+                )}
+                {activePanelTab === "news" && (
+                  <ReplayNewsPanel
+                    symbol={engine.symbol}
+                    replayTime={engine.replayTime}
+                    showNewsOnChart={showNewsOverlay}
+                    onToggleNewsOnChart={toggleNewsOverlay}
+                  />
+                )}
                 {activePanelTab === "sentinel" && (
                   <BacktestAiSentinelPanel
                     isScanning={isAiScanning}
@@ -1163,32 +1268,22 @@ function BacktestTerminalSession({
                     interval={engine.interval}
                   />
                 )}
-                {activePanelTab === "ticket" && (
-                  <OrderTicket engine={engine} draft={ticketDraft} onDraftChange={patch => setTicketDraft(previous => ({ ...previous, ...patch }))} />
-                )}
                 {activePanelTab === "account" && (
                   <AccountPanel engine={engine} />
                 )}
                 {activePanelTab === "journal" && (
-                  <JournalPanel engine={engine} />
+                  <JournalPanel
+                    engine={engine}
+                    sessionKey={sessionKey}
+                    onOpenTalkToJournal={() => setTalkToJournalOpen(true)}
+                  />
                 )}
               </div>
             </div>
           </LimenResponsiveDrawer>
         ) : panelOpen && (
           <aside className="btm-panel" aria-label={uiText("backtest_terminal.panel")}>
-            <div className="btm-panel-tabs" role="tablist" aria-label="Sezioni del Cockpit Operativo">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePanelTab === "sentinel"}
-                className={`btm-panel-tab ${activePanelTab === "sentinel" ? "btm-panel-tab-active" : ""}`}
-                onClick={() => handleSelectPanelTab("sentinel")}
-              >
-                <Eye size={13} />
-                <span>Sentinella</span>
-                {aiSetup && <span className="btm-panel-tab-dot" />}
-              </button>
+            <div className="btm-panel-tabs overflow-x-auto scrollbar-none" role="tablist" aria-label="Sezioni del Cockpit Operativo">
               <button
                 type="button"
                 role="tab"
@@ -1207,12 +1302,33 @@ function BacktestTerminalSession({
               <button
                 type="button"
                 role="tab"
-                aria-selected={activePanelTab === "account"}
-                className={`btm-panel-tab ${activePanelTab === "account" ? "btm-panel-tab-active" : ""}`}
-                onClick={() => handleSelectPanelTab("account")}
+                aria-selected={activePanelTab === "watchlist"}
+                className={`btm-panel-tab ${activePanelTab === "watchlist" ? "btm-panel-tab-active" : ""}`}
+                onClick={() => handleSelectPanelTab("watchlist")}
               >
-                <Wallet size={13} />
-                <span>Dossier</span>
+                <ListFilter size={13} />
+                <span>Watchlist</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activePanelTab === "news"}
+                className={`btm-panel-tab ${activePanelTab === "news" ? "btm-panel-tab-active" : ""}`}
+                onClick={() => handleSelectPanelTab("news")}
+              >
+                <Newspaper size={13} />
+                <span>Notizie</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activePanelTab === "sentinel"}
+                className={`btm-panel-tab ${activePanelTab === "sentinel" ? "btm-panel-tab-active" : ""}`}
+                onClick={() => handleSelectPanelTab("sentinel")}
+              >
+                <Eye size={13} />
+                <span>Sentinella</span>
+                {aiSetup && <span className="btm-panel-tab-dot" />}
               </button>
               <button
                 type="button"
@@ -1222,13 +1338,37 @@ function BacktestTerminalSession({
                 onClick={() => handleSelectPanelTab("journal")}
               >
                 <BookOpen size={13} />
-                <span>Il Libro della Verità</span>
+                <span>Diario</span>
                 {engine.trades.length > 0 && (
                   <span className="btm-panel-tab-badge font-mono">{engine.trades.length}</span>
                 )}
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activePanelTab === "account"}
+                className={`btm-panel-tab ${activePanelTab === "account" ? "btm-panel-tab-active" : ""}`}
+                onClick={() => handleSelectPanelTab("account")}
+              >
+                <Wallet size={13} />
+                <span>Dossier</span>
+              </button>
             </div>
             <div className="btm-panel-content">
+              {activePanelTab === "ticket" && (
+                <OrderTicket engine={engine} draft={ticketDraft} onDraftChange={patch => setTicketDraft(previous => ({ ...previous, ...patch }))} />
+              )}
+              {activePanelTab === "watchlist" && (
+                <ReplayWatchlistPanel currentSymbol={engine.symbol} onSelectSymbol={handleSelectSymbol} />
+              )}
+              {activePanelTab === "news" && (
+                <ReplayNewsPanel
+                  symbol={engine.symbol}
+                  replayTime={engine.replayTime}
+                  showNewsOnChart={showNewsOverlay}
+                  onToggleNewsOnChart={toggleNewsOverlay}
+                />
+              )}
               {activePanelTab === "sentinel" && (
                 <BacktestAiSentinelPanel
                   isScanning={isAiScanning}
@@ -1249,18 +1389,128 @@ function BacktestTerminalSession({
                   interval={engine.interval}
                 />
               )}
-              {activePanelTab === "ticket" && (
-                <OrderTicket engine={engine} draft={ticketDraft} onDraftChange={patch => setTicketDraft(previous => ({ ...previous, ...patch }))} />
-              )}
               {activePanelTab === "account" && (
                 <AccountPanel engine={engine} />
               )}
               {activePanelTab === "journal" && (
-                <JournalPanel engine={engine} />
+                <JournalPanel
+                  engine={engine}
+                  sessionKey={sessionKey}
+                  onOpenTalkToJournal={() => setTalkToJournalOpen(true)}
+                />
               )}
             </div>
           </aside>
         )}
+
+        {/* ── Barra Strumenti Verticale Destra (FX Replay Workspace Dock) ── */}
+        <aside
+          className="btm-right-dock hidden md:flex flex-col items-center gap-1 py-2 px-1 border-l border-[#C5A059]/20 bg-[#0d0f14] z-20 shrink-0"
+          aria-label="Barra Icone Rapide Destra"
+        >
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              if (panelOpen && activePanelTab === "ticket") setPanelOpen(false);
+              else { setActivePanelTab("ticket"); setPanelOpen(true); }
+            }}
+            className={`flex flex-col items-center justify-center w-10 h-11 rounded-lg border text-[8.5px] font-mono font-bold tracking-tight transition-all cursor-pointer ${
+              panelOpen && activePanelTab === "ticket"
+                ? "border-emerald-500 bg-emerald-500/20 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                : "border-white/10 bg-[#07080b] text-slate-300 hover:border-[#C5A059]/50 hover:text-white"
+            }`}
+            title="Ticket Ordini (+ Ordine)"
+          >
+            <Layers size={13} className={engine.positions.length > 0 ? "text-emerald-400" : "text-[#C5A059]"} />
+            <span className="mt-0.5">+Ordine</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              setObjectTreeModalOpen(true);
+            }}
+            className="flex flex-col items-center justify-center w-10 h-11 rounded-lg border border-white/10 bg-[#07080b] text-slate-300 hover:border-[#C5A059]/50 hover:text-white text-[8.5px] font-mono font-bold tracking-tight transition-all cursor-pointer"
+            title="Albero Oggetti (Disegni & Indicatori)"
+          >
+            <SlidersHorizontal size={13} className="text-[#C5A059]" />
+            <span className="mt-0.5">Oggetti</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              if (panelOpen && activePanelTab === "watchlist") setPanelOpen(false);
+              else { setActivePanelTab("watchlist"); setPanelOpen(true); }
+            }}
+            className={`flex flex-col items-center justify-center w-10 h-11 rounded-lg border text-[8.5px] font-mono font-bold tracking-tight transition-all cursor-pointer ${
+              panelOpen && activePanelTab === "watchlist"
+                ? "border-[#C5A059] bg-[#C5A059]/20 text-[#E8C56A] shadow-[0_0_10px_rgba(197,160,89,0.3)]"
+                : "border-white/10 bg-[#07080b] text-slate-300 hover:border-[#C5A059]/50 hover:text-white"
+            }`}
+            title="Watchlist Strumenti"
+          >
+            <ListFilter size={13} className="text-[#C5A059]" />
+            <span className="mt-0.5">Watch</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              if (panelOpen && activePanelTab === "sentinel") setPanelOpen(false);
+              else { setActivePanelTab("sentinel"); setPanelOpen(true); }
+            }}
+            className={`flex flex-col items-center justify-center w-10 h-11 rounded-lg border text-[8.5px] font-mono font-bold tracking-tight transition-all cursor-pointer ${
+              panelOpen && activePanelTab === "sentinel"
+                ? "border-[#C5A059] bg-[#C5A059]/20 text-[#E8C56A] shadow-[0_0_10px_rgba(197,160,89,0.3)]"
+                : "border-white/10 bg-[#07080b] text-slate-300 hover:border-[#C5A059]/50 hover:text-white"
+            }`}
+            title="Sentinella Wyckoff AI"
+          >
+            <Eye size={13} className="text-[#E8C56A]" />
+            <span className="mt-0.5">Varco</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              if (panelOpen && activePanelTab === "journal") setPanelOpen(false);
+              else { setActivePanelTab("journal"); setPanelOpen(true); }
+            }}
+            className={`flex flex-col items-center justify-center w-10 h-11 rounded-lg border text-[8.5px] font-mono font-bold tracking-tight transition-all cursor-pointer ${
+              panelOpen && activePanelTab === "journal"
+                ? "border-[#C5A059] bg-[#C5A059]/20 text-[#E8C56A] shadow-[0_0_10px_rgba(197,160,89,0.3)]"
+                : "border-white/10 bg-[#07080b] text-slate-300 hover:border-[#C5A059]/50 hover:text-white"
+            }`}
+            title="Il Libro della Verità (Journal & Note Vocali)"
+          >
+            <BookOpen size={13} className="text-[#C5A059]" />
+            <span className="mt-0.5">Diario</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              if (panelOpen && activePanelTab === "news") setPanelOpen(false);
+              else { setActivePanelTab("news"); setPanelOpen(true); }
+            }}
+            className={`flex flex-col items-center justify-center w-10 h-11 rounded-lg border text-[8.5px] font-mono font-bold tracking-tight transition-all cursor-pointer ${
+              panelOpen && activePanelTab === "news"
+                ? "border-[#C5A059] bg-[#C5A059]/20 text-[#E8C56A] shadow-[0_0_10px_rgba(197,160,89,0.3)]"
+                : "border-white/10 bg-[#07080b] text-slate-300 hover:border-[#C5A059]/50 hover:text-white"
+            }`}
+            title="Notizie Macroeconomiche & Calendario"
+          >
+            <Newspaper size={13} className="text-[#C5A059]" />
+            <span className="mt-0.5">News</span>
+          </button>
+        </aside>
       </div>
 
       {persistenceStatus}
@@ -1317,6 +1567,36 @@ function BacktestTerminalSession({
         isOpen={offlineStorageOpen}
         onClose={() => setOfflineStorageOpen(false)}
         engine={engine}
+      />
+
+      {/* Talk to Journal AI Audio Modal (FX Replay Style) */}
+      <TalkToJournalModal
+        isOpen={talkToJournalOpen}
+        onClose={() => setTalkToJournalOpen(false)}
+        engine={engine}
+        sessionKey={sessionKey}
+      />
+
+      {/* Albero Oggetti (Disegni & Indicatori - Object Tree) */}
+      <ChartObjectTreeModal
+        isOpen={objectTreeModalOpen}
+        onClose={() => setObjectTreeModalOpen(false)}
+        symbol={engine.symbol}
+        interval={engine.interval}
+        drawings={engine.drawings}
+        onUpdateDrawing={(d) =>
+          engine.setDrawings((prev) => prev.map((item) => (item.id === d.id ? d : item)))
+        }
+        onDeleteDrawing={(id) =>
+          engine.setDrawings((prev) => prev.filter((item) => item.id !== id))
+        }
+        onClearAllDrawings={() => engine.setDrawings([])}
+        indicators={engine.indicators}
+        onToggleIndicator={(id) =>
+          engine.setIndicators((prev) =>
+            prev.map((ind) => (ind.id === id ? { ...ind, on: !ind.on } : ind)),
+          )
+        }
       />
 
       {/* Right Edge Slip-in Indicator (Mobile / Tablet / Landscape) */}

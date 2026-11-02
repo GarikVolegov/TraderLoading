@@ -1,5 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Headphones, Dices, Eye, EyeOff } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Play,
+  RotateCcw,
+  X,
+  Headphones,
+  Dices,
+  Eye,
+  EyeOff,
+  Pin,
+  PinOff,
+  GripHorizontal,
+} from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { formatBlindReplayDisplay, formatUtcReplayTime, parseUtcDateTimeInput, utcDateTimeInput } from "./dateTime";
 import { terminalLocale } from "./format";
@@ -83,6 +98,63 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
     };
   }, []);
 
+  const [isDetached, setIsDetached] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("aureus_replay_transport_detached") === "true";
+  });
+
+  const [dragPos, setDragPos] = useState<{ x: number; y: number }>(() => {
+    if (typeof window === "undefined") return { x: 80, y: 140 };
+    try {
+      const raw = window.localStorage.getItem("aureus_replay_transport_pos");
+      return raw ? JSON.parse(raw) : { x: 80, y: 140 };
+    } catch {
+      return { x: 80, y: 140 };
+    }
+  });
+
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!isDetached) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: dragPos.x,
+      origY: dragPos.y,
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    const nextX = Math.max(10, Math.min(window.innerWidth - 320, dragRef.current.origX + dx));
+    const nextY = Math.max(10, Math.min(window.innerHeight - 80, dragRef.current.origY + dy));
+    setDragPos({ x: nextX, y: nextY });
+  };
+
+  const handlePointerUp = () => {
+    if (dragRef.current) {
+      dragRef.current = null;
+      try {
+        window.localStorage.setItem("aureus_replay_transport_pos", JSON.stringify(dragPos));
+      } catch {}
+    }
+  };
+
+  const toggleDetached = () => {
+    synestheticClick();
+    setIsDetached((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem("aureus_replay_transport_detached", String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const openJump = () => {
     setJumpValue(utcDateTimeInput(engine.replayTime ?? engine.startTime));
     engine.stop();
@@ -90,7 +162,37 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
   };
 
   return (
-    <footer className="btm-transport">
+    <footer
+      className={`btm-transport ${
+        isDetached
+          ? "fixed z-40 bg-[#0d0f14]/95 border border-[#C5A059]/40 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] rounded-xl px-3 py-2 flex items-center gap-2 pointer-events-auto"
+          : ""
+      }`}
+      style={
+        isDetached
+          ? {
+              left: `${dragPos.x}px`,
+              top: `${dragPos.y}px`,
+              position: "fixed",
+              width: "auto",
+              maxWidth: "calc(100vw - 40px)",
+              bottom: "auto",
+            }
+          : undefined
+      }
+    >
+      {/* Drag Grip Handle per Modalità Sganciata (FX Replay Style) */}
+      {isDetached && (
+        <div
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          className="flex items-center justify-center p-1 cursor-grab active:cursor-grabbing text-[#C5A059] hover:text-[#E8C56A] transition-colors"
+          title="Trascina la Barra Controlli sul Grafico"
+        >
+          <GripHorizontal size={16} />
+        </div>
+      )}
       <div className="btm-playback-controls" role="group" aria-label={uiText("backtest_terminal.playback_controls")}>
         <button
           type="button"
@@ -263,6 +365,25 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
         aria-pressed={engine.blindMode}>
         {engine.blindMasked ? <EyeOff size={15} /> : <Eye size={15} />}
         <span className="whitespace-nowrap">{engine.blindMode ? (engine.blindMasked ? "Svela" : "Celato ✓") : "Cieco"}</span>
+      </button>
+
+      {/* ── Pin / Unpin Toggle (Fissa in Basso o Sgancia per Trascinare) ── */}
+      <button
+        type="button"
+        onClick={toggleDetached}
+        className={`btm-transport-btn ${
+          isDetached
+            ? "border-[#C5A059] bg-[#C5A059]/20 text-[#E8C56A]"
+            : "text-slate-400 hover:text-slate-200"
+        }`}
+        title={
+          isDetached
+            ? "Fissa la Barra in Basso allo Schermo"
+            : "Sgancia e Trascina i Controlli Liberamente sul Grafico"
+        }
+        aria-label={isDetached ? "Fissa la Barra in Basso" : "Sgancia Controlli"}
+      >
+        {isDetached ? <PinOff size={15} /> : <Pin size={15} />}
       </button>
     </footer>
   );
