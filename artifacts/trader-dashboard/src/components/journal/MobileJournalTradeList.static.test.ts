@@ -29,5 +29,9 @@ assert.ok(
   listSource.includes("Questa Settimana") && listSource.includes("periodFilter"),
   "Must provide time interval carousel filter"
 );
+assert.ok(
+  listSource.includes("LimenPullToRefresh"),
+  "Must integrate LimenPullToRefresh for tactile mobile gesture sync"
+);
 
 console.log("MobileJournalTradeList static test passed with 100% precision!");

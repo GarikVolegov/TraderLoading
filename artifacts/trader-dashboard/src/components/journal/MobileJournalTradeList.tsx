@@ -24,6 +24,7 @@ import {
 import { useLanguage, useDateLocale, uiText } from "@/contexts/LanguageContext";
 import { synestheticClick } from "@/lib/soundFx";
 import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
+import { LimenPullToRefresh } from "@/components/ui/LimenPullToRefresh";
 import { parseTradeContent } from "@/lib/parseTradeContent";
 import type { JournalEntry } from "@workspace/api-client-react";
 
@@ -31,6 +32,7 @@ export interface MobileJournalTradeListProps {
   entries: JournalEntry[];
   onEditEntry?: (entry: JournalEntry) => void;
   onDeleteEntry?: (id: number) => void;
+  onRefresh?: () => Promise<void> | void;
   currencySymbol?: string;
 }
 
@@ -41,6 +43,7 @@ export function MobileJournalTradeList({
   entries,
   onEditEntry,
   onDeleteEntry,
+  onRefresh,
   currencySymbol = "€",
 }: MobileJournalTradeListProps) {
   const { t, language } = useLanguage();
@@ -108,8 +111,8 @@ export function MobileJournalTradeList({
     return parseTradeContent(selectedEntry.content);
   }, [selectedEntry]);
 
-  return (
-    <div className="md:hidden space-y-3 font-mono select-none">
+  const listContent = (
+    <div className="space-y-3 font-mono select-none">
       {/* ── Period Carousel & Outcome Switcher ── */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
@@ -332,6 +335,18 @@ export function MobileJournalTradeList({
           );
         })}
       </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="md:hidden">
+      {onRefresh ? (
+        <LimenPullToRefresh onRefresh={onRefresh}>
+          {listContent}
+        </LimenPullToRefresh>
+      ) : (
+        listContent
       )}
 
       {/* ── Trade Detail Dossier (Bottom Sheet) ── */}

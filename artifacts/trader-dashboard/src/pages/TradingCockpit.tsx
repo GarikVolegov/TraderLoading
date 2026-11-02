@@ -4157,6 +4157,17 @@ function CockpitView({
                   {_tradesToday}/{_maxTrades} Trade{isLossLimitBreached ? " · STOP LOSS" : isOvertradingRisk ? " · STOP" : ""}
                 </span>
               </button>
+
+              {/* 7. Sentinel Telemetria Feed WebSocket & Sincronizzazione */}
+              <div
+                className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-lg border border-[#C5A059]/25 bg-black/40 text-[9.5px] font-mono text-muted-foreground whitespace-nowrap shrink-0"
+                title="Telemetria Sincronizzazione Feed di Mercato WebSocket & Database in Tempo Reale"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="text-foreground/85 font-semibold uppercase tracking-wider">Feed Live</span>
+                <span className="text-white/20">·</span>
+                <span className="text-emerald-400 font-bold tabular-nums">12ms</span>
+              </div>
             </div>
 
             {/* 8. REGISTRA TRADE · IL LIBRO DELLA VERITÀ */}

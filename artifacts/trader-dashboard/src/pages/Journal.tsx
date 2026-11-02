@@ -397,6 +397,9 @@ function TradesTab() {
               setIsModalOpen(true);
             }}
             onDeleteEntry={(id) => void handleDelete(id)}
+            onRefresh={async () => {
+              await refetch();
+            }}
           />
 
           {/* ── Desktop Multi-Column Bento Grid (2x to 4x on Ultrawide) ── */}
