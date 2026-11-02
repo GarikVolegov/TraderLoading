@@ -214,6 +214,7 @@ const legacyHardcodedCopyFiles = new Set<string>([
   "components/pwa/PwaInstallBanner.tsx",
   "components/settings/SmartWatchSettingsSection.tsx",
   "components/biometrics/SmartWatchConnectModal.tsx",
+  "components/backtest-terminal/QuickOrderDrawer.tsx",
   "components/social/CreatePostModal.tsx",
   "components/social/CreateChannelModal.tsx",
   "components/social/VoiceChannelView.tsx",

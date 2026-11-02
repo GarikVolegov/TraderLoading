@@ -113,6 +113,7 @@ const ALLOWLIST = new Set([
   "src/components/social/StoryViewer.tsx", // full-screen story overlay
   "src/components/academy/GeneralsBooksReader.tsx", // full-screen book reader overlay
   "src/components/decompression/DecompressionChamberModal.tsx", // full-screen decompression suite overlay
+  "src/components/backtest-terminal/QuickOrderDrawer.tsx", // full-screen order drawer overlay
 ]);
 
 function walk(dir: string, out: string[]): void {

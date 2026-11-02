@@ -200,7 +200,7 @@ export function QuickOrderDrawer({ engine, isOpen, onClose }: QuickOrderDrawerPr
           paddingRight: "max(14px, env(safe-area-inset-right))",
           paddingLeft: "14px",
         }}
-        className="fixed right-0 top-0 bottom-0 z-[125] w-[320px] max-w-[88vw] bg-[#07080b]/98 border-l border-[#C5A059]/30 text-white shadow-[-12px_0_40px_rgba(0,0,0,0.9)] flex flex-col font-mono select-none overflow-hidden animate-in slide-in-from-right duration-200"
+        className="fixed inset-y-0 right-0 z-[125] w-[320px] max-w-[88vw] bg-[#07080b]/98 border-l border-[#C5A059]/30 text-white shadow-[-12px_0_40px_rgba(0,0,0,0.9)] flex flex-col font-mono select-none overflow-hidden animate-in slide-in-from-right duration-200"
       >
         {/* Drawer Header */}
         <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-[#C5A059]/20">
