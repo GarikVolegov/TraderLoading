@@ -194,8 +194,17 @@ process.on("unhandledRejection", (reason) => {
 process.on("uncaughtException", (err: any) => {
   const isTransientDbNetError =
     err?.code === "ECONNRESET" ||
+    err?.code === "ETIMEDOUT" ||
     err?.code === "EPIPE" ||
-    (typeof err?.message === "string" && err.message.includes("Connection terminated unexpectedly"));
+    err?.code === "ECONNABORTED" ||
+    err?.code === "ECONNREFUSED" ||
+    err?.code === "EHOSTUNREACH" ||
+    err?.code === "ENETUNREACH" ||
+    (typeof err?.message === "string" && (
+      err.message.includes("Connection terminated unexpectedly") ||
+      err.message.includes("read ECONNRESET") ||
+      err.message.includes("read ETIMEDOUT")
+    ));
 
   if (isTransientDbNetError) {
     logger.warn({ err }, "Transient network/DB connection drop intercepted in uncaughtException; pool will recover");

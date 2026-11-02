@@ -61,7 +61,7 @@ import {
   setStoredForgeSentinelOverlay,
 } from "@/lib/sentinelPersistence";
 import { positionPips } from "@/lib/replay/tradeEngine";
-import { synestheticSealOfAction, synestheticTrophy, synestheticAlert } from "@/lib/soundFx";
+import { synestheticClick, synestheticSealOfAction, synestheticTrophy, synestheticAlert } from "@/lib/soundFx";
 import "./terminal.css";
 
 export interface BacktestTerminalProps {
@@ -702,6 +702,48 @@ function BacktestTerminalSession({
     zoomOut: () => chartApiRef.current?.zoomOut(),
   });
 
+  // ── Edge Swipe-in Gesture per Quick Order Drawer (Mobile & Cinema Mode) ──
+  const edgeTouchStartXRef = useRef<number | null>(null);
+  const edgeTouchStartYRef = useRef<number | null>(null);
+
+  const handleTerminalTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const clientX = touch.clientX;
+    const windowWidth = typeof window !== "undefined" ? window.innerWidth : 400;
+
+    // Detect touch originating from right edge (within 36px)
+    if (clientX >= windowWidth - 36) {
+      edgeTouchStartXRef.current = clientX;
+      edgeTouchStartYRef.current = touch.clientY;
+    }
+  }, []);
+
+  const handleTerminalTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (edgeTouchStartXRef.current === null || edgeTouchStartYRef.current === null) return;
+    if (e.changedTouches.length !== 1) {
+      edgeTouchStartXRef.current = null;
+      edgeTouchStartYRef.current = null;
+      return;
+    }
+
+    const startX = edgeTouchStartXRef.current;
+    const startY = edgeTouchStartYRef.current;
+    edgeTouchStartXRef.current = null;
+    edgeTouchStartYRef.current = null;
+
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const dx = endX - startX;
+    const dy = endY - startY;
+
+    // Swiped left from right edge -> open Quick Order Drawer
+    if (dx < -36 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      synestheticClick();
+      setQuickOrderDrawerOpen(true);
+    }
+  }, []);
+
   const limitedHistory = engine.meta != null && engine.meta.warehouse == null;
 
   return (
@@ -709,6 +751,8 @@ function BacktestTerminalSession({
       className="btm-root"
       data-testid="backtest-terminal"
       data-cinema-mode={isCinemaActive ? "true" : undefined}
+      onTouchStart={handleTerminalTouchStart}
+      onTouchEnd={handleTerminalTouchEnd}
     >
       {/* ── CINEMA HUD: LEFT THUMB (Asset, Barra e Telemetria) ── */}
       {isCinemaActive && (
@@ -1225,6 +1269,15 @@ function BacktestTerminalSession({
         onClose={() => setOfflineStorageOpen(false)}
         engine={engine}
       />
+
+      {/* Right Edge Slip-in Indicator (Mobile / Tablet / Landscape) */}
+      {!quickOrderDrawerOpen && (
+        <div
+          aria-hidden="true"
+          className="fixed right-0 top-1/2 -translate-y-1/2 w-1.5 h-16 rounded-l-md bg-gradient-to-l from-emerald-500/60 to-transparent pointer-events-none z-40 opacity-70 animate-pulse md:hidden"
+          title="Trascina dal bordo destro per aprire il Ticket"
+        />
+      )}
 
       {/* Quick Order Drawer Laterale (Landscape & Mobile HUD) */}
       <QuickOrderDrawer

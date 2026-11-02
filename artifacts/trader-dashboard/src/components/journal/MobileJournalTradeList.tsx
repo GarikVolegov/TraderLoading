@@ -166,8 +166,8 @@ export function MobileJournalTradeList({
         </div>
       </div>
 
-      {/* ── Top Mobile KPI Ribbon (Dynamic for visible period) ── */}
-      <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl border border-[#C5A059]/30 bg-[#07080b]/90 backdrop-blur-md shadow-sm">
+      {/* ── Top Mobile KPI Sticky Capsule Ribbon (Dynamic for visible period) ── */}
+      <div className="sticky top-1 z-20 grid grid-cols-3 gap-2 p-2.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl shadow-[0_6px_24px_rgba(0,0,0,0.85)]">
         <div className="text-center border-r border-white/10 pr-1">
           <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
             Win Rate

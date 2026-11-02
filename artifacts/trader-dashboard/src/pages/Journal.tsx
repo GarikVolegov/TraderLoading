@@ -354,8 +354,8 @@ function TradesTab() {
             onDeleteEntry={(id) => void handleDelete(id)}
           />
 
-          {/* ── Desktop 3-Column Bento Grid ── */}
-          <div ref={journalGrid} className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 scroll-mt-24">
+          {/* ── Desktop Multi-Column Bento Grid (2x to 4x on Ultrawide) ── */}
+          <div ref={journalGrid} className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5 scroll-mt-24">
             <AnimatePresence initial={false}>
               {visible.entries.map((entry, idx) => {
                 const resConfig = getResultConfig(entry.result);
