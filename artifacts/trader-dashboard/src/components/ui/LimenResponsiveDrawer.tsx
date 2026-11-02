@@ -32,6 +32,7 @@ export interface LimenResponsiveDrawerProps {
   onOpenChange: (open: boolean) => void;
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
+  description?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   desktopClassName?: string;
@@ -44,6 +45,7 @@ export function LimenResponsiveDrawer({
   onOpenChange,
   title,
   subtitle,
+  description,
   children,
   className,
   desktopClassName,
@@ -51,6 +53,7 @@ export function LimenResponsiveDrawer({
   showCloseButton = true,
 }: LimenResponsiveDrawerProps) {
   const isDesktop = useIsDesktop();
+  const effectiveSubtitle = subtitle ?? description;
 
   // Swipe-down to dismiss for Mobile Bottom Sheet
   const touchStartYRef = useRef<number | null>(null);
@@ -83,16 +86,16 @@ export function LimenResponsiveDrawer({
             desktopClassName
           )}
         >
-          {(title || subtitle) && (
+          {(title || effectiveSubtitle) && (
             <DialogHeader className="border-b border-[#C5A059]/20 pb-3 mb-4 text-left">
               {title && (
                 <DialogTitle className="font-mono text-base font-bold uppercase tracking-wider text-[#E8C56A]">
                   {title}
                 </DialogTitle>
               )}
-              {subtitle && (
+              {effectiveSubtitle && (
                 <DialogDescription className="font-mono text-xs text-slate-400 mt-1">
-                  {subtitle}
+                  {effectiveSubtitle}
                 </DialogDescription>
               )}
             </DialogHeader>
@@ -126,7 +129,7 @@ export function LimenResponsiveDrawer({
           className="w-12 h-1 rounded-full bg-[#C5A059]/40 hover:bg-[#C5A059]/70 transition-colors mx-auto mb-2.5 shrink-0"
         />
 
-        {(title || subtitle) && (
+        {(title || effectiveSubtitle) && (
           <SheetHeader className="border-b border-[#C5A059]/20 pb-2.5 mb-3 text-left">
             <div className="flex items-center justify-between">
               {title && (
@@ -147,9 +150,9 @@ export function LimenResponsiveDrawer({
                 </SheetClose>
               )}
             </div>
-            {subtitle && (
+            {effectiveSubtitle && (
               <SheetDescription className="font-mono text-[11px] text-slate-400 mt-0.5">
-                {subtitle}
+                {effectiveSubtitle}
               </SheetDescription>
             )}
           </SheetHeader>

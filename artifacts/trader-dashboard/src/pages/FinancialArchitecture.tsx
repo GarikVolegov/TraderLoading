@@ -31,6 +31,8 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
+import { useEdgeSwipe } from "@/hooks/useEdgeSwipe";
+import { LimenPullToRefresh } from "@/components/ui/LimenPullToRefresh";
 import {
   calculateVitalLiquidity,
   checkReserveConstraint,
@@ -96,7 +98,7 @@ export default function FinancialArchitecture() {
   const { entitlements } = useLimenEntitlements();
 
   const { isFreeTrial, remainingTime } = useFreeTrial();
-  const { data: remoteProfile, isLoading: _isLoading } = useFinancialProfile();
+  const { data: remoteProfile, isLoading: _isLoading, refetch } = useFinancialProfile();
   const updateMutation = useUpdateFinancialProfile();
 
   // Local state for interactive editing
@@ -150,6 +152,16 @@ export default function FinancialArchitecture() {
   // Auto-calculation reactive mode flag
   const [isAutoAllocation, setIsAutoAllocation] = useState<boolean>(true);
   const [mobileStep, setMobileStep] = useState<1 | 2 | 3>(1);
+
+  const { onTouchStart: onStepTouchStart, onTouchEnd: onStepTouchEnd } = useEdgeSwipe({
+    onSwipeLeft: () => setMobileStep((prev) => (prev < 3 ? ((prev + 1) as 1 | 2 | 3) : prev)),
+    onSwipeRight: () => setMobileStep((prev) => (prev > 1 ? ((prev - 1) as 1 | 2 | 3) : prev)),
+  });
+
+  const handleRefresh = useCallback(async () => {
+    await refetch();
+    toast({ description: "Architettura Patrimoniale sincronizzata" });
+  }, [refetch]);
 
   // Sync from remote profile once loaded
   useEffect(() => {
@@ -803,7 +815,11 @@ export default function FinancialArchitecture() {
       </div>
 
       {/* ─── COCKPIT AD ALTA DENSITÀ A 3 COLONNE (NESSUNA TESTATA, ZERO VUOTI, 100% UTILIZZO DELLO SPAZIO) ─── */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 p-2 sm:p-2.5 lg:overflow-hidden">
+      <div
+        className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 p-2 sm:p-2.5 lg:overflow-hidden"
+        onTouchStart={onStepTouchStart}
+        onTouchEnd={onStepTouchEnd}
+      >
         {/* ═══════════════════════════════════════════════════════════════
             COLONNA 1: STEP 1: FOTOGRAFIA FINANZIARIA (3 CARD BILANCIATE) (3/12)
            ═══════════════════════════════════════════════════════════════ */}
@@ -812,6 +828,10 @@ export default function FinancialArchitecture() {
             mobileStep === 1 ? "flex" : "hidden lg:flex"
           }`}
         >
+          <LimenPullToRefresh
+            className="flex-1 min-h-0 flex flex-col gap-2.5"
+            onRefresh={handleRefresh}
+          >
           {/* CARD 1A: Patrimonio Reale & Liquidità di Sopravvivenza */}
           <div className="flex-1 flex flex-col justify-between rounded-xl border border-border/70 bg-[#0d0f14]/90 p-3 sm:p-3.5 shadow-sm">
             {/* Header Step 1 */}
@@ -1247,6 +1267,7 @@ export default function FinancialArchitecture() {
               )}
             </div>
           </div>
+          </LimenPullToRefresh>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════
@@ -1257,6 +1278,10 @@ export default function FinancialArchitecture() {
             mobileStep === 2 ? "flex" : "hidden lg:flex"
           }`}
         >
+          <LimenPullToRefresh
+            className="flex-1 min-h-0 flex flex-col justify-between"
+            onRefresh={handleRefresh}
+          >
           {/* Header Colonna 2 & Presets Istituzionali */}
           <div className="border-b border-border/60 pb-2 mb-1.5 space-y-2 shrink-0">
             {/* Riga 1: Titolo Step 2 + Totale Allocato & Riconciliazione */}
@@ -1542,6 +1567,7 @@ export default function FinancialArchitecture() {
               €/m)
             </span>
           </div>
+          </LimenPullToRefresh>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════
@@ -1552,6 +1578,10 @@ export default function FinancialArchitecture() {
             mobileStep === 3 ? "flex" : "hidden lg:flex"
           }`}
         >
+          <LimenPullToRefresh
+            className="flex-1 min-h-0 flex flex-col gap-2.5"
+            onRefresh={handleRefresh}
+          >
           {/* BLOCCO SUPERIORE: Selettore Orizzonte + Visualizzatore Unificato Proiezioni / Monte Carlo / Pilastri */}
           <div className="flex-1 flex flex-col rounded-xl border border-border/70 bg-[#0d0f14]/90 p-3 sm:p-3.5 shadow-sm overflow-hidden min-h-0">
             <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
@@ -1979,6 +2009,7 @@ export default function FinancialArchitecture() {
               <span>Salva e Attiva Protocollo Patrimoniale</span>
             </Button>
           </div>
+          </LimenPullToRefresh>
         </div>
       </div>
     </PageLayout>

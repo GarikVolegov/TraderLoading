@@ -38,6 +38,8 @@ import { BacktestBattlesDrawer } from "@/components/backtest-tournament/Backtest
 import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
 import { LimenServiceLockGate } from "@/components/candidacy/LimenServiceLockGate";
 import { useEdgeSwipe } from "@/hooks/useEdgeSwipe";
+import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
+import { LimenPullToRefresh } from "@/components/ui/LimenPullToRefresh";
 
 const BacktestTournamentHub = lazy(() =>
   import("@/components/backtest-tournament/BacktestTournamentHub").then((m) => ({
@@ -150,109 +152,101 @@ function NewSessionForm({
   };
 
   return (
-    <Card className="border-primary/40 bg-card/95 shadow-lg">
-      <CardContent className="p-3.5 space-y-3">
-        <div className="flex items-center justify-between border-b border-border pb-1.5">
-          <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-primary">
-            {uiText("auto.ui.3d5ce24cbb")}
-          </h3>
-          <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-            {"Forgia Replay"}
-          </span>
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+            {uiText("backtest.session_name")}
+          </label>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={uiText("auto.ui.41eceb478a")}
+            className="h-9 text-xs font-mono"
+            autoFocus
+          />
         </div>
-        <div className="space-y-2.5">
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+            {uiText("backtest.strategy")}
+          </label>
+          <Input
+            value={strategy}
+            onChange={(e) => setStrategy(e.target.value)}
+            placeholder={uiText("auto.ui.a4b1c0aace")}
+            className="h-9 text-xs font-mono"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2.5">
           <div className="space-y-1">
-            <label className="text-[9.5px] font-mono text-muted-foreground uppercase tracking-wider">
-              {uiText("backtest.session_name")}
+            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+              {uiText("auto.ui.569cf0cb1d")}
             </label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={uiText("auto.ui.41eceb478a")}
-              className="h-8 text-xs font-mono"
-            />
+            <select
+              value={pair}
+              onChange={(e) => setPair(e.target.value)}
+              className="w-full h-9 px-2.5 rounded-md border border-border bg-background text-xs font-mono focus:border-primary focus:outline-none"
+            >
+              {pairOptions.map((p, i) => {
+                const userLabelCount = userPairs.length;
+                if (userLabelCount > 0 && i === userLabelCount) {
+                  return [
+                    <option key="__sep" disabled>{uiText("auto.ui.aba10da8de")}</option>,
+                    <option key={p} value={p}>{p}</option>,
+                  ];
+                }
+                return <option key={p} value={p}>{p}</option>;
+              })}
+            </select>
           </div>
           <div className="space-y-1">
-            <label className="text-[9.5px] font-mono text-muted-foreground uppercase tracking-wider">
-              {uiText("backtest.strategy")}
-            </label>
-            <Input
-              value={strategy}
-              onChange={(e) => setStrategy(e.target.value)}
-              placeholder={uiText("auto.ui.a4b1c0aace")}
-              className="h-8 text-xs font-mono"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-[9.5px] font-mono text-muted-foreground uppercase tracking-wider">
-                {uiText("auto.ui.569cf0cb1d")}
-              </label>
-              <select
-                value={pair}
-                onChange={(e) => setPair(e.target.value)}
-                className="w-full h-8 px-2 rounded-md border border-border bg-background text-xs font-mono"
-              >
-                {pairOptions.map((p, i) => {
-                  const userLabelCount = userPairs.length;
-                  if (userLabelCount > 0 && i === userLabelCount) {
-                    return [
-                      <option key="__sep" disabled>{uiText("auto.ui.aba10da8de")}</option>,
-                      <option key={p} value={p}>{p}</option>,
-                    ];
-                  }
-                  return <option key={p} value={p}>{p}</option>;
-                })}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[9.5px] font-mono text-muted-foreground uppercase tracking-wider">
-                {uiText("auto.ui.85decb73d1")}
-              </label>
-              <div className="flex flex-wrap gap-1">
-                {TIMEFRAMES.slice(0, 4).map((tf) => (
-                  <button
-                    key={tf}
-                    type="button"
-                    onClick={() => setTimeframe(tf)}
-                    className={`px-1.5 py-1 text-[9px] font-mono font-bold transition-all border ${
-                      timeframe === tf
-                        ? "bg-primary/20 text-primary border-primary/50"
-                        : "bg-background text-muted-foreground border-border"
-                    }`}
-                  >
-                    {tf}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="backtest-session-start" className="text-[9.5px] font-mono text-muted-foreground uppercase tracking-wider">
-              {uiText("backtest_terminal.start_datetime")} · {uiText("backtest_terminal.timezone_utc")}
+            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+              {uiText("auto.ui.85decb73d1")}
             </label>
             <div className="flex flex-wrap gap-1">
-              {yearOptions.map((year) => (
+              {TIMEFRAMES.slice(0, 4).map((tf) => (
                 <button
-                  key={year}
+                  key={tf}
                   type="button"
-                  onClick={() => pickYear(year)}
-                  className="px-1.5 py-0.5 rounded font-mono text-[9px] font-bold uppercase tracking-wider whitespace-nowrap bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#E8C56A] hover:bg-[#C5A059]/20 transition-colors"
+                  onClick={() => setTimeframe(tf)}
+                  className={`px-2 py-1.5 text-[9.5px] font-mono font-bold transition-all border rounded-sm ${
+                    timeframe === tf
+                      ? "bg-primary/20 text-primary border-primary/50 shadow-sm"
+                      : "bg-background text-muted-foreground border-border hover:border-primary/30"
+                  }`}
                 >
-                  {year}
+                  {tf}
                 </button>
               ))}
             </div>
-            {blindStart ? (
-              <div className="flex items-center justify-between h-8 px-2 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10">
-                <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
-                  <EyeOff className="w-3.5 h-3.5" /> Data celata · Zero bias
-                </span>
-                <button type="button" onClick={() => setBlindStart(false)} className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground hover:text-[#E8C56A] whitespace-nowrap">
-                  Svela
-                </button>
-              </div>
-            ) : (
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="backtest-session-start" className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+            {uiText("backtest_terminal.start_datetime")} · {uiText("backtest_terminal.timezone_utc")}
+          </label>
+          <div className="flex flex-wrap gap-1">
+            {yearOptions.map((year) => (
+              <button
+                key={year}
+                type="button"
+                onClick={() => pickYear(year)}
+                className="px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase tracking-wider whitespace-nowrap bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#E8C56A] hover:bg-[#C5A059]/20 transition-colors"
+              >
+                {year}
+              </button>
+            ))}
+          </div>
+          {blindStart ? (
+            <div className="flex items-center justify-between h-9 px-2.5 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10">
+              <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
+                <EyeOff className="w-3.5 h-3.5" /> Data celata · Zero bias
+              </span>
+              <button type="button" onClick={() => setBlindStart(false)} className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground hover:text-[#E8C56A] whitespace-nowrap">
+                Svela
+              </button>
+            </div>
+          ) : (
             <Input
               id="backtest-session-start"
               type="datetime-local"
@@ -261,48 +255,47 @@ function NewSessionForm({
               onChange={(event) => setStartDateTime(event.target.value)}
               max={utcDateTimeInput(lastTime) || undefined}
               aria-invalid={startOutsideHistory}
-              className="h-8 text-xs font-mono"
+              className="h-9 text-xs font-mono"
             />
-            )}
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                onClick={() => pickRandom(false)}
-                className="inline-flex items-center justify-center gap-1.5 h-7 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 text-[#E8C56A] font-mono text-[9.5px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-[#C5A059]/20"
-              >
-                <Dices className="w-3.5 h-3.5" /> Data Casuale
-              </button>
-              <button
-                type="button"
-                onClick={() => pickRandom(true)}
-                className="inline-flex items-center justify-center gap-1.5 h-7 rounded border border-slate-400/30 bg-slate-400/10 text-slate-300 font-mono text-[9.5px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-slate-400/20"
-              >
-                <EyeOff className="w-3.5 h-3.5" /> Replay Cieco
-              </button>
-            </div>
-            {startOutsideHistory && (
-              <p className="text-[9px] text-destructive" role="alert">
-                {uiText("backtest_terminal.date_outside_history")}
-              </p>
-            )}
+          )}
+          <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+            <button
+              type="button"
+              onClick={() => pickRandom(false)}
+              className="inline-flex items-center justify-center gap-1.5 h-8 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 text-[#E8C56A] font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-[#C5A059]/20 transition-colors"
+            >
+              <Dices className="w-3.5 h-3.5" /> Data Casuale
+            </button>
+            <button
+              type="button"
+              onClick={() => pickRandom(true)}
+              className="inline-flex items-center justify-center gap-1.5 h-8 rounded border border-slate-400/30 bg-slate-400/10 text-slate-300 font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-slate-400/20 transition-colors"
+            >
+              <EyeOff className="w-3.5 h-3.5" /> Replay Cieco
+            </button>
           </div>
+          {startOutsideHistory && (
+            <p className="text-[9.5px] text-destructive font-mono" role="alert">
+              {uiText("backtest_terminal.date_outside_history")}
+            </p>
+          )}
         </div>
-        <div className="flex gap-2 justify-end pt-1">
-          <Button variant="ghost" size="sm" onClick={onClose} className="h-7 text-xs font-mono">
-            {uiText("auto.ui.6c3de5381b")}
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleSubmit}
-            disabled={!name.trim() || createMutation.isPending || startOutsideHistory || (startDateTime !== "" && selectedStartTime == null)}
-            className="h-7 text-xs font-mono"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            {uiText("auto.ui.1a33586f3b")}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="flex gap-2 justify-end pt-3 border-t border-border/60">
+        <Button variant="ghost" size="sm" onClick={onClose} className="h-8 text-xs font-mono">
+          {uiText("auto.ui.6c3de5381b")}
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleSubmit}
+          disabled={!name.trim() || createMutation.isPending || startOutsideHistory || (startDateTime !== "" && selectedStartTime == null)}
+          className="h-8 px-3 text-xs font-mono font-bold bg-[#C5A059] hover:bg-[#D4AF37] text-black shadow"
+        >
+          <Plus className="w-3.5 h-3.5 mr-1" />
+          {uiText("auto.ui.1a33586f3b")}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -333,9 +326,9 @@ function StatBox({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="border border-[#C5A059]/20 hover:border-[#C5A059]/45 bg-[#0B0D13]/90 rounded-md p-2.5 flex flex-col justify-between transition-all duration-150 shadow-sm relative overflow-hidden group">
-      <div className="flex items-center justify-between gap-1 mb-1.5">
-        <span className="text-[9.5px] font-mono uppercase tracking-wider font-bold text-muted-foreground truncate">
+    <div className="border border-[#C5A059]/20 hover:border-[#C5A059]/45 bg-[#0B0D13]/90 rounded-md p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-150 shadow-sm relative overflow-hidden group">
+      <div className="flex items-center justify-between gap-1 mb-1 sm:mb-1.5">
+        <span className="text-[9px] sm:text-[9.5px] font-mono uppercase tracking-wider font-bold text-muted-foreground truncate">
           {label}
         </span>
         <span className={`p-1 rounded bg-background/60 border border-border/40 ${color} shrink-0`}>
@@ -343,11 +336,11 @@ function StatBox({
         </span>
       </div>
       <div>
-        <div className={`text-base sm:text-lg xl:text-[15px] 2xl:text-[17px] font-mono font-bold tabular-nums tracking-tight whitespace-nowrap leading-tight ${color}`}>
+        <div className={`text-sm sm:text-base xl:text-[15px] 2xl:text-[17px] font-mono font-bold tabular-nums tracking-tight whitespace-nowrap leading-tight ${color}`}>
           {typeof value === "string" && value.includes(" ") ? formatStatCurrency(value) : value}
         </div>
         {subvalue && (
-          <p className="text-[9px] sm:text-[9.5px] font-mono text-muted-foreground/80 mt-1 whitespace-nowrap overflow-hidden text-ellipsis" title={subvalue}>
+          <p className="text-[8.5px] sm:text-[9.5px] font-mono text-muted-foreground/80 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis" title={subvalue}>
             {subvalue}
           </p>
         )}
@@ -364,9 +357,9 @@ function formatSignedPips(totalPips: string): string {
 
 function SessionMetric({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="min-w-0 border border-border/60 bg-background/70 px-2 py-1.5 text-center">
-      <p className="text-[8.5px] font-mono uppercase tracking-wider text-muted-foreground truncate">{label}</p>
-      <p className={`mt-0.5 font-mono text-xs font-bold tabular-nums truncate ${color}`}>{value}</p>
+    <div className="min-w-0 border border-border/60 bg-background/70 px-1.5 sm:px-2 py-1 sm:py-1.5 text-center">
+      <p className="text-[8px] sm:text-[8.5px] font-mono uppercase tracking-wider text-muted-foreground truncate whitespace-nowrap">{label}</p>
+      <p className={`mt-0.5 font-mono text-[11px] sm:text-xs font-bold tabular-nums truncate whitespace-nowrap ${color}`}>{value}</p>
     </div>
   );
 }
@@ -602,7 +595,7 @@ export default function Backtest() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => setShowNew(!showNew)}
+                    onClick={() => setShowNew(true)}
                     className="h-6 px-2 font-mono text-[9.5px] uppercase tracking-wider border-[#C5A059]/40 bg-[#0C0D12] text-[#D4AF37] hover:bg-[#C5A059]/15 hover:border-[#C5A059] transition-all"
                   >
                     <Plus className="w-3 h-3 mr-1" />
@@ -611,27 +604,15 @@ export default function Backtest() {
                 </div>
               </div>
 
-              {/* Form nuova sessione (animato) */}
-              <AnimatePresence>
-                {showNew && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="p-2 border-b border-border/70 overflow-hidden shrink-0"
-                  >
-                    <NewSessionForm
-                      onClose={() => setShowNew(false)}
-                      onCreated={(created) => {
-                        setSelectedSessionId(created.id);
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Lista Sessioni con Scorrimento Interno a tutta altezza */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-2">
+              {/* Lista Sessioni con Scorrimento Interno a tutta altezza & Tactile Pull-to-Refresh */}
+              <LimenPullToRefresh
+                className="flex-1 min-h-0 overflow-y-auto"
+                onRefresh={async () => {
+                  await refetch();
+                  toast({ description: "Archivio sessioni sincronizzato" });
+                }}
+              >
+                <div className="p-2.5 space-y-2">
                 {isLoading ? (
                   <div className="space-y-2">
                     {[1, 2, 3].map((i) => (
@@ -750,7 +731,8 @@ export default function Backtest() {
                     })}
                   </div>
                 )}
-              </div>
+                </div>
+              </LimenPullToRefresh>
 
               {/* Tendina Le Prove del Fuoco (posizionata sotto le sessioni) */}
               <BacktestBattlesDrawer onOpenHub={() => navigate("/backtest?tab=battaglie")} />
@@ -767,24 +749,31 @@ export default function Backtest() {
               </div>
             </aside>
 
-            {/* ── Area Operativa & Statistiche Avanzate (Colonna Destra - Inalterata) ── */}
+            {/* ── Area Operativa & Statistiche Avanzate (Colonna Destra) ── */}
             <main
-              className={`border border-border/80 bg-card/60 backdrop-blur flex-col lg:h-full min-h-0 overflow-y-auto lg:overflow-hidden p-2.5 sm:p-3 gap-2.5 ${
+              className={`border border-border/80 bg-card/60 backdrop-blur flex-col lg:h-full min-h-0 overflow-hidden p-2.5 sm:p-3 gap-2.5 ${
                 mobileSection === "workbench" ? "flex" : "hidden lg:flex"
               }`}
             >
+              <LimenPullToRefresh
+                className="flex-1 min-h-0 flex flex-col overflow-y-auto lg:overflow-visible gap-2.5"
+                onRefresh={async () => {
+                  await Promise.all([refetch(), refetchTrades()]);
+                  toast({ description: "Statistiche e telemetria sincronizzate" });
+                }}
+              >
               {/* Hero Session Command Bar */}
               <div className="border border-primary/40 bg-gradient-to-r from-primary/15 via-card to-card p-3 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="border border-primary/50 bg-primary/20 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-primary">
+                    <span className="border border-primary/50 bg-primary/20 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-primary whitespace-nowrap">
                       {activeSession ? `SESSIONE #${activeSession.id}` : "LA FORGIA"}
                     </span>
                     <strong className="text-sm sm:text-base font-bold truncate">
                       {activeSession ? activeSession.name : uiText("backtest_terminal.launch_title")}
                     </strong>
                     {activeSession?.strategy && (
-                      <span className="border border-border bg-background/80 px-2 py-0.5 font-mono text-[9px] text-muted-foreground truncate">
+                      <span className="border border-border bg-background/80 px-2 py-0.5 font-mono text-[9px] text-muted-foreground truncate hidden sm:inline">
                         {activeSession.strategy}
                       </span>
                     )}
@@ -859,10 +848,7 @@ export default function Backtest() {
                     </Button>
                   ) : (
                     <Button
-                      onClick={() => {
-                        setMobileSection("sessions");
-                        setShowNew(true);
-                      }}
+                      onClick={() => setShowNew(true)}
                       className="w-full font-mono text-xs uppercase tracking-wider h-10 flex items-center justify-center gap-2 bg-[#C5A059] text-black font-bold"
                     >
                       <Plus className="w-4 h-4" />
@@ -1113,9 +1099,9 @@ export default function Backtest() {
                           className="border border-border/70 bg-background/80 hover:bg-background hover:border-primary/45 p-2 px-3 flex items-center justify-between gap-3 group transition-colors duration-150 font-mono"
                         >
                           {/* Direzione & Icona */}
-                          <div className="flex items-center gap-2.5 min-w-[90px]">
+                          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 min-w-[70px] sm:min-w-[90px]">
                             <div
-                              className={`w-6 h-6 flex items-center justify-center shrink-0 border ${
+                              className={`w-6 h-6 flex items-center justify-center shrink-0 border rounded-sm ${
                                 trade.direction === "buy"
                                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
                                   : "border-rose-500/30 bg-rose-500/10 text-rose-400"
@@ -1127,7 +1113,7 @@ export default function Backtest() {
                                 <TrendingDown className="w-3 h-3" />
                               )}
                             </div>
-                            <span className={`text-[10px] font-bold uppercase ${
+                            <span className={`text-[10px] font-bold uppercase whitespace-nowrap ${
                               trade.direction === "buy" ? "text-emerald-400" : "text-rose-400"
                             }`}>
                               {trade.direction}
@@ -1135,23 +1121,23 @@ export default function Backtest() {
                           </div>
 
                           {/* Prezzi Entry -> Exit */}
-                          <div className="flex-1 min-w-[140px] text-[10.5px]">
-                            <span className="text-muted-foreground">{trade.entryPrice}</span>
-                            <span className="text-muted-foreground/60 mx-1.5">→</span>
-                            <span className="text-foreground font-semibold">{trade.exitPrice}</span>
+                          <div className="flex-1 min-w-0 text-[10px] sm:text-[10.5px] truncate">
+                            <span className="text-muted-foreground whitespace-nowrap">{trade.entryPrice}</span>
+                            <span className="text-muted-foreground/60 mx-1">→</span>
+                            <span className="text-foreground font-semibold whitespace-nowrap">{trade.exitPrice}</span>
                             {(trade.stopLoss || trade.takeProfit) && (
-                              <span className="text-[9px] text-muted-foreground/60 ml-2 hidden sm:inline">
+                              <span className="text-[9px] text-muted-foreground/60 ml-2 hidden md:inline whitespace-nowrap">
                                 {trade.stopLoss ? `SL: ${trade.stopLoss}` : ""} {trade.takeProfit ? `TP: ${trade.takeProfit}` : ""}
                               </span>
                             )}
                           </div>
 
                           {/* PNL & Pips Risultato */}
-                          <div className="min-w-[120px] text-right">
+                          <div className="min-w-[75px] sm:min-w-[120px] text-right shrink-0">
                             {trade.netPnl != null ? (
                               <>
                                 <span
-                                  className={`text-xs font-bold tabular-nums whitespace-nowrap ${
+                                  className={`text-[11px] sm:text-xs font-bold tabular-nums whitespace-nowrap block ${
                                     parseFloat(trade.netPnl) > 0
                                       ? "text-emerald-400"
                                       : parseFloat(trade.netPnl) < 0
@@ -1163,13 +1149,13 @@ export default function Backtest() {
                                   {parseFloat(trade.netPnl).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
                                   {trade.currency ?? "EUR"}
                                 </span>
-                                <span className="text-[9px] text-muted-foreground/75 block tabular-nums whitespace-nowrap">
+                                <span className="text-[8.5px] sm:text-[9px] text-muted-foreground/75 block tabular-nums whitespace-nowrap">
                                   {trade.result === "win" ? "+" : ""}{trade.pips ?? "0"} pips
                                 </span>
                               </>
                             ) : (
                               <span
-                                className={`text-xs font-bold tabular-nums whitespace-nowrap ${
+                                className={`text-[11px] sm:text-xs font-bold tabular-nums whitespace-nowrap block ${
                                   trade.result === "win"
                                     ? "text-emerald-400"
                                     : trade.result === "loss"
@@ -1183,9 +1169,9 @@ export default function Backtest() {
                           </div>
 
                           {/* Lotti & Data */}
-                          <div className="min-w-[90px] text-right hidden sm:block text-[9.5px] text-muted-foreground/75">
-                            <span>{trade.lotSize} lotti</span>
-                            <span className="block text-[8.5px] text-muted-foreground/60">
+                          <div className="min-w-[90px] text-right hidden sm:block text-[9.5px] text-muted-foreground/75 shrink-0">
+                            <span className="whitespace-nowrap">{trade.lotSize} lotti</span>
+                            <span className="block text-[8.5px] text-muted-foreground/60 whitespace-nowrap">
                               {format(parseISO(trade.tradeDate), "d MMM yyyy", { locale: dateLocale })}
                             </span>
                           </div>
@@ -1216,10 +1202,28 @@ export default function Backtest() {
                   </span>
                 </div>
               </div>
+              </LimenPullToRefresh>
             </main>
           </div>
         </div>
       </ProUpgradeGate>
+      <LimenResponsiveDrawer
+        open={showNew}
+        onOpenChange={setShowNew}
+        title={uiText("auto.ui.3d5ce24cbb")}
+        description="Forgia Replay · Configura sessione e orizzonte storico"
+        desktopClassName="max-w-md"
+      >
+        <div className="p-4 sm:p-5">
+          <NewSessionForm
+            onClose={() => setShowNew(false)}
+            onCreated={(created) => {
+              setSelectedSessionId(created.id);
+              setShowNew(false);
+            }}
+          />
+        </div>
+      </LimenResponsiveDrawer>
       {decompressionOpen && (
         <Suspense fallback={null}>
           <DecompressionChamberModal open={decompressionOpen} onOpenChange={setDecompressionOpen} />
