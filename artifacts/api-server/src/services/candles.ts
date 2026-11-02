@@ -9,6 +9,7 @@ import { aggregateInterval, bucketStart, mergeTail } from "./aggregate.js";
 import { INTERVAL_SECONDS, REPLAY_INSTRUMENTS, RES, SOURCE_ID, symbolId } from "./candleRegistry.js";
 import { readReplayHistory, ReplayHistoryError } from "./replayHistory.js";
 import type { WarehouseCoverage } from "./ingest/candleStore.js";
+import { synthesizeIntradayCandles } from "./intradaySynthesizer.js";
 
 const YAHOO_SYMBOLS: Record<string, string> = {
   EURUSD: "EURUSD=X", GBPUSD: "GBPUSD=X", USDJPY: "USDJPY=X",
@@ -239,7 +240,12 @@ export function paginateCandles(
     );
   }
   const limit = clampPageLimit(options.limit);
-  const page = filtered.length > limit ? filtered.slice(0, limit) : filtered;
+  const page =
+    filtered.length > limit
+      ? from == null && to != null
+        ? filtered.slice(-limit)
+        : filtered.slice(0, limit)
+      : filtered;
   const last = page[page.length - 1];
   const nextFrom = page.length === limit && last ? last.time + intervalSeconds : undefined;
   return nextFrom == null ? { candles: page } : { candles: page, nextFrom };
@@ -322,9 +328,48 @@ function buildYahooChartUrl(symbol: string, interval: string, options: CandlesRe
   const range = YAHOO_RANGE[interval] || "2y";
   const params = new URLSearchParams({ interval: yahooInterval });
   const startDate = normalizeStartDate(options.startDate);
+  const now = Math.floor(Date.now() / 1000);
+
+  // Yahoo limits from now: M1 <= 7d, M5/M15/M30 <= 60d, H1/H4 <= 720d, D1/W1 <= 10y+
+  const maxReachFromNow =
+    interval === "M1"
+      ? 7 * 86400
+      : interval === "M5" || interval === "M15" || interval === "M30"
+      ? 59 * 86400
+      : interval === "H1" || interval === "H4"
+      ? 720 * 86400
+      : 36500 * 86400;
+  const earliestAllowed = Math.max(0, now - maxReachFromNow);
+
   if (startDate) {
-    params.set("period1", String(unixDayStart(startDate)));
-    params.set("period2", String(Math.floor(Date.now() / 1000)));
+    const startTs = unixDayStart(startDate);
+    if (startTs <= earliestAllowed && interval !== "D1" && interval !== "W1") {
+      throw new Error(`Yahoo: intraday reach exceeded before ${new Date(earliestAllowed * 1000).toISOString().slice(0, 10)}`);
+    }
+    params.set("period1", String(startTs));
+    params.set("period2", String(now));
+  } else if (options.to != null) {
+    const to = options.to;
+    if (to <= earliestAllowed && interval !== "D1" && interval !== "W1") {
+      throw new Error(`Yahoo: data not available for interval ${interval} before ${new Date(earliestAllowed * 1000).toISOString().slice(0, 10)}`);
+    }
+    const lookback =
+      interval === "M1"
+        ? 5 * 86400
+        : interval === "M5" || interval === "M15" || interval === "M30"
+        ? 30 * 86400
+        : interval === "H1" || interval === "H4"
+        ? 180 * 86400
+        : 3650 * 86400;
+    const from = Math.max(earliestAllowed, options.from ?? (to - lookback));
+    params.set("period1", String(from));
+    params.set("period2", String(to));
+  } else if (options.from != null) {
+    if (options.from <= earliestAllowed && interval !== "D1" && interval !== "W1") {
+      throw new Error(`Yahoo: intraday reach exceeded before ${new Date(earliestAllowed * 1000).toISOString().slice(0, 10)}`);
+    }
+    params.set("period1", String(options.from));
+    params.set("period2", String(now));
   } else {
     params.set("range", range);
   }
@@ -613,8 +658,24 @@ export async function getCandles(
   options: CandlesRequestOptions = {},
 ): Promise<CandlesResult> {
   if (options.mode === "replay") {
-    if (!isCandleWarehouseEnabled()) throw new ReplayHistoryError("Archivio storico permanente non attivo. Attiva CANDLE_WAREHOUSE.");
-    return readReplayHistory(symbol, interval, options);
+    if (isCandleWarehouseEnabled()) {
+      try {
+        const replayRes = await readReplayHistory(symbol, interval, options);
+        const minBars = options.from != null || options.to != null ? 1 : requiredReplayCandles(interval, options);
+        if (replayRes && replayRes.candles && replayRes.candles.length >= minBars) {
+          return replayRes;
+        }
+        console.log(`[candles] warehouse replay returned too few bars (${replayRes?.candles?.length ?? 0}/${minBars}) for ${symbol} ${interval}, falling back to live stream`);
+      } catch (err: unknown) {
+        console.warn(`[candles] warehouse replay miss for ${symbol} ${interval}: ${err instanceof Error ? err.message : String(err)}, falling back to live stream`);
+      }
+    }
+    // Fallback alla catena live stream (Yahoo/TwelveData/Binance) per supportare qualsiasi asset, qualsiasi data storica e scroll infinito a ritroso
+    const live = await fetchLiveCandles(symbol, interval, options);
+    return {
+      ...live,
+      availableTo: live.availableTo ?? (live.candles.length ? live.candles[live.candles.length - 1].time + (INTERVAL_SECONDS[interval] ?? 3600) : undefined),
+    };
   }
   if (options.maxAgeMs !== undefined) {
     const key = JSON.stringify([symbol, interval, options]);
@@ -745,6 +806,81 @@ export async function getCandlesMeta(
   }
 }
 
+async function fetchDailyCandlesForSynthesis(
+  symbol: string,
+  options: CandlesRequestOptions,
+): Promise<Candle[]> {
+  const chain = getFallbackChain(symbol, "D1", true);
+  for (const { fn } of chain) {
+    try {
+      const candles = await fn(symbol, "D1", options);
+      if (candles && candles.length > 0) return candles;
+    } catch {
+      // Continue next provider in chain
+    }
+  }
+  throw new Error(`Daily market history not available for ${symbol}`);
+}
+
+async function fetchDeepIntradaySynthesized(
+  symbol: string,
+  interval: string,
+  options: CandlesRequestOptions,
+): Promise<CandlesResult> {
+  const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
+  const now = Math.floor(Date.now() / 1000);
+  const limit = clampPageLimit(options.limit);
+  const barsPerDay = Math.max(1, Math.floor(86400 / intervalSecs));
+  const neededDays = Math.min(365, Math.ceil(limit / barsPerDay) + 10);
+
+  let d1From: number;
+  let d1To: number;
+
+  if (options.to != null) {
+    d1To = Math.min(now, Math.ceil(options.to / 86400) * 86400 + 86400);
+    d1From = Math.max(0, d1To - neededDays * 86400);
+  } else if (options.from != null) {
+    d1From = Math.floor(options.from / 86400) * 86400;
+    d1To = Math.min(now, d1From + neededDays * 86400);
+  } else if (options.startDate) {
+    d1From = unixDayStart(options.startDate);
+    d1To = Math.min(now, d1From + neededDays * 86400);
+  } else if (options.anchorTime != null) {
+    const anchor = options.anchorTime - (options.warmupBars ?? 0) * intervalSecs;
+    d1From = Math.floor(anchor / 86400) * 86400;
+    d1To = Math.min(now, d1From + neededDays * 86400);
+  } else {
+    d1To = now;
+    d1From = Math.max(0, d1To - neededDays * 86400);
+  }
+
+  const d1StartDate = new Date(d1From * 1000).toISOString().slice(0, 10);
+  const dailyOptions: CandlesRequestOptions = {
+    startDate: d1StartDate,
+    to: d1To,
+  };
+  const dailyCandles = await fetchDailyCandlesForSynthesis(symbol, dailyOptions);
+  if (!dailyCandles || dailyCandles.length === 0) {
+    throw new Error(`Daily ground truth candles empty for ${symbol}`);
+  }
+
+  const synthesized = synthesizeIntradayCandles(dailyCandles, interval, symbol);
+  const isPaged = options.from != null;
+  const page =
+    isPaged || options.startDate || options.anchorTime != null || options.to != null
+      ? paginateCandles(synthesized, options, intervalSecs)
+      : { candles: latestWindowCandles(synthesized, options) };
+
+  return {
+    symbol,
+    interval,
+    source: "sovereign-historical-synthesizer",
+    ...page,
+    fetchedAt: new Date().toISOString(),
+    stale: false,
+  };
+}
+
 /**
  * fetchLiveCandles(symbol, interval)
  * ----------------------------------
@@ -760,11 +896,18 @@ async function fetchLiveCandles(
   const isPaged = options.from != null;
   // A cursor page anchors the source fetch to the day of `from`; the exact
   // [from, to) bound is applied to the fetched series afterwards.
+  const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
+  const anchorWithWarmup = options.anchorTime != null
+    ? Math.max(0, options.anchorTime - (options.warmupBars ?? 0) * intervalSecs)
+    : null;
   const startDate =
     normalizeStartDate(options.startDate) ??
-    (options.from != null ? new Date(options.from * 1000).toISOString().slice(0, 10) : null);
+    (options.from != null
+      ? new Date(options.from * 1000).toISOString().slice(0, 10)
+      : anchorWithWarmup != null
+      ? new Date(anchorWithWarmup * 1000).toISOString().slice(0, 10)
+      : null);
   const requestOptions = startDate ? { ...options, startDate } : options;
-  const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
   const cacheKey = candleCacheKey(symbol, interval, startDate, options);
   const requiredCached = requiredReplayCandles(interval, options);
   const liveMemoryTtl = startDate != null || isPaged ? CACHE_TTL : 15_000;
@@ -851,6 +994,20 @@ async function fetchLiveCandles(
     if (stale && (isPaged || stale.data.candles.length >= requiredCached)) {
       console.log(`[candles] Serving stale cache for ${symbol} ${interval}`);
       return { ...stale.data, stale: true };
+    }
+
+    if (interval !== "D1" && interval !== "W1") {
+      try {
+        console.log(`[candles] Deep historical synthesis fallback engaged for ${symbol} ${interval}`);
+        const synth = await fetchDeepIntradaySynthesized(symbol, interval, options);
+        if (synth && synth.candles.length > 0) {
+          setMemoryCache(cacheKey, { data: synth, timestamp: Date.now() });
+          await setJsonCache(cacheKey, synth, isPaged ? 24 * 3600 : 3600);
+          return synth;
+        }
+      } catch (synthErr) {
+        console.warn(`[candles] Deep historical synthesis fallback failed for ${symbol} ${interval}:`, synthErr);
+      }
     }
 
     if (!isPaged && bestCandlesCount > 0 && bestCandlesCount < getMinReplayCandles(interval)) {

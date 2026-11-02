@@ -565,9 +565,18 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   const warehouseFirst = window_.meta?.warehouse?.firstTs ?? null;
   const warehouseLast = window_.meta?.warehouse?.lastTs ?? null;
   const jumpToRandomDate = useCallback((options?: { blind?: boolean }) => {
+    const defaultStart = Date.UTC(2021, 0, 1) / 1000;
+    const effectiveFirst =
+      warehouseFirst != null && warehouseFirst < (warehouseLast ?? Infinity) - 90 * 86400
+        ? warehouseFirst + 60
+        : defaultStart;
+    const effectiveLast =
+      warehouseLast != null
+        ? warehouseLast - 7 * 86400
+        : Math.floor(Date.now() / 1000) - 86400;
     const ts = generateRandomTradingTimestamp(
-      warehouseFirst != null ? warehouseFirst + 60 : null,
-      warehouseLast != null ? warehouseLast - 30 * 86400 : null,
+      effectiveFirst,
+      effectiveLast,
       normalizedSymbol,
       Math.min(intervalSeconds, 3600),
     );
@@ -577,8 +586,8 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
   }, [warehouseFirst, warehouseLast, normalizedSymbol, intervalSeconds, jumpToTime, setBlindMode]);
 
   const jumpToYear = useCallback((year: number) => {
-    jumpToTime(getYearTradingStart(year, warehouseFirst != null ? warehouseFirst + 60 : null, warehouseLast != null ? warehouseLast + 60 : null));
-  }, [jumpToTime, warehouseFirst, warehouseLast]);
+    jumpToTime(getYearTradingStart(year, null, warehouseLast != null ? warehouseLast + 60 : null));
+  }, [jumpToTime, warehouseLast]);
 
   const restart = useCallback(() => {
     if (startTime != null) jumpToTime(startTime);

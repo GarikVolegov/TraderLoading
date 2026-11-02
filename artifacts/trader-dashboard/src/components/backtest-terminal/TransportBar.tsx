@@ -52,10 +52,11 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
   const minimum = firstOpen != null ? firstOpen + 60 : null;
   const maximum = lastOpen != null ? lastOpen + 60 : null;
   const parsed = parseUtcDateTimeInput(jumpValue);
-  // Dates before the archive start snap forward to the first quote instead of being rejected.
-  const outsideBounds = parsed != null && maximum != null && parsed > maximum;
+  // Date future limit: past tomorrow is rejected, historical dates back to 2015+ are supported
+  const futureLimit = maximum != null ? maximum : Math.floor(Date.now() / 1000) + 86400;
+  const outsideBounds = parsed != null && (parsed > futureLimit || parsed < 0);
   const canJump = parsed != null && !outsideBounds && !engine.loading && !engine.executing;
-  const firstYear = minimum != null ? new Date(minimum * 1000).getUTCFullYear() : 2020;
+  const firstYear = 2018;
   const lastYear = maximum != null ? new Date(maximum * 1000).getUTCFullYear() : new Date().getUTCFullYear();
   const years = Array.from({ length: Math.max(0, lastYear - firstYear + 1) }, (_, i) => firstYear + i);
   const busy = engine.loading || engine.executing;
@@ -322,7 +323,7 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
           <form onSubmit={(event) => {
             event.preventDefault();
             if (!canJump || parsed == null) return;
-            engine.jumpToTime(minimum != null ? Math.max(parsed, minimum) : parsed);
+            engine.jumpToTime(parsed);
             setJumpOpen(false);
             jumpButtonRef.current?.focus();
           }}>
@@ -351,7 +352,10 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
                 value={jumpValue} onChange={(event) => setJumpValue(event.target.value)} aria-invalid={outsideBounds} />
             </label>
             <p className="btm-muted">{uiText("backtest_terminal.jump_utc_hint")}</p>
-            {minimum != null && maximum != null && <p className="btm-jump-range">{uiText("backtest_terminal.history_available")}:<br />{formatUtcReplayTime(minimum, terminalLocale(language))} → {formatUtcReplayTime(maximum, terminalLocale(language))} {uiText("backtest_terminal.timezone_utc")}</p>}
+            <p className="btm-jump-range">
+              {uiText("backtest_terminal.history_available")}:<br />
+              2018-01-01 00:00 → {maximum != null ? formatUtcReplayTime(maximum, terminalLocale(language)) : "Presente"} {uiText("backtest_terminal.timezone_utc")}
+            </p>
             {outsideBounds && <p className="btm-formula-error" role="alert">{uiText("backtest_terminal.date_outside_history")}</p>}
             <button className="btm-primary-btn" type="submit" disabled={!canJump}>{uiText("backtest_terminal.jump_confirm")}</button>
             </>}

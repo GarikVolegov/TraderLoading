@@ -270,7 +270,7 @@ export function ReplayChart({
 
     const onLogicalRangeChange = (range: { from: number; to: number } | null) => {
       scheduleRevision();
-      if (range && range.from < 50 && lastRenderRef.current.length > 0) historyLoaderRef.current();
+      if (range && range.from < 150 && lastRenderRef.current.length > 0) historyLoaderRef.current();
     };
     chart.timeScale().subscribeVisibleLogicalRangeChange(onLogicalRangeChange);
     chart.timeScale().subscribeVisibleTimeRangeChange(scheduleRevision);
@@ -810,7 +810,7 @@ export function ReplayChart({
       }
     } else {
       const addedBefore = displayCandles.length - last.length;
-      const isPrepend = addedBefore > 0 && last.length > 0 && last.lastValue === lastValue &&
+      const isPrepend = addedBefore > 0 && last.length > 0 &&
         displayCandles[addedBefore]?.time === last.firstTime;
       if (isLineLike) price.series.setData(displayCandles.map(toLinePoint));
       else price.series.setData(displayCandles.map(toCandlePoint));

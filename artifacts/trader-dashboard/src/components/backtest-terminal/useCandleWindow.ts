@@ -144,12 +144,10 @@ export function useCandleWindow(symbol: string, interval: string, anchorTime: nu
   }, [candles.length, symbol, interval]);
 
   const firstTime = candles[0]?.time;
-  const firstAvailable = meta?.warehouse?.firstTs;
   const ensureBefore = useCallback(() => {
     if (firstTime == null || loading || prependingRef.current || !hasEarlierRef.current ||
         !loadedFor || loadedFor.symbol !== symbol || loadedFor.interval !== interval ||
-        loadedFor.anchorTime !== anchorTime || loadedFor.requestId !== requestId ||
-        (firstAvailable != null && firstTime <= firstAvailable)) return;
+        loadedFor.anchorTime !== anchorTime || loadedFor.requestId !== requestId) return;
     const controller = new AbortController();
     prependControllerRef.current = controller;
     prependingRef.current = true;
@@ -162,20 +160,27 @@ export function useCandleWindow(symbol: string, interval: string, anchorTime: nu
         setCandles((previous) => {
           const oldest = previous[0]?.time ?? Infinity;
           const older = data.candles.filter((candle) => candle.time < oldest);
-          return older.length ? [...older, ...previous] : previous;
+          if (older.length === 0) {
+            hasEarlierRef.current = false;
+            return previous;
+          }
+          return [...older, ...previous];
         });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted || generation !== generationRef.current) return;
-        if ((error as { status?: number })?.status === 409) hasEarlierRef.current = false;
-        else setPageError(error instanceof Error ? error.message : String(error));
+        if ((error as { status?: number })?.status === 409 || (error as { status?: number })?.status === 404) {
+          hasEarlierRef.current = false;
+        } else {
+          setPageError(error instanceof Error ? error.message : String(error));
+        }
       })
       .finally(() => {
         if (generation !== generationRef.current) return;
         prependingRef.current = false;
         setPrepending(false);
       });
-  }, [anchorTime, firstAvailable, firstTime, interval, loadedFor, loading, requestId, symbol]);
+  }, [anchorTime, firstTime, interval, loadedFor, loading, requestId, symbol]);
 
   return { candles, partialCandle, availableTo, loading, appending: appending || prepending, error, pageError, meta, source, hasMore, loadedFor, ensureAhead, ensureBefore };
 }
