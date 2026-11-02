@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUser } from "@clerk/react";
+import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import { NftCertificate, type CertTier } from "./NftCertificate";
 import { downloadTorneoCertificate } from "./torneoCertificateExport";
 import { fmtR, initials } from "./format";
@@ -425,36 +426,17 @@ export function ArenaView({
       {/* ========================================================
           MODALE DI ANTEPRIMA & DOWNLOAD CERTIFICATO HD (Al click)
           ======================================================== */}
-      {previewCert && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setPreviewCert(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-2xl border border-[#C5A059]/40 bg-[#0B0D13] p-5 shadow-2xl flex flex-col gap-4 text-white"
-          >
-            <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-3">
-              <div>
-                <h4 className="font-display text-sm font-bold uppercase tracking-wider text-[#E8C56A]">
-                  Certificato {previewCert.title}
-                </h4>
-                <p className="font-mono text-[10px] text-slate-400">
-                  {previewCert.edition} · {previewCert.rarity} · Download PNG HD
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewCert(null)}
-                className="text-slate-400 hover:text-white p-1"
-                aria-label={t("tornei.close")}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
+      <LimenResponsiveDrawer
+        open={Boolean(previewCert)}
+        onOpenChange={(open) => !open && setPreviewCert(null)}
+        title={previewCert ? `Certificato ${previewCert.title}` : undefined}
+        subtitle={previewCert ? `${previewCert.edition} · ${previewCert.rarity} · Download PNG HD` : undefined}
+        desktopClassName="max-w-md p-6 bg-[#07080b]/98 border border-[#C5A059]/40 shadow-2xl"
+        mobileClassName="max-h-[92dvh] p-4 bg-[#07080b]/98 border-t border-[#C5A059]/40"
+        showCloseButton={true}
+      >
+        {previewCert && (
+          <div className="w-full flex flex-col gap-4 text-white">
             {/* Visualizzazione Certificato con nome dinamico */}
             <div className="w-[280px] mx-auto">
               <NftCertificate
@@ -502,8 +484,8 @@ export function ArenaView({
               )}
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </LimenResponsiveDrawer>
     </div>
   );
 }
