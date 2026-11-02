@@ -1,7 +1,7 @@
 // ─── Terminal header ─────────────────────────────────────────────────────────
 // Mockup layout: back/logo + badge, session symbol, timeframe tabs, account
 // chips (Saldo/Equity/P&L/DD) and the panel/help toggles on the right.
-import { PencilRuler, ArrowLeft, Camera, Eye, EyeOff, Keyboard, PanelRight, Settings2, Flame, Users, Clock, Sparkles, Loader2, HardDrive, Bell } from "lucide-react";
+import { PencilRuler, ArrowLeft, Camera, Eye, EyeOff, Keyboard, PanelRight, Settings2, Flame, Users, Clock, Sparkles, Loader2, HardDrive, Bell, Maximize2, Minimize2 } from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { formatMoney, formatPercent, formatSignedMoney } from "./format";
 import { CoverageStatus } from "./CoverageStatus";
@@ -33,6 +33,8 @@ export function TerminalHeader({
   activeAlertsCount,
   onOpenAlerts,
   onOpenOfflineStorage,
+  isCinemaActive,
+  onToggleCinema,
 }: {
   engine: ReplayEngine;
   sessionName: string;
@@ -59,6 +61,8 @@ export function TerminalHeader({
   activeAlertsCount?: number;
   onOpenAlerts?: () => void;
   onOpenOfflineStorage?: () => void;
+  isCinemaActive?: boolean;
+  onToggleCinema?: () => void;
 }) {
   const { language } = useLanguage();
   const { account, openProfit } = engine;
@@ -311,6 +315,18 @@ export function TerminalHeader({
                   </span>
                 </>
               )}
+            </button>
+          )}
+
+          {onToggleCinema && (
+            <button
+              type="button"
+              className="btm-iconbtn"
+              onClick={onToggleCinema}
+              title={isCinemaActive ? "Ripristina Schermo Intero" : "Schermo Intero Cinematografico"}
+              aria-label={isCinemaActive ? "Ripristina Schermo Intero" : "Schermo Intero Cinematografico"}
+            >
+              {isCinemaActive ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button>
           )}
 

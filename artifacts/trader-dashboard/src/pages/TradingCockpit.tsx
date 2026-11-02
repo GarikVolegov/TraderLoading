@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { isUserTypingInEditableElement } from "@/lib/pwaAutoUpdater";
 import { triggerHaptic } from "@/lib/hapticPulse";
+import { useAutoLandscapeCinema } from "@/hooks/useAutoLandscapeCinema";
 import { useSmartWatchHeartRate } from "@/hooks/useSmartWatchHeartRate";
 import {
   loadBioLockConfig,
@@ -1246,25 +1247,20 @@ function CockpitView({
   });
 
   // ── Auto-Landscape Pivot & Fullscreen Cinema Mode ──
-  const [isLandscapeCinema, setIsLandscapeCinema] = useState(false);
-  const [manualCinema, setManualCinema] = useState(false);
-  const isCinemaActive = isLandscapeCinema || manualCinema || focusMode;
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(orientation: landscape) and (max-height: 540px) and (max-width: 1023px)");
-    const handleOrientation = (e: MediaQueryListEvent | MediaQueryList) => {
-      if (e.matches) {
-        setIsLandscapeCinema(true);
+  const {
+    isLandscape: isLandscapeCinema,
+    manualCinema,
+    isCinemaActive: rawCinemaActive,
+    toggleManualCinema,
+    exitCinema,
+  } = useAutoLandscapeCinema({
+    onCinemaChange: (isActive) => {
+      if (isActive) {
         setMobileTab("chart");
-      } else {
-        setIsLandscapeCinema(false);
       }
-    };
-    handleOrientation(mq);
-    mq.addEventListener("change", handleOrientation);
-    return () => mq.removeEventListener("change", handleOrientation);
-  }, []);
+    },
+  });
+  const isCinemaActive = rawCinemaActive || focusMode;
 
   // ── Gesture Swipe Inerziale Tattile (Processo <-> Grafico) ──
   const touchStartXRef = useRef<number | null>(null);
@@ -2182,17 +2178,45 @@ function CockpitView({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* ── CINEMA HUD (Mobile Landscape Pivot / Fullscreen TradingView mode) ── */}
+      {/* ── CINEMA HUD: LEFT THUMB (Asset, Fase e Telemetria) ── */}
       {isCinemaActive && (
         <aside
-          aria-label="Controlli Cinematografici"
-          className="fixed top-2.5 right-2.5 z-50 flex items-center gap-1.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.85)] font-mono select-none"
+          aria-label="Telemetria Cinematografica Sinistra"
+          style={{
+            top: "max(10px, env(safe-area-inset-top))",
+            left: "max(12px, env(safe-area-inset-left))",
+          }}
+          className="fixed z-50 flex items-center gap-1.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.85)] font-mono select-none pointer-events-auto"
         >
-          {/* Asset Badge */}
+          {/* Asset & TF Badge */}
           <span className="px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[10px] font-bold text-[#E8C56A] uppercase tracking-wider whitespace-nowrap">
             {a.market.replace("USD", "")} · {chartTF}
           </span>
 
+          {/* Phase Badge */}
+          {!isFreeTrial && (
+            <span className="px-1.5 py-0.5 rounded bg-black/60 border border-white/10 text-[9.5px] font-bold text-[#E8C56A] whitespace-nowrap">
+              Fase {phase}/4
+            </span>
+          )}
+
+          {/* Custode Status Chip */}
+          <span className="px-1.5 py-0.5 rounded bg-black/60 border border-white/10 text-[9.5px] font-bold text-emerald-400 whitespace-nowrap">
+            {_tradesToday}/{_maxTrades} Trade
+          </span>
+        </aside>
+      )}
+
+      {/* ── CINEMA HUD: RIGHT THUMB (Timeframes, Ordini ed Uscita) ── */}
+      {isCinemaActive && (
+        <aside
+          aria-label="Controlli Cinematografici Destra"
+          style={{
+            top: "max(10px, env(safe-area-inset-top))",
+            right: "max(12px, env(safe-area-inset-right))",
+          }}
+          className="fixed z-50 flex items-center gap-1.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.85)] font-mono select-none pointer-events-auto"
+        >
           {/* Quick Timeframes Switcher */}
           <div className="flex items-center gap-1">
             {["M15", "H1", "H4"].map((tf) => (
@@ -2234,9 +2258,7 @@ function CockpitView({
           <button
             type="button"
             onClick={() => {
-              synestheticCinemaToggle(false);
-              setIsLandscapeCinema(false);
-              setManualCinema(false);
+              exitCinema();
               if (focusMode) toggleFocus();
             }}
             title="Esci da Schermo Intero / Ripristina Vista"
@@ -2291,9 +2313,7 @@ function CockpitView({
           aria-label="Modalità Cinematografica"
           title="Schermo Intero Cinematografico (TradingView)"
           onClick={() => {
-            const nextCinema = !manualCinema;
-            synestheticCinemaToggle(nextCinema);
-            setManualCinema(nextCinema);
+            toggleManualCinema();
             setMobileTab("chart");
           }}
           className="!min-w-[34px] !w-9 !px-0 inline-flex items-center justify-center text-[#E8C56A] hover:bg-white/10"

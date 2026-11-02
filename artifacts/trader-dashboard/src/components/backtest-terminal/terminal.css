@@ -1090,7 +1090,7 @@
   .btm-notice { font-size: 12px; padding-right: 48px; }
   .btm-notice-dismiss { position: absolute; right: 0; top: 0; }
 }
-@media (max-width: 1023px) and (max-height: 520px) and (orientation: landscape) {
+@media (max-width: 1023px) and (max-height: 640px) and (orientation: landscape) {
   .btm-header { flex-wrap: nowrap; padding: 2px 6px; min-height: 36px; }
   .btm-header .btm-tfgroup { flex: 1; width: auto; order: 0; }
   .btm-header .btm-chips { width: auto; gap: 4px; }
@@ -1099,6 +1099,50 @@
   .btm-transport { max-height: 42px; padding: 2px 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .btm-playback-controls { flex-shrink: 0; gap: 2px; }
   .btm-transport-btn { min-width: 32px; min-height: 32px; }
+}
+
+/* ── AUTO-LANDSCAPE PIVOT & FULLSCREEN CINEMA REPLAY (TradingView Style) ── */
+.btm-root[data-cinema-mode="true"] {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: 100vw !important;
+  max-height: 100dvh !important;
+  z-index: 99 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: #07080b !important;
+  overflow: hidden !important;
+}
+
+.btm-root[data-cinema-mode="true"] .btm-header,
+.btm-root[data-cinema-mode="true"] .btm-transport,
+.btm-root[data-cinema-mode="true"] .btm-rail {
+  display: none !important;
+}
+
+.btm-root[data-cinema-mode="true"] .btm-main {
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-height: 100dvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.btm-root[data-cinema-mode="true"] .btm-chartcol,
+.btm-root[data-cinema-mode="true"] .btm-chartwrap {
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  flex: 1 1 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+html:has(.btm-root[data-cinema-mode="true"]) .app-top-nav,
+html:has(.btm-root[data-cinema-mode="true"]) [data-mobile-navigation] {
+  display: none !important;
 }
 @media (max-width: 1023px) {
   .btm-help-backdrop { position:fixed !important; inset:0 !important; z-index:110 !important; padding:12px; }

@@ -9,8 +9,10 @@ import { FavoriteToolsBar } from "./FavoriteToolsBar";
 // land in the trading phase, drawings in the final phase.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { X, BookOpen, Eye, Layers, Wallet } from "lucide-react";
-import { uiText } from "@/contexts/LanguageContext";
+import { X, BookOpen, Eye, Layers, Wallet, Play, Pause, ChevronRight, Minimize2 } from "lucide-react";
+import { uiText, useLanguage } from "@/contexts/LanguageContext";
+import { useAutoLandscapeCinema } from "@/hooks/useAutoLandscapeCinema";
+import { formatBlindReplayDisplay } from "./dateTime";
 import type { ClosedTrade } from "@/lib/replay/types";
 import { BacktestVictoryModal } from "../backtest-tournament/BacktestVictoryModal";
 import { ArenaSpectatorShareModal } from "../backtest-tournament/ArenaSpectatorShareModal";
@@ -19,7 +21,7 @@ import { useSmartWatchHeartRate } from "@/hooks/useSmartWatchHeartRate";
 import { LiveBattleTelemetryHUD } from "../backtest-tournament/LiveBattleTelemetryHUD";
 import { completeBacktestTournament, type TournamentRunSummary } from "@/lib/backtestTournamentsApi";
 import { AccountPanel } from "./AccountPanel";
-import { formatPrice } from "./format";
+import { formatPrice, terminalLocale } from "./format";
 import { HotkeysHelp } from "./HotkeysHelp";
 import { IndicatorStrip } from "./IndicatorStrip";
 import { JournalPanel } from "./JournalPanel";
@@ -154,7 +156,15 @@ function BacktestTerminalSession({
     setVictoryModalOpen(true);
   };
 
+  const { language } = useLanguage();
   const compact = useMediaQuery("(max-width: 1023px)");
+  const {
+    isLandscape,
+    manualCinema,
+    isCinemaActive,
+    toggleManualCinema,
+    exitCinema,
+  } = useAutoLandscapeCinema();
   const [toolsOpen, setToolsOpen] = useState(false);
   const [ticketDraft, setTicketDraft] = useState<OrderTicketDraft>({ pendingMode: false, orderPrice: "", profileName: "" });
   const engine = useReplayEngine({ sessionKey, symbol, initialInterval });
@@ -687,7 +697,125 @@ function BacktestTerminalSession({
   const limitedHistory = engine.meta != null && engine.meta.warehouse == null;
 
   return (
-    <div className="btm-root" data-testid="backtest-terminal">
+    <div
+      className="btm-root"
+      data-testid="backtest-terminal"
+      data-cinema-mode={isCinemaActive ? "true" : undefined}
+    >
+      {/* ── CINEMA HUD: LEFT THUMB (Asset, Barra e Telemetria) ── */}
+      {isCinemaActive && (
+        <aside
+          aria-label="Telemetria Replay Sinistra"
+          style={{
+            top: "max(10px, env(safe-area-inset-top))",
+            left: "max(12px, env(safe-area-inset-left))",
+          }}
+          className="fixed z-50 flex items-center gap-1.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.85)] font-mono select-none pointer-events-auto"
+        >
+          {/* Asset & TF Badge */}
+          <span className="px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[10px] font-bold text-[#E8C56A] uppercase tracking-wider whitespace-nowrap">
+            {engine.symbol} · {engine.interval}
+          </span>
+
+          {/* Current Bar Time */}
+          <span className="px-1.5 py-0.5 rounded bg-black/60 border border-white/10 text-[9.5px] font-mono text-slate-300 whitespace-nowrap">
+            {(engine.replayTime ?? engine.startTime) != null
+              ? formatBlindReplayDisplay((engine.replayTime ?? engine.startTime) as number, !engine.blindMasked, terminalLocale(language))
+              : "—"}
+          </span>
+
+          {/* Positions badge if open */}
+          {engine.positions.length > 0 && (
+            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-[9.5px] font-mono font-bold text-emerald-300 whitespace-nowrap">
+              {engine.positions.length} POS
+            </span>
+          )}
+        </aside>
+      )}
+
+      {/* ── CINEMA HUD: RIGHT THUMB (Playback, Velocità, Ticket ed Uscita) ── */}
+      {isCinemaActive && (
+        <aside
+          aria-label="Controlli Replay Destra"
+          style={{
+            top: "max(10px, env(safe-area-inset-top))",
+            right: "max(12px, env(safe-area-inset-right))",
+          }}
+          className="fixed z-50 flex items-center gap-1.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.85)] font-mono select-none pointer-events-auto"
+        >
+          {/* Play / Pause button */}
+          <button
+            type="button"
+            onClick={engine.togglePlay}
+            disabled={engine.loading || engine.noData}
+            title={engine.playing ? "Pausa Replay" : "Avvia Replay"}
+            className={`flex h-7 px-2.5 items-center gap-1.5 rounded-lg border font-mono text-[10px] font-bold tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+              engine.playing
+                ? "border-[#C5A059] bg-[#C5A059]/30 text-[#E8C56A] shadow-[0_0_12px_rgba(197,160,89,0.4)]"
+                : "border-white/10 bg-white/5 text-slate-300 hover:text-white"
+            }`}
+          >
+            {engine.playing ? <Pause size={12} /> : <Play size={12} />}
+            <span>{engine.playing ? "Pausa" : "Play"}</span>
+          </button>
+
+          {/* Step Forward button */}
+          <button
+            type="button"
+            onClick={engine.stepForward}
+            disabled={engine.loading || engine.executing || engine.noData}
+            title="Avanza 1 Barra"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:text-white transition-colors cursor-pointer"
+          >
+            <ChevronRight size={14} />
+          </button>
+
+          {/* Quick Speed Switcher */}
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 5, 10].map((spd) => (
+              <button
+                key={spd}
+                type="button"
+                onClick={() => engine.changeSpeed(spd)}
+                className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-colors whitespace-nowrap border ${
+                  engine.speed === spd
+                    ? "border-[#C5A059] bg-[#C5A059]/25 text-[#E8C56A]"
+                    : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                }`}
+              >
+                {spd}×
+              </button>
+            ))}
+          </div>
+
+          <div className="h-4 w-px bg-[#C5A059]/25" />
+
+          {/* Ticket Ordini button */}
+          <button
+            type="button"
+            onClick={() => {
+              setPanelOpen(true);
+              handleSelectPanelTab("ticket");
+            }}
+            title="Apri Ticket Ordini"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold uppercase tracking-wider hover:bg-emerald-500/30 transition-colors whitespace-nowrap cursor-pointer"
+          >
+            <Layers size={11} />
+            <span className="hidden sm:inline">Ticket</span>
+          </button>
+
+          {/* Exit Cinema Mode */}
+          <button
+            type="button"
+            onClick={exitCinema}
+            title="Esci da Schermo Intero / Ripristina Vista"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] hover:bg-[#C5A059]/25 transition-colors cursor-pointer"
+          >
+            <Minimize2 size={13} />
+          </button>
+        </aside>
+      )}
+
       <div className="btm-desktop-shell">
       <TerminalHeader
         engine={engine}
@@ -698,6 +826,8 @@ function BacktestTerminalSession({
         toolsOpen={toolsOpen}
         onToggleTools={() => setToolsOpen(open => !open)}
         onToggleHelp={() => setHelpOpen((open) => !open)}
+        isCinemaActive={isCinemaActive}
+        onToggleCinema={toggleManualCinema}
         isBattle={isBattle}
         onFinishBattle={handleFinishBattle}
         connectedCount={isBattle ? battleRoom.participants.length : undefined}

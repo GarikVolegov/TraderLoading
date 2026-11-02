@@ -36,6 +36,7 @@ Questa nota costituisce la **memoria stabile, incorruttibile e ad alta densità*
 | **Risuonatore & Motore Aptico** | `SINESTESIA 432 HZ ATTIVA` | Risonanza armonica sacra a 432 Hz, doppio impulso aptico mobile per validazioni checklist Custode della Soglia, feedback swipe inerziale e cinema mode snap |
 | **PWA Standalone & Fullscreen** | `NATIVO ADERENTE AL 100%` | Manifest con `display: standalone`, `orientation: any`, rimozione barre browser, splash screen ossidiana, 4 scorciatoie operative e hook `usePwaStandalone` |
 | **Audio Spaziale 3D & Stereo Panning** | `STEREOFONIA PROCEDURALE ATTIVA` | Panning direzionale 3D via `StereoPannerNode` su Web Audio API: SSL a sinistra (-0.75, discesa tellurica 216→108Hz + sub 54Hz) e BSL a destra (+0.75, ascesa aurea 432→864Hz + shimmer 1296Hz), integrato in `SessionOpensOverlay`, `TradingCockpit` e `SoundFxSettings` |
+| **Auto-Landscape Pivot & Fullscreen Cinema** | `ATTIVO & ERGONOMICO (100% PASS)` | Hook `useAutoLandscapeCinema` con media query 640px e ScreenOrientation API nativa; dual-thumb HUD separato (sinistra telemetria, destra operatività) in Cockpit e Forgia con safe-area notch iOS |
 | **Lessico & Lore AUREUS** | `MONASTICO & STOICO` | Bonifica totale di gergo retail in `dict.it.ts`, Leaderboard e Cockpit |
 | **Compilazione Vite & Prerender** | `75 / 75 ROUTES OK` | Build SSR/SSG di produzione impeccabile con sitemap generata |
 | **Protocollo di Autonomia Agentica** | `REGOLA 98/2 ATTIVA` | Calcolo autonomo step-by-step, compattazione chirurgica dati, zero interruzioni futili |

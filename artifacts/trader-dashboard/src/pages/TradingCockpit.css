@@ -1583,7 +1583,7 @@
   .ck-chart-area { height: max(300px, calc(100dvh - var(--app-header-offset))); }
 }
 /* ── CINEMA MODE & AUTO-LANDSCAPE PIVOT (Mobile TradingView Style) ── */
-@media (max-width: 1023px) and (orientation: landscape) and (max-height: 540px) {
+@media (max-width: 1023px) and (orientation: landscape) and (max-height: 640px) {
   .trading-cockpit {
     position: fixed !important;
     inset: 0 !important;
