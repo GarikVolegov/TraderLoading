@@ -25,6 +25,7 @@ const DEFAULT_ENTITLEMENTS: LimenEntitlementsMap = {
   forgeOfThePast: false,
   financialArchitecture: false,
   doctrineOfTime: false,
+  eaForgeStudio: false,
 };
 
 const ALL_UNLOCKED_ENTITLEMENTS: LimenEntitlementsMap = {
@@ -36,6 +37,7 @@ const ALL_UNLOCKED_ENTITLEMENTS: LimenEntitlementsMap = {
   forgeOfThePast: true,
   financialArchitecture: true,
   doctrineOfTime: true,
+  eaForgeStudio: true,
 };
 
 export function useLimenEntitlements() {

@@ -12,7 +12,8 @@ interface LimenServiceLockGateProps {
     | "forge_of_the_past"
     | "financial_architecture"
     | "doctrine_of_time"
-    | "quarterly_tournaments";
+    | "quarterly_tournaments"
+    | "ea_forge_studio";
   onConfigureClick?: () => void;
 }
 
@@ -43,6 +44,13 @@ const SERVICE_META = {
     priceBadge: "Progetto Completo · Fase Avanzata d'Onore",
     description:
       "I Tornei Trimestrali sono competizioni ad alto rigore riservate al Progetto Completo e ai gradi avanzati dell'Ordine.",
+    defaultTierId: "complete_150" as LimenTierId,
+  },
+  ea_forge_studio: {
+    title: "L'Automa della Forgia (EA & Bot Studio)",
+    priceBadge: "Esclusiva Progetto Completo · 150 €/mese",
+    description:
+      "Laboratorio di creazione Expert Advisor da concetto o codice: compila un bot che testa la strategia sulle candele storiche ed estrae Casi Studio, Winrate, R:R e codice MQL5/cTrader.",
     defaultTierId: "complete_150" as LimenTierId,
   },
 } as const;

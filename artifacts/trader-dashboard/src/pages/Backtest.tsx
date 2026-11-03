@@ -5,7 +5,7 @@ import { format, parseISO } from "date-fns";
 import {
   Plus, Trash2, TrendingUp, TrendingDown,
   BarChart3, FlaskConical, ChevronRight, Play, ArrowUpRight,
-  Target, Layers, Zap, Flame, Gamepad2, RotateCcw, DollarSign, Swords, Dices, EyeOff,
+  Target, Layers, Zap, Flame, Gamepad2, RotateCcw, DollarSign, Swords, Dices, EyeOff, Bot,
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { QueryErrorState } from "@/components/QueryErrorState";
@@ -34,6 +34,7 @@ import { generateRandomTradingTimestamp, getYearTradingStart, parseUtcDateTimeIn
 import { fetchReplayCandlesMeta, type ReplayCandlesMeta } from "@/lib/replayCandlesApi";
 import { useTraderProcess } from "@/hooks/useTraderProcess";
 import { ReplayEquityCurve } from "@/components/backtest-terminal/ReplayEquityCurve";
+import { EaForgeStudioPanel } from "@/components/backtest-terminal/EaForgeStudioPanel";
 import { BacktestBattlesDrawer } from "@/components/backtest-tournament/BacktestBattlesDrawer";
 import { useLimenEntitlements } from "@/hooks/useLimenEntitlements";
 import { LimenServiceLockGate } from "@/components/candidacy/LimenServiceLockGate";
@@ -394,6 +395,9 @@ export default function Backtest() {
   const [tradeFilter, setTradeFilter] = useState<TradeFilter>("all");
   const [decompressionOpen, setDecompressionOpen] = useState(false);
   const [mobileSection, setMobileSection] = useState<"workbench" | "sessions">("workbench");
+  const [forgeMode, setForgeMode] = useState<"workbench" | "ea_studio">(() =>
+    new URLSearchParams(search).get("tab") === "automa" ? "ea_studio" : "workbench",
+  );
 
   // Sync selectedSessionId if urlSessionId changes
   useEffect(() => {
@@ -801,6 +805,21 @@ export default function Backtest() {
                   </Button>
                   <Button
                     variant="outline"
+                    onClick={() =>
+                      setForgeMode((prev) => (prev === "ea_studio" ? "workbench" : "ea_studio"))
+                    }
+                    className={`font-mono text-xs uppercase tracking-wider font-bold h-9 ${
+                      forgeMode === "ea_studio"
+                        ? "border-[#C5A059] bg-[#C5A059]/25 text-[#E8C56A] shadow-[0_0_15px_rgba(197,160,89,0.25)]"
+                        : "border-[#C5A059]/45 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 text-[#E8C56A]"
+                    }`}
+                    title="L'Automa della Forgia: crea EA e Bot da concetto o codice ed estrai Casi Studio (Piano 150€)"
+                  >
+                    <Bot className="w-3.5 h-3.5 mr-1.5" />
+                    <span>{forgeMode === "ea_studio" ? "Torna al Banco KPI" : "Automa EA · Casi Studio"}</span>
+                  </Button>
+                  <Button
+                    variant="outline"
                     onClick={() => setDecompressionOpen(true)}
                     className="font-mono text-xs uppercase tracking-wider border-[#C5A059]/40 hover:bg-[#C5A059]/15 text-[#E8C56A] font-bold h-9"
                     title="Camera di Decompressione: stacca la mente e ricarica il focus"
@@ -831,7 +850,17 @@ export default function Backtest() {
                 </div>
 
                 {/* Mobile Full-Width Hero CTA (< sm) */}
-                <div className="flex sm:hidden w-full pt-1">
+                <div className="flex sm:hidden w-full pt-1 gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setForgeMode((prev) => (prev === "ea_studio" ? "workbench" : "ea_studio"))
+                    }
+                    className="flex-1 font-mono text-[10.5px] uppercase tracking-wider h-10 border-[#C5A059]/45 bg-[#C5A059]/15 text-[#E8C56A] font-bold flex items-center justify-center gap-1.5 whitespace-nowrap"
+                  >
+                    <Bot className="w-4 h-4" />
+                    <span>{forgeMode === "ea_studio" ? "Banco KPI" : "Automa EA (150€)"}</span>
+                  </Button>
                   {activeSession ? (
                     <Button
                       onClick={() =>
@@ -841,7 +870,7 @@ export default function Backtest() {
                           }`,
                         )
                       }
-                      className="w-full font-mono text-xs uppercase tracking-wider bg-gradient-to-r from-[#C5A059] to-[#D4AF37] text-black hover:brightness-110 shadow-md font-bold h-10 flex items-center justify-center gap-2"
+                      className="flex-1 font-mono text-[10.5px] uppercase tracking-wider bg-gradient-to-r from-[#C5A059] to-[#D4AF37] text-black hover:brightness-110 shadow-md font-bold h-10 flex items-center justify-center gap-1.5 whitespace-nowrap"
                     >
                       <Play className="w-4 h-4 fill-black" />
                       <span>{uiText("backtest_terminal.launch_cta")}</span>
@@ -849,7 +878,7 @@ export default function Backtest() {
                   ) : (
                     <Button
                       onClick={() => setShowNew(true)}
-                      className="w-full font-mono text-xs uppercase tracking-wider h-10 flex items-center justify-center gap-2 bg-[#C5A059] text-black font-bold"
+                      className="flex-1 font-mono text-[10.5px] uppercase tracking-wider h-10 flex items-center justify-center gap-1.5 bg-[#C5A059] text-black font-bold whitespace-nowrap"
                     >
                       <Plus className="w-4 h-4" />
                       <span>{uiText("auto.ui.20fe4cdc4d")}</span>
@@ -858,6 +887,28 @@ export default function Backtest() {
                 </div>
               </div>
 
+              {forgeMode === "ea_studio" ? (
+                <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 scrollbar-thin">
+                  <EaForgeStudioPanel
+                    symbol={activeSession?.pair ?? "EUR/USD"}
+                    interval={activeSession?.timeframe ?? "H1"}
+                    onInspectCaseStudy={(study) => {
+                      if (activeSession) {
+                        try {
+                          window.localStorage.setItem(
+                            `traderloading:backtest-start:${activeSession.id}`,
+                            String(study.trade.entryTime),
+                          );
+                        } catch {}
+                        navigate(`/backtest/${activeSession.id}/replay`);
+                      } else {
+                        setShowNew(true);
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <>
               {/* 6 KPI Cards avanzate */}
               {detailedStats ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 shrink-0">
@@ -1202,6 +1253,8 @@ export default function Backtest() {
                   </span>
                 </div>
               </div>
+                </>
+              )}
               </LimenPullToRefresh>
             </main>
           </div>

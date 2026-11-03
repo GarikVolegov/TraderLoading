@@ -23,6 +23,7 @@ import {
   Newspaper,
   SlidersHorizontal,
   Globe,
+  Bot,
 } from "lucide-react";
 import { uiText, useLanguage } from "@/contexts/LanguageContext";
 import { useAutoLandscapeCinema } from "@/hooks/useAutoLandscapeCinema";
@@ -55,6 +56,7 @@ import { useReplayEngine } from "./useReplayEngine";
 import { useReplayAlerts } from "./useReplayAlerts";
 import { useReplayHotkeys } from "./useReplayHotkeys";
 import { BacktestAiSentinelPanel } from "./BacktestAiSentinelPanel";
+import { EaForgeStudioPanel } from "./EaForgeStudioPanel";
 import { useVarcoVisionSentinel } from "@/hooks/useVarcoVisionSentinel";
 import { useToast } from "@/hooks/use-toast";
 import { TalkToJournalModal } from "./TalkToJournalModal";
@@ -253,11 +255,19 @@ function BacktestTerminalSession({
   const [knowledgeToolId, setKnowledgeToolId] = useState<DrawingToolId | null>(null);
 
   // ── Tab Navigation per il Pannello Destro AUREUS ──
-  type TerminalRightPanelTab = "sentinel" | "ticket" | "account" | "journal" | "watchlist" | "news";
+  type TerminalRightPanelTab = "sentinel" | "automa" | "ticket" | "account" | "journal" | "watchlist" | "news";
   const [activePanelTab, setActivePanelTab] = useState<TerminalRightPanelTab>(() => {
     try {
       const saved = localStorage.getItem("aureus_forge_panel_tab");
-      if (saved === "sentinel" || saved === "ticket" || saved === "account" || saved === "journal" || saved === "watchlist" || saved === "news") {
+      if (
+        saved === "sentinel" ||
+        saved === "automa" ||
+        saved === "ticket" ||
+        saved === "account" ||
+        saved === "journal" ||
+        saved === "watchlist" ||
+        saved === "news"
+      ) {
         return saved;
       }
     } catch {}
@@ -1212,6 +1222,16 @@ function BacktestTerminalSession({
                 <button
                   type="button"
                   role="tab"
+                  aria-selected={activePanelTab === "automa"}
+                  className={`btm-panel-tab ${activePanelTab === "automa" ? "btm-panel-tab-active" : ""}`}
+                  onClick={() => handleSelectPanelTab("automa")}
+                >
+                  <Bot size={13} />
+                  <span>Automa EA</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
                   aria-selected={activePanelTab === "journal"}
                   className={`btm-panel-tab ${activePanelTab === "journal" ? "btm-panel-tab-active" : ""}`}
                   onClick={() => handleSelectPanelTab("journal")}
@@ -1266,6 +1286,24 @@ function BacktestTerminalSession({
                     onResetMemory={handleResetOperativeMemory}
                     symbol={engine.symbol}
                     interval={engine.interval}
+                  />
+                )}
+                {activePanelTab === "automa" && (
+                  <EaForgeStudioPanel
+                    symbol={engine.symbol}
+                    interval={engine.interval}
+                    candles={engine.candles}
+                    compact
+                    onInspectCaseStudy={(study) => {
+                      const idx = engine.candles.findIndex((c) => c.time >= study.trade.entryTime);
+                      if (idx >= 0) {
+                        engine.seekFraction(idx / Math.max(1, engine.candles.length - 1));
+                      }
+                      toast({
+                        title: `Caso Studio: ${study.title}`,
+                        description: `${study.trade.direction.toUpperCase()} @ ${study.trade.entryPrice} · SL ${study.trade.slPips}p · TP ${study.trade.tpPips}p`,
+                      });
+                    }}
                   />
                 )}
                 {activePanelTab === "account" && (
@@ -1333,6 +1371,16 @@ function BacktestTerminalSession({
               <button
                 type="button"
                 role="tab"
+                aria-selected={activePanelTab === "automa"}
+                className={`btm-panel-tab ${activePanelTab === "automa" ? "btm-panel-tab-active" : ""}`}
+                onClick={() => handleSelectPanelTab("automa")}
+              >
+                <Bot size={13} />
+                <span>Automa EA</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
                 aria-selected={activePanelTab === "journal"}
                 className={`btm-panel-tab ${activePanelTab === "journal" ? "btm-panel-tab-active" : ""}`}
                 onClick={() => handleSelectPanelTab("journal")}
@@ -1387,6 +1435,24 @@ function BacktestTerminalSession({
                   onResetMemory={handleResetOperativeMemory}
                   symbol={engine.symbol}
                   interval={engine.interval}
+                />
+              )}
+              {activePanelTab === "automa" && (
+                <EaForgeStudioPanel
+                  symbol={engine.symbol}
+                  interval={engine.interval}
+                  candles={engine.candles}
+                  compact
+                  onInspectCaseStudy={(study) => {
+                    const idx = engine.candles.findIndex((c) => c.time >= study.trade.entryTime);
+                    if (idx >= 0) {
+                      engine.seekFraction(idx / Math.max(1, engine.candles.length - 1));
+                    }
+                    toast({
+                      title: `Caso Studio: ${study.title}`,
+                      description: `${study.trade.direction.toUpperCase()} @ ${study.trade.entryPrice} · SL ${study.trade.slPips}p · TP ${study.trade.tpPips}p`,
+                    });
+                  }}
                 />
               )}
               {activePanelTab === "account" && (
@@ -1473,6 +1539,24 @@ function BacktestTerminalSession({
           >
             <Eye size={13} className="text-[#E8C56A]" />
             <span className="mt-0.5">Varco</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              if (panelOpen && activePanelTab === "automa") setPanelOpen(false);
+              else { setActivePanelTab("automa"); setPanelOpen(true); }
+            }}
+            className={`flex flex-col items-center justify-center w-10 h-11 rounded-lg border text-[8.5px] font-mono font-bold tracking-tight transition-all cursor-pointer ${
+              panelOpen && activePanelTab === "automa"
+                ? "border-[#C5A059] bg-[#C5A059]/20 text-[#E8C56A] shadow-[0_0_10px_rgba(197,160,89,0.3)]"
+                : "border-white/10 bg-[#07080b] text-slate-300 hover:border-[#C5A059]/50 hover:text-white"
+            }`}
+            title="L'Automa della Forgia · Crea EA & Casi Studio (Piano 150€)"
+          >
+            <Bot size={13} className="text-[#E8C56A]" />
+            <span className="mt-0.5">Automa</span>
           </button>
 
           <button

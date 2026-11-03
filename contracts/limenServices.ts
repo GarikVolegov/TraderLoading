@@ -158,6 +158,7 @@ export const LIMEN_TIERS: readonly LimenTierDefinition[] = [
     ],
     features: [
       "Dotazione Operativa Completa (Varco, Libro Verità, Forgia, Patrimonio)",
+      "L'Automa della Forgia: Creazione EA da concetto o codice, backtest e Casi Studio",
       "La Dottrina del Tempo: Percorso completo di formazione Assedio & Duello",
       "La Finestra Operativa: Sincronizzazione oraria liquidità istituzionale",
       "Il Concilio della Domenica: Rito live settimanale a mercati chiusi",
@@ -372,6 +373,7 @@ export interface LimenEntitlementsMap {
   readonly forgeOfThePast: boolean;
   readonly financialArchitecture: boolean;
   readonly doctrineOfTime: boolean;
+  readonly eaForgeStudio?: boolean;
 }
 
 /**
@@ -393,6 +395,7 @@ export function resolveLimenEntitlements(params: {
       forgeOfThePast: true,
       financialArchitecture: true,
       doctrineOfTime: true,
+      eaForgeStudio: true,
     };
   }
 
@@ -419,5 +422,6 @@ export function resolveLimenEntitlements(params: {
     forgeOfThePast: hasForge,
     financialArchitecture: hasFinancialArch,
     doctrineOfTime: hasDoctrine,
+    eaForgeStudio: hasDoctrine,
   };
 }

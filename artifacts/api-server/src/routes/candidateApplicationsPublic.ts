@@ -70,6 +70,7 @@ export function createCandidateApplicationsRouter(save = createCandidate): IRout
           forgeOfThePast: false,
           financialArchitecture: false,
           doctrineOfTime: false,
+          eaForgeStudio: false,
         },
       });
       return;
