@@ -33,7 +33,8 @@ import {
 import type { FeedStatus } from "@/lib/chart/tradingViewRealtimeFeed";
 import { resolveTradingViewSymbol, timeframeToSeconds } from "@/lib/chart/symbolMapping";
 import { logicalIndexAtTime, timeAtLogicalIndex } from "@/lib/replay/replayClock";
-import { synestheticAlert } from "@/lib/soundFx";
+import { synestheticAlert, synestheticClick } from "@/lib/soundFx";
+import { useToast } from "@/hooks/use-toast";
 import {
   clearChartDrawings,
   DRAWINGS_SYNC_EVENT,
@@ -335,6 +336,7 @@ export function LimenProprietaryChart({
   onCandlesUpdate,
   chartCanvasRef,
 }: LimenProprietaryChartProps) {
+  const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const priceSeriesRef = useRef<ISeriesApi<"Candlestick"> | ISeriesApi<"Line"> | null>(null);
@@ -3037,6 +3039,36 @@ export function LimenProprietaryChart({
                     <Plus size={10} />
                   </button>
                 </div>
+
+                {/* 1-Tap Prop Risk Preset Sizing (0.25%, 0.5%, 1.0%) */}
+                <div className="flex items-center gap-0.5" title="Calcolo rapido lotti da percentuale di rischio">
+                  {[
+                    { pct: 0.25, label: "0.25%" },
+                    { pct: 0.5, label: "0.5%" },
+                    { pct: 1.0, label: "1%" },
+                  ].map((preset) => (
+                    <button
+                      key={preset.pct}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        synestheticClick();
+                        const cleanSym = symbol.trim().toUpperCase().replace(/[\/\-_]/g, "");
+                        const cashRisk = (replayCapitalSize * preset.pct) / 100;
+                        const calculated = computeLots({ riskAmount: cashRisk, slPips: 20, symbol: cleanSym });
+                        const finalLots = Math.max(0.01, calculated || 0.1);
+                        updateReplayLots(finalLots);
+                        toast({
+                          title: `Rischio ${preset.label} Impostato`,
+                          description: `${finalLots} lotti calcolati per ${symbol} (€${cashRisk.toFixed(0)} su €${replayCapitalSize.toLocaleString("it-IT")}).`,
+                        });
+                      }}
+                      className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold tracking-tight bg-white/5 hover:bg-[#C5A059]/20 hover:text-[#E8C56A] text-slate-400 border border-white/10 transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="h-4 w-px bg-white/15 shrink-0 mx-0.5" />
@@ -3290,6 +3322,25 @@ export function LimenProprietaryChart({
             </button>
             <div className="limen-bottom-lots-badge whitespace-nowrap font-mono text-[9.5px]">
               {replayLots}L
+            </div>
+            <div className="flex items-center gap-0.5 ml-0.5">
+              {[0.5, 1.0].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => {
+                    synestheticClick();
+                    const cleanSym = symbol.trim().toUpperCase().replace(/[\/\-_]/g, "");
+                    const cashRisk = (replayCapitalSize * p) / 100;
+                    const calculated = computeLots({ riskAmount: cashRisk, slPips: 20, symbol: cleanSym });
+                    updateReplayLots(Math.max(0.01, calculated || 0.1));
+                  }}
+                  className="px-1 py-0.2 rounded text-[8.5px] font-mono font-bold text-slate-400 hover:text-[#E8C56A] hover:bg-[#C5A059]/20 transition-colors cursor-pointer"
+                  title={`Imposta rischio ${p}%`}
+                >
+                  {p}%
+                </button>
+              ))}
             </div>
           </div>
 

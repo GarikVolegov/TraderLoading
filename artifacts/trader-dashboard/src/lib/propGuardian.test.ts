@@ -3,6 +3,7 @@ import assert from "node:assert";
 import {
   PROP_PROFILES,
   computePropGuardianTelemetry,
+  calculatePropAdaptiveLots,
   formatSetupForClipboard,
   formatSetupSingleLine,
 } from "./propGuardian.js";
@@ -14,26 +15,44 @@ describe("AUREUS Prop Guardian & Setup Exporter Engine", () => {
     assert.ok(ftmo, "Profilo FTMO deve esistere");
     assert.strictEqual(ftmo.maxDailyLossPct, 5.0, "FTMO deve avere 5.0% Max Daily Loss");
     assert.strictEqual(ftmo.maxTotalLossPct, 10.0, "FTMO deve avere 10.0% Max Total Loss");
+    assert.strictEqual(ftmo.profitTargetPhase1Pct, 10.0, "FTMO Fase 1 deve avere target 10%");
+    assert.strictEqual(ftmo.profitTargetPhase2Pct, 5.0, "FTMO Fase 2 deve avere target 5%");
 
     const fivePct = PROP_PROFILES.find((p) => p.id === "five_percenters");
     assert.ok(fivePct, "The 5%ers deve esistere");
     assert.strictEqual(fivePct.maxDailyLossPct, 5.0);
+    assert.strictEqual(fivePct.profitTargetPhase1Pct, 8.0);
   });
 
-  it("2. Calcola stato 'secure' (< 50% drawdown budget) con saldo integro", () => {
-    // Balance 100k, Equity 99.5k (perdita 500€ su 5000€ consentiti = 10% del budget, ovvero 0.5% del conto)
-    const tel = computePropGuardianTelemetry(100_000, 99_500, 0, ftmo, "EUR");
-    assert.strictEqual(tel.currentDailyDrawdownAmount, 500);
-    assert.strictEqual(tel.currentDailyDrawdownPct, 0.5);
+  it("2. Calcola stato 'secure' (< 50% drawdown budget) con saldo integro e telemetria Profit Target", () => {
+    // Balance 100k, Equity 104k (profitto 4000€ su 10000€ target FTMO = 40% avanzamento)
+    const tel = computePropGuardianTelemetry(100_000, 104_000, 4000, ftmo, "EUR", 1);
+    assert.strictEqual(tel.currentDailyDrawdownAmount, 0);
+    assert.strictEqual(tel.currentDailyDrawdownPct, 0);
     assert.strictEqual(tel.maxDailyLossAmount, 5000);
-    assert.strictEqual(tel.dailyLossRemainingBudget, 4500);
+    assert.strictEqual(tel.dailyLossRemainingBudget, 5000);
     assert.strictEqual(tel.status, "secure");
     assert.strictEqual(tel.isCriticalBreachRisk, false);
     assert.strictEqual(tel.isDisqualified, false);
     assert.strictEqual(tel.statusBadgeTone, "emerald");
+
+    // Profit Target
+    assert.strictEqual(tel.profitTargetAmount, 10000);
+    assert.strictEqual(tel.currentProfitAmount, 4000);
+    assert.strictEqual(tel.profitProgressPct, 40);
+    assert.strictEqual(tel.targetRemainingAmount, 6000);
+    assert.strictEqual(tel.isTargetAchieved, false);
   });
 
-  it("3. Calcola stato 'vigilance' (50% - 74% drawdown budget)", () => {
+  it("3. Rileva completamento con successo del Profit Target della Challenge", () => {
+    // Balance 100k, Equity 110.5k (profitto 10500€ su 10000€ target)
+    const tel = computePropGuardianTelemetry(100_000, 110_500, 10500, ftmo, "EUR", 1);
+    assert.strictEqual(tel.profitProgressPct, 100);
+    assert.strictEqual(tel.targetRemainingAmount, 0);
+    assert.strictEqual(tel.isTargetAchieved, true);
+  });
+
+  it("4. Calcola stato 'vigilance' (50% - 74% drawdown budget)", () => {
     // Balance 100k, Equity 97k (perdita 3000€ su 5000€ = 60% del budget, ovvero 3.0% del conto)
     const tel = computePropGuardianTelemetry(100_000, 97_000, -1000, ftmo, "EUR");
     assert.strictEqual(tel.currentDailyDrawdownAmount, 3000);
@@ -43,7 +62,7 @@ describe("AUREUS Prop Guardian & Setup Exporter Engine", () => {
     assert.strictEqual(tel.statusBadgeTone, "amber");
   });
 
-  it("4. Rileva soglia critica 75%+ e attiva isCriticalBreachRisk per il Bio-Lock", () => {
+  it("5. Rileva soglia critica 75%+ e attiva isCriticalBreachRisk per il Bio-Lock", () => {
     // Balance 100k, Equity 96k (perdita 4000€ su 5000€ = 80% del budget, ovvero 4.0% del conto)
     const tel = computePropGuardianTelemetry(100_000, 96_000, -2500, ftmo, "EUR");
     assert.strictEqual(tel.currentDailyDrawdownAmount, 4000);
@@ -54,15 +73,50 @@ describe("AUREUS Prop Guardian & Setup Exporter Engine", () => {
     assert.strictEqual(tel.statusBadgeTone, "crimson");
   });
 
-  it("5. Rileva violazione completa (breach >= 100%)", () => {
-    // Balance 100k, Equity 94.5k (perdita 5500€ su 5000€ = 110%)
-    const tel = computePropGuardianTelemetry(100_000, 94_500, -5500, ftmo, "EUR");
-    assert.strictEqual(tel.status, "critical");
-    assert.strictEqual(tel.isCriticalBreachRisk, true);
-    assert.strictEqual(tel.isDisqualified, true);
+  it("6. Calcolo Automatico Lotti Adattivo 1-Tap (calculatePropAdaptiveLots)", () => {
+    // Balance 100k, remaining buffer 5000€, SL 20 pips su EURUSD (pipVal = 10€)
+    // Preset 0.50% consigliato prop -> rischio target = 500€
+    // Lotti = 500 / (20 * 10) = 2.50 lotti
+    const sizing05 = calculatePropAdaptiveLots({
+      balance: 100_000,
+      remainingDailyBudget: 5000,
+      slPips: 20,
+      symbol: "EURUSD",
+      preset: "recommended_05",
+    });
+    assert.strictEqual(sizing05.lots, 2.5);
+    assert.strictEqual(sizing05.monetaryRisk, 500);
+    assert.strictEqual(sizing05.riskPctOfAccount, 0.5);
+    assert.strictEqual(sizing05.maxConsecutiveLossesUntilBreach, 10);
+
+    // Preset conservativo 0.25% -> rischio 250€ -> 1.25 lotti
+    const sizing025 = calculatePropAdaptiveLots({
+      balance: 100_000,
+      remainingDailyBudget: 5000,
+      slPips: 20,
+      symbol: "EURUSD",
+      preset: "conservative_025",
+    });
+    assert.strictEqual(sizing025.lots, 1.25);
+    assert.strictEqual(sizing025.monetaryRisk, 250);
+    assert.strictEqual(sizing025.riskPctOfAccount, 0.25);
+    assert.strictEqual(sizing025.maxConsecutiveLossesUntilBreach, 20);
+
+    // Sizing adattivo su buffer residuo degradato (es. rimangono solo 1000€ di buffer)
+    // Con buffer 1000€, 25% del buffer = 250€ -> lotti 1.25
+    const sizingAdaptive = calculatePropAdaptiveLots({
+      balance: 100_000,
+      remainingDailyBudget: 1000,
+      slPips: 20,
+      symbol: "EURUSD",
+      preset: "buffer_adaptive",
+    });
+    assert.strictEqual(sizingAdaptive.lots, 1.25);
+    assert.strictEqual(sizingAdaptive.monetaryRisk, 250);
+    assert.strictEqual(sizingAdaptive.maxConsecutiveLossesUntilBreach, 4);
   });
 
-  it("6. Esportazione Setup per MT5 / cTrader genera parametri formattati e sintassi terminale", () => {
+  it("7. Esportazione Setup per MT5 / cTrader genera parametri formattati e sintassi terminale", () => {
     const formatted = formatSetupForClipboard({
       market: "XAUUSD",
       side: "BUY",

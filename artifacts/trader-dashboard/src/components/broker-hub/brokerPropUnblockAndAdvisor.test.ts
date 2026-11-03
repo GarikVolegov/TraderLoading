@@ -155,4 +155,34 @@ describe("AUREUS Sblocco Conto, Broker & Prop Advisor (Il Varco & Il Libro della
       "SimpleBrokerConnectWizard deve includere il campo protetto per password investor",
     );
   });
+
+  // ── 9. Verifica Profit Target Meter & Switcher Fase Challenge in CockpitPropGuardianBar ──
+  it("9. CockpitPropGuardianBar integra il monitoraggio del Profit Target e switcher Fase 1/2", () => {
+    const barSrc = fs.readFileSync(path.join(dashboardRoot, "src/components/cockpit/CockpitPropGuardianBar.tsx"), "utf8");
+    assert.ok(
+      barSrc.includes("Target F"),
+      "CockpitPropGuardianBar deve visualizzare il target della challenge",
+    );
+    assert.ok(
+      barSrc.includes("profitProgressPct"),
+      "CockpitPropGuardianBar deve visualizzare la percentuale di avanzamento del target",
+    );
+    assert.ok(
+      barSrc.includes("Fase"),
+      "CockpitPropGuardianBar deve permettere lo switch tra Fase 1 e Fase 2",
+    );
+  });
+
+  // ── 10. Verifica 1-Tap Prop Risk Preset Sizing nel Grafico ──
+  it("10. LimenProprietaryChart integra i preset di rischio rapido 0.25%, 0.5% e 1% nel Replay Dock", () => {
+    const chartSrc = fs.readFileSync(path.join(dashboardRoot, "src/components/chart/LimenProprietaryChart.tsx"), "utf8");
+    assert.ok(
+      chartSrc.includes("1-Tap Prop Risk Preset Sizing"),
+      "LimenProprietaryChart deve includere i bottoni di rischio 1-tap",
+    );
+    assert.ok(
+      chartSrc.includes("computeLots"),
+      "LimenProprietaryChart deve calcolare i lotti in base al rischio selezionato",
+    );
+  });
 });

@@ -1,17 +1,25 @@
 /**
  * AUREUS PROTOCOL — Il Custode della Soglia: Prop Guardian Engine
  *
- * Motore di monitoraggio in tempo reale del Max Daily Drawdown e del Total Drawdown
- * per Prop Firm sovrane (FTMO, The 5%ers, FundedNext, Alpha Capital) e Broker ECN.
- * Include esportazione chirurgica dei parametri di setup per MT5 / cTrader e Bio-Lock
- * al raggiungimento della soglia critica del 75%+ del drawdown consentito.
+ * Motore di monitoraggio in tempo reale del Max Daily Drawdown, Total Drawdown
+ * e Profit Target per Prop Firm sovrane (FTMO, The 5%ers, FundedNext, Alpha Capital).
+ * Include:
+ * 1. Telemetria del Max Daily Drawdown e del Profit Target con notch 75%
+ * 2. 1-Tap Prop Risk Sizing (Calcolo automatico lotti adattivo su buffer residuo)
+ * 3. Esportazione chirurgica dei parametri di setup per MT5 / cTrader
+ * 4. Bio-Lock difensivo su soglia critica del 75%+
  */
+
+import { computeLots, pipValuePerLot } from "./replay/lotSizing.js";
 
 export interface PropProfile {
   id: string;
   name: string;
   maxDailyLossPct: number; // e.g. 5.0%
   maxTotalLossPct: number; // e.g. 10.0%
+  profitTargetPhase1Pct: number; // e.g. 10.0% (Fase 1)
+  profitTargetPhase2Pct: number; // e.g. 5.0% (Fase 2)
+  recommendedRiskPct: number; // e.g. 0.5% (Golden Standard Prop)
   drawdownType: "balance" | "equity" | "relative";
   badge: string;
 }
@@ -22,46 +30,64 @@ export const PROP_PROFILES: PropProfile[] = [
     name: "FTMO",
     maxDailyLossPct: 5.0,
     maxTotalLossPct: 10.0,
+    profitTargetPhase1Pct: 10.0,
+    profitTargetPhase2Pct: 5.0,
+    recommendedRiskPct: 0.5,
     drawdownType: "balance",
-    badge: "5% Daily · 10% Total",
+    badge: "5% Daily · 10% Total · 10% Target",
   },
   {
     id: "five_percenters",
     name: "The 5%ers",
     maxDailyLossPct: 5.0,
     maxTotalLossPct: 8.0,
+    profitTargetPhase1Pct: 8.0,
+    profitTargetPhase2Pct: 5.0,
+    recommendedRiskPct: 0.5,
     drawdownType: "balance",
-    badge: "5% Daily · 8% Total",
+    badge: "5% Daily · 8% Total · 8% Target",
   },
   {
     id: "funded_next",
     name: "FundedNext",
     maxDailyLossPct: 5.0,
     maxTotalLossPct: 10.0,
+    profitTargetPhase1Pct: 8.0,
+    profitTargetPhase2Pct: 5.0,
+    recommendedRiskPct: 0.5,
     drawdownType: "balance",
-    badge: "5% Daily · 10% Total",
+    badge: "5% Daily · 10% Total · 8% Target",
   },
   {
     id: "alpha_capital",
     name: "Alpha Capital",
     maxDailyLossPct: 5.0,
     maxTotalLossPct: 10.0,
+    profitTargetPhase1Pct: 8.0,
+    profitTargetPhase2Pct: 4.0,
+    recommendedRiskPct: 0.5,
     drawdownType: "balance",
-    badge: "5% Daily · 10% Total",
+    badge: "5% Daily · 10% Total · 8% Target",
   },
   {
     id: "ic_markets",
     name: "IC Markets (Broker)",
     maxDailyLossPct: 3.0,
     maxTotalLossPct: 6.0,
+    profitTargetPhase1Pct: 10.0,
+    profitTargetPhase2Pct: 5.0,
+    recommendedRiskPct: 1.0,
     drawdownType: "balance",
-    badge: "3% Daily · 6% Total",
+    badge: "3% Daily · 6% Total · Raw ECN",
   },
   {
     id: "custom",
     name: "Presidio Personalizzato",
     maxDailyLossPct: 5.0,
     maxTotalLossPct: 10.0,
+    profitTargetPhase1Pct: 10.0,
+    profitTargetPhase2Pct: 5.0,
+    recommendedRiskPct: 0.5,
     drawdownType: "balance",
     badge: "Parametri Manuali",
   },
@@ -71,25 +97,27 @@ const PROP_STORAGE_KEY = "aureus_prop_guardian_profile_v1";
 
 export interface StoredPropConfig {
   profileId: string;
+  phase?: 1 | 2;
   customDailyPct?: number;
   customTotalPct?: number;
 }
 
 export function getStoredPropConfig(): StoredPropConfig {
   if (typeof window === "undefined" || !window.localStorage) {
-    return { profileId: "ftmo" };
+    return { profileId: "ftmo", phase: 1 };
   }
   try {
     const raw = window.localStorage.getItem(PROP_STORAGE_KEY);
-    if (!raw) return { profileId: "ftmo" };
+    if (!raw) return { profileId: "ftmo", phase: 1 };
     const parsed = JSON.parse(raw);
     return {
       profileId: parsed.profileId || "ftmo",
+      phase: parsed.phase === 2 ? 2 : 1,
       customDailyPct: typeof parsed.customDailyPct === "number" ? parsed.customDailyPct : undefined,
       customTotalPct: typeof parsed.customTotalPct === "number" ? parsed.customTotalPct : undefined,
     };
   } catch {
-    return { profileId: "ftmo" };
+    return { profileId: "ftmo", phase: 1 };
   }
 }
 
@@ -104,6 +132,7 @@ export function setStoredPropConfig(config: StoredPropConfig): void {
 
 export interface PropGuardianTelemetry {
   profile: PropProfile;
+  phase: 1 | 2;
   balance: number;
   equity: number;
   dailyProfit: number;
@@ -118,10 +147,18 @@ export interface PropGuardianTelemetry {
   isDisqualified: boolean; // >= 100%
   statusLabel: string;
   statusBadgeTone: "emerald" | "amber" | "crimson";
+
+  // Telemetria Obiettivo Profit Target
+  profitTargetPct: number;
+  profitTargetAmount: number;
+  currentProfitAmount: number;
+  profitProgressPct: number;
+  targetRemainingAmount: number;
+  isTargetAchieved: boolean;
 }
 
 /**
- * Calcola chirurgicamente la telemetria di conformità al Max Daily Drawdown
+ * Calcola chirurgicamente la telemetria di conformità al Max Daily Drawdown e al Profit Target
  */
 export function computePropGuardianTelemetry(
   balance: number,
@@ -129,6 +166,7 @@ export function computePropGuardianTelemetry(
   dailyProfit: number,
   profile: PropProfile,
   currency = "EUR",
+  phase: 1 | 2 = 1,
 ): PropGuardianTelemetry {
   const safeBalance = Math.max(0, balance);
   const safeEquity = Math.max(0, equity);
@@ -165,8 +203,21 @@ export function computePropGuardianTelemetry(
     statusBadgeTone = "amber";
   }
 
+  // Profit Target Telemetry
+  const profitTargetPct = phase === 2 ? profile.profitTargetPhase2Pct : profile.profitTargetPhase1Pct;
+  const profitTargetAmount = (safeBalance * profitTargetPct) / 100;
+  const floatingProfit = safeEquity > safeBalance ? safeEquity - safeBalance : 0;
+  const currentProfitAmount = Math.max(floatingProfit, dailyProfit > 0 ? dailyProfit : 0);
+  const profitProgressPct =
+    profitTargetAmount > 0
+      ? Math.min(100, Math.max(0, (currentProfitAmount / profitTargetAmount) * 100))
+      : 0;
+  const targetRemainingAmount = Math.max(0, profitTargetAmount - currentProfitAmount);
+  const isTargetAchieved = currentProfitAmount >= profitTargetAmount && currentProfitAmount > 0;
+
   return {
     profile,
+    phase,
     balance: safeBalance,
     equity: safeEquity,
     dailyProfit,
@@ -181,8 +232,87 @@ export function computePropGuardianTelemetry(
     isDisqualified: drawdownUsageRatio >= 1.0,
     statusLabel,
     statusBadgeTone,
+    profitTargetPct,
+    profitTargetAmount,
+    currentProfitAmount,
+    profitProgressPct,
+    targetRemainingAmount,
+    isTargetAchieved,
   };
 }
+
+// ── 1-Tap Prop Risk Sizing Engine ───────────────────────────────────────────
+
+export type PropRiskPreset = "conservative_025" | "recommended_05" | "standard_10" | "buffer_adaptive";
+
+export interface PropAdaptiveLotsResult {
+  preset: PropRiskPreset;
+  presetLabel: string;
+  lots: number;
+  monetaryRisk: number;
+  riskPctOfAccount: number;
+  riskPctOfRemainingBuffer: number;
+  maxConsecutiveLossesUntilBreach: number;
+}
+
+/**
+ * Calcola istantaneamente i lotti operativi in base alle regole auree della Prop Firm
+ * per evitare il sovradimensionamento e garantire che il trade rispetti il buffer giornaliero.
+ */
+export function calculatePropAdaptiveLots(input: {
+  balance: number;
+  remainingDailyBudget: number;
+  slPips: number;
+  symbol: string;
+  preset?: PropRiskPreset;
+}): PropAdaptiveLotsResult {
+  const { balance, remainingDailyBudget, slPips, symbol, preset = "recommended_05" } = input;
+  const safeBalance = Math.max(100, balance);
+  const safeBudget = Math.max(10, remainingDailyBudget);
+  const safeSl = Math.max(1, slPips);
+
+  let targetRiskEur = 0;
+  let presetLabel = "0.50% Consigliato Prop";
+
+  if (preset === "conservative_025") {
+    targetRiskEur = (safeBalance * 0.25) / 100;
+    presetLabel = "0.25% Conservativo";
+  } else if (preset === "standard_10") {
+    targetRiskEur = (safeBalance * 1.0) / 100;
+    presetLabel = "1.00% Standard Massimo";
+  } else if (preset === "buffer_adaptive") {
+    // 25% del buffer residuo odierno per garantire almeno 4 cartucce
+    targetRiskEur = safeBudget * 0.25;
+    presetLabel = "Adattivo (25% Buffer Residuo)";
+  } else {
+    // Default: 0.50% Golden Standard
+    targetRiskEur = (safeBalance * 0.50) / 100;
+    presetLabel = "0.50% Consigliato Prop";
+  }
+
+  // Tetto difensivo: mai rischiare più del 50% del buffer residuo in una singola operazione
+  const cappedRiskEur = Math.min(targetRiskEur, safeBudget * 0.5);
+
+  const rawLots = computeLots({ riskAmount: cappedRiskEur, slPips: safeSl, symbol });
+  const lots = Math.max(0.01, rawLots);
+  const pipVal = pipValuePerLot(symbol);
+  const monetaryRisk = Math.round(lots * safeSl * pipVal * 100) / 100;
+  const riskPctOfAccount = Math.round((monetaryRisk / safeBalance) * 10000) / 100;
+  const riskPctOfRemainingBuffer = safeBudget > 0 ? Math.round((monetaryRisk / safeBudget) * 10000) / 100 : 100;
+  const maxConsecutiveLossesUntilBreach = monetaryRisk > 0 ? Math.floor(safeBudget / monetaryRisk) : 0;
+
+  return {
+    preset,
+    presetLabel,
+    lots,
+    monetaryRisk,
+    riskPctOfAccount,
+    riskPctOfRemainingBuffer,
+    maxConsecutiveLossesUntilBreach,
+  };
+}
+
+// ── Esportazione Setup MT5 / cTrader ────────────────────────────────────────
 
 export interface SetupExportParams {
   market: string;

@@ -11,6 +11,7 @@ import {
   Sparkles,
   Lock,
   Zap,
+  Target,
 } from "lucide-react";
 import type { BrokerSnapshot } from "@/components/broker-hub/types";
 import {
@@ -64,8 +65,8 @@ export function CockpitPropGuardianBar({
     const dailyProfit = isBrokerConnected ? brokerSnapshot.metrics.dailyProfit : 0;
     const curr = isBrokerConnected ? brokerSnapshot.metrics.currency || "EUR" : "EUR";
 
-    return computePropGuardianTelemetry(bal, eq, dailyProfit, selectedProfile, curr);
-  }, [isBrokerConnected, brokerSnapshot.metrics, selectedProfile]);
+    return computePropGuardianTelemetry(bal, eq, dailyProfit, selectedProfile, curr, propConfig.phase || 1);
+  }, [isBrokerConnected, brokerSnapshot.metrics, selectedProfile, propConfig.phase]);
 
   // Monitoraggio acustico e Bio-Lock al varco del 75%+
   const lastAlertTimestampRef = useRef<number>(0);
@@ -295,6 +296,55 @@ export function CockpitPropGuardianBar({
                   €{telemetry.dailyLossRemainingBudget.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </strong>
               </span>
+            </div>
+
+            {/* Obiettivo Profit Target (Fase 1 / Fase 2) */}
+            <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[9px] text-slate-400">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Target size={11} className="text-[#E8C56A] shrink-0" />
+                <span className="text-slate-300 font-semibold whitespace-nowrap">
+                  Target F{propConfig.phase || 1}:
+                </span>
+                <span className="font-mono text-emerald-400 font-bold whitespace-nowrap">
+                  €{telemetry.currentProfitAmount.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-slate-500 whitespace-nowrap hidden sm:inline">
+                  / €{telemetry.profitTargetAmount.toLocaleString("it-IT", { minimumFractionDigits: 0 })} ({telemetry.profitTargetPct}%)
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {telemetry.isTargetAchieved ? (
+                  <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[8.5px] font-bold uppercase whitespace-nowrap animate-pulse">
+                    🏆 OBIETTIVO SUPERATO
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <div className="w-12 h-1.5 rounded-full bg-black/60 border border-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.max(0, telemetry.profitProgressPct))}%` }}
+                      />
+                    </div>
+                    <span className="text-[9px] text-[#E8C56A] font-bold whitespace-nowrap">
+                      {telemetry.profitProgressPct.toFixed(1)}%
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    synestheticClick();
+                    const nextPhase = (propConfig.phase === 2 ? 1 : 2) as 1 | 2;
+                    const updated = { ...propConfig, phase: nextPhase };
+                    setPropConfig(updated);
+                    setStoredPropConfig(updated);
+                  }}
+                  className="px-1.5 py-0.2 rounded bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white text-[8px] font-bold uppercase transition-colors cursor-pointer whitespace-nowrap border border-white/10"
+                  title="Cambia fase challenge: Fase 1 (10%) o Fase 2 (5%)"
+                >
+                  Fase {propConfig.phase || 1} ⮂
+                </button>
+              </div>
             </div>
           </div>
         </div>
