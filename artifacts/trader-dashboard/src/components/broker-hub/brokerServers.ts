@@ -10,6 +10,18 @@ export interface BrokerServerGroup {
 }
 
 export const BROKER_SERVERS: BrokerServerGroup[] = [
+  { broker: "FTMO", aliases: ["ftmo"], servers: [
+    "FTMO-Demo", "FTMO-Server", "FTMO-Server2", "FTMO-Server3", "FTMO-Server4",
+  ] },
+  { broker: "The 5%ers", aliases: ["5ers", "the5ers", "the 5ers"], servers: [
+    "The5ers-Demo", "The5ers-Live", "The5ers-Live01",
+  ] },
+  { broker: "FundedNext", aliases: ["fundednext", "funded next"], servers: [
+    "FundedNext-Demo", "FundedNext-Server", "FundedNext-Server2", "FundedNext-Server3",
+  ] },
+  { broker: "Alpha Capital Group", aliases: ["alpha capital", "alphacapital", "acg"], servers: [
+    "AlphaCapital-Demo", "AlphaCapital-Live", "AlphaCapitalMarkets-Live",
+  ] },
   { broker: "IC Markets", aliases: ["icmarkets", "ic markets"], servers: [
     "ICMarketsSC-Demo", "ICMarketsSC-Live01", "ICMarketsSC-Live02", "ICMarketsSC-Live04",
     "ICMarketsSC-Live05", "ICMarketsEU-Live", "ICMarketsEU-Demo", "ICMarketsSC-MT5",

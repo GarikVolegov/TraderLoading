@@ -5,7 +5,7 @@ import { useAuth } from "@clerk/react";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, addWeeks, isWithinInterval } from "date-fns";
-import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles, Wallet, Maximize2, ExternalLink, X } from "lucide-react";
+import { Plus, Edit2, Trash2, Image as ImageIcon, CalendarDays, Tag, Lightbulb, Target, BookOpen, Check, TrendingUp, Minus, ChevronLeft, ChevronRight, BarChart3, Calendar, Bell, BellOff, CalendarPlus, RefreshCw, Sparkles, Wallet, Maximize2, ExternalLink, X, ShieldCheck, ListChecks } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
 import { EmojiPickerPanel } from "@/components/EmojiPickerPanel";
 import { QueryErrorState } from "@/components/QueryErrorState";
@@ -368,11 +368,48 @@ function TradesTab() {
 
   return (
     <>
-      <div className="flex flex-wrap justify-end gap-2 mb-4 sm:mb-6">
-        <CsvImportButton />
-        <Button variant="outline" onClick={() => navigate(`/journal${updateWorkspaceQuery(search, { t: "trades", panel: "conti", tab: null })}`)}>
-          <Wallet className="w-4 h-4 mr-2" />{t("journal.workspace.accounts")}
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() =>
+              navigate(`/journal${updateWorkspaceQuery(search, { t: "trades", panel: "conti", tab: "connect" })}`)
+            }
+            className="border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] hover:bg-[#C5A059]/25 hover:border-[#C5A059]/70 font-mono text-xs font-bold uppercase tracking-wider"
+            title="Sblocca e collega il tuo conto trading (MT4/MT5/cTrader) per la sincronizzazione automatica"
+          >
+            <Wallet className="w-3.5 h-3.5 mr-1.5 text-[#E8C56A]" />
+            <span>Collega Conto Broker &amp; Prop</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              navigate(`/journal${updateWorkspaceQuery(search, { t: "trades", panel: "conti", tab: "recommended" })}`)
+            }
+            className="text-slate-400 hover:text-[#E8C56A] font-mono text-xs"
+            title="Consulta i Broker e le Prop Firm raccomandate dal Protocollo AUREUS"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 mr-1 text-[#C5A059]" />
+            <span className="hidden sm:inline">Broker &amp; Prop Consigliati</span>
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <CsvImportButton />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              navigate(`/journal${updateWorkspaceQuery(search, { t: "trades", panel: "conti", tab: "accounts" })}`)
+            }
+            className="font-mono text-xs"
+          >
+            <ListChecks className="w-3.5 h-3.5 mr-1.5" />
+            <span>{t("journal.workspace.accounts")}</span>
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4 sm:mb-6">

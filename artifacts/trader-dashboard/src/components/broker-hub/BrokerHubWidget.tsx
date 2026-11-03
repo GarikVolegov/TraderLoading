@@ -31,32 +31,6 @@ export function BrokerHubWidget() {
     return <Card className="h-[320px] border-border/30 bg-card/60 animate-pulse" />;
   }
 
-  if (!billing.data?.pro) {
-    return (
-      <Card className="relative overflow-hidden border-primary/20 bg-card/60">
-        <WidgetHeader
-          icon={<Landmark className="h-4 w-4" />}
-          iconTone="primary"
-          title={uiText("auto.ui.5ad4db1d5a")}
-          subtitle={uiText("auto.ui.e6f450849b")}
-          action={
-            <div className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
-              {uiText("auto.ui.ce13284c4b")}
-            </div>
-          }
-        />
-        <CardContent className="space-y-3 px-4 pb-4 pt-0">
-          <div className="rounded-lg border border-border/40 bg-secondary/20 px-3 py-3 text-xs text-muted-foreground">
-            Sblocca Collegamento conto, storico e snapshot account con Pro.
-          </div>
-          <Button type="button" className="w-full" onClick={() => openWorkspace("connect")}>
-            Passa a Pro
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return <BrokerHubWidgetInner />;
 }
 

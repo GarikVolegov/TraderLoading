@@ -33,6 +33,7 @@ import {
   Play,
   Headphones,
   Wind,
+  Copy,
 } from "lucide-react";
 import { isUserTypingInEditableElement } from "@/lib/pwaAutoUpdater";
 import { triggerHaptic } from "@/lib/hapticPulse";
@@ -104,6 +105,9 @@ const DecompressionChamberModal = lazy(() =>
 const TacticalBreathModal = lazy(() =>
   import("@/components/cockpit/TacticalBreathModal").then((m) => ({ default: m.TacticalBreathModal }))
 );
+const BrokerHubWorkspace = lazy(() =>
+  import("@/components/broker-hub/BrokerHubWorkspace").then((m) => ({ default: m.BrokerHubWorkspace }))
+);
 const SmartWatchConnectModal = lazy(() =>
   import("@/components/biometrics/SmartWatchConnectModal").then((m) => ({ default: m.SmartWatchConnectModal }))
 );
@@ -113,6 +117,15 @@ const JournalEntryModal = lazy(() =>
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { LimenProprietaryChart } from "@/components/chart/LimenProprietaryChart";
+import { CockpitPropGuardianBar } from "@/components/cockpit/CockpitPropGuardianBar";
+import {
+  PROP_PROFILES,
+  getStoredPropConfig,
+  computePropGuardianTelemetry,
+  copySetupToClipboard,
+  type SetupExportParams,
+} from "@/lib/propGuardian";
+import type { BrokerHubTab } from "@/components/broker-hub/types";
 import { CockpitAiSentinelCard } from "@/components/cockpit/CockpitAiSentinelCard";
 import { useVarcoVisionSentinel } from "@/hooks/useVarcoVisionSentinel";
 import type { VarcoSetupPlan } from "@workspace/api-client-react";
@@ -175,6 +188,7 @@ import { useFinancialProfile, getReferenceTradingCapital } from "@/lib/financial
 import { useFreeTrial } from "@/lib/useFreeTrial";
 import { QuantitativeSynthesisDialog } from "@/components/cockpit/QuantitativeSynthesisDialog";
 import { updateWorkspaceQuery } from "@/lib/workspaceNavigation";
+import { useBrokerHub } from "@/components/broker-hub/useBrokerHub";
 import "./TradingCockpit.css";
 
 const MARKETS = [
@@ -1006,8 +1020,16 @@ function CockpitView({
     | "operative_plan"
     | "user_playbook"
     | "favorite_tools"
+    | "broker_hub"
     | null
   >(null);
+  const [brokerHubInitialTab, setBrokerHubInitialTab] = useState<BrokerHubTab>("connect");
+  const handleOpenBrokerHub = useCallback((tab?: BrokerHubTab) => {
+    setBrokerHubInitialTab(tab || "connect");
+    setDialog("broker_hub");
+  }, []);
+  const { snapshot: brokerSnapshot } = useBrokerHub();
+  const isBrokerConnected = brokerSnapshot.status === "connected" && Boolean(brokerSnapshot.profileId);
   const [journalModalOpen, setJournalModalOpen] = useState(false);
   const [imminentRedNews, setImminentRedNews] = useState<{
     title: string;
@@ -2060,8 +2082,66 @@ function CockpitView({
   const sessionDailyRisk = useMemo(() => {
     return state.session ? dailyProcessRisk(state.session, state.evidence) : null;
   }, [state.session, state.evidence]);
-  const isLossLimitBreached = Boolean(sessionDailyRisk && sessionDailyRisk.losses.length > 0);
+
+  // Presidio Prop Firm Sovrana & Max Daily Drawdown (Il Custode della Soglia)
+  const storedPropConfig = useMemo(() => getStoredPropConfig(), [dialog]);
+  const activePropProfile = useMemo(() => {
+    return PROP_PROFILES.find((p) => p.id === storedPropConfig.profileId) || PROP_PROFILES[0];
+  }, [storedPropConfig.profileId]);
+
+  const propGuardianTelemetry = useMemo(() => {
+    const bal = isBrokerConnected ? brokerSnapshot.metrics.balance : 0;
+    const eq = isBrokerConnected ? brokerSnapshot.metrics.equity : 0;
+    const dailyProfit = isBrokerConnected ? brokerSnapshot.metrics.dailyProfit : 0;
+    const curr = isBrokerConnected ? brokerSnapshot.metrics.currency || "EUR" : "EUR";
+    return computePropGuardianTelemetry(bal, eq, dailyProfit, activePropProfile, curr);
+  }, [isBrokerConnected, brokerSnapshot.metrics, activePropProfile]);
+
+  const isPropCriticalBreach = isBrokerConnected && propGuardianTelemetry.isCriticalBreachRisk;
+  const isLossLimitBreached = Boolean(
+    (sessionDailyRisk && sessionDailyRisk.losses.length > 0) || isPropCriticalBreach
+  );
   const isOvertradingRisk = _tradesToday >= _maxTrades || isLossLimitBreached;
+
+  const activeSetupParams = useMemo<SetupExportParams | null>(() => {
+    const entry = localEntry || (aiSetup ? String(aiSetup.entryPrice) : "");
+    const sl = localStop || (aiSetup ? String(aiSetup.stopLossPrice) : "");
+    const tp = a.target || (aiSetup ? String(aiSetup.takeProfit1Price) : "");
+    if (!entry && !sl && !aiSetup) return null;
+
+    const dir = aiSetup
+      ? (aiSetup.direction === "long" ? "BUY" : "SELL")
+      : (a.cycle === "up" ? "BUY" : "SELL");
+    const lots = aiSetup?.lotSize || "0.10";
+
+    return {
+      market: a.market,
+      side: dir,
+      entryPrice: entry,
+      stopLoss: sl,
+      takeProfit: tp,
+      lots,
+      riskReward: calculatedRR || (aiSetup ? String(aiSetup.riskRewardRatio) : undefined),
+      riskAmount: localRisk,
+      currency: state.activeMethod?.rules.currency ?? "EUR",
+      propFirmName: activePropProfile.name,
+      dailyDrawdownPct: propGuardianTelemetry.currentDailyDrawdownPct,
+      maxDailyLimitPct: activePropProfile.maxDailyLossPct,
+    };
+  }, [
+    localEntry,
+    localStop,
+    aiSetup,
+    a.target,
+    a.cycle,
+    calculatedRR,
+    localRisk,
+    a.market,
+    state.activeMethod,
+    activePropProfile.name,
+    activePropProfile.maxDailyLossPct,
+    propGuardianTelemetry.currentDailyDrawdownPct,
+  ]);
   const sessionStartTime = state.session?.preparedAt || state.session?.createdAt;
   const elapsedSessionMinutes = sessionStartTime
     ? Math.max(0, Math.floor((nowMs - new Date(sessionStartTime).getTime()) / 60_000))
@@ -2102,7 +2182,12 @@ function CockpitView({
     let status: "calm" | "vigilant" | "elevated" | "critical" = "calm";
     let color = "#10b981";
 
-    if (isLossLimitBreached) {
+    if (isPropCriticalBreach) {
+      baseBpm = Math.max(baseBpm, 115);
+      stressReason = "Soglia Drawdown Prop 75%+";
+      status = "critical";
+      color = "#ef4444";
+    } else if (isLossLimitBreached) {
       baseBpm = Math.max(baseBpm, 108);
       stressReason = "Limite Perdita Superato";
       status = "critical";
@@ -2142,6 +2227,7 @@ function CockpitView({
     watchTelemetry.zone,
     watchTelemetry.isBleConnected,
     watchTelemetry.deviceName,
+    isPropCriticalBreach,
     isLossLimitBreached,
     isOvertradingRisk,
     imminentEvent,
@@ -3420,6 +3506,30 @@ function CockpitView({
                     )}
                   </div>
 
+                  {/* Esporta Setup per MT5 / cTrader */}
+                  {activeSetupParams && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await copySetupToClipboard(activeSetupParams);
+                          if (ok) {
+                            synestheticConfirm();
+                            toast({
+                              title: "Setup Esportato per MT5 / cTrader",
+                              description: `Parametri d'ordine per ${activeSetupParams.market} (${activeSetupParams.side}) copiati negli appunti.`,
+                            });
+                          }
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/15 hover:bg-[#C5A059]/25 hover:border-[#C5A059]/70 text-[#E8C56A] text-[10.5px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                        title="Copia i parametri del setup formattati per MetaTrader 5 o cTrader"
+                      >
+                        <Copy size={12} className="text-[#C5A059]" />
+                        <span>Esporta Setup per MT5 / cTrader</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Finestra Speciale (Lunch / Intervallo / Asia) */}
                   {(win.kind === "lunch" || win.kind === "analysis") && (
                     <Tick
@@ -3848,6 +3958,18 @@ function CockpitView({
             </div>
           )}
 
+          {/* ── BARRA PRESIDIO PROP FIRM & BROKER (CockpitPropGuardianBar) ── */}
+          <CockpitPropGuardianBar
+            brokerSnapshot={brokerSnapshot}
+            onOpenBrokerHub={handleOpenBrokerHub}
+            onTriggerBioLock={(_reason) => {
+              setPendingBioLockTradeUnlock(true);
+              setTacticalBreathModalOpen(true);
+            }}
+            activeSetup={activeSetupParams}
+            className="mx-2 mb-1.5 shrink-0"
+          />
+
           {/* Area Grafico: Motore Proprietario LIMEN (Lightweight Charts v5 + TV Real-Time Feed + Overlay FX Replay) */}
           <div className="ck-chart">
             <LimenProprietaryChart
@@ -4241,7 +4363,9 @@ function CockpitView({
             ? ck("cockpit.ui.dialog.protection")
             : dialog === "context"
               ? `Sintesi Quantitativa & Catalizzatori · ${a.market}`
-              : dialog === "news"
+              : dialog === "broker_hub"
+                ? `Presidio Sovrano · Collegamento Conto Broker & Prop Firm`
+                : dialog === "news"
                 ? `Calendario Economico & Catalizzatori Macro`
                 : dialog === "user_playbook"
                   ? `I Miei Esempi Operativi · AUREUS Playbook`
@@ -4264,7 +4388,7 @@ function CockpitView({
                                   : ck("cockpit.ui.dialog.default")
         }
         desktopClassName={
-          dialog === "operative_plan" || dialog === "user_playbook"
+          dialog === "operative_plan" || dialog === "user_playbook" || dialog === "broker_hub"
             ? "max-w-5xl md:max-w-6xl w-[96vw]"
             : "max-w-4xl"
         }
@@ -4399,6 +4523,10 @@ function CockpitView({
                   refreshDockState();
                 }}
               />
+            )}
+
+            {dialog === "broker_hub" && (
+              <BrokerHubWorkspace initialTab={brokerHubInitialTab} />
             )}
           </Suspense>
 

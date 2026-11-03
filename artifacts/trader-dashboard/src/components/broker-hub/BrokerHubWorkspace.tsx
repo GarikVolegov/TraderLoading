@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Cable, CheckCircle2, History, ListChecks, Trash2 } from "lucide-react";
+import { Award, Cable, CheckCircle2, History, ListChecks, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { simpleStatusLabel } from "@/lib/uiCopyPolicy";
 import { ConnectAccountWizard } from "./ConnectAccountWizard";
 import { AccountEquityCurve } from "./AccountEquityCurve";
+import { RecommendedBrokersAndProps } from "./RecommendedBrokersAndProps";
 import { useBrokerHub } from "./useBrokerHub";
 import type { BrokerHubTab } from "./types";
 import { uiText } from "@/contexts/LanguageContext";
@@ -119,9 +120,17 @@ function HistoryPanel({ hub }: { hub: ReturnType<typeof useBrokerHub> }) {
 export function BrokerHubWorkspace({ initialTab = "connect", onTabChange }: { initialTab?: BrokerHubTab; onTabChange?: (tab: BrokerHubTab) => void }) {
   const hub = useBrokerHub();
   const [tab, setTab] = useState<BrokerHubTab>(initialTab);
+  const [preselectedBroker, setPreselectedBroker] = useState<string | undefined>();
+  const [preselectedServer, setPreselectedServer] = useState<string | undefined>();
 
   useEffect(() => setTab(initialTab), [initialTab]);
   const changeTab = (next: BrokerHubTab) => { setTab(next); onTabChange?.(next); };
+
+  const handleSelectBrokerFromAdvisor = (brokerName: string, serverExample?: string) => {
+    setPreselectedBroker(brokerName);
+    setPreselectedServer(serverExample);
+    changeTab("connect");
+  };
 
   return (
     <div className="space-y-4">
@@ -133,13 +142,22 @@ export function BrokerHubWorkspace({ initialTab = "connect", onTabChange }: { in
         connected={hub.snapshot.status === "connected"}
       />
       <Tabs value={tab} onValueChange={(value) => changeTab(value as BrokerHubTab)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="connect" className="gap-2"><Cable className="h-3.5 w-3.5" />{uiText("auto.ui.2671bbd8db")}</TabsTrigger>
           <TabsTrigger value="accounts" className="gap-2"><ListChecks className="h-3.5 w-3.5" />Account</TabsTrigger>
+          <TabsTrigger value="recommended" className="gap-2"><Award className="h-3.5 w-3.5 text-[#E8C56A]" />Broker &amp; Prop</TabsTrigger>
           <TabsTrigger value="history" className="gap-2"><History className="h-3.5 w-3.5" />{uiText("auto.ui.b38270fe36")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="connect"><ConnectAccountWizard hub={hub} onConnected={() => changeTab("accounts")} /></TabsContent>
+        <TabsContent value="connect">
+          <ConnectAccountWizard
+            hub={hub}
+            onConnected={() => changeTab("accounts")}
+            preselectedBroker={preselectedBroker}
+            preselectedServer={preselectedServer}
+          />
+        </TabsContent>
         <TabsContent value="accounts"><AccountsPanel hub={hub} onConnected={() => changeTab("accounts")} /></TabsContent>
+        <TabsContent value="recommended"><RecommendedBrokersAndProps onSelectBroker={handleSelectBrokerFromAdvisor} /></TabsContent>
         <TabsContent value="history"><HistoryPanel hub={hub} /></TabsContent>
       </Tabs>
     </div>

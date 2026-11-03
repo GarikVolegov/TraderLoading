@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   ShieldCheck,
   ShieldAlert,
+  Copy,
 } from "lucide-react";
 import { TacticalBreathModal } from "./TacticalBreathModal";
 import { useSmartWatchHeartRate } from "@/hooks/useSmartWatchHeartRate";
@@ -44,7 +45,8 @@ import {
 } from "@workspace/api-client-react";
 import { addProcessEvidence, fetchTraderProcess, traderProcessKey } from "@/lib/traderProcessApi";
 import { trackEvent } from "@/lib/analytics";
-import { synestheticSealOfAction, synestheticChecklistValidation } from "@/lib/soundFx";
+import { synestheticSealOfAction, synestheticChecklistValidation, synestheticConfirm } from "@/lib/soundFx";
+import { copySetupToClipboard } from "@/lib/propGuardian";
 import { queueOfflineMutation } from "@/lib/journalOfflineSync";
 
 function processDay(date: Date = new Date()): string {
@@ -719,6 +721,36 @@ export function CockpitTradeRegisterModal({
                 <span className="text-[9px] text-muted-foreground uppercase block">R:R / Rischio</span>
                 <strong className="text-amber-400 text-xs">{currency}{initialRisk} ({plannedRR}R)</strong>
               </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await copySetupToClipboard({
+                    market,
+                    side: isLong ? "BUY" : "SELL",
+                    entryPrice: userEntryPrice || entryPrice,
+                    stopLoss,
+                    takeProfit: target,
+                    riskReward: plannedRR,
+                    riskAmount: initialRisk,
+                    currency,
+                  });
+                  if (ok) {
+                    synestheticConfirm();
+                    toast({
+                      title: "Setup Esportato per MT5 / cTrader",
+                      description: `Parametri d'ordine per ${market} (${isLong ? "BUY" : "SELL"}) copiati negli appunti.`,
+                    });
+                  }
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/15 hover:bg-[#C5A059]/30 text-[#E8C56A] text-[10.5px] font-mono font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                title="Copia i parametri per l'esecuzione rapida in MetaTrader 5 o cTrader"
+              >
+                <Copy size={12} className="text-[#C5A059]" />
+                <span>Copia Parametri MT5 / cTrader</span>
+              </button>
             </div>
           </div>
 

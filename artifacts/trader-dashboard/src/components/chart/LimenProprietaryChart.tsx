@@ -1172,14 +1172,30 @@ export function LimenProprietaryChart({
         return;
       }
 
+      // Quick Buy / Quick Sell Hotkeys (FXReplay Parity)
+      // Shift+B -> Quick Buy (Long) al prezzo corrente
+      // Shift+S -> Quick Sell (Short) al prezzo corrente
+      if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key === "B" || e.key === "b") {
+          e.preventDefault();
+          handleExecuteInstantReplayTrade("buy");
+          return;
+        }
+        if (e.key === "S" || e.key === "s") {
+          e.preventDefault();
+          handleExecuteInstantReplayTrade("sell");
+          return;
+        }
+      }
+
       // Replay Bar-by-Bar Stepping (FX Replay Standard)
       if (replayActive) {
-        if (e.key === " ") {
+        if (e.key === " " || e.code === "Space") {
           e.preventDefault();
           setReplayPlaying((prev) => !prev);
           return;
         }
-        if (e.key === "ArrowRight") {
+        if (e.key === "ArrowRight" || e.key === ".") {
           e.preventDefault();
           setReplayCutIndex((prev) => {
             const next = Math.min(candles.length - 1, (prev ?? candles.length - 1) + 1);
@@ -1188,7 +1204,7 @@ export function LimenProprietaryChart({
           synestheticAlert();
           return;
         }
-        if (e.key === "ArrowLeft") {
+        if (e.key === "ArrowLeft" || e.key === ",") {
           e.preventDefault();
           setReplayCutIndex((prev) => {
             const next = Math.max(5, (prev ?? candles.length - 1) - 1);
@@ -1212,7 +1228,7 @@ export function LimenProprietaryChart({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [candles, hoverBar, onIntervalChange, settings.toolColor, handleUpdateDrawings]);
+  }, [candles, hoverBar, onIntervalChange, settings.toolColor, handleUpdateDrawings, handleExecuteInstantReplayTrade]);
 
   // ── 1. Inizializzazione Canvas Lightweight Charts ──────────────────────────────
   useEffect(() => {
@@ -3069,10 +3085,33 @@ export function LimenProprietaryChart({
                       prev != null ? Math.min(candles.length - 1, prev + 1) : candles.length - 1,
                     );
                   }}
-                  title="Passo avanti (1 candela)"
+                  title="Passo avanti (1 candela - Tasto Freccia DX)"
                 >
                   <ChevronRight size={15} />
                 </button>
+
+                {/* Timeline Scrubber Bar & Indicatore Candela (FXReplay Parity) */}
+                <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/60 border border-white/10 font-mono text-[9px]">
+                  <span className="text-[#E8C56A] whitespace-nowrap font-bold">
+                    {(replayActive && replayCutIndex != null ? Math.min(candles.length - 1, Math.max(0, replayCutIndex)) : candles.length - 1) + 1}/{candles.length}
+                  </span>
+                  <input
+                    type="range"
+                    min={5}
+                    max={Math.max(5, candles.length - 1)}
+                    value={replayActive && replayCutIndex != null ? Math.min(candles.length - 1, Math.max(0, replayCutIndex)) : candles.length - 1}
+                    onChange={(e) => {
+                      const next = parseInt(e.target.value, 10);
+                      if (Number.isFinite(next)) {
+                        setReplayCutIndex(next);
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-16 sm:w-20 md:w-28 h-1 accent-[#C5A059] bg-white/20 rounded cursor-pointer"
+                    title="Scorri la timeline della simulazione (Scrubber Bar)"
+                  />
+                </div>
+
                 <button
                   type="button"
                   className="limen-replay-speed-badge"
