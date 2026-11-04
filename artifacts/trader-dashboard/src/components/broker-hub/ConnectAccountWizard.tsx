@@ -1,6 +1,8 @@
 import { ShieldCheck, Lock, Award, CheckCircle2 } from "lucide-react";
 import { SimpleBrokerConnectWizard } from "./SimpleBrokerConnectWizard";
+import { FxBlueAccountSyncWizard } from "./FxBlueAccountSyncWizard";
 import { type useBrokerHub } from "./useBrokerHub";
+import { uiText } from "@/contexts/LanguageContext";
 
 export interface ConnectAccountWizardProps {
   hub: ReturnType<typeof useBrokerHub>;
@@ -16,7 +18,7 @@ export function ConnectAccountWizard({
   preselectedServer,
 }: ConnectAccountWizardProps) {
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
       <SimpleBrokerConnectWizard
         hub={hub}
         onConnected={onConnected}
@@ -34,7 +36,7 @@ export function ConnectAccountWizard({
           <div className="flex items-start gap-2">
             <Lock className="h-3.5 w-3.5 text-emerald-400 mt-0.5 shrink-0" />
             <p className="text-[11px]">
-              <strong className="text-white">Credenziali Read-Only:</strong> La password investor garantisce la sola consultazione dello storico, impedendo qualsiasi ordine manuale o modifica.
+              <strong className="text-white">Credenziali Read-Only:</strong> {uiText("auto.ui.7dec2397a6")}
             </p>
           </div>
 
@@ -48,7 +50,7 @@ export function ConnectAccountWizard({
           <div className="flex items-start gap-2">
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 mt-0.5 shrink-0" />
             <p className="text-[11px]">
-              <strong className="text-white">Zero Latenza nel Varco:</strong> I dati di bilancio ed equity vengono sincronizzati direttamente nel cockpit e nel Libro della Verità.
+              <strong className="text-white">Zero Latenza nel Varco:</strong> {uiText("auto.ui.5ce1c6b130")}
             </p>
           </div>
         </div>

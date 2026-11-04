@@ -1586,7 +1586,7 @@ export function LimenProprietaryChart({
     const onVisibleRangeChange = () => scheduleRevision();
     const onLogicalRangeChange = (range: { from: number; to: number } | null) => {
       scheduleRevision();
-      if (range && range.from < 50) loadOlderRef.current();
+      if (range && range.from < 150) loadOlderRef.current();
       const total = candlesRef.current.length;
       if (range && total > 10) {
         const away = range.to < total - 10 || range.from > total + 4;
@@ -1922,9 +1922,9 @@ export function LimenProprietaryChart({
       if (cancelled || loadingOlder || !hasOlder || current.length === 0) return;
       const oldest = current[0].time;
       loadingOlder = true;
-      const query = `symbol=${cleanSym}&interval=${apiTf}&to=${oldest}&limit=2000`;
+      const query = `symbol=${cleanSym}&interval=${apiTf}&to=${oldest}&limit=5000`;
       const fetchPage = async (): Promise<CandleBar[]> => {
-        // Permanent replay archive first (reaches 2020); generic warehouse as fallback.
+        // Permanent replay archive first; generic warehouse as fallback.
         try {
           const res = await fetch(`/api/backtest/candles?${query}&mode=replay`);
           if (res.ok) {
@@ -1941,15 +1941,15 @@ export function LimenProprietaryChart({
         .then((bars) => {
           if (cancelled) return;
           const older = bars.filter((b) => b.time < oldest);
-          if (older.length === 0) { hasOlder = false; return; }
+          if (older.length === 0) return;
           prependShiftRef.current = older.length;
           setCandles((prev) => {
             const first = prev[0]?.time ?? Infinity;
             const fresh = older.filter((b) => b.time < first);
             if (fresh.length !== older.length) prependShiftRef.current = fresh.length;
             const merged = fresh.length ? [...fresh, ...prev] : prev;
-            // Sliding window massimo di 6.000 candele per preservare la memoria e il garbage collector del browser
-            return merged.length > 6000 ? merged.slice(0, 6000) : merged;
+            // Preserva fino a 60.000 candele storiche per navigazione profonda
+            return merged.length > 60000 ? merged.slice(-60000) : merged;
           });
         })
         .catch((e) => console.warn("[LimenChart] Older history unavailable:", e))

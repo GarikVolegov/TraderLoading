@@ -343,7 +343,7 @@ function buildYahooChartUrl(symbol: string, interval: string, options: CandlesRe
 
   if (startDate) {
     params.set("period1", String(unixDayStart(startDate)));
-    params.set("period2", String(now));
+    params.set("period2", String(options.to != null ? options.to : now));
   } else if (options.to != null) {
     const to = options.to;
     const lookback =
@@ -354,7 +354,7 @@ function buildYahooChartUrl(symbol: string, interval: string, options: CandlesRe
         : interval === "H1" || interval === "H4"
         ? 180 * 86400
         : 3650 * 86400;
-    const from = options.from ?? (to - lookback);
+    const from = Math.max(earliestAllowed, options.from ?? (to - lookback));
     params.set("period1", String(from));
     params.set("period2", String(to));
   } else if (options.from != null) {
@@ -679,7 +679,7 @@ export async function getCandles(
   if (!isCandleWarehouseEnabled()) return fetchLiveCandles(symbol, interval, options);
 
   const startDate = normalizeStartDate(options.startDate);
-  const isPaged = options.from != null;
+  const isPaged = options.from != null || options.to != null;
   const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
   const warehouseCacheKey = `candles:wh:v2:${symbol}:${interval}:${startDate ?? "latest"}${pagingCacheSuffix(options)}`;
   try {
@@ -815,7 +815,29 @@ async function fetchDailyCandlesForSynthesis(
   symbol: string,
   options: CandlesRequestOptions,
 ): Promise<Candle[]> {
-  const chain = getFallbackChain(symbol, "D1", true);
+  const chain: Array<{ name: string; fn: FetchFn }> = [];
+  if (BINANCE_DAILY_SYMBOLS.has(symbol)) {
+    chain.push({
+      name: "Binance",
+      fn: async (sym, _iv, opt) => {
+        const { fetchBinanceDaily } = await import("./ingest/binance.js");
+        const from = opt?.startDate ? unixDayStart(opt.startDate) : (opt?.from ?? 0);
+        const to = opt?.to ?? Math.floor(Date.now() / 1000);
+        return fetchBinanceDaily(sym, from, to);
+      },
+    });
+  }
+  chain.push({ name: "Yahoo", fn: fetchYahoo });
+  if (DUKASCOPY_DAILY_SYMBOLS.has(symbol)) {
+    chain.push({ name: "Dukascopy", fn: fetchDukascopyLive });
+  }
+  if (isTwelveDataEnabled() && TWELVE_SYMBOLS[symbol]) {
+    chain.push({ name: "TwelveData", fn: fetchTwelveData });
+  }
+  if (COINGECKO_IDS[symbol]) {
+    chain.push({ name: "CoinGecko", fn: fetchCoinGecko });
+  }
+
   for (const { fn } of chain) {
     try {
       const candles = await fn(symbol, "D1", options);
@@ -869,8 +891,14 @@ async function fetchDeepIntradaySynthesized(
     throw new Error(`Daily ground truth candles empty for ${symbol}`);
   }
 
-  const synthesized = synthesizeIntradayCandles(dailyCandles, interval, symbol);
-  const isPaged = options.from != null;
+  // Bounded daily candles strictly around the requested time window
+  const boundedDaily = dailyCandles.filter(
+    (c) => c.time >= d1From && (d1To == null || c.time <= d1To),
+  );
+  const dailyToUse = boundedDaily.length > 0 ? boundedDaily : dailyCandles;
+
+  const synthesized = synthesizeIntradayCandles(dailyToUse, interval, symbol);
+  const isPaged = options.from != null || options.to != null;
   const page =
     isPaged || options.startDate || options.anchorTime != null || options.to != null
       ? paginateCandles(synthesized, options, intervalSecs)
@@ -898,7 +926,7 @@ async function fetchLiveCandles(
   interval: string,
   options: CandlesRequestOptions = {},
 ): Promise<CandlesResult> {
-  const isPaged = options.from != null;
+  const isPaged = options.from != null || options.to != null;
   // A cursor page anchors the source fetch to the day of `from`; the exact
   // [from, to) bound is applied to the fetched series afterwards.
   const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
@@ -950,6 +978,34 @@ async function fetchLiveCandles(
     // the production/Railway chain and replay behavior unchanged.
     if (options.maxAgeMs !== undefined && process.env.NODE_ENV !== "production") {
       chain.sort((a, b) => Number(b.name === "Yahoo") - Number(a.name === "Yahoo"));
+    }
+
+    const maxReach =
+      interval === "M1"
+        ? 7 * 86400
+        : interval === "M5" || interval === "M15" || interval === "M30"
+        ? 59 * 86400
+        : interval === "H1" || interval === "H4"
+        ? 720 * 86400
+        : 36500 * 86400;
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const isBeyondIntradayReach =
+      (isIntradayReplayInterval(interval) || interval === "H1" || interval === "H4") &&
+      (options.mode === "replay" || options.to != null || startDate != null) &&
+      ((options.to != null && options.to < nowSecs - maxReach) ||
+        (startDate != null && unixDayStart(startDate) < nowSecs - maxReach));
+
+    if (isBeyondIntradayReach) {
+      try {
+        const synth = await fetchDeepIntradaySynthesized(symbol, interval, options);
+        if (synth && synth.candles.length > 0) {
+          setMemoryCache(cacheKey, { data: synth, timestamp: Date.now() });
+          await setJsonCache(cacheKey, synth, isPaged ? 24 * 3600 : 3600);
+          return synth;
+        }
+      } catch (synthErr) {
+        console.warn(`[candles] Deep historical fast-path synthesis failed for ${symbol} ${interval}:`, synthErr);
+      }
     }
 
     for (const { name, fn } of chain) {

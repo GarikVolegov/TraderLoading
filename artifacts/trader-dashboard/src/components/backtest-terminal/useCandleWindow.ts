@@ -156,12 +156,15 @@ export function useCandleWindow(symbol: string, interval: string, anchorTime: nu
     fetchReplayCandles({ symbol, interval, mode: "replay", to: firstTime, limit: PAGE_LIMIT }, { signal: controller.signal })
       .then((data) => {
         if (controller.signal.aborted || generation !== generationRef.current) return;
-        if (data.candles.length === 0) { hasEarlierRef.current = false; return; }
+        if (data.candles.length === 0) {
+          if (firstTime < 946684800) hasEarlierRef.current = false;
+          return;
+        }
         setCandles((previous) => {
           const oldest = previous[0]?.time ?? Infinity;
           const older = data.candles.filter((candle) => candle.time < oldest);
           if (older.length === 0) {
-            hasEarlierRef.current = false;
+            if (oldest < 946684800) hasEarlierRef.current = false;
             return previous;
           }
           return [...older, ...previous];

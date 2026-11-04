@@ -56,7 +56,7 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
   const futureLimit = maximum != null ? maximum : Math.floor(Date.now() / 1000) + 86400;
   const outsideBounds = parsed != null && (parsed > futureLimit || parsed < 0);
   const canJump = parsed != null && !outsideBounds && !engine.loading && !engine.executing;
-  const firstYear = 2018;
+  const firstYear = firstOpen != null ? Math.min(2004, new Date(firstOpen * 1000).getUTCFullYear()) : 2004;
   const lastYear = maximum != null ? new Date(maximum * 1000).getUTCFullYear() : new Date().getUTCFullYear();
   const years = Array.from({ length: Math.max(0, lastYear - firstYear + 1) }, (_, i) => firstYear + i);
   const busy = engine.loading || engine.executing;
@@ -354,7 +354,7 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
             <p className="btm-muted">{uiText("backtest_terminal.jump_utc_hint")}</p>
             <p className="btm-jump-range">
               {uiText("backtest_terminal.history_available")}:<br />
-              2018-01-01 00:00 → {maximum != null ? formatUtcReplayTime(maximum, terminalLocale(language)) : "Presente"} {uiText("backtest_terminal.timezone_utc")}
+              2004-01-01 00:00 → {maximum != null ? formatUtcReplayTime(maximum, terminalLocale(language)) : "Presente"} {uiText("backtest_terminal.timezone_utc")}
             </p>
             {outsideBounds && <p className="btm-formula-error" role="alert">{uiText("backtest_terminal.date_outside_history")}</p>}
             <button className="btm-primary-btn" type="submit" disabled={!canJump}>{uiText("backtest_terminal.jump_confirm")}</button>

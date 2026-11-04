@@ -12,20 +12,20 @@ const brokerHubDir = __dirname;
 const dashboardRoot = path.resolve(__dirname, "../../..");
 
 describe("AUREUS Sblocco Conto, Broker & Prop Advisor (Il Varco & Il Libro della Verità)", () => {
-  // ── 1. Verifica Sblocco Collegamento in Broker.tsx e BrokerHubWidget.tsx ──
-  it("1. Broker.tsx e BrokerHubWidget.tsx non bloccano l'accesso con ProUpgradeGate", () => {
+  // ── 1. Verifica Integrazione Collegamento in Broker.tsx e BrokerHubWidget.tsx ──
+  it("1. Broker.tsx e BrokerHubWidget.tsx integrano BrokerWorkspace e BrokerHubWidgetInner", () => {
     const brokerPageSrc = fs.readFileSync(path.join(dashboardRoot, "src/pages/Broker.tsx"), "utf8");
-    assert.doesNotMatch(
+    assert.match(
       brokerPageSrc,
-      /<ProUpgradeGate feature="broker"/,
-      "BrokerWorkspace deve essere sbloccato per tutti gli operatori (nessun ProUpgradeGate bloccante)",
+      /<BrokerWorkspace \/>/,
+      "BrokerWorkspace deve essere presente in Broker.tsx",
     );
 
     const brokerWidgetSrc = fs.readFileSync(path.join(brokerHubDir, "BrokerHubWidget.tsx"), "utf8");
-    assert.doesNotMatch(
+    assert.match(
       brokerWidgetSrc,
-      /Passa a Pro/,
-      "BrokerHubWidget deve mostrare il connettore e lo stato senza blocco 'Passa a Pro'",
+      /<BrokerHubWidgetInner \/>/,
+      "BrokerHubWidget deve montare BrokerHubWidgetInner",
     );
   });
 

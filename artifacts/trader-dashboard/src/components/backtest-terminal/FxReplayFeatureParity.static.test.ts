@@ -57,5 +57,19 @@ assert.ok(fs.existsSync(path.join(currentDir, "TalkToJournalModal.tsx")), "TalkT
 assert.ok(fs.existsSync(path.join(currentDir, "ReplayOrderFlowOverlay.tsx")), "ReplayOrderFlowOverlay.tsx must exist");
 assert.ok(fs.existsSync(path.join(currentDir, "ReplayWatchlistPanel.tsx")), "ReplayWatchlistPanel.tsx must exist");
 assert.ok(fs.existsSync(path.join(currentDir, "ReplayNewsPanel.tsx")), "ReplayNewsPanel.tsx must exist");
+assert.ok(fs.existsSync(path.join(currentDir, "MeetNewChartsModal.tsx")), "MeetNewChartsModal.tsx must exist");
+
+// 7. Meet The New Charts Modal Verification
+const meetModalSrc = fs.readFileSync(path.join(currentDir, "MeetNewChartsModal.tsx"), "utf8");
+assert.match(meetModalSrc, /Meet the new charts/, "MeetNewChartsModal must have title 'Meet the new charts'");
+assert.match(meetModalSrc, /Order flow/, "MeetNewChartsModal must include Order flow card");
+assert.match(meetModalSrc, /Talk to Journal/, "MeetNewChartsModal must include Talk to Journal card");
+assert.match(meetModalSrc, /Order panel/, "MeetNewChartsModal must include Order panel card");
+assert.match(meetModalSrc, /Watchlist/, "MeetNewChartsModal must include Watchlist card");
+assert.match(meetModalSrc, /Price controls/, "MeetNewChartsModal must include Price controls card");
+assert.match(meetModalSrc, /Workspace/, "MeetNewChartsModal must include Workspace card");
+assert.match(meetModalSrc, /Take the 60-second tour/, "MeetNewChartsModal must have 60-second tour button");
+assert.match(terminalSrc, /MeetNewChartsModal/, "BacktestTerminal must mount MeetNewChartsModal");
+assert.match(headerSrc, /Meet the new charts/, "TerminalHeader must render 'Meet the new charts' guide button");
 
 console.log("All 6 FX Replay features verified with 100% precision in AUREUS PROTOCOL!");

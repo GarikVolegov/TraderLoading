@@ -43,7 +43,9 @@ export default function Broker() {
         subtitle={t("page.broker.subtitle")}
       />
 
-      <BrokerWorkspace />
+      <ProUpgradeGate feature="broker">
+        <BrokerWorkspace />
+      </ProUpgradeGate>
     </PageLayout>
   );
 }

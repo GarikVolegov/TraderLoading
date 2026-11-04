@@ -60,6 +60,7 @@ export function TerminalHeader({
   onToggleOrderFlow,
   onOpenTalkToJournal,
   notesCount,
+  onOpenMeetNewCharts,
 }: {
   engine: ReplayEngine;
   sessionName: string;
@@ -92,6 +93,7 @@ export function TerminalHeader({
   onToggleOrderFlow?: () => void;
   onOpenTalkToJournal?: () => void;
   notesCount?: number;
+  onOpenMeetNewCharts?: () => void;
 }) {
   const { language } = useLanguage();
   const { account, openProfit } = engine;
@@ -280,6 +282,22 @@ export function TerminalHeader({
                   {notesCount}
                 </span>
               )}
+            </button>
+          )}
+
+          {/* Meet The New Charts Guide Button (FX Replay Modal Hub) */}
+          {onOpenMeetNewCharts && (
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-blue-500/40 bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 font-mono text-[10.5px] font-bold tracking-wider transition-all cursor-pointer whitespace-nowrap shadow-[0_0_10px_rgba(59,130,246,0.2)]"
+              onClick={() => {
+                synestheticClick();
+                onOpenMeetNewCharts();
+              }}
+              title="Meet the new charts · Scopri le 6 innovazioni del motore grafico AUREUS"
+            >
+              <Sparkles size={12} className="text-blue-400" />
+              <span className="hidden xl:inline">Meet the new charts</span>
             </button>
           )}
 

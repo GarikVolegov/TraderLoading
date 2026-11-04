@@ -200,10 +200,15 @@ process.on("uncaughtException", (err: any) => {
     err?.code === "ECONNREFUSED" ||
     err?.code === "EHOSTUNREACH" ||
     err?.code === "ENETUNREACH" ||
+    err?.code === "EADDRNOTAVAIL" ||
+    err?.code === "ENOTFOUND" ||
+    err?.code === "EAI_AGAIN" ||
+    ((err?.syscall === "read" || err?.syscall === "write") && Boolean(err?.code)) ||
     (typeof err?.message === "string" && (
       err.message.includes("Connection terminated unexpectedly") ||
       err.message.includes("read ECONNRESET") ||
-      err.message.includes("read ETIMEDOUT")
+      err.message.includes("read ETIMEDOUT") ||
+      err.message.includes("read EADDRNOTAVAIL")
     ));
 
   if (isTransientDbNetError) {

@@ -68,8 +68,8 @@ export function generateRandomTradingTimestamp(
   symbol?: string,
   intervalSeconds: number = 3600,
 ): number {
-  // Safe bounds: from 2020-01-06 (or firstTs) to 30 days before current time (or lastTs)
-  const defaultFirst = 1578297600; // 2020-01-06 08:00:00 UTC (first Monday of 2020)
+  // Safe bounds: from 2004-01-05 (or firstTs) to 30 days before current time (or lastTs)
+  const defaultFirst = 1072915200; // 2004-01-05 08:00:00 UTC (first Monday of 2004)
   const now = Math.floor(Date.now() / 1000);
   const defaultLast = now - 30 * 86400;
 

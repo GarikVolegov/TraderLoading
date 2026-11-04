@@ -60,6 +60,7 @@ import { EaForgeStudioPanel } from "./EaForgeStudioPanel";
 import { useVarcoVisionSentinel } from "@/hooks/useVarcoVisionSentinel";
 import { useToast } from "@/hooks/use-toast";
 import { TalkToJournalModal } from "./TalkToJournalModal";
+import { MeetNewChartsModal } from "./MeetNewChartsModal";
 import { ReplayWatchlistPanel } from "./ReplayWatchlistPanel";
 import { ReplayNewsPanel } from "./ReplayNewsPanel";
 import { ChartObjectTreeModal } from "../chart/ChartObjectTreeModal";
@@ -210,6 +211,7 @@ function BacktestTerminalSession({
   });
   const [notesCount, setNotesCount] = useState(() => loadSessionNotes(sessionKey).length);
   const [objectTreeModalOpen, setObjectTreeModalOpen] = useState(false);
+  const [meetNewChartsOpen, setMeetNewChartsOpen] = useState(false);
 
   useEffect(() => {
     const refresh = () => setNotesCount(loadSessionNotes(sessionKey).length);
@@ -1001,6 +1003,7 @@ function BacktestTerminalSession({
         onToggleOrderFlow={toggleOrderFlow}
         onOpenTalkToJournal={() => setTalkToJournalOpen(true)}
         notesCount={notesCount}
+        onOpenMeetNewCharts={() => setMeetNewChartsOpen(true)}
       />
 
       <div className="btm-main" data-tools-open={toolsOpen}>
@@ -1659,6 +1662,23 @@ function BacktestTerminalSession({
         onClose={() => setTalkToJournalOpen(false)}
         engine={engine}
         sessionKey={sessionKey}
+      />
+
+      {/* Meet the new charts Onboarding & Feature Hub */}
+      <MeetNewChartsModal
+        isOpen={meetNewChartsOpen}
+        onClose={() => setMeetNewChartsOpen(false)}
+        onTakeTour={() => {
+          setMeetNewChartsOpen(false);
+          setShowOrderFlow(true);
+        }}
+        onSelectFeature={(feat) => {
+          if (feat === "orderflow") setShowOrderFlow((v) => !v);
+          if (feat === "journal") setTalkToJournalOpen(true);
+          if (feat === "orderpanel") setQuickOrderDrawerOpen(true);
+          if (feat === "watchlist") handleSelectPanelTab("watchlist");
+          if (feat === "workspace") setObjectTreeModalOpen(true);
+        }}
       />
 
       {/* Albero Oggetti (Disegni & Indicatori - Object Tree) */}
