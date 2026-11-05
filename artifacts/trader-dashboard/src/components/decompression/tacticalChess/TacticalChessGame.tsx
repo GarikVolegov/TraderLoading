@@ -1,7 +1,11 @@
 /**
  * LIMEN PROTOCOL — Gli Scacchi dell'Ordine (Trans-Limen Tactical Chess 3D)
- * Scacchi Classici Puri FIDE in 3D: Puzzle Tattici ad Alta Fedeltà Decisionale,
- * Duelli Veloci contro IA a 3 Gradi di Elo, Calcolo Punteggio e Caveau Master Aurei.
+ * Scacchi Classici Puri FIDE in 3D: Pezzi Staunton d'Alta Fedeltà (Nobile Cavallo Equino,
+ * Re Architetto, Regina a Corolla, Alfiere con Fessura, Torre Merlata),
+ * Riconoscimento Aperture ECO con Analogie di Mercato, Scrubber Temporale Rewind/Live,
+ * Barra di Valutazione Posizionale Stockfish-Style, Visuale a Tutto Schermo Ottimizzata,
+ * Ombre Morbide PCF, Zoom con Rotellina, Finiture Tematiche (Ossidiana, Marmo, Cyber),
+ * Dossier Prestazioni & Esportazione PGN / FEN.
  */
 
 import { useEffect, useRef, useState, useMemo } from "react";
@@ -13,11 +17,13 @@ import {
 import {
   ChessPiece,
   PieceColor,
+  PieceType,
   Square,
   Move,
   ChessPuzzle,
   AiProfile,
   ChessPersistence,
+  ChessOpening,
 } from "./chessTypes";
 import {
   createInitialBoard,
@@ -32,6 +38,10 @@ import {
   PIECE_SYMBOLS,
   loadChessPersistence,
   saveChessPersistence,
+  calculateBoardEvaluation,
+  boardToFen,
+  formatPgn,
+  detectOpening,
   GameOutcome,
 } from "./chessEngine";
 import { gameAudio } from "../gameAudioSynthesizer";
@@ -58,6 +68,17 @@ import {
   Camera,
   Maximize2,
   Minimize2,
+  X,
+  Palette,
+  Share2,
+  Check,
+  Copy,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  BarChart2,
+  BookOpen,
 } from "lucide-react";
 
 interface TacticalChessGameProps {
@@ -76,6 +97,9 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
   // Persistence State
   const [persistence, setPersistence] = useState<ChessPersistence>(() => loadChessPersistence());
   const [walletAurei, setWalletAurei] = useState(() => loadMasterVault().masterAurei);
+  const [boardTheme, setBoardTheme] = useState<"obsidian_gold" | "carrara_temple" | "cyber_void">(
+    () => persistence.activeBoardTheme || "obsidian_gold"
+  );
 
   // Game Mode: "puzzle" | "duel"
   const [activeMode, setActiveMode] = useState<"puzzle" | "duel">("puzzle");
@@ -89,6 +113,12 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
   const [outcome, setOutcome] = useState<GameOutcome>("playing");
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [isAiThinking, setIsAiThinking] = useState(false);
+
+  // History Scrubbing & Snapshots
+  const [boardSnapshots, setBoardSnapshots] = useState<(ChessPiece | null)[][][]>(() => [
+    createInitialBoard(),
+  ]);
+  const [inspectedStep, setInspectedStep] = useState<number | null>(null);
 
   // Keyboard Navigation & Camera State
   const [keyboardCursor, setKeyboardCursor] = useState<Square>([7, 0]);
@@ -118,15 +148,21 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
   // Modals & Audio
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showVictoryModal, setShowVictoryModal] = useState(false);
+  const [showDefeatModal, setShowDefeatModal] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [copiedType, setCopiedType] = useState<"pgn" | "fen" | null>(null);
   const [earnedAurei, setEarnedAurei] = useState(0);
   const [isAudioOn, setIsAudioOn] = useState(() => gameAudio.isEnabled());
 
-  // Native & Modal Viewport Fullscreen
+  // Fullscreen State: Synchronizes Native Browser Fullscreen & In-App Viewport Maximization
+  const [isMaximized, setIsMaximized] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(() => !!document.fullscreenElement);
 
   useEffect(() => {
     const handleFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const fs = !!document.fullscreenElement;
+      setIsFullscreen(fs);
     };
     document.addEventListener("fullscreenchange", handleFsChange);
     document.addEventListener("webkitfullscreenchange", handleFsChange);
@@ -137,26 +173,29 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
   }, []);
 
   const toggleFullscreen = async () => {
+    const nextMaximized = !isMaximized;
+    setIsMaximized(nextMaximized);
+
     try {
-      if (!document.fullscreenElement) {
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen();
-        } else if ((document.documentElement as any).webkitRequestFullscreen) {
-          await (document.documentElement as any).webkitRequestFullscreen();
+      if (nextMaximized) {
+        if (!document.fullscreenElement) {
+          if (document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+          } else if ((document.documentElement as any).webkitRequestFullscreen) {
+            await (document.documentElement as any).webkitRequestFullscreen();
+          }
         }
-        setIsFullscreen(true);
       } else {
-        if (document.fullscreenElement && document.exitFullscreen) {
-          await document.exitFullscreen();
-        } else if ((document as any).webkitExitFullscreen) {
-          await (document as any).webkitExitFullscreen();
+        if (document.fullscreenElement) {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if ((document as any).webkitExitFullscreen) {
+            await (document as any).webkitExitFullscreen();
+          }
         }
-        setIsFullscreen(false);
       }
     } catch {
-      // Fallback for iframe / strict browser permissions: toggle modal container
       window.dispatchEvent(new CustomEvent("limen:toggle-fullscreen"));
-      setIsFullscreen((prev) => !prev);
     }
   };
 
@@ -164,13 +203,124 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
     return TACTICAL_PUZZLES[currentPuzzleIndex] || TACTICAL_PUZZLES[0];
   }, [currentPuzzleIndex]);
 
+  // Real-Time Positional Evaluation Bar (Stockfish-Style Metric)
+  const evaluation = useMemo(() => {
+    return calculateBoardEvaluation(board, outcome);
+  }, [board, outcome]);
+
+  // Detected Opening from ECO database
+  const detectedOpening = useMemo<ChessOpening | null>(() => {
+    if (activeMode !== "duel") return null;
+    return detectOpening(moveHistory);
+  }, [moveHistory, activeMode]);
+
+  // Material Balance and Captured Pieces Calculation
+  const materialSummary = useMemo(() => {
+    const initialCounts: Record<PieceType, number> = { p: 8, r: 2, n: 2, b: 2, q: 1, k: 1 };
+    const currentWhite: Record<PieceType, number> = { p: 0, r: 0, n: 0, b: 0, q: 0, k: 0 };
+    const currentBlack: Record<PieceType, number> = { p: 0, r: 0, n: 0, b: 0, q: 0, k: 0 };
+
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const piece = board[r][c];
+        if (piece) {
+          if (piece.color === "w") currentWhite[piece.type]++;
+          else currentBlack[piece.type]++;
+        }
+      }
+    }
+
+    const capturedByWhite: PieceType[] = [];
+    const capturedByBlack: PieceType[] = [];
+    const pieceValues: Record<PieceType, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+
+    let whiteScore = 0;
+    let blackScore = 0;
+
+    (Object.keys(initialCounts) as PieceType[]).forEach((type) => {
+      const lostByBlack = Math.max(0, initialCounts[type] - currentBlack[type]);
+      for (let i = 0; i < lostByBlack; i++) {
+        capturedByWhite.push(type);
+        whiteScore += pieceValues[type];
+      }
+
+      const lostByWhite = Math.max(0, initialCounts[type] - currentWhite[type]);
+      for (let i = 0; i < lostByWhite; i++) {
+        capturedByBlack.push(type);
+        blackScore += pieceValues[type];
+      }
+    });
+
+    const advantage = whiteScore - blackScore;
+    return { capturedByWhite, capturedByBlack, advantage };
+  }, [board]);
+
   function cycleCameraMode() {
     setCameraMode((prev) => {
       const next: CameraMode =
-        prev === "dynamic" ? "tactical" : prev === "tactical" ? "hero" : "dynamic";
+        prev === "dynamic"
+          ? "tactical"
+          : prev === "tactical"
+          ? "hero"
+          : prev === "hero"
+          ? "topdown"
+          : "dynamic";
       engineRef.current?.setCameraMode(next);
       return next;
     });
+  }
+
+  function cycleBoardTheme() {
+    setBoardTheme((prev) => {
+      const next =
+        prev === "obsidian_gold"
+          ? "carrara_temple"
+          : prev === "carrara_temple"
+          ? "cyber_void"
+          : "obsidian_gold";
+      engineRef.current?.setTheme(next);
+      const updated: ChessPersistence = {
+        ...persistence,
+        activeBoardTheme: next,
+      };
+      setPersistence(updated);
+      saveChessPersistence(updated);
+      gameAudio.playCardSelect();
+      return next;
+    });
+  }
+
+  function handleCopyText(text: string, type: "pgn" | "fen") {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopiedType(type);
+      gameAudio.playCoin();
+      setTimeout(() => setCopiedType(null), 2000);
+    }
+  }
+
+  // -------------------------------------------------------------
+  // REWIND / FAST-FORWARD TIMELINE SCRUBBER
+  // -------------------------------------------------------------
+  function inspectHistoryStep(step: number | null) {
+    if (step === null || step >= boardSnapshots.length - 1) {
+      setInspectedStep(null);
+      const latest = boardSnapshots[boardSnapshots.length - 1];
+      setBoard(latest);
+      boardRef.current = latest;
+      engineRef.current?.setBoardState(latest);
+      engineRef.current?.setSelectedSquare(null);
+      return;
+    }
+
+    const clamped = Math.max(0, Math.min(boardSnapshots.length - 1, step));
+    setInspectedStep(clamped);
+    const snap = boardSnapshots[clamped];
+    setBoard(snap);
+    boardRef.current = snap;
+    engineRef.current?.setBoardState(snap);
+    engineRef.current?.setSelectedSquare(null);
+    gameAudio.playCardSlide();
   }
 
   // -------------------------------------------------------------
@@ -190,6 +340,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
 
     engineRef.current = controller;
     controller.setCameraMode(cameraMode);
+    controller.setTheme(boardTheme);
 
     // Load initial board or puzzle
     if (activeMode === "puzzle") {
@@ -198,6 +349,8 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       const initial = createInitialBoard();
       setBoard(initial);
       boardRef.current = initial;
+      setBoardSnapshots([cloneBoard(initial)]);
+      setInspectedStep(null);
       controller.setBoardState(initial);
       controller.setCursorSquare([6, 4]);
       setKeyboardCursor([6, 4]);
@@ -210,7 +363,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
   }, [activeMode]);
 
   // -------------------------------------------------------------
-  // KEYBOARD CONTROLLER (FRECCE/WASD, INVIO/SPAZIO, ESC, C, H, R)
+  // KEYBOARD CONTROLLER (FRECCE/WASD, INVIO/SPAZIO, ESC, C, F, H, R)
   // -------------------------------------------------------------
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -242,6 +395,11 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         });
       } else if (e.key === "ArrowLeft" || key === "a") {
         e.preventDefault();
+        if (e.altKey || e.ctrlKey) {
+          const cur = inspectedStep ?? (boardSnapshots.length - 1);
+          inspectHistoryStep(cur - 1);
+          return;
+        }
         setKeyboardCursor(([r, c]) => {
           const next: Square = [r, Math.max(0, c - 1)];
           engineRef.current?.setCursorSquare(next);
@@ -249,6 +407,12 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         });
       } else if (e.key === "ArrowRight" || key === "d") {
         e.preventDefault();
+        if (e.altKey || e.ctrlKey) {
+          if (inspectedStep !== null) {
+            inspectHistoryStep(inspectedStep + 1);
+          }
+          return;
+        }
         setKeyboardCursor(([r, c]) => {
           const next: Square = [r, Math.min(7, c + 1)];
           engineRef.current?.setCursorSquare(next);
@@ -256,16 +420,26 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         });
       } else if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
+        if (inspectedStep !== null) {
+          inspectHistoryStep(null);
+          return;
+        }
         setKeyboardCursor(([r, c]) => {
           interactionHandlerRef.current(r, c);
           return [r, c];
         });
       } else if (e.key === "Escape") {
         e.preventDefault();
-        setSelectedSquare(null);
-        setLegalMovesForSelected([]);
-        engineRef.current?.setSelectedSquare(null);
-        setPuzzleFailed(false);
+        if (inspectedStep !== null) {
+          inspectHistoryStep(null);
+        } else if (selectedSquare) {
+          setSelectedSquare(null);
+          setLegalMovesForSelected([]);
+          engineRef.current?.setSelectedSquare(null);
+          setPuzzleFailed(false);
+        } else if (isMaximized) {
+          toggleFullscreen();
+        }
       } else if (key === "c") {
         e.preventDefault();
         cycleCameraMode();
@@ -283,7 +457,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [selectedSquare, isMaximized, inspectedStep, boardSnapshots]);
 
   // -------------------------------------------------------------
   // PUZZLE SYSTEM
@@ -300,6 +474,8 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
 
     setBoard(freshBoard);
     boardRef.current = freshBoard;
+    setBoardSnapshots([cloneBoard(freshBoard)]);
+    setInspectedStep(null);
     setTurn(puzzle.turn);
     setSelectedSquare(null);
     setLegalMovesForSelected([]);
@@ -319,6 +495,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       engineRef.current.setSelectedSquare(null);
       engineRef.current.setCursorSquare(puzzle.hintSquare);
       engineRef.current.clearSolutionBeacon();
+      engineRef.current.setLastMoveHighlight(null, null);
     }
   }
 
@@ -327,6 +504,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
     setPuzzleFailed(false);
     setLastFailedNotation("");
     engineRef.current?.clearSolutionBeacon();
+    engineRef.current?.setLastMoveHighlight(null, null);
 
     if (activeMode === "puzzle") {
       loadPuzzle(currentPuzzle);
@@ -334,6 +512,8 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       const fresh = createInitialBoard();
       setBoard(fresh);
       boardRef.current = fresh;
+      setBoardSnapshots([cloneBoard(fresh)]);
+      setInspectedStep(null);
       setTurn("w");
       setSelectedSquare(null);
       setLegalMovesForSelected([]);
@@ -350,6 +530,8 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
 
   function handleTriggerHint() {
     if (activeMode !== "puzzle" || puzzleSolved || isReverting) return;
+    if (inspectedStep !== null) inspectHistoryStep(null);
+
     setShowHint(true);
     setPuzzleFailed(false);
     gameAudio.playCardSelect();
@@ -362,7 +544,11 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
     setKeyboardCursor([hr, hc]);
 
     if (engineRef.current) {
-      engineRef.current.setSelectedSquare([hr, hc], moves.map((m) => m.to));
+      engineRef.current.setSelectedSquare(
+        [hr, hc],
+        moves.map((m) => m.to),
+        boardRef.current
+      );
       engineRef.current.showSolutionBeacon([hr, hc], expected.to);
       engineRef.current.setCursorSquare([hr, hc]);
     }
@@ -375,7 +561,12 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
   function handleSquareInteraction(row: number, col: number) {
     if (isAiThinking || outcome === "checkmate" || puzzleSolved || isReverting) return;
 
-    // Synchronize cursor position
+    // If currently in historical inspection mode, return to live first
+    if (inspectedStep !== null) {
+      inspectHistoryStep(null);
+      return;
+    }
+
     setKeyboardCursor([row, col]);
     engineRef.current?.setCursorSquare([row, col]);
 
@@ -392,7 +583,8 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       if (engineRef.current) {
         engineRef.current.setSelectedSquare(
           [row, col],
-          moves.map((m) => m.to)
+          moves.map((m) => m.to),
+          currentBoard
         );
       }
       return;
@@ -407,7 +599,6 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       if (matchingMove) {
         executePlayerMove(matchingMove);
       } else {
-        // Deselect if clicking an invalid square
         setSelectedSquare(null);
         setLegalMovesForSelected([]);
         if (engineRef.current) {
@@ -423,7 +614,6 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
     const [fr, fc] = move.from;
     const [tr, tc] = move.to;
 
-    // Snapshot board prior to move execution for clean undo/revert
     const previousBoard = cloneBoard(boardRef.current);
 
     engineRef.current.animateMove(move.from, move.to, () => {
@@ -431,8 +621,9 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       applyMoveToBoard(nextBoard, move);
       setBoard(nextBoard);
       boardRef.current = nextBoard;
+      setBoardSnapshots((prev) => [...prev, cloneBoard(nextBoard)]);
+      setInspectedStep(null);
 
-      // Deselect in 3D
       setSelectedSquare(null);
       setLegalMovesForSelected([]);
       if (engineRef.current) {
@@ -441,18 +632,15 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       }
       setKeyboardCursor([tr, tc]);
 
-      // Record Move notation
       const movedPiece = previousBoard[fr]?.[fc] || nextBoard[tr][tc];
       const notation = `${movedPiece ? movedPiece.type.toUpperCase() : ""}${String.fromCharCode(
         97 + fc
       )}${8 - fr}→${String.fromCharCode(97 + tc)}${8 - tr}`;
       setMoveHistory((prev) => [...prev, notation]);
 
-      // Check Puzzle Logic
       if (activeMode === "puzzle") {
         verifyPuzzleMove(move, previousBoard, nextBoard, notation);
       } else {
-        // Check Duel Logic
         const nextTurn: PieceColor = turn === "w" ? "b" : "w";
         setTurn(nextTurn);
 
@@ -469,14 +657,12 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         if (nextOutcome === "checkmate") {
           handleVictoryMatch();
         } else if (nextTurn === "b") {
-          // Trigger AI turn
           triggerAiTurn(nextBoard);
         }
       }
     });
   }
 
-  // Verify Puzzle Solution with Auto-Revert & Instructive Feedback
   function verifyPuzzleMove(
     playerMove: Move,
     previousBoard: (ChessPiece | null)[][],
@@ -499,7 +685,6 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       setPuzzleMoveStep(nextStep);
 
       if (nextStep >= currentPuzzle.solution.length) {
-        // PUZZLE SOLVED!
         setPuzzleSolved(true);
         if (engineRef.current) {
           engineRef.current.triggerVictory();
@@ -523,7 +708,6 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         setShowVictoryModal(true);
       }
     } else {
-      // Puzzle Move Incorrect - Trigger Auto Revert & Clear Didactic Feedback
       gameAudio.playExplosion();
       setLastFailedNotation(notation);
       setPuzzleFailed(true);
@@ -536,9 +720,9 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         }
 
         engineRef.current.animateRevert(playerMove.from, playerMove.to, () => {
-          // Revert board state in memory
           setBoard(previousBoard);
           boardRef.current = previousBoard;
+          setBoardSnapshots((prev) => prev.slice(0, prev.length - 1));
           engineRef.current?.setBoardState(previousBoard);
           engineRef.current?.setCursorSquare(playerMove.from);
           setKeyboardCursor(playerMove.from);
@@ -548,7 +732,6 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
     }
   }
 
-  // AI Opponent Move in Duel Mode
   function triggerAiTurn(currentBoard: (ChessPiece | null)[][]) {
     setIsAiThinking(true);
 
@@ -562,6 +745,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         const nextBoard = cloneBoard(currentBoard);
         applyMoveToBoard(nextBoard, bestMove);
         setBoard(nextBoard);
+        setBoardSnapshots((prev) => [...prev, cloneBoard(nextBoard)]);
         setTurn("w");
 
         const [fr, fc] = bestMove.from;
@@ -581,6 +765,10 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
             engineRef.current.triggerCheckHighlight(king);
           }
         }
+
+        if (nextOutcome === "checkmate") {
+          handleDefeatMatch();
+        }
       });
     }, 550);
   }
@@ -595,14 +783,37 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
     const newMaster = addMasterAurei(reward);
     setWalletAurei(newMaster);
 
+    const currentStreak = (persistence.winStreak || 0) + 1;
+    const bestStreak = Math.max(persistence.bestWinStreak || 0, currentStreak);
+    const aiWins = {
+      ...persistence.aiWins,
+      [selectedAi.id]: ((persistence.aiWins && persistence.aiWins[selectedAi.id]) || 0) + 1,
+    };
+
     const updated: ChessPersistence = {
       ...persistence,
       playerElo: persistence.playerElo + 25,
       totalMatchesWon: persistence.totalMatchesWon + 1,
+      winStreak: currentStreak,
+      bestWinStreak: bestStreak,
+      aiWins,
     };
     saveChessPersistence(updated);
     setPersistence(updated);
     setShowVictoryModal(true);
+  }
+
+  function handleDefeatMatch() {
+    gameAudio.playCrash();
+    const updated: ChessPersistence = {
+      ...persistence,
+      playerElo: Math.max(400, persistence.playerElo - 15),
+      totalMatchesLost: persistence.totalMatchesLost + 1,
+      winStreak: 0,
+    };
+    saveChessPersistence(updated);
+    setPersistence(updated);
+    setShowDefeatModal(true);
   }
 
   function toggleSound() {
@@ -611,14 +822,20 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
   }
 
   return (
-    <div className="w-full h-full relative flex flex-col font-mono select-none overflow-hidden text-foreground bg-[#07080b]">
+    <div
+      className={`w-full h-full relative flex flex-col font-mono select-none overflow-hidden text-foreground bg-[#07080b] transition-all duration-300 ${
+        isMaximized
+          ? "fixed inset-0 z-[100] w-screen h-screen bg-[#07080b]"
+          : ""
+      }`}
+    >
       {/* ========================================================= */}
       {/* 1. HEADER: TELEMETRY & MODE SWITCHER                      */}
       {/* ========================================================= */}
-      <div className="p-2 sm:p-2.5 bg-[#0d0f14]/95 border-b border-[#C5A059]/20 flex flex-wrap items-center justify-between gap-2 z-10">
+      <div className="p-2 sm:p-2.5 bg-[#0d0f14]/90 backdrop-blur-md border-b border-[#C5A059]/20 flex flex-wrap items-center justify-between gap-2 z-20">
         <div className="flex items-center gap-2">
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-black/50 border border-white/10">
+          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-black/60 border border-white/10">
             <button
               type="button"
               onClick={() => {
@@ -674,19 +891,39 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         {/* Right Counters: Elo, Aurei, Controls */}
         <div className="flex items-center gap-2 text-xs">
           {/* Elo Rating */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[#E8C56A] font-bold tabular-nums whitespace-nowrap"
-            title="Grado Elo dell'Operatore negli Scacchi dell'Ordine"
+          <button
+            type="button"
+            onClick={() => setShowStatsModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 hover:bg-[#C5A059]/25 text-[#E8C56A] font-bold tabular-nums whitespace-nowrap cursor-pointer transition-all"
+            title="Visualizza Dossier Prestazioni & Statistiche"
           >
             <Trophy size={13} />
             <span>Elo: {persistence.playerElo}</span>
-          </div>
+          </button>
 
           {/* Master Aurei Vault */}
           <div className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[#E8C56A] font-bold tabular-nums whitespace-nowrap">
             <Coins size={13} />
             <span>{walletAurei} Aurei</span>
           </div>
+
+          {/* Board Theme Switcher */}
+          <button
+            type="button"
+            onClick={cycleBoardTheme}
+            className="px-2.5 py-1 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 hover:bg-[#C5A059]/30 text-[#E8C56A] font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            title="Cambia Finitura Scacchiera (Ossidiana, Marmo, Cyber)"
+          >
+            <Palette size={13} className="text-[#C5A059]" />
+            <span className="hidden sm:inline text-[10px] uppercase text-muted-foreground">Stile:</span>
+            <span className="font-mono uppercase text-[11px] text-white">
+              {boardTheme === "obsidian_gold"
+                ? "Oro"
+                : boardTheme === "carrara_temple"
+                ? "Marmo"
+                : "Cyber"}
+            </span>
+          </button>
 
           {/* Camera Preset Switcher */}
           <button
@@ -702,25 +939,61 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
                 ? "Dinamica"
                 : cameraMode === "tactical"
                 ? "Tattica"
-                : "Ravvicinata"}
+                : cameraMode === "hero"
+                ? "Ravvicinata"
+                : "Dall'Alto"}
             </span>
+          </button>
+
+          {/* Camera Reset */}
+          <button
+            type="button"
+            onClick={() => engineRef.current?.resetCamera()}
+            className="p-1.5 rounded-lg bg-black/40 border border-white/10 hover:border-[#C5A059]/50 text-muted-foreground hover:text-[#E8C56A] transition-all cursor-pointer"
+            title="Ripristina Inquadratura & Zoom"
+          >
+            <Compass size={14} className="text-[#C5A059]" />
+          </button>
+
+          {/* Stats Dossier */}
+          <button
+            type="button"
+            onClick={() => setShowStatsModal(true)}
+            className="p-1.5 rounded-lg bg-black/40 border border-white/10 hover:border-[#C5A059]/50 text-muted-foreground hover:text-[#E8C56A] transition-all cursor-pointer"
+            title="Dossier Statistiche dell'Operatore"
+          >
+            <BarChart2 size={14} />
+          </button>
+
+          {/* Export PGN / FEN */}
+          <button
+            type="button"
+            onClick={() => setShowExportModal(true)}
+            className="p-1.5 rounded-lg bg-black/40 border border-white/10 hover:border-[#C5A059]/50 text-muted-foreground hover:text-[#E8C56A] transition-all cursor-pointer"
+            title="Condividi ed Esporta FEN e PGN"
+          >
+            <Share2 size={14} />
           </button>
 
           {/* Fullscreen Mode Switcher */}
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="px-2.5 py-1 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 hover:bg-[#C5A059]/30 text-[#E8C56A] font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-            title={isFullscreen ? "Riduci Schermo [Scorciatoia: F]" : "Schermo Intero [Scorciatoia: F]"}
+            className={`px-2.5 py-1 rounded border font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              isMaximized
+                ? "bg-[#C5A059] text-black border-[#C5A059] shadow-md font-extrabold"
+                : "bg-[#C5A059]/15 border-[#C5A059]/35 hover:bg-[#C5A059]/30 text-[#E8C56A]"
+            }`}
+            title={isMaximized ? "Riduci Schermo [Scorciatoia: F]" : "Schermo Intero Ottimizzato [Scorciatoia: F]"}
           >
-            {isFullscreen ? (
-              <Minimize2 size={13} className="text-[#C5A059]" />
+            {isMaximized ? (
+              <Minimize2 size={13} className="text-black" />
             ) : (
               <Maximize2 size={13} className="text-[#C5A059]" />
             )}
-            <span className="hidden sm:inline text-muted-foreground text-[10px] uppercase">Vista:</span>
-            <span className="font-mono uppercase text-[11px] text-white">
-              {isFullscreen ? "Riduci" : "Schermo"}
+            <span className="hidden sm:inline text-[10px] uppercase">Vista:</span>
+            <span className="font-mono uppercase text-[11px]">
+              {isMaximized ? "Riduci" : "Schermo"}
             </span>
           </button>
 
@@ -739,9 +1012,9 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
             type="button"
             onClick={restartCurrentScenario}
             className="p-1.5 rounded-lg bg-black/40 border border-white/10 hover:border-[#C5A059]/50 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
-            title="Riavvia lo scenario corrente"
+            title="Riavvia lo scenario corrente [R]"
           >
-            <RotateCcw size={15} />
+            <RotateCcw size={14} />
           </button>
 
           {/* Rules / Help */}
@@ -751,15 +1024,33 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
             className="p-1.5 rounded-lg bg-black/40 border border-white/10 hover:border-[#C5A059]/50 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
             title="Regole FIDE e Confluenze di Mercato"
           >
-            <HelpCircle size={15} />
+            <HelpCircle size={14} />
           </button>
+
+          {/* Close Modal Button if in maximized mode or provided */}
+          {(isMaximized || onClose) && (
+            <button
+              type="button"
+              onClick={() => {
+                if (isMaximized) {
+                  toggleFullscreen();
+                } else if (onClose) {
+                  onClose();
+                }
+              }}
+              className="p-1.5 rounded-lg bg-black/40 border border-white/10 hover:border-rose-500/50 text-muted-foreground hover:text-rose-400 transition-all cursor-pointer"
+              title={isMaximized ? "Chiudi Schermo Intero [ESC]" : "Chiudi"}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* 2. SUB-BANNER: CLEAR OBJECTIVE & PUZZLE STRIP             */}
+      {/* 2. SUB-BANNER: CLEAR OBJECTIVE, OPENINGS & CAPTURES       */}
       {/* ========================================================= */}
-      <div className="px-3 py-1.5 bg-[#090b10] border-b border-[#C5A059]/15 flex items-center justify-between gap-2 overflow-x-auto z-10 scrollbar-none">
+      <div className="px-3 py-1.5 bg-[#090b10]/95 backdrop-blur-sm border-b border-[#C5A059]/15 flex items-center justify-between gap-2 overflow-x-auto z-20 scrollbar-none">
         {activeMode === "puzzle" ? (
           <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">
             <div className="flex items-center gap-2 min-w-0">
@@ -806,7 +1097,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
           </div>
         ) : (
           <div className="flex items-center gap-2 text-xs w-full justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] text-muted-foreground uppercase tracking-widest whitespace-nowrap">
                 Avversario IA:
               </span>
@@ -829,6 +1120,48 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
                   </button>
                 ))}
               </div>
+
+              {/* Detected ECO Opening with Trading Analogy */}
+              {detectedOpening && (
+                <div
+                  className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#C5A059]/15 border border-[#C5A059]/35 text-[#E8C56A] text-[11px] font-bold cursor-help whitespace-nowrap"
+                  title={`${detectedOpening.name}: "${detectedOpening.analogy}"`}
+                >
+                  <BookOpen size={12} className="text-[#C5A059]" />
+                  <span className="text-white font-mono">[{detectedOpening.code}]</span>
+                  <span className="truncate max-w-[200px]">{detectedOpening.name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Captured Pieces & Advantage Bar */}
+            <div className="hidden md:flex items-center gap-3 text-xs">
+              {materialSummary.capturedByWhite.length > 0 && (
+                <div className="flex items-center gap-1 text-[11px] text-[#E8C56A]">
+                  <span className="text-[9px] uppercase text-muted-foreground tracking-wider">Catture:</span>
+                  <span className="font-mono tracking-tighter">
+                    {materialSummary.capturedByWhite.map((t) => PIECE_SYMBOLS[t].symbol).join("")}
+                  </span>
+                  {materialSummary.advantage > 0 && (
+                    <span className="text-emerald-400 font-bold ml-0.5 whitespace-nowrap font-mono">
+                      +{materialSummary.advantage}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {materialSummary.capturedByBlack.length > 0 && (
+                <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                  <span className="font-mono tracking-tighter">
+                    {materialSummary.capturedByBlack.map((t) => PIECE_SYMBOLS[t].symbol).join("")}
+                  </span>
+                  {materialSummary.advantage < 0 && (
+                    <span className="text-rose-400 font-bold ml-0.5 whitespace-nowrap font-mono">
+                      {materialSummary.advantage}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Turn & Status Indicator */}
@@ -855,13 +1188,56 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       </div>
 
       {/* ========================================================= */}
-      {/* 3. 3D VIEWPORT CANVAS (NATIVE THREE.JS CLASSICAL)         */}
+      {/* 3. 3D VIEWPORT CANVAS WITH EVALUATION GAUGE               */}
       {/* ========================================================= */}
-      <div className="flex-1 relative w-full h-full overflow-hidden">
+      <div className="flex-1 relative w-full h-full min-h-0 overflow-hidden">
+        {/* Three.js Canvas Container */}
         <div
           ref={containerRef}
           className="w-full h-full absolute inset-0 cursor-grab active:cursor-grabbing"
         />
+
+        {/* Real-Time Vertical Evaluation Gauge (Grandmaster Stockfish Style) */}
+        <div className="absolute top-6 left-4 z-20 flex flex-col items-center gap-1.5 pointer-events-none select-none">
+          <div className="w-2.5 sm:w-3 h-36 sm:h-44 rounded-full bg-black/80 border border-white/20 p-0.5 flex flex-col justify-end overflow-hidden shadow-2xl backdrop-blur-md">
+            {/* White Evaluation Bar segment */}
+            <div
+              className="w-full rounded-full bg-gradient-to-t from-[#C5A059] to-[#FFF3DC] transition-all duration-500 ease-out"
+              style={{ height: `${evaluation.whiteWinPercentage}%` }}
+            />
+          </div>
+
+          {/* Centipawn Score Badge */}
+          <span
+            className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md backdrop-blur-md whitespace-nowrap ${
+              evaluation.scoreCentipawns >= 0
+                ? "bg-black/80 border border-[#C5A059]/40 text-[#E8C56A]"
+                : "bg-black/80 border border-rose-500/40 text-rose-300"
+            }`}
+            title="Valutazione Euristica della Posizione (Centipedoni)"
+          >
+            {evaluation.evalText}
+          </span>
+        </div>
+
+        {/* History Inspection Banner Callout */}
+        {inspectedStep !== null && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+            <div className="px-4 py-1.5 rounded-full bg-black/95 border border-[#C5A059]/60 shadow-2xl backdrop-blur-md flex items-center gap-2.5 text-xs">
+              <span className="w-2 h-2 rounded-full bg-amber-400 inline-block animate-ping" />
+              <span className="text-[#E8C56A] font-bold whitespace-nowrap">
+                Ispezione Storica (Mossa {inspectedStep} di {boardSnapshots.length - 1})
+              </span>
+              <button
+                type="button"
+                onClick={() => inspectHistoryStep(null)}
+                className="px-2.5 py-0.5 rounded bg-[#C5A059] text-black font-extrabold text-[10px] hover:bg-[#E8C56A] transition-all cursor-pointer whitespace-nowrap"
+              >
+                Torna al Presente (Live)
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Failed move tactical guidance debrief card */}
         {puzzleFailed && (
@@ -924,20 +1300,94 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       </div>
 
       {/* ========================================================= */}
-      {/* 4. BOTTOM TACTICAL HUD: HINT, NOTATION & ACTIONS          */}
+      {/* 4. BOTTOM TACTICAL HUD: HISTORY SCRUBBER, HINT & ACTIONS  */}
       {/* ========================================================= */}
-      <div className="p-2 sm:p-2.5 bg-[#0d0f14]/95 border-t border-[#C5A059]/20 flex flex-wrap items-center justify-between gap-2 z-10">
-        {/* Left: Move History / Notation */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground hidden sm:inline">
-            Ultime Mosse:
-          </span>
-          <div className="flex items-center gap-1 font-mono text-[11px] text-white">
-            {moveHistory.slice(-4).map((m, i) => (
-              <span key={i} className="px-1.5 py-0.5 rounded bg-black/50 border border-white/10">
-                {m}
+      <div className="p-2 sm:p-2.5 bg-[#0d0f14]/90 backdrop-blur-md border-t border-[#C5A059]/20 flex flex-wrap items-center justify-between gap-2 z-20">
+        {/* Left: Move History & Timeline Navigation */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+          {/* History Scrubber Controls */}
+          {moveHistory.length > 0 && (
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-black/60 border border-white/10">
+              <button
+                type="button"
+                onClick={() => inspectHistoryStep(0)}
+                disabled={inspectedStep === 0}
+                className="p-1 rounded hover:bg-white/10 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer"
+                title="Inizio Partita [Home]"
+              >
+                <ChevronsLeft size={13} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const cur = inspectedStep ?? (boardSnapshots.length - 1);
+                  inspectHistoryStep(cur - 1);
+                }}
+                disabled={inspectedStep === 0}
+                className="p-1 rounded hover:bg-white/10 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer"
+                title="Mossa Precedente [Alt + ←]"
+              >
+                <ChevronLeft size={13} />
+              </button>
+
+              <span className="text-[10px] text-muted-foreground font-mono px-1 whitespace-nowrap">
+                {inspectedStep !== null
+                  ? `${inspectedStep}/${boardSnapshots.length - 1}`
+                  : `Live (${moveHistory.length})`}
               </span>
-            ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (inspectedStep === null) return;
+                  inspectHistoryStep(inspectedStep + 1);
+                }}
+                disabled={inspectedStep === null || inspectedStep >= boardSnapshots.length - 1}
+                className="p-1 rounded hover:bg-white/10 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer"
+                title="Mossa Successiva [Alt + →]"
+              >
+                <ChevronRight size={13} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => inspectHistoryStep(null)}
+                disabled={inspectedStep === null}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  inspectedStep !== null
+                    ? "bg-[#C5A059] text-black shadow-xs font-extrabold"
+                    : "text-muted-foreground/40 pointer-events-none"
+                }`}
+                title="Torna alla Mossa Live Corrente"
+              >
+                Live
+              </button>
+            </div>
+          )}
+
+          {/* Interactive Move List */}
+          <div className="flex items-center gap-1 font-mono text-[11px] text-white overflow-x-auto max-w-[280px] sm:max-w-md scrollbar-none">
+            {moveHistory.slice(-5).map((m, i) => {
+              const globalIndex = moveHistory.length - 5 + i;
+              const stepIndex = globalIndex + 1;
+              const isSelected = inspectedStep === stepIndex;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => inspectHistoryStep(stepIndex)}
+                  className={`px-1.5 py-0.5 rounded border transition-all cursor-pointer whitespace-nowrap ${
+                    isSelected
+                      ? "bg-[#C5A059] text-black border-[#C5A059] font-extrabold shadow-sm"
+                      : "bg-black/60 border-white/10 hover:border-[#C5A059]/40"
+                  }`}
+                  title={`Ispeziona mossa ${stepIndex}: ${m}`}
+                >
+                  {m}
+                </button>
+              );
+            })}
             {moveHistory.length === 0 && (
               <span className="text-muted-foreground/60 text-[11px]">Nessuna mossa ancora eseguita.</span>
             )}
@@ -945,7 +1395,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         </div>
 
         {/* Center-Left: Active Square Telemetry */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/50 border border-white/10 text-xs">
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/60 border border-white/10 text-xs">
           <Compass size={13} className="text-[#C5A059]" />
           <span className="text-[10px] text-muted-foreground uppercase">Casella:</span>
           <span className="font-mono font-bold text-[#E8C56A] uppercase">
@@ -959,26 +1409,26 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
 
         {/* Center: Keyboard & Mouse Operational HUD Guide */}
         <div className="hidden md:flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
-          <span className="px-1.5 py-0.5 rounded bg-black/50 border border-[#C5A059]/35 text-[#E8C56A] font-bold whitespace-nowrap">
-            Frecce / WASD
+          <span className="px-1.5 py-0.5 rounded bg-black/60 border border-[#C5A059]/35 text-[#E8C56A] font-bold whitespace-nowrap">
+            WASD
           </span>
           <span className="whitespace-nowrap">Mira</span>
-          <span className="px-1.5 py-0.5 rounded bg-black/50 border border-[#C5A059]/35 text-[#E8C56A] font-bold whitespace-nowrap">
-            Invio / Spazio
+          <span className="px-1.5 py-0.5 rounded bg-black/60 border border-[#C5A059]/35 text-[#E8C56A] font-bold whitespace-nowrap">
+            Spazio
           </span>
           <span className="whitespace-nowrap">Muovi</span>
-          <span className="px-1.5 py-0.5 rounded bg-black/50 border border-white/10 text-white font-bold whitespace-nowrap">
-            C
+          <span className="px-1.5 py-0.5 rounded bg-black/60 border border-white/10 text-white font-bold whitespace-nowrap">
+            Rotella
           </span>
-          <span className="whitespace-nowrap">Regia</span>
-          <span className="px-1.5 py-0.5 rounded bg-black/50 border border-white/10 text-white font-bold whitespace-nowrap">
+          <span className="whitespace-nowrap">Zoom</span>
+          <span className="px-1.5 py-0.5 rounded bg-black/60 border border-white/10 text-white font-bold whitespace-nowrap">
+            Tasto DX
+          </span>
+          <span className="whitespace-nowrap">Orbita</span>
+          <span className="px-1.5 py-0.5 rounded bg-black/60 border border-white/10 text-white font-bold whitespace-nowrap">
             F
           </span>
           <span className="whitespace-nowrap">Schermo</span>
-          <span className="px-1.5 py-0.5 rounded bg-black/50 border border-white/10 text-white font-bold whitespace-nowrap">
-            ESC
-          </span>
-          <span className="whitespace-nowrap">Annulla</span>
         </div>
 
         {/* Right: Hint Button & Reset Controls */}
@@ -988,8 +1438,8 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
               type="button"
               onClick={handleTriggerHint}
               disabled={puzzleSolved}
-              className="px-3 py-1.5 rounded-lg bg-black/50 border border-[#C5A059]/40 hover:bg-[#C5A059]/15 text-[#E8C56A] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-              title="Mostra quale pezzo muovere per sbloccare la soluzione"
+              className="px-3 py-1.5 rounded-lg bg-black/60 border border-[#C5A059]/40 hover:bg-[#C5A059]/15 text-[#E8C56A] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+              title="Mostra quale pezzo muovere per sbloccare la soluzione [H]"
             >
               <Lightbulb size={14} className="text-[#C5A059]" />
               <span className="whitespace-nowrap">Suggerimento</span>
@@ -999,7 +1449,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
           <button
             type="button"
             onClick={restartCurrentScenario}
-            className="px-3.5 py-1.5 rounded-lg bg-black/50 border border-white/15 hover:border-[#C5A059]/40 text-xs text-muted-foreground hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-1.5 rounded-lg bg-black/60 border border-white/15 hover:border-[#C5A059]/40 text-xs text-muted-foreground hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <RotateCcw size={13} />
             <span className="whitespace-nowrap">Ricomincia</span>
@@ -1011,7 +1461,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       {/* 5. VICTORY MODAL                                          */}
       {/* ========================================================= */}
       {showVictoryModal && (
-        <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-40 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-[#0d0f14] border border-[#C5A059]/40 rounded-2xl p-6 text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
               <Trophy size={24} />
@@ -1031,11 +1481,15 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
             <div className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-around text-xs">
               <div>
                 <span className="text-[10px] text-muted-foreground uppercase block">Incremento Elo</span>
-                <strong className="text-emerald-400 font-mono">+15 Elo</strong>
+                <strong className="text-emerald-400 font-mono">+25 Elo</strong>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground uppercase block">Nuovo Rating</span>
                 <strong className="text-white font-mono">{persistence.playerElo}</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted-foreground uppercase block">Serie Vittorie</span>
+                <strong className="text-[#E8C56A] font-mono">{persistence.winStreak || 1} 🔥</strong>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground uppercase block">Aurei Conquistati</span>
@@ -1073,10 +1527,290 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       )}
 
       {/* ========================================================= */}
-      {/* 6. RULES & COMPENDIUM MODAL                               */}
+      {/* 6. DEFEAT MODAL                                           */}
+      {/* ========================================================= */}
+      {showDefeatModal && (
+        <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#0d0f14] border border-rose-500/40 rounded-2xl p-6 text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
+              <AlertTriangle size={24} />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-rose-400 uppercase tracking-tight">
+                Scacco Matto Nemico (La Deriva)
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+                La pressione posizionale ha superato le linee di contenimento. Negli scacchi come nel trading, ogni stop loss costituisce un dato prezioso per raffinare il tuo sistema.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-around text-xs">
+              <div>
+                <span className="text-[10px] text-muted-foreground uppercase block">Variazione Elo</span>
+                <strong className="text-rose-400 font-mono">-15 Elo</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted-foreground uppercase block">Nuovo Rating</span>
+                <strong className="text-white font-mono">{persistence.playerElo}</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted-foreground uppercase block">Vittorie Totali</span>
+                <strong className="text-white font-mono">{persistence.totalMatchesWon}</strong>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDefeatModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-black/60 border border-white/15 text-xs font-bold text-muted-foreground hover:text-white transition-all cursor-pointer"
+              >
+                Analizza Posizione
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDefeatModal(false);
+                  restartCurrentScenario();
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#C5A059] hover:bg-[#E8C56A] text-black font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg"
+              >
+                <RotateCcw size={14} />
+                <span>Ricomincia Duello</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 7. PERFORMANCE STATS & DOSSIER MODAL                      */}
+      {/* ========================================================= */}
+      {showStatsModal && (
+        <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-[#0d0f14] border border-[#C5A059]/40 rounded-2xl p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-2.5">
+              <div className="flex items-center gap-2">
+                <BarChart2 size={16} className="text-[#C5A059]" />
+                <h3 className="text-sm font-bold text-[#E8C56A] uppercase tracking-wider">
+                  Dossier dell'Operatore: Maestria negli Scacchi
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStatsModal(false)}
+                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                ✕ Chiudi
+              </button>
+            </div>
+
+            {/* Elo Card */}
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-[#C5A059]/15 to-transparent border border-[#C5A059]/35 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase text-[#E8C56A] font-bold tracking-wider block">
+                  Grado Elo Ufficiale
+                </span>
+                <span className="text-2xl font-bold font-mono text-white tabular-nums">
+                  {persistence.playerElo}
+                </span>
+                <span className="text-[11px] text-muted-foreground block">
+                  {persistence.playerElo < 1200
+                    ? "Iniziato alla Disciplina"
+                    : persistence.playerElo < 1600
+                    ? "Operatore Posizionale"
+                    : "Architetto Sovrano della Scacchiera"}
+                </span>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[10px] uppercase text-muted-foreground block">Serie Attuale</span>
+                <span className="text-lg font-bold font-mono text-[#E8C56A] block">
+                  {persistence.winStreak || 0} 🔥
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Record: {persistence.bestWinStreak || 0}
+                </span>
+              </div>
+            </div>
+
+            {/* Duel Records vs AI */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
+                Vittorie per Grado IA:
+              </span>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                {AI_PROFILES.map((ai) => {
+                  const wins = (persistence.aiWins && persistence.aiWins[ai.id]) || 0;
+                  return (
+                    <div
+                      key={ai.id}
+                      className="p-2.5 rounded-lg bg-black/60 border border-white/10 text-center space-y-0.5"
+                    >
+                      <span className="text-[10px] text-muted-foreground block truncate">{ai.name}</span>
+                      <strong className="text-sm font-mono text-[#E8C56A] block">{wins}</strong>
+                      <span className="text-[9px] text-muted-foreground block">{ai.eloRating} Elo</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Matches & Win Rate */}
+            <div className="p-3 rounded-xl bg-black/50 border border-white/10 flex items-center justify-around text-xs">
+              <div>
+                <span className="text-[10px] text-muted-foreground uppercase block">Partite Totali</span>
+                <strong className="text-white font-mono">
+                  {persistence.totalMatchesWon + persistence.totalMatchesLost}
+                </strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted-foreground uppercase block">Vittorie / Sconfitte</span>
+                <strong className="text-emerald-400 font-mono">
+                  {persistence.totalMatchesWon}V / {persistence.totalMatchesLost}P
+                </strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted-foreground uppercase block">Tasso di Successo</span>
+                <strong className="text-[#E8C56A] font-mono">
+                  {persistence.totalMatchesWon + persistence.totalMatchesLost > 0
+                    ? `${Math.round(
+                        (persistence.totalMatchesWon /
+                          (persistence.totalMatchesWon + persistence.totalMatchesLost)) *
+                          100
+                      )}%`
+                    : "100%"}
+                </strong>
+              </div>
+            </div>
+
+            {/* Tactical Puzzles Completion */}
+            <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-white font-medium">Puzzle Tattici Risolti:</span>
+                <strong className="text-[#E8C56A] font-mono">
+                  {persistence.completedPuzzleIds.length} / 10
+                </strong>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                  style={{ width: `${(persistence.completedPuzzleIds.length / 10) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 8. SHARE / EXPORT MODAL (PGN & FEN NOTATION)              */}
+      {/* ========================================================= */}
+      {showExportModal && (
+        <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#0d0f14] border border-[#C5A059]/40 rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Share2 size={16} className="text-[#C5A059]" />
+                <h3 className="text-sm font-bold text-[#E8C56A] uppercase tracking-wider">
+                  Condivisione FEN & PGN
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowExportModal(false)}
+                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                ✕ Chiudi
+              </button>
+            </div>
+
+            {/* Current FEN */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-bold uppercase text-[10px]">
+                  Posizione FEN:
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleCopyText(
+                      boardToFen(board, turn, Math.floor(moveHistory.length / 2) + 1),
+                      "fen"
+                    )
+                  }
+                  className="text-[11px] text-[#E8C56A] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedType === "fen" ? (
+                    <>
+                      <Check size={12} className="text-emerald-400" />
+                      <span className="text-emerald-400 font-bold">Copiato!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={12} />
+                      <span>Copia FEN</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="p-2.5 rounded-lg bg-black/60 border border-white/10 font-mono text-[11px] text-slate-300 break-all select-all">
+                {boardToFen(board, turn, Math.floor(moveHistory.length / 2) + 1)}
+              </div>
+            </div>
+
+            {/* PGN Move History */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-bold uppercase text-[10px]">
+                  Registro Partita PGN:
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleCopyText(
+                      formatPgn(
+                        moveHistory,
+                        activeMode === "puzzle" ? currentPuzzle.title : `Vs ${selectedAi.name}`,
+                        outcome === "checkmate" ? "1-0" : outcome === "stalemate" ? "1/2-1/2" : "*"
+                      ),
+                      "pgn"
+                    )
+                  }
+                  className="text-[11px] text-[#E8C56A] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedType === "pgn" ? (
+                    <>
+                      <Check size={12} className="text-emerald-400" />
+                      <span className="text-emerald-400 font-bold">Copiato!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={12} />
+                      <span>Copia PGN</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <pre className="p-2.5 rounded-lg bg-black/60 border border-white/10 font-mono text-[10px] text-slate-300 max-h-36 overflow-y-auto whitespace-pre-wrap select-all scrollbar-thin">
+                {formatPgn(
+                  moveHistory,
+                  activeMode === "puzzle" ? currentPuzzle.title : `Vs ${selectedAi.name}`,
+                  outcome === "checkmate" ? "1-0" : outcome === "stalemate" ? "1/2-1/2" : "*"
+                )}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 9. RULES & COMPENDIUM MODAL                               */}
       {/* ========================================================= */}
       {showRulesModal && (
-        <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-40 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-lg bg-[#0d0f14] border border-[#C5A059]/30 rounded-2xl p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-2.5">
               <h3 className="text-sm font-bold text-[#E8C56A] uppercase tracking-wider">

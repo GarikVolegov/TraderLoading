@@ -57,4 +57,14 @@ export interface ChessPersistence {
   totalMatchesWon: number;
   totalMatchesLost: number;
   activeBoardTheme: "obsidian_gold" | "carrara_temple" | "cyber_void";
+  winStreak?: number;
+  bestWinStreak?: number;
+  aiWins?: Partial<Record<AiPersonality, number>>;
 }
+
+export interface ChessOpening {
+  code: string;
+  name: string;
+  analogy: string;
+}
+

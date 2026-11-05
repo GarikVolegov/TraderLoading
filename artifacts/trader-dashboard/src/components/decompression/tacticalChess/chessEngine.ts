@@ -716,3 +716,277 @@ export function saveChessPersistence(data: ChessPersistence) {
     localStorage.setItem(CHESS_PERSISTENCE_KEY, JSON.stringify(data));
   } catch {}
 }
+
+// =============================================================
+// 6. POSITIONAL EVALUATION BAR, FEN & PGN UTILITIES
+// =============================================================
+
+export interface BoardEvaluation {
+  scoreCentipawns: number;
+  evalText: string;
+  whiteWinPercentage: number;
+}
+
+export function calculateBoardEvaluation(
+  board: (ChessPiece | null)[][],
+  outcome?: GameOutcome
+): BoardEvaluation {
+  if (outcome === "checkmate") {
+    return {
+      scoreCentipawns: 9999,
+      evalText: "#Matto",
+      whiteWinPercentage: 100,
+    };
+  }
+
+  const raw = evaluateBoardStatic(board);
+  const pawns = raw / 100;
+  const sign = pawns > 0 ? "+" : "";
+  const evalText = `${sign}${pawns.toFixed(1)}`;
+
+  // Sigmoid formula to map centipawns to 0..100% win probability
+  const winProb = 1 / (1 + Math.pow(10, -raw / 400));
+  const whiteWinPercentage = Math.max(5, Math.min(95, Math.round(winProb * 100)));
+
+  return {
+    scoreCentipawns: raw,
+    evalText,
+    whiteWinPercentage,
+  };
+}
+
+export function boardToFen(
+  board: (ChessPiece | null)[][],
+  turn: PieceColor,
+  moveCount: number = 1
+): string {
+  const rows: string[] = [];
+  for (let r = 0; r < 8; r++) {
+    let empty = 0;
+    let rowStr = "";
+    for (let c = 0; c < 8; c++) {
+      const p = board[r][c];
+      if (!p) {
+        empty++;
+      } else {
+        if (empty > 0) {
+          rowStr += empty;
+          empty = 0;
+        }
+        const ch = p.type;
+        rowStr += p.color === "w" ? ch.toUpperCase() : ch.toLowerCase();
+      }
+    }
+    if (empty > 0) rowStr += empty;
+    rows.push(rowStr);
+  }
+  return `${rows.join("/")} ${turn} - - 0 ${moveCount}`;
+}
+
+export function formatPgn(
+  history: string[],
+  eventTitle: string,
+  result: string = "*"
+): string {
+  const dateStr = new Date().toISOString().split("T")[0];
+  const lines = [
+    `[Event "${eventTitle}"]`,
+    `[Site "LIMEN PROTOCOL — Gli Scacchi dell'Ordine"]`,
+    `[Date "${dateStr}"]`,
+    `[White "Operatore"]`,
+    `[Black "La Deriva"]`,
+    `[Result "${result}"]`,
+    "",
+  ];
+  let moveText = "";
+  for (let i = 0; i < history.length; i += 2) {
+    const moveNum = Math.floor(i / 2) + 1;
+    const w = history[i];
+    const b = history[i + 1] ? ` ${history[i + 1]}` : "";
+    moveText += `${moveNum}. ${w}${b} `;
+  }
+  moveText += result;
+  lines.push(moveText.trim());
+  return lines.join("\n");
+}
+
+// =============================================================
+// 7. ECO OPENINGS RECOGNITION & AUREUS TRADING ANALOGIES
+// =============================================================
+
+export interface ChessOpening {
+  code: string;
+  name: string;
+  analogy: string;
+}
+
+interface OpeningPattern {
+  pattern: string[];
+  code: string;
+  name: string;
+  analogy: string;
+}
+
+const FAMOUS_OPENINGS: OpeningPattern[] = [
+  {
+    pattern: ["e2→e4", "e7→e5", "g1→f3", "b8→c6", "f1→b5"],
+    code: "C60",
+    name: "Partita Spagnola (Ruy Lopez)",
+    analogy: "Posizionamento Istituzionale di Massima Pressione",
+  },
+  {
+    pattern: ["e2→e4", "e7→e5", "g1→f3", "b8→c6", "f1→c4"],
+    code: "C50",
+    name: "Partita Italiana (Giuoco Piano)",
+    analogy: "Sviluppo Armonico & Controllo Centrale Bilanciato",
+  },
+  {
+    pattern: ["e2→e4", "e7→e5", "g1→f3", "b8→c6", "b1→c3", "g8→f6"],
+    code: "C47",
+    name: "Partita dei Quattro Cavalli",
+    analogy: "Saturazione Solida del Perimetro Operativo",
+  },
+  {
+    pattern: ["e2→e4", "e7→e5", "g1→f3", "b8→c6", "d2→d4"],
+    code: "C45",
+    name: "Partita Scozzese",
+    analogy: "Apertura Aggressiva del Corridoio di Liquidità",
+  },
+  {
+    pattern: ["e2→e4", "c7→c5", "g1→f3", "d7→d6", "d2→d4", "c5→d4", "f3→d4", "g8→f6", "b1→c3"],
+    code: "B90",
+    name: "Difesa Siciliana (Najdorf)",
+    analogy: "Breakout Asimmetrico & Espansione di Volatilità",
+  },
+  {
+    pattern: ["e2→e4", "c7→c5"],
+    code: "B20",
+    name: "Difesa Siciliana",
+    analogy: "Risposta Contrarian ad Alto Rendimento",
+  },
+  {
+    pattern: ["e2→e4", "e7→e6", "d2→d4", "d7→d5"],
+    code: "C00",
+    name: "Difesa Francese (Classica)",
+    analogy: "Catena di Pedoni a Protezione del Capitale",
+  },
+  {
+    pattern: ["e2→e4", "e7→e6"],
+    code: "C00",
+    name: "Difesa Francese",
+    analogy: "Blocco di Contenimento Strutturato",
+  },
+  {
+    pattern: ["e2→e4", "c7→c6", "d2→d4", "d7→d5"],
+    code: "B12",
+    name: "Difesa Caro-Kann (Classica)",
+    analogy: "Gestione Solida del Rischio Senza Debolezze",
+  },
+  {
+    pattern: ["e2→e4", "c7→c6"],
+    code: "B10",
+    name: "Difesa Caro-Kann",
+    analogy: "Struttura Robusta a Bassa Vulnerabilità",
+  },
+  {
+    pattern: ["d2→d4", "d7→d5", "c2→c4", "e7→e6"],
+    code: "D30",
+    name: "Gambetto di Donna Rifiutato",
+    analogy: "Rifiuto delle Trappole Emotive & Difesa Ferrea",
+  },
+  {
+    pattern: ["d2→d4", "d7→d5", "c2→c4", "d5→c4"],
+    code: "D20",
+    name: "Gambetto di Donna Accettato",
+    analogy: "Incasso della Liquidità con Riorganizzazione",
+  },
+  {
+    pattern: ["d2→d4", "d7→d5", "c2→c4"],
+    code: "D06",
+    name: "Gambetto di Donna",
+    analogy: "Sacrificio Strategico per Iniziativa Centrale",
+  },
+  {
+    pattern: ["d2→d4", "g8→f6", "c2→c4", "g7→g6"],
+    code: "E60",
+    name: "Difesa Est-Indiana",
+    analogy: "Fianchetto Dinamico & Contrattacco Chirurgico",
+  },
+  {
+    pattern: ["d2→d4", "d7→d5", "c1→f4"],
+    code: "D00",
+    name: "Sistema Londra",
+    analogy: "Protocollo Operativo Sistematico & Ripetibile",
+  },
+  {
+    pattern: ["e2→e4", "d7→d5"],
+    code: "B01",
+    name: "Difesa Scandinava",
+    analogy: "Contestazione Immediata della Direzione",
+  },
+  {
+    pattern: ["c2→c4"],
+    code: "A10",
+    name: "Apertura Inglese",
+    analogy: "Controllo Istituzionale dalla Periferia",
+  },
+  {
+    pattern: ["g1→f3"],
+    code: "A04",
+    name: "Apertura Réti",
+    analogy: "Approccio Ipermoderno e Flessibile",
+  },
+  {
+    pattern: ["e2→e4", "e7→e5"],
+    code: "C20",
+    name: "Partita Aperta",
+    analogy: "Confronto Diretto nel Cuore del Mercato",
+  },
+  {
+    pattern: ["d2→d4", "d7→d5"],
+    code: "D00",
+    name: "Partita Chiusa",
+    analogy: "Ingegneria Posizionale a Bassa Volatilità",
+  },
+  {
+    pattern: ["e2→e4"],
+    code: "B00",
+    name: "Spinta di Re (1. e4)",
+    analogy: "Presa d'Iniziativa & Apertura delle Linee",
+  },
+  {
+    pattern: ["d2→d4"],
+    code: "A40",
+    name: "Spinta di Donna (1. d4)",
+    analogy: "Fondamenta Posizionali Solide",
+  },
+];
+
+export function detectOpening(history: string[]): ChessOpening | null {
+  if (!history || history.length === 0) return null;
+
+  const normalized = history.map((m) => m.replace(/^[KQRBNP]/, ""));
+
+  for (const op of FAMOUS_OPENINGS) {
+    if (normalized.length >= op.pattern.length) {
+      let match = true;
+      for (let i = 0; i < op.pattern.length; i++) {
+        if (normalized[i] !== op.pattern[i]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        return {
+          code: op.code,
+          name: op.name,
+          analogy: op.analogy,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+

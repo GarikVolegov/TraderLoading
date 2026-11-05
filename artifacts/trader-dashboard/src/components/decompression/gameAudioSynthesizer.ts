@@ -555,6 +555,74 @@ class GameAudioSynthesizer {
       });
     } catch {}
   }
+
+  /** Chess piece move: solid acoustic impact onto felt-padded board */
+  public playChessMove() {
+    const ctx = this.initCtx();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(75, now + 0.06);
+
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.07);
+    } catch {}
+  }
+
+  /** Chess piece capture: crisp authoritative clack */
+  public playChessCapture() {
+    const ctx = this.initCtx();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      [820, 1420].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.015);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.4, now + 0.08);
+
+        gain.gain.setValueAtTime(0.15, now + idx * 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.015);
+        osc.stop(now + 0.1);
+      });
+    } catch {}
+  }
+
+  /** Chess check chime: solemn harmonic warning */
+  public playChessCheck() {
+    const ctx = this.initCtx();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      [440, 523.25, 659.25].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.03);
+        gain.gain.setValueAtTime(0.11, now + idx * 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.03);
+        osc.stop(now + 0.35);
+      });
+    } catch {}
+  }
 }
 
 export const gameAudio = new GameAudioSynthesizer();
