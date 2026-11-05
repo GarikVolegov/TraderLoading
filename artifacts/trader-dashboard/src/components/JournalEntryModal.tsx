@@ -3,9 +3,25 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, UploadCloud, Loader2, Image as ImageIcon, Tag, Plus, Star, Hash, ClipboardCheck, Target, Zap } from "lucide-react";
+import {
+  X,
+  UploadCloud,
+  Loader2,
+  Image as ImageIcon,
+  Tag,
+  Plus,
+  Star,
+  Hash,
+  ClipboardCheck,
+  Target,
+  Zap,
+  ShieldCheck,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import { MobileChainWizard, QuickSelectChipBar, type ChainStepMeta } from "@/components/ui/MobileChainWizard";
+import { synestheticClick, synestheticConfirm, synestheticAlert } from "@/lib/soundFx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -328,6 +344,50 @@ export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketD
   const evidenceRequestId = useRef(crypto.randomUUID());
   const evidenceSaved = useRef(false);
   const linkedTradeId = useRef<number | undefined>(undefined);
+
+  const [complianceRings, setComplianceRings] = useState<Record<string, boolean>>({
+    market: true,
+    window: true,
+    setup: true,
+    risk: true,
+    custodian: true,
+  });
+
+  const conformingCount = Object.values(complianceRings).filter(Boolean).length;
+  const isFullyConforming = conformingCount === 5;
+
+  const handleToggleComplianceRing = (id: string) => {
+    synestheticClick();
+    setComplianceRings((prev) => {
+      const updated = { ...prev, [id]: !prev[id] };
+      const count = Object.values(updated).filter(Boolean).length;
+      if (count === 5) {
+        setAdherence("conforming");
+      } else {
+        setAdherence("violation");
+      }
+      return updated;
+    });
+  };
+
+  const handleAttestFullCompliance = () => {
+    synestheticConfirm();
+    setComplianceRings({
+      market: true,
+      window: true,
+      setup: true,
+      risk: true,
+      custodian: true,
+    });
+    setAdherence("conforming");
+    addTagFromPanel("Conforme 5/5");
+  };
+
+  const handleFlagDeviation = () => {
+    synestheticAlert();
+    setAdherence("violation");
+    addTagFromPanel("Deviazione Piano");
+  };
 
   const savedEntryId = useRef<number | undefined>(undefined);
   const saving = useRef(false);

@@ -57,6 +57,42 @@ export function renderArenaSpectatorOgHtml(roomId: string, baseUrl: string): str
 </html>`;
 }
 
+export function renderPassportOgHtml(token: string, baseUrl: string): string {
+  const pageTitle = `AUREUS PROTOCOL · Passaporto Crittografico del Sistema`;
+  const pageDescription = `Attestato crittografico immutabile della Costituzione Operativa e del Custode della Soglia sul protocollo sovrano AUREUS.`;
+  const url = `${baseUrl}/method?passport=${encodeURIComponent(token)}`;
+  const ogImageUrl = `${baseUrl}/og-image.png`;
+
+  return `<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${pageTitle}</title>
+  <meta name="description" content="${pageDescription}" />
+  <link rel="canonical" href="${url}" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="AUREUS PROTOCOL" />
+  <meta property="og:url" content="${url}" />
+  <meta property="og:title" content="${pageTitle}" />
+  <meta property="og:description" content="${pageDescription}" />
+  <meta property="og:image" content="${ogImageUrl}" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="${url}" />
+  <meta name="twitter:title" content="${pageTitle}" />
+  <meta name="twitter:description" content="${pageDescription}" />
+  <meta name="twitter:image" content="${ogImageUrl}" />
+  <meta http-equiv="refresh" content="0; url=${url}" />
+</head>
+<body style="background:#07080b;color:#f4f4f6;font-family:sans-serif;padding:2rem;text-align:center;">
+  <p>Verifica del Passaporto Crittografico AUREUS...</p>
+  <p><a href="${url}" style="color:#C5A059;">Accedi al banco del metodo</a></p>
+</body>
+</html>`;
+}
+
 export async function socialCrawlerOgMiddleware(
   req: Request,
   res: Response,
@@ -94,6 +130,14 @@ export async function socialCrawlerOgMiddleware(
         return;
       }
     }
+  }
+
+  if (req.path === "/method" && typeof req.query.passport === "string" && req.query.passport.trim()) {
+    const html = renderPassportOgHtml(req.query.passport.trim(), baseUrl);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=86400");
+    res.send(html);
+    return;
   }
 
   if (req.path.startsWith("/duello/") || req.path.startsWith("/battle/")) {

@@ -1,9 +1,13 @@
+process.env.DATABASE_URL =
+  process.env.DATABASE_URL || "postgres://unit:unit@127.0.0.1:1/tl_unit_no_database";
+
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { Request, Response } from "express";
 import {
   socialCrawlerOgMiddleware,
   renderArenaSpectatorOgHtml,
+  renderPassportOgHtml,
   SOCIAL_CRAWLER_REGEX,
 } from "./socialCrawlerOg.js";
 
@@ -93,6 +97,41 @@ describe("socialCrawlerOgMiddleware", () => {
     assert.equal(headers["Content-Type"], "text/html; charset=utf-8");
     assert.ok(sentBody.includes("FORGIA-8891"), "Must contain room code");
     assert.ok(sentBody.includes("/api/public/og-duello/FORGIA-8891.svg"), "Must link to vector duel SVG");
+  });
+
+  it("serves rich OpenGraph HTML for crawler requests on /method?passport=...", async () => {
+    let sentBody = "";
+    const headers: Record<string, string> = {};
+
+    const req = {
+      method: "GET",
+      path: "/method",
+      headers: {
+        "user-agent": "TelegramBot (like TwitterBot)",
+      },
+      query: {
+        passport: "AUREUS1.eyJzZWFsQ29kZSI6IkFVUkVVUy1TWVMtMTEyMi0zMzQ0LTU1NjYifQ",
+      },
+    } as unknown as Request;
+
+    const res = {
+      setHeader(k: string, v: string) {
+        headers[k] = v;
+      },
+      send(body: string) {
+        sentBody = body;
+      },
+    } as unknown as Response;
+
+    let nextCalled = false;
+    await socialCrawlerOgMiddleware(req, res, () => {
+      nextCalled = true;
+    });
+
+    assert.equal(nextCalled, false, "Must not call next() for crawler on /method?passport=...");
+    assert.equal(headers["Content-Type"], "text/html; charset=utf-8");
+    assert.ok(sentBody.includes("Passaporto Crittografico"), "Must contain passport title");
+    assert.ok(sentBody.includes("AUREUS PROTOCOL"), "Must contain brand name");
   });
 
   it("passes through to next() for ordinary non-crawler user browsers", async () => {

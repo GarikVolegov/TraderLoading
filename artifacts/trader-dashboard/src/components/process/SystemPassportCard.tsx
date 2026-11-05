@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -10,6 +11,7 @@ import {
   FileCheck2,
   Upload,
   Link2,
+  Flame,
 } from "lucide-react";
 import {
   buildSystemPassportExportDocument,
@@ -31,6 +33,7 @@ interface SystemPassportCardProps {
     payload: SystemPassportPayload,
     checklistItems: string[],
   ) => void;
+  onTestInForge?: (pair: string, strategy: string, name: string) => void;
 }
 
 const PHASE_LABELS: Record<string, string> = {
@@ -46,7 +49,9 @@ export function SystemPassportCard({
   compact = false,
   initialShareToken = null,
   onImportVerifiedSystem,
+  onTestInForge,
 }: SystemPassportCardProps) {
+  const [, setLocation] = useLocation();
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [verifierOpen, setVerifierOpen] = useState(Boolean(initialShareToken));
@@ -70,6 +75,31 @@ export function SystemPassportCard({
 
   const phaseLabel = PHASE_LABELS[payload.phase || "define"] || "FASE I · FONDAZIONE";
   const currency = (payload.currency || "EUR").toUpperCase();
+
+  const primaryMarket = useMemo(() => {
+    if (!payload.markets || !payload.markets.trim()) return "EUR/USD";
+    const rawFirst = payload.markets.split(/[,;\n]/)[0]?.trim();
+    return rawFirst || "EUR/USD";
+  }, [payload.markets]);
+
+  const handleTestInForge = () => {
+    synestheticConfirm();
+    const targetPair = primaryMarket;
+    const targetStrategy = payload.name || "Sistema Aureus";
+    const targetSessionName = `Forgia · ${payload.name || "Costituzione"}`;
+    const query = new URLSearchParams({
+      new: "1",
+      pair: targetPair,
+      strategy: targetStrategy,
+      name: targetSessionName,
+    }).toString();
+
+    if (onTestInForge) {
+      onTestInForge(targetPair, targetStrategy, targetSessionName);
+    } else {
+      setLocation(`/backtest?${query}`);
+    }
+  };
 
   const handleCopySeal = async () => {
     synestheticClick();
@@ -136,6 +166,27 @@ export function SystemPassportCard({
         ? window.location.origin
         : "https://aureus-os.app";
     const shareUrl = `${origin}/method?passport=${encodeURIComponent(token)}`;
+
+    if (
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function" &&
+      typeof window !== "undefined" &&
+      window.innerWidth < 768
+    ) {
+      try {
+        await navigator.share({
+          title: `AUREUS OS — Passaporto Crittografico ${sealCode}`,
+          text: `Costituzione Operativa ${payload.name || "AUREUS"} (Sigillo ${sealCode}) · Integrità Verificata`,
+          url: shareUrl,
+        });
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2200);
+        return;
+      } catch {
+        // Fallback to clipboard if share sheet dismissed or blocked
+      }
+    }
+
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(shareUrl);
@@ -302,6 +353,16 @@ export function SystemPassportCard({
           {/* Barra Azioni 1-Tap */}
           {!compact && (
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={handleTestInForge}
+                data-testid="system-passport-test-in-forge-btn"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#C5A059]/60 bg-gradient-to-r from-[#C5A059]/25 via-[#C5A059]/15 to-transparent hover:border-[#E8C56A] hover:bg-[#C5A059]/30 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A] shadow-sm transition-all whitespace-nowrap cursor-pointer active:scale-95"
+              >
+                <Flame className="w-3.5 h-3.5 text-[#E8C56A] shrink-0" />
+                <span>Collauda nella Forgia (1-Tap)</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleCopySeal}

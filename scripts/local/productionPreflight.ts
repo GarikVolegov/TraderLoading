@@ -205,6 +205,20 @@ if (
       console.error(`Env file not found: ${customPath}`);
       process.exit(1);
     }
+  } else if (!targetEnv["DATABASE_URL"]) {
+    for (const candidate of [".env.local", ".env.production", ".env"]) {
+      const candidatePath = path.resolve(repoRoot, candidate);
+      if (existsSync(candidatePath)) {
+        console.log(`Loading fallback env file: ${candidatePath}`);
+        const parsed = parseEnvLocal(readFileSync(candidatePath, "utf8"));
+        for (const [k, v] of parsed.entries()) {
+          if (v.trim() !== "" && targetEnv[k] === undefined) {
+            targetEnv[k] = v;
+          }
+        }
+        break;
+      }
+    }
   }
 
   const report = runProductionPreflight(targetEnv);

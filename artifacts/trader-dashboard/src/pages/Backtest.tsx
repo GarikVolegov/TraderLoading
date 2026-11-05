@@ -66,15 +66,23 @@ const TIMEFRAMES = ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"];
 function NewSessionForm({
   onClose,
   onCreated,
+  initialName = "",
+  initialPair,
+  initialStrategy = "",
+  initialTimeframe = "H1",
 }: {
   onClose: () => void;
   onCreated?: (session: BacktestSession) => void;
+  initialName?: string;
+  initialPair?: string;
+  initialStrategy?: string;
+  initialTimeframe?: string;
 }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { selectedPairs: userPairs } = useBackground();
   const createMutation = useCreateBacktestSession({ mutation: { meta: { suppressGlobalError: true } } });
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
   const pairOptions = useMemo(() => {
     if (userPairs.length === 0) return ALL_BT_PAIRS;
     const supportedSet = new Set(ALL_BT_PAIRS);
@@ -83,20 +91,35 @@ function NewSessionForm({
     const advanced = ALL_BT_PAIRS.filter((p) => !userSet.has(p));
     return userLabels.length > 0 ? [...userLabels, ...advanced] : ALL_BT_PAIRS;
   }, [userPairs]);
-  const [pair, setPair] = useState(pairOptions[0] || "EUR/USD");
-  const defaultAppliedRef = useRef(false);
+
+  const normalizedInitialPair = useMemo(() => {
+    if (!initialPair) return null;
+    const clean = initialPair.trim().toUpperCase();
+    const found = ALL_BT_PAIRS.find(
+      (p) => p.replace("/", "") === clean.replace("/", "") || p.toUpperCase() === clean,
+    );
+    return found || null;
+  }, [initialPair]);
+
+  const [pair, setPair] = useState(() => normalizedInitialPair || pairOptions[0] || "EUR/USD");
+  const defaultAppliedRef = useRef(Boolean(normalizedInitialPair));
 
   useEffect(() => {
+    if (normalizedInitialPair) {
+      setPair(normalizedInitialPair);
+      defaultAppliedRef.current = true;
+      return;
+    }
     if (userPairs.length > 0 && !defaultAppliedRef.current) {
       defaultAppliedRef.current = true;
       if (pairOptions.length > 0) setPair(pairOptions[0]);
     } else if (pairOptions.length > 0 && !pairOptions.includes(pair)) {
       setPair(pairOptions[0]);
     }
-  }, [pairOptions, pair, userPairs]);
+  }, [pairOptions, pair, userPairs, normalizedInitialPair]);
 
-  const [timeframe, setTimeframe] = useState("H1");
-  const [strategy, setStrategy] = useState("");
+  const [timeframe, setTimeframe] = useState(initialTimeframe || "H1");
+  const [strategy, setStrategy] = useState(initialStrategy);
   const [startDateTime, setStartDateTime] = useState("");
   const [historyMeta, setHistoryMeta] = useState<ReplayCandlesMeta | null>(null);
 
@@ -472,6 +495,15 @@ export default function Backtest() {
     const param = new URLSearchParams(search).get("session") || new URLSearchParams(search).get("sessionId");
     return param ? parseInt(param, 10) : null;
   }, [search]);
+  const isNewRequested = useMemo(() => {
+    const params = new URLSearchParams(search);
+    return params.get("new") === "1" || params.get("action") === "new";
+  }, [search]);
+  const urlPair = useMemo(() => new URLSearchParams(search).get("pair"), [search]);
+  const urlStrategy = useMemo(() => new URLSearchParams(search).get("strategy"), [search]);
+  const urlName = useMemo(() => new URLSearchParams(search).get("name"), [search]);
+  const urlTimeframe = useMemo(() => new URLSearchParams(search).get("timeframe"), [search]);
+
   const processQuery = useTraderProcess();
   const activeMethod = processQuery.data?.activeMethod ?? null;
   const { entitlements } = useLimenEntitlements();
@@ -484,7 +516,13 @@ export default function Backtest() {
     },
   });
   const deleteMutation = useDeleteBacktestSession();
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(() => isNewRequested);
+
+  useEffect(() => {
+    if (isNewRequested) {
+      setShowNew(true);
+    }
+  }, [isNewRequested]);
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(urlSessionId);
   const [tradeFilter, setTradeFilter] = useState<TradeFilter>("all");
   const [decompressionOpen, setDecompressionOpen] = useState(false);
@@ -1454,6 +1492,10 @@ export default function Backtest() {
               setSelectedSessionId(created.id);
               setShowNew(false);
             }}
+            initialName={urlName || ""}
+            initialPair={urlPair || undefined}
+            initialStrategy={urlStrategy || ""}
+            initialTimeframe={urlTimeframe || "H1"}
           />
         </div>
       </LimenResponsiveDrawer>
