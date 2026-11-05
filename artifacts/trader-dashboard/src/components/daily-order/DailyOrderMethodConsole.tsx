@@ -11,6 +11,8 @@ import {
   RotateCcw,
   Clock,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +22,8 @@ import { VerificationStart } from "@/pages/Method";
 import type { ProcessMethod, ProcessState } from "@/lib/traderProcessApi";
 import { useProcessMutation } from "@/hooks/useTraderProcess";
 import { activateProcessMethod, advanceProcessMethod } from "@/lib/traderProcessApi";
+import { SystemCompilationTutorialModal } from "@/components/process/SystemCompilationTutorialModal";
+import { synestheticClick } from "@/lib/soundFx";
 
 interface DailyOrderMethodConsoleProps {
   state: ProcessState;
@@ -36,6 +40,8 @@ export function DailyOrderMethodConsole({
 }: DailyOrderMethodConsoleProps) {
   const method = state.activeMethod;
   const [review, setReview] = useState("");
+  const [mobileConsoleStep, setMobileConsoleStep] = useState<1 | 2 | 3>(1);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const advance = useProcessMutation(advanceProcessMethod);
   const activate = useProcessMutation(activateProcessMethod);
 
@@ -48,9 +54,25 @@ export function DailyOrderMethodConsole({
           Fonda il tuo Ordine Giornaliero codificando le regole operative, i criteri di ingresso e i
           limiti del Custode della Soglia.
         </p>
-        <Button onClick={() => onEdit(null)} className="font-mono text-xs">
-          FONDA IL TUO METODO OPERATIVO
-        </Button>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button onClick={() => onEdit(null)} className="font-mono text-xs">
+            FONDA IL TUO METODO OPERATIVO
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setTutorialOpen(true)}
+            className="font-mono text-xs border-[#C5A059]/40 text-[#E8C56A]"
+          >
+            <Sparkles size={13} className="mr-1.5 text-[#C5A059]" />
+            GUIDA &amp; ARCHETIPI
+          </Button>
+        </div>
+        <SystemCompilationTutorialModal
+          open={tutorialOpen}
+          onOpenChange={setTutorialOpen}
+          onStartManualChain={() => onEdit(null)}
+          onApplyPreset={() => onEdit(null)}
+        />
       </div>
     );
   }
@@ -61,9 +83,69 @@ export function DailyOrderMethodConsole({
   const canAdvance =
     guidance?.action === "review_verification" || guidance?.action === "review_application";
 
+  const mobileTabs = [
+    { id: 1 as const, code: "01", label: "Costituzione & Regole" },
+    { id: 2 as const, code: "02", label: `Evidenze (${rows.length})` },
+    { id: 3 as const, code: "03", label: `Versioni (${state.methods.length})` },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
+      {/* ── CATENA MOBILE ARCHITETTURA METODO (3 LIVELLI) ── */}
+      <div
+        className="md:hidden rounded-2xl border border-[#C5A059]/30 bg-[#0d0f14] p-3 shadow-lg space-y-2.5"
+        data-testid="method-console-mobile-chain"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="rounded border border-[#C5A059]/40 bg-[#C5A059]/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-[#E8C56A] whitespace-nowrap">
+              LIVELLO {mobileConsoleStep}/3
+            </span>
+            <span className="font-display text-xs font-bold uppercase tracking-wider text-[#F4F4F6] truncate">
+              {mobileTabs[mobileConsoleStep - 1].label}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              setTutorialOpen(true);
+            }}
+            data-testid="method-console-open-tutorial-btn"
+            className="inline-flex items-center gap-1 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap cursor-pointer"
+          >
+            <Sparkles className="w-2.5 h-2.5 text-[#C5A059]" />
+            <span>Guida Sistema</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1">
+          {mobileTabs.map((t) => {
+            const active = t.id === mobileConsoleStep;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  synestheticClick();
+                  setMobileConsoleStep(t.id);
+                }}
+                data-testid={`method-console-tab-${t.id}`}
+                className={`rounded-lg py-1.5 px-1.5 font-mono text-[9.5px] font-bold uppercase transition-all whitespace-nowrap cursor-pointer ${
+                  active
+                    ? "bg-[#C5A059] text-[#07080b]"
+                    : "border border-[#26262E] bg-[#07080b] text-[#94a3b8]"
+                }`}
+              >
+                {t.code} · {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── SEZIONE STATO & PROSSIMA AZIONE DEL METODO ── */}
+      <div className={mobileConsoleStep === 1 ? "block space-y-4 sm:space-y-6" : "hidden md:block md:space-y-6"}>
       <ProcessNextAction
         state={state}
         action={
@@ -248,9 +330,10 @@ export function DailyOrderMethodConsole({
           </div>
         )}
       </section>
+      </div>
 
       {/* ── REGISTRO EVIDENZE & TEST ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-5 sm:p-7 shadow-sm space-y-4">
+      <section className={`${mobileConsoleStep === 2 ? "block" : "hidden md:block"} rounded-2xl border border-border/60 bg-card p-4 sm:p-7 shadow-sm space-y-4`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400">
@@ -331,7 +414,7 @@ export function DailyOrderMethodConsole({
       </section>
 
       {/* ── STORICO VERSIONI ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-5 sm:p-7 shadow-sm space-y-4">
+      <section className={`${mobileConsoleStep === 3 ? "block" : "hidden md:block"} rounded-2xl border border-border/60 bg-card p-4 sm:p-7 shadow-sm space-y-4`}>
         <div className="flex items-center justify-between border-b border-border/50 pb-3">
           <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Versioni del Metodo ({state.methods.length})
@@ -390,6 +473,63 @@ export function DailyOrderMethodConsole({
           ))}
         </ul>
       </section>
+
+      {/* ── BARRA DI CONCATENAZIONE MOBILE TRA I 3 LIVELLI ── */}
+      <div
+        className="md:hidden rounded-xl border border-[#C5A059]/30 bg-[#0d0f14] p-2.5 flex items-center justify-between gap-2 shadow-lg"
+        data-testid="method-console-mobile-chain-footer"
+      >
+        <button
+          type="button"
+          disabled={mobileConsoleStep === 1}
+          onClick={() => {
+            synestheticClick();
+            setMobileConsoleStep((prev) => Math.max(1, prev - 1) as 1 | 2 | 3);
+          }}
+          className="inline-flex items-center gap-1 rounded-lg border border-[#C5A059]/25 bg-[#11131c] disabled:opacity-35 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] whitespace-nowrap cursor-pointer"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          <span>Prec.</span>
+        </button>
+
+        <span className="font-mono text-[9.5px] text-[#C5A059] whitespace-nowrap">
+          Livello {mobileConsoleStep} di 3
+        </span>
+
+        {mobileConsoleStep < 3 ? (
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              setMobileConsoleStep((prev) => Math.min(3, prev + 1) as 1 | 2 | 3);
+            }}
+            data-testid="method-console-next-btn"
+            className="inline-flex items-center gap-1 rounded-lg bg-[#C5A059] hover:bg-[#E8C56A] px-3.5 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] whitespace-nowrap cursor-pointer shadow-sm"
+          >
+            <span>Livello {mobileConsoleStep + 1}: {mobileTabs[mobileConsoleStep].label}</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              onEdit(method);
+            }}
+            className="inline-flex items-center gap-1 rounded-lg bg-[#10b981] px-3.5 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] whitespace-nowrap cursor-pointer shadow-sm"
+          >
+            <span>Nuova Versione</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      <SystemCompilationTutorialModal
+        open={tutorialOpen}
+        onOpenChange={setTutorialOpen}
+        onStartManualChain={() => onEdit(method)}
+        onApplyPreset={() => onEdit(method)}
+      />
     </div>
   );
 }

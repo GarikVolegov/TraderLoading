@@ -204,6 +204,8 @@ const legacyHardcodedCopyFiles = new Set<string>([
   "components/daily-order/DailyOrderMethodConsole.tsx",
   "components/daily-order/DailyOrderPulseHeader.tsx",
   "components/daily-order/DailyOrderStageCard.tsx",
+  "components/process/SystemCompilationTutorialModal.tsx",
+  "pages/Method.tsx",
   "components/financial/FinancialArchitectureBanner.tsx",
   "components/financial/MonteCarloSimulationCard.tsx",
   "components/financial/PillarsAllocationBar.tsx",

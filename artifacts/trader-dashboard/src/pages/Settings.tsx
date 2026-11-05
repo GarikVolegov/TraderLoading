@@ -364,6 +364,34 @@ export default function Settings() {
   const activeHub = masterHubs.find((h) => h.id === activeHubId) ?? masterHubs[0];
   const activeTab = activeHub.tabs.find((t) => t.id === activeTabId) ?? activeHub.tabs[0];
 
+  const flatChainTabs = masterHubs.flatMap((hub) =>
+    hub.tabs
+      .filter((t) => t.id !== "biblioteca" && t.id !== "traguardi")
+      .map((tab) => ({
+        hubId: hub.id,
+        hubLabel: hub.label,
+        hubCode: hub.code,
+        tabId: tab.id,
+        tabLabel: tab.label,
+      })),
+  );
+  const currentChainIndex = Math.max(
+    0,
+    flatChainTabs.findIndex((item) => item.tabId === activeTab.id),
+  );
+  const prevChainItem = currentChainIndex > 0 ? flatChainTabs[currentChainIndex - 1] : null;
+  const nextChainItem =
+    currentChainIndex < flatChainTabs.length - 1 ? flatChainTabs[currentChainIndex + 1] : null;
+
+  const handleSelectChainItem = (item: (typeof flatChainTabs)[number]) => {
+    setActiveHubId(item.hubId);
+    setActiveTabId(item.tabId);
+    navigate(`/settings?section=${item.tabId}`);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   const handleSelectHub = (hubId: MasterHubId) => {
     const targetHub = masterHubs.find((h) => h.id === hubId);
     if (!targetHub) return;
@@ -519,14 +547,23 @@ export default function Settings() {
         </div>
 
         {/* Mobile Hub Navigation Strip */}
-        <div className="lg:hidden space-y-3 rounded-2xl border border-[#C5A059]/20 bg-[#0d0f14] p-3.5 shadow-lg">
-          <div className="flex items-center justify-between pb-1">
-            <span className="font-mono text-[10px] uppercase font-bold tracking-widest text-[#C5A059]">
-              Master Hub Operativo
+        <div className="lg:hidden space-y-2.5 rounded-2xl border border-[#C5A059]/20 bg-[#0d0f14] p-3.5 shadow-lg">
+          <div className="flex items-center justify-between gap-2 pb-0.5">
+            <span className="font-mono text-[10px] uppercase font-bold tracking-widest text-[#E8C56A] whitespace-nowrap">
+              CATENA DOSSIER · PASSO {String(currentChainIndex + 1).padStart(2, "0")}/{String(flatChainTabs.length).padStart(2, "0")}
             </span>
-            <span className="font-mono text-[10px] text-muted-foreground/60">
+            <span className="font-mono text-[10px] text-[#C5A059] whitespace-nowrap">
               {activeHub.code}
             </span>
+          </div>
+
+          <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#C5A059] to-[#E8C56A] transition-all duration-300"
+              style={{
+                width: `${Math.round(((currentChainIndex + 1) / Math.max(1, flatChainTabs.length)) * 100)}%`,
+              }}
+            />
           </div>
 
           {/* Horizontal scroll of Master Hubs */}
@@ -698,6 +735,41 @@ export default function Settings() {
             {/* Dynamic Tab Body */}
             <div className="min-h-[460px] pt-1">
               {tabContent[activeTab.id]}
+            </div>
+
+            {/* Mobile Chained Footer Progression (< 1024px) */}
+            <div className="mt-6 flex lg:hidden items-center justify-between gap-2 border-t border-[#C5A059]/20 pt-3.5">
+              {prevChainItem ? (
+                <button
+                  type="button"
+                  onClick={() => handleSelectChainItem(prevChainItem)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#11131c] px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:text-[#F4F4F6] transition-colors whitespace-nowrap"
+                >
+                  ← {prevChainItem.tabLabel}
+                </button>
+              ) : (
+                <span className="font-mono text-[9.5px] uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                  Inizio Catena Dossier
+                </span>
+              )}
+
+              {nextChainItem ? (
+                <button
+                  type="button"
+                  onClick={() => handleSelectChainItem(nextChainItem)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#C5A059]/45 bg-[#C5A059] px-3.5 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] shadow-[0_0_15px_rgba(197,160,89,0.25)] transition-all whitespace-nowrap ml-auto"
+                >
+                  Avanti: {nextChainItem.tabLabel} →
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleSelectChainItem(flatChainTabs[0])}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#C5A059]/35 bg-[#C5A059]/15 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A] transition-all whitespace-nowrap ml-auto"
+                >
+                  Torna al Profilo ↺
+                </button>
+              )}
             </div>
           </section>
         </div>

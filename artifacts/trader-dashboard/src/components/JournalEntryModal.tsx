@@ -5,6 +5,7 @@ import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, UploadCloud, Loader2, Image as ImageIcon, Tag, Plus, Star, Hash, ClipboardCheck, Target, Zap } from "lucide-react";
 import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
+import { MobileChainWizard, QuickSelectChipBar, type ChainStepMeta } from "@/components/ui/MobileChainWizard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -543,6 +544,35 @@ export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketD
     }
   };
 
+  const [modalStep, setModalStep] = useState(0);
+  useEffect(() => {
+    if (isOpen) setModalStep(0);
+  }, [isOpen, entry?.id]);
+
+  const journalChainSteps: ChainStepMeta[] = [
+    {
+      id: "coordinates-execution",
+      code: "01",
+      title: "Coordinate & Esecuzione",
+      subtitle: "Data, esito, ambiente operativo e parametri numerici dell'ordine (Entry, Exit, SL, P&L).",
+      completed: Boolean(tradeDate && (symbol.trim() || result !== "none")),
+    },
+    {
+      id: "context-threshold",
+      code: "02",
+      title: "Disciplina & Custode",
+      subtitle: "Titolo dell'operazione, Tag analitici e spunte importate da Il Custode della Soglia.",
+      completed: Boolean(title.trim()),
+    },
+    {
+      id: "notes-proofs",
+      code: "03",
+      title: "Note & Prove Visive",
+      subtitle: "Annotazioni post-trade, lezioni apprese, screenshot Pre/Post e sigillo finale.",
+      completed: Boolean(content.trim() || existingImages.length > 0 || pendingFiles.length > 0),
+    },
+  ];
+
   useEffect(() => { pendingFilesRef.current = pendingFiles; }, [pendingFiles]);
   useEffect(() => () => pendingFilesRef.current.forEach(file => URL.revokeObjectURL(file.preview)), []);
 
@@ -555,7 +585,7 @@ export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketD
       mobileClassName="max-h-[92dvh] bg-[#07080b]/98 backdrop-blur-2xl border-t border-[#C5A059]/40"
       showCloseButton={!isSaving}
     >
-      <div className="space-y-4">
+      <div className="space-y-3" data-testid="journal-entry-chained-modal">
         {!entry && marketDecisionId && <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">{t("intelligence.linked_note")}</p>}
         {processContext && <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2 text-sm">
           <p className="font-medium">{copy("processEvidence")}</p>
@@ -600,243 +630,307 @@ export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketD
           </div>
         )}
 
-        <div className="grid gap-6 py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">{t("journal_modal.date")}</Label>
-              <Input
-                type="date"
-                aria-label={t("journal_modal.date")}
-                value={tradeDate}
-                onChange={e => setTradeDate(e.target.value)}
-                className="bg-background/50 border-white/10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">{t("journal_modal.result")}</Label>
-              <div className="flex bg-background/50 p-1 rounded-xl border border-white/10">
-                {(['win', 'loss', 'breakeven', 'none'] as const).map(res => (
-                  <button
-                    key={res}
-                    onClick={() => setResult(res)}
-                    className={`flex-1 text-xs sm:text-sm py-1.5 rounded-lg font-medium transition-all ${
-                      result === res
-                        ? res === 'win' ? 'bg-success/20 text-success'
-                        : res === 'loss' ? 'bg-destructive/20 text-destructive'
-                        : res === 'breakeven' ? 'bg-warning/20 text-warning'
-                        : 'bg-white/10 text-white'
-                        : 'text-muted-foreground hover:bg-white/5'
-                    }`}
-                  >
-                    {res === 'win' ? 'Win' : res === 'loss' ? 'Loss' : res === 'breakeven' ? 'BE' : t("journal_modal.result_none")}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {processContext && <fieldset className="space-y-3 rounded-xl border border-primary/20 p-3">
-            <legend className="px-1 text-sm font-medium">{copy("processEvidence")}</legend>
-            <p className="text-xs text-muted-foreground">{copy("grossHint")}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <label className="space-y-1 text-xs">{copy("initialRisk")}<Input type="number" min="0" step="any" value={initialRisk} onChange={event => setInitialRisk(event.target.value)} /></label>
-              <label className="space-y-1 text-xs">{copy("totalCosts")}<Input type="number" min="0" step="any" value={costs} onChange={event => setCosts(event.target.value)} /></label>
-              <label className="space-y-1 text-xs">{copy("currency")}<Input value={currency} maxLength={3} onChange={event => setCurrency(event.target.value.toUpperCase())} /></label>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><label className="space-y-1 text-xs">{copy("openTime")}<Input type="datetime-local" step="1" value={processOpenTime} onChange={event => setProcessOpenTime(event.target.value)} /></label><label className="space-y-1 text-xs">{copy("closeTime")}<Input type="datetime-local" step="1" value={processCloseTime} onChange={event => setProcessCloseTime(event.target.value)} /></label></div>
-            <label className="block space-y-1 text-xs">{copy("adherence")} · {copy("declared")}<select aria-label={`${copy("adherence")} · ${copy("declared")}`} value={adherence} onChange={event => setAdherence(event.target.value as typeof adherence)} className="w-full rounded-md border border-border bg-background p-2 text-base min-h-11">
-              <option value="unknown">{copy("unknown")}</option><option value="conforming">{copy("conforming")}</option><option value="violation">{copy("violation")}</option>
-            </select></label>
-            <label className="block space-y-1 text-xs">{copy("evidenceNote")}<Textarea value={processNote} onChange={event => setProcessNote(event.target.value)} rows={2} /></label>
-          </fieldset>}
-
-          <div className="space-y-3 rounded-xl border border-white/10 bg-background/30 p-3">
-            <div>
-              <Label className="text-muted-foreground">{t("journal_modal.trade.section")}</Label>
-              <p className="text-[11px] text-muted-foreground/70">{t("journal_modal.trade.hint")}</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="trade-execution-environment">{journeyText(language, "environment")}</Label>
-              <select id="trade-execution-environment" aria-label={journeyText(language, "environment")}
-                value={executionEnvironment} disabled={Boolean(entry?.manualTrade && entry.manualTrade.executionEnvironment !== "unknown")}
-                className="h-11 w-full rounded-lg border border-border bg-background px-3 text-base sm:text-sm"
-                onChange={event => setExecutionEnvironment(event.target.value as typeof executionEnvironment)}>
-                <option value="">—</option>
-                {(["simulation", "real", "unknown"] as const).map(value => <option key={value} value={value}>{journeyText(language, value)}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.symbol")}</Label>
-                <Input
-                  aria-label={t("journal_modal.trade.symbol")}
-                  value={symbol}
-                  onChange={e => setSymbol(e.target.value)}
-                  className="bg-background/50 border-white/10 uppercase"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.direction")}</Label>
-                <div className="flex bg-background/50 p-1 rounded-lg border border-white/10">
-                  {(['buy', 'sell'] as const).map(d => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDirection(d)}
-                      className={`flex-1 text-xs py-1 rounded-md font-medium transition-all ${
-                        direction === d
-                          ? d === 'buy' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
-                          : 'text-muted-foreground hover:bg-white/5'
-                      }`}
-                    >
-                      {d === 'buy' ? 'Buy' : 'Sell'}
-                    </button>
-                  ))}
+        <MobileChainWizard
+          steps={journalChainSteps}
+          activeStepIndex={modalStep}
+          onSelectStep={setModalStep}
+          onPrev={modalStep === 0 ? onClose : () => setModalStep((s) => Math.max(0, s - 1))}
+          prevLabel={modalStep === 0 ? t("journal_modal.cancel") : "Indietro"}
+          finalActionLabel={isSaving ? t("journal_modal.saving") : t("journal_modal.save")}
+          onFinalAction={() => void handleSave()}
+          isSubmitting={isSaving}
+          compact
+        >
+          {/* ── PAGINA 01: COORDINATE & ESECUZIONE ── */}
+          {modalStep === 0 && (
+            <div className="space-y-4" data-testid="journal-modal-step-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground text-xs">{t("journal_modal.date")}</Label>
+                  <Input
+                    type="date"
+                    aria-label={t("journal_modal.date")}
+                    value={tradeDate}
+                    onChange={e => setTradeDate(e.target.value)}
+                    className="bg-background/50 border-white/10"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground text-xs">{t("journal_modal.result")}</Label>
+                  <div className="flex bg-background/50 p-1 rounded-xl border border-white/10">
+                    {(['win', 'loss', 'breakeven', 'none'] as const).map(res => (
+                      <button
+                        key={res}
+                        type="button"
+                        onClick={() => setResult(res)}
+                        className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
+                          result === res
+                            ? res === 'win' ? 'bg-success/20 text-success'
+                            : res === 'loss' ? 'bg-destructive/20 text-destructive'
+                            : res === 'breakeven' ? 'bg-warning/20 text-warning'
+                            : 'bg-white/10 text-white'
+                            : 'text-muted-foreground hover:bg-white/5'
+                        }`}
+                      >
+                        {res === 'win' ? 'Win' : res === 'loss' ? 'Loss' : res === 'breakeven' ? 'BE' : t("journal_modal.result_none")}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.profit")}</Label>
-                <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.profit")} value={profit} onChange={e => setProfit(e.target.value)} className="bg-background/50 border-white/10" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.entry")}</Label>
-                <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.entry")} value={entryPrice} onChange={e => setEntryPrice(e.target.value)} className="bg-background/50 border-white/10" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.exit")}</Label>
-                <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.exit")} value={exitPrice} onChange={e => setExitPrice(e.target.value)} className="bg-background/50 border-white/10" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.stop")}</Label>
-                <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.stop")} value={stopLoss} onChange={e => setStopLoss(e.target.value)} className="bg-background/50 border-white/10" />
+
+              <div className="space-y-3 rounded-xl border border-white/10 bg-background/30 p-3">
+                <div>
+                  <Label className="text-muted-foreground text-xs">{t("journal_modal.trade.section")}</Label>
+                  <p className="text-[11px] text-muted-foreground/70">{t("journal_modal.trade.hint")}</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="trade-execution-environment" className="text-xs">{journeyText(language, "environment")}</Label>
+                  <select id="trade-execution-environment" aria-label={journeyText(language, "environment")}
+                    value={executionEnvironment} disabled={Boolean(entry?.manualTrade && entry.manualTrade.executionEnvironment !== "unknown")}
+                    className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                    onChange={event => setExecutionEnvironment(event.target.value as typeof executionEnvironment)}>
+                    <option value="">—</option>
+                    {(["simulation", "real", "unknown"] as const).map(value => <option key={value} value={value}>{journeyText(language, value)}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.symbol")}</Label>
+                    <Input
+                      aria-label={t("journal_modal.trade.symbol")}
+                      value={symbol}
+                      onChange={e => setSymbol(e.target.value)}
+                      className="bg-background/50 border-white/10 uppercase font-mono text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.direction")}</Label>
+                    <div className="flex bg-background/50 p-1 rounded-lg border border-white/10">
+                      {(['buy', 'sell'] as const).map(d => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setDirection(d)}
+                          className={`flex-1 text-xs py-1 rounded-md font-medium transition-all ${
+                            direction === d
+                              ? d === 'buy' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
+                              : 'text-muted-foreground hover:bg-white/5'
+                          }`}
+                        >
+                          {d === 'buy' ? 'Buy' : 'Sell'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.profit")}</Label>
+                    <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.profit")} value={profit} onChange={e => setProfit(e.target.value)} className="bg-background/50 border-white/10 font-mono text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.entry")}</Label>
+                    <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.entry")} value={entryPrice} onChange={e => setEntryPrice(e.target.value)} className="bg-background/50 border-white/10 font-mono text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.exit")}</Label>
+                    <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.exit")} value={exitPrice} onChange={e => setExitPrice(e.target.value)} className="bg-background/50 border-white/10 font-mono text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{t("journal_modal.trade.stop")}</Label>
+                    <Input type="number" inputMode="decimal" aria-label={t("journal_modal.trade.stop")} value={stopLoss} onChange={e => setStopLoss(e.target.value)} className="bg-background/50 border-white/10 font-mono text-xs" />
+                  </div>
+                </div>
+                <QuickSelectChipBar
+                  label="Selezione Rapida Asset"
+                  options={["EUR/USD", "GBP/USD", "XAU/USD", "NAS100", "USD/JPY", "BTC/USD"]}
+                  currentValue={symbol}
+                  mode="replace"
+                  onSelect={(val) => {
+                    setSymbol(val);
+                    if (!title.trim()) {
+                      setTitle(`${val} · ${direction === "buy" ? "Long" : "Short"} Sessione`);
+                    }
+                  }}
+                />
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="space-y-2">
-            <Label className="text-muted-foreground">{t("journal_modal.title_label")}</Label>
-            <Input
-              aria-label={t("journal_modal.title_label")}
-              placeholder={t("journal_modal.title_placeholder")}
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              className="bg-background/50 border-white/10"
-            />
-          </div>
+          {/* ── PAGINA 02: DISCIPLINA & CUSTODE DELLA SOGLIA ── */}
+          {modalStep === 1 && (
+            <div className="space-y-4" data-testid="journal-modal-step-1">
+              <div className="space-y-1.5">
+                <Label className="text-muted-foreground text-xs">{t("journal_modal.title_label")}</Label>
+                <Input
+                  aria-label={t("journal_modal.title_label")}
+                  placeholder={t("journal_modal.title_placeholder")}
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  className="bg-background/50 border-white/10"
+                />
+                <QuickSelectChipBar
+                  label="Titoli Operativi Suggeriti"
+                  options={[
+                    `${symbol || "EUR/USD"} · Sweep Liquidità + FVG`,
+                    `${symbol || "XAU/USD"} · Break & Retest Londra`,
+                    `${symbol || "NAS100"} · Espansione Apertura NY`,
+                  ]}
+                  currentValue={title}
+                  mode="replace"
+                  onSelect={setTitle}
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label className="text-muted-foreground flex items-center gap-1.5">
-              <Tag className="w-3.5 h-3.5" />
-              {t("journal_modal.tags_label")}
-              <span className="text-xs opacity-40 font-normal ml-1">{uiText("auto.ui.ae9109b789")}</span>
-            </Label>
-            <SmartTagInput
-              value={tagList}
-              onChange={setTagList}
-              onSaveTag={(tag) => saveTagMutation.mutate(tag)}
-              savedTags={savedTagsData}
-            />
-            {!processContext && <ChecklistTagPanel
-              activeTags={tagList}
-              onAdd={addTagFromPanel}
-            />}
-          </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5" />
+                  {t("journal_modal.tags_label")}
+                  <span className="text-xs opacity-40 font-normal ml-1">{uiText("auto.ui.ae9109b789")}</span>
+                </Label>
+                <SmartTagInput
+                  value={tagList}
+                  onChange={setTagList}
+                  onSaveTag={(tag) => saveTagMutation.mutate(tag)}
+                  savedTags={savedTagsData}
+                />
+                {!processContext && <ChecklistTagPanel
+                  activeTags={tagList}
+                  onAdd={addTagFromPanel}
+                />}
+              </div>
 
-          <div className="space-y-2">
-            <Label className="text-muted-foreground">{t("journal_modal.notes_label")}</Label>
-            <Textarea
-              placeholder={t("journal_modal.notes_placeholder")}
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              className="min-h-[150px] bg-background/50 border-white/10 resize-y"
-            />
-          </div>
+              {processContext && <fieldset className="space-y-3 rounded-xl border border-primary/20 p-3">
+                <legend className="px-1 text-sm font-medium">{copy("processEvidence")}</legend>
+                <p className="text-xs text-muted-foreground">{copy("grossHint")}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <label className="space-y-1 text-xs">{copy("initialRisk")}<Input type="number" min="0" step="any" value={initialRisk} onChange={event => setInitialRisk(event.target.value)} /></label>
+                  <label className="space-y-1 text-xs">{copy("totalCosts")}<Input type="number" min="0" step="any" value={costs} onChange={event => setCosts(event.target.value)} /></label>
+                  <label className="space-y-1 text-xs">{copy("currency")}<Input value={currency} maxLength={3} onChange={event => setCurrency(event.target.value.toUpperCase())} /></label>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><label className="space-y-1 text-xs">{copy("openTime")}<Input type="datetime-local" step="1" value={processOpenTime} onChange={event => setProcessOpenTime(event.target.value)} /></label><label className="space-y-1 text-xs">{copy("closeTime")}<Input type="datetime-local" step="1" value={processCloseTime} onChange={event => setProcessCloseTime(event.target.value)} /></label></div>
+                <label className="block space-y-1 text-xs">{copy("adherence")} · {copy("declared")}<select aria-label={`${copy("adherence")} · ${copy("declared")}`} value={adherence} onChange={event => setAdherence(event.target.value as typeof adherence)} className="w-full rounded-md border border-border bg-background p-2 text-base min-h-11">
+                  <option value="unknown">{copy("unknown")}</option><option value="conforming">{copy("conforming")}</option><option value="violation">{copy("violation")}</option>
+                </select></label>
+                <label className="block space-y-1 text-xs">{copy("evidenceNote")}<Textarea value={processNote} onChange={event => setProcessNote(event.target.value)} rows={2} /></label>
+              </fieldset>}
+            </div>
+          )}
 
-          <div className="space-y-3">
-            <Label className="text-muted-foreground flex items-center gap-2">
-              <ImageIcon className="w-4 h-4" />
-              {t("journal_modal.images_label")}
-            </Label>
+          {/* ── PAGINA 03: NOTE & PROVE VISIVE ── */}
+          {modalStep === 2 && (
+            <div className="space-y-4" data-testid="journal-modal-step-2">
+              <div className="space-y-1.5">
+                <Label className="text-muted-foreground text-xs">{t("journal_modal.notes_label")}</Label>
+                <Textarea
+                  placeholder={t("journal_modal.notes_placeholder")}
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  className="min-h-[110px] bg-background/50 border-white/10 resize-y text-xs"
+                />
+                <QuickSelectChipBar
+                  label="Annotazioni di Disciplina Rapide"
+                  options={[
+                    "Setup conforme al 100% al piano pre-sessione.",
+                    "Uscita eseguita su target strutturale senza esitazione.",
+                    "Stop Loss rispettato rigorosamente.",
+                  ]}
+                  currentValue={content}
+                  separator="\n"
+                  onSelect={setContent}
+                />
+              </div>
 
-            <div
-              {...getRootProps()}
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
-                isDragActive
-                  ? 'border-primary bg-primary/5'
-                  : 'border-white/10 hover:border-primary/50 hover:bg-white/5'
-              }`}
+              <div className="space-y-2.5">
+                <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  {t("journal_modal.images_label")}
+                </Label>
+
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200 ${
+                    isDragActive
+                      ? 'border-primary bg-primary/5'
+                      : 'border-white/10 hover:border-primary/50 hover:bg-white/5'
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
+                    <UploadCloud className={`w-6 h-6 ${isDragActive ? 'text-primary' : ''}`} />
+                    <p className="text-xs font-medium">
+                      {isDragActive ? t("journal_modal.drop_active") : t("journal_modal.drop_inactive")}
+                    </p>
+                    <p className="text-[10.5px] opacity-70">{t("journal_modal.drop_hint")}</p>
+                  </div>
+                </div>
+
+                {(existingImages.length > 0 || pendingFiles.length > 0) && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-2">
+                    <AnimatePresence>
+                      {existingImages.map((img) => (
+                        <motion.div
+                          key={`ext-${img.id}`}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className="relative group aspect-video rounded-lg overflow-hidden border border-white/10 bg-background"
+                        >
+                          <img src={img.url} alt="Journal entry" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeExistingImage(img.id)}
+                            className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </motion.div>
+                      ))}
+
+                      {pendingFiles.map((file, idx) => (
+                        <motion.div
+                          key={file.preview}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className="relative group aspect-video rounded-lg overflow-hidden border border-primary/50 bg-background"
+                        >
+                          <img src={file.preview} alt="Preview" className="w-full h-full object-cover opacity-80" />
+                          <div className="absolute inset-0 ring-2 ring-inset ring-primary/50 pointer-events-none rounded-lg" />
+                          <button
+                            type="button"
+                            onClick={() => removePendingFile(idx)}
+                            className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </MobileChainWizard>
+
+        {/* Barra di salvataggio rapido se il titolo è già compilato nei primi step */}
+        {modalStep < 2 && title.trim() && (
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 font-mono text-[10px] uppercase tracking-wider"
             >
-              <input {...getInputProps()} />
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <UploadCloud className={`w-8 h-8 ${isDragActive ? 'text-primary' : ''}`} />
-                <p className="text-sm font-medium">
-                  {isDragActive ? t("journal_modal.drop_active") : t("journal_modal.drop_inactive")}
-                </p>
-                <p className="text-xs opacity-70">{t("journal_modal.drop_hint")}</p>
-              </div>
-            </div>
-
-            {(existingImages.length > 0 || pendingFiles.length > 0) && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
-                <AnimatePresence>
-                  {existingImages.map((img) => (
-                    <motion.div
-                      key={`ext-${img.id}`}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="relative group aspect-video rounded-lg overflow-hidden border border-white/10 bg-background"
-                    >
-                      <img src={img.url} alt="Journal entry" className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => removeExistingImage(img.id)}
-                        className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </motion.div>
-                  ))}
-
-                  {pendingFiles.map((file, idx) => (
-                    <motion.div
-                      key={file.preview}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="relative group aspect-video rounded-lg overflow-hidden border border-primary/50 bg-background"
-                    >
-                      <img src={file.preview} alt="Preview" className="w-full h-full object-cover opacity-80" />
-                      <div className="absolute inset-0 ring-2 ring-inset ring-primary/50 pointer-events-none rounded-lg" />
-                      <button
-                        onClick={() => removePendingFile(idx)}
-                        className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
+              {isSaving ? (
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> {t("journal_modal.saving")}</>
+              ) : (
+                <>Salva Subito ({t("journal_modal.save")})</>
+              )}
+            </Button>
           </div>
-        </div>
-
-        <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border">
-          <Button variant="ghost" onClick={onClose} disabled={isSaving}>
-            {t("journal_modal.cancel")}
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-[120px]"
-          >
-            {isSaving ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("journal_modal.saving")}</>
-            ) : (
-              t("journal_modal.save")
-            )}
-          </Button>
-        </div>
+        )}
       </div>
     </LimenResponsiveDrawer>
   );

@@ -6,8 +6,8 @@ tags:
   - aureus/atlas
   - aureus/moc
   - aureus/brain
-version: 1.0.0
-last_updated: 2026-10-25
+version: 1.1.0
+last_updated: 2026-11-05
 ---
 
 # 🏛️ ATLAS — Mappa Concettuale del Sapere AUREUS
@@ -32,8 +32,9 @@ graph TD
     BACKEND["[[04-BACKEND-CONTRACTS]] — Contratti, ORM & API"]
     PERF["[[05-OPTIMIZATION-PERFORMANCE]] — Efficienza & Scaling"]
     SEC["[[06-SECURITY-HARDENING]] — Sicurezza, Auth & GDPR"]
-    AGENTS["[[07-MULTI-AGENT-SYSTEM]] — Il Concilio Autonomo & Regola 95/5"]
+    AGENTS["[[07-MULTI-AGENT-SYSTEM]] — Il Concilio Autonomo & Regola 98/2"]
     MEMORY["[[08-SOVEREIGN-MEMORY-MATRIX]] — Memoria Sovrana, Visione & Benchmark"]
+    ROADMAP["[[09-DEEP-SYSTEMS-AND-LAUNCH-ROADMAP]] — I 10 Flussi Profondi & Roadmap Go-Live"]
 
     ATLAS --> WORKFLOW
     ATLAS --> BRAND
@@ -43,11 +44,15 @@ graph TD
     ATLAS --> SEC
     ATLAS --> AGENTS
     ATLAS --> MEMORY
+    ATLAS --> ROADMAP
 
     AGENTS -.->|Guida & Critica Spietata| WORKFLOW
     AGENTS -.->|Standard Limen UI| FRONTEND
     AGENTS -.->|Contratti & Egress| BACKEND
     MEMORY -.->|Visione & Benchmark| AGENTS
+    ROADMAP -.->|10 Flussi & Go-Live Gate| MEMORY
+    ROADMAP -.->|Blindatura & SLO| SEC
+    ROADMAP -.->|Core Web Vitals & Scaling| PERF
     WORKFLOW -.->|Gate di Rilascio| BACKEND
     WORKFLOW -.->|Gate di Rilascio| FRONTEND
     BRAND -.->|Lessico e Stile| FRONTEND
@@ -110,10 +115,16 @@ graph TD
    - Architettura a Sessioni Annidate: La Sessione Regia (Chat Mamma) e Session Rail per sottotask isolati in parallelo.
 
 8. **[[08-SOVEREIGN-MEMORY-MATRIX]]** — *Memoria Sovrana, Visione & Benchmark Globale*
-   - Memoria stabile e leggera dello stato dell'unione (570 test, 75 route, typecheck, daemon).
+   - Memoria stabile e leggera dello stato dell'unione (572+ test, 75 route, typecheck, daemon).
    - Gerarchia tripartita: Dirigenti (Visione), Manager (Garanzia Completezza), Agenti (Esecuzione).
    - Benchmark comparativo coi top software mondiali: TradingView, Linear, Bloomberg, TradeZella, Bookmap.
    - Strumenti, skill set d'eccellenza e frontiera attiva del monorepo.
+
+9. **[[09-DEEP-SYSTEMS-AND-LAUNCH-ROADMAP]]** — *I 10 Anelli Sovrani & Master Roadmap di Lancio Pubblico*
+   - Architettura profonda dei 10 Flussi Sistemici (5 Anelli della Catena Operativa + 5 Pilastri d'Infrastruttura).
+   - Compilatore a 5 Anelli, Prop Firm Drawdown Shield (`propGuardian.ts`), Motore Sintesi Candele `0ms` e Automa EA Studio (`MQL5`/`cTrader`).
+   - Notaio Crittografico SHA-256 (`/verify/:hash`), Simulazione Monte Carlo in Web Worker e Vault Broker `AES-256-GCM`.
+   - Master Roadmap di Go-Live in 5 Fasi: Sicurezza, Stabilità ad Alta Concorrenza, Compatibilità Cross-Device/PWA, Velocità SLO (`< 235 kB gzip`) e Watchdog Post-Launch.
 
 ---
 
@@ -126,3 +137,5 @@ graph TD
 - `#aureus/workflow` — Comandi shell, toolchain, git e rilasci.
 - `#aureus/performance` — Caching, bundle optimization, database tuning.
 - `#aureus/security` — Autenticazione, RBAC, GDPR, crittografia e igiene chiavi.
+- `#aureus/deep-systems` — Architettura end-to-end dei 10 flussi sistemici di AUREUS OS.
+- `#aureus/roadmap` — Piano strategico e checklist di lancio pubblico (Go-Live).

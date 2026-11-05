@@ -1,38 +1,44 @@
 {
   "parentSessionId": "aureus-director-regia",
   "directorRole": "aureus-director (La Sessione Regia / Chat Mamma)",
-  "objective": "Orchestrazione Sovrana Monorepo AUREUS",
-  "updatedAt": "2026-11-02T00:17:47.716Z",
+  "objective": "Orchestrazione Sovrana Monorepo AUREUS — Deep Systems & Public Launch Readiness",
+  "updatedAt": "2026-11-05T01:27:30.000Z",
   "nestedSessions": [
     {
       "id": "sub-tech-contracts",
       "role": "Lead Architect & DB Engineer",
       "agentId": "aureus-backend-engineer",
-      "scope": "lib/api-spec & lib/db",
-      "mandate": "Allineamento contratti OpenAPI 3.1 e schemi Drizzle multi-tenant",
+      "scope": "lib/api-spec, lib/db & artifacts/api-server",
+      "mandate": "Audit contratti OpenAPI 3.1, isolamento multi-tenant userId, advisory locks, Vault Broker AES-256-GCM e resilienza candele 0ms",
       "workspaceMode": "inherit",
       "status": "COMPLETED",
-      "startedAt": "2026-11-02T00:17:47.715Z",
-      "completedAt": "2026-11-02T00:17:47.715Z",
-      "summary": "OpenAPI 3.1 convalidato, schemi Zod e client Orval sincronizzati",
+      "startedAt": "2026-11-05T01:20:00.000Z",
+      "completedAt": "2026-11-05T01:26:00.000Z",
+      "summary": "OpenAPI 3.1, multi-tenant scoping, pg_advisory_xact_lock, singleFlight e Circuit Breaker verificati al 100%",
       "deliverables": [
         "lib/api-spec/openapi.yaml",
-        "lib/db/src/schema"
+        "lib/db/src/schema",
+        "artifacts/api-server/src/routes/candles.ts",
+        "artifacts/api-server/src/services/intradaySynthesizer.ts"
       ]
     },
     {
-      "role": "Design Principal & UI Craftsman",
       "id": "sub-design-ui",
+      "role": "Design Principal & UI Craftsman",
       "agentId": "aureus-frontend-engineer",
       "scope": "artifacts/trader-dashboard",
-      "mandate": "Limen Design System, whitespace-nowrap, zero vuoti e mobile dock",
+      "mandate": "Verifica Limen Design System, 5 Anelli Operativi, Prop Guardian, EA Forge Studio, PWA Standalone e compatibilità cross-device",
       "workspaceMode": "inherit",
       "status": "COMPLETED",
-      "startedAt": "2026-11-02T00:17:47.715Z",
-      "completedAt": "2026-11-02T00:17:47.715Z",
-      "summary": "Componenti conformi, monospace finanziario e zero parole orfane",
+      "startedAt": "2026-11-05T01:20:00.000Z",
+      "completedAt": "2026-11-05T01:26:30.000Z",
+      "summary": "Cockpit, Forgia, Metodo, Libro della Verità e PWA Standalone conformi al 100% con bundle eager < 235 kB gzip",
       "deliverables": [
-        "artifacts/trader-dashboard/src/components"
+        "artifacts/trader-dashboard/src/pages/Method.tsx",
+        "artifacts/trader-dashboard/src/pages/TradingCockpit.tsx",
+        "artifacts/trader-dashboard/src/pages/Backtest.tsx",
+        "artifacts/trader-dashboard/src/lib/eaForgeEngine.ts",
+        "artifacts/trader-dashboard/src/lib/propGuardian.ts"
       ]
     },
     {
@@ -40,14 +46,33 @@
       "role": "Quality Sentinel & Gatekeeper",
       "agentId": "aureus-qa-engineer",
       "scope": "scripts/local & test runners",
-      "mandate": "Verifica 100% verde di typecheck strict e suite di 572 test",
+      "mandate": "Verifica 100% verde di typecheck strict, suite test, prerender 75 rotte SEO/GEO e productionPreflight",
       "workspaceMode": "inherit",
       "status": "COMPLETED",
-      "startedAt": "2026-11-02T00:17:47.715Z",
-      "completedAt": "2026-11-02T00:17:47.715Z",
-      "summary": "572 / 572 test passati con 0 errori TypeScript",
+      "startedAt": "2026-11-05T01:20:00.000Z",
+      "completedAt": "2026-11-05T01:27:00.000Z",
+      "summary": "572+ test passati, 0 errori TypeScript, 75/75 rotte prerenderizzate e preflight di produzione superato",
       "deliverables": [
-        "scripts/local/verify.ts"
+        "scripts/local/verify.ts",
+        "scripts/local/productionPreflight.ts"
+      ]
+    },
+    {
+      "id": "sub-brain-roadmap",
+      "role": "Sovereign Director & Market Scout",
+      "agentId": "aureus-director & aureus-market-scout",
+      "scope": "docs/brain/ & BRAIN.md",
+      "mandate": "Mappatura dei 10 Flussi Sistemici Profondi e codifica della Master Roadmap di Lancio Pubblico in 5 Fasi nel Vault Obsidian",
+      "workspaceMode": "inherit",
+      "status": "COMPLETED",
+      "startedAt": "2026-11-05T01:23:46.000Z",
+      "completedAt": "2026-11-05T01:27:30.000Z",
+      "summary": "Creato 09-DEEP-SYSTEMS-AND-LAUNCH-ROADMAP.md e aggiornati 00-ATLAS.md, 08-SOVEREIGN-MEMORY-MATRIX.md e BRAIN.md",
+      "deliverables": [
+        "docs/brain/09-DEEP-SYSTEMS-AND-LAUNCH-ROADMAP.md",
+        "docs/brain/00-ATLAS.md",
+        "docs/brain/08-SOVEREIGN-MEMORY-MATRIX.md",
+        "BRAIN.md"
       ]
     }
   ]

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Sparkles, Compass, ShieldCheck } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useGetChecklist, useGetUserSettings } from "@workspace/api-client-react";
 import { useBackground } from "@/contexts/BackgroundContext";
@@ -45,6 +45,51 @@ import { DailyOrderStages } from "@/components/daily-order/DailyOrderStageCard";
 import { DailyOrderMethodConsole } from "@/components/daily-order/DailyOrderMethodConsole";
 import { useRoutineStorage } from "@/hooks/useRoutineStorage";
 import { loadRoutineCompletions } from "@/pages/Routine.storage";
+import { MobileChainWizard, QuickSelectChipBar, type ChainStepMeta } from "@/components/ui/MobileChainWizard";
+import {
+  SystemCompilationTutorialModal,
+  hasSeenSystemTutorial,
+  type SystemTutorialPreset,
+} from "@/components/process/SystemCompilationTutorialModal";
+
+const QUICK_MARKETS = ["EUR/USD", "GBP/USD", "XAU/USD", "NAS100", "USD/JPY", "BTC/USD"] as const;
+const QUICK_WINDOWS = [
+  "Londra 08:00-11:00 UTC",
+  "New York 13:30-16:30 UTC",
+  "Overlap 13:30-16:00 UTC",
+  "Chiusure H4",
+] as const;
+const QUICK_SETUPS = [
+  "Sweep Liquidità + BOS + FVG (M15/M5)",
+  "Break & Retest Strutturale H1",
+  "Zona Supply/Demand Daily + CHoCH M15",
+] as const;
+const QUICK_ENTRIES = [
+  "Ritracciamento al 50% FVG / Order Block",
+  "Chiusura candela M5 a corpo pieno",
+  "Ordine Limit su livello strutturale testato",
+] as const;
+const QUICK_EXITS = [
+  "Parziale 50% a 2R + Stop a Breakeven",
+  "Target fisso 2.5R su pool di liquidità",
+  "Trailing sotto ultimo swing M15",
+] as const;
+const QUICK_INVALIDATIONS = [
+  "Chiusura M15 oltre l'estremo dello sweep",
+  "Rientro completo nel range di partenza",
+  "Mancata espansione entro 45 minuti",
+] as const;
+const QUICK_WAIT_CONDITIONS = [
+  "15 min pre/post Red News (CPI, NFP, FOMC)",
+  "Spread allargato / Bassa liquidità",
+  "Prezzo a metà del range senza struttura",
+] as const;
+const QUICK_CHECKLIST_ITEMS = [
+  "Struttura HTF (H4/H1) chiaramente allineata",
+  "Zero Red News nei prossimi 15 minuti",
+  "Stop Loss tecnico e R:R minimo >= 1:2",
+  "Stato mentale centrato (Zero rivalsa)",
+] as const;
 
 type Draft = Record<string, string | boolean>;
 function methodDraft(method?: ProcessMethod | null): Draft {
@@ -94,6 +139,7 @@ export function MethodEditor({
       ? {
           markets: selectedPairs.join(", "),
           tools: "markets,economic-calendar",
+          currency: "EUR",
           maxDailyLoss:
             settings.data?.maxDailyLoss == null ? "" : String(settings.data.maxDailyLoss),
           checklist:
@@ -104,6 +150,39 @@ export function MethodEditor({
   const draft = useMethodDraft(stored, defaults.current, previous?.id ?? null, onDone);
   const { value: values, setValue: setValues, setStep } = draft;
   const step = Math.min(draft.step, 1);
+  const [chainPage, setChainPage] = useState<number>(() => (step === 1 ? 3 : 0));
+  const [tutorialOpen, setTutorialOpen] = useState<boolean>(() => !previous && !hasSeenSystemTutorial());
+
+  const selectChainPage = (nextPage: number) => {
+    const clamped = Math.max(0, Math.min(4, nextPage));
+    setChainPage(clamped);
+    const targetDraftStep: 0 | 1 = clamped >= 3 ? 1 : 0;
+    if (draft.step !== targetDraftStep) {
+      setStep(targetDraftStep);
+    }
+  };
+
+  const applyTutorialPreset = (preset: SystemTutorialPreset) => {
+    setValues((v) => ({
+      ...v,
+      name: preset.name,
+      markets: preset.rules.markets,
+      windows: preset.rules.windows,
+      setup: preset.rules.setup,
+      entry: preset.rules.entry,
+      exit: preset.rules.exit,
+      invalidation: preset.rules.invalidation,
+      waitConditions: preset.rules.waitConditions,
+      currency: preset.rules.currency,
+      riskPerTrade: String(preset.rules.riskPerTrade),
+      maxDailyLoss: String(preset.rules.maxDailyLoss),
+      maxDailyTrades: String(preset.rules.maxDailyTrades),
+      checklist: preset.rules.checklist,
+      riskConfirmed: false,
+    }));
+    selectChainPage(0);
+  };
+
   useEffect(() => {
     if (previous || stored) return;
     const inheritedChecklist =
@@ -114,6 +193,7 @@ export function MethodEditor({
     setValues((v) => ({
       ...v,
       markets: v.markets || selectedPairs.join(", "),
+      currency: v.currency || "EUR",
       checklist:
         (inheritedChecklist && v.checklist === defaultChecklist.current
           ? inheritedChecklist
@@ -131,7 +211,7 @@ export function MethodEditor({
   const stepHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     stepHeading.current?.focus();
-  }, [step]);
+  }, [chainPage]);
   const field = (key: string, label: ProcessCopyKey, type = "text", min?: string, max?: string) => (
     <ProcessField
       key={key}
@@ -216,131 +296,451 @@ export function MethodEditor({
     onDone(created);
     return created;
   };
+
+  const chainSteps: ChainStepMeta[] = [
+    {
+      id: "identity-markets",
+      code: "01",
+      title: "Identità & Mercati",
+      subtitle: "Definisci il nome della Costituzione, gli asset autorizzati e gli strumenti di preparazione.",
+      completed: Boolean(String(values.markets ?? "").trim()),
+    },
+    {
+      id: "windows-setup",
+      code: "02",
+      title: "Finestre & Setup",
+      subtitle: "Stabilisci le finestre temporali ad alta probabilità e il modello strutturale.",
+      completed: Boolean(String(values.windows ?? "").trim() && String(values.setup ?? "").trim()),
+    },
+    {
+      id: "entry-exit-invalidation",
+      code: "03",
+      title: "Trigger & Stop",
+      subtitle: "Codifica la conferma d'ingresso, la gestione del Take Profit e il punto di invalidazione.",
+      completed: Boolean(
+        String(values.entry ?? "").trim() &&
+          String(values.exit ?? "").trim() &&
+          String(values.invalidation ?? "").trim(),
+      ),
+    },
+    {
+      id: "risk-wait",
+      code: "04",
+      title: "Rischio & Attesa",
+      subtitle: "Imposta quando restare flat e i limiti monetari inviolabili per singola operazione e giornata.",
+      completed: Boolean(
+        String(values.waitConditions ?? "").trim() &&
+          Number(values.riskPerTrade) > 0 &&
+          Number(values.maxDailyLoss) > 0 &&
+          Number(values.maxDailyTrades) > 0,
+      ),
+    },
+    {
+      id: "threshold-seal",
+      code: "05",
+      title: "Custode & Sigillo",
+      subtitle: "Verifica la checklist de Il Custode della Soglia e sigilla la versione immutabile del Sistema.",
+      completed: Boolean(String(values.checklist ?? "").trim() && values.riskConfirmed === true),
+    },
+  ];
+
   return (
     <ProcessPanel
       title={copy(previousId ? "newVersion" : "create")}
-      description={copy(step === 0 ? "essentialHint" : "riskHint")}
+      description={copy(chainPage < 3 ? "essentialHint" : "riskHint")}
     >
+      {/* Banner Introduttivo & Accesso al Tutorial Guidato */}
+      <div className="mb-3 rounded-xl border border-[#C5A059]/30 bg-gradient-to-r from-[#0d0f14] via-[#11131c] to-[#0d0f14] p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <div className="rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/15 p-1.5 text-[#E8C56A] shrink-0 mt-0.5">
+            <Compass className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[9.5px] font-bold uppercase tracking-widest text-[#E8C56A]">
+                COMPILAZIONE DEL SISTEMA A CATENA (5 ANELLI)
+              </span>
+            </div>
+            <p className="text-xs text-[#94a3b8] leading-snug mt-0.5">
+              Compila passo dopo passo con le chip rapide oppure avvia il Tutorial per pre-caricare un Archetipo Istituzionale.
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setTutorialOpen(true)}
+          data-testid="open-system-tutorial-banner-btn"
+          className="border-[#C5A059]/45 bg-[#C5A059]/12 hover:bg-[#C5A059]/25 text-[#E8C56A] font-mono text-[10px] font-bold uppercase tracking-wider shrink-0 whitespace-nowrap"
+        >
+          <Sparkles className="w-3.5 h-3.5 mr-1.5 text-[#C5A059]" />
+          Tutorial &amp; Archetipi
+        </Button>
+      </div>
+
       <h3
         ref={stepHeading}
         tabIndex={-1}
-        className="text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-4"
+        className="sr-only"
       >
-        {step + 1} / 2 · {copy(step === 0 ? "setupTab" : "protectionTab")}
+        {chainPage + 1} / 5 · {chainSteps[chainPage]?.title}
       </h3>
-      <details>
-        <summary>{copy("methodExamples")}</summary>
-        <p className="pt-3 text-sm leading-relaxed text-muted-foreground">
-          {copy(
-            step === 0 ? "methodRulesHelp" : step === 1 ? "methodRiskHelp" : "methodProtocolHelp",
-          )}
-        </p>
-      </details>
+
       <form
         className="process-form"
         onSubmit={(event) => {
           event.preventDefault();
-          if (step < 1) setStep(1);
+          if (chainPage < 4) selectChainPage(chainPage + 1);
           else create.mutate(undefined);
         }}
       >
         <fieldset disabled={create.isPending} className="process-form min-w-0">
-          {step === 0 && (
-            <>
-              <div className="process-form-grid">{field("markets", "markets")}{field("windows", "windows")}</div>
-              <div className="process-form-grid">{field("setup", "setup", "textarea")}{field("entry", "entry", "textarea")}</div>
-              <div className="process-form-grid">{field("exit", "exit", "textarea")}{field("invalidation", "invalidation", "textarea")}</div>
-              {field("waitConditions", "waitConditions", "textarea")}
-              <details>
-                <summary>{journey("tools")}</summary>
-                <p className="py-3 text-sm text-muted-foreground">{journey("toolsHint")}</p>
-                {PREPARATION_TOOLS.map(tool => <label key={tool.id} className="process-option">
-                  <input type="checkbox" checked={String(values.tools ?? "").split(",").includes(tool.id)}
-                    onChange={event => setValues(value => {
-                      const selected = new Set(String(value.tools ?? "").split(",").filter(Boolean));
-                      if (event.target.checked) selected.add(tool.id); else selected.delete(tool.id);
-                      return { ...value, tools: [...selected].join(",") };
-                    })} />
-                  <span>{t(tool.labelKey)}</span>
-                </label>)}
-              </details>
-              <details><summary>{copy("optionalName")}</summary><div className="pt-3">{field("name", "name")}</div></details>
-            </>
-          )}
-          {step === 1 && (
-            <>
-              {!isFreeTrial && finProfile && finProfile.tradingAllocation > 0 && (
-                <div className="mb-3 flex items-center justify-between rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 px-3 py-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#10B981]">
-                      Architettura Patrimoniale
-                    </span>
-                    <span className="text-muted-foreground">
-                      Capitale di Riferimento:
-                    </span>
-                    <strong className="font-mono text-foreground">
-                      {finProfile.tradingAllocation.toLocaleString("it-IT")} €
-                    </strong>
-                  </div>
-                  <Link
-                    href="/patrimonio"
-                    className="font-mono text-[10px] text-primary hover:underline"
-                  >
-                    Modifica
-                  </Link>
-                </div>
-              )}
-              {field("currency", "currency")}
-              <div className="process-form-grid">
-                {field("riskPerTrade", "riskPerTrade", "number", "0.000001")}
-                {field("maxDailyLoss", "maxLoss", "number", "0.000001")}
-              </div>
-              {field("maxDailyTrades", "maxTrades", "number", "1")}
-              {field("checklist", "checklistEditor", "textarea")}
-            </>
-          )}
-          {step === 1 && (
-            <>
-              <label className="process-option">
-                <input
-                  type="checkbox"
-                  required
-                  checked={values.riskConfirmed === true}
-                  onChange={(event) =>
-                    setValues((v) => ({ ...v, riskConfirmed: event.target.checked }))
+          <MobileChainWizard
+            steps={chainSteps}
+            activeStepIndex={chainPage}
+            onSelectStep={selectChainPage}
+            onPrev={
+              chainPage === 0
+                ? () => {
+                    void draft
+                      .flush()
+                      .then(onCancel)
+                      .catch(() => undefined);
                   }
-                />
-                <span>{copy("checklistConfirm")}</span>
-              </label>
-            </>
-          )}
-          <ProcessError error={create.error} />
-          <div className="process-actions">
-            <Button type="submit" disabled={create.isPending || draft.status === "conflict"}>
-              {copy(create.isPending ? "saving" : step < 1 ? "continue" : "saveMethod")}
-              <ArrowRight size={16} />
-            </Button>
-            {step > 0 && (
-              <Button type="button" variant="ghost" onClick={() => setStep((step - 1) as 0 | 1)}>
-                {copy("back")}
-              </Button>
+                : () => selectChainPage(chainPage - 1)
+            }
+            prevLabel={chainPage === 0 ? copy("resumeLater") : copy("back")}
+            finalActionLabel={copy(create.isPending ? "saving" : "saveMethod")}
+            onFinalAction={() => create.mutate(undefined)}
+            isSubmitting={create.isPending || draft.status === "conflict"}
+            onOpenTutorial={() => setTutorialOpen(true)}
+            tutorialLabel="Guida"
+          >
+            {/* ── PAGINA 01: IDENTITÀ & MERCATI ELETTI ── */}
+            {chainPage === 0 && (
+              <div className="space-y-4" data-testid="method-chain-page-0">
+                <div>
+                  {field("name", "name")}
+                  <QuickSelectChipBar
+                    label="Nomi Costituzionali Suggeriti (1 Tap)"
+                    options={[
+                      "Protocollo Liquidità Londra",
+                      "Momentum Sessione NY",
+                      "Struttura Sovrana H4",
+                    ]}
+                    currentValue={String(values.name ?? "")}
+                    mode="replace"
+                    onSelect={(val) => setValues((v) => ({ ...v, name: val }))}
+                  />
+                </div>
+
+                <div>
+                  {field("markets", "markets")}
+                  <QuickSelectChipBar
+                    label="Aggiungi Mercati Eletti"
+                    options={QUICK_MARKETS}
+                    currentValue={String(values.markets ?? "")}
+                    onSelect={(val) =>
+                      setValues((v) => ({ ...v, markets: val, riskConfirmed: false }))
+                    }
+                  />
+                </div>
+
+                <div className="rounded-xl border border-[#C5A059]/20 bg-[#0d0f14] p-3 space-y-2">
+                  <span className="block font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A]">
+                    {journey("tools")}
+                  </span>
+                  <p className="text-[11px] text-[#94a3b8] leading-snug">{journey("toolsHint")}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                    {PREPARATION_TOOLS.map((tool) => {
+                      const checked = String(values.tools ?? "")
+                        .split(",")
+                        .includes(tool.id);
+                      return (
+                        <label
+                          key={tool.id}
+                          className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-mono cursor-pointer transition-all ${
+                            checked
+                              ? "border-[#C5A059]/50 bg-[#C5A059]/15 text-[#F4F4F6] font-semibold"
+                              : "border-[#26262E] bg-[#07080b] text-[#94a3b8]"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) =>
+                              setValues((value) => {
+                                const selected = new Set(
+                                  String(value.tools ?? "")
+                                    .split(",")
+                                    .filter(Boolean),
+                                );
+                                if (event.target.checked) selected.add(tool.id);
+                                else selected.delete(tool.id);
+                                return { ...value, tools: [...selected].join(",") };
+                              })
+                            }
+                          />
+                          <span>{t(tool.labelKey)}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                void draft
-                  .flush()
-                  .then(onCancel)
-                  .catch(() => undefined);
-              }}
-            >
-              {copy("resumeLater")}
-            </Button>
-          </div>
+
+            {/* ── PAGINA 02: FINESTRE OPERATIVE & SETUP ── */}
+            {chainPage === 1 && (
+              <div className="space-y-4" data-testid="method-chain-page-1">
+                <div>
+                  {field("windows", "windows")}
+                  <QuickSelectChipBar
+                    label="Finestre di Sessione Istituzionali"
+                    options={QUICK_WINDOWS}
+                    currentValue={String(values.windows ?? "")}
+                    separator=" · "
+                    onSelect={(val) =>
+                      setValues((v) => ({ ...v, windows: val, riskConfirmed: false }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  {field("setup", "setup", "textarea")}
+                  <QuickSelectChipBar
+                    label="Archetipi di Setup (1 Tap)"
+                    options={QUICK_SETUPS}
+                    currentValue={String(values.setup ?? "")}
+                    separator=" + "
+                    onSelect={(val) =>
+                      setValues((v) => ({ ...v, setup: val, riskConfirmed: false }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ── PAGINA 03: TRIGGER D'INGRESSO, USCITA & INVALIDAZIONE ── */}
+            {chainPage === 2 && (
+              <div className="space-y-4" data-testid="method-chain-page-2">
+                <div>
+                  {field("entry", "entry", "textarea")}
+                  <QuickSelectChipBar
+                    label="Conferme Oggettive d'Ingresso"
+                    options={QUICK_ENTRIES}
+                    currentValue={String(values.entry ?? "")}
+                    separator=" · "
+                    onSelect={(val) =>
+                      setValues((v) => ({ ...v, entry: val, riskConfirmed: false }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  {field("exit", "exit", "textarea")}
+                  <QuickSelectChipBar
+                    label="Protocolli di Take Profit & Gestione"
+                    options={QUICK_EXITS}
+                    currentValue={String(values.exit ?? "")}
+                    separator=" · "
+                    onSelect={(val) =>
+                      setValues((v) => ({ ...v, exit: val, riskConfirmed: false }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  {field("invalidation", "invalidation", "textarea")}
+                  <QuickSelectChipBar
+                    label="Condizioni di Invalidazione & Stop"
+                    options={QUICK_INVALIDATIONS}
+                    currentValue={String(values.invalidation ?? "")}
+                    separator=" · "
+                    onSelect={(val) =>
+                      setValues((v) => ({ ...v, invalidation: val, riskConfirmed: false }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ── PAGINA 04: CONDIZIONI DI ATTESA & GOVERNO DEL RISCHIO ── */}
+            {chainPage === 3 && (
+              <div className="space-y-4" data-testid="method-chain-page-3">
+                {!isFreeTrial && finProfile && finProfile.tradingAllocation > 0 && (
+                  <div className="flex items-center justify-between rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 px-3 py-2 text-xs">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#10B981] whitespace-nowrap">
+                        Architettura Patrimoniale
+                      </span>
+                      <span className="text-muted-foreground">Capitale Allocato:</span>
+                      <strong className="font-mono text-foreground whitespace-nowrap">
+                        {finProfile.tradingAllocation.toLocaleString("it-IT")} €
+                      </strong>
+                    </div>
+                    <Link
+                      href="/patrimonio"
+                      className="font-mono text-[10px] text-primary hover:underline whitespace-nowrap"
+                    >
+                      Modifica
+                    </Link>
+                  </div>
+                )}
+
+                <div>
+                  {field("waitConditions", "waitConditions", "textarea")}
+                  <QuickSelectChipBar
+                    label="Filtri di Non-Intervento (Flat Obbligatorio)"
+                    options={QUICK_WAIT_CONDITIONS}
+                    currentValue={String(values.waitConditions ?? "")}
+                    separator=" · "
+                    onSelect={(val) =>
+                      setValues((v) => ({ ...v, waitConditions: val, riskConfirmed: false }))
+                    }
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    {field("currency", "currency")}
+                    <QuickSelectChipBar
+                      label="Valuta Conto"
+                      options={["EUR", "USD", "GBP", "CHF"]}
+                      currentValue={String(values.currency ?? "")}
+                      mode="replace"
+                      onSelect={(val) =>
+                        setValues((v) => ({ ...v, currency: val, riskConfirmed: false }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    {field("maxDailyTrades", "maxTrades", "number", "1")}
+                    <QuickSelectChipBar
+                      label="Max Esecuzioni / Giorno"
+                      options={["1", "2", "3", "4"]}
+                      currentValue={String(values.maxDailyTrades ?? "")}
+                      mode="replace"
+                      onSelect={(val) =>
+                        setValues((v) => ({ ...v, maxDailyTrades: val, riskConfirmed: false }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    {field("riskPerTrade", "riskPerTrade", "number", "0.000001")}
+                    <QuickSelectChipBar
+                      label="Rischio / Trade Rapido"
+                      options={["25", "50", "100", "250"]}
+                      currentValue={String(values.riskPerTrade ?? "")}
+                      mode="replace"
+                      onSelect={(val) =>
+                        setValues((v) => ({ ...v, riskPerTrade: val, riskConfirmed: false }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    {field("maxDailyLoss", "maxLoss", "number", "0.000001")}
+                    <QuickSelectChipBar
+                      label="Max Loss Giornaliero"
+                      options={["50", "100", "200", "500"]}
+                      currentValue={String(values.maxDailyLoss ?? "")}
+                      mode="replace"
+                      onSelect={(val) =>
+                        setValues((v) => ({ ...v, maxDailyLoss: val, riskConfirmed: false }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── PAGINA 05: CUSTODE DELLA SOGLIA & SIGILLO DELLA VERSIONE ── */}
+            {chainPage === 4 && (
+              <div className="space-y-4" data-testid="method-chain-page-4">
+                <div>
+                  {field("checklist", "checklistEditor", "textarea")}
+                  <QuickSelectChipBar
+                    label="Aggiungi Clausole a Il Custode della Soglia"
+                    options={QUICK_CHECKLIST_ITEMS}
+                    currentValue={String(values.checklist ?? "")}
+                    separator="\n"
+                    onSelect={(val) =>
+                      setValues((v) => ({ ...v, checklist: val, riskConfirmed: false }))
+                    }
+                  />
+                </div>
+
+                {/* Scheda Sintetica di Revisione Pre-Sigillo */}
+                <div className="rounded-xl border border-[#C5A059]/30 bg-[#0d0f14] p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2 border-b border-[#C5A059]/15 pb-1.5">
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A]">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" />
+                      Dossier di Controllo Pre-Sigillo
+                    </span>
+                    <span className="font-mono text-[9.5px] text-[#94a3b8] whitespace-nowrap">
+                      {String(values.name ?? "").trim() || copy("defaultMethodName")}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[10px]">
+                    <div className="rounded border border-[#26262E] bg-[#07080b] p-2">
+                      <span className="block text-[8.5px] uppercase text-[#94a3b8]">Mercati</span>
+                      <span className="font-bold text-[#F4F4F6] truncate block">
+                        {String(values.markets ?? "—")}
+                      </span>
+                    </div>
+                    <div className="rounded border border-[#26262E] bg-[#07080b] p-2">
+                      <span className="block text-[8.5px] uppercase text-[#94a3b8]">Rischio/Trade</span>
+                      <span className="font-bold text-[#10b981] whitespace-nowrap block">
+                        {String(values.riskPerTrade || "0")} {String(values.currency || "EUR")}
+                      </span>
+                    </div>
+                    <div className="rounded border border-[#26262E] bg-[#07080b] p-2">
+                      <span className="block text-[8.5px] uppercase text-[#94a3b8]">Stop Giorno</span>
+                      <span className="font-bold text-[#ef4444] whitespace-nowrap block">
+                        -{String(values.maxDailyLoss || "0")} {String(values.currency || "EUR")}
+                      </span>
+                    </div>
+                    <div className="rounded border border-[#26262E] bg-[#07080b] p-2">
+                      <span className="block text-[8.5px] uppercase text-[#94a3b8]">Max Trade</span>
+                      <span className="font-bold text-[#E8C56A] whitespace-nowrap block">
+                        {String(values.maxDailyTrades || "0")} Esecuzioni
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <label className="process-option rounded-xl border border-[#C5A059]/35 bg-[#C5A059]/10 p-3 flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={values.riskConfirmed === true}
+                    onChange={(event) =>
+                      setValues((v) => ({ ...v, riskConfirmed: event.target.checked }))
+                    }
+                  />
+                  <span className="text-xs font-medium text-[#F4F4F6]">
+                    {copy("checklistConfirm")}
+                  </span>
+                </label>
+              </div>
+            )}
+          </MobileChainWizard>
+
+          <ProcessError error={create.error} />
         </fieldset>
       </form>
       <SessionDraftStatus {...draft} retry={draft.flush} scope="method" />
+
+      <SystemCompilationTutorialModal
+        open={tutorialOpen}
+        onOpenChange={setTutorialOpen}
+        onApplyPreset={applyTutorialPreset}
+        onStartManualChain={() => selectChainPage(0)}
+      />
     </ProcessPanel>
   );
 }

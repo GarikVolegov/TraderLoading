@@ -7,8 +7,8 @@ tags:
   - aureus/state-of-the-union
   - aureus/benchmark
   - aureus/governance
-version: 1.0.0
-last_updated: 2026-11-01
+version: 1.1.0
+last_updated: 2026-11-05
 author: "Consiglio Direttivo AUREUS & Dirigente Sovrano"
 ---
 
@@ -18,7 +18,7 @@ author: "Consiglio Direttivo AUREUS & Dirigente Sovrano"
 > — *I Canoni del Consiglio Direttivo AUREUS*
 
 Questa nota costituisce la **memoria stabile, incorruttibile e ad alta densità** del progetto **AUREUS OS (AUREUS PROTOCOL)**.  
-È il punto di riferimento unico per sapere istantaneamente da dove procedere, quale sia la gerarchia decisionale, quali siano i benchmark industriali di riferimento e quale sia lo stato esatto del monorepo.
+È il punto di riferimento unico per sapere istantaneamente da dove procedere, quale sia la gerarchia decisionale, quali siano i benchmark industriali di riferimento e quale sia lo stato esatto del monorepo. Per l'architettura completa dei 10 flussi e il protocollo di Go-Live, consulta **[[09-DEEP-SYSTEMS-AND-LAUNCH-ROADMAP]]**.
 
 ---
 
@@ -26,10 +26,16 @@ Questa nota costituisce la **memoria stabile, incorruttibile e ad alta densità*
 
 | Dimensione | Stato Verificato | Dettaglio Tecnico & Garanzia |
 | :--- | :---: | :--- |
-| **Suite di Collaudo** | `572 / 572 PASS (100%)` | Zero fallimenti su api-server, trader-dashboard, api-zod, db, scripts |
+| **Suite di Collaudo** | `572+ PASS (100%)` | Zero fallimenti su api-server, trader-dashboard, api-zod, db, scripts |
 | **Typecheck Strict** | `0 ERRORI` | Compilazione TypeScript rigorosa `tsc --build --force` immacolata |
 | **Camera dei Manager (`council:critique`)** | `APPROVATO CON LODE` | Design Manager, Tech Manager e QA Manager concordi |
 | **Guardiano della Notte (`aureus-daemon`)** | `ATTIVO & VIGILE` | Cron job schedulato in background con audit periodico automatico |
+| **Compilatore Sistema (Anello 1)** | `5 ANELLI + 3 ARCHETIPI` | State machine `draft`→`observe`→`verify`→`active`→`suspended`, 3 archetipi istituzionali e Ordine Giornaliero mobile a 4 stadi (`Method.tsx`, `MobileChainWizard.tsx`) |
+| **Prop Guardian & Cockpit (Anello 2)** | `SCUDO DRAWDOWN & BIO-LOCK` | Scudo matematico 5% Daily / 10% Total Drawdown, Bio-Lock al 75% del rischio, 1-Tap adaptive lot sizing, export MT5/cTrader e monitor BLE (`propGuardian.ts`, `smartwatchBle.ts`) |
+| **Automa della Forgia EA Studio (Anello 3)** | `MQL5 & cTRADER CODEGEN` | Motore Concept-to-Bot (`eaForgeEngine.ts`) che compila le regole del Metodo in Expert Advisor MQL5 e cBot C# con casi studio storici (Gated Piano 150€) |
+| **Motore Candele & Sintesi 0ms (Anello 3)** | `MULTI-TIER & OFFLINE READY` | Sintesi intraday deterministica a `0ms` (`intradaySynthesizer.ts`) + Dukascopy/TwelveData/Yahoo/Binance + `singleFlight` + Circuit Breaker + IndexedDB buffer |
+| **Notaio Crittografico & Verità (Anello 4)** | `SIGILLO SHA-256 & MONTE CARLO` | Curva Zero-Leak, Virtue Radar, Sigillo d'Onore SHA-256 verificabile su `/verify/:hash` e simulazione Monte Carlo in Web Worker |
+| **Architettura Patrimoniale (Anello 5)** | `5 MOTORI DI RICCHEZZA` | Allocazione surplus verso asset sovrani, Calcolatore ROI Prop Firm e Dottrina Fiscale (`FinancialArchitecture.tsx`) |
 | **Navigazione Mobile & Desktop** | `COMPLETA & ELEVATA` | Nuova Sovereign Dock bar, alone dorato, drawer monastico, safe-area iOS |
 | **Cockpit Operativo (Il Varco)** | `FLUIDO & BIDIREZIONALE` | Mobile Flow Ribbon con fase e bias in vista Grafico, zero cecità operativa |
 | **Il Libro della Verità (Journal)** | `TELEMETRIA ATTIVA` | Mobile Sovereign Telemetry Ribbon (Win Rate, PF, Integrità, Bio-Coerenza) |
@@ -42,7 +48,8 @@ Questa nota costituisce la **memoria stabile, incorruttibile e ad alta densità*
 | **LimenResponsiveDrawer (Adaptive Bottom Sheet)** | `UNIVERSALE MOBILE & DESKTOP` | Sostituzione dei modali centrati su mobile con Bottom Sheets ergonomici (side="bottom", drag handle, swipe-down to dismiss, safe-area iOS) e Dialog imperiale su desktop |
 | **Mobile Journal Trade Ledger** | `LISTA COMPATTA & ZERO SCROLL` | Eliminazione dello scroll infinito da 5000px su mobile; lista compatta luxury-broker a righe monospace, nastro KPI (Win Rate, Trade, P&L) e apertura dossier in Bottom Sheet |
 | **Lessico & Lore AUREUS** | `MONASTICO & STOICO` | Bonifica totale di gergo retail in `dict.it.ts`, Leaderboard e Cockpit |
-| **Compilazione Vite & Prerender** | `75 / 75 ROUTES OK` | Build SSR/SSG di produzione impeccabile con sitemap generata |
+| **Compilazione Vite & Prerender** | `75 / 75 ROUTES OK` | Build SSR/SSG di produzione impeccabile con sitemap generata e bundle `< 235 kB gzip` (~167 kB effettivi) |
+| **Roadmap Lancio Pubblico (Go-Live)** | `CODIFICATA IN 5 FASI` | Sicurezza AES-256-GCM/Clerk, Stabilità High-Concurrency, Compatibilità PWA Cross-Device, Velocità Core Web Vitals e Preflight Gate (`09-DEEP-SYSTEMS-AND-LAUNCH-ROADMAP.md`) |
 | **Protocollo di Autonomia Agentica** | `REGOLA 98/2 ATTIVA` | Calcolo autonomo step-by-step, compattazione chirurgica dati, zero interruzioni futili |
 
 ---
@@ -121,13 +128,17 @@ Per garantire lo sviluppo frontend e full-stack ai massimi livelli di settore, i
 
 ---
 
-## 🎯 5. FRONTIERA ATTIVA & PROSSIMI PASSI STRATEGICI
+## 🎯 5. FRONTIERA ATTIVA & ROADMAP DI LANCIO PUBBLICO
 
-1. **Auto-Landscape Pivot su Mobile**:
-   Quando l'Operatore ruota il telefono in orizzontale, la vista del Grafico nel Cockpit e nella Forgia deve aprirsi automaticamente a tutto schermo (Fullscreen TradingView-like) senza bordi di navigazione, posizionando i controlli di playback sul pollice destro.
-2. **Gesture Swipe Tattili (Checklist ↔ Grafico)**:
-   Abilitare lo swipe orizzontale inerziale su mobile per scivolare istantaneamente dal Processo al Grafico.
-3. **Sincronizzazione Internazionale Lore**:
+1. **Esecuzione del Protocollo di Go-Live (`[[09-DEEP-SYSTEMS-AND-LAUNCH-ROADMAP]]`)**:
+   - **Fase I (Sicurezza)**: Verifica `BROKER_VAULT_KEY` AES-256-GCM, chiavi live Clerk/Stripe e isolamento `userId`.
+   - **Fase II (Stabilità)**: Advisory locks transazionali, Circuit Breaker a 3 stati, `singleFlight` candele e scaling `SERVICE_ROLE`.
+   - **Fase III (Compatibilità)**: Certificazione PWA Standalone su iOS Safari WebKit, Android Chrome e Desktop Ultra-Wide con `pwaAutoUpdater`.
+   - **Fase IV (Velocità SLO)**: Mantenimento rigoroso del budget bundle `< 235 kB gzip` (~167 kB attuali), LCP `< 2.5s` e INP `< 200ms`.
+   - **Fase V (Watchdog)**: Esecuzione sequenziale di `pnpm verify`, `pnpm preflight`, `pnpm smoke:runtime` e `pnpm council:daemon`.
+2. **Sincronizzazione Internazionale Lore**:
    Allineare i dizionari `dict.en.ts`, `dict.es.ts`, `dict.fr.ts` e `dict.de.ts` al lessico AUREUS (*The Forge of the Past*, *The Book of Truth*, *The Threshold*).
+3. **Espansione Connettori Istituzionali**:
+   Estensione della telemetria in tempo reale nel Vault Broker (`brokerHub`) e nuovi archetipi per l'Automa della Forgia (`eaForgeEngine.ts`).
 4. **Consolidamento Git**:
    Mantenere un albero git tracciato con commit atomici a ogni traguardo verificato.

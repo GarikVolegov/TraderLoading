@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import {
   CheckCircle2,
@@ -11,11 +12,16 @@ import {
   FlaskConical,
   GraduationCap,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { SigilIcon } from "@/components/ui/SigilIcon";
 import { Badge } from "@/components/ui/badge";
 import type { ProcessMethod, ProcessState } from "@/lib/traderProcessApi";
 import type { FinancialProfile } from "@/lib/financialProfileApi";
+import { SystemCompilationTutorialModal } from "@/components/process/SystemCompilationTutorialModal";
+import { synestheticClick } from "@/lib/soundFx";
 
 interface StageCardProps {
   state?: ProcessState | null;
@@ -24,6 +30,13 @@ interface StageCardProps {
   morningDone?: boolean;
   onOpenRoutine?: () => void;
 }
+
+const MOBILE_DAILY_STAGES = [
+  { id: 1, code: "01", label: "Pre-Sessione", subtitle: "Allineamento, Rischio & Macro" },
+  { id: 2, code: "02", label: "Il Varco", subtitle: "Esecuzione Operativa Conscia" },
+  { id: 3, code: "03", label: "Libro Verità", subtitle: "Registrazione & Responsabilità" },
+  { id: 4, code: "04", label: "Addestramento", subtitle: "Forgia, Dottrina & Gradi" },
+] as const;
 
 export function DailyOrderStages({
   state,
@@ -35,6 +48,8 @@ export function DailyOrderStages({
   const isSessionActive = Boolean(session && session.state !== "closed");
   const isSessionClosed = session?.state === "closed";
   const rules = method?.rules;
+  const [mobileStage, setMobileStage] = useState<1 | 2 | 3 | 4>(1);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
 
   // Calcoli finanziari e limiti
   const tradingAllocation = finProfile?.tradingAllocation ?? 0;
@@ -43,9 +58,65 @@ export function DailyOrderStages({
   const currency = rules?.currency ?? "EUR";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
+      {/* ── CATENA MOBILE A 4 TAPPE (Visibile solo su mobile < 768px) ── */}
+      <div
+        className="md:hidden rounded-2xl border border-[#C5A059]/30 bg-[#0d0f14] p-3 shadow-lg space-y-2.5"
+        data-testid="daily-order-mobile-chain"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="rounded border border-[#C5A059]/40 bg-[#C5A059]/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-[#E8C56A] whitespace-nowrap">
+              CATENA {mobileStage}/4
+            </span>
+            <span className="font-display text-xs font-bold uppercase tracking-wider text-[#F4F4F6] truncate">
+              {MOBILE_DAILY_STAGES[mobileStage - 1].label}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              setTutorialOpen(true);
+            }}
+            data-testid="daily-stages-open-tutorial-btn"
+            className="inline-flex items-center gap-1 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap cursor-pointer"
+          >
+            <Sparkles className="w-2.5 h-2.5 text-[#C5A059]" />
+            <span>Tutorial Sistema</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-4 gap-1">
+          {MOBILE_DAILY_STAGES.map((stage) => {
+            const active = stage.id === mobileStage;
+            const done = stage.id < mobileStage;
+            return (
+              <button
+                key={stage.id}
+                type="button"
+                onClick={() => {
+                  synestheticClick();
+                  setMobileStage(stage.id);
+                }}
+                data-testid={`daily-stage-tab-${stage.id}`}
+                className={`rounded-lg py-1.5 px-1 font-mono text-[9.5px] font-bold uppercase transition-all whitespace-nowrap cursor-pointer ${
+                  active
+                    ? "bg-[#C5A059] text-[#07080b] shadow-xs"
+                    : done
+                      ? "border border-[#10b981]/35 bg-[#10b981]/10 text-[#10b981]"
+                      : "border border-[#26262E] bg-[#07080b] text-[#94a3b8]"
+                }`}
+              >
+                {stage.code} · {stage.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── STAGE 1: PREPARAZIONE & ALLINEAMENTO (PRE-MARKET) ── */}
-      <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 sm:p-7 shadow-sm">
+      <section className={`${mobileStage === 1 ? "block" : "hidden md:block"} relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 sm:p-7 shadow-sm`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary">
@@ -194,7 +265,7 @@ export function DailyOrderStages({
       </section>
 
       {/* ── STAGE 2: ACCESSO AL VARCO (LIVE SESSION) ── */}
-      <section className="relative overflow-hidden rounded-2xl border border-primary/40 bg-card p-5 sm:p-7 shadow-lg">
+      <section className={`${mobileStage === 2 ? "block" : "hidden md:block"} relative overflow-hidden rounded-2xl border border-primary/40 bg-card p-4 sm:p-7 shadow-lg`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/40 bg-primary/20 text-primary shadow-sm">
@@ -275,7 +346,7 @@ export function DailyOrderStages({
       </section>
 
       {/* ── STAGE 3: IL SIGILLO DELLA VERITÀ (POST-SESSIONE) ── */}
-      <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 sm:p-7 shadow-sm">
+      <section className={`${mobileStage === 3 ? "block" : "hidden md:block"} relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 sm:p-7 shadow-sm`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-500/40 bg-blue-500/10 text-blue-400">
@@ -332,7 +403,7 @@ export function DailyOrderStages({
       </section>
 
       {/* ── STAGE 4: ADDESTRAMENTO & ASCESA (OFF-MARKET) ── */}
-      <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 sm:p-7 shadow-sm">
+      <section className={`${mobileStage === 4 ? "block" : "hidden md:block"} relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 sm:p-7 shadow-sm`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-400">
@@ -442,6 +513,54 @@ export function DailyOrderStages({
           </Link>
         </div>
       </section>
+
+      {/* ── BARRA DI CONCATENAZIONE MOBILE TRA LE 4 TAPPE ── */}
+      <div
+        className="md:hidden rounded-xl border border-[#C5A059]/30 bg-[#0d0f14] p-2.5 flex items-center justify-between gap-2 shadow-lg"
+        data-testid="daily-order-mobile-chain-footer"
+      >
+        <button
+          type="button"
+          disabled={mobileStage === 1}
+          onClick={() => {
+            synestheticClick();
+            setMobileStage((prev) => Math.max(1, prev - 1) as 1 | 2 | 3 | 4);
+          }}
+          className="inline-flex items-center gap-1 rounded-lg border border-[#C5A059]/25 bg-[#11131c] disabled:opacity-35 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] whitespace-nowrap cursor-pointer"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          <span>Tappa Prec.</span>
+        </button>
+
+        <span className="font-mono text-[9.5px] text-[#C5A059] whitespace-nowrap">
+          Tappa {mobileStage} di 4
+        </span>
+
+        {mobileStage < 4 ? (
+          <button
+            type="button"
+            onClick={() => {
+              synestheticClick();
+              setMobileStage((prev) => Math.min(4, prev + 1) as 1 | 2 | 3 | 4);
+            }}
+            data-testid="daily-stage-next-btn"
+            className="inline-flex items-center gap-1 rounded-lg bg-[#C5A059] hover:bg-[#E8C56A] px-3.5 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] whitespace-nowrap cursor-pointer shadow-sm"
+          >
+            <span>Tappa {mobileStage + 1}: {MOBILE_DAILY_STAGES[mobileStage as 1 | 2 | 3].label}</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        ) : (
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 rounded-lg bg-[#10b981] px-3.5 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] whitespace-nowrap shadow-sm"
+          >
+            <span>Apri Il Varco</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        )}
+      </div>
+
+      <SystemCompilationTutorialModal open={tutorialOpen} onOpenChange={setTutorialOpen} />
     </div>
   );
 }

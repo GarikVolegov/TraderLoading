@@ -12,8 +12,8 @@ tags:
   - aureus/backend
   - aureus/performance
   - aureus/security
-version: 1.0.0
-last_updated: 2026-10-25
+version: 1.1.0
+last_updated: 2026-11-05
 author: "Consiglio Direttivo AUREUS"
 ---
 
@@ -43,8 +43,9 @@ graph TD
         BACKEND["[[docs/brain/04-BACKEND-CONTRACTS|04-BACKEND-CONTRACTS (Architettura & OpenAPI)]]"]
         PERF["[[docs/brain/05-OPTIMIZATION-PERFORMANCE|05-OPTIMIZATION-PERFORMANCE (Efficienza & Scale)]]"]
         SEC["[[docs/brain/06-SECURITY-HARDENING|06-SECURITY-HARDENING (Sicurezza, Auth & GDPR)]]"]
-        AGENTS["[[docs/brain/07-MULTI-AGENT-SYSTEM|07-MULTI-AGENT-SYSTEM (Il Concilio Autonomo 95/5)]]"]
+        AGENTS["[[docs/brain/07-MULTI-AGENT-SYSTEM|07-MULTI-AGENT-SYSTEM (Il Concilio Autonomo 98/2)]]"]
         MEMORY["[[docs/brain/08-SOVEREIGN-MEMORY-MATRIX|08-SOVEREIGN-MEMORY-MATRIX (Memoria & Benchmark)]]"]
+        ROADMAP["[[docs/brain/09-DEEP-SYSTEMS-AND-LAUNCH-ROADMAP|09-DEEP-SYSTEMS-AND-LAUNCH-ROADMAP (10 Flussi & Go-Live)]]"]
     end
 
     MASTER --> ATLAS
@@ -56,6 +57,7 @@ graph TD
     ATLAS --> SEC
     ATLAS --> AGENTS
     ATLAS --> MEMORY
+    ATLAS --> ROADMAP
 
     WORKFLOW -.->|Gate 'pnpm verify'| BACKEND
     WORKFLOW -.->|Gate 'pnpm verify'| FRONTEND
@@ -64,6 +66,7 @@ graph TD
     BACKEND -.->|Multi-tenant Isolation| SEC
     FRONTEND -.->|Lazy Loading & Bundle| PERF
     BACKEND -.->|Indici & No N+1| PERF
+    ROADMAP -.->|10 Anelli & Checklist Lancio| MEMORY
 ```
 
 ---
@@ -337,6 +340,13 @@ Per approfondire: consulta la nota atomica **[[docs/brain/05-OPTIMIZATION-PERFOR
    - Le feature a pagamento o di notifica rimangono spente di default finché le relative variabili non sono esplicitamente dichiarate.
 
 Per approfondire: consulta la nota atomica **[[docs/brain/06-SECURITY-HARDENING]]**.
+
+---
+
+## 7. 🚀 I 10 FLUSSI SISTEMICI PROFONDI & ROADMAP DI LANCIO PUBBLICO
+
+L'architettura end-to-end dei **10 Flussi Sistemici (Deep System Flows)** di AUREUS OS — dai 5 Anelli della Catena Operativa (*Costituzione del Sistema*, *Il Varco & Prop Guardian*, *La Forgia & Automa EA Studio*, *Il Libro della Verità & Notaio SHA-256*, *Architettura Patrimoniale*) fino all'infrastruttura delle *Arene Real-Time*, *Dottrina del Tempo*, *Agorà Stripe Connect*, *Vault Broker AES-256-GCM* e *Fortezza PWA/SEO/GEO* — insieme alla **Master Roadmap di Lancio Pubblico in 5 Fasi (Sicurezza, Stabilità, Compatibilità, Velocità SLO `< 235 kB gzip` e Go-Live Watchdog)** è codificata in:
+👉 **[[docs/brain/09-DEEP-SYSTEMS-AND-LAUNCH-ROADMAP]]** e **[[docs/brain/08-SOVEREIGN-MEMORY-MATRIX]]**.
 
 ---
 

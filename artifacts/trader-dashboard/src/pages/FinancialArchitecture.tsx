@@ -776,7 +776,25 @@ export default function FinancialArchitecture() {
       />
 
       {/* ─── MOBILE STEP SWITCHER (< 1024px) ─── */}
-      <div className="flex lg:hidden items-center justify-between gap-2 px-2 pt-1 pb-2 border-b border-[#C5A059]/20 shrink-0 mobile-compact-bar">
+      <div className="flex flex-col lg:hidden gap-1.5 px-2 pt-1 pb-2 border-b border-[#C5A059]/20 shrink-0 mobile-compact-bar">
+        <div className="flex items-center justify-between gap-2 text-[9px] font-mono uppercase tracking-wider px-0.5">
+          <span className="text-[#E8C56A] font-bold">
+            CATENA PATRIMONIALE · PASSO 0{mobileStep}/03
+          </span>
+          <span className="text-slate-400 whitespace-nowrap">
+            {mobileStep === 1
+              ? "Fotografia & Residenza"
+              : mobileStep === 2
+              ? "Allocazione 5 Motori"
+              : "Stress Test & Sigillo"}
+          </span>
+        </div>
+        <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#C5A059] to-[#E8C56A] transition-all duration-300"
+            style={{ width: `${Math.round((mobileStep / 3) * 100)}%` }}
+          />
+        </div>
         <div className="grid grid-cols-3 gap-1 rounded-lg border border-[#C5A059]/25 bg-[#07080b] p-0.5 text-[10px] font-mono flex-1">
           <button
             type="button"
@@ -2011,6 +2029,49 @@ export default function FinancialArchitecture() {
           </div>
           </LimenPullToRefresh>
         </div>
+      </div>
+
+      {/* ─── MOBILE BOTTOM CHAINED PROGRESSION BAR (< 1024px) ─── */}
+      <div className="flex lg:hidden items-center justify-between gap-2 px-2.5 py-2 border-t border-[#C5A059]/25 bg-[#07080b]/95 shrink-0">
+        {mobileStep > 1 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setMobileStep((prev) => (prev === 3 ? 2 : 1));
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#11131c] px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:text-foreground transition-colors whitespace-nowrap"
+          >
+            ← {mobileStep === 3 ? "02 · I 5 Motori" : "01 · Fotografia"}
+          </button>
+        ) : (
+          <span className="font-mono text-[9.5px] uppercase tracking-wider text-slate-500">
+            Passo 1 di 3 · Fotografia
+          </span>
+        )}
+
+        {mobileStep < 3 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setMobileStep((prev) => (prev === 1 ? 2 : 3));
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#C5A059]/45 bg-[#C5A059] px-3.5 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] shadow-[0_0_15px_rgba(197,160,89,0.25)] transition-all whitespace-nowrap ml-auto"
+          >
+            Avanti: {mobileStep === 1 ? "02 · I 5 Motori" : "03 · Stress Test"} →
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleSaveAndActivate}
+            disabled={updateMutation.isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/50 bg-emerald-500 px-3.5 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] shadow-[0_0_15px_rgba(16,185,129,0.25)] transition-all whitespace-nowrap ml-auto"
+          >
+            <Save className="h-3.5 w-3.5" />
+            <span>Attiva Protocollo</span>
+          </button>
+        )}
       </div>
     </PageLayout>
   );

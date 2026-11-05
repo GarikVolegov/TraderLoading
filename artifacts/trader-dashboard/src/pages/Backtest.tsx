@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO } from "date-fns";
 import {
   Plus, Trash2, TrendingUp, TrendingDown,
-  BarChart3, FlaskConical, ChevronRight, Play, ArrowUpRight,
+  BarChart3, FlaskConical, ChevronRight, ChevronLeft, Play, ArrowUpRight,
   Target, Layers, Zap, Flame, Gamepad2, RotateCcw, DollarSign, Swords, Dices, EyeOff, Bot,
 } from "lucide-react";
 import { PageLayout } from "@/components/PageLayout";
@@ -41,6 +41,8 @@ import { LimenServiceLockGate } from "@/components/candidacy/LimenServiceLockGat
 import { useEdgeSwipe } from "@/hooks/useEdgeSwipe";
 import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import { LimenPullToRefresh } from "@/components/ui/LimenPullToRefresh";
+import { MobileChainWizard, QuickSelectChipBar, type ChainStepMeta } from "@/components/ui/MobileChainWizard";
+import { synestheticClick } from "@/lib/soundFx";
 
 const BacktestTournamentHub = lazy(() =>
   import("@/components/backtest-tournament/BacktestTournamentHub").then((m) => ({
@@ -127,6 +129,31 @@ function NewSessionForm({
     setStartDateTime(utcDateTimeInput(generateRandomTradingTimestamp(firstTime, lastTime != null ? lastTime - 30 * 86400 : null, pair)));
   };
 
+  const [formStep, setFormStep] = useState(0);
+  const newSessionSteps: ChainStepMeta[] = [
+    {
+      id: "identity-asset",
+      code: "01",
+      title: "Identità & Asset",
+      subtitle: "Definisci il nome della sessione, il protocollo strategico, lo strumento e il timeframe.",
+      completed: Boolean(name.trim() && pair && timeframe),
+    },
+    {
+      id: "horizon-blind",
+      code: "02",
+      title: "Orizzonte Storico",
+      subtitle: "Scegli una data storica precisa, un anno specifico o il Replay Cieco anti-bias.",
+      completed: Boolean(startDateTime || blindStart),
+    },
+    {
+      id: "review-launch",
+      code: "03",
+      title: "Riepilogo & Avvio",
+      subtitle: "Verifica i parametri della campagna storica prima di aprire il Banco di Forgiatura.",
+      completed: Boolean(name.trim() && !startOutsideHistory),
+    },
+  ];
+
   const handleSubmit = async () => {
     if (!name.trim()) return;
     try {
@@ -152,150 +179,217 @@ function NewSessionForm({
     }
   };
 
+  const canSubmitSession =
+    Boolean(name.trim()) &&
+    !createMutation.isPending &&
+    !startOutsideHistory &&
+    !(startDateTime !== "" && selectedStartTime == null);
+
   return (
-    <div className="space-y-4">
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
-            {uiText("backtest.session_name")}
-          </label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={uiText("auto.ui.41eceb478a")}
-            className="h-9 text-xs font-mono"
-            autoFocus
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
-            {uiText("backtest.strategy")}
-          </label>
-          <Input
-            value={strategy}
-            onChange={(e) => setStrategy(e.target.value)}
-            placeholder={uiText("auto.ui.a4b1c0aace")}
-            className="h-9 text-xs font-mono"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="space-y-1">
-            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
-              {uiText("auto.ui.569cf0cb1d")}
-            </label>
-            <select
-              value={pair}
-              onChange={(e) => setPair(e.target.value)}
-              className="w-full h-9 px-2.5 rounded-md border border-border bg-background text-xs font-mono focus:border-primary focus:outline-none"
-            >
-              {pairOptions.map((p, i) => {
-                const userLabelCount = userPairs.length;
-                if (userLabelCount > 0 && i === userLabelCount) {
-                  return [
-                    <option key="__sep" disabled>{uiText("auto.ui.aba10da8de")}</option>,
-                    <option key={p} value={p}>{p}</option>,
-                  ];
-                }
-                return <option key={p} value={p}>{p}</option>;
-              })}
-            </select>
+    <div className="space-y-3" data-testid="new-session-chained-form">
+      <MobileChainWizard
+        steps={newSessionSteps}
+        activeStepIndex={formStep}
+        onSelectStep={setFormStep}
+        onPrev={formStep === 0 ? onClose : () => setFormStep((s) => Math.max(0, s - 1))}
+        prevLabel={formStep === 0 ? uiText("auto.ui.6c3de5381b") : "Indietro"}
+        canProceed={formStep === 0 ? Boolean(name.trim()) : formStep === 1 ? !startOutsideHistory : canSubmitSession}
+        finalActionLabel={uiText("auto.ui.1a33586f3b")}
+        onFinalAction={() => void handleSubmit()}
+        isSubmitting={createMutation.isPending}
+        compact
+      >
+        {formStep === 0 && (
+          <div className="space-y-3" data-testid="new-session-step-0">
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+                {uiText("backtest.session_name")}
+              </label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={uiText("auto.ui.41eceb478a")}
+                className="h-9 text-xs font-mono"
+                autoFocus
+              />
+              <QuickSelectChipBar
+                label="Nomi Campagna Suggeriti"
+                options={[
+                  `Campagna ${pair} Londra`,
+                  `Validazione Sweep ${pair}`,
+                  `Test Struttura ${timeframe}`,
+                ]}
+                currentValue={name}
+                mode="replace"
+                onSelect={setName}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+                {uiText("backtest.strategy")}
+              </label>
+              <Input
+                value={strategy}
+                onChange={(e) => setStrategy(e.target.value)}
+                placeholder={uiText("auto.ui.a4b1c0aace")}
+                className="h-9 text-xs font-mono"
+              />
+              <QuickSelectChipBar
+                label="Strategia Rapida"
+                options={["Sweep Liquidità + FVG", "Break & Retest", "Supply & Demand H4"]}
+                currentValue={strategy}
+                mode="replace"
+                onSelect={setStrategy}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+                  {uiText("auto.ui.569cf0cb1d")}
+                </label>
+                <select
+                  value={pair}
+                  onChange={(e) => setPair(e.target.value)}
+                  className="w-full h-9 px-2.5 rounded-md border border-border bg-background text-xs font-mono focus:border-primary focus:outline-none"
+                >
+                  {pairOptions.map((p, i) => {
+                    const userLabelCount = userPairs.length;
+                    if (userLabelCount > 0 && i === userLabelCount) {
+                      return [
+                        <option key="__sep" disabled>{uiText("auto.ui.aba10da8de")}</option>,
+                        <option key={p} value={p}>{p}</option>,
+                      ];
+                    }
+                    return <option key={p} value={p}>{p}</option>;
+                  })}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+                  {uiText("auto.ui.85decb73d1")}
+                </label>
+                <div className="flex flex-wrap gap-1">
+                  {TIMEFRAMES.slice(0, 6).map((tf) => (
+                    <button
+                      key={tf}
+                      type="button"
+                      onClick={() => setTimeframe(tf)}
+                      className={`px-2 py-1.5 text-[9.5px] font-mono font-bold transition-all border rounded-sm whitespace-nowrap ${
+                        timeframe === tf
+                          ? "bg-primary/20 text-primary border-primary/50 shadow-sm"
+                          : "bg-background text-muted-foreground border-border hover:border-primary/30"
+                      }`}
+                    >
+                      {tf}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
-              {uiText("auto.ui.85decb73d1")}
+        )}
+
+        {formStep === 1 && (
+          <div className="space-y-2.5" data-testid="new-session-step-1">
+            <label htmlFor="backtest-session-start" className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold block">
+              {uiText("backtest_terminal.start_datetime")} · {uiText("backtest_terminal.timezone_utc")}
             </label>
             <div className="flex flex-wrap gap-1">
-              {TIMEFRAMES.slice(0, 4).map((tf) => (
+              {yearOptions.map((year) => (
                 <button
-                  key={tf}
+                  key={year}
                   type="button"
-                  onClick={() => setTimeframe(tf)}
-                  className={`px-2 py-1.5 text-[9.5px] font-mono font-bold transition-all border rounded-sm ${
-                    timeframe === tf
-                      ? "bg-primary/20 text-primary border-primary/50 shadow-sm"
-                      : "bg-background text-muted-foreground border-border hover:border-primary/30"
-                  }`}
+                  onClick={() => pickYear(year)}
+                  className="px-2 py-1 rounded font-mono text-[9.5px] font-bold uppercase tracking-wider whitespace-nowrap bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#E8C56A] hover:bg-[#C5A059]/20 transition-colors"
                 >
-                  {tf}
+                  {year}
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="backtest-session-start" className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider font-semibold">
-            {uiText("backtest_terminal.start_datetime")} · {uiText("backtest_terminal.timezone_utc")}
-          </label>
-          <div className="flex flex-wrap gap-1">
-            {yearOptions.map((year) => (
+            {blindStart ? (
+              <div className="flex items-center justify-between h-9 px-2.5 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10">
+                <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
+                  <EyeOff className="w-3.5 h-3.5" /> Data celata · Zero bias
+                </span>
+                <button type="button" onClick={() => setBlindStart(false)} className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground hover:text-[#E8C56A] whitespace-nowrap">
+                  Svela
+                </button>
+              </div>
+            ) : (
+              <Input
+                id="backtest-session-start"
+                type="datetime-local"
+                step={60}
+                value={startDateTime}
+                onChange={(event) => setStartDateTime(event.target.value)}
+                max={utcDateTimeInput(lastTime) || undefined}
+                aria-invalid={startOutsideHistory}
+                className="h-9 text-xs font-mono"
+              />
+            )}
+            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
               <button
-                key={year}
                 type="button"
-                onClick={() => pickYear(year)}
-                className="px-2 py-0.5 rounded font-mono text-[9px] font-bold uppercase tracking-wider whitespace-nowrap bg-[#C5A059]/10 border border-[#C5A059]/30 text-[#E8C56A] hover:bg-[#C5A059]/20 transition-colors"
+                onClick={() => pickRandom(false)}
+                className="inline-flex items-center justify-center gap-1.5 h-9 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 text-[#E8C56A] font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-[#C5A059]/20 transition-colors"
               >
-                {year}
+                <Dices className="w-3.5 h-3.5" /> Data Casuale
               </button>
-            ))}
-          </div>
-          {blindStart ? (
-            <div className="flex items-center justify-between h-9 px-2.5 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10">
-              <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
-                <EyeOff className="w-3.5 h-3.5" /> Data celata · Zero bias
-              </span>
-              <button type="button" onClick={() => setBlindStart(false)} className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground hover:text-[#E8C56A] whitespace-nowrap">
-                Svela
+              <button
+                type="button"
+                onClick={() => pickRandom(true)}
+                className="inline-flex items-center justify-center gap-1.5 h-9 rounded border border-slate-400/30 bg-slate-400/10 text-slate-300 font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-slate-400/20 transition-colors"
+              >
+                <EyeOff className="w-3.5 h-3.5" /> Replay Cieco
               </button>
             </div>
-          ) : (
-            <Input
-              id="backtest-session-start"
-              type="datetime-local"
-              step={60}
-              value={startDateTime}
-              onChange={(event) => setStartDateTime(event.target.value)}
-              max={utcDateTimeInput(lastTime) || undefined}
-              aria-invalid={startOutsideHistory}
-              className="h-9 text-xs font-mono"
-            />
-          )}
-          <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-            <button
-              type="button"
-              onClick={() => pickRandom(false)}
-              className="inline-flex items-center justify-center gap-1.5 h-8 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 text-[#E8C56A] font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-[#C5A059]/20 transition-colors"
-            >
-              <Dices className="w-3.5 h-3.5" /> Data Casuale
-            </button>
-            <button
-              type="button"
-              onClick={() => pickRandom(true)}
-              className="inline-flex items-center justify-center gap-1.5 h-8 rounded border border-slate-400/30 bg-slate-400/10 text-slate-300 font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-slate-400/20 transition-colors"
-            >
-              <EyeOff className="w-3.5 h-3.5" /> Replay Cieco
-            </button>
+            {startOutsideHistory && (
+              <p className="text-[9.5px] text-destructive font-mono" role="alert">
+                {uiText("backtest_terminal.date_outside_history")}
+              </p>
+            )}
           </div>
-          {startOutsideHistory && (
-            <p className="text-[9.5px] text-destructive font-mono" role="alert">
-              {uiText("backtest_terminal.date_outside_history")}
-            </p>
-          )}
-        </div>
-      </div>
-      <div className="flex gap-2 justify-end pt-3 border-t border-border/60">
-        <Button variant="ghost" size="sm" onClick={onClose} className="h-8 text-xs font-mono">
-          {uiText("auto.ui.6c3de5381b")}
-        </Button>
-        <Button
-          size="sm"
-          onClick={handleSubmit}
-          disabled={!name.trim() || createMutation.isPending || startOutsideHistory || (startDateTime !== "" && selectedStartTime == null)}
-          className="h-8 px-3 text-xs font-mono font-bold bg-[#C5A059] hover:bg-[#D4AF37] text-black shadow"
-        >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          {uiText("auto.ui.1a33586f3b")}
-        </Button>
-      </div>
+        )}
+
+        {formStep === 2 && (
+          <div className="space-y-3" data-testid="new-session-step-2">
+            <div className="rounded-xl border border-[#C5A059]/30 bg-[#0d0f14] p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 border-b border-[#C5A059]/15 pb-1.5">
+                <span className="font-mono text-[9.5px] font-bold uppercase tracking-widest text-[#E8C56A]">
+                  SCHEDA DI VERIFICA PRE-AVVIO
+                </span>
+                <span className="rounded border border-[#10b981]/35 bg-[#10b981]/10 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-[#10b981] whitespace-nowrap">
+                  Pronta
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 font-mono text-xs">
+                <div className="rounded border border-[#26262E] bg-[#07080b] p-2">
+                  <span className="block text-[8.5px] uppercase text-[#94a3b8]">Nome Sessione</span>
+                  <span className="font-bold text-[#F4F4F6] truncate block">{name || "—"}</span>
+                </div>
+                <div className="rounded border border-[#26262E] bg-[#07080b] p-2">
+                  <span className="block text-[8.5px] uppercase text-[#94a3b8]">Asset &amp; TF</span>
+                  <span className="font-bold text-[#E8C56A] whitespace-nowrap block">
+                    {pair} · {timeframe}
+                  </span>
+                </div>
+                <div className="rounded border border-[#26262E] bg-[#07080b] p-2">
+                  <span className="block text-[8.5px] uppercase text-[#94a3b8]">Strategia</span>
+                  <span className="font-bold text-[#F4F4F6] truncate block">
+                    {strategy || "Discrezionale / Metodo Attivo"}
+                  </span>
+                </div>
+                <div className="rounded border border-[#26262E] bg-[#07080b] p-2">
+                  <span className="block text-[8.5px] uppercase text-[#94a3b8]">Partenza Storica</span>
+                  <span className="font-bold text-[#10b981] truncate block">
+                    {blindStart ? "Replay Cieco (Zero Bias)" : startDateTime || "Inizio Archivio"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </MobileChainWizard>
     </div>
   );
 }
@@ -394,7 +488,7 @@ export default function Backtest() {
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(urlSessionId);
   const [tradeFilter, setTradeFilter] = useState<TradeFilter>("all");
   const [decompressionOpen, setDecompressionOpen] = useState(false);
-  const [mobileSection, setMobileSection] = useState<"workbench" | "sessions">("workbench");
+  const [mobileSection, setMobileSection] = useState<"workbench" | "sessions" | "ledger">("workbench");
   const [forgeMode, setForgeMode] = useState<"workbench" | "ea_studio">(() =>
     new URLSearchParams(search).get("tab") === "automa" ? "ea_studio" : "workbench",
   );
@@ -482,10 +576,12 @@ export default function Backtest() {
 
   const { onTouchStart: onBacktestTouchStart, onTouchEnd: onBacktestTouchEnd } = useEdgeSwipe({
     onSwipeLeft: () => {
-      if (mobileSection === "workbench") setMobileSection("sessions");
+      if (mobileSection === "sessions") setMobileSection("workbench");
+      else if (mobileSection === "workbench") setMobileSection("ledger");
     },
     onSwipeRight: () => {
-      if (mobileSection === "sessions") setMobileSection("workbench");
+      if (mobileSection === "ledger") setMobileSection("workbench");
+      else if (mobileSection === "workbench") setMobileSection("sessions");
     },
   });
 
@@ -523,39 +619,65 @@ export default function Backtest() {
           onTouchStart={onBacktestTouchStart}
           onTouchEnd={onBacktestTouchEnd}
         >
-          {/* ── Mobile Section Switcher (< 1024px): Banco & KPI / Sessioni / Prove del Fuoco ── */}
-          <div className="flex lg:hidden items-center justify-between gap-1.5 mb-2.5 pb-2 border-b border-[#C5A059]/20 shrink-0 mobile-compact-bar">
-            <div className="flex items-center gap-1 rounded-lg border border-[#C5A059]/25 bg-[#0B0D13] p-0.5 text-[11px] font-mono flex-1">
+          {/* ── Mobile 3-Level Chained Switcher (< 1024px): 01 Sessioni → 02 Telemetria → 03 Registro ── */}
+          <div
+            className="flex lg:hidden items-center justify-between gap-1.5 mb-2.5 pb-2 border-b border-[#C5A059]/20 shrink-0 mobile-compact-bar"
+            data-testid="backtest-mobile-chain-bar"
+          >
+            <div className="flex items-center gap-1 rounded-lg border border-[#C5A059]/25 bg-[#0B0D13] p-0.5 text-[10px] font-mono flex-1 min-w-0">
               <button
                 type="button"
-                onClick={() => setMobileSection("workbench")}
-                className={`flex-1 py-1.5 px-2 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-                  mobileSection === "workbench"
-                    ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/45"
+                onClick={() => {
+                  synestheticClick();
+                  setMobileSection("sessions");
+                }}
+                data-testid="backtest-mobile-tab-sessions"
+                className={`flex-1 py-1.5 px-1.5 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                  mobileSection === "sessions"
+                    ? "bg-[#C5A059] text-[#07080b] shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Banco &amp; KPI
+                01 · Sessioni ({sessions?.length ?? 0})
               </button>
               <button
                 type="button"
-                onClick={() => setMobileSection("sessions")}
-                className={`flex-1 py-1.5 px-2 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-                  mobileSection === "sessions"
-                    ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/45"
+                onClick={() => {
+                  synestheticClick();
+                  setMobileSection("workbench");
+                }}
+                data-testid="backtest-mobile-tab-workbench"
+                className={`flex-1 py-1.5 px-1.5 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                  mobileSection === "workbench"
+                    ? "bg-[#C5A059] text-[#07080b] shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Sessioni ({sessions?.length ?? 0})
+                02 · KPI &amp; Curva
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  synestheticClick();
+                  setMobileSection("ledger");
+                }}
+                data-testid="backtest-mobile-tab-ledger"
+                className={`flex-1 py-1.5 px-1.5 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                  mobileSection === "ledger"
+                    ? "bg-[#C5A059] text-[#07080b] shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                03 · Trade ({filteredTrades.length})
               </button>
             </div>
             <button
               type="button"
               onClick={() => navigate("/backtest?tab=battaglie")}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#C5A059]/45 bg-gradient-to-r from-[#C5A059]/20 to-[#C5A059]/10 text-[#E8C56A] font-mono text-[10.5px] font-bold uppercase tracking-wider whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-[#C5A059]/45 bg-gradient-to-r from-[#C5A059]/20 to-[#C5A059]/10 text-[#E8C56A] font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap shrink-0"
             >
-              <Swords className="w-3.5 h-3.5 text-[#E8C56A]" />
-              <span>Prove del Fuoco</span>
+              <Swords className="w-3 h-3 text-[#E8C56A]" />
+              <span>Arene</span>
             </button>
           </div>
 
@@ -756,7 +878,7 @@ export default function Backtest() {
             {/* ── Area Operativa & Statistiche Avanzate (Colonna Destra) ── */}
             <main
               className={`border border-border/80 bg-card/60 backdrop-blur flex-col lg:h-full min-h-0 overflow-hidden p-2.5 sm:p-3 gap-2.5 ${
-                mobileSection === "workbench" ? "flex" : "hidden lg:flex"
+                mobileSection === "workbench" || mobileSection === "ledger" ? "flex" : "hidden lg:flex"
               }`}
             >
               <LimenPullToRefresh
@@ -909,6 +1031,7 @@ export default function Backtest() {
                 </div>
               ) : (
                 <>
+              <div className={mobileSection === "workbench" ? "flex flex-col gap-2.5 shrink-0" : "hidden lg:flex lg:flex-col lg:gap-2.5 shrink-0"}>
               {/* 6 KPI Cards avanzate */}
               {detailedStats ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 shrink-0">
@@ -1067,8 +1190,39 @@ export default function Backtest() {
                 </div>
               )}
 
+              {/* Barra di concatenazione mobile per passare a 03 · Registro Trade */}
+              <div
+                className="flex lg:hidden items-center justify-between gap-2 rounded-lg border border-[#C5A059]/30 bg-[#0d0f14] p-2"
+                data-testid="backtest-workbench-chain-footer"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    synestheticClick();
+                    setMobileSection("sessions");
+                  }}
+                  className="inline-flex items-center gap-1 rounded border border-[#C5A059]/25 bg-[#11131c] px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] whitespace-nowrap cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>01 · Sessioni</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    synestheticClick();
+                    setMobileSection("ledger");
+                  }}
+                  data-testid="backtest-go-to-ledger-btn"
+                  className="inline-flex items-center gap-1 rounded bg-[#C5A059] hover:bg-[#E8C56A] px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] whitespace-nowrap cursor-pointer shadow-xs"
+                >
+                  <span>03 · Registro Trade ({filteredTrades.length})</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              </div>
+
               {/* ── Registro Replay a Piena Altezza (Occupa tutto lo spazio rimanente fino in fondo) ── */}
-              <div className="flex-1 min-h-0 flex flex-col border border-border/80 bg-card/85 overflow-hidden">
+              <div className={`${mobileSection === "ledger" ? "flex" : "hidden lg:flex"} flex-1 min-h-0 flex-col border border-border/80 bg-card/85 overflow-hidden`}>
                 {/* Header Registro con Filtri */}
                 <div className="p-2.5 border-b border-border/70 flex flex-wrap items-center justify-between gap-2 shrink-0 bg-card/90">
                   <div className="flex items-center gap-2">
@@ -1243,13 +1397,24 @@ export default function Backtest() {
                   )}
                 </div>
 
-                {/* Footer del Registro: Riepilogo Rapido */}
-                <div className="p-2 border-t border-border/70 bg-card/90 flex items-center justify-between text-[9.5px] font-mono text-muted-foreground shrink-0">
-                  <span>
-                    Filtro attivo: <strong className="text-foreground uppercase">{tradeFilter}</strong>
+                {/* Footer del Registro: Riepilogo Rapido + Concatenazione Mobile */}
+                <div className="p-2 border-t border-border/70 bg-card/90 flex items-center justify-between gap-2 text-[9.5px] font-mono text-muted-foreground shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      synestheticClick();
+                      setMobileSection("workbench");
+                    }}
+                    className="lg:hidden inline-flex items-center gap-1 rounded border border-[#C5A059]/35 bg-[#C5A059]/10 px-2 py-1 text-[9.5px] font-bold uppercase text-[#E8C56A] whitespace-nowrap cursor-pointer"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                    <span>02 · KPI &amp; Curva</span>
+                  </button>
+                  <span className="whitespace-nowrap">
+                    Filtro: <strong className="text-foreground uppercase">{tradeFilter}</strong>
                   </span>
-                  <span>
-                    {filteredTrades.length} operazioni visualizzate
+                  <span className="whitespace-nowrap">
+                    {filteredTrades.length} operazioni
                   </span>
                 </div>
               </div>
