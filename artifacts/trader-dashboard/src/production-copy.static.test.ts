@@ -205,6 +205,7 @@ const legacyHardcodedCopyFiles = new Set<string>([
   "components/daily-order/DailyOrderPulseHeader.tsx",
   "components/daily-order/DailyOrderStageCard.tsx",
   "components/process/SystemCompilationTutorialModal.tsx",
+  "components/process/SystemPassportCard.tsx",
   "pages/Method.tsx",
   "components/financial/FinancialArchitectureBanner.tsx",
   "components/financial/MonteCarloSimulationCard.tsx",
@@ -266,6 +267,7 @@ const legacyHardcodedCopyFiles = new Set<string>([
   "components/financial/WealthProjectionChart.tsx",
   "pages/DecompressionPage.tsx",
   "components/landing/SchoolRequestForm.tsx",
+  "components/landing/GuestForgeSandboxModal.tsx",
   "components/admin/AdminSchoolRequestsPage.tsx",
   "components/admin/AdminExpansionTelemetry.tsx",
   "pages/Academy.tsx",
@@ -325,6 +327,11 @@ const legacyHardcodedCopyFiles = new Set<string>([
   "components/backtest-terminal/ReplayWatchlistPanel.tsx",
   "components/backtest-terminal/TalkToJournalModal.tsx",
   "components/cockpit/QuantitativeSynthesisDialog.tsx",
+  "components/landing/GuestForgeSandboxModal.tsx",
+  "components/process/SystemCompilationTutorialModal.tsx",
+  "components/process/SystemPassportCard.tsx",
+  "pages/Method.tsx",
+  "pages/Routine.tsx",
 ]);
 
 const visibleTextPattern = /(?<![=!<>])>\s*([^<>{}`\n]*[A-Za-zÀ-ÿ][^<>{}`\n]*)\s*<(?=[/A-Za-z])/;

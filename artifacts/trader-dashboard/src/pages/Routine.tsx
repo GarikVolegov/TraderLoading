@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { uiText } from "@/contexts/LanguageContext";
 import { getRoutineStartProgram } from "./Routine.helpers";
 import { recordRoutineCompletion } from "@/lib/routineApi";
-import { Sunrise, Moon, Shield } from "lucide-react";
+import { Sunrise, Moon, Shield, Compass, Sparkles, ArrowRight } from "lucide-react";
 import type { Program, Answers, ActiveRoutineSession } from "@/components/routine/types";
 import { saveRoutineCompletion } from "@/components/routine/completion";
 import { MORNING_STEPS, EVENING_STEPS } from "@/components/routine/sessionSteps";
@@ -15,7 +15,8 @@ import { SessionModal } from "@/components/routine/SessionModal";
 import { ProgramCard } from "@/components/routine/ProgramCard";
 import { ZenZone } from "@/components/routine/ZenZone";
 import { RoutineStatsPanel } from "@/components/routine/RoutineStatsPanel";
-import { synestheticConfirm } from "@/lib/soundFx";
+import { SystemCompilationTutorialModal } from "@/components/process/SystemCompilationTutorialModal";
+import { synestheticConfirm, synestheticClick } from "@/lib/soundFx";
 import { useDailyOrderStats } from "@/hooks/useDailyOrderStats";
 
 // Re-exported for @/pages/Routine consumers (RoutineWidget).
@@ -26,6 +27,7 @@ export { saveRoutineCompletion };
 export function RoutineWorkspace({ embedded = false }: { embedded?: boolean }) {
   const storage = useRoutineStorage();
   const [activeSession, setActiveSession] = useState<ActiveRoutineSession | null>(null);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const [now, setNow] = useState(new Date());
   const [location, setLocation] = useLocation();
   const search = useSearch();
@@ -112,6 +114,56 @@ export function RoutineWorkspace({ embedded = false }: { embedded?: boolean }) {
           />
         )}
 
+        {/* ── PONTE ALLA CATENA DI COMPILAZIONE SISTEMA (5 ANELLI) & TUTORIAL ── */}
+        <div
+          className="rounded-2xl border border-[#C5A059]/30 bg-gradient-to-r from-[#0d0f14] via-[#11131c] to-[#0d0f14] p-3.5 sm:p-4 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          data-testid="routine-system-chain-bridge"
+        >
+          <div className="space-y-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded border border-[#C5A059]/40 bg-[#C5A059]/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-[#E8C56A] whitespace-nowrap">
+                <Compass className="w-2.5 h-2.5 text-[#C5A059]" />
+                5 ANELLI A CATENA
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-wider text-emerald-400 whitespace-nowrap">
+                • COMPILAZIONE GUIDATA + ARCHETIPI
+              </span>
+            </div>
+            <h2 className="font-display text-sm sm:text-base font-bold uppercase tracking-wider text-[#F4F4F6]">
+              Costituzione del Sistema &amp; Custode della Soglia
+            </h2>
+            <p className="text-[11px] text-slate-400 leading-snug">
+              Codifica mercati, setup, trigger, rischio e clausole pre-trade attraverso 5 pagine progressive a catena.
+            </p>
+          </div>
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setTutorialOpen(true);
+              }}
+              data-testid="routine-open-system-tutorial-btn"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#C5A059]/35 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap transition-all cursor-pointer"
+            >
+              <Sparkles className="w-3 h-3 text-[#C5A059]" />
+              <span>Tutorial Sistema</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                synestheticClick();
+                setLocation("/method");
+              }}
+              data-testid="routine-open-method-chain-btn"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#C5A059]/50 bg-[#C5A059] hover:bg-[#E8C56A] px-3.5 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] shadow-[0_0_15px_rgba(197,160,89,0.25)] whitespace-nowrap transition-all cursor-pointer"
+            >
+              <span>Compila Sistema (5 Step)</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
         {/* Intestazione Sezione Protocolli con micro-telemetria */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-white/5 pb-2">
           <div className="flex items-center gap-2">
@@ -185,6 +237,13 @@ export function RoutineWorkspace({ embedded = false }: { embedded?: boolean }) {
           />
         )}
       </AnimatePresence>
+
+      <SystemCompilationTutorialModal
+        open={tutorialOpen}
+        onOpenChange={setTutorialOpen}
+        onStartManualChain={() => setLocation("/method")}
+        onApplyPreset={() => setLocation("/method")}
+      />
     </>
   );
 }

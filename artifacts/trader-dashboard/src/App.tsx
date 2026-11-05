@@ -85,6 +85,7 @@ const Dashboard = lazy(() => import("./pages/OperatingDashboard"));
 const Today = lazy(() => import("./pages/Today"));
 const Academy = lazy(() => import("./pages/Academy"));
 const AcademyWelcome = lazy(() => import("./pages/Academy").then(module => ({ default: module.AcademyWelcome })));
+const Method = lazy(() => import("./pages/Method"));
 const Routine = lazy(() => import("./pages/Routine"));
 const Missions = lazy(() => import("./pages/Missions"));
 const Journal = lazy(() => import("./pages/Journal"));
@@ -471,7 +472,7 @@ function AppRouter() {
       <Suspense fallback={<PageFallback />}>
         <Switch>
           <Route path="/" component={HomeRoute} />
-          <Route path="/method" component={WorkspaceAlias} />
+          <Route path="/method" component={Method} />
           <Route path="/academy" component={Academy} />
           <Route path="/resources">
             {() => <Redirect to="/" />}
@@ -663,7 +664,8 @@ function AppShell() {
   const isDevStagingBypass =
     import.meta.env.DEV &&
     typeof window !== "undefined" &&
-    window.location.search.includes("staging=1");
+    (window.location.search.includes("staging=1") ||
+      window.localStorage.getItem("limen_staging") === "1");
 
   if (isDevStagingBypass) {
     return <AuthenticatedShell />;

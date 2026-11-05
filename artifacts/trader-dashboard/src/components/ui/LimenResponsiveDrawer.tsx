@@ -115,7 +115,7 @@ export function LimenResponsiveDrawer({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          "app-sheet fixed inset-x-0 bottom-0 z-[100] max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-[#C5A059]/40 bg-[#07080b]/98 backdrop-blur-2xl p-4 text-foreground shadow-[0_-12px_40px_rgba(0,0,0,0.95)] flex flex-col font-mono select-none",
+          "app-sheet fixed inset-x-0 bottom-0 z-[100] max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-[#C5A059]/40 bg-[#07080b]/98 backdrop-blur-2xl p-4 text-foreground shadow-[0_-12px_40px_rgba(0,0,0,0.95)] flex flex-col font-mono select-none [&>button.absolute]:hidden",
           className,
           mobileClassName
         )}
@@ -131,9 +131,9 @@ export function LimenResponsiveDrawer({
 
         {(title || effectiveSubtitle) && (
           <SheetHeader className="border-b border-[#C5A059]/20 pb-2.5 mb-3 text-left">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-2">
               {title && (
-                <SheetTitle className="font-mono text-sm font-bold uppercase tracking-wider text-[#E8C56A] truncate pr-6">
+                <SheetTitle className="font-mono text-xs sm:text-sm font-bold uppercase tracking-wider text-[#E8C56A] leading-snug">
                   {title}
                 </SheetTitle>
               )}

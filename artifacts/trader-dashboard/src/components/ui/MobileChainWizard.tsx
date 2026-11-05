@@ -95,7 +95,7 @@ export function MobileChainWizard({
               <Compass className="w-2.5 h-2.5 text-[#C5A059]" />
               PASSO {String(safeIndex + 1).padStart(2, "0")}/{String(steps.length).padStart(2, "0")}
             </span>
-            <h4 className="font-display text-xs sm:text-sm font-bold uppercase tracking-wider text-[#F4F4F6] truncate">
+            <h4 className="font-display text-xs sm:text-sm font-bold uppercase tracking-wider text-[#F4F4F6]">
               {currentStep?.title}
             </h4>
           </div>
@@ -160,7 +160,7 @@ export function MobileChainWizard({
         </div>
 
         {currentStep?.subtitle && !compact && (
-          <p className="mt-1.5 text-[11px] text-[#94a3b8] leading-snug line-clamp-2">
+          <p className="mt-1.5 text-[11px] text-[#94a3b8] leading-snug">
             {currentStep.subtitle}
           </p>
         )}

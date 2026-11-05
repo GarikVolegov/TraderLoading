@@ -369,6 +369,18 @@ Sequenza operativa canonica da eseguire prima di ogni promozione in produzione e
 
 ---
 
+### 🚀 FASE VI — Innovazioni Strategiche di Lancio & Conversione Pubblica (Forgiate e Certificate)
+
+Per massimizzare la resilienza post-lancio, la prova crittografica della disciplina e il tasso di conversione immediato sulla Landing Page pubblica:
+
+| Innovazione Sovrana | Descrizione Architetturale & Funzionale | Moduli Chiave & Test | Stato |
+| :--- | :--- | :--- | :---: |
+| **1. Watchdog Canary Webhook Alerting & Circuit Breaker Hook** | Dispatcher multi-provider (*Discord*, *Slack*, *Telegram*, *Generic JSON*) dark-by-default (`WATCHDOG_ALERT_WEBHOOK_URL`), con deduplicazione cooldown (`WATCHDOG_ALERT_COOLDOWN_MS`, default `5 min`), timeout `3.5s` non bloccante, HTTPS obbligatorio in produzione e aggancio diretto a `CircuitBreaker` (transizione a `OPEN`) e `recordWatchdogAnomaly`. | `artifacts/api-server/src/lib/watchdogAlerting.ts`, `watchdogAlerting.test.ts`, `circuitBreaker.ts`, `systemWatchdog.ts` | ✅ CERTIFICATO |
+| **2. Passaporto Crittografico del Sistema (`AUREUS-SYS-...`) & Sigillo QR SVG** | Generatore deterministico pure-TS a 64 caratteri esadecimali (4 lane FNV-1a/SipHash-like zero-dependency) che calcola l'impronta crittografica immutabile dei 5 pilastri del Sistema + checklist del Custode, genera il codice sigillo `AUREUS-SYS-XXXX-XXXX-XXXX`, renderizza una matrice QR SVG `21x21` Ossidiana & Oro Imperiale ed esporta il certificato JSON firmato. Integrato in `Method.tsx` (Step 05) e `DailyOrderMethodConsole.tsx`. | `artifacts/trader-dashboard/src/lib/systemPassportHash.ts`, `systemPassportHash.test.ts`, `components/process/SystemPassportCard.tsx` | ✅ CERTIFICATO |
+| **3. Simulatore "Prova la Forgia in 60s" Zero-Auth sulla Landing Page** | Sandbox interattiva istantanea sulla Landing Page pubblica (`LandingPage.tsx`) con scenario istituzionale `XAU/USD — M15 London Liquidity Sweep` (16 candele deterministiche), sblocco dei 3 sigilli del *Custode della Soglia*, replay candela-per-candela (`+1 CANDELA`, `AUTO-REPLAY 3x`), ordine `LONG 1:3 R:R` pre-calibrato (`+300.00 EUR` / `+3.00 R`) e conversione diretta nel `GatekeepingModal`. | `artifacts/trader-dashboard/src/components/landing/GuestForgeSandboxModal.tsx`, `GuestForgeSandboxModal.test.ts`, `pages/LandingPage.tsx` | ✅ CERTIFICATO |
+
+---
+
 ## 🔗 Collegamenti Sinaptici nel Vault
 
 - **Mappa Centrale**: [[00-ATLAS]]

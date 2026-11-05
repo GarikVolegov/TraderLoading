@@ -26,10 +26,13 @@ Questa nota costituisce la **memoria stabile, incorruttibile e ad alta densità*
 
 | Dimensione | Stato Verificato | Dettaglio Tecnico & Garanzia |
 | :--- | :---: | :--- |
-| **Suite di Collaudo** | `572+ PASS (100%)` | Zero fallimenti su api-server, trader-dashboard, api-zod, db, scripts |
+| **Suite di Collaudo** | `591 / 591 PASS (100%)` | Zero fallimenti su api-server, trader-dashboard, api-zod, db, scripts |
 | **Typecheck Strict** | `0 ERRORI` | Compilazione TypeScript rigorosa `tsc --build --force` immacolata |
 | **Camera dei Manager (`council:critique`)** | `APPROVATO CON LODE` | Design Manager, Tech Manager e QA Manager concordi |
 | **Guardiano della Notte (`aureus-daemon`)** | `ATTIVO & VIGILE` | Cron job schedulato in background con audit periodico automatico |
+| **Watchdog Canary Webhook Alerting** | `MULTI-PROVIDER ATTIVO` | Dispatch asincrono dark-by-default (`watchdogAlerting.ts`) per Discord, Slack, Telegram e JSON generico con deduplicazione cooldown e collegamento diretto a `CircuitBreaker -> OPEN` |
+| **Passaporto Crittografico del Sistema** | `QR SEAL SVG 21x21 + 64-HEX` | Impronta deterministica 64-hex (`systemPassportHash.ts`) + QR SVG `21x21` zero-deps (`SystemPassportCard.tsx`) in `Method.tsx` e `DailyOrderMethodConsole.tsx` con export JSON firmato |
+| **Prova Immediata della Forgia (Guest 60s)** | `SANDBOX ZERO-AUTH LANDING` | Simulatore interattivo 16 candele `XAU/USD` (`GuestForgeSandboxModal.tsx`) nella Hero della `LandingPage.tsx`: Custode della Soglia (3 regole) + Replay Bar-by-Bar + Sigillo `+3.00 R` |
 | **Compilatore Sistema (Anello 1)** | `5 ANELLI + 3 ARCHETIPI` | State machine `draft`→`observe`→`verify`→`active`→`suspended`, 3 archetipi istituzionali e Ordine Giornaliero mobile a 4 stadi (`Method.tsx`, `MobileChainWizard.tsx`) |
 | **Prop Guardian & Cockpit (Anello 2)** | `SCUDO DRAWDOWN & BIO-LOCK` | Scudo matematico 5% Daily / 10% Total Drawdown, Bio-Lock al 75% del rischio, 1-Tap adaptive lot sizing, export MT5/cTrader e monitor BLE (`propGuardian.ts`, `smartwatchBle.ts`) |
 | **Automa della Forgia EA Studio (Anello 3)** | `MQL5 & cTRADER CODEGEN` | Motore Concept-to-Bot (`eaForgeEngine.ts`) che compila le regole del Metodo in Expert Advisor MQL5 e cBot C# con casi studio storici (Gated Piano 150€) |

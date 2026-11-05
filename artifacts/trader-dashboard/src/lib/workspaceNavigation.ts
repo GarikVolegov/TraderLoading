@@ -49,7 +49,6 @@ export function resolveWorkspaceAlias(path: string, search = ""): string | null 
     "/calendar": ["/journal", { t: "piano", vista: "agenda" }],
     "/resources": ["/", {}],
     "/clock": ["/", { vista: "strumenti", strumento: "sessioni" }],
-    "/method": ["/", {}],
     "/checklist": ["/", {}],
     "/broker": ["/journal", { t: "trades", panel: "conti" }],
     "/tools": ["/backtest", {}],

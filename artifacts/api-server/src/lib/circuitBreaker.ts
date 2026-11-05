@@ -1,4 +1,5 @@
 import logger from "./logger.js";
+import { systemWatchdog } from "./systemWatchdog.js";
 
 export type CircuitState = "CLOSED" | "OPEN" | "HALF_OPEN";
 
@@ -70,6 +71,12 @@ export class CircuitBreaker {
       this.successCount = 0;
     } else if (nextState === "OPEN") {
       this.lastFailureTime = this.now();
+      systemWatchdog.recordAnomaly(
+        "circuitBreaker",
+        `Circuit breaker [${this.name}] transitioned to OPEN`,
+        "warn",
+        { circuit: this.name, failures: this.failureCount, from: previous },
+      );
     }
     logger.warn({ circuit: this.name, from: previous, to: nextState }, `Circuit breaker transitioned from ${previous} to ${nextState}`);
     this.onStateChange?.(previous, nextState, this.name);

@@ -51,6 +51,7 @@ import {
   hasSeenSystemTutorial,
   type SystemTutorialPreset,
 } from "@/components/process/SystemCompilationTutorialModal";
+import { SystemPassportCard } from "@/components/process/SystemPassportCard";
 
 const QUICK_MARKETS = ["EUR/USD", "GBP/USD", "XAU/USD", "NAS100", "USD/JPY", "BTC/USD"] as const;
 const QUICK_WINDOWS = [
@@ -712,6 +713,34 @@ export function MethodEditor({
                     </div>
                   </div>
                 </div>
+
+                {/* Passaporto Crittografico del Sistema (QR Seal & Digest 64-Hex) */}
+                <SystemPassportCard
+                  payload={{
+                    name: String(values.name ?? "").trim() || copy("defaultMethodName"),
+                    versionNumber: previous ? previous.version + 1 : 1,
+                    phase: previous?.phase || "define",
+                    markets: String(values.markets ?? ""),
+                    windows: String(values.windows ?? ""),
+                    setup: String(values.setup ?? ""),
+                    entry: String(values.entry ?? ""),
+                    exit: String(values.exit ?? ""),
+                    invalidation: String(values.invalidation ?? ""),
+                    waitConditions: String(values.waitConditions ?? ""),
+                    currency: String(values.currency || "EUR"),
+                    riskPerTrade: Number(values.riskPerTrade || 0),
+                    maxDailyLoss: Number(values.maxDailyLoss || 0),
+                    maxDailyTrades: Number(values.maxDailyTrades || 0),
+                    checklistCount: String(values.checklist ?? "")
+                      .split("\n")
+                      .map((s) => s.trim())
+                      .filter(Boolean).length,
+                  }}
+                  checklistItems={String(values.checklist ?? "")
+                    .split("\n")
+                    .map((s) => s.trim())
+                    .filter(Boolean)}
+                />
 
                 <label className="process-option rounded-xl border border-[#C5A059]/35 bg-[#C5A059]/10 p-3 flex items-center gap-2.5 cursor-pointer">
                   <input

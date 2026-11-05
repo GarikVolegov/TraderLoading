@@ -23,6 +23,7 @@ import type { ProcessMethod, ProcessState } from "@/lib/traderProcessApi";
 import { useProcessMutation } from "@/hooks/useTraderProcess";
 import { activateProcessMethod, advanceProcessMethod } from "@/lib/traderProcessApi";
 import { SystemCompilationTutorialModal } from "@/components/process/SystemCompilationTutorialModal";
+import { SystemPassportCard } from "@/components/process/SystemPassportCard";
 import { synestheticClick } from "@/lib/soundFx";
 
 interface DailyOrderMethodConsoleProps {
@@ -329,6 +330,28 @@ export function DailyOrderMethodConsole({
             </div>
           </div>
         )}
+
+        {/* Passaporto Crittografico del Sistema Attivo */}
+        <SystemPassportCard
+          payload={{
+            name: method.name,
+            versionNumber: method.version,
+            phase: method.phase,
+            markets: (rules.markets || []).join(", "),
+            windows: rules.windows || "",
+            setup: rules.setup || "",
+            entry: rules.entry || "",
+            exit: rules.exit || "",
+            invalidation: rules.invalidation || "",
+            waitConditions: rules.waitConditions || "",
+            currency: rules.currency || "EUR",
+            riskPerTrade: Number(rules.riskPerTrade || 0),
+            maxDailyLoss: Number(rules.maxDailyLoss || 0),
+            maxDailyTrades: Number(rules.maxDailyTrades || 0),
+            checklistCount: (rules.checklist || []).length,
+          }}
+          checklistItems={rules.checklist || []}
+        />
       </section>
       </div>
 

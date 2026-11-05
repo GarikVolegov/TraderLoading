@@ -1,6 +1,12 @@
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import logger from "./logger.js";
 import { captureError } from "./observability.js";
+import {
+  dispatchWatchdogCanaryAlert,
+  getWatchdogAlertTelemetry,
+  resetWatchdogAlertDedupeForTesting,
+  type WatchdogAlertTelemetry,
+} from "./watchdogAlerting.js";
 
 export interface AnomalyRecord {
   id: string;
@@ -32,6 +38,7 @@ export interface WatchdogTelemetry {
   };
   recentAnomalies: AnomalyRecord[];
   maintenance?: MaintenanceTelemetry;
+  alerting?: WatchdogAlertTelemetry;
 }
 
 const MAX_ANOMALIES_HISTORY = 100;
@@ -84,6 +91,10 @@ class SystemWatchdog {
       logger.error({ anomaly: record }, `[AUREUS-WATCHDOG] Critical system anomaly: ${message}`);
     } else {
       logger.warn({ anomaly: record }, `[AUREUS-WATCHDOG] System anomaly recorded: ${message}`);
+    }
+
+    if ((severity === "warn" || severity === "critical") && process.env.WATCHDOG_ALERT_WEBHOOK_URL) {
+      void dispatchWatchdogCanaryAlert(record);
     }
 
     return record;
@@ -178,6 +189,7 @@ class SystemWatchdog {
       },
       recentAnomalies: this.anomalies.slice(0, 10),
       maintenance: { ...this.maintenanceTelemetry },
+      alerting: getWatchdogAlertTelemetry(),
     };
   }
 
@@ -208,6 +220,7 @@ class SystemWatchdog {
     if (this.eventLoopMonitor) {
       this.eventLoopMonitor.reset();
     }
+    resetWatchdogAlertDedupeForTesting();
   }
 }
 

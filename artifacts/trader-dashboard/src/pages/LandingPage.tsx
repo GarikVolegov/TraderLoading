@@ -15,6 +15,7 @@ import { initialTourState, isTourComplete, tourReducer } from "@/lib/landingTour
 import { trackEvent } from "@/lib/analytics";
 import { startLandingMotion } from "@/lib/landingMotion";
 import { LandingNavigation } from "@/components/landing/LandingNavigation";
+import { GuestForgeSandboxModal } from "@/components/landing/GuestForgeSandboxModal";
 import { GatekeepingModal } from "@/components/stealth/GatekeepingModal";
 import { HeroAtmosphere } from "@/components/landing/HeroAtmosphere";
 import { PricingAtmosphere } from "@/components/landing/PricingAtmosphere";
@@ -1045,6 +1046,7 @@ export default function LandingPage() {
 
   // State for Gatekeeping Modal & Interactive Sections
   const [isGatekeepingOpen, setIsGatekeepingOpen] = useState(false);
+  const [isSandboxOpen, setIsSandboxOpen] = useState(false);
   const [gatekeepingReason, setGatekeepingReason] = useState<string | undefined>(undefined);
   const [selectedBlindSpot, setSelectedBlindSpot] = useState<"revenge" | "fomo" | "overtrading">("revenge");
   const [pricingCycle, setPricingCycle] = useState<"monthly" | "yearly">("monthly");
@@ -1336,6 +1338,22 @@ export default function LandingPage() {
                 <span>SCOPRI IL PUNTO CIECO</span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-[#C5A059]" />
               </a>
+            </div>
+
+            {/* Zero-Auth Interactive Sandbox Trigger Pill */}
+            <div className="mt-3.5 sm:mt-4 flex justify-center px-4">
+              <button
+                type="button"
+                data-testid="landing-open-guest-sandbox-btn"
+                onClick={() => {
+                  setIsSandboxOpen(true);
+                  trackEvent("landing_guest_sandbox_open", { language });
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0d0f14]/90 hover:bg-[#11131c] border border-[#C5A059]/45 hover:border-[#E8C56A] text-[#E8C56A] font-mono text-[10px] sm:text-xs font-bold uppercase tracking-[0.14em] shadow-[0_0_20px_rgba(197,160,89,0.16)] transition-all cursor-pointer whitespace-nowrap"
+              >
+                <FlaskConical className="h-3.5 w-3.5 text-[#C5A059] shrink-0" />
+                <span>PROVA LA FORGIA DAL VIVO (60 SEC · ZERO LOGIN)</span>
+              </button>
             </div>
 
             {/* Spazio Dedicato al Film Master — Cornice a Filo Sottile Dorato con Respiro Maestoso */}
@@ -2707,6 +2725,16 @@ export default function LandingPage() {
         initialReason={gatekeepingReason}
         defaultBillingCycle={pricingCycle}
         defaultTierId={selectedTierId}
+      />
+
+      {/* Zero-Auth Guest Interactive Forge Sandbox Modal */}
+      <GuestForgeSandboxModal
+        open={isSandboxOpen}
+        onOpenChange={setIsSandboxOpen}
+        onRequestAdmission={(reason) => {
+          setIsSandboxOpen(false);
+          openGatekeeping(reason);
+        }}
       />
 
       {/* 3D Model Inspection Lightbox Modal */}

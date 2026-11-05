@@ -217,7 +217,7 @@ export function SystemCompilationTutorialModal({
         if (!next) markSystemTutorialSeen();
         onOpenChange(next);
       }}
-      title="Guida Introduttiva · Compilazione del Sistema a Catena"
+      title="Guida · Compilazione Sistema a Catena"
       description="AUREUS PROTOCOL // ARCHITETTURA MULTI-LIVELLO PASSO-PASSO"
       desktopClassName="max-w-2xl bg-[#07080b] border border-[#C5A059]/40"
       mobileClassName="max-h-[92dvh] bg-[#07080b] border-t border-[#C5A059]/40"
