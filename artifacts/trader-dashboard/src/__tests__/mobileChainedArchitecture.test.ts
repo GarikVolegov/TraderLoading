@@ -84,4 +84,43 @@ describe("AUREUS Mobile Multi-Level Chained Architecture & System Compilation Tu
     assert.ok(settings.includes("CATENA DOSSIER · PASSO"));
     assert.ok(settings.includes("handleSelectChainItem"));
   });
+
+  it("connects sealed System Constitution directly to Backtest (1-Tap Forge)", () => {
+    const passportCard = readSrcFile("components/process/SystemPassportCard.tsx");
+    assert.ok(passportCard.includes("system-passport-test-in-forge-btn"));
+    assert.ok(passportCard.includes("Collauda nella Forgia (1-Tap)"));
+    assert.ok(passportCard.includes("handleTestInForge"));
+
+    const backtest = readSrcFile("pages/Backtest.tsx");
+    assert.ok(backtest.includes("isNewRequested"));
+    assert.ok(backtest.includes("urlPair"));
+    assert.ok(backtest.includes("urlStrategy"));
+    assert.ok(backtest.includes("urlName"));
+    assert.ok(backtest.includes("initialName="));
+    assert.ok(backtest.includes("initialPair="));
+  });
+
+  it("embeds the 5-Ring Compliance Matrix inside JournalEntryModal Step 2", () => {
+    const journalModal = readSrcFile("components/JournalEntryModal.tsx");
+    assert.ok(journalModal.includes("COMPLIANCE_RINGS"));
+    assert.ok(journalModal.includes("journal-compliance-5rings-matrix"));
+    assert.ok(journalModal.includes("journal-compliance-status-badge"));
+    assert.ok(journalModal.includes("compliance-attest-full-btn"));
+    assert.ok(journalModal.includes("compliance-flag-deviation-btn"));
+    assert.ok(journalModal.includes("01 · Mercato Autorizzato") || journalModal.includes("Mercato Autorizzato"));
+    assert.ok(journalModal.includes("05 · Custode della Soglia") || journalModal.includes("Custode della Soglia"));
+  });
+
+  it("implements JSON constitution document import in SystemCompilationTutorialModal and Method.tsx", () => {
+    const tutorialModal = readSrcFile("components/process/SystemCompilationTutorialModal.tsx");
+    assert.ok(tutorialModal.includes("tutorial-tab-archetypes"));
+    assert.ok(tutorialModal.includes("tutorial-tab-json-import"));
+    assert.ok(tutorialModal.includes("tutorial-json-importer-panel"));
+    assert.ok(tutorialModal.includes("tutorial-json-textarea"));
+    assert.ok(tutorialModal.includes("onImportJsonConstitution"));
+
+    const method = readSrcFile("pages/Method.tsx");
+    assert.ok(method.includes("handleImportJsonConstitution"));
+    assert.ok(method.includes("onImportJsonConstitution={handleImportJsonConstitution}"));
+  });
 });

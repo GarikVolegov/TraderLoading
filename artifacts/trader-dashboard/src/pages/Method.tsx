@@ -52,6 +52,7 @@ import {
   type SystemTutorialPreset,
 } from "@/components/process/SystemCompilationTutorialModal";
 import { SystemPassportCard } from "@/components/process/SystemPassportCard";
+import type { SystemPassportPayload } from "@/lib/systemPassportHash";
 
 const QUICK_MARKETS = ["EUR/USD", "GBP/USD", "XAU/USD", "NAS100", "USD/JPY", "BTC/USD"] as const;
 const QUICK_WINDOWS = [
@@ -179,6 +180,30 @@ export function MethodEditor({
       maxDailyLoss: String(preset.rules.maxDailyLoss),
       maxDailyTrades: String(preset.rules.maxDailyTrades),
       checklist: preset.rules.checklist,
+      riskConfirmed: false,
+    }));
+    selectChainPage(0);
+  };
+
+  const handleImportJsonConstitution = (
+    imported: SystemPassportPayload,
+    clauses: string[],
+  ) => {
+    setValues((prev) => ({
+      ...prev,
+      name: imported.name,
+      markets: imported.markets,
+      windows: imported.windows,
+      setup: imported.setup,
+      entry: imported.entry,
+      exit: imported.exit,
+      invalidation: imported.invalidation,
+      waitConditions: imported.waitConditions,
+      currency: imported.currency,
+      riskPerTrade: String(imported.riskPerTrade),
+      maxDailyLoss: String(imported.maxDailyLoss),
+      maxDailyTrades: String(imported.maxDailyTrades),
+      checklist: clauses.length > 0 ? clauses.join("\n") : prev.checklist,
       riskConfirmed: false,
     }));
     selectChainPage(0);
@@ -793,6 +818,7 @@ export function MethodEditor({
         onOpenChange={setTutorialOpen}
         onApplyPreset={applyTutorialPreset}
         onStartManualChain={() => selectChainPage(0)}
+        onImportJsonConstitution={handleImportJsonConstitution}
       />
     </ProcessPanel>
   );

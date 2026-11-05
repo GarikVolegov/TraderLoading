@@ -12,6 +12,7 @@ import {
 } from "../services/honorCardVerification.js";
 import { renderHonorCardSvg, renderHonorCardHtml } from "../services/honorCardOgRenderer.js";
 import { renderDuelCardSvg } from "../services/duelOgRenderer.js";
+import { renderIntegrityBadgeSvg } from "../services/integrityBadgeRenderer.js";
 import { getCustomLobbyByCode } from "../services/backtestTournaments/store.js";
 
 const router: IRouter = Router();
@@ -116,6 +117,39 @@ router.get("/public/testimonials", async (_req, res) => {
 });
 
 // ── GET /public/og-honor/:hash: Render OpenGraph vettoriale ad alta definizione ──
+// ── GET /public/badge/integrity.svg: Badge SVG vettoriale dell'Integrità per README e social ──
+router.get("/public/badge/integrity.svg", (req, res) => {
+  const score = req.query.score !== undefined ? Number(req.query.score) : 100;
+  const label = typeof req.query.label === "string" ? req.query.label : "AUREUS";
+  const sealCode = typeof req.query.seal === "string" ? req.query.seal : undefined;
+  const statusText = typeof req.query.status === "string" ? req.query.status : undefined;
+
+  const svg = renderIntegrityBadgeSvg({
+    score,
+    label,
+    sealCode,
+    statusText,
+  });
+
+  res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+  res.send(svg);
+});
+
+router.get("/public/badge/:sealCode.svg", (req, res) => {
+  const rawParam = Array.isArray(req.params.sealCode) ? req.params.sealCode[0] : req.params.sealCode;
+  const sealCode = (rawParam || "").replace(/\.svg$/i, "");
+  const svg = renderIntegrityBadgeSvg({
+    sealCode,
+    label: "AUREUS",
+    statusText: "SIGILLO ATTIVO",
+  });
+
+  res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+  res.send(svg);
+});
+
 router.get("/public/og-honor/:hash", async (req, res) => {
   try {
     const rawParam = Array.isArray(req.params.hash) ? req.params.hash[0] : req.params.hash;

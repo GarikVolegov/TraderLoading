@@ -148,11 +148,15 @@ export function markSystemTutorialSeen(): void {
   }
 }
 
-interface SystemCompilationTutorialModalProps {
+export interface SystemCompilationTutorialModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onApplyPreset?: (preset: SystemTutorialPreset) => void;
   onStartManualChain?: () => void;
+  onImportJsonConstitution?: (
+    payload: SystemPassportPayload,
+    checklistItems: string[],
+  ) => void;
 }
 
 export function SystemCompilationTutorialModal({
@@ -160,9 +164,47 @@ export function SystemCompilationTutorialModal({
   onOpenChange,
   onApplyPreset,
   onStartManualChain,
+  onImportJsonConstitution,
 }: SystemCompilationTutorialModalProps) {
   const [step, setStep] = useState(0);
   const [selectedPresetId, setSelectedPresetId] = useState<string>(SYSTEM_TUTORIAL_PRESETS[0].id);
+  const [modelTab, setModelTab] = useState<"archetypes" | "json_import">("archetypes");
+  const [jsonInput, setJsonInput] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const parsedJsonResult = useMemo(() => {
+    if (!jsonInput.trim()) return null;
+    return verifySystemPassportDocument(jsonInput);
+  }, [jsonInput]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result;
+      if (typeof text === "string") {
+        setJsonInput(text);
+        synestheticClick();
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const handleApplyJsonConstitution = () => {
+    if (!parsedJsonResult?.valid || !parsedJsonResult.payload) {
+      synestheticAlert();
+      return;
+    }
+    synestheticConfirm();
+    markSystemTutorialSeen();
+    onImportJsonConstitution?.(
+      parsedJsonResult.payload,
+      parsedJsonResult.checklistItems ?? [],
+    );
+    onOpenChange(false);
+  };
 
   const selectedPreset =
     SYSTEM_TUTORIAL_PRESETS.find((p) => p.id === selectedPresetId) ?? SYSTEM_TUTORIAL_PRESETS[0];
@@ -308,68 +350,221 @@ export function SystemCompilationTutorialModal({
 
           {step === 1 && (
             <div className="space-y-3" data-testid="tutorial-step-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A]">
-                  Seleziona un Archetipo di Partenza (Personalizzabile)
-                </span>
-                <span className="font-mono text-[9px] text-[#94a3b8] whitespace-nowrap">
-                  1 Tap = Pre-Compila
-                </span>
+              {/* Selettore Modalità: Archetipi vs Importa JSON */}
+              <div className="flex items-center gap-1.5 p-1 rounded-lg border border-[#26262E] bg-[#07080b]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    synestheticClick();
+                    setModelTab("archetypes");
+                  }}
+                  data-testid="tutorial-tab-archetypes"
+                  className={`flex-1 py-1.5 px-2 rounded-md font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    modelTab === "archetypes"
+                      ? "bg-[#C5A059]/20 border border-[#C5A059]/40 text-[#E8C56A] shadow-sm"
+                      : "text-[#94a3b8] hover:text-[#F4F4F6]"
+                  }`}
+                >
+                  🏛️ Archetipi Istituzionali
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    synestheticClick();
+                    setModelTab("json_import");
+                  }}
+                  data-testid="tutorial-tab-json-import"
+                  className={`flex-1 py-1.5 px-2 rounded-md font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    modelTab === "json_import"
+                      ? "bg-[#C5A059]/20 border border-[#C5A059]/40 text-[#E8C56A] shadow-sm"
+                      : "text-[#94a3b8] hover:text-[#F4F4F6]"
+                  }`}
+                >
+                  📥 Importa Costituzione JSON
+                </button>
               </div>
 
-              <div className="space-y-2">
-                {SYSTEM_TUTORIAL_PRESETS.map((preset) => {
-                  const active = preset.id === selectedPreset.id;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => {
-                        synestheticClick();
-                        setSelectedPresetId(preset.id);
-                      }}
-                      data-testid={`tutorial-preset-${preset.id}`}
-                      className={`w-full text-left rounded-xl border p-3 transition-all cursor-pointer ${
-                        active
-                          ? "border-[#C5A059] bg-[#C5A059]/12 shadow-[0_0_18px_rgba(197,160,89,0.18)]"
-                          : "border-[#C5A059]/20 bg-[#0d0f14] hover:border-[#C5A059]/45"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-[#C5A059]">
-                          {preset.code}
-                        </span>
-                        <span
-                          className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase whitespace-nowrap ${
+              {modelTab === "archetypes" ? (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A]">
+                      Seleziona un Archetipo di Partenza (Personalizzabile)
+                    </span>
+                    <span className="font-mono text-[9px] text-[#94a3b8] whitespace-nowrap">
+                      1 Tap = Pre-Compila
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {SYSTEM_TUTORIAL_PRESETS.map((preset) => {
+                      const active = preset.id === selectedPreset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => {
+                            synestheticClick();
+                            setSelectedPresetId(preset.id);
+                          }}
+                          data-testid={`tutorial-preset-${preset.id}`}
+                          className={`w-full text-left rounded-xl border p-3 transition-all cursor-pointer ${
                             active
-                              ? "bg-[#C5A059] text-[#07080b]"
-                              : "border border-[#C5A059]/25 text-[#94a3b8]"
+                              ? "border-[#C5A059] bg-[#C5A059]/12 shadow-[0_0_18px_rgba(197,160,89,0.18)]"
+                              : "border-[#C5A059]/20 bg-[#0d0f14] hover:border-[#C5A059]/45"
                           }`}
                         >
-                          {active ? "✓ Selezionato" : "Scegli"}
-                        </span>
-                      </div>
-                      <div className="font-display text-xs sm:text-sm font-bold text-[#F4F4F6]">
-                        {preset.name}
-                      </div>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-[#C5A059]">
+                              {preset.code}
+                            </span>
+                            <span
+                              className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase whitespace-nowrap ${
+                                active
+                                  ? "bg-[#C5A059] text-[#07080b]"
+                                  : "border border-[#C5A059]/25 text-[#94a3b8]"
+                              }`}
+                            >
+                              {active ? "✓ Selezionato" : "Scegli"}
+                            </span>
+                          </div>
+                          <div className="font-display text-xs sm:text-sm font-bold text-[#F4F4F6]">
+                            {preset.name}
+                          </div>
+                          <p className="text-[11px] text-[#94a3b8] mt-0.5 leading-snug">
+                            {preset.tagline}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[9.5px]">
+                            <span className="rounded border border-[#C5A059]/30 bg-[#07080b] px-1.5 py-0.5 text-[#E8C56A] whitespace-nowrap">
+                              Asset: {preset.rules.markets}
+                            </span>
+                            <span className="rounded border border-[#10b981]/30 bg-[#10b981]/10 px-1.5 py-0.5 text-[#10b981] whitespace-nowrap">
+                              Rischio: {preset.rules.riskPerTrade} {preset.rules.currency}
+                            </span>
+                            <span className="rounded border border-[#ef4444]/30 bg-[#ef4444]/10 px-1.5 py-0.5 text-[#ef4444] whitespace-nowrap">
+                              Stop Giornaliero: {preset.rules.maxDailyLoss} {preset.rules.currency}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2.5" data-testid="tutorial-json-importer-panel">
+                  <div className="rounded-lg border border-[#C5A059]/25 bg-[#0d0f14] p-2.5 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="block font-mono text-[9.5px] font-bold uppercase tracking-wider text-[#E8C56A]">
+                        Importatore Costituzione Sovrana (AUREUS PROTOCOL v1)
+                      </span>
                       <p className="text-[11px] text-[#94a3b8] mt-0.5 leading-snug">
-                        {preset.tagline}
+                        Carica un passaporto esportato precedentemente per reidratare tutti e 5 gli anelli.
                       </p>
-                      <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[9.5px]">
-                        <span className="rounded border border-[#C5A059]/30 bg-[#07080b] px-1.5 py-0.5 text-[#E8C56A] whitespace-nowrap">
-                          Asset: {preset.rules.markets}
-                        </span>
-                        <span className="rounded border border-[#10b981]/30 bg-[#10b981]/10 px-1.5 py-0.5 text-[#10b981] whitespace-nowrap">
-                          Rischio: {preset.rules.riskPerTrade} {preset.rules.currency}
-                        </span>
-                        <span className="rounded border border-[#ef4444]/30 bg-[#ef4444]/10 px-1.5 py-0.5 text-[#ef4444] whitespace-nowrap">
-                          Stop Giornaliero: {preset.rules.maxDailyLoss} {preset.rules.currency}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                    </div>
+                    <div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".json,application/json"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        data-testid="tutorial-json-file-btn"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/15 hover:bg-[#C5A059]/25 px-2.5 py-1.5 font-mono text-[9.5px] font-bold uppercase tracking-wider text-[#E8C56A] transition-all whitespace-nowrap cursor-pointer active:scale-95"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-[#C5A059]" />
+                        <span>Carica File .JSON</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <textarea
+                    rows={4}
+                    value={jsonInput}
+                    onChange={(e) => setJsonInput(e.target.value)}
+                    placeholder='Incolla qui il JSON del passaporto {"protocol":"AUREUS_OS_SYSTEM_CONSTITUTION_V1", ...}'
+                    data-testid="tutorial-json-textarea"
+                    className="w-full rounded-lg border border-[#26262E] bg-[#07080b] p-2 font-mono text-[10px] text-[#F4F4F6] focus:border-[#C5A059]/60 focus:outline-none"
+                  />
+
+                  {parsedJsonResult && (
+                    <div>
+                      {parsedJsonResult.valid && parsedJsonResult.payload ? (
+                        <div
+                          className="rounded-lg border border-[#10b981]/40 bg-[#10b981]/10 p-2.5 space-y-2"
+                          data-testid="tutorial-json-valid-banner"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <ShieldCheck className="w-4 h-4 text-[#10b981]" />
+                              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#10b981]">
+                                COSTITUZIONE VALIDA &amp; VERIFICATA
+                              </span>
+                            </div>
+                            <span className="font-mono text-[9px] text-[#E8C56A]">
+                              0x{parsedJsonResult.computedHash?.slice(0, 12)}…
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-left">
+                            <div className="rounded border border-[#26262E] bg-[#07080b]/80 px-2 py-1">
+                              <span className="block font-mono text-[8px] uppercase text-[#94a3b8]">Sistema</span>
+                              <span className="font-mono text-[10px] font-bold text-[#F4F4F6] truncate block">
+                                {parsedJsonResult.payload.name}
+                              </span>
+                            </div>
+                            <div className="rounded border border-[#26262E] bg-[#07080b]/80 px-2 py-1">
+                              <span className="block font-mono text-[8px] uppercase text-[#94a3b8]">Mercati</span>
+                              <span className="font-mono text-[10px] font-bold text-[#E8C56A] truncate block">
+                                {parsedJsonResult.payload.markets}
+                              </span>
+                            </div>
+                            <div className="rounded border border-[#26262E] bg-[#07080b]/80 px-2 py-1">
+                              <span className="block font-mono text-[8px] uppercase text-[#94a3b8]">Rischio/Trade</span>
+                              <span className="font-mono text-[10px] font-bold text-[#10b981] whitespace-nowrap block">
+                                {parsedJsonResult.payload.riskPerTrade} {parsedJsonResult.payload.currency}
+                              </span>
+                            </div>
+                            <div className="rounded border border-[#26262E] bg-[#07080b]/80 px-2 py-1">
+                              <span className="block font-mono text-[8px] uppercase text-[#94a3b8]">Clausole Custode</span>
+                              <span className="font-mono text-[10px] font-bold text-[#F4F4F6] whitespace-nowrap block">
+                                {parsedJsonResult.checklistItems?.length || 0} Regole
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleApplyJsonConstitution}
+                            data-testid="tutorial-apply-imported-json-btn"
+                            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#10b981]/50 bg-[#10b981]/20 hover:bg-[#10b981]/30 py-2 font-mono text-[10.5px] font-bold uppercase tracking-wider text-[#10b981] transition-all cursor-pointer active:scale-95"
+                          >
+                            <FileCheck2 className="w-4 h-4 text-[#10b981]" />
+                            <span>Reidrata i 5 Anelli con questa Costituzione (1-Tap)</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 p-2.5 flex items-center gap-2"
+                          data-testid="tutorial-json-error-banner"
+                        >
+                          <AlertCircle className="w-4 h-4 text-[#ef4444] shrink-0" />
+                          <div className="min-w-0">
+                            <span className="block font-mono text-[9.5px] font-bold uppercase text-[#ef4444]">
+                              Documento non conforme al Protocollo
+                            </span>
+                            <p className="font-mono text-[9px] text-[#ef4444]/80 truncate">
+                              {parsedJsonResult.reason || "Formato JSON o protocollo non riconosciuto"}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -478,6 +673,17 @@ export function SystemCompilationTutorialModal({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {parsedJsonResult?.valid && (
+                  <button
+                    type="button"
+                    onClick={handleApplyJsonConstitution}
+                    data-testid="tutorial-apply-json-final-btn"
+                    className="sm:col-span-2 flex items-center justify-center gap-2 rounded-xl border border-[#10b981]/60 bg-[#10b981]/20 hover:bg-[#10b981]/30 px-3.5 py-2.5 font-mono text-[10.5px] font-bold uppercase tracking-wider text-[#10b981] transition-all cursor-pointer active:scale-95"
+                  >
+                    <FileCheck2 className="w-3.5 h-3.5 shrink-0" />
+                    <span className="whitespace-nowrap">Avvia con Costituzione Importata ({parsedJsonResult.payload?.name})</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleApplyAndStart}

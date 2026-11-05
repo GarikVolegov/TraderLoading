@@ -12,6 +12,7 @@ import {
   Upload,
   Link2,
   Flame,
+  Award,
 } from "lucide-react";
 import {
   buildSystemPassportExportDocument,
@@ -54,6 +55,7 @@ export function SystemPassportCard({
   const [, setLocation] = useLocation();
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [badgeCopied, setBadgeCopied] = useState(false);
   const [verifierOpen, setVerifierOpen] = useState(Boolean(initialShareToken));
   const [verifierInput, setVerifierInput] = useState(initialShareToken ?? "");
   const [importedToast, setImportedToast] = useState(false);
@@ -196,6 +198,29 @@ export function SystemPassportCard({
     } catch {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2200);
+    }
+  };
+
+  const handleCopyBadgeMarkdown = async () => {
+    synestheticClick();
+    const token = encodeSystemPassportShareToken(payload, checklistItems);
+    const origin =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : "https://aureus-os.app";
+    const shareUrl = `${origin}/method?passport=${encodeURIComponent(token)}`;
+    const badgeUrl = `${origin}/api/public/badge/${encodeURIComponent(sealCode)}.svg`;
+    const markdownBadge = `[![AUREUS Integrità Certificata](${badgeUrl})](${shareUrl})`;
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(markdownBadge);
+      }
+      setBadgeCopied(true);
+      setTimeout(() => setBadgeCopied(false), 2200);
+    } catch {
+      setBadgeCopied(true);
+      setTimeout(() => setBadgeCopied(false), 2200);
     }
   };
 
@@ -407,6 +432,25 @@ export function SystemPassportCard({
                   <>
                     <Link2 className="w-3.5 h-3.5 text-[#C5A059]" />
                     <span>Copia Deep-Link Firmato</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyBadgeMarkdown}
+                data-testid="system-passport-copy-badge-btn"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#26262E] bg-[#0d0f14] hover:border-[#C5A059]/40 hover:text-[#E8C56A] px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#F4F4F6] transition-all whitespace-nowrap cursor-pointer"
+              >
+                {badgeCopied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-[#10b981]" />
+                    <span className="text-[#10b981]">✓ Badge Copiato</span>
+                  </>
+                ) : (
+                  <>
+                    <Award className="w-3.5 h-3.5 text-[#C5A059]" />
+                    <span>Copia Badge SVG (Markdown)</span>
                   </>
                 )}
               </button>

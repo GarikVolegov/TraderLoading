@@ -92,3 +92,36 @@ test("public routes: GET /public/verify-honor/:hash serves rich HTML OpenGraph p
     await server.close();
   }
 });
+
+test("public routes: GET /public/badge/integrity.svg serves Shields-style SVG badge", async () => {
+  const server = await startTestServer();
+  try {
+    const res = await fetch(`${server.baseUrl}/public/badge/integrity.svg?score=98&label=AUREUS`);
+    assert.equal(res.status, 200);
+    const contentType = res.headers.get("content-type") || "";
+    assert.ok(contentType.includes("image/svg+xml"), `Must return image/svg+xml, got ${contentType}`);
+    const svgText = await res.text();
+    assert.ok(svgText.includes("<svg"), "Must return valid SVG");
+    assert.ok(svgText.includes("AUREUS"), "Must contain label");
+    assert.ok(svgText.includes("98% INTEGRITY"), "Must contain score");
+    assert.ok(svgText.includes("#C5A059"), "Must contain Imperial Gold color");
+    assert.ok(svgText.includes("#10B981"), "Must contain Emerald integrity color");
+  } finally {
+    await server.close();
+  }
+});
+
+test("public routes: GET /public/badge/:sealCode.svg serves seal badge", async () => {
+  const server = await startTestServer();
+  try {
+    const res = await fetch(`${server.baseUrl}/public/badge/AUREUS-SYS-9988-7766-5544.svg`);
+    assert.equal(res.status, 200);
+    const contentType = res.headers.get("content-type") || "";
+    assert.ok(contentType.includes("image/svg+xml"), `Must return image/svg+xml, got ${contentType}`);
+    const svgText = await res.text();
+    assert.ok(svgText.includes("<svg"), "Must return valid SVG");
+    assert.ok(svgText.includes("AUREUS-SYS-9988-7766-5544"), "Must contain seal code");
+  } finally {
+    await server.close();
+  }
+});
