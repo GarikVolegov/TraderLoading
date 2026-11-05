@@ -246,3 +246,139 @@ export function resetWatchdogAlertDedupeForTesting(): void {
   failedCount = 0;
   lastAlertAt = null;
 }
+
+export interface WatchdogDailyDigestInput {
+  status: "healthy" | "degraded" | "critical";
+  uptimeSeconds: number;
+  totalRequests: number;
+  errorRatePct: number;
+  avgLatencyMs: number;
+  p95LatencyMs: number;
+  heapUsedMb: number;
+  rssMb: number;
+  totalAnomalies: number;
+  timestamp?: string;
+}
+
+export function buildWatchdogDailyDigestPayload(
+  provider: "discord" | "slack" | "telegram" | "generic",
+  digest: WatchdogDailyDigestInput,
+  telegramChatId?: string,
+): Record<string, unknown> {
+  const ts = digest.timestamp ?? new Date().toISOString();
+  const statusUpper = digest.status.toUpperCase();
+  const hours = (digest.uptimeSeconds / 3600).toFixed(1);
+  const color =
+    digest.status === "critical"
+      ? 0xef4444
+      : digest.status === "degraded"
+        ? 0xc5a059
+        : 0x10b981;
+
+  if (provider === "discord") {
+    return {
+      username: "AUREUS Araldo della Soglia",
+      embeds: [
+        {
+          title: `[DIGEST GIORNALIERO] Stato Cluster AUREUS: ${statusUpper}`,
+          description: `Bollettino telemetrico delle ultime 24 ore · Uptime ${hours}h`,
+          color,
+          timestamp: ts,
+          fields: [
+            { name: "Richieste Totali", value: `\`${digest.totalRequests}\``, inline: true },
+            { name: "Error Rate", value: `\`${digest.errorRatePct.toFixed(2)}%\``, inline: true },
+            {
+              name: "Latenza (Avg / p95)",
+              value: `\`${digest.avgLatencyMs}ms / ${digest.p95LatencyMs}ms\``,
+              inline: true,
+            },
+            {
+              name: "Memoria (Heap / RSS)",
+              value: `\`${digest.heapUsedMb}MB / ${digest.rssMb}MB\``,
+              inline: true,
+            },
+            { name: "Anomalie 24h", value: `\`${digest.totalAnomalies}\``, inline: true },
+          ],
+        },
+      ],
+    };
+  }
+
+  if (provider === "slack") {
+    return {
+      text: `*[AUREUS ARALDO DELLA SOGLIA · ${statusUpper}]* Uptime: \`${hours}h\` | Req: \`${digest.totalRequests}\` | Err: \`${digest.errorRatePct.toFixed(2)}%\` | p95: \`${digest.p95LatencyMs}ms\` | Heap: \`${digest.heapUsedMb}MB\` | Anomalie: \`${digest.totalAnomalies}\``,
+    };
+  }
+
+  if (provider === "telegram") {
+    return {
+      chat_id: telegramChatId || process.env.WATCHDOG_ALERT_TELEGRAM_CHAT_ID || "",
+      parse_mode: "HTML",
+      text: `<b>[AUREUS ARALDO DELLA SOGLIA · ${escapeHtml(statusUpper)}]</b>\n<b>Uptime:</b> <code>${hours}h</code> | <b>Req:</b> <code>${digest.totalRequests}</code>\n<b>Error Rate:</b> <code>${digest.errorRatePct.toFixed(2)}%</code> | <b>p95:</b> <code>${digest.p95LatencyMs}ms</code>\n<b>Heap/RSS:</b> <code>${digest.heapUsedMb}MB / ${digest.rssMb}MB</code> | <b>Anomalie:</b> <code>${digest.totalAnomalies}</code>`,
+    };
+  }
+
+  return {
+    service: "aureus-api",
+    event: "watchdog.daily_digest",
+    digest,
+    timestamp: ts,
+  };
+}
+
+export async function dispatchWatchdogDailyDigest(
+  digest: WatchdogDailyDigestInput,
+  options?: WatchdogAlertDispatchOptions,
+): Promise<WatchdogAlertDispatchResult> {
+  const rawWebhookUrl = (
+    options?.webhookUrl ??
+    process.env.WATCHDOG_ALERT_WEBHOOK_URL ??
+    ""
+  ).trim();
+  if (!rawWebhookUrl) {
+    return { dispatched: false, reason: "webhook_unconfigured" };
+  }
+
+  const isProd = options?.isProduction ?? process.env.NODE_ENV === "production";
+  const urlCheck = isAllowedWebhookUrl(rawWebhookUrl, isProd);
+  if (!urlCheck.valid) {
+    failedCount += 1;
+    return { dispatched: false, reason: urlCheck.reason };
+  }
+
+  const provider = detectProvider(urlCheck.parsed);
+  const payload = buildWatchdogDailyDigestPayload(
+    provider,
+    digest,
+    options?.telegramChatId,
+  );
+  const fetchFn = options?.fetchImpl ?? globalThis.fetch;
+
+  try {
+    const response = await fetchFn(urlCheck.parsed.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Aureus-Sovereign-Watchdog/1.0",
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      failedCount += 1;
+      return {
+        dispatched: false,
+        reason: "http_error",
+        statusCode: response.status,
+      };
+    }
+
+    dispatchedCount += 1;
+    lastAlertAt = new Date(options?.now ?? Date.now()).toISOString();
+    return { dispatched: true, provider, statusCode: response.status };
+  } catch {
+    failedCount += 1;
+    return { dispatched: false, reason: "network_error" };
+  }
+}

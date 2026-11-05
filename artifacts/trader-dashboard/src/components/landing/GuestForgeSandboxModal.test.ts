@@ -4,8 +4,10 @@ import {
   CUSTODE_CHECKLIST_ITEMS,
   GUEST_SANDBOX_CANDLES,
   INITIAL_VISIBLE_BAR_INDEX,
+  SANDBOX_SCENARIOS,
   SANDBOX_SCENARIO_LEVELS,
   calculateSandboxMetrics,
+  getSandboxScenario,
 } from "./GuestForgeSandboxModal";
 
 // 1. Verify 16-candle XAU/USD scenario OHLC mathematical integrity
@@ -66,6 +68,23 @@ const tpMetrics = calculateSandboxMetrics(14, true);
 assert.equal(tpMetrics.hitTakeProfit, true);
 assert.equal(tpMetrics.pnlR, 3.0);
 assert.equal(tpMetrics.pnlEur, 300.0);
+
+// 4b. Verify Multi-Scenario support (XAU/USD, EUR/USD, BTC/USD)
+assert.equal(SANDBOX_SCENARIOS.length, 3, "Must expose 3 institutional scenarios");
+for (const scenario of SANDBOX_SCENARIOS) {
+  assert.equal(scenario.candles.length, 16, `Scenario ${scenario.id} must have 16 candles`);
+  assert.equal(scenario.checklist.length, 3, `Scenario ${scenario.id} must have 3 Custode rules`);
+  assert.ok(
+    scenario.candles[3].low < scenario.ssl,
+    `Scenario ${scenario.id} candle 3 must sweep SSL (${scenario.ssl})`,
+  );
+  const scenarioTp = calculateSandboxMetrics(14, true, scenario.id);
+  assert.equal(scenarioTp.hitTakeProfit, true, `Scenario ${scenario.id} must reach TP at bar 14`);
+  assert.equal(scenarioTp.pnlR, 3.0);
+  assert.equal(scenarioTp.pnlEur, 300.0);
+}
+assert.equal(getSandboxScenario("eur-ny-reversal").symbol, "EUR/USD");
+assert.equal(getSandboxScenario("btc-macro-breakout").symbol, "BTC/USD");
 
 // 5. Verify Limen Design System static compliance & LandingPage wiring
 const modalSource = readFileSync(

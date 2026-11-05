@@ -1,17 +1,33 @@
 import { useMemo, useState } from "react";
-import { ShieldCheck, Copy, Check, Download, Fingerprint, Lock } from "lucide-react";
 import {
+  ShieldCheck,
+  ShieldAlert,
+  Copy,
+  Check,
+  Download,
+  Fingerprint,
+  Lock,
+  FileCheck2,
+  Upload,
+} from "lucide-react";
+import {
+  buildSystemPassportExportDocument,
   computeSystemPassportHash,
   formatPassportSealCode,
   generateDeterministicQrMatrix,
+  verifySystemPassportDocument,
   type SystemPassportPayload,
 } from "@/lib/systemPassportHash";
-import { synestheticClick } from "@/lib/soundFx";
+import { synestheticClick, synestheticConfirm, synestheticAlert } from "@/lib/soundFx";
 
 interface SystemPassportCardProps {
   payload: SystemPassportPayload;
   checklistItems?: string[];
   compact?: boolean;
+  onImportVerifiedSystem?: (
+    payload: SystemPassportPayload,
+    checklistItems: string[],
+  ) => void;
 }
 
 const PHASE_LABELS: Record<string, string> = {
@@ -25,12 +41,20 @@ export function SystemPassportCard({
   payload,
   checklistItems = [],
   compact = false,
+  onImportVerifiedSystem,
 }: SystemPassportCardProps) {
   const [copied, setCopied] = useState(false);
+  const [verifierOpen, setVerifierOpen] = useState(false);
+  const [verifierInput, setVerifierInput] = useState("");
+  const [importedToast, setImportedToast] = useState(false);
 
   const hash = useMemo(() => computeSystemPassportHash(payload), [payload]);
   const sealCode = useMemo(() => formatPassportSealCode(hash), [hash]);
   const qrMatrix = useMemo(() => generateDeterministicQrMatrix(hash, 21), [hash]);
+  const verificationResult = useMemo(
+    () => (verifierInput.trim() ? verifySystemPassportDocument(verifierInput) : null),
+    [verifierInput],
+  );
 
   const phaseLabel = PHASE_LABELS[payload.phase || "define"] || "FASE I · FONDAZIONE";
   const currency = (payload.currency || "EUR").toUpperCase();
@@ -61,34 +85,10 @@ export function SystemPassportCard({
 
   const handleExportJson = () => {
     synestheticClick();
-    const exportDocument = {
-      protocol: "AUREUS_OS_SYSTEM_CONSTITUTION_V1",
-      sealCode,
-      cryptographicHash: `0x${hash}`,
-      issuedAt: new Date().toISOString(),
-      system: {
-        name: payload.name || "Costituzione Operativa",
-        versionNumber: payload.versionNumber ?? 1,
-        phase: payload.phase || "define",
-        markets: payload.markets,
-        windows: payload.windows,
-        setup: payload.setup,
-        entry: payload.entry,
-        exit: payload.exit,
-        invalidation: payload.invalidation,
-        waitConditions: payload.waitConditions,
-        riskGovernance: {
-          currency,
-          riskPerTrade: payload.riskPerTrade,
-          maxDailyLoss: payload.maxDailyLoss,
-          maxDailyTrades: payload.maxDailyTrades,
-        },
-        thresholdCustodian: {
-          checklistCount: payload.checklistCount,
-          clauses: checklistItems,
-        },
-      },
-    };
+    const exportDocument = buildSystemPassportExportDocument(
+      payload,
+      checklistItems,
+    );
 
     const blob = new Blob([JSON.stringify(exportDocument, null, 2)], {
       type: "application/json;charset=utf-8",
@@ -105,6 +105,29 @@ export function SystemPassportCard({
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
+  };
+
+  const handleLoadCurrentCertificate = () => {
+    synestheticClick();
+    const currentDoc = buildSystemPassportExportDocument(
+      payload,
+      checklistItems,
+    );
+    setVerifierInput(JSON.stringify(currentDoc, null, 2));
+  };
+
+  const handleApplyVerified = () => {
+    if (!verificationResult?.valid || !verificationResult.payload) {
+      synestheticAlert();
+      return;
+    }
+    synestheticConfirm();
+    onImportVerifiedSystem?.(
+      verificationResult.payload,
+      verificationResult.checklistItems ?? [],
+    );
+    setImportedToast(true);
+    setTimeout(() => setImportedToast(false), 2400);
   };
 
   return (
@@ -275,10 +298,112 @@ export function SystemPassportCard({
                 <Download className="w-3.5 h-3.5 text-[#C5A059]" />
                 <span>Esporta JSON Costituzione</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  synestheticClick();
+                  setVerifierOpen((prev) => !prev);
+                }}
+                data-testid="system-passport-verify-toggle-btn"
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                  verifierOpen
+                    ? "border-[#10b981]/50 bg-[#10b981]/15 text-[#10b981]"
+                    : "border-[#26262E] bg-[#0d0f14] hover:border-[#C5A059]/40 hover:text-[#E8C56A] text-[#F4F4F6]"
+                }`}
+              >
+                <FileCheck2 className="w-3.5 h-3.5 text-[#C5A059]" />
+                <span>Verifica / Importa Sigillo</span>
+              </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* Console di Verifica Crittografica & Clonazione Archetipo */}
+      {!compact && verifierOpen && (
+        <div
+          className="rounded-xl border border-[#C5A059]/30 bg-[#0d0f14] p-3 space-y-2.5"
+          data-testid="system-passport-verifier-panel"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-mono text-[9.5px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
+              Validatore Crittografico Costituzione (SHA-AUREUS 64-HEX)
+            </span>
+            <button
+              type="button"
+              onClick={handleLoadCurrentCertificate}
+              data-testid="system-passport-load-current-btn"
+              className="rounded border border-[#C5A059]/35 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap cursor-pointer"
+            >
+              Carica Certificato Attuale (1-Tap)
+            </button>
+          </div>
+
+          <textarea
+            rows={4}
+            value={verifierInput}
+            onChange={(e) => setVerifierInput(e.target.value)}
+            placeholder='Incolla il JSON esportato {"protocol":"AUREUS_OS_SYSTEM_CONSTITUTION_V1", ...} per verificarne l&apos;integrità crittografica'
+            data-testid="system-passport-verifier-textarea"
+            className="w-full rounded-lg border border-[#26262E] bg-[#07080b] p-2 font-mono text-[10px] text-[#F4F4F6] focus:border-[#C5A059]/60 focus:outline-none"
+          />
+
+          {verificationResult && (
+            <div
+              className={`rounded-lg border p-2.5 flex flex-wrap items-center justify-between gap-2 ${
+                verificationResult.valid
+                  ? "border-[#10b981]/45 bg-[#10b981]/10"
+                  : "border-[#ef4444]/45 bg-[#ef4444]/10"
+              }`}
+              data-testid="system-passport-verification-status"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {verificationResult.valid ? (
+                  <ShieldCheck className="w-4 h-4 text-[#10b981] shrink-0" />
+                ) : (
+                  <ShieldAlert className="w-4 h-4 text-[#ef4444] shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <span
+                    className={`block font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                      verificationResult.valid ? "text-[#10b981]" : "text-[#ef4444]"
+                    }`}
+                  >
+                    {verificationResult.valid
+                      ? `SIGILLO AUTENTICO · ${verificationResult.computedSeal}`
+                      : `SIGILLO NON VALIDO (${verificationResult.reason?.toUpperCase()})`}
+                  </span>
+                  {verificationResult.payload && (
+                    <span className="block font-mono text-[9.5px] text-[#94a3b8] truncate">
+                      {verificationResult.payload.name} ·{" "}
+                      {verificationResult.payload.markets} · Rischio{" "}
+                      {verificationResult.payload.riskPerTrade}{" "}
+                      {verificationResult.payload.currency}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {verificationResult.valid && onImportVerifiedSystem && (
+                <button
+                  type="button"
+                  onClick={handleApplyVerified}
+                  data-testid="system-passport-apply-verified-btn"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#10b981]/50 bg-[#10b981]/20 hover:bg-[#10b981]/30 px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-wider text-[#10b981] whitespace-nowrap cursor-pointer"
+                >
+                  <Upload className="w-3 h-3" />
+                  <span>
+                    {importedToast
+                      ? "✓ Costituzione Applicata"
+                      : "Applica Costituzione Verificata"}
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

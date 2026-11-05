@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  buildSystemPassportExportDocument,
   computeSystemPassportHash,
   formatPassportSealCode,
   generateDeterministicQrMatrix,
+  verifySystemPassportDocument,
   type SystemPassportPayload,
 } from "./systemPassportHash";
 
@@ -97,6 +99,36 @@ const verifyFinderPattern = (rowOffset: number, colOffset: number) => {
 verifyFinderPattern(0, 0);
 verifyFinderPattern(0, 14);
 verifyFinderPattern(14, 0);
+
+// 4b. Signed JSON export and cryptographic verification (authentic vs tampered)
+const exportedDoc = buildSystemPassportExportDocument(
+  basePayload,
+  ["Liquidità spazzata", "BOS M15", "Rischio 50 EUR", "Zero Red News"],
+  "2026-11-05T00:00:00.000Z",
+);
+const authenticVerify = verifySystemPassportDocument(JSON.stringify(exportedDoc));
+assert.equal(authenticVerify.valid, true, "Exported JSON document must verify as authentic");
+assert.equal(authenticVerify.computedHash, hash1);
+assert.equal(authenticVerify.computedSeal, sealCode);
+assert.equal(authenticVerify.checklistItems?.length, 4);
+
+const tamperedJsonDoc = {
+  ...exportedDoc,
+  system: {
+    ...exportedDoc.system,
+    riskGovernance: {
+      ...exportedDoc.system.riskGovernance,
+      riskPerTrade: 500, // tampered risk without updating seal/hash
+    },
+  },
+};
+const tamperedVerify = verifySystemPassportDocument(JSON.stringify(tamperedJsonDoc));
+assert.equal(tamperedVerify.valid, false, "Tampered riskPerTrade must fail cryptographic verification");
+assert.equal(tamperedVerify.reason, "hash_mismatch");
+
+const invalidJsonVerify = verifySystemPassportDocument("{not-valid-json");
+assert.equal(invalidJsonVerify.valid, false);
+assert.equal(invalidJsonVerify.reason, "invalid_json");
 
 // 5. Static integration checks in Method.tsx, DailyOrderMethodConsole.tsx & SystemPassportCard.tsx
 const cardSource = readFileSync(

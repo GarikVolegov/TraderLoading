@@ -950,20 +950,20 @@ export function UnifiedTradeLedgerTrajectory({
         )}
 
         {/* Integrated Bottom Telemetry Summary */}
-        <div className="shrink-0 flex items-center justify-between border-t border-white/[0.06] pt-1.5 mt-1 font-mono text-[10px] text-text-lo">
-          <div className="flex items-center gap-3">
-            <span>
-              Storico: <strong className="text-text-hi">{ledgerStats.total} Trade</strong> (
-              <span className="text-success">{ledgerStats.wins} Win</span> /{" "}
-              <span className="text-destructive">{ledgerStats.losses} Loss</span>)
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-white/[0.06] pt-1.5 mt-1 font-mono text-[10px] text-text-lo">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="whitespace-nowrap">
+              Storico: <strong className="text-text-hi whitespace-nowrap">{ledgerStats.total} Trade</strong> (
+              <span className="text-success whitespace-nowrap">{ledgerStats.wins} Win</span> /{" "}
+              <span className="text-destructive whitespace-nowrap">{ledgerStats.losses} Loss</span>)
             </span>
-            <span>
-              Win Rate: <strong className="text-text-hi">{ledgerStats.winRate}%</strong>
+            <span className="whitespace-nowrap">
+              Win Rate: <strong className="text-text-hi whitespace-nowrap">{ledgerStats.winRate}%</strong>
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
             <span>PnL Netto Storico:</span>
-            <strong className={netPnlTotal >= 0 ? "text-success text-xs" : "text-destructive text-xs"}>
+            <strong className={`whitespace-nowrap ${netPnlTotal >= 0 ? "text-success text-xs" : "text-destructive text-xs"}`}>
               {netPnlTotal >= 0 ? `+${netPnlTotal.toFixed(2)}` : netPnlTotal.toFixed(2)} €
             </strong>
           </div>

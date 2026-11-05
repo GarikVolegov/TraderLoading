@@ -3,6 +3,7 @@ import { CircuitBreaker } from "./circuitBreaker.js";
 import { systemWatchdog, type AnomalyRecord } from "./systemWatchdog.js";
 import {
   dispatchWatchdogCanaryAlert,
+  dispatchWatchdogDailyDigest,
   getWatchdogAlertTelemetry,
   resetWatchdogAlertDedupeForTesting,
 } from "./watchdogAlerting.js";
@@ -185,5 +186,28 @@ assert.equal(telemetry.totalAnomalies, 1);
 assert.equal(telemetry.recentAnomalies[0]?.kind, "circuitBreaker");
 assert.match(telemetry.recentAnomalies[0]?.message ?? "", /twelve-data-canary-test/);
 assert.ok(telemetry.alerting);
+
+// 8. Daily Health Digest ("L'Araldo della Soglia") multi-provider test
+resetWatchdogAlertDedupeForTesting();
+const digestRes = await dispatchWatchdogDailyDigest(
+  {
+    status: "healthy",
+    uptimeSeconds: 86_400,
+    totalRequests: 14_250,
+    errorRatePct: 0.04,
+    avgLatencyMs: 28,
+    p95LatencyMs: 74,
+    heapUsedMb: 142,
+    rssMb: 238,
+    totalAnomalies: 0,
+  },
+  {
+    webhookUrl: "https://discord.com/api/webhooks/123456/token_abc",
+    fetchImpl: mockDiscordFetch,
+  },
+);
+assert.equal(digestRes.dispatched, true);
+assert.equal(capturedBody.username, "AUREUS Araldo della Soglia");
+assert.equal((capturedBody.embeds as Array<Record<string, unknown>>)[0]?.color, 0x10b981);
 
 console.log("watchdog alerting & circuit breaker integration tests passed");

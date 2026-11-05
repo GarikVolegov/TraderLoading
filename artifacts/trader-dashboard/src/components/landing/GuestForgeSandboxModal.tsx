@@ -223,20 +223,191 @@ export const GUEST_SANDBOX_CANDLES: readonly SandboxCandle[] = [
 
 export const INITIAL_VISIBLE_BAR_INDEX = 5;
 
+export type SandboxScenarioId =
+  | "xau-london-sweep"
+  | "eur-ny-reversal"
+  | "btc-macro-breakout";
+
+export interface SandboxScenarioDefinition {
+  readonly id: SandboxScenarioId;
+  readonly shortLabel: string;
+  readonly symbol: string;
+  readonly timeframe: string;
+  readonly session: string;
+  readonly priceMin: number;
+  readonly priceMax: number;
+  readonly decimals: number;
+  readonly ssl: number;
+  readonly entry: number;
+  readonly stopLoss: number;
+  readonly takeProfit: number;
+  readonly riskEur: number;
+  readonly rewardEur: number;
+  readonly rrRatio: number;
+  readonly checklist: readonly CustodeChecklistItem[];
+  readonly candles: readonly SandboxCandle[];
+}
+
+export const EUR_NY_REVERSAL_CANDLES: readonly SandboxCandle[] = [
+  { index: 0, time: "13:30", open: 1.0846, high: 1.0849, low: 1.0841, close: 1.0843, label: "Apertura NY Killzone" },
+  { index: 1, time: "13:35", open: 1.0843, high: 1.0845, low: 1.0838, close: 1.0839, label: "Pressione verso Minimi" },
+  { index: 2, time: "13:40", open: 1.0839, high: 1.0841, low: 1.0836, close: 1.0837, label: "Compressione pre-Sweep" },
+  { index: 3, time: "13:45", open: 1.0837, high: 1.0839, low: 1.0830, close: 1.0836, label: "Sweep SSL NY (1.0830)" },
+  { index: 4, time: "13:50", open: 1.0836, high: 1.0845, low: 1.0835, close: 1.0844, label: "Displacement + BOS M5" },
+  { index: 5, time: "13:55", open: 1.0844, high: 1.0846, low: 1.0840, close: 1.0842, label: "Ritorno FVG · Ingresso 1.0842" },
+  { index: 6, time: "14:00", open: 1.0842, high: 1.0849, low: 1.0841, close: 1.0848, label: "Impulso Rialzista (+0.60 R)" },
+  { index: 7, time: "14:05", open: 1.0848, high: 1.0854, low: 1.0847, close: 1.0853, label: "Espansione Ordini (+1.10 R)" },
+  { index: 8, time: "14:10", open: 1.0853, high: 1.0855, low: 1.0850, close: 1.0851, label: "Pullback Tecnico (+0.90 R)" },
+  { index: 9, time: "14:15", open: 1.0851, high: 1.0859, low: 1.0850, close: 1.0858, label: "Breakout Sessione (+1.60 R)" },
+  { index: 10, time: "14:20", open: 1.0858, high: 1.0864, low: 1.0857, close: 1.0863, label: "Continuazione Aurea (+2.10 R)" },
+  { index: 11, time: "14:25", open: 1.0863, high: 1.0865, low: 1.0860, close: 1.0861, label: "Consolidamento (+1.90 R)" },
+  { index: 12, time: "14:30", open: 1.0861, high: 1.0868, low: 1.0860, close: 1.0867, label: "Accelerazione NY (+2.50 R)" },
+  { index: 13, time: "14:35", open: 1.0867, high: 1.0871, low: 1.0866, close: 1.0870, label: "Soglia Target (+2.80 R)" },
+  { index: 14, time: "14:40", open: 1.0870, high: 1.0875, low: 1.0869, close: 1.0873, label: "Target Raggiunto · TP 1.0872 (+3.00 R)" },
+  { index: 15, time: "14:45", open: 1.0873, high: 1.0876, low: 1.0871, close: 1.0874, label: "Sigillo Post-Target" },
+] as const;
+
+export const BTC_MACRO_BREAKOUT_CANDLES: readonly SandboxCandle[] = [
+  { index: 0, time: "12:00", open: 94700, high: 94950, low: 94400, close: 94550, label: "Range Macro H1" },
+  { index: 1, time: "13:00", open: 94550, high: 94680, low: 94280, close: 94350, label: "Compressione Supporto" },
+  { index: 2, time: "14:00", open: 94350, high: 94480, low: 94210, close: 94260, label: "Test Liquidità H1" },
+  { index: 3, time: "15:00", open: 94260, high: 94420, low: 93950, close: 94320, label: "Sweep SSL Macro (93,950)" },
+  { index: 4, time: "16:00", open: 94320, high: 94850, low: 94280, close: 94780, label: "Displacement Istituzionale + BOS" },
+  { index: 5, time: "17:00", open: 94780, high: 94860, low: 94520, close: 94600, label: "Mitigazione OB · Ingresso 94,600" },
+  { index: 6, time: "18:00", open: 94600, high: 95150, low: 94550, close: 95080, label: "Impulso Direzionale (+0.60 R)" },
+  { index: 7, time: "19:00", open: 95080, high: 95560, low: 95010, close: 95480, label: "Espansione Volumi (+1.10 R)" },
+  { index: 8, time: "20:00", open: 95480, high: 95600, low: 95240, close: 95320, label: "Riaccumulo H1 (+0.90 R)" },
+  { index: 9, time: "21:00", open: 95320, high: 95960, low: 95280, close: 95880, label: "Rottura Struttura (+1.60 R)" },
+  { index: 10, time: "22:00", open: 95880, high: 96360, low: 95800, close: 96280, label: "Accelerazione Macro (+2.10 R)" },
+  { index: 11, time: "23:00", open: 96280, high: 96420, low: 96040, close: 96120, label: "Difesa Livello (+1.90 R)" },
+  { index: 12, time: "00:00", open: 96120, high: 96680, low: 96080, close: 96600, label: "Spinta Verso Target (+2.50 R)" },
+  { index: 13, time: "01:00", open: 96600, high: 96920, low: 96520, close: 96840, label: "Pre-Target H1 (+2.80 R)" },
+  { index: 14, time: "02:00", open: 96840, high: 97180, low: 96780, close: 97050, label: "Target Raggiunto · TP 97,000 (+3.00 R)" },
+  { index: 15, time: "03:00", open: 97050, high: 97260, low: 96950, close: 97140, label: "Consolidamento Sovrano" },
+] as const;
+
+export const SANDBOX_SCENARIOS: readonly SandboxScenarioDefinition[] = [
+  {
+    id: "xau-london-sweep",
+    shortLabel: "XAU/USD · Londra Sweep",
+    symbol: SANDBOX_SCENARIO_LEVELS.symbol,
+    timeframe: SANDBOX_SCENARIO_LEVELS.timeframe,
+    session: SANDBOX_SCENARIO_LEVELS.session,
+    priceMin: 2639.0,
+    priceMax: 2662.5,
+    decimals: 2,
+    ssl: SANDBOX_SCENARIO_LEVELS.ssl,
+    entry: SANDBOX_SCENARIO_LEVELS.entry,
+    stopLoss: SANDBOX_SCENARIO_LEVELS.stopLoss,
+    takeProfit: SANDBOX_SCENARIO_LEVELS.takeProfit,
+    riskEur: SANDBOX_SCENARIO_LEVELS.riskEur,
+    rewardEur: SANDBOX_SCENARIO_LEVELS.rewardEur,
+    rrRatio: SANDBOX_SCENARIO_LEVELS.rrRatio,
+    checklist: CUSTODE_CHECKLIST_ITEMS,
+    candles: GUEST_SANDBOX_CANDLES,
+  },
+  {
+    id: "eur-ny-reversal",
+    shortLabel: "EUR/USD · NY Killzone",
+    symbol: "EUR/USD",
+    timeframe: "5 min",
+    session: "NEW YORK KILLZONE",
+    priceMin: 1.0828,
+    priceMax: 1.0878,
+    decimals: 4,
+    ssl: 1.0835,
+    entry: 1.0842,
+    stopLoss: 1.0832,
+    takeProfit: 1.0872,
+    riskEur: 100.0,
+    rewardEur: 300.0,
+    rrRatio: 3.0,
+    checklist: [
+      {
+        id: "sweep_ssl",
+        code: "REGOLA I",
+        label: "Sweep Liquidità Pre-NY sotto 1.0835 (SSL)",
+        metricBadge: "SSL 1.0835",
+      },
+      {
+        id: "bos_fvg",
+        code: "REGOLA II",
+        label: "Inversione Strutturale (BOS) + FVG 5 min",
+        metricBadge: "5 min BOS",
+      },
+      {
+        id: "risk_rr",
+        code: "REGOLA III",
+        label: "Stop 10 pips (100 EUR) & Target 30 pips (1:3 R:R)",
+        metricBadge: "1:3 R:R",
+      },
+    ],
+    candles: EUR_NY_REVERSAL_CANDLES,
+  },
+  {
+    id: "btc-macro-breakout",
+    shortLabel: "BTC/USD · Macro H1",
+    symbol: "BTC/USD",
+    timeframe: "1 ora",
+    session: "MACRO LIQUIDITY EXPANSION",
+    priceMin: 93600,
+    priceMax: 97400,
+    decimals: 0,
+    ssl: 94200,
+    entry: 94600,
+    stopLoss: 93800,
+    takeProfit: 97000,
+    riskEur: 100.0,
+    rewardEur: 300.0,
+    rrRatio: 3.0,
+    checklist: [
+      {
+        id: "sweep_ssl",
+        code: "REGOLA I",
+        label: "Caccia agli Stop Macro sotto 94,200 (Sweep H1)",
+        metricBadge: "SSL 94,200",
+      },
+      {
+        id: "bos_fvg",
+        code: "REGOLA II",
+        label: "Rottura Struttura H1 + Mitigazione Order Block",
+        metricBadge: "1 ora BOS",
+      },
+      {
+        id: "risk_rr",
+        code: "REGOLA III",
+        label: "Rischio Fisso 100 EUR & Target 97,000 (1:3 R:R)",
+        metricBadge: "1:3 R:R",
+      },
+    ],
+    candles: BTC_MACRO_BREAKOUT_CANDLES,
+  },
+] as const;
+
+export function getSandboxScenario(
+  scenarioId: SandboxScenarioId = "xau-london-sweep",
+): SandboxScenarioDefinition {
+  return (
+    SANDBOX_SCENARIOS.find((s) => s.id === scenarioId) ?? SANDBOX_SCENARIOS[0]
+  );
+}
+
 export function calculateSandboxMetrics(
   currentBarIndex: number,
   tradeExecuted: boolean,
+  scenarioId: SandboxScenarioId = "xau-london-sweep",
 ): {
   currentPrice: number;
   pnlR: number;
   pnlEur: number;
   hitTakeProfit: boolean;
 } {
+  const scenario = getSandboxScenario(scenarioId);
   const safeIndex = Math.max(
     0,
-    Math.min(GUEST_SANDBOX_CANDLES.length - 1, currentBarIndex),
+    Math.min(scenario.candles.length - 1, currentBarIndex),
   );
-  const candle = GUEST_SANDBOX_CANDLES[safeIndex];
+  const candle = scenario.candles[safeIndex];
   if (!tradeExecuted) {
     return {
       currentPrice: candle.close,
@@ -247,26 +418,24 @@ export function calculateSandboxMetrics(
   }
 
   // Check if any bar from execution up to safeIndex reached Take Profit
-  const reachedTp = GUEST_SANDBOX_CANDLES.slice(
-    INITIAL_VISIBLE_BAR_INDEX,
-    safeIndex + 1,
-  ).some((c) => c.high >= SANDBOX_SCENARIO_LEVELS.takeProfit);
+  const reachedTp = scenario.candles
+    .slice(INITIAL_VISIBLE_BAR_INDEX, safeIndex + 1)
+    .some((c) => c.high >= scenario.takeProfit);
 
   if (reachedTp) {
     return {
-      currentPrice: SANDBOX_SCENARIO_LEVELS.takeProfit,
-      pnlR: SANDBOX_SCENARIO_LEVELS.rrRatio,
-      pnlEur: SANDBOX_SCENARIO_LEVELS.rewardEur,
+      currentPrice: scenario.takeProfit,
+      pnlR: scenario.rrRatio,
+      pnlEur: scenario.rewardEur,
       hitTakeProfit: true,
     };
   }
 
-  const riskPoints =
-    SANDBOX_SCENARIO_LEVELS.entry - SANDBOX_SCENARIO_LEVELS.stopLoss;
-  const rawR = (candle.close - SANDBOX_SCENARIO_LEVELS.entry) / riskPoints;
-  const clampedR = Math.max(-1, Math.min(SANDBOX_SCENARIO_LEVELS.rrRatio, rawR));
+  const riskPoints = scenario.entry - scenario.stopLoss;
+  const rawR = (candle.close - scenario.entry) / riskPoints;
+  const clampedR = Math.max(-1, Math.min(scenario.rrRatio, rawR));
   const pnlR = Number(clampedR.toFixed(2));
-  const pnlEur = Number((pnlR * SANDBOX_SCENARIO_LEVELS.riskEur).toFixed(2));
+  const pnlEur = Number((pnlR * scenario.riskEur).toFixed(2));
 
   return {
     currentPrice: candle.close,
@@ -287,6 +456,8 @@ export function GuestForgeSandboxModal({
   onOpenChange,
   onRequestAdmission,
 }: GuestForgeSandboxModalProps) {
+  const [scenarioId, setScenarioId] =
+    useState<SandboxScenarioId>("xau-london-sweep");
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [visibleBarIndex, setVisibleBarIndex] = useState<number>(
     INITIAL_VISIBLE_BAR_INDEX,
@@ -295,36 +466,54 @@ export function GuestForgeSandboxModal({
   const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(false);
   const [gateWarningPulse, setGateWarningPulse] = useState<boolean>(false);
 
+  const activeScenario = useMemo(
+    () => getSandboxScenario(scenarioId),
+    [scenarioId],
+  );
+
   const allChecklistChecked =
-    checkedIds.length === CUSTODE_CHECKLIST_ITEMS.length;
+    checkedIds.length === activeScenario.checklist.length;
 
   const metrics = useMemo(
-    () => calculateSandboxMetrics(visibleBarIndex, tradeExecuted),
-    [visibleBarIndex, tradeExecuted],
+    () => calculateSandboxMetrics(visibleBarIndex, tradeExecuted, scenarioId),
+    [visibleBarIndex, tradeExecuted, scenarioId],
   );
 
   const currentCandle =
-    GUEST_SANDBOX_CANDLES[visibleBarIndex] ??
-    GUEST_SANDBOX_CANDLES[INITIAL_VISIBLE_BAR_INDEX];
+    activeScenario.candles[visibleBarIndex] ??
+    activeScenario.candles[INITIAL_VISIBLE_BAR_INDEX];
 
-  const toggleChecklistItem = useCallback((id: string) => {
+  const handleSelectScenario = useCallback((nextId: SandboxScenarioId) => {
     synestheticClick();
+    setScenarioId(nextId);
+    setCheckedIds([]);
+    setIsAutoPlaying(false);
+    setTradeExecuted(false);
+    setVisibleBarIndex(INITIAL_VISIBLE_BAR_INDEX);
     setGateWarningPulse(false);
-    setCheckedIds((prev) => {
-      const exists = prev.includes(id);
-      const next = exists ? prev.filter((item) => item !== id) : [...prev, id];
-      if (!exists && next.length === CUSTODE_CHECKLIST_ITEMS.length) {
-        synestheticCheck();
-      }
-      return next;
-    });
   }, []);
+
+  const toggleChecklistItem = useCallback(
+    (id: string) => {
+      synestheticClick();
+      setGateWarningPulse(false);
+      setCheckedIds((prev) => {
+        const exists = prev.includes(id);
+        const next = exists ? prev.filter((item) => item !== id) : [...prev, id];
+        if (!exists && next.length === activeScenario.checklist.length) {
+          synestheticCheck();
+        }
+        return next;
+      });
+    },
+    [activeScenario.checklist.length],
+  );
 
   const handleCheckAllCustode = useCallback(() => {
     synestheticCheck();
     setGateWarningPulse(false);
-    setCheckedIds(CUSTODE_CHECKLIST_ITEMS.map((item) => item.id));
-  }, []);
+    setCheckedIds(activeScenario.checklist.map((item) => item.id));
+  }, [activeScenario.checklist]);
 
   const handleExecuteLong = useCallback(() => {
     if (!allChecklistChecked) {
@@ -337,22 +526,23 @@ export function GuestForgeSandboxModal({
     setIsAutoPlaying(true);
     trackEvent("landing_guest_sandbox_execute_long", {
       barIndex: visibleBarIndex,
+      scenarioId,
     });
-  }, [allChecklistChecked, visibleBarIndex]);
+  }, [allChecklistChecked, visibleBarIndex, scenarioId]);
 
   const handleStepForward = useCallback(() => {
     synestheticClick();
     setVisibleBarIndex((prev) => {
-      const next = Math.min(GUEST_SANDBOX_CANDLES.length - 1, prev + 1);
+      const next = Math.min(activeScenario.candles.length - 1, prev + 1);
       if (
         tradeExecuted &&
-        GUEST_SANDBOX_CANDLES[next]?.high >= SANDBOX_SCENARIO_LEVELS.takeProfit
+        activeScenario.candles[next]?.high >= activeScenario.takeProfit
       ) {
         synestheticTrophy();
       }
       return next;
     });
-  }, [tradeExecuted]);
+  }, [tradeExecuted, activeScenario]);
 
   const handleReset = useCallback(() => {
     synestheticClick();
@@ -372,7 +562,7 @@ export function GuestForgeSandboxModal({
   useEffect(() => {
     if (!isAutoPlaying || !open) return;
     if (
-      visibleBarIndex >= GUEST_SANDBOX_CANDLES.length - 1 ||
+      visibleBarIndex >= activeScenario.candles.length - 1 ||
       metrics.hitTakeProfit
     ) {
       setIsAutoPlaying(false);
@@ -381,11 +571,10 @@ export function GuestForgeSandboxModal({
 
     const timer = window.setTimeout(() => {
       setVisibleBarIndex((prev) => {
-        const next = Math.min(GUEST_SANDBOX_CANDLES.length - 1, prev + 1);
+        const next = Math.min(activeScenario.candles.length - 1, prev + 1);
         if (
           tradeExecuted &&
-          GUEST_SANDBOX_CANDLES[next]?.high >=
-            SANDBOX_SCENARIO_LEVELS.takeProfit
+          activeScenario.candles[next]?.high >= activeScenario.takeProfit
         ) {
           synestheticTrophy();
         } else {
@@ -396,26 +585,39 @@ export function GuestForgeSandboxModal({
     }, 380);
 
     return () => window.clearTimeout(timer);
-  }, [isAutoPlaying, open, visibleBarIndex, metrics.hitTakeProfit, tradeExecuted]);
+  }, [
+    isAutoPlaying,
+    open,
+    visibleBarIndex,
+    metrics.hitTakeProfit,
+    tradeExecuted,
+    activeScenario,
+  ]);
 
   // SVG Chart Geometry
   const chartWidth = 680;
   const chartHeight = 230;
-  const priceMin = 2639.0;
-  const priceMax = 2662.5;
+  const priceMin = activeScenario.priceMin;
+  const priceMax = activeScenario.priceMax;
 
   const priceToY = (price: number): number => {
     const ratio = (price - priceMin) / (priceMax - priceMin);
     return chartHeight - 18 - ratio * (chartHeight - 36);
   };
 
-  const ySsl = priceToY(SANDBOX_SCENARIO_LEVELS.ssl);
-  const yEntry = priceToY(SANDBOX_SCENARIO_LEVELS.entry);
-  const ySl = priceToY(SANDBOX_SCENARIO_LEVELS.stopLoss);
-  const yTp = priceToY(SANDBOX_SCENARIO_LEVELS.takeProfit);
+  const formatScenarioPrice = (val: number): string =>
+    val.toLocaleString("en-US", {
+      minimumFractionDigits: activeScenario.decimals,
+      maximumFractionDigits: activeScenario.decimals,
+    });
 
-  const visibleCandles = GUEST_SANDBOX_CANDLES.slice(0, visibleBarIndex + 1);
-  const slotWidth = (chartWidth - 90) / GUEST_SANDBOX_CANDLES.length;
+  const ySsl = priceToY(activeScenario.ssl);
+  const yEntry = priceToY(activeScenario.entry);
+  const ySl = priceToY(activeScenario.stopLoss);
+  const yTp = priceToY(activeScenario.takeProfit);
+
+  const visibleCandles = activeScenario.candles.slice(0, visibleBarIndex + 1);
+  const slotWidth = (chartWidth - 90) / activeScenario.candles.length;
 
   return (
     <LimenResponsiveDrawer
@@ -434,6 +636,36 @@ export function GuestForgeSandboxModal({
         className="space-y-3.5 text-[#F4F4F6]"
         data-testid="guest-forge-sandbox-modal"
       >
+        {/* 1-Tap Multi-Scenario Selector Pill Bar */}
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#C5A059]/30 bg-[#0d0f14] px-3 py-2"
+          data-testid="sandbox-scenario-selector"
+        >
+          <span className="font-mono text-[9.5px] font-bold uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">
+            SCENARIO ISTITUZIONALE (1-TAP):
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {SANDBOX_SCENARIOS.map((scen) => {
+              const isSelected = scen.id === scenarioId;
+              return (
+                <button
+                  key={scen.id}
+                  type="button"
+                  onClick={() => handleSelectScenario(scen.id)}
+                  data-testid={`sandbox-scenario-${scen.id}`}
+                  className={`rounded-md px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                    isSelected
+                      ? "border border-[#C5A059] bg-[#C5A059]/20 text-[#E8C56A] shadow-[0_0_12px_rgba(197,160,89,0.2)]"
+                      : "border border-white/10 bg-[#11131c] text-slate-400 hover:border-[#C5A059]/40 hover:text-white"
+                  }`}
+                >
+                  {scen.shortLabel}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Top Telemetry Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-[#0d0f14] border border-[#C5A059]/25 rounded-lg p-2.5">
           <div className="flex items-center justify-between px-2 py-1 rounded bg-[#11131c] border border-white/5">
@@ -441,7 +673,7 @@ export function GuestForgeSandboxModal({
               ASSET / TF
             </span>
             <span className="font-mono text-xs font-bold tracking-tight text-[#E8C56A] whitespace-nowrap">
-              XAU/USD · 15 min
+              {activeScenario.symbol} · {activeScenario.timeframe}
             </span>
           </div>
 
@@ -531,7 +763,7 @@ export function GuestForgeSandboxModal({
               </p>
 
               <div className="space-y-2">
-                {CUSTODE_CHECKLIST_ITEMS.map((item) => {
+                {activeScenario.checklist.map((item) => {
                   const isChecked = checkedIds.includes(item.id);
                   return (
                     <button
@@ -616,7 +848,7 @@ export function GuestForgeSandboxModal({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[#E8C56A] whitespace-nowrap">
-                    Barra {visibleBarIndex + 1}/{GUEST_SANDBOX_CANDLES.length}
+                    Barra {visibleBarIndex + 1}/{activeScenario.candles.length}
                   </span>
                   <span className="font-mono text-[10px] text-slate-400 tracking-tight whitespace-nowrap">
                     {currentCandle.time} · {currentCandle.label}
@@ -630,7 +862,7 @@ export function GuestForgeSandboxModal({
                   viewBox={`0 0 ${chartWidth} ${chartHeight}`}
                   className="w-full h-[195px] sm:h-[215px] block select-none"
                   role="img"
-                  aria-label="Simulatore Grafico XAU/USD London Sweep"
+                  aria-label={`Simulatore Grafico ${activeScenario.symbol} ${activeScenario.session}`}
                 >
                   {/* Risk / Reward Shaded Zones when trade is active */}
                   {tradeExecuted && (
@@ -671,7 +903,7 @@ export function GuestForgeSandboxModal({
                     fontFamily="monospace"
                     fontWeight="bold"
                   >
-                    TP 2,660.00
+                    TP {formatScenarioPrice(activeScenario.takeProfit)}
                   </text>
 
                   {/* Entry Line */}
@@ -692,7 +924,7 @@ export function GuestForgeSandboxModal({
                     fontFamily="monospace"
                     fontWeight="bold"
                   >
-                    IN 2,645.00
+                    IN {formatScenarioPrice(activeScenario.entry)}
                   </text>
 
                   {/* SSL Liquidity Sweep Line */}
@@ -713,7 +945,7 @@ export function GuestForgeSandboxModal({
                     fontSize="8.5"
                     fontFamily="monospace"
                   >
-                    SSL 2,642.50
+                    SSL {formatScenarioPrice(activeScenario.ssl)}
                   </text>
 
                   {/* Stop Loss Line */}
@@ -734,7 +966,7 @@ export function GuestForgeSandboxModal({
                     fontFamily="monospace"
                     fontWeight="bold"
                   >
-                    SL 2,640.00
+                    SL {formatScenarioPrice(activeScenario.stopLoss)}
                   </text>
 
                   {/* Candlesticks */}
@@ -780,7 +1012,7 @@ export function GuestForgeSandboxModal({
                 <button
                   type="button"
                   onClick={handleStepForward}
-                  disabled={visibleBarIndex >= GUEST_SANDBOX_CANDLES.length - 1}
+                  disabled={visibleBarIndex >= activeScenario.candles.length - 1}
                   data-testid="sandbox-step-forward-btn"
                   className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-white/15 bg-[#11131c] hover:border-[#C5A059]/50 text-xs font-mono text-white disabled:opacity-40 transition-all cursor-pointer whitespace-nowrap"
                 >
@@ -794,7 +1026,7 @@ export function GuestForgeSandboxModal({
                     synestheticClick();
                     setIsAutoPlaying((prev) => !prev);
                   }}
-                  disabled={visibleBarIndex >= GUEST_SANDBOX_CANDLES.length - 1}
+                  disabled={visibleBarIndex >= activeScenario.candles.length - 1}
                   data-testid="sandbox-autoplay-btn"
                   className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-white/15 bg-[#11131c] hover:border-[#C5A059]/50 text-xs font-mono text-white disabled:opacity-40 transition-all cursor-pointer whitespace-nowrap"
                 >

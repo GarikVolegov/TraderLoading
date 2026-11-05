@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { ShieldCheck, Activity, Sparkles } from "lucide-react";
+import { ShieldCheck, Activity, Sparkles, Plus } from "lucide-react";
+import { useSearch } from "wouter";
 import { useTraderProcess } from "@/hooks/useTraderProcess";
 import {
   useGetJournalEntries,
@@ -8,6 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import { SessionDetailInspector } from "./SessionDetailInspector";
 import { UnifiedTradeLedgerTrajectory } from "./UnifiedTradeLedgerTrajectory";
+import { JournalEntryModal } from "@/components/JournalEntryModal";
 import { cn } from "@/lib/utils";
 import type { ProcessSession } from "@/lib/traderProcessApi";
 
@@ -120,6 +122,16 @@ export function SovereignJournalCockpit({
 
   // Mobile-only view state (< xl)
   const [mobileActiveView, setMobileActiveView] = useState<"registro" | "dossier">("registro");
+  const search = useSearch();
+  const [isEntryModalOpen, setIsEntryModalOpen] = useState(() =>
+    new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("new") === "1"
+  );
+
+  useEffect(() => {
+    if (new URLSearchParams(search).get("new") === "1") {
+      setIsEntryModalOpen(true);
+    }
+  }, [search]);
 
   // Real-time Sovereign Telemetry calculations
   const telemetry = useMemo(() => {
@@ -269,38 +281,42 @@ export function SovereignJournalCockpit({
       </div>
 
       {/* ── MOBILE-ONLY VIEW SWITCHER (< xl) ── */}
-      <div className="flex xl:hidden items-center justify-between gap-2 border-b border-[#C5A059]/20 pb-2 mb-2 shrink-0 mobile-compact-bar">
-        <div className="flex items-center gap-1 rounded-lg border border-[#C5A059]/30 bg-[#0d0f14] p-0.5 text-xs font-mono">
+      <div className="flex xl:hidden items-center justify-between gap-1.5 border-b border-[#C5A059]/20 pb-2 mb-2 shrink-0 mobile-compact-bar">
+        <div className="flex items-center gap-1 rounded-lg border border-[#C5A059]/30 bg-[#0d0f14] p-0.5 text-[11px] font-mono">
           <button
             type="button"
             onClick={() => setMobileActiveView("registro")}
             className={cn(
-              "px-2.5 sm:px-3 py-1 rounded-md font-semibold transition-all whitespace-nowrap",
+              "px-2 sm:px-3 py-1 rounded-md font-semibold transition-all whitespace-nowrap",
               mobileActiveView === "registro"
                 ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 font-bold shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Registro &amp; Traiettoria
+            01 · Registro &amp; Curva
           </button>
           <button
             type="button"
             onClick={() => setMobileActiveView("dossier")}
             className={cn(
-              "px-2.5 sm:px-3 py-1 rounded-md font-semibold transition-all whitespace-nowrap",
+              "px-2 sm:px-3 py-1 rounded-md font-semibold transition-all whitespace-nowrap",
               mobileActiveView === "dossier"
                 ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 font-bold shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Dossier Tattico
+            02 · Dossier Tattico
           </button>
         </div>
-        {sortedEntries.length > 0 && (
-          <span className="font-mono text-[10px] text-[#E8C56A] bg-[#C5A059]/15 border border-[#C5A059]/35 px-2 py-0.5 rounded font-bold whitespace-nowrap">
-            #{tradeIndex + 1}/{sortedEntries.length} Trade
-          </span>
-        )}
+        <button
+          type="button"
+          onClick={() => setIsEntryModalOpen(true)}
+          data-testid="journal-open-chained-entry-modal-btn"
+          className="inline-flex items-center gap-1 rounded-lg border border-[#C5A059]/50 bg-[#C5A059] hover:bg-[#E8C56A] px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] shadow-sm whitespace-nowrap shrink-0 cursor-pointer"
+        >
+          <Plus className="w-3 h-3" />
+          <span>Registra Trade</span>
+        </button>
       </div>
 
       {/* ── UNIFIED MASTER COCKPIT: DUAL INTERLOCKING MACRO-BLOCKS ── */}
@@ -350,6 +366,11 @@ export function SovereignJournalCockpit({
           />
         </section>
       </main>
+
+      <JournalEntryModal
+        isOpen={isEntryModalOpen}
+        onClose={() => setIsEntryModalOpen(false)}
+      />
     </div>
   );
 }

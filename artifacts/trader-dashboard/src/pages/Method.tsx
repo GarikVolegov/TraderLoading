@@ -740,6 +740,25 @@ export function MethodEditor({
                     .split("\n")
                     .map((s) => s.trim())
                     .filter(Boolean)}
+                  onImportVerifiedSystem={(imported, clauses) => {
+                    setValues((prev) => ({
+                      ...prev,
+                      name: imported.name,
+                      markets: imported.markets,
+                      windows: imported.windows,
+                      setup: imported.setup,
+                      entry: imported.entry,
+                      exit: imported.exit,
+                      invalidation: imported.invalidation,
+                      waitConditions: imported.waitConditions,
+                      currency: imported.currency,
+                      riskPerTrade: String(imported.riskPerTrade),
+                      maxDailyLoss: String(imported.maxDailyLoss),
+                      maxDailyTrades: String(imported.maxDailyTrades),
+                      checklist:
+                        clauses.length > 0 ? clauses.join("\n") : prev.checklist,
+                    }));
+                  }}
                 />
 
                 <label className="process-option rounded-xl border border-[#C5A059]/35 bg-[#C5A059]/10 p-3 flex items-center gap-2.5 cursor-pointer">
@@ -1407,8 +1426,33 @@ export default function Method() {
     useStored: boolean;
   } | null>(null);
 
-  if (!query.data) return <ProcessLoading error={query.error} retry={() => void query.refetch()} />;
-  const state = query.data;
+  if (!query.data && query.isLoading) {
+    return <ProcessLoading error={query.error} retry={() => void query.refetch()} />;
+  }
+  const state: ProcessState = query.data ?? {
+    methodDraft: null,
+    methods: [],
+    activeMethod: null,
+    session: null,
+    evidence: [],
+    improvement: null,
+    progress: {
+      phase: "define",
+      checks: [],
+      canAdvance: false,
+      nextAction: "define_method",
+      report: {
+        eligibleSamples: 0,
+        incompleteSamples: 0,
+        expectancyR: null,
+        drawdownR: null,
+        adherencePct: null,
+        closedSessions: 0,
+        amounts: [],
+      },
+    },
+    progressByVersion: {},
+  };
   const method =
     state.methods.find((m) => m.id === requestedVersion) ?? state.activeMethod;
   const readOnly = Boolean(method && !method.active);

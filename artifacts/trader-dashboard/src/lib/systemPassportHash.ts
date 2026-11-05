@@ -83,6 +83,188 @@ export function formatPassportSealCode(hash: string): string {
   return `AUREUS-SYS-${clean.slice(0, 4)}-${clean.slice(4, 8)}-${clean.slice(8, 12)}`;
 }
 
+export interface SystemPassportExportDocument {
+  protocol: string;
+  sealCode: string;
+  cryptographicHash: string;
+  issuedAt?: string;
+  system: {
+    name: string;
+    versionNumber?: number;
+    phase?: string;
+    markets: string;
+    windows: string;
+    setup: string;
+    entry: string;
+    exit: string;
+    invalidation: string;
+    waitConditions: string;
+    riskGovernance: {
+      currency: string;
+      riskPerTrade: number;
+      maxDailyLoss: number;
+      maxDailyTrades: number;
+    };
+    thresholdCustodian: {
+      checklistCount: number;
+      clauses?: string[];
+    };
+  };
+}
+
+export interface SystemPassportVerificationResult {
+  valid: boolean;
+  reason?:
+    | "invalid_json"
+    | "unsupported_protocol"
+    | "hash_mismatch"
+    | "seal_mismatch";
+  payload?: SystemPassportPayload;
+  checklistItems?: string[];
+  computedHash?: string;
+  computedSeal?: string;
+}
+
+/**
+ * Costruisce il documento JSON firmato della Costituzione Operativa.
+ */
+export function buildSystemPassportExportDocument(
+  payload: SystemPassportPayload,
+  checklistItems: string[] = [],
+  issuedAt = new Date().toISOString(),
+): SystemPassportExportDocument {
+  const hash = computeSystemPassportHash(payload);
+  const sealCode = formatPassportSealCode(hash);
+  const currency = (payload.currency || "EUR").trim().toUpperCase();
+
+  return {
+    protocol: "AUREUS_OS_SYSTEM_CONSTITUTION_V1",
+    sealCode,
+    cryptographicHash: `0x${hash}`,
+    issuedAt,
+    system: {
+      name: payload.name || "Costituzione Operativa",
+      versionNumber: payload.versionNumber ?? 1,
+      phase: payload.phase || "define",
+      markets: payload.markets,
+      windows: payload.windows,
+      setup: payload.setup,
+      entry: payload.entry,
+      exit: payload.exit,
+      invalidation: payload.invalidation,
+      waitConditions: payload.waitConditions,
+      riskGovernance: {
+        currency,
+        riskPerTrade: Number(payload.riskPerTrade || 0),
+        maxDailyLoss: Number(payload.maxDailyLoss || 0),
+        maxDailyTrades: Math.trunc(Number(payload.maxDailyTrades || 0)),
+      },
+      thresholdCustodian: {
+        checklistCount: Math.trunc(Number(payload.checklistCount || 0)),
+        clauses: checklistItems,
+      },
+    },
+  };
+}
+
+/**
+ * Verifica crittograficamente un documento JSON di Passaporto del Sistema
+ * ricalcolando il digest 64-hex e il codice sigillo AUREUS-SYS-XXXX-XXXX-XXXX
+ * per rilevare qualsiasi alterazione o manomissione delle regole.
+ */
+export function verifySystemPassportDocument(
+  rawInput: string | Record<string, unknown>,
+): SystemPassportVerificationResult {
+  let parsed: Record<string, unknown>;
+  if (typeof rawInput === "string") {
+    try {
+      const json = JSON.parse(rawInput);
+      if (!json || typeof json !== "object" || Array.isArray(json)) {
+        return { valid: false, reason: "invalid_json" };
+      }
+      parsed = json as Record<string, unknown>;
+    } catch {
+      return { valid: false, reason: "invalid_json" };
+    }
+  } else if (rawInput && typeof rawInput === "object") {
+    parsed = rawInput;
+  } else {
+    return { valid: false, reason: "invalid_json" };
+  }
+
+  if (parsed.protocol !== "AUREUS_OS_SYSTEM_CONSTITUTION_V1") {
+    return { valid: false, reason: "unsupported_protocol" };
+  }
+
+  const sys = parsed.system as Record<string, unknown> | undefined;
+  if (!sys || typeof sys !== "object") {
+    return { valid: false, reason: "invalid_json" };
+  }
+
+  const riskGov = (sys.riskGovernance as Record<string, unknown> | undefined) ?? {};
+  const custodian = (sys.thresholdCustodian as Record<string, unknown> | undefined) ?? {};
+  const rawClauses = Array.isArray(custodian.clauses)
+    ? custodian.clauses.map((c) => String(c).trim()).filter(Boolean)
+    : [];
+
+  const extractedPayload: SystemPassportPayload = {
+    name: String(sys.name ?? "Costituzione Operativa"),
+    versionNumber: Number(sys.versionNumber ?? 1),
+    phase: String(sys.phase ?? "define"),
+    markets: String(sys.markets ?? ""),
+    windows: String(sys.windows ?? ""),
+    setup: String(sys.setup ?? ""),
+    entry: String(sys.entry ?? ""),
+    exit: String(sys.exit ?? ""),
+    invalidation: String(sys.invalidation ?? ""),
+    waitConditions: String(sys.waitConditions ?? ""),
+    currency: String(riskGov.currency ?? "EUR"),
+    riskPerTrade: Number(riskGov.riskPerTrade ?? 0),
+    maxDailyLoss: Number(riskGov.maxDailyLoss ?? 0),
+    maxDailyTrades: Number(riskGov.maxDailyTrades ?? 0),
+    checklistCount: Number(custodian.checklistCount ?? rawClauses.length),
+  };
+
+  const computedHash = computeSystemPassportHash(extractedPayload);
+  const computedSeal = formatPassportSealCode(computedHash);
+
+  const claimedHash = String(parsed.cryptographicHash ?? "")
+    .trim()
+    .replace(/^0x/i, "")
+    .toUpperCase();
+  const claimedSeal = String(parsed.sealCode ?? "").trim().toUpperCase();
+
+  if (!claimedHash || claimedHash !== computedHash) {
+    return {
+      valid: false,
+      reason: "hash_mismatch",
+      payload: extractedPayload,
+      checklistItems: rawClauses,
+      computedHash,
+      computedSeal,
+    };
+  }
+
+  if (!claimedSeal || claimedSeal !== computedSeal) {
+    return {
+      valid: false,
+      reason: "seal_mismatch",
+      payload: extractedPayload,
+      checklistItems: rawClauses,
+      computedHash,
+      computedSeal,
+    };
+  }
+
+  return {
+    valid: true,
+    payload: extractedPayload,
+    checklistItems: rawClauses,
+    computedHash,
+    computedSeal,
+  };
+}
+
 /**
  * Genera una matrice QR-style 21x21 deterministica con Finder Patterns 7x7 negli angoli
  * (top-left, top-right, bottom-left), Timing Patterns sulla riga/colonna 6 e moduli dati

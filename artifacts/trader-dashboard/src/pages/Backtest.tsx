@@ -621,10 +621,33 @@ export default function Backtest() {
         >
           {/* ── Mobile 3-Level Chained Switcher (< 1024px): 01 Sessioni → 02 Telemetria → 03 Registro ── */}
           <div
-            className="flex lg:hidden items-center justify-between gap-1.5 mb-2.5 pb-2 border-b border-[#C5A059]/20 shrink-0 mobile-compact-bar"
+            className="flex flex-col lg:hidden gap-1.5 mb-2.5 pb-2 border-b border-[#C5A059]/20 shrink-0 mobile-compact-bar"
             data-testid="backtest-mobile-chain-bar"
           >
-            <div className="flex items-center gap-1 rounded-lg border border-[#C5A059]/25 bg-[#0B0D13] p-0.5 text-[10px] font-mono flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <span className="font-mono text-[9.5px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
+                CATENA FORGIA · LIVELLO {mobileSection === "sessions" ? "01" : mobileSection === "workbench" ? "02" : "03"}/03
+              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowNew(true)}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-[#C5A059]/35 bg-[#C5A059]/10 text-[#E8C56A] font-mono text-[9.5px] font-bold uppercase tracking-wider whitespace-nowrap"
+                >
+                  <Plus className="w-2.5 h-2.5 text-[#C5A059]" />
+                  <span>Nuova Sessione</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/backtest?tab=battaglie")}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-[#C5A059]/45 bg-gradient-to-r from-[#C5A059]/20 to-[#C5A059]/10 text-[#E8C56A] font-mono text-[9.5px] font-bold uppercase tracking-wider whitespace-nowrap"
+                >
+                  <Swords className="w-2.5 h-2.5 text-[#E8C56A]" />
+                  <span>Arene</span>
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-1 rounded-lg border border-[#C5A059]/25 bg-[#0B0D13] p-0.5 text-[10px] font-mono w-full">
               <button
                 type="button"
                 onClick={() => {
@@ -632,7 +655,7 @@ export default function Backtest() {
                   setMobileSection("sessions");
                 }}
                 data-testid="backtest-mobile-tab-sessions"
-                className={`flex-1 py-1.5 px-1.5 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                className={`py-1.5 px-1 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
                   mobileSection === "sessions"
                     ? "bg-[#C5A059] text-[#07080b] shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
@@ -647,7 +670,7 @@ export default function Backtest() {
                   setMobileSection("workbench");
                 }}
                 data-testid="backtest-mobile-tab-workbench"
-                className={`flex-1 py-1.5 px-1.5 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                className={`py-1.5 px-1 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
                   mobileSection === "workbench"
                     ? "bg-[#C5A059] text-[#07080b] shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
@@ -662,7 +685,7 @@ export default function Backtest() {
                   setMobileSection("ledger");
                 }}
                 data-testid="backtest-mobile-tab-ledger"
-                className={`flex-1 py-1.5 px-1.5 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                className={`py-1.5 px-1 rounded font-bold uppercase tracking-wider transition-all whitespace-nowrap text-center ${
                   mobileSection === "ledger"
                     ? "bg-[#C5A059] text-[#07080b] shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
@@ -671,14 +694,6 @@ export default function Backtest() {
                 03 · Trade ({filteredTrades.length})
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => navigate("/backtest?tab=battaglie")}
-              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-[#C5A059]/45 bg-gradient-to-r from-[#C5A059]/20 to-[#C5A059]/10 text-[#E8C56A] font-mono text-[10px] font-bold uppercase tracking-wider whitespace-nowrap shrink-0"
-            >
-              <Swords className="w-3 h-3 text-[#E8C56A]" />
-              <span>Arene</span>
-            </button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-3 flex-1 min-h-0 lg:h-full lg:overflow-hidden">
