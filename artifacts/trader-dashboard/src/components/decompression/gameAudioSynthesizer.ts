@@ -556,7 +556,38 @@ class GameAudioSynthesizer {
     } catch {}
   }
 
-  /** Chess piece move: solid acoustic impact onto felt-padded board */
+  private reverbNode: ConvolverNode | null = null;
+
+  private getMarbleReverb(ctx: AudioContext): ConvolverNode | null {
+    try {
+      if (this.reverbNode && this.reverbNode.context === ctx) {
+        return this.reverbNode;
+      }
+      const sampleRate = ctx.sampleRate;
+      const duration = 0.85;
+      const decay = 2.6;
+      const length = Math.floor(sampleRate * duration);
+      const buffer = ctx.createBuffer(2, length, sampleRate);
+      const left = buffer.getChannelData(0);
+      const right = buffer.getChannelData(1);
+
+      for (let i = 0; i < length; i++) {
+        const t = i / length;
+        const env = Math.exp(-t * decay);
+        left[i] = (Math.random() * 2 - 1) * env * 0.45;
+        right[i] = (Math.random() * 2 - 1) * env * 0.45;
+      }
+
+      const convolver = ctx.createConvolver();
+      convolver.buffer = buffer;
+      this.reverbNode = convolver;
+      return convolver;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Chess piece move: solid acoustic impact onto felt-padded board in marble hall */
   public playChessMove() {
     const ctx = this.initCtx();
     if (!ctx) return;
@@ -566,61 +597,136 @@ class GameAudioSynthesizer {
       const gain = ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(320, now);
-      osc.frequency.exponentialRampToValueAtTime(75, now + 0.06);
+      osc.frequency.exponentialRampToValueAtTime(75, now + 0.055);
 
-      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.setValueAtTime(0.16, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
+
+      // Reverb wet send
+      const reverb = this.getMarbleReverb(ctx);
+      if (reverb) {
+        const wetGain = ctx.createGain();
+        wetGain.gain.setValueAtTime(0.08, now);
+        gain.connect(wetGain);
+        wetGain.connect(reverb);
+        reverb.connect(ctx.destination);
+      }
+
       osc.start(now);
       osc.stop(now + 0.07);
     } catch {}
   }
 
-  /** Chess piece capture: crisp authoritative clack */
+  /** Chess piece capture: crisp authoritative clack with marble acoustic resonance */
   public playChessCapture() {
     const ctx = this.initCtx();
     if (!ctx) return;
     try {
       const now = ctx.currentTime;
+      const reverb = this.getMarbleReverb(ctx);
+
       [820, 1420].forEach((freq, idx) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "triangle";
-        osc.frequency.setValueAtTime(freq, now + idx * 0.015);
-        osc.frequency.exponentialRampToValueAtTime(freq * 0.4, now + 0.08);
+        osc.frequency.setValueAtTime(freq, now + idx * 0.012);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.35, now + 0.085);
 
-        gain.gain.setValueAtTime(0.15, now + idx * 0.015);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        gain.gain.setValueAtTime(0.16, now + idx * 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.095);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(now + idx * 0.015);
-        osc.stop(now + 0.1);
+
+        if (reverb) {
+          const wetGain = ctx.createGain();
+          wetGain.gain.setValueAtTime(0.12, now + idx * 0.012);
+          gain.connect(wetGain);
+          wetGain.connect(reverb);
+        }
+
+        osc.start(now + idx * 0.012);
+        osc.stop(now + 0.095);
       });
+
+      if (reverb) {
+        reverb.connect(ctx.destination);
+      }
     } catch {}
   }
 
-  /** Chess check chime: solemn harmonic warning */
+  /** Chess check chime: solemn harmonic warning in temple hall */
   public playChessCheck() {
     const ctx = this.initCtx();
     if (!ctx) return;
     try {
       const now = ctx.currentTime;
+      const reverb = this.getMarbleReverb(ctx);
+
       [440, 523.25, 659.25].forEach((freq, idx) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, now + idx * 0.03);
-        gain.gain.setValueAtTime(0.11, now + idx * 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.frequency.setValueAtTime(freq, now + idx * 0.025);
+        gain.gain.setValueAtTime(0.12, now + idx * 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(now + idx * 0.03);
-        osc.stop(now + 0.35);
+
+        if (reverb) {
+          const wetGain = ctx.createGain();
+          wetGain.gain.setValueAtTime(0.2, now);
+          gain.connect(wetGain);
+          wetGain.connect(reverb);
+        }
+
+        osc.start(now + idx * 0.025);
+        osc.stop(now + 0.45);
       });
+
+      if (reverb) {
+        reverb.connect(ctx.destination);
+      }
+    } catch {}
+  }
+
+  /** Chess brilliant move: crystalline dual-bell sovereign chime */
+  public playChessBrilliant() {
+    const ctx = this.initCtx();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const reverb = this.getMarbleReverb(ctx);
+
+      [1046.5, 1318.51, 1567.98, 2093].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+        gain.gain.setValueAtTime(0.15, now + idx * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (reverb) {
+          const wetGain = ctx.createGain();
+          wetGain.gain.setValueAtTime(0.25, now);
+          gain.connect(wetGain);
+          wetGain.connect(reverb);
+        }
+
+        osc.start(now + idx * 0.05);
+        osc.stop(now + 0.7);
+      });
+
+      if (reverb) {
+        reverb.connect(ctx.destination);
+      }
     } catch {}
   }
 }

@@ -42,8 +42,18 @@ import {
   boardToFen,
   formatPgn,
   detectOpening,
+  getDailyPuzzle,
+  markDailyPuzzleCompleted,
+  getDailyPuzzleStreak,
+  DailyPuzzleState,
   GameOutcome,
 } from "./chessEngine";
+import {
+  analyzeGameHistory,
+  GameReviewReport,
+  MoveAnalysis,
+  MoveClassification,
+} from "./chessAnalysis";
 import { gameAudio } from "../gameAudioSynthesizer";
 import { addMasterAurei, loadMasterVault } from "../unifiedArcadeStore";
 import {
@@ -79,6 +89,11 @@ import {
   ChevronsRight,
   BarChart2,
   BookOpen,
+  Activity,
+  Users,
+  Award,
+  Timer,
+  Flag,
 } from "lucide-react";
 
 interface TacticalChessGameProps {
@@ -101,8 +116,19 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
     () => persistence.activeBoardTheme || "obsidian_gold"
   );
 
-  // Game Mode: "puzzle" | "duel"
-  const [activeMode, setActiveMode] = useState<"puzzle" | "duel">("puzzle");
+  // Game Mode: "puzzle" | "daily" | "duel" | "pvp"
+  const [activeMode, setActiveMode] = useState<"puzzle" | "daily" | "duel" | "pvp">("puzzle");
+  const [dailyState, setDailyState] = useState<DailyPuzzleState>(() => getDailyPuzzle());
+
+  // PVP Clocks & Controls (Sala di Guerra tra Operatori)
+  const [pvpTimeLimitMinutes, setPvpTimeLimitMinutes] = useState<number>(5); // 0 = illimitato, 3, 5, 10
+  const [whiteClockSeconds, setWhiteClockSeconds] = useState<number>(300);
+  const [blackClockSeconds, setBlackClockSeconds] = useState<number>(300);
+  const [autoRotateCameraPvp, setAutoRotateCameraPvp] = useState<boolean>(true);
+
+  // Analysis & Discipline Review State
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [selectedAnalysisMove, setSelectedAnalysisMove] = useState<MoveAnalysis | null>(null);
 
   // Duel State
   const [selectedAi, setSelectedAi] = useState<AiProfile>(AI_PROFILES[0]);
@@ -199,9 +225,50 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
     }
   };
 
+  // PVP Clock Countdown Effect
+  useEffect(() => {
+    if (activeMode !== "pvp" || pvpTimeLimitMinutes === 0 || outcome !== "playing") return;
+    const interval = setInterval(() => {
+      if (turn === "w") {
+        setWhiteClockSeconds((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            handleDefeatMatch();
+            return 0;
+          }
+          return prev - 1;
+        });
+      } else {
+        setBlackClockSeconds((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            handleVictoryMatch();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeMode, pvpTimeLimitMinutes, outcome, turn]);
+
+  function formatClock(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+
+  // Automatic Game Accuracy Analysis Report
+  const analysisReport = useMemo<GameReviewReport>(() => {
+    return analyzeGameHistory(boardSnapshots, moveHistory);
+  }, [boardSnapshots, moveHistory]);
+
   const currentPuzzle = useMemo<ChessPuzzle>(() => {
+    if (activeMode === "daily") {
+      return dailyState.puzzle;
+    }
     return TACTICAL_PUZZLES[currentPuzzleIndex] || TACTICAL_PUZZLES[0];
-  }, [currentPuzzleIndex]);
+  }, [currentPuzzleIndex, activeMode, dailyState.puzzle]);
 
   // Real-Time Positional Evaluation Bar (Stockfish-Style Metric)
   const evaluation = useMemo(() => {
@@ -210,7 +277,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
 
   // Detected Opening from ECO database
   const detectedOpening = useMemo<ChessOpening | null>(() => {
-    if (activeMode !== "duel") return null;
+    if (activeMode !== "duel" && activeMode !== "pvp") return null;
     return detectOpening(moveHistory);
   }, [moveHistory, activeMode]);
 
@@ -440,6 +507,9 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         } else if (isMaximized) {
           toggleFullscreen();
         }
+      } else if (key === "a") {
+        e.preventDefault();
+        setShowAnalysisModal((prev) => !prev);
       } else if (key === "c") {
         e.preventDefault();
         cycleCameraMode();
@@ -508,6 +578,8 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
 
     if (activeMode === "puzzle") {
       loadPuzzle(currentPuzzle);
+    } else if (activeMode === "daily") {
+      loadPuzzle(dailyState.puzzle);
     } else {
       const fresh = createInitialBoard();
       setBoard(fresh);
@@ -520,6 +592,10 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       setOutcome("playing");
       setMoveHistory([]);
       setKeyboardCursor([6, 4]);
+      if (activeMode === "pvp") {
+        setWhiteClockSeconds(pvpTimeLimitMinutes > 0 ? pvpTimeLimitMinutes * 60 : 300);
+        setBlackClockSeconds(pvpTimeLimitMinutes > 0 ? pvpTimeLimitMinutes * 60 : 300);
+      }
       if (engineRef.current) {
         engineRef.current.setBoardState(fresh);
         engineRef.current.setSelectedSquare(null);
@@ -529,7 +605,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
   }
 
   function handleTriggerHint() {
-    if (activeMode !== "puzzle" || puzzleSolved || isReverting) return;
+    if ((activeMode !== "puzzle" && activeMode !== "daily") || puzzleSolved || isReverting) return;
     if (inspectedStep !== null) inspectHistoryStep(null);
 
     setShowHint(true);
@@ -638,8 +714,29 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       )}${8 - fr}→${String.fromCharCode(97 + tc)}${8 - tr}`;
       setMoveHistory((prev) => [...prev, notation]);
 
-      if (activeMode === "puzzle") {
+      if (activeMode === "puzzle" || activeMode === "daily") {
         verifyPuzzleMove(move, previousBoard, nextBoard, notation);
+      } else if (activeMode === "pvp") {
+        const nextTurn: PieceColor = turn === "w" ? "b" : "w";
+        setTurn(nextTurn);
+
+        const nextOutcome = evaluateGameOutcome(nextBoard, nextTurn);
+        setOutcome(nextOutcome);
+
+        if (nextOutcome === "check" || nextOutcome === "checkmate") {
+          const king = findKing(nextBoard, nextTurn);
+          if (king && engineRef.current) {
+            engineRef.current.triggerCheckHighlight(king);
+          }
+        }
+
+        if (nextOutcome === "checkmate") {
+          if (turn === "w") {
+            handleVictoryMatch();
+          } else {
+            handleDefeatMatch();
+          }
+        }
       } else {
         const nextTurn: PieceColor = turn === "w" ? "b" : "w";
         setTurn(nextTurn);
@@ -691,6 +788,11 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
         }
         gameAudio.playVictory();
 
+        if (activeMode === "daily") {
+          markDailyPuzzleCompleted(dailyState.dateKey);
+          setDailyState(getDailyPuzzle());
+        }
+
         const totalEarned = currentPuzzle.rewardAurei;
         setEarnedAurei(totalEarned);
         const newMaster = addMasterAurei(totalEarned);
@@ -698,7 +800,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
 
         const updated: ChessPersistence = {
           ...persistence,
-          playerElo: persistence.playerElo + 15,
+          playerElo: persistence.playerElo + (activeMode === "daily" ? 20 : 15),
           completedPuzzleIds: Array.from(
             new Set([...persistence.completedPuzzleIds, currentPuzzle.id])
           ),
@@ -835,21 +937,42 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
       <div className="p-2 sm:p-2.5 bg-[#0d0f14]/90 backdrop-blur-md border-b border-[#C5A059]/20 flex flex-wrap items-center justify-between gap-2 z-20">
         <div className="flex items-center gap-2">
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-black/60 border border-white/10">
+          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-black/60 border border-white/10 overflow-x-auto scrollbar-none">
             <button
               type="button"
               onClick={() => {
                 setActiveMode("puzzle");
                 loadPuzzle(currentPuzzle);
               }}
-              className={`px-3 py-1 rounded text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                 activeMode === "puzzle"
                   ? "bg-[#C5A059] text-black shadow-xs font-extrabold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Zap size={13} />
-              <span>Puzzle Tattici (10)</span>
+              <span>Puzzle ({TACTICAL_PUZZLES.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveMode("daily");
+                loadPuzzle(dailyState.puzzle);
+              }}
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeMode === "daily"
+                  ? "bg-[#C5A059] text-black shadow-xs font-extrabold"
+                  : "text-muted-foreground hover:text-[#E8C56A]"
+              }`}
+            >
+              <Flame size={13} className="text-amber-400" />
+              <span>Dilemma Quotidiano</span>
+              {dailyState.dailyStreak > 0 && (
+                <span className="px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                  {dailyState.dailyStreak}🔥
+                </span>
+              )}
             </button>
 
             <button
@@ -858,21 +981,43 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
                 setActiveMode("duel");
                 restartCurrentScenario();
               }}
-              className={`px-3 py-1 rounded text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                 activeMode === "duel"
                   ? "bg-[#C5A059] text-black shadow-xs font-extrabold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Crown size={13} />
-              <span>Partita vs IA (3 Livelli)</span>
+              <span>Vs IA</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveMode("pvp");
+                restartCurrentScenario();
+              }}
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                activeMode === "pvp"
+                  ? "bg-[#C5A059] text-black shadow-xs font-extrabold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Users size={13} />
+              <span>Sala di Guerra (2P)</span>
             </button>
           </div>
 
           {/* Active Scenario Title */}
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[#E8C56A] text-xs font-bold uppercase tracking-wider">
             <span>
-              {activeMode === "puzzle" ? currentPuzzle.title : `Vs ${selectedAi.name}`}
+              {activeMode === "puzzle"
+                ? currentPuzzle.title
+                : activeMode === "daily"
+                ? dailyState.puzzle.title
+                : activeMode === "duel"
+                ? `Vs ${selectedAi.name}`
+                : "Duello tra Operatori (Pass & Play)"}
             </span>
           </div>
         </div>
@@ -963,6 +1108,20 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
             title="Dossier Statistiche dell'Operatore"
           >
             <BarChart2 size={14} />
+          </button>
+
+          {/* Tactical Discipline & Accuracy Review */}
+          <button
+            type="button"
+            onClick={() => setShowAnalysisModal(true)}
+            className="px-2.5 py-1 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 hover:bg-[#C5A059]/30 text-[#E8C56A] font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            title="Rapporto di Disciplina Tattica & Accuratezza [Scorciatoia: A]"
+          >
+            <Activity size={13} className="text-[#C5A059]" />
+            <span className="hidden sm:inline text-muted-foreground text-[10px] uppercase">Disciplina:</span>
+            <span className="font-mono uppercase text-[11px] text-white">
+              {analysisReport.operatorAccuracyPercent}%
+            </span>
           </button>
 
           {/* Export PGN / FEN */}
@@ -1065,7 +1224,7 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
               </span>
             </div>
 
-            {/* Puzzle Quick Selector Chips (1..10) */}
+            {/* Puzzle Quick Selector Chips (1..15) */}
             <div className="flex items-center gap-1.5 shrink-0">
               <div className="flex items-center gap-1">
                 {TACTICAL_PUZZLES.map((p, idx) => (
@@ -1093,6 +1252,105 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
               <span className="text-[11px] text-[#E8C56A] font-bold ml-1 hidden sm:inline whitespace-nowrap">
                 +{currentPuzzle.rewardAurei} Aurei
               </span>
+            </div>
+          </div>
+        ) : activeMode === "daily" ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 whitespace-nowrap">
+                <Flame size={12} className="text-amber-400" />
+                <span>Dilemma del Giorno</span>
+              </span>
+              <strong className="text-white font-medium text-xs truncate max-w-[240px] sm:max-w-md">
+                {dailyState.puzzle.objectiveText}
+              </strong>
+              <span className="text-muted-foreground text-[11px] hidden xl:inline italic whitespace-nowrap">
+                ("{dailyState.puzzle.tradingAnalogy}")
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-black/40 border border-white/10 text-muted-foreground text-[11px] font-mono whitespace-nowrap">
+                <Clock size={12} className="text-[#C5A059]" />
+                <span>Reset tra: {dailyState.timeUntilReset}</span>
+              </div>
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[11px] font-bold whitespace-nowrap">
+                <Flame size={12} />
+                <span>Streak: {dailyState.dailyStreak} Giorni</span>
+              </div>
+              {dailyState.isTodayCompleted ? (
+                <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] flex items-center gap-1 whitespace-nowrap">
+                  <CheckCircle2 size={12} />
+                  <span>Sigillato Oggi</span>
+                </span>
+              ) : (
+                <span className="text-[11px] text-[#E8C56A] font-bold whitespace-nowrap">
+                  +{dailyState.puzzle.rewardAurei} Aurei
+                </span>
+              )}
+            </div>
+          </div>
+        ) : activeMode === "pvp" ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest whitespace-nowrap">
+                Orologio di Gara:
+              </span>
+              <div className="flex items-center gap-1">
+                {[
+                  { label: "Senza Timer", val: 0 },
+                  { label: "3m Blitz", val: 3 },
+                  { label: "5m Blitz", val: 5 },
+                  { label: "10m Rapido", val: 10 },
+                ].map((c) => (
+                  <button
+                    key={c.val}
+                    type="button"
+                    onClick={() => {
+                      setPvpTimeLimitMinutes(c.val);
+                      setWhiteClockSeconds(c.val > 0 ? c.val * 60 : 300);
+                      setBlackClockSeconds(c.val > 0 ? c.val * 60 : 300);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      pvpTimeLimitMinutes === c.val
+                        ? "bg-[#C5A059] text-black font-extrabold"
+                        : "bg-black/40 text-muted-foreground hover:text-white border border-white/10"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md border font-mono text-xs transition-all whitespace-nowrap ${
+                  turn === "w"
+                    ? "bg-emerald-500/20 border-emerald-500/60 text-emerald-300 font-bold shadow-xs"
+                    : "bg-black/40 border-white/10 text-muted-foreground"
+                }`}
+              >
+                <Timer size={13} className={turn === "w" ? "text-emerald-400 animate-pulse" : ""} />
+                <span className="text-[10px] uppercase">Bianco (Ordine):</span>
+                <span className="text-sm font-extrabold font-mono">
+                  {pvpTimeLimitMinutes === 0 ? "∞" : formatClock(whiteClockSeconds)}
+                </span>
+              </div>
+
+              <div
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md border font-mono text-xs transition-all whitespace-nowrap ${
+                  turn === "b"
+                    ? "bg-rose-500/20 border-rose-500/60 text-rose-300 font-bold shadow-xs"
+                    : "bg-black/40 border-white/10 text-muted-foreground"
+                }`}
+              >
+                <Timer size={13} className={turn === "b" ? "text-rose-400 animate-pulse" : ""} />
+                <span className="text-[10px] uppercase">Nero (Custode):</span>
+                <span className="text-sm font-extrabold font-mono">
+                  {pvpTimeLimitMinutes === 0 ? "∞" : formatClock(blackClockSeconds)}
+                </span>
+              </div>
             </div>
           </div>
         ) : (
@@ -1497,6 +1755,18 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
               </div>
             </div>
 
+            <button
+              type="button"
+              onClick={() => {
+                setShowVictoryModal(false);
+                setShowAnalysisModal(true);
+              }}
+              className="w-full py-2.5 rounded-xl bg-[#C5A059]/20 hover:bg-[#C5A059]/30 border border-[#C5A059]/40 text-[#E8C56A] font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Activity size={14} />
+              <span>Esamina Accuratezza & Disciplina ({analysisReport.operatorAccuracyPercent}%)</span>
+            </button>
+
             <div className="flex gap-2">
               <button
                 type="button"
@@ -1559,6 +1829,18 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
                 <strong className="text-white font-mono">{persistence.totalMatchesWon}</strong>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowDefeatModal(false);
+                setShowAnalysisModal(true);
+              }}
+              className="w-full py-2.5 rounded-xl bg-[#C5A059]/20 hover:bg-[#C5A059]/30 border border-[#C5A059]/40 text-[#E8C56A] font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Activity size={14} />
+              <span>Esamina Accuratezza & Disciplina ({analysisReport.operatorAccuracyPercent}%)</span>
+            </button>
 
             <div className="flex gap-2">
               <button
@@ -1846,6 +2128,296 @@ export function TacticalChessGame({ onClose, activeTradeContext }: TacticalChess
                   Risolvere puzzle tattici allena l'occhio al riconoscimento immediato dei pattern (breakout, trappole, sacrifici calcolati), mantenendo la mente attiva e disciplinata durante la gestione dei tuoi trade reali.
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 10. TACTICAL DISCIPLINE & ACCURACY REPORT MODAL           */}
+      {/* ========================================================= */}
+      {showAnalysisModal && (
+        <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-[#0d0f14] border border-[#C5A059]/40 rounded-2xl p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto scrollbar-thin">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-3">
+              <div className="flex items-center gap-2">
+                <Activity size={18} className="text-[#C5A059]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#E8C56A] uppercase tracking-wider">
+                    Rapporto di Disciplina Tattica & Accuratezza
+                  </h3>
+                  <span className="text-[10px] text-muted-foreground">
+                    Valutazione FIDE Algoritmica • Standard Trans-Limen AUREUS
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAnalysisModal(false)}
+                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer px-2 py-1 rounded bg-black/40 border border-white/10"
+              >
+                ✕ Chiudi
+              </button>
+            </div>
+
+            {/* Top Score Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {/* Operator Accuracy */}
+              <div className="p-3.5 rounded-xl bg-gradient-to-br from-[#C5A059]/15 to-transparent border border-[#C5A059]/40 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                    Accuratezza Tuo Gioco
+                  </span>
+                  <Award size={14} className="text-[#E8C56A]" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-extrabold font-mono text-white tabular-nums">
+                    {analysisReport.operatorAccuracyPercent}%
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                      analysisReport.disciplineGrade === "Sovrano"
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                        : analysisReport.disciplineGrade === "Maestro"
+                        ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/40"
+                        : analysisReport.disciplineGrade === "Disciplinato"
+                        ? "bg-blue-500/20 text-blue-300 border border-blue-500/40"
+                        : "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                    }`}
+                  >
+                    {analysisReport.disciplineGrade}
+                  </span>
+                </div>
+                <span className="text-[10px] text-muted-foreground/80 block">
+                  {analysisReport.operatorAccuracyPercent >= 85
+                    ? "Integrità matematica impeccabile"
+                    : analysisReport.operatorAccuracyPercent >= 70
+                    ? "Disciplina operativa mantenuta"
+                    : "Presenza di deviazioni tattiche"}
+                </span>
+              </div>
+
+              {/* Opponent Accuracy */}
+              <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                    Accuratezza Avversario
+                  </span>
+                  <Shield size={14} className="text-slate-400" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-extrabold font-mono text-slate-200 tabular-nums">
+                    {analysisReport.opponentAccuracyPercent}%
+                  </span>
+                  <span className="text-[10px] text-muted-foreground uppercase">
+                    {activeMode === "duel" ? selectedAi.name : "Nero"}
+                  </span>
+                </div>
+                <span className="text-[10px] text-muted-foreground/80 block">
+                  Livello di pressione esercitato
+                </span>
+              </div>
+
+              {/* Move Classification Summary Chips */}
+              <div className="p-3 rounded-xl bg-black/50 border border-white/10 flex flex-col justify-between">
+                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block mb-1">
+                  Classificazione Mosse:
+                </span>
+                <div className="grid grid-cols-2 gap-1 text-[11px] font-mono">
+                  <span className="text-amber-400 flex items-center justify-between">
+                    <span>🌟 Brillanti:</span>
+                    <strong>{analysisReport.classificationCounts.brilliant}</strong>
+                  </span>
+                  <span className="text-emerald-400 flex items-center justify-between">
+                    <span>💎 Ottime:</span>
+                    <strong>{analysisReport.classificationCounts.great}</strong>
+                  </span>
+                  <span className="text-teal-300 flex items-center justify-between">
+                    <span>✅ Buone:</span>
+                    <strong>{analysisReport.classificationCounts.best}</strong>
+                  </span>
+                  <span className="text-yellow-400 flex items-center justify-between">
+                    <span>⚠️ Inesattezze:</span>
+                    <strong>{analysisReport.classificationCounts.inaccuracy}</strong>
+                  </span>
+                  <span className="text-rose-400 col-span-2 flex items-center justify-between">
+                    <span>❌ Errori Decisivi:</span>
+                    <strong>{analysisReport.classificationCounts.blunder}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Strategic Summary Debrief */}
+            <div className="p-3.5 rounded-xl bg-[#0a0c12] border border-[#C5A059]/25 space-y-1">
+              <strong className="text-xs font-bold text-[#E8C56A] uppercase tracking-wide flex items-center gap-1.5">
+                <Sparkles size={13} />
+                <span>{analysisReport.summaryTitle}</span>
+              </strong>
+              <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                {analysisReport.summaryDebrief}
+              </p>
+            </div>
+
+            {/* Interactive Move-by-Move Timeline Scrubber */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] uppercase font-bold text-muted-foreground tracking-wider">
+                  Analisi Mossa per Mossa ({analysisReport.moves.length} Semimosse):
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Clicca una mossa per esaminare la scacchiera
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 rounded-xl bg-black/60 border border-white/10 scrollbar-thin">
+                {analysisReport.moves.length === 0 ? (
+                  <span className="text-xs text-muted-foreground p-2">
+                    Esegui qualche mossa sulla scacchiera per visualizzare l'albero di analisi.
+                  </span>
+                ) : (
+                  analysisReport.moves.map((m, idx) => {
+                    const isSelected = selectedAnalysisMove?.ply === m.ply;
+                    const colorClass =
+                      m.classification === "brilliant"
+                        ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
+                        : m.classification === "great"
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50"
+                        : m.classification === "best"
+                        ? "bg-teal-500/20 text-teal-300 border-teal-500/40"
+                        : m.classification === "inaccuracy"
+                        ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/50"
+                        : "bg-rose-500/20 text-rose-300 border-rose-500/50";
+
+                    const badgeSymbol =
+                      m.classification === "brilliant"
+                        ? "🌟"
+                        : m.classification === "great"
+                        ? "💎"
+                        : m.classification === "best"
+                        ? "✅"
+                        : m.classification === "inaccuracy"
+                        ? "⚠️"
+                        : "❌";
+
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAnalysisMove(m);
+                          inspectHistoryStep(m.ply + 1);
+                          if (m.classification === "brilliant") {
+                            gameAudio.playChessBrilliant();
+                          } else {
+                            gameAudio.playChessMove();
+                          }
+                        }}
+                        className={`px-2 py-1 rounded-md text-[11px] font-mono border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${colorClass} ${
+                          isSelected ? "ring-2 ring-[#C5A059] font-bold shadow-md" : ""
+                        }`}
+                      >
+                        <span>{badgeSymbol}</span>
+                        <span>
+                          {m.moveNumber}.{m.turn === "b" ? ".." : ""}
+                          {m.notation}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Selected Move Detailed Inspector */}
+            {selectedAnalysisMove && (
+              <div className="p-3.5 rounded-xl bg-black/70 border border-[#C5A059]/35 space-y-2 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-bold text-white">
+                      Mossa {selectedAnalysisMove.moveNumber} ({selectedAnalysisMove.turn === "w" ? "Bianco" : "Nero"}):
+                    </span>
+                    <span className="font-mono font-extrabold text-[#E8C56A] text-sm">
+                      {selectedAnalysisMove.notation}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        selectedAnalysisMove.classification === "brilliant"
+                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                          : selectedAnalysisMove.classification === "great"
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                          : selectedAnalysisMove.classification === "best"
+                          ? "bg-teal-500/20 text-teal-300 border border-teal-500/40"
+                          : selectedAnalysisMove.classification === "inaccuracy"
+                          ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/40"
+                          : "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                      }`}
+                    >
+                      {selectedAnalysisMove.classification.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 font-mono text-[11px]">
+                    <span className="text-muted-foreground">
+                      Valutazione:{" "}
+                      <strong className="text-white">
+                        {selectedAnalysisMove.evalAfter > 0 ? "+" : ""}
+                        {(selectedAnalysisMove.evalAfter / 100).toFixed(1)}
+                      </strong>
+                    </span>
+                    <span className="text-muted-foreground">
+                      Win Prob:{" "}
+                      <strong className="text-emerald-400">
+                        {selectedAnalysisMove.winProbAfter}%
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] text-[#C5A059] uppercase font-bold tracking-wider block">
+                    {selectedAnalysisMove.debriefTitle}:
+                  </span>
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    {selectedAnalysisMove.debriefText}
+                  </p>
+                </div>
+
+                {selectedAnalysisMove.bestAlternativeNotation && (
+                  <div className="p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-between text-[11px]">
+                    <span className="text-yellow-300 font-medium">
+                      Mossa Alternativa Consigliata dal Motore:
+                    </span>
+                    <strong className="text-white font-mono bg-black/40 px-2 py-0.5 rounded border border-yellow-500/40">
+                      {selectedAnalysisMove.bestAlternativeNotation}
+                    </strong>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Footer Buttons */}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  inspectHistoryStep(null);
+                  setShowAnalysisModal(false);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-black/60 border border-white/15 text-xs font-bold text-muted-foreground hover:text-white transition-all cursor-pointer"
+              >
+                Torna al Banco Live
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowAnalysisModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-[#C5A059] hover:bg-[#E8C56A] text-black font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg"
+              >
+                <span>Esamina Scacchiera 3D</span>
+                <ArrowRight size={14} />
+              </button>
             </div>
           </div>
         </div>

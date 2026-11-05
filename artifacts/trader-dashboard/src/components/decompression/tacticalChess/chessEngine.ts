@@ -666,7 +666,202 @@ export const TACTICAL_PUZZLES: ChessPuzzle[] = [
     ],
     solution: [{ from: [3, 3], to: [0, 3] }], // Qd8#
   },
+  {
+    id: "puzzle-11-boden",
+    title: "11. Il Matto di Boden",
+    subtitle: "Scacco Matto in 1 mossa — Incrocio dei Due Alfieri",
+    objectiveText: "Muovi l'Alfiere in a6 per incrociare le diagonali e sigillare il Re.",
+    tradingAnalogy: "Sincronia geometrica tra timeframe: il supporto e la resistenza convergono sul punto esatto.",
+    turn: "w",
+    movesToWin: 1,
+    difficulty: "Iniziato",
+    rewardAurei: 20,
+    hintSquare: [5, 3],
+    hintText: "L'Alfiere in d3 può piombare in a6 chiudendo il varco di fuga del Re in c8.",
+    winningMoveNotation: "Bd3→a6#",
+    failedMoveHint: "L'Alfiere in d3 deve scivolare in a6: l'altro Alfiere in f4 controlla già c7 e b8, e i pezzi neri in d7 e d8 bloccano la ritirata.",
+    pieces: [
+      { row: 5, col: 3, piece: { type: "b", color: "w" } }, // White Bishop d3
+      { row: 4, col: 5, piece: { type: "b", color: "w" } }, // White Bishop f4
+      { row: 7, col: 4, piece: { type: "k", color: "w" } }, // White King e1
+      { row: 0, col: 2, piece: { type: "k", color: "b" } }, // Black King c8
+      { row: 1, col: 3, piece: { type: "p", color: "b" } }, // Black pawn d7
+      { row: 0, col: 3, piece: { type: "q", color: "b" } }, // Black Queen d8
+      { row: 0, col: 1, piece: { type: "r", color: "b" } }, // Black Rook b8
+    ],
+    solution: [{ from: [5, 3], to: [2, 0] }], // Ba6#
+  },
+  {
+    id: "puzzle-12-opera-mate",
+    title: "12. Il Matto dell'Opera (Morphy)",
+    subtitle: "Scacco Matto in 1 mossa — Sfondamento con Torre",
+    objectiveText: "Porta la Torre in d8 per il celebre matto di Morphy con protezione d'Alfiere.",
+    tradingAnalogy: "Massima efficienza operativa: ogni risorsa partecipa all'attacco con zero dispersione di capitale.",
+    turn: "w",
+    movesToWin: 1,
+    difficulty: "Architetto",
+    rewardAurei: 25,
+    hintSquare: [7, 3],
+    hintText: "La Torre in d1 può avanzare su tutta la colonna fino a d8.",
+    winningMoveNotation: "Rd1→d8#",
+    failedMoveHint: "La Torre in d1 deve irrompere in d8: protetta dall'Alfiere in g5, il Re in e8 non ha vie di scampo.",
+    pieces: [
+      { row: 7, col: 3, piece: { type: "r", color: "w" } }, // White Rook d1
+      { row: 3, col: 6, piece: { type: "b", color: "w" } }, // White Bishop g5
+      { row: 7, col: 6, piece: { type: "k", color: "w" } }, // White King g1
+      { row: 0, col: 4, piece: { type: "k", color: "b" } }, // Black King e8
+      { row: 1, col: 3, piece: { type: "n", color: "b" } }, // Black Knight d7
+      { row: 1, col: 5, piece: { type: "p", color: "b" } }, // Black pawn f7
+    ],
+    solution: [{ from: [7, 3], to: [0, 3] }], // Rd8#
+  },
+  {
+    id: "puzzle-13-knight-smother-edge",
+    title: "13. L'Incastro del Bastione",
+    subtitle: "Scacco Matto in 1 mossa — Cavallo ad Alta Precisione",
+    objectiveText: "Posiziona il Cavallo in c7 per soffocare il Re sul bordo della scacchiera.",
+    tradingAnalogy: "Sfruttare la mancanza di liquidità del bordo: quando il prezzo non ha sfogo, basta un impulso per liquidarlo.",
+    turn: "w",
+    movesToWin: 1,
+    difficulty: "Iniziato",
+    rewardAurei: 18,
+    hintSquare: [3, 4],
+    hintText: "Il Cavallo in e5 può saltare in c7 dando scacco matto sul Re intrappolato in a8.",
+    winningMoveNotation: "Ne5→c7#",
+    failedMoveHint: "Il Cavallo in e5 deve atterrare in c7: l'Alfiere in f3 sigilla la casella b7 e il Re nero in a8 resta bloccato.",
+    pieces: [
+      { row: 3, col: 4, piece: { type: "n", color: "w" } }, // White Knight e5
+      { row: 5, col: 5, piece: { type: "b", color: "w" } }, // White Bishop f3
+      { row: 7, col: 2, piece: { type: "k", color: "w" } }, // White King c1
+      { row: 0, col: 0, piece: { type: "k", color: "b" } }, // Black King a8
+      { row: 1, col: 0, piece: { type: "p", color: "b" } }, // Black pawn a7
+      { row: 0, col: 1, piece: { type: "p", color: "b" } }, // Black pawn b8
+    ],
+    solution: [{ from: [3, 4], to: [1, 2] }], // Nc7#
+  },
+  {
+    id: "puzzle-14-backrank-corridor",
+    title: "14. La Spazzata dell'Oracolo",
+    subtitle: "Scacco Matto in 1 mossa — Deviazione Diagonale",
+    objectiveText: "Scivola con l'Alfiere in c6 per sigillare l'uscita della Torre e del Re.",
+    tradingAnalogy: "Bloccare l'hedging dell'avversario prima di sferrare l'ordine di mercato.",
+    turn: "w",
+    movesToWin: 1,
+    difficulty: "Architetto",
+    rewardAurei: 22,
+    hintSquare: [4, 1],
+    hintText: "L'Alfiere in b4 può salire in c6 completando la gabbia con la Torre in d8.",
+    winningMoveNotation: "Bb4→c6#",
+    failedMoveHint: "L'Alfiere in b4 deve portarsi in c6: taglia diagonalmente la casella b7 e d7, lasciando il Re in a8 senza speranza.",
+    pieces: [
+      { row: 4, col: 1, piece: { type: "b", color: "w" } }, // White Bishop b4
+      { row: 0, col: 3, piece: { type: "r", color: "w" } }, // White Rook d8
+      { row: 7, col: 4, piece: { type: "k", color: "w" } }, // White King
+      { row: 0, col: 0, piece: { type: "k", color: "b" } }, // Black King a8
+      { row: 1, col: 1, piece: { type: "p", color: "b" } }, // Black pawn b7
+      { row: 1, col: 0, piece: { type: "p", color: "b" } }, // Black pawn a7
+    ],
+    solution: [{ from: [4, 1], to: [2, 2] }], // Bc6#
+  },
+  {
+    id: "puzzle-15-arabian-mate",
+    title: "15. Il Matto Arabo",
+    subtitle: "Scacco Matto in 1 mossa — Sinergia di Cavallo e Torre",
+    objectiveText: "Porta la Torre in h7 per chiudere il millenario Matto Arabo.",
+    tradingAnalogy: "Doppia conferma di trend: la Torre chiude il varco e il Cavallo copre le deviazioni laterali.",
+    turn: "w",
+    movesToWin: 1,
+    difficulty: "Architetto",
+    rewardAurei: 25,
+    hintSquare: [7, 7],
+    hintText: "La Torre in h1 può salire in h7 con la copertura del Cavallo in f6.",
+    winningMoveNotation: "Rh1→h7#",
+    failedMoveHint: "La Torre in h1 deve raggiungere h7: il Cavallo in f6 difende la Torre e controlla simultaneamente le caselle g8 ed h8.",
+    pieces: [
+      { row: 7, col: 7, piece: { type: "r", color: "w" } }, // White Rook h1
+      { row: 2, col: 5, piece: { type: "n", color: "w" } }, // White Knight f6
+      { row: 7, col: 2, piece: { type: "k", color: "w" } }, // White King
+      { row: 0, col: 7, piece: { type: "k", color: "b" } }, // Black King h8
+      { row: 1, col: 6, piece: { type: "p", color: "b" } }, // Black pawn g7
+    ],
+    solution: [{ from: [7, 7], to: [1, 7] }], // Rh7#
+  },
 ];
+
+// =============================================================
+// 4.1 DILEMMA DELLA SOGLIA GIORNALIERO (DAILY TACTICAL PUZZLE)
+// =============================================================
+
+export interface DailyPuzzleState {
+  puzzle: ChessPuzzle;
+  dateKey: string;
+  timeUntilReset: string;
+  isTodayCompleted: boolean;
+  dailyStreak: number;
+}
+
+export function getDailyPuzzle(date: Date = new Date()): DailyPuzzleState {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const dateKey = `${year}-${month}-${day}`;
+
+  // Deterministic daily hash from date string
+  let hash = 0;
+  for (let i = 0; i < dateKey.length; i++) {
+    hash = (hash * 31 + dateKey.charCodeAt(i)) >>> 0;
+  }
+  const puzzleIndex = hash % TACTICAL_PUZZLES.length;
+  const basePuzzle = TACTICAL_PUZZLES[puzzleIndex];
+
+  // Calcola tempo al reset di mezzanotte
+  const now = date.getTime();
+  const midnight = new Date(year, date.getMonth(), date.getDate() + 1, 0, 0, 0).getTime();
+  const diffMs = Math.max(0, midnight - now);
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const timeUntilReset = `${hours}h ${mins}m`;
+
+  let isTodayCompleted = false;
+  let dailyStreak = 0;
+  if (typeof window !== "undefined") {
+    const savedDate = localStorage.getItem("limen_chess_daily_puzzle_completed_date");
+    isTodayCompleted = savedDate === dateKey;
+    const rawStreak = localStorage.getItem("limen_chess_daily_puzzle_streak");
+    dailyStreak = rawStreak ? parseInt(rawStreak, 10) : 0;
+  }
+
+  const dailyPuzzle: ChessPuzzle = {
+    ...basePuzzle,
+    id: `daily-${dateKey}`,
+    title: `Dilemma del Giorno: ${basePuzzle.title.replace(/^\d+\.\s*/, "")}`,
+    subtitle: `Sfida Quotidiana della Disciplina — ${dateKey}`,
+    rewardAurei: basePuzzle.rewardAurei + 15, // Bonus fedeltà quotidiana
+  };
+
+  return {
+    puzzle: dailyPuzzle,
+    dateKey,
+    timeUntilReset,
+    isTodayCompleted,
+    dailyStreak,
+  };
+}
+
+export function markDailyPuzzleCompleted(dateKey: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("limen_chess_daily_puzzle_completed_date", dateKey);
+    const rawStreak = localStorage.getItem("limen_chess_daily_puzzle_streak");
+    const streak = rawStreak ? parseInt(rawStreak, 10) : 0;
+    localStorage.setItem("limen_chess_daily_puzzle_streak", String(streak + 1));
+  }
+}
+
+export function getDailyPuzzleStreak(): number {
+  if (typeof window === "undefined") return 0;
+  const rawStreak = localStorage.getItem("limen_chess_daily_puzzle_streak");
+  return rawStreak ? parseInt(rawStreak, 10) : 0;
+}
 
 // =============================================================
 // 5. SALVATAGGIO & PERSISTENZA ELO

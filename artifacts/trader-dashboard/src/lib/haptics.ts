@@ -66,3 +66,27 @@ export function hapticWarning(): boolean {
 export function hapticSovereign(): boolean {
   return vibrate([40, 30, 40, 30, 60]);
 }
+
+export type HapticStyle = "selection" | "light" | "medium" | "heavy" | "success" | "warning" | "error";
+
+/** Helper polimorfo per attivare feedback aptico in base allo stile richiesto */
+export function triggerHaptic(style: HapticStyle = "selection"): boolean {
+  switch (style) {
+    case "selection":
+    case "light":
+      return hapticLight();
+    case "medium":
+      return hapticMedium();
+    case "heavy":
+      return hapticCinemaToggle();
+    case "success":
+      return hapticSuccess();
+    case "warning":
+      return hapticWarning();
+    case "error":
+      return hapticViolation();
+    default:
+      return hapticLight();
+  }
+}
+
