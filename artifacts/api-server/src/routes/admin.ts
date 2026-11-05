@@ -46,6 +46,10 @@ import { writeAdminAudit } from "../services/adminAudit.js";
 import { exportAccountData } from "../services/accountExport.js";
 import { logger } from "../lib/logger.js";
 import { systemWatchdog } from "../lib/systemWatchdog.js";
+import {
+  dispatchWatchdogCanaryAlert,
+  dispatchWatchdogDailyDigest,
+} from "../lib/watchdogAlerting.js";
 import { getAllCircuitBreakersStats } from "../lib/circuitBreaker.js";
 import {
   isSupportStatus,
@@ -1065,9 +1069,63 @@ router.get(
         serializeRuntimeFlag("VAPID_PRIVATE_KEY", process.env.VAPID_PRIVATE_KEY),
         serializeRuntimeFlag("SENTRY_DSN", process.env.SENTRY_DSN),
         serializeRuntimeFlag("OPENAI_API_KEY", process.env.OPENAI_API_KEY),
+        serializeRuntimeFlag("WATCHDOG_ALERT_WEBHOOK_URL", process.env.WATCHDOG_ALERT_WEBHOOK_URL),
       ],
       watchdog: systemWatchdog.getTelemetry(),
       circuitBreakers: getAllCircuitBreakersStats(),
+    });
+  },
+);
+
+router.post(
+  "/admin/system/watchdog/test-alert",
+  requireAdmin("system.feature_flags.write"),
+  async (req, res) => {
+    const mode = req.body?.mode === "digest" ? "digest" : "canary";
+    const telemetry = systemWatchdog.getTelemetry();
+    const mem = process.memoryUsage();
+    const heapUsedMb = Math.round(mem.heapUsed / (1024 * 1024));
+    const rssMb = Math.round(mem.rss / (1024 * 1024));
+    const avgLatencyMs = Math.round(telemetry.eventLoopDelayMs.mean || 15);
+    const p95LatencyMs = Math.round(telemetry.eventLoopDelayMs.p95 || 35);
+
+    const dispatchResult =
+      mode === "digest"
+        ? await dispatchWatchdogDailyDigest({
+            status: telemetry.status,
+            uptimeSeconds: telemetry.uptimeSeconds,
+            totalRequests: 1,
+            errorRatePct: 0,
+            avgLatencyMs,
+            p95LatencyMs,
+            heapUsedMb,
+            rssMb,
+            totalAnomalies: telemetry.totalAnomalies,
+          })
+        : await dispatchWatchdogCanaryAlert({
+            id: `anom_canary_${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            kind: "transientError",
+            severity: "warn",
+            message: "Test Canary Webhook generato dalla Console Admin AUREUS",
+            metadata: { triggeredBy: req.admin!.userId, mode },
+          });
+
+    await writeAdminAudit({
+      req,
+      admin: req.admin!,
+      action: "system.watchdog_test_alert",
+      targetType: "system_watchdog",
+      targetId: mode,
+      reason: `Test Watchdog (${mode}) inviato da Console Admin`,
+      after: dispatchResult,
+    });
+
+    res.json({
+      ok: true,
+      mode,
+      dispatchResult,
+      alerting: systemWatchdog.getTelemetry().alerting,
     });
   },
 );

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -9,10 +9,12 @@ import {
   Lock,
   FileCheck2,
   Upload,
+  Link2,
 } from "lucide-react";
 import {
   buildSystemPassportExportDocument,
   computeSystemPassportHash,
+  encodeSystemPassportShareToken,
   formatPassportSealCode,
   generateDeterministicQrMatrix,
   verifySystemPassportDocument,
@@ -24,6 +26,7 @@ interface SystemPassportCardProps {
   payload: SystemPassportPayload;
   checklistItems?: string[];
   compact?: boolean;
+  initialShareToken?: string | null;
   onImportVerifiedSystem?: (
     payload: SystemPassportPayload,
     checklistItems: string[],
@@ -41,12 +44,21 @@ export function SystemPassportCard({
   payload,
   checklistItems = [],
   compact = false,
+  initialShareToken = null,
   onImportVerifiedSystem,
 }: SystemPassportCardProps) {
   const [copied, setCopied] = useState(false);
-  const [verifierOpen, setVerifierOpen] = useState(false);
-  const [verifierInput, setVerifierInput] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [verifierOpen, setVerifierOpen] = useState(Boolean(initialShareToken));
+  const [verifierInput, setVerifierInput] = useState(initialShareToken ?? "");
   const [importedToast, setImportedToast] = useState(false);
+
+  useEffect(() => {
+    if (initialShareToken && initialShareToken.trim()) {
+      setVerifierOpen(true);
+      setVerifierInput(initialShareToken.trim());
+    }
+  }, [initialShareToken]);
 
   const hash = useMemo(() => computeSystemPassportHash(payload), [payload]);
   const sealCode = useMemo(() => formatPassportSealCode(hash), [hash]);
@@ -114,6 +126,26 @@ export function SystemPassportCard({
       checklistItems,
     );
     setVerifierInput(JSON.stringify(currentDoc, null, 2));
+  };
+
+  const handleCopyDeepLink = async () => {
+    synestheticClick();
+    const token = encodeSystemPassportShareToken(payload, checklistItems);
+    const origin =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : "https://aureus-os.app";
+    const shareUrl = `${origin}/method?passport=${encodeURIComponent(token)}`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(shareUrl);
+      }
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2200);
+    } catch {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2200);
+    }
   };
 
   const handleApplyVerified = () => {
@@ -297,6 +329,25 @@ export function SystemPassportCard({
               >
                 <Download className="w-3.5 h-3.5 text-[#C5A059]" />
                 <span>Esporta JSON Costituzione</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyDeepLink}
+                data-testid="system-passport-share-link-btn"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#26262E] bg-[#0d0f14] hover:border-[#C5A059]/40 hover:text-[#E8C56A] px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#F4F4F6] transition-all whitespace-nowrap cursor-pointer"
+              >
+                {linkCopied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-[#10b981]" />
+                    <span className="text-[#10b981]">✓ Deep-Link Copiato</span>
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="w-3.5 h-3.5 text-[#C5A059]" />
+                    <span>Copia Deep-Link Firmato</span>
+                  </>
+                )}
               </button>
 
               <button

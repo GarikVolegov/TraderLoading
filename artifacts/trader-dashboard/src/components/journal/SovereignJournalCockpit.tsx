@@ -282,30 +282,30 @@ export function SovereignJournalCockpit({
 
       {/* ── MOBILE-ONLY VIEW SWITCHER (< xl) ── */}
       <div className="flex xl:hidden items-center justify-between gap-1.5 border-b border-[#C5A059]/20 pb-2 mb-2 shrink-0 mobile-compact-bar">
-        <div className="flex items-center gap-1 rounded-lg border border-[#C5A059]/30 bg-[#0d0f14] p-0.5 text-[11px] font-mono">
+        <div className="grid grid-cols-2 gap-1 rounded-lg border border-[#C5A059]/30 bg-[#0d0f14] p-0.5 text-[10px] font-mono flex-1 min-w-0">
           <button
             type="button"
             onClick={() => setMobileActiveView("registro")}
             className={cn(
-              "px-2 sm:px-3 py-1 rounded-md font-semibold transition-all whitespace-nowrap",
+              "px-1.5 py-1.5 rounded-md font-semibold transition-all whitespace-nowrap text-center",
               mobileActiveView === "registro"
                 ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 font-bold shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            01 · Registro &amp; Curva
+            01 · Registro
           </button>
           <button
             type="button"
             onClick={() => setMobileActiveView("dossier")}
             className={cn(
-              "px-2 sm:px-3 py-1 rounded-md font-semibold transition-all whitespace-nowrap",
+              "px-1.5 py-1.5 rounded-md font-semibold transition-all whitespace-nowrap text-center",
               mobileActiveView === "dossier"
                 ? "bg-[#C5A059]/20 text-[#E8C56A] border border-[#C5A059]/50 font-bold shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            02 · Dossier Tattico
+            02 · Dossier
           </button>
         </div>
         <button
@@ -315,7 +315,7 @@ export function SovereignJournalCockpit({
           className="inline-flex items-center gap-1 rounded-lg border border-[#C5A059]/50 bg-[#C5A059] hover:bg-[#E8C56A] px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-[#07080b] shadow-sm whitespace-nowrap shrink-0 cursor-pointer"
         >
           <Plus className="w-3 h-3" />
-          <span>Registra Trade</span>
+          <span>Nuovo Trade</span>
         </button>
       </div>
 

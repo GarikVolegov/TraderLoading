@@ -740,6 +740,11 @@ export function MethodEditor({
                     .split("\n")
                     .map((s) => s.trim())
                     .filter(Boolean)}
+                  initialShareToken={
+                    typeof window !== "undefined"
+                      ? new URLSearchParams(window.location.search).get("passport")
+                      : null
+                  }
                   onImportVerifiedSystem={(imported, clauses) => {
                     setValues((prev) => ({
                       ...prev,

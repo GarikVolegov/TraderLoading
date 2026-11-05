@@ -445,6 +445,45 @@ export function calculateSandboxMetrics(
   };
 }
 
+export interface SandboxBenchmarkComparison {
+  readonly trialSealCode: string;
+  readonly operatorIntegrityPct: number;
+  readonly retailAvgIntegrityPct: number;
+  readonly operatorR: number;
+  readonly retailAvgR: number;
+  readonly edgeDeltaR: number;
+}
+
+export function calculateSandboxBenchmarkComparison(
+  checkedCount: number,
+  totalRules: number,
+  pnlR: number,
+  scenarioId: SandboxScenarioId = "xau-london-sweep",
+): SandboxBenchmarkComparison {
+  const safeTotal = Math.max(1, totalRules);
+  const operatorIntegrityPct = Math.round((checkedCount / safeTotal) * 100);
+  const retailAvgIntegrityPct = 18;
+  const retailAvgR = -0.85;
+  const edgeDeltaR = Number((pnlR - retailAvgR).toFixed(2));
+  const prefix =
+    scenarioId === "eur-ny-reversal"
+      ? "EUR"
+      : scenarioId === "btc-macro-breakout"
+        ? "BTC"
+        : "XAU";
+  const rCode = Math.max(0, Math.round(pnlR * 100));
+  const trialSealCode = `AUREUS-TRIAL-${prefix}-${operatorIntegrityPct}I-${rCode}R`;
+
+  return {
+    trialSealCode,
+    operatorIntegrityPct,
+    retailAvgIntegrityPct,
+    operatorR: pnlR,
+    retailAvgR,
+    edgeDeltaR,
+  };
+}
+
 export interface GuestForgeSandboxModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -477,6 +516,17 @@ export function GuestForgeSandboxModal({
   const metrics = useMemo(
     () => calculateSandboxMetrics(visibleBarIndex, tradeExecuted, scenarioId),
     [visibleBarIndex, tradeExecuted, scenarioId],
+  );
+
+  const benchmark = useMemo(
+    () =>
+      calculateSandboxBenchmarkComparison(
+        checkedIds.length,
+        activeScenario.checklist.length,
+        metrics.pnlR,
+        scenarioId,
+      ),
+    [checkedIds.length, activeScenario.checklist.length, metrics.pnlR, scenarioId],
   );
 
   const currentCandle =
@@ -1079,50 +1129,93 @@ export function GuestForgeSandboxModal({
           </div>
         </div>
 
-        {/* FASE 3 — IL SIGILLO NEL LIBRO DELLA VERITÀ */}
+        {/* FASE 3 — IL SIGILLO NEL LIBRO DELLA VERITÀ & BENCHMARK ORDINE VS RETAIL */}
         <div
-          className={`rounded-xl border p-3.5 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+          className={`rounded-xl border p-3.5 transition-all space-y-3 ${
             metrics.hitTakeProfit
               ? "bg-[#10b981]/10 border-[#10b981]/50 shadow-[0_0_25px_rgba(16,185,129,0.15)]"
               : "bg-[#0d0f14] border-[#C5A059]/25"
           }`}
         >
-          <div className="space-y-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <BookOpen className="h-4 w-4 text-[#C5A059] shrink-0" />
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#E8C56A]">
-                III. Il Libro della Verità
-              </span>
-              <span className="font-mono text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#10b981]/15 border border-[#10b981]/35 text-[#10b981] whitespace-nowrap">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <BookOpen className="h-4 w-4 text-[#C5A059] shrink-0" />
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#E8C56A]">
+                  III. Il Libro della Verità
+                </span>
+                <span className="font-mono text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#10b981]/15 border border-[#10b981]/35 text-[#10b981] whitespace-nowrap">
+                  {metrics.hitTakeProfit
+                    ? "TARGET +3.00 R SIGILLATO · ZERO DERIVA"
+                    : "AUDIT TELEMETRICO ATTIVO"}
+                </span>
+                <span
+                  className="font-mono text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[#E8C56A] whitespace-nowrap"
+                  data-testid="sandbox-trial-seal-code"
+                >
+                  {benchmark.trialSealCode}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 leading-snug">
                 {metrics.hitTakeProfit
-                  ? "TARGET +3.00 R SIGILLATO · ZERO DERIVA"
-                  : " AUDIT TELEMETRICO ATTIVO"}
-              </span>
+                  ? "Esecuzione impeccabile: +300.00 EUR (+3.00 R) forgiati al 100% di Integrità. Reclama ora il tuo Dossier dell'Operatore."
+                  : "Completa la checklist del Custode, esegui l'ordine Long e osserva il replay fino al Target 1:3 R:R."}
+              </p>
             </div>
-            <p className="text-xs text-slate-300 leading-snug">
-              {metrics.hitTakeProfit
-                ? "Esecuzione impeccabile: +300.00 EUR (+3.00 R) forgiati al 100% di Integrità. Reclama ora il tuo Dossier dell'Operatore."
-                : "Completa la checklist del Custode, esegui l'ordine Long e osserva il replay fino al Target 1:3 R:R."}
-            </p>
+
+            <button
+              type="button"
+              data-testid="sandbox-claim-dossier-cta"
+              onClick={() => {
+                synestheticConfirm();
+                trackEvent("landing_guest_sandbox_claim_dossier", {
+                  completedTp: metrics.hitTakeProfit,
+                  scenarioId,
+                  trialSealCode: benchmark.trialSealCode,
+                });
+                onRequestAdmission(
+                  "Completata Prova Immediata della Forgia (+3.00R al 100% Integrità)",
+                );
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#C5A059] hover:bg-[#E8C56A] text-[#07080b] font-mono text-xs font-black uppercase tracking-wider shadow-[0_0_20px_rgba(197,160,89,0.3)] transition-all cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <span>Varca la Soglia &amp; Salva il Tuo Dossier</span>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+            </button>
           </div>
 
-          <button
-            type="button"
-            data-testid="sandbox-claim-dossier-cta"
-            onClick={() => {
-              synestheticConfirm();
-              trackEvent("landing_guest_sandbox_claim_dossier", {
-                completedTp: metrics.hitTakeProfit,
-              });
-              onRequestAdmission(
-                "Completata Prova Immediata della Forgia (+3.00R al 100% Integrità)",
-              );
-            }}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#C5A059] hover:bg-[#E8C56A] text-[#07080b] font-mono text-xs font-black uppercase tracking-wider shadow-[0_0_20px_rgba(197,160,89,0.3)] transition-all cursor-pointer whitespace-nowrap shrink-0"
+          {/* Attestato Comparativo: Ordine AUREUS vs Media Retail */}
+          <div
+            className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2.5 border-t border-white/10"
+            data-testid="sandbox-benchmark-comparison-card"
           >
-            <span>Varca la Soglia &amp; Salva il Tuo Dossier</span>
-            <ArrowRight className="h-3.5 w-3.5 shrink-0" />
-          </button>
+            <div className="flex items-center justify-between rounded-lg bg-[#07080b]/80 border border-white/10 px-2.5 py-1.5">
+              <span className="font-mono text-[9px] uppercase tracking-wider text-slate-400">
+                INTEGRITÀ VS RETAIL
+              </span>
+              <span className="font-mono text-[11px] font-bold tracking-tight text-[#10b981] whitespace-nowrap">
+                {benchmark.operatorIntegrityPct}% vs {benchmark.retailAvgIntegrityPct}% Retail
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg bg-[#07080b]/80 border border-white/10 px-2.5 py-1.5">
+              <span className="font-mono text-[9px] uppercase tracking-wider text-slate-400">
+                ASIMMETRIA R:R
+              </span>
+              <span className="font-mono text-[11px] font-bold tracking-tight text-[#E8C56A] whitespace-nowrap">
+                +{benchmark.operatorR.toFixed(2)} R vs {benchmark.retailAvgR.toFixed(2)} R
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg bg-[#07080b]/80 border border-white/10 px-2.5 py-1.5">
+              <span className="font-mono text-[9px] uppercase tracking-wider text-slate-400">
+                VANTAGGIO DISCIPLINA
+              </span>
+              <span className="font-mono text-[11px] font-bold tracking-tight text-[#10b981] whitespace-nowrap">
+                +{benchmark.edgeDeltaR.toFixed(2)} R Edge Netto
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </LimenResponsiveDrawer>

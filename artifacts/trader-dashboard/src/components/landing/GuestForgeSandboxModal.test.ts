@@ -6,6 +6,7 @@ import {
   INITIAL_VISIBLE_BAR_INDEX,
   SANDBOX_SCENARIOS,
   SANDBOX_SCENARIO_LEVELS,
+  calculateSandboxBenchmarkComparison,
   calculateSandboxMetrics,
   getSandboxScenario,
 } from "./GuestForgeSandboxModal";
@@ -85,6 +86,13 @@ for (const scenario of SANDBOX_SCENARIOS) {
 }
 assert.equal(getSandboxScenario("eur-ny-reversal").symbol, "EUR/USD");
 assert.equal(getSandboxScenario("btc-macro-breakout").symbol, "BTC/USD");
+
+// 4c. Verify Benchmark Comparison ("Batti il Benchmark dell'Ordine vs Media Retail")
+const bench = calculateSandboxBenchmarkComparison(3, 3, 3.0, "xau-london-sweep");
+assert.equal(bench.operatorIntegrityPct, 100);
+assert.equal(bench.retailAvgIntegrityPct, 18);
+assert.equal(bench.edgeDeltaR, 3.85);
+assert.equal(bench.trialSealCode, "AUREUS-TRIAL-XAU-100I-300R");
 
 // 5. Verify Limen Design System static compliance & LandingPage wiring
 const modalSource = readFileSync(

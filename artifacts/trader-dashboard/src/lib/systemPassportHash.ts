@@ -167,8 +167,91 @@ export function buildSystemPassportExportDocument(
   };
 }
 
+function toBase64UrlUtf8(input: string): string {
+  const bytes = new TextEncoder().encode(input);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 =
+    typeof btoa === "function"
+      ? btoa(binary)
+      : Buffer.from(input, "utf8").toString("base64");
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function fromBase64UrlUtf8(tokenBody: string): string | null {
+  try {
+    const normalized = tokenBody.replace(/-/g, "+").replace(/_/g, "/");
+    const padLen = (4 - (normalized.length % 4)) % 4;
+    const padded = normalized + "=".repeat(padLen);
+    if (typeof atob === "function") {
+      const binary = atob(padded);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new TextDecoder().decode(bytes);
+    }
+    return Buffer.from(padded, "base64").toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Codifica il documento JSON firmato del Passaporto Crittografico in un token
+ * compatto URL-safe `AUREUS1.<base64url>` condivisibile via Deep-Link (`?passport=...`).
+ */
+export function encodeSystemPassportShareToken(
+  payload: SystemPassportPayload,
+  checklistItems: string[] = [],
+  issuedAt = new Date().toISOString(),
+): string {
+  const doc = buildSystemPassportExportDocument(
+    payload,
+    checklistItems,
+    issuedAt,
+  );
+  return `AUREUS1.${toBase64UrlUtf8(JSON.stringify(doc))}`;
+}
+
+/**
+ * Estrae e decodifica un token `AUREUS1.<base64url>` (o un URL contenente `?passport=AUREUS1....`)
+ * e ne verifica l'integrità crittografica.
+ */
+export function decodeSystemPassportShareToken(
+  tokenOrUrl: string,
+): SystemPassportVerificationResult {
+  const trimmed = (tokenOrUrl || "").trim();
+  if (!trimmed) {
+    return { valid: false, reason: "invalid_json" };
+  }
+
+  let rawToken = trimmed;
+  const passportParamMatch = trimmed.match(/[?&]passport=([^&#\s]+)/i);
+  if (passportParamMatch?.[1]) {
+    try {
+      rawToken = decodeURIComponent(passportParamMatch[1]);
+    } catch {
+      rawToken = passportParamMatch[1];
+    }
+  }
+
+  if (rawToken.startsWith("AUREUS1.")) {
+    const decodedJson = fromBase64UrlUtf8(rawToken.slice("AUREUS1.".length));
+    if (!decodedJson) {
+      return { valid: false, reason: "invalid_json" };
+    }
+    return verifySystemPassportDocument(decodedJson);
+  }
+
+  return verifySystemPassportDocument(rawToken);
+}
+
 /**
  * Verifica crittograficamente un documento JSON di Passaporto del Sistema
+ * (oppure un token Deep-Link `AUREUS1.<base64url>` / URL `?passport=...`)
  * ricalcolando il digest 64-hex e il codice sigillo AUREUS-SYS-XXXX-XXXX-XXXX
  * per rilevare qualsiasi alterazione o manomissione delle regole.
  */
@@ -177,8 +260,27 @@ export function verifySystemPassportDocument(
 ): SystemPassportVerificationResult {
   let parsed: Record<string, unknown>;
   if (typeof rawInput === "string") {
+    const trimmed = rawInput.trim();
+    if (trimmed.startsWith("AUREUS1.") || /[?&]passport=AUREUS1\./i.test(trimmed)) {
+      let tokenPart = trimmed;
+      const match = trimmed.match(/[?&]passport=([^&#\s]+)/i);
+      if (match?.[1]) {
+        try {
+          tokenPart = decodeURIComponent(match[1]);
+        } catch {
+          tokenPart = match[1];
+        }
+      }
+      const decoded = tokenPart.startsWith("AUREUS1.")
+        ? fromBase64UrlUtf8(tokenPart.slice("AUREUS1.".length))
+        : null;
+      if (!decoded) {
+        return { valid: false, reason: "invalid_json" };
+      }
+      return verifySystemPassportDocument(decoded);
+    }
     try {
-      const json = JSON.parse(rawInput);
+      const json = JSON.parse(trimmed);
       if (!json || typeof json !== "object" || Array.isArray(json)) {
         return { valid: false, reason: "invalid_json" };
       }

@@ -1021,7 +1021,7 @@ export default function FinancialArchitecture() {
               <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#C5A059]">
                 FLUSSI DI CASSA & RISPARMIO
               </span>
-              <span className="font-mono text-[10px] text-slate-400 font-medium px-2 py-0.5 rounded bg-secondary/60">
+              <span className="font-mono text-[10px] text-slate-400 font-medium px-2 py-0.5 rounded bg-secondary/60 whitespace-nowrap shrink-0">
                 Capacità Mensile
               </span>
             </div>

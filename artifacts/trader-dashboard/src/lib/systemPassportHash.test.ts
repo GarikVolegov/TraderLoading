@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import {
   buildSystemPassportExportDocument,
   computeSystemPassportHash,
+  decodeSystemPassportShareToken,
+  encodeSystemPassportShareToken,
   formatPassportSealCode,
   generateDeterministicQrMatrix,
   verifySystemPassportDocument,
@@ -129,6 +131,24 @@ assert.equal(tamperedVerify.reason, "hash_mismatch");
 const invalidJsonVerify = verifySystemPassportDocument("{not-valid-json");
 assert.equal(invalidJsonVerify.valid, false);
 assert.equal(invalidJsonVerify.reason, "invalid_json");
+
+// 4c. Signed Deep-Link Token (AUREUS1.<base64url> and ?passport= URL) roundtrip
+const shareToken = encodeSystemPassportShareToken(
+  basePayload,
+  ["Liquidità spazzata", "BOS M15", "Rischio 50 EUR", "Zero Red News"],
+  "2026-11-05T00:00:00.000Z",
+);
+assert.match(shareToken, /^AUREUS1\.[A-Za-z0-9_-]+$/);
+const decodedFromToken = decodeSystemPassportShareToken(shareToken);
+assert.equal(decodedFromToken.valid, true);
+assert.equal(decodedFromToken.computedSeal, sealCode);
+
+const decodedFromFullUrl = verifySystemPassportDocument(
+  `https://aureus-os.app/method?passport=${encodeURIComponent(shareToken)}`,
+);
+assert.equal(decodedFromFullUrl.valid, true);
+assert.equal(decodedFromFullUrl.payload?.name, basePayload.name);
+assert.equal(decodedFromFullUrl.checklistItems?.length, 4);
 
 // 5. Static integration checks in Method.tsx, DailyOrderMethodConsole.tsx & SystemPassportCard.tsx
 const cardSource = readFileSync(

@@ -599,18 +599,18 @@ export function UnifiedTradeLedgerTrajectory({
 
           {/* Bottom Chart Legend (Clean 1-line, responsive wrap, measured in Euro) */}
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] font-mono text-text-lo border-t border-white/[0.06] pt-1 shrink-0">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-success" />
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="h-2 w-2 rounded-full bg-success shrink-0" />
                 Storico Reale ({ledgerStats.total})
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#C5A059]" />
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="h-2 w-2 rounded-full bg-[#C5A059] shrink-0" />
                 Monte Carlo
               </span>
 
               {/* Rischio Parametrico Selector (0.5x, 1.0x, 1.5x, 2.0x) */}
-              <div className="flex items-center gap-1 bg-surface-2/70 border border-border-subtle rounded px-1.5 py-0.5">
+              <div className="flex items-center gap-1 bg-surface-2/70 border border-border-subtle rounded px-1.5 py-0.5 whitespace-nowrap">
                 <span className="text-text-lo/70 text-[9px] uppercase tracking-wider">Rischio:</span>
                 {[0.5, 1.0, 1.5, 2.0].map((mult) => (
                   <button

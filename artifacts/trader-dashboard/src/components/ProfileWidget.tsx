@@ -261,9 +261,9 @@ export function ProfileWidget() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <span className="inline-flex items-center gap-1.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 px-2 py-0.5 font-mono text-[11px] font-semibold tracking-wider uppercase text-[#E8C56A]">
-                    <SigilIcon name={currentGrade.sigilId.replace("sigil-", "") as "grade-1"} size={13} />
-                    <span className="whitespace-nowrap">{currentGrade.fullTitle}</span>
+                  <span className="inline-flex items-center gap-1.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 px-2 py-0.5 font-mono text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase text-[#E8C56A]">
+                    <SigilIcon name={currentGrade.sigilId.replace("sigil-", "") as "grade-1"} size={12} />
+                    <span>{currentGrade.fullTitle}</span>
                   </span>
                 </div>
 
@@ -281,12 +281,12 @@ export function ProfileWidget() {
             </div>
 
             {/* Streak & Integrity Badge */}
-            <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-center gap-2 shrink-0 border-t sm:border-t-0 border-[#C5A059]/15 pt-2 sm:pt-0">
-              <div className="inline-flex items-center gap-2 rounded-lg border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1.5 text-xs font-mono font-semibold text-[#10b981] shadow-sm shadow-[#10b981]/5">
-                <ShieldCheck className="w-4 h-4 text-[#10b981] shrink-0" />
+            <div className="flex flex-wrap sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 border-t sm:border-t-0 border-[#C5A059]/15 pt-2 sm:pt-0">
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-[#10b981]/30 bg-[#10b981]/10 px-2.5 py-1.5 text-[11px] sm:text-xs font-mono font-semibold text-[#10b981] shadow-sm shadow-[#10b981]/5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981] shrink-0" />
                 <span className="whitespace-nowrap">{streak} {streak === 1 ? "Sessione Conforme" : "Sessioni Conformi"}</span>
               </div>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 whitespace-nowrap">
+              <span className="font-mono text-[9.5px] sm:text-[10px] uppercase tracking-wider text-muted-foreground/60 whitespace-nowrap">
                 Zero Deriva Rilevata
               </span>
             </div>
@@ -337,14 +337,14 @@ export function ProfileWidget() {
 
           {/* Progression towards next grade */}
           <div className="space-y-2.5 rounded-xl border border-[#C5A059]/20 bg-[#07080b]/80 p-3.5">
-            <div className="flex justify-between items-center text-xs">
+            <div className="flex flex-wrap justify-between items-center gap-1.5 text-xs">
               <span className="font-display uppercase font-bold tracking-wider text-[#F4F4F6] flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-[#C5A059]" />
-                <span className="whitespace-nowrap">
+                <Shield className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
+                <span>
                   Progressione d'Ascesa {nextGrade ? `al ${nextGrade.code}` : "Massima"}
                 </span>
               </span>
-              <span className="font-mono font-bold text-xs">
+              <span className="font-mono font-bold text-xs whitespace-nowrap">
                 <span className="text-[#E8C56A] whitespace-nowrap">{targetCompleted}</span>
                 <span className="text-muted-foreground whitespace-nowrap"> / {targetRequired} Sessioni</span>
               </span>
@@ -362,14 +362,14 @@ export function ProfileWidget() {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-mono">
-              <p className="text-muted-foreground/80 whitespace-nowrap">
+              <p className="text-muted-foreground/80 leading-snug">
                 {sessionsRemaining > 0
                   ? `${sessionsRemaining} sessioni con integrità al 100% al Grado ${nextGrade?.roman}`
                   : "Requisito di costanza raggiunto ne Il Libro della Verità"}
               </p>
               {nextGrade && (
                 <p className="text-[#C5A059] flex items-center gap-1 whitespace-nowrap">
-                  <Award className="w-3 h-3 text-[#C5A059]" />
+                  <Award className="w-3 h-3 text-[#C5A059] shrink-0" />
                   <span>Sblocco: {nextGrade.title}</span>
                 </p>
               )}
