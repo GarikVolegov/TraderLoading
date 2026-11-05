@@ -286,6 +286,48 @@ function ChecklistTagPanel({ activeTags, onAdd }: ChecklistTagPanelProps) {
   );
 }
 
+// ─── Compliance Rings Definition ─────────────────────────────────────────────
+
+interface ComplianceRingDef {
+  id: "market" | "window" | "setup" | "risk" | "custodian";
+  code: string;
+  title: string;
+  description: string;
+}
+
+const COMPLIANCE_RINGS: readonly ComplianceRingDef[] = [
+  {
+    id: "market",
+    code: "01",
+    title: "Mercato Autorizzato",
+    description: "Asset conforme al perimetro stabilito dal Metodo",
+  },
+  {
+    id: "window",
+    code: "02",
+    title: "Finestra di Sessione",
+    description: "Esecuzione avvenuta negli orari e sessioni consentite",
+  },
+  {
+    id: "setup",
+    code: "03",
+    title: "Setup & Trigger Tecnico",
+    description: "Pattern strutturale, displacement e conferma a mercato",
+  },
+  {
+    id: "risk",
+    code: "04",
+    title: "Rischio & Stop Loss",
+    description: "Rischio monetario <= limite massimo e Stop Loss valido",
+  },
+  {
+    id: "custodian",
+    code: "05",
+    title: "Custode della Soglia",
+    description: "Checklist pre-trade spuntata senza eccezioni o fretta",
+  },
+];
+
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 
 export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketDecisionId, processSessionId, methodVersionId }: JournalEntryModalProps) {
@@ -857,6 +899,95 @@ export function JournalEntryModal({ isOpen, onClose, entry, initialPair, marketD
                   activeTags={tagList}
                   onAdd={addTagFromPanel}
                 />}
+              </div>
+
+              {/* 🏛️ MATRICE DI CONFORMITÀ SUI 5 ANELLI */}
+              <div
+                className="rounded-xl border border-[#C5A059]/30 bg-[#0d0f14] p-3 space-y-2.5"
+                data-testid="journal-compliance-5rings-matrix"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#E8C56A] whitespace-nowrap">
+                      Matrice di Conformità sui 5 Anelli
+                    </span>
+                  </div>
+                  <span
+                    className={`font-mono text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border whitespace-nowrap ${
+                      isFullyConforming
+                        ? "border-[#10b981]/40 bg-[#10b981]/15 text-[#10b981]"
+                        : "border-[#ef4444]/40 bg-[#ef4444]/15 text-[#ef4444]"
+                    }`}
+                    data-testid="journal-compliance-status-badge"
+                  >
+                    {isFullyConforming ? "✓ CONFORME (5/5)" : `⚠ ${COMPLIANCE_RINGS.length - conformingCount} DEVIAZIONI`}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {COMPLIANCE_RINGS.map((ring) => {
+                    const isRingConforming = complianceRings[ring.id] ?? true;
+                    return (
+                      <button
+                        key={ring.id}
+                        type="button"
+                        onClick={() => handleToggleComplianceRing(ring.id)}
+                        data-testid={`compliance-ring-${ring.id}`}
+                        className={`group flex items-center justify-between gap-2 rounded-lg border p-2 text-left transition-all cursor-pointer ${
+                          isRingConforming
+                            ? "border-[#10b981]/30 bg-[#10b981]/5 hover:border-[#10b981]/50 hover:bg-[#10b981]/10"
+                            : "border-[#ef4444]/30 bg-[#ef4444]/5 hover:border-[#ef4444]/50 hover:bg-[#ef4444]/10"
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[9px] font-bold text-[#94a3b8]">
+                              {ring.code}
+                            </span>
+                            <span className="font-mono text-[10px] font-bold tracking-tight text-[#F4F4F6] truncate">
+                              {ring.title}
+                            </span>
+                          </div>
+                          <p className="font-mono text-[8.5px] text-[#94a3b8] truncate mt-0.5">
+                            {ring.id === "market" && symbol ? `${symbol} nel perimetro` : ring.description}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 font-mono text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${
+                            isRingConforming
+                              ? "border-[#10b981]/40 bg-[#10b981]/15 text-[#10b981]"
+                              : "border-[#ef4444]/40 bg-[#ef4444]/15 text-[#ef4444]"
+                          }`}
+                        >
+                          {isRingConforming ? "✓ OK" : "✗ DEV"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Quick Action Pill Bar */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#26262E]">
+                  <button
+                    type="button"
+                    onClick={handleAttestFullCompliance}
+                    data-testid="compliance-attest-full-btn"
+                    className="inline-flex items-center gap-1 rounded border border-[#10b981]/40 bg-[#10b981]/15 hover:bg-[#10b981]/25 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wider text-[#10b981] whitespace-nowrap cursor-pointer transition-all active:scale-95"
+                  >
+                    <CheckCircle2 className="w-3 h-3 text-[#10b981]" />
+                    <span>Attesta Conformità Totale (5/5)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFlagDeviation}
+                    data-testid="compliance-flag-deviation-btn"
+                    className="inline-flex items-center gap-1 rounded border border-[#ef4444]/40 bg-[#ef4444]/15 hover:bg-[#ef4444]/25 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wider text-[#ef4444] whitespace-nowrap cursor-pointer transition-all active:scale-95"
+                  >
+                    <AlertTriangle className="w-3 h-3 text-[#ef4444]" />
+                    <span>Segnala Deviazione / Lezione</span>
+                  </button>
+                </div>
               </div>
 
               {processContext && <fieldset className="space-y-3 rounded-xl border border-primary/20 p-3">

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import {
   ShieldCheck,
   Compass,
@@ -8,10 +8,17 @@ import {
   CheckCircle2,
   Sparkles,
   Layers,
+  Upload,
+  FileCheck2,
+  AlertCircle,
 } from "lucide-react";
 import { LimenResponsiveDrawer } from "@/components/ui/LimenResponsiveDrawer";
 import { MobileChainWizard, type ChainStepMeta } from "@/components/ui/MobileChainWizard";
-import { synestheticClick } from "@/lib/soundFx";
+import { synestheticClick, synestheticConfirm, synestheticAlert } from "@/lib/soundFx";
+import {
+  verifySystemPassportDocument,
+  type SystemPassportPayload,
+} from "@/lib/systemPassportHash";
 
 export interface SystemTutorialRulesDraft {
   markets: string;
