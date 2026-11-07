@@ -419,8 +419,19 @@ export function LimenChartHeader({
     return match?.short ?? interval;
   }, [interval]);
 
+  const anyDropdownOpen =
+    symbolPickerOpen ||
+    tfPickerOpen ||
+    chartTypeOpen ||
+    indicatorsOpen ||
+    layoutMenuOpen ||
+    alertsMenuOpen;
+
   return (
-    <div className="limen-chart-header">
+    <div
+      className="limen-chart-header"
+      data-dropdown-open={anyDropdownOpen ? "true" : undefined}
+    >
       {/* ── 1. Controlli Sinistra (Mercati, Timeframe, Candele, Indicatori) ── */}
       <div className="flex items-center gap-1.5 shrink-0">
         {/* Mostra Protocollo se collassato */}
@@ -1645,7 +1656,8 @@ export function LimenChartHeader({
           <div className="relative">
             <button
               type="button"
-              className={`hidden sm:inline-flex p-1 rounded border transition-colors cursor-pointer ${
+              data-touch-size="custom"
+              className={`inline-flex p-1 rounded border transition-colors cursor-pointer ${
                 layout !== "1x1"
                   ? "bg-[#C5A059]/20 text-[#C5A059] border-[#C5A059]/40"
                   : "text-zinc-400 hover:text-white border-[#26262E] bg-[#0B0C10] hover:bg-[#161822]"

@@ -958,9 +958,9 @@ export function CockpitUserPlaybookDialog({
       {mode === "list" && (
         <div className="space-y-3">
           {/* Filter Bar: Outcome Pills + Search */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 border-b border-white/[0.08] pb-2.5">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-2 border-b border-white/[0.08] pb-2.5">
             {/* Outcome Filter */}
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 sm:pb-0">
+            <div className="mobile-compact-bar flex flex-wrap sm:flex-nowrap items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 sm:pb-0">
               {[
                 { id: "ALL", label: `Tutti (${stats.total})` },
                 { id: "win", label: `🟢 Vinti (${stats.wins})` },
@@ -999,7 +999,7 @@ export function CockpitUserPlaybookDialog({
           {/* Dual Split Master Grid: Cards (38%) + Full Visual Dossier (62%) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
             {/* ── LEFT COLUMN: Setup Cards Library (38% on Desktop) ── */}
-            <div className="lg:col-span-5 space-y-2 max-h-[560px] overflow-y-auto pr-1">
+            <div className="lg:col-span-5 space-y-2 max-h-[180px] md:max-h-[460px] lg:max-h-[560px] overflow-y-auto pr-1">
               {filteredSetups.map((s) => {
                 const isSelected = s.id === (activeSetup?.id ?? "");
                 const badge = getOutcomeBadge(s.outcome, s.riskReward);

@@ -77,26 +77,61 @@ export async function syncUserIdentity(userId: string): Promise<AuthUser> {
       const lastName = user.lastName ?? null;
       const profileImageUrl = user.imageUrl ?? null;
 
-      const [record] = await db
-        .insert(usersTable)
-        .values({
-          id: userId,
-          email,
-          firstName,
-          lastName,
-          profileImageUrl,
-        })
-        .onConflictDoUpdate({
-          target: usersTable.id,
-          set: {
+      let record: typeof usersTable.$inferSelect | undefined;
+
+      if (email) {
+        const [existingByEmail] = await db
+          .select()
+          .from(usersTable)
+          .where(eq(usersTable.email, email))
+          .limit(1);
+
+        if (existingByEmail && existingByEmail.id !== userId) {
+          const oldId = existingByEmail.id;
+          const [updated] = await db
+            .update(usersTable)
+            .set({
+              id: userId,
+              firstName: firstName ?? existingByEmail.firstName,
+              lastName: lastName ?? existingByEmail.lastName,
+              profileImageUrl: profileImageUrl ?? existingByEmail.profileImageUrl,
+              updatedAt: new Date(),
+            })
+            .where(eq(usersTable.id, oldId))
+            .returning();
+          record = updated;
+
+          await db
+            .update(adminUsersTable)
+            .set({ userId, updatedAt: new Date() })
+            .where(eq(adminUsersTable.userId, oldId))
+            .catch(() => {});
+        }
+      }
+
+      if (!record) {
+        const [upserted] = await db
+          .insert(usersTable)
+          .values({
+            id: userId,
             email,
             firstName,
             lastName,
             profileImageUrl,
-            updatedAt: new Date(),
-          },
-        })
-        .returning();
+          })
+          .onConflictDoUpdate({
+            target: usersTable.id,
+            set: {
+              email,
+              firstName,
+              lastName,
+              profileImageUrl,
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+        record = upserted;
+      }
 
       // Collega candidature pendenti se presenti con questa email
       if (email) {
@@ -181,6 +216,31 @@ export async function bootstrapSovereignAdmins(): Promise<void> {
           set: { role: "super_admin", status: "active", updatedAt: new Date() },
         })
         .catch(() => {});
+    }
+
+    // Assicura che gli utenti registrati con email bootstrap abbiano sempre ruolo super_admin
+    const bootstrapEmails = getBootstrapAdminEmails();
+    for (const email of bootstrapEmails) {
+      const [u] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.email, email.toLowerCase()))
+        .limit(1);
+      if (u?.id) {
+        await db
+          .insert(adminUsersTable)
+          .values({
+            userId: u.id,
+            role: "super_admin",
+            status: "active",
+            createdBy: "bootstrap_email",
+          })
+          .onConflictDoUpdate({
+            target: adminUsersTable.userId,
+            set: { role: "super_admin", status: "active", updatedAt: new Date() },
+          })
+          .catch(() => {});
+      }
     }
 
     // Collega candidature orfane con gli utenti registrati

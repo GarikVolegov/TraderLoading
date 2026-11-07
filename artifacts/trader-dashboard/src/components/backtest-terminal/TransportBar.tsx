@@ -166,17 +166,17 @@ export function TransportBar({ engine }: { engine: ReplayEngine }) {
     <footer
       className={`btm-transport ${
         isDetached
-          ? "fixed z-40 bg-[#0d0f14]/95 border border-[#C5A059]/40 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] rounded-xl px-3 py-2 flex items-center gap-2 pointer-events-auto"
+          ? "fixed z-40 bg-[#0d0f14]/95 border border-[#C5A059]/40 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] rounded-xl px-3 py-2 flex items-center gap-2 pointer-events-auto overflow-x-auto"
           : ""
       }`}
       style={
         isDetached
           ? {
-              left: `${dragPos.x}px`,
-              top: `${dragPos.y}px`,
+              left: `${Math.max(8, Math.min(dragPos.x, (typeof window !== "undefined" ? window.innerWidth : 375) - 340))}px`,
+              top: `${Math.max(8, Math.min(dragPos.y, (typeof window !== "undefined" ? window.innerHeight : 667) - 56))}px`,
               position: "fixed",
               width: "auto",
-              maxWidth: "calc(100vw - 40px)",
+              maxWidth: "calc(100vw - 16px)",
               bottom: "auto",
             }
           : undefined

@@ -471,11 +471,11 @@ export function UnifiedTradeLedgerTrajectory({
       </div>
 
       {/* ── TOP SECTION (~40% ALTEZZA): TRAIETTORIA + HEATMAP CALENDAR SPLIT ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 h-[215px] lg:h-[40%] min-h-[185px] shrink-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 min-h-[310px] sm:h-[215px] lg:h-[40%] lg:min-h-[185px] shrink-0">
         {/* Trajectory Equity Curve Card in Euro (7 Cols) */}
         <div
           className={cn(
-            "lg:col-span-7 flex-col justify-between rounded-xl border border-border-subtle/80 bg-surface-0/60 p-2.5 sm:p-3 shadow-inner overflow-hidden h-full",
+            "lg:col-span-7 flex-col justify-between rounded-xl border border-border-subtle/80 bg-surface-0/60 p-2.5 sm:p-3 shadow-inner overflow-hidden h-full min-h-[310px] sm:min-h-0",
             mobileChartTab === "heatmap" ? "hidden lg:flex" : "flex"
           )}
         >
@@ -493,7 +493,7 @@ export function UnifiedTradeLedgerTrajectory({
             </div>
 
             {/* Clean badges with proper spacing & Horizontally Scrollable Analysis Tools Strip */}
-            <div className="flex items-center gap-1.5 font-mono text-[10px] overflow-x-auto scrollbar-none w-full sm:w-auto py-0.5">
+            <div className="mobile-compact-bar flex items-center gap-1.5 font-mono text-[10px] overflow-x-auto scrollbar-none w-full sm:w-auto py-0.5">
               <span className="rounded bg-surface-2 border border-border-subtle px-2 py-0.5 text-text-lo whitespace-nowrap shrink-0">
                 <strong className="text-text-hi">{ledgerStats.total}</strong> Trade
               </span>
@@ -580,25 +580,19 @@ export function UnifiedTradeLedgerTrajectory({
 
           {/* Interactive SVG Chart Area with Real Journal Data in Euro & Fixed HUD */}
           <div className="flex-1 flex items-center justify-center min-h-0 py-1 overflow-hidden">
-            {realizedEuro.length > 0 ? (
-              <EquityCurveChart
-                realized={realizedEuro}
-                ideal={idealEuro}
-                showIdealCurve={showIdealCurve}
-                bands={bands}
-                projectionSteps={PROJECTION_STEPS}
-                tradeDetails={tradeDetails}
-                currency="€"
-              />
-            ) : (
-              <p className="text-xs text-text-lo italic font-mono">
-                Caricamento dati di traiettoria...
-              </p>
-            )}
+            <EquityCurveChart
+              realized={realizedEuro.length > 0 ? realizedEuro : [0]}
+              ideal={idealEuro.length > 0 ? idealEuro : [0]}
+              showIdealCurve={showIdealCurve}
+              bands={bands}
+              projectionSteps={PROJECTION_STEPS}
+              tradeDetails={tradeDetails}
+              currency="€"
+            />
           </div>
 
           {/* Bottom Chart Legend (Clean 1-line, responsive wrap, measured in Euro) */}
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] font-mono text-text-lo border-t border-white/[0.06] pt-1 shrink-0">
+          <div className="mobile-compact-bar flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] font-mono text-text-lo border-t border-white/[0.06] pt-1 shrink-0">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="h-2 w-2 rounded-full bg-success shrink-0" />

@@ -395,6 +395,8 @@ export function LimenProprietaryChart({
   intervalRef.current = interval;
   const prependShiftRef = useRef(0);
   const loadOlderRef = useRef<() => void>(() => {});
+  const loadingOlderRef = useRef(false);
+  const hasOlderRef = useRef(true);
   const [feedStatus, setFeedStatus] = useState<FeedStatus>("connecting");
   const [statusMessage, setStatusMessage] = useState<string>("");
   const cameraAnchorRef = useRef<{ centerTime: number | null; isNearLive: boolean } | null>(null);
@@ -1586,7 +1588,15 @@ export function LimenProprietaryChart({
     const onVisibleRangeChange = () => scheduleRevision();
     const onLogicalRangeChange = (range: { from: number; to: number } | null) => {
       scheduleRevision();
-      if (range && range.from < 150) loadOlderRef.current();
+      if (
+        range &&
+        range.from < 100 &&
+        candlesRef.current.length >= 100 &&
+        !loadingOlderRef.current &&
+        hasOlderRef.current
+      ) {
+        loadOlderRef.current();
+      }
       const total = candlesRef.current.length;
       if (range && total > 10) {
         const away = range.to < total - 10 || range.from > total + 4;
@@ -1683,6 +1693,7 @@ export function LimenProprietaryChart({
       lastRenderedInstanceRef.current !== chartInstance;
 
     if (isFullReload) {
+      const previousRange = chartRef.current?.timeScale().getVisibleLogicalRange();
       lastRenderedCountRef.current = candles.length;
       lastRenderedTypeRef.current = chartType;
       lastRenderedInstanceRef.current = chartInstance;
@@ -1718,12 +1729,11 @@ export function LimenProprietaryChart({
       const totalBars = displayBars.length;
       const prependShift = prependShiftRef.current;
       prependShiftRef.current = 0;
-      const currentRange = chartRef.current?.timeScale().getVisibleLogicalRange();
-      if (prependShift > 0 && currentRange) {
+      if (prependShift > 0 && previousRange) {
         // Older history was prepended: keep the operator on the same candles.
         chartRef.current?.timeScale().setVisibleLogicalRange({
-          from: currentRange.from + prependShift,
-          to: currentRange.to + prependShift,
+          from: previousRange.from + prependShift,
+          to: previousRange.to + prependShift,
         });
       } else {
         const anchor = cameraAnchorRef.current;
@@ -1906,8 +1916,8 @@ export function LimenProprietaryChart({
 
     // Infinite backward history: when the operator pans near the left edge, prepend
     // the previous page from the permanent archive (down to the first stored quote).
-    let loadingOlder = false;
-    let hasOlder = true;
+    hasOlderRef.current = true;
+    loadingOlderRef.current = false;
     const parseBars = (rows: any[]): CandleBar[] =>
       rows.map((c: any) => ({
         time: typeof c.time === "number" ? c.time : Math.floor(new Date(c.time).getTime() / 1000),
@@ -1919,9 +1929,9 @@ export function LimenProprietaryChart({
       }));
     loadOlderRef.current = () => {
       const current = candlesRef.current;
-      if (cancelled || loadingOlder || !hasOlder || current.length === 0) return;
+      if (cancelled || loadingOlderRef.current || !hasOlderRef.current || current.length < 50) return;
       const oldest = current[0].time;
-      loadingOlder = true;
+      loadingOlderRef.current = true;
       const query = `symbol=${cleanSym}&interval=${apiTf}&to=${oldest}&limit=5000`;
       const fetchPage = async (): Promise<CandleBar[]> => {
         // Permanent replay archive first; generic warehouse as fallback.
@@ -1941,19 +1951,28 @@ export function LimenProprietaryChart({
         .then((bars) => {
           if (cancelled) return;
           const older = bars.filter((b) => b.time < oldest);
-          if (older.length === 0) return;
+          if (older.length === 0) {
+            hasOlderRef.current = false;
+            return;
+          }
           prependShiftRef.current = older.length;
           setCandles((prev) => {
             const first = prev[0]?.time ?? Infinity;
             const fresh = older.filter((b) => b.time < first);
+            if (fresh.length === 0) {
+              hasOlderRef.current = false;
+              return prev;
+            }
             if (fresh.length !== older.length) prependShiftRef.current = fresh.length;
             const merged = fresh.length ? [...fresh, ...prev] : prev;
-            // Preserva fino a 60.000 candele storiche per navigazione profonda
-            return merged.length > 60000 ? merged.slice(-60000) : merged;
+            // Preserva fino a 150.000 candele storiche senza mai tagliare la testa appena pre-appesa
+            return merged.length > 150000 ? merged.slice(0, 150000) : merged;
           });
         })
         .catch((e) => console.warn("[LimenChart] Older history unavailable:", e))
-        .finally(() => { loadingOlder = false; });
+        .finally(() => {
+          loadingOlderRef.current = false;
+        });
     };
 
     // SSE Real-Time Ticks from TradingView Bridge
@@ -3297,6 +3316,68 @@ export function LimenProprietaryChart({
         </div>
       </div>
 
+      {sealedDrawerOpen && (
+        <div className="limen-sealed-popover absolute bottom-9 right-2 z-50 w-[340px] max-w-[calc(100vw-16px)] max-h-[260px] overflow-y-auto rounded-lg border border-[#C5A059]/40 bg-[#07080b]/98 p-3 shadow-2xl font-mono text-[10px]">
+          <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
+            <span className="font-bold text-[#E8C56A] uppercase tracking-wider">
+              LIBRO DELLA VERITÀ · SETUP SIGILLATI
+            </span>
+            <button
+              type="button"
+              data-touch-size="custom"
+              onClick={() => setSealedDrawerOpen(false)}
+              className="text-slate-400 hover:text-white"
+            >
+              <X size={12} />
+            </button>
+          </div>
+          {sealedSetups.length === 0 ? (
+            <div className="text-slate-400 py-3 text-center">
+              Nessun setup sigillato. Clicca SIGILLA su una posizione tracciata.
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {sealedSetups.slice(0, 6).map((s) => (
+                <div
+                  key={s.id}
+                  className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0">
+                    <div className="font-bold text-white whitespace-nowrap flex items-center gap-1.5">
+                      <span>{s.symbol}</span>
+                      <span>·</span>
+                      <span className={s.direction === "buy" ? "text-emerald-400" : "text-rose-400"}>
+                        {s.direction === "buy" ? "LONG" : "SHORT"}
+                      </span>
+                      <span>·</span>
+                      <span className="text-[#E8C56A]">R:R {s.rr}</span>
+                      {s.cyclePhase && (
+                        <span className="px-1 py-0.2 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[8px] text-[#E8C56A] whitespace-nowrap">
+                          {s.cyclePhase}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[9px] text-slate-400 whitespace-nowrap">
+                      E: {Number(s.entryPrice).toFixed(2)} · BE: {Number(s.tp1BePrice).toFixed(2)} · TP: {Number(s.tpPrice).toFixed(2)}
+                    </div>
+                    {s.targetLiquidityPool && (
+                      <div className="text-[8.5px] text-emerald-400/90 whitespace-nowrap">
+                        Target: {s.targetLiquidityPool}
+                        {s.wyckoffGrab ? ` · ${s.wyckoffGrab}` : ""}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0 whitespace-nowrap">
+                    <div className="font-bold text-[#E8C56A]">{Number(s.lots).toFixed(2)} Lotti</div>
+                    <div className="text-[9px] text-emerald-400">+€{Number(s.expectedReward).toFixed(0)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── TradingView Pro Bottom Bar (1D 5D 1M 3M 6M YTD 1Y Tutto · UTC+2 Clock · % log auto) ── */}
       <div className="limen-bottom-bar" role="toolbar" aria-label="Controlli vista grafico">
         <div className="flex items-center gap-2">
@@ -3462,67 +3543,6 @@ export function LimenProprietaryChart({
           >
             <span>SIGILLATI ({sealedSetups.length})</span>
           </button>
-
-          {sealedDrawerOpen && (
-            <div className="limen-sealed-popover absolute bottom-8 right-0 z-50 w-[340px] max-h-[260px] overflow-y-auto rounded-lg border border-[#C5A059]/40 bg-[#07080b]/98 p-3 shadow-2xl font-mono text-[10px]">
-              <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
-                <span className="font-bold text-[#E8C56A] uppercase tracking-wider">
-                  LIBRO DELLA VERITÀ · SETUP SIGILLATI
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSealedDrawerOpen(false)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-              {sealedSetups.length === 0 ? (
-                <div className="text-slate-400 py-3 text-center">
-                  Nessun setup sigillato. Clicca SIGILLA su una posizione tracciata.
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {sealedSetups.slice(0, 6).map((s) => (
-                    <div
-                      key={s.id}
-                      className="rounded border border-white/10 bg-[#0d0f14] px-2 py-1.5 flex items-center justify-between gap-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-bold text-white whitespace-nowrap flex items-center gap-1.5">
-                          <span>{s.symbol}</span>
-                          <span>·</span>
-                          <span className={s.direction === "buy" ? "text-emerald-400" : "text-rose-400"}>
-                            {s.direction === "buy" ? "LONG" : "SHORT"}
-                          </span>
-                          <span>·</span>
-                          <span className="text-[#E8C56A]">R:R {s.rr}</span>
-                          {s.cyclePhase && (
-                            <span className="px-1 py-0.2 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[8px] text-[#E8C56A] whitespace-nowrap">
-                              {s.cyclePhase}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[9px] text-slate-400 whitespace-nowrap">
-                          E: {Number(s.entryPrice).toFixed(2)} · BE: {Number(s.tp1BePrice).toFixed(2)} · TP: {Number(s.tpPrice).toFixed(2)}
-                        </div>
-                        {s.targetLiquidityPool && (
-                          <div className="text-[8.5px] text-emerald-400/90 whitespace-nowrap">
-                            Target: {s.targetLiquidityPool}
-                            {s.wyckoffGrab ? ` · ${s.wyckoffGrab}` : ""}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0 whitespace-nowrap">
-                        <div className="font-bold text-[#E8C56A]">{Number(s.lots).toFixed(2)} Lotti</div>
-                        <div className="text-[9px] text-emerald-400">+€{Number(s.expectedReward).toFixed(0)}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Telemetria Sessione Operativa (sotto il grafico, accanto all'ora - cliccabile per personalizzare orari) */}
           <button

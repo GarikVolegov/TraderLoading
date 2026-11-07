@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { MarketGlobeModal } from "@/components/markets/MarketGlobeModal";
 
 interface MarketGlobeContextValue {
@@ -18,6 +18,12 @@ export function MarketGlobeProvider({ children }: { children: ReactNode }) {
 
   const closeMarketGlobe = useCallback(() => {
     setIsOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener("open-market-globe", handleOpen);
+    return () => window.removeEventListener("open-market-globe", handleOpen);
   }, []);
 
   return (

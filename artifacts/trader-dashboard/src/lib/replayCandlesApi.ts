@@ -143,6 +143,50 @@ export async function fetchReplayCandlesMeta(
   return parseJsonOrThrow<ReplayCandlesMeta>(response);
 }
 
+interface M1ChunkEntry {
+  from: number;
+  coveredTo: number;
+  nextFrom?: number;
+  candles: ReplayCandleRaw[];
+  cachedAt: number;
+}
+
+const M1ChunkCache = new Map<string, M1ChunkEntry[]>();
+const MAX_CHUNKS_PER_SYMBOL = 8;
+
+function findCachedM1Chunk(symbolKey: string, next: number): M1ChunkEntry | undefined {
+  const list = M1ChunkCache.get(symbolKey);
+  if (!list) return undefined;
+  const now = Date.now();
+  for (let i = list.length - 1; i >= 0; i--) {
+    const entry = list[i];
+    if (now - entry.cachedAt > 10 * 60 * 1000) {
+      list.splice(i, 1);
+      continue;
+    }
+    if (next >= entry.from && next < entry.coveredTo) {
+      return entry;
+    }
+  }
+  return undefined;
+}
+
+function storeCachedM1Chunk(symbolKey: string, chunk: M1ChunkEntry): void {
+  let list = M1ChunkCache.get(symbolKey);
+  if (!list) {
+    list = [];
+    M1ChunkCache.set(symbolKey, list);
+  }
+  list.push(chunk);
+  if (list.length > MAX_CHUNKS_PER_SYMBOL) {
+    list.shift();
+  }
+}
+
+export function clearM1ExecutionChunkCache(): void {
+  M1ChunkCache.clear();
+}
+
 /** Execution always walks canonical M1, even while the chart displays H4/W1. */
 export async function fetchReplayExecutionCandles(
   symbol: string,
@@ -162,12 +206,37 @@ export async function* iterateReplayExecutionCandles(
   to: number,
   options: { baseUrl?: string; signal?: AbortSignal } = {},
 ): AsyncGenerator<ReplayCandleRaw[]> {
+  const symbolKey = `${symbol.replace("/", "").toUpperCase()}:${options.baseUrl ?? ""}`;
   let next = from;
   while (next < to) {
-    const page = await fetchReplayCandles({ symbol, interval: "M1", mode: "replay", from: next, to, limit: 5000 }, options);
-    yield page.candles.filter((bar) => bar.time >= next && bar.time < to);
-    if (page.nextFrom == null) break;
-    if (page.nextFrom <= next) throw new Error("Invalid historical candle cursor");
-    next = page.nextFrom;
+    let chunk = findCachedM1Chunk(symbolKey, next);
+    if (!chunk) {
+      const page = await fetchReplayCandles(
+        { symbol, interval: "M1", mode: "replay", from: next, limit: 5000 },
+        options,
+      );
+      const lastBarTime = page.candles.length > 0 ? page.candles[page.candles.length - 1].time : next;
+      const coveredTo =
+        page.nextFrom != null
+          ? page.nextFrom
+          : page.candles.length > 0
+          ? Math.max(to, lastBarTime + 60)
+          : next;
+      chunk = {
+        from: next,
+        coveredTo,
+        nextFrom: page.nextFrom,
+        candles: page.candles,
+        cachedAt: Date.now(),
+      };
+      if (page.candles.length > 0) {
+        storeCachedM1Chunk(symbolKey, chunk);
+      }
+    }
+
+    yield chunk.candles.filter((bar) => bar.time >= next && bar.time < to);
+    if (chunk.nextFrom == null) break;
+    if (chunk.nextFrom <= next) throw new Error("Invalid historical candle cursor");
+    next = chunk.nextFrom;
   }
 }

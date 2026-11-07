@@ -82,11 +82,11 @@ export function ArenaView({
   };
 
   return (
-    <div className="w-full h-full min-h-0 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3.5 overflow-hidden text-white">
+    <div className="w-full h-full min-h-0 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3.5 overflow-y-auto lg:overflow-hidden text-white">
       {/* ========================================================
           PILASTRO 1: PREMI & CERTIFICATI DI VINCITA NFT (Col 1-5)
           ======================================================== */}
-      <section className="lg:col-span-6 xl:col-span-5 flex flex-col rounded-xl border border-[#C5A059]/25 bg-[#0B0D13] p-3.5 overflow-hidden shadow-lg">
+      <section className="lg:col-span-6 xl:col-span-5 shrink-0 lg:flex-1 flex flex-col rounded-xl border border-[#C5A059]/25 bg-[#0B0D13] p-3.5 lg:overflow-hidden shadow-lg">
         {/* Header Sezione Premi */}
         <div className="flex items-center justify-between border-b border-[#C5A059]/20 pb-2.5 mb-3">
           <div className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export function ArenaView({
         </div>
 
         {/* I 3 Certificati NFT Ufficiali a Vista (Interattivi con Olografia) */}
-        <div className="grid grid-cols-3 gap-2.5 mb-3 flex-none">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3 flex-none">
           {CERT_PREVIEWS.map((c) => (
             <div key={c.tier} className="relative group">
               <NftCertificate
@@ -151,7 +151,7 @@ export function ArenaView({
           </div>
 
           {/* Griglia 4 Metriche Chiave */}
-          <div className="grid grid-cols-4 gap-1.5 font-mono text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 font-mono text-center">
             <div className="p-1.5 rounded bg-[#0D0E14] border border-[#26262E]">
               <div className="text-[8.5px] text-slate-400 uppercase tracking-wider">Rango</div>
               <div className="text-xs font-bold text-[#E8C56A] mt-0.5">
@@ -215,7 +215,7 @@ export function ArenaView({
             <span className="text-[8.5px] text-slate-500">Conio Polygon/Base</span>
           </div>
 
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
             {/* 1° Posto */}
             <div className="p-1.5 rounded border border-[#C5A059]/30 bg-[#C5A059]/10 text-center flex flex-col justify-between">
               <div className="flex items-center justify-center gap-1 text-[9.5px] font-bold text-[#E8C56A]">
@@ -254,7 +254,7 @@ export function ArenaView({
       {/* ========================================================
           PILASTRO 2: CLASSIFICA LIVE & GUARDRAIL (Col 6-12)
           ======================================================== */}
-      <section className="lg:col-span-6 xl:col-span-7 flex flex-col rounded-xl border border-[#26262E] bg-[#0A0B10] p-3.5 overflow-hidden shadow-lg">
+      <section className="lg:col-span-6 xl:col-span-7 shrink-0 lg:flex-1 min-h-[380px] lg:min-h-0 flex flex-col rounded-xl border border-[#26262E] bg-[#0A0B10] p-3.5 lg:overflow-hidden shadow-lg">
         {/* Toolbar Superiore Classifica */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#26262E] pb-2.5 mb-2.5">
           <div className="flex items-center gap-2">
@@ -272,7 +272,7 @@ export function ArenaView({
           </div>
 
           {/* Switch Metrica (R Cumulato / Indice Disciplina) */}
-          <div className="inline-flex rounded-lg border border-[#26262E] bg-[#07080B] p-0.5 font-mono text-xs">
+          <div className="mobile-compact-bar inline-flex rounded-lg border border-[#26262E] bg-[#07080B] p-0.5 font-mono text-xs">
             <button
               type="button"
               onClick={() => onMetric("r")}

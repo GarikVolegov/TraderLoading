@@ -141,7 +141,7 @@ export function ArchiveDetailModal({ source, collection, onClose, onDelete, onSa
                 }}
                 onBlur={addTag}
                 placeholder={uiText("archive.tags.add_placeholder")}
-                className="h-7 w-28 rounded-md border border-border/50 bg-background px-2 font-mono text-[11px] outline-none focus:border-primary/50"
+                className="mobile-compact-input h-7 w-28 rounded-md border border-border/50 bg-background px-2 font-mono text-[11px] outline-none focus:border-primary/50"
               />
             </div>
           </div>

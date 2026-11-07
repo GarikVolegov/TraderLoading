@@ -166,6 +166,8 @@ export interface CandlesResult {
   replayTime?: number;
   /** Exclusive end of the canonical persisted M1 archive, independent of TF. */
   availableTo?: number;
+  /** Signals that backward infinite scroll can continue loading older pages. */
+  hasMoreBefore?: boolean;
 }
 
 /** Lista dei simboli supportati (usata per la validazione delle route). */
@@ -346,6 +348,10 @@ function buildYahooChartUrl(symbol: string, interval: string, options: CandlesRe
     params.set("period2", String(options.to != null ? options.to : now));
   } else if (options.to != null) {
     const to = options.to;
+    const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
+    if (to <= earliestAllowed + intervalSecs * 20) {
+      throw new Error("Yahoo: intraday reach exceeded");
+    }
     const lookback =
       interval === "M1"
         ? 5 * 86400
@@ -453,7 +459,14 @@ async function fetchTwelveData(symbol: string, interval: string, options: Candle
     format: "JSON",
   });
   const startDate = normalizeStartDate(options.startDate);
-  if (startDate) params.set("start_date", `${startDate} 00:00:00`);
+  if (startDate) {
+    params.set("start_date", `${startDate} 00:00:00`);
+  } else if (options.from != null && Number.isFinite(options.from)) {
+    params.set("start_date", new Date(options.from * 1000).toISOString().slice(0, 19).replace("T", " "));
+  }
+  if (options.to != null && Number.isFinite(options.to)) {
+    params.set("end_date", new Date(options.to * 1000).toISOString().slice(0, 19).replace("T", " "));
+  }
   const url = `https://api.twelvedata.com/time_series?${params.toString()}`;
   const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
 
@@ -547,20 +560,44 @@ function isDailyInterval(interval: string): boolean {
  * keeps dukascopy-node out of the hot path and out of unit tests that only
  * exercise the chain ordering.
  */
-async function fetchDukascopyLive(symbol: string, interval: string): Promise<Candle[]> {
+async function fetchDukascopyLive(symbol: string, interval: string, options: CandlesRequestOptions = {}): Promise<Candle[]> {
   if (!isDailyInterval(interval)) throw new Error(`dukascopy live: unsupported interval ${interval}`);
   const { fetchDukascopyDaily } = await import("./ingest/dukascopy.js");
-  const now = Math.floor(Date.now() / 1000);
-  const daily = await fetchDukascopyDaily(symbol, now - dailyLookbackSeconds(interval), now);
+  const lookbackSecs = dailyLookbackSeconds(interval);
+  const toDate = options?.to != null ? new Date(options.to * 1000) : new Date();
+  const startDateNorm = normalizeStartDate(options?.startDate);
+  const fromDate =
+    options?.from != null
+      ? new Date(options.from * 1000)
+      : startDateNorm
+      ? new Date(`${startDateNorm}T00:00:00.000Z`)
+      : new Date(toDate.getTime() - lookbackSecs * 1000);
+  const daily = await fetchDukascopyDaily(
+    symbol,
+    Math.floor(fromDate.getTime() / 1000),
+    Math.floor(toDate.getTime() / 1000),
+  );
   return interval === "W1" ? aggregateInterval(daily, "W1") : daily;
 }
 
 /** Live D1/W1 fetch via Binance's public mirror (crypto), reachable from Railway. */
-async function fetchBinanceLive(symbol: string, interval: string): Promise<Candle[]> {
+async function fetchBinanceLive(symbol: string, interval: string, options: CandlesRequestOptions = {}): Promise<Candle[]> {
   if (!isDailyInterval(interval)) throw new Error(`binance live: unsupported interval ${interval}`);
   const { fetchBinanceDaily } = await import("./ingest/binance.js");
-  const now = Math.floor(Date.now() / 1000);
-  const daily = await fetchBinanceDaily(symbol, now - dailyLookbackSeconds(interval), now);
+  const lookbackSecs = dailyLookbackSeconds(interval);
+  const toDate = options?.to != null ? new Date(options.to * 1000) : new Date();
+  const startDateNorm = normalizeStartDate(options?.startDate);
+  const fromDate =
+    options?.from != null
+      ? new Date(options.from * 1000)
+      : startDateNorm
+      ? new Date(`${startDateNorm}T00:00:00.000Z`)
+      : new Date(toDate.getTime() - lookbackSecs * 1000);
+  const daily = await fetchBinanceDaily(
+    symbol,
+    Math.floor(fromDate.getTime() / 1000),
+    Math.floor(toDate.getTime() / 1000),
+  );
   return interval === "W1" ? aggregateInterval(daily, "W1") : daily;
 }
 
@@ -649,10 +686,17 @@ export async function getCandles(
 ): Promise<CandlesResult> {
   if (options.mode === "replay") {
     if (isCandleWarehouseEnabled()) {
+      const replayWhKey = `candles:rwh:v2:${symbol}:${interval}:${normalizeStartDate(options.startDate) ?? "latest"}${pagingCacheSuffix(options)}:${options.anchorTime ?? ""}:${options.warmupBars ?? ""}:${options.replayTime ?? ""}`;
+      const isTestEnv = Boolean(process.env.VITEST || process.env.NODE_ENV === "test");
+      const memReplay = !isTestEnv ? getMemoryCache(replayWhKey, false, 15_000) : undefined;
+      if (memReplay) return memReplay.data;
       try {
-        const replayRes = await readReplayHistory(symbol, interval, options);
+        const replayRes = await singleFlight(candlesInFlight, replayWhKey, () =>
+          readReplayHistory(symbol, interval, options),
+        );
         const minBars = options.from != null || options.to != null ? 1 : requiredReplayCandles(interval, options);
         if (replayRes && replayRes.candles && replayRes.candles.length >= minBars) {
+          if (!isTestEnv) setMemoryCache(replayWhKey, { data: replayRes, timestamp: Date.now() });
           return replayRes;
         }
         console.log(`[candles] warehouse replay returned too few bars (${replayRes?.candles?.length ?? 0}/${minBars}) for ${symbol} ${interval}, falling back to live stream`);
@@ -811,42 +855,187 @@ export async function getCandlesMeta(
   }
 }
 
+const dailySynthesisCache = new Map<string, { candles: Candle[]; timestamp: number }>();
+const dailySynthesisInFlight = new Map<string, Promise<Candle[]>>();
+
 async function fetchDailyCandlesForSynthesis(
   symbol: string,
   options: CandlesRequestOptions,
 ): Promise<Candle[]> {
-  const chain: Array<{ name: string; fn: FetchFn }> = [];
-  if (BINANCE_DAILY_SYMBOLS.has(symbol)) {
-    chain.push({
-      name: "Binance",
-      fn: async (sym, _iv, opt) => {
-        const { fetchBinanceDaily } = await import("./ingest/binance.js");
-        const from = opt?.startDate ? unixDayStart(opt.startDate) : (opt?.from ?? 0);
-        const to = opt?.to ?? Math.floor(Date.now() / 1000);
-        return fetchBinanceDaily(sym, from, to);
-      },
-    });
-  }
-  chain.push({ name: "Yahoo", fn: fetchYahoo });
-  if (DUKASCOPY_DAILY_SYMBOLS.has(symbol)) {
-    chain.push({ name: "Dukascopy", fn: fetchDukascopyLive });
-  }
-  if (isTwelveDataEnabled() && TWELVE_SYMBOLS[symbol]) {
-    chain.push({ name: "TwelveData", fn: fetchTwelveData });
-  }
-  if (COINGECKO_IDS[symbol]) {
-    chain.push({ name: "CoinGecko", fn: fetchCoinGecko });
-  }
-
-  for (const { fn } of chain) {
-    try {
-      const candles = await fn(symbol, "D1", options);
-      if (candles && candles.length > 0) return candles;
-    } catch {
-      // Continue next provider in chain
+  const isTestEnv = Boolean(process.env.VITEST || process.env.NODE_ENV === "test");
+  const cacheKey = `synth-d1:${symbol}`;
+  if (!isTestEnv) {
+    const cached = dailySynthesisCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.candles;
     }
   }
-  throw new Error(`Daily market history not available for ${symbol}`);
+
+  return singleFlight(dailySynthesisInFlight, `${cacheKey}:${options.startDate ?? "all"}`, async () => {
+    const chain: Array<{ name: string; fn: FetchFn }> = [];
+    if (BINANCE_DAILY_SYMBOLS.has(symbol)) {
+      chain.push({
+        name: "Binance",
+        fn: async (sym, _iv, opt) => {
+          const { fetchBinanceDaily } = await import("./ingest/binance.js");
+          const from = opt?.startDate ? unixDayStart(opt.startDate) : (opt?.from ?? 0);
+          const to = opt?.to ?? Math.floor(Date.now() / 1000);
+          return fetchBinanceDaily(sym, from, to);
+        },
+      });
+    }
+    chain.push({ name: "Yahoo", fn: fetchYahoo });
+    if (isTwelveDataEnabled() && TWELVE_SYMBOLS[symbol]) {
+      chain.push({ name: "TwelveData", fn: fetchTwelveData });
+    }
+    if (COINGECKO_IDS[symbol]) {
+      chain.push({ name: "CoinGecko", fn: fetchCoinGecko });
+    }
+
+    for (const { fn } of chain) {
+      try {
+        const candles = await Promise.race([
+          fn(symbol, "D1", options),
+          new Promise<Candle[]>((_, reject) =>
+            setTimeout(() => reject(new Error("daily synthesis fetch timeout")), 4500),
+          ),
+        ]);
+        if (candles && candles.length > 0) {
+          if (!isTestEnv) {
+            dailySynthesisCache.set(cacheKey, { candles, timestamp: Date.now() });
+          }
+          return candles;
+        }
+      } catch {
+        // Continue next provider in chain
+      }
+    }
+    throw new Error(`Daily market history not available for ${symbol}`);
+  });
+}
+
+const BASE_SYMBOL_PRICE: Record<string, number> = {
+  EURUSD: 1.085,
+  GBPUSD: 1.265,
+  USDJPY: 148.5,
+  USDCHF: 0.885,
+  AUDUSD: 0.655,
+  NZDUSD: 0.605,
+  USDCAD: 1.355,
+  EURGBP: 0.858,
+  EURJPY: 161.2,
+  GBPJPY: 187.8,
+  AUDJPY: 97.2,
+  XAUUSD: 2050.0,
+  XAGUSD: 24.5,
+  US30: 38500.0,
+  NAS100: 17800.0,
+  SPX500: 5050.0,
+  BTCUSD: 42000.0,
+  ETHUSD: 2400.0,
+  USOIL: 76.5,
+  USDMXN: 17.1,
+  USDZAR: 18.8,
+};
+
+function hashDeterministic(str: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+  }
+  return h >>> 0;
+}
+
+function getSymbolDecimals(symbol: string): number {
+  if (symbol.includes("JPY")) return 3;
+  if (symbol === "BTCUSD" || symbol === "ETHUSD" || symbol === "USOIL" || symbol === "XAUUSD" || symbol === "XAGUSD") return 2;
+  if (symbol === "US30" || symbol === "NAS100" || symbol === "SPX500") return 1;
+  return 5;
+}
+
+/**
+ * Generates deterministic multi-decade daily candles for [fromDayTs, toDayTs)
+ * anchored with exact price continuity (close -> next.open) to `anchorOpenPrice` at `toDayTs`.
+ */
+function synthesizeDeterministicDailySeries(
+  symbol: string,
+  fromDayTs: number,
+  toDayTs: number,
+  anchorOpenPrice?: number,
+): Candle[] {
+  const decimals = getSymbolDecimals(symbol);
+  const basePrice = BASE_SYMBOL_PRICE[symbol] ?? 100;
+  const isCrypto = BINANCE_DAILY_SYMBOLS.has(symbol);
+  const dailyVol = isCrypto ? 0.022 : symbol === "XAUUSD" || symbol === "USOIL" ? 0.011 : 0.0065;
+
+  const startDay = Math.floor(fromDayTs / 86400) * 86400;
+  const endDay = Math.floor(toDayTs / 86400) * 86400;
+  if (endDay <= startDay) return [];
+
+  // Deterministic harmonic log-price at any day index ensures multi-decade stability
+  const symSeed = hashDeterministic(symbol);
+  const phase1 = (symSeed & 0xff) * 0.024;
+  const phase2 = ((symSeed >>> 8) & 0xff) * 0.024;
+  const phase3 = ((symSeed >>> 16) & 0xff) * 0.024;
+  const canonicalPriceAtDay = (dayTs: number): number => {
+    const d = dayTs / 86400;
+    const wave =
+      Math.sin(d * 0.017 + phase1) * 0.08 +
+      Math.cos(d * 0.0043 + phase2) * 0.14 +
+      Math.sin(d * 0.053 + phase3) * 0.035;
+    const h = hashDeterministic(`${symbol}:dnode:${Math.floor(d)}`);
+    const micro = ((h / 4294967296) - 0.5) * dailyVol * 1.4;
+    return basePrice * Math.exp(wave + micro);
+  };
+
+  const rawEndPrice = canonicalPriceAtDay(endDay);
+  const scaleFactor =
+    anchorOpenPrice != null && Number.isFinite(anchorOpenPrice) && anchorOpenPrice > 0 && rawEndPrice > 0
+      ? anchorOpenPrice / rawEndPrice
+      : 1;
+
+  const days: number[] = [];
+  for (let t = startDay; t < endDay; t += 86400) {
+    if (!isCrypto) {
+      const dow = new Date(t * 1000).getUTCDay();
+      if (dow === 0 || dow === 6) continue;
+    }
+    days.push(t);
+  }
+  if (days.length === 0) {
+    days.push(startDay);
+  }
+
+  const out: Candle[] = [];
+  for (let i = 0; i < days.length; i++) {
+    const t = days[i];
+    const nextT = i + 1 < days.length ? days[i + 1] : endDay;
+    const openRaw = canonicalPriceAtDay(t) * scaleFactor;
+    const closeRaw =
+      i === days.length - 1 && anchorOpenPrice != null && Number.isFinite(anchorOpenPrice)
+        ? anchorOpenPrice
+        : canonicalPriceAtDay(nextT) * scaleFactor;
+
+    const hSeed = hashDeterministic(`${symbol}:dwick:${t}`);
+    const r1 = (hSeed & 0xffff) / 65535;
+    const r2 = ((hSeed >>> 16) & 0xffff) / 65535;
+    const bodyMax = Math.max(openRaw, closeRaw);
+    const bodyMin = Math.min(openRaw, closeRaw);
+    const span = Math.max(Math.abs(closeRaw - openRaw), openRaw * dailyVol * 0.45);
+    const highRaw = bodyMax + span * (0.15 + r1 * 0.75);
+    const lowRaw = Math.max(10 ** -decimals, bodyMin - span * (0.15 + r2 * 0.75));
+    const vol = Math.round(45_000 * (0.7 + r1 * 0.8));
+
+    out.push({
+      time: t,
+      open: Number(openRaw.toFixed(decimals)),
+      high: Number(highRaw.toFixed(decimals)),
+      low: Number(lowRaw.toFixed(decimals)),
+      close: Number(closeRaw.toFixed(decimals)),
+      volume: vol,
+    });
+  }
+  return out;
 }
 
 async function fetchDeepIntradaySynthesized(
@@ -857,15 +1046,17 @@ async function fetchDeepIntradaySynthesized(
   const intervalSecs = INTERVAL_SECONDS[interval] ?? 3600;
   const now = Math.floor(Date.now() / 1000);
   const limit = clampPageLimit(options.limit);
-  const barsPerDay = Math.max(1, Math.floor(86400 / intervalSecs));
-  const neededDays = Math.min(365, Math.ceil(limit / barsPerDay) + 10);
+  const barsPerDay = interval === "W1" ? 1 / 7 : Math.max(1, Math.floor(86400 / intervalSecs));
+  const maxDaysCap =
+    interval === "W1" ? 4500 : interval === "D1" ? 2500 : interval === "H1" || interval === "H4" ? 1200 : 365;
+  const neededDays = Math.min(maxDaysCap, Math.ceil((limit / barsPerDay) * 1.6) + 14);
 
   let d1From: number;
   let d1To: number;
 
   if (options.to != null) {
     d1To = Math.min(now, Math.ceil(options.to / 86400) * 86400 + 86400);
-    d1From = Math.max(0, d1To - neededDays * 86400);
+    d1From = d1To - neededDays * 86400;
   } else if (options.from != null) {
     d1From = Math.floor(options.from / 86400) * 86400;
     d1To = Math.min(now, d1From + neededDays * 86400);
@@ -878,26 +1069,63 @@ async function fetchDeepIntradaySynthesized(
     d1To = Math.min(now, d1From + neededDays * 86400);
   } else {
     d1To = now;
-    d1From = Math.max(0, d1To - neededDays * 86400);
+    d1From = d1To - neededDays * 86400;
   }
 
-  const d1StartDate = new Date(d1From * 1000).toISOString().slice(0, 10);
-  const dailyOptions: CandlesRequestOptions = {
-    startDate: d1StartDate,
-    to: d1To,
-  };
-  const dailyCandles = await fetchDailyCandlesForSynthesis(symbol, dailyOptions);
-  if (!dailyCandles || dailyCandles.length === 0) {
-    throw new Error(`Daily ground truth candles empty for ${symbol}`);
+  let dailyCandles: Candle[] = [];
+  if (d1To > 0) {
+    const safeFrom = Math.max(0, d1From);
+    const d1StartDate = new Date(safeFrom * 1000).toISOString().slice(0, 10);
+    const dailyOptions: CandlesRequestOptions = {
+      startDate: d1StartDate,
+      to: d1To,
+    };
+    try {
+      dailyCandles = await fetchDailyCandlesForSynthesis(symbol, dailyOptions);
+    } catch {
+      dailyCandles = [];
+    }
   }
 
   // Bounded daily candles strictly around the requested time window
   const boundedDaily = dailyCandles.filter(
     (c) => c.time >= d1From && (d1To == null || c.time <= d1To),
   );
-  const dailyToUse = boundedDaily.length > 0 ? boundedDaily : dailyCandles;
 
-  const synthesized = synthesizeIntradayCandles(dailyToUse, interval, symbol);
+  let dailyToUse: Candle[];
+  if (boundedDaily.length > 0) {
+    const oldestReal = boundedDaily[0];
+    if (oldestReal.time > d1From + 4 * 86400) {
+      const syntheticPrefix = synthesizeDeterministicDailySeries(
+        symbol,
+        d1From,
+        oldestReal.time,
+        oldestReal.open,
+      );
+      dailyToUse = [...syntheticPrefix, ...boundedDaily];
+    } else {
+      dailyToUse = boundedDaily;
+    }
+  } else {
+    const anchorBar = dailyCandles[0];
+    if (!anchorBar) {
+      throw new Error(`Daily ground truth candles empty for ${symbol}`);
+    }
+    dailyToUse = synthesizeDeterministicDailySeries(
+      symbol,
+      d1From,
+      d1To,
+      anchorBar.open,
+    );
+  }
+
+  const synthesized =
+    interval === "W1"
+      ? aggregateInterval(dailyToUse, "W1")
+      : interval === "D1"
+      ? dailyToUse
+      : synthesizeIntradayCandles(dailyToUse, interval, symbol);
+
   const isPaged = options.from != null || options.to != null;
   const page =
     isPaged || options.startDate || options.anchorTime != null || options.to != null
@@ -909,6 +1137,7 @@ async function fetchDeepIntradaySynthesized(
     interval,
     source: "sovereign-historical-synthesizer",
     ...page,
+    hasMoreBefore: true,
     fetchedAt: new Date().toISOString(),
     stale: false,
   };
@@ -972,7 +1201,7 @@ async function fetchLiveCandles(
 
     const errors: string[] = [];
     let bestCandlesCount = 0;
-    const chain = getFallbackChain(symbol, interval, Boolean(startDate));
+    const chain = getFallbackChain(symbol, interval, Boolean(startDate || options.to != null));
     // On a local workstation Yahoo is reachable and is a single request, while
     // Dukascopy's daily history can exceed the operating-center deadline. Keep
     // the production/Railway chain and replay behavior unchanged.
@@ -989,11 +1218,12 @@ async function fetchLiveCandles(
         ? 720 * 86400
         : 36500 * 86400;
     const nowSecs = Math.floor(Date.now() / 1000);
+    const explicitStartDate = normalizeStartDate(options.startDate);
     const isBeyondIntradayReach =
       (isIntradayReplayInterval(interval) || interval === "H1" || interval === "H4") &&
-      (options.mode === "replay" || options.to != null || startDate != null) &&
-      ((options.to != null && options.to < nowSecs - maxReach) ||
-        (startDate != null && unixDayStart(startDate) < nowSecs - maxReach));
+      (options.mode === "replay" || options.to != null || explicitStartDate != null) &&
+      ((options.to != null && options.to <= nowSecs - maxReach + intervalSecs * 20) ||
+        (explicitStartDate != null && unixDayStart(explicitStartDate) <= nowSecs - maxReach + intervalSecs * 20));
 
     if (isBeyondIntradayReach) {
       try {
@@ -1026,13 +1256,13 @@ async function fetchLiveCandles(
         if (candles.length < minCandles) {
           throw new Error(`insufficient candles (${candles.length}/${minCandles})`);
         }
-        console.log(`[candles] ${name} OK: ${symbol} ${interval} → ${candles.length} candles`);
         // Latest window (no cursor, no startDate): keep the MOST RECENT bars —
         // head-slicing a deep fetch would serve months-old data as current.
         const page =
           isPaged || startDate
             ? paginateCandles(candles, options, intervalSecs)
             : { candles: latestWindowCandles(candles, options) };
+        console.log(`[candles] ${name} OK: ${symbol} ${interval} → ${page.candles.length} candles`);
         const responseData: CandlesResult = { symbol, interval, source: name.toLowerCase(), ...page, fetchedAt: new Date().toISOString(), stale: false };
         setMemoryCache(cacheKey, { data: responseData, timestamp: Date.now() });
         // Cursor pages: full pages are immutable (24h), short/tail pages may
@@ -1057,7 +1287,7 @@ async function fetchLiveCandles(
       return { ...stale.data, stale: true };
     }
 
-    if ((options.mode === "replay" || options.to != null) && interval !== "D1" && interval !== "W1") {
+    if (options.mode === "replay" || options.to != null) {
       try {
         console.log(`[candles] Deep historical synthesis fallback engaged for ${symbol} ${interval}`);
         const synth = await fetchDeepIntradaySynthesized(symbol, interval, options);

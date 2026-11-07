@@ -139,9 +139,9 @@ export function BattleRoomLobbyModal({
       >
         <div className="p-5 sm:p-6 space-y-4">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-white/10 pb-3">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/40 text-[#D4AF37] font-mono text-[9.5px] font-bold uppercase tracking-widest">
                   <Flame size={12} /> Stanza {roomCode}
                 </span>
@@ -155,7 +155,7 @@ export function BattleRoomLobbyModal({
               </h2>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="mobile-compact-bar flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsSpectatorShareOpen(true)}
@@ -279,7 +279,7 @@ export function BattleRoomLobbyModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-3 flex items-center justify-between border-t border-white/10">
+          <div className="pt-3 flex flex-wrap items-center justify-between gap-2.5 border-t border-white/10">
             <button
               type="button"
               onClick={toggleReady}

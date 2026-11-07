@@ -126,7 +126,7 @@ export const SovereignChronosHeatmap = memo(function SovereignChronosHeatmap({
       )}
     >
       {/* ── TOP HEADER (CLEAN 1-LINE, NO AWKWARD WRAPPING) ── */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] pb-1.5 shrink-0 whitespace-nowrap gap-2">
+      <div className="mobile-compact-bar flex items-center justify-between border-b border-white/[0.06] pb-1.5 shrink-0 whitespace-nowrap gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <img
             src="/images/emblems/la-forgia.png"

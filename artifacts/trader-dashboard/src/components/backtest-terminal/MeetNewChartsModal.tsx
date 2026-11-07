@@ -100,7 +100,7 @@ export function MeetNewChartsModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-2xl rounded-2xl border border-[#C5A059]/30 bg-[#0d0f14] p-6 shadow-2xl shadow-black/90 font-sans text-slate-100 overflow-hidden">
+      <div className="relative w-full max-w-2xl max-h-[90dvh] overflow-y-auto rounded-2xl border border-[#C5A059]/30 bg-[#0d0f14] p-6 shadow-2xl shadow-black/90 font-sans text-slate-100 scrollbar-thin scrollbar-thumb-[#C5A059]/30">
         {/* Subtle imperial glow background decoration */}
         <div
           className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-[#C5A059]/10 blur-3xl pointer-events-none"

@@ -109,6 +109,7 @@ const FinancialArchitecture = lazy(() => import("./pages/FinancialArchitecture")
 const DecompressionPage = lazy(() => import("./pages/DecompressionPage"));
 const PublicNotaryVerification = lazy(() => import("./pages/PublicNotaryVerification"));
 const PublicArenaSpectatorPage = lazy(() => import("./pages/PublicArenaSpectatorPage"));
+const PublicVarcoPage = lazy(() => import("./pages/PublicVarcoPage"));
 
 // Public marketing languages served under a /{lang} URL prefix (English lives
 // at the root and is the x-default).
@@ -472,6 +473,8 @@ function AppRouter() {
       <Suspense fallback={<PageFallback />}>
         <Switch>
           <Route path="/" component={HomeRoute} />
+          <Route path="/varco" component={Today} />
+          <Route path="/cockpit" component={Today} />
           <Route path="/method" component={Method} />
           <Route path="/academy" component={Academy} />
           <Route path="/resources">
@@ -865,7 +868,21 @@ function ClerkProviderWithRoutes() {
         <Route path="/sandbox">
           {() => (
             <Suspense fallback={<PageFallback />}>
-              <Protocollo />
+              <PublicVarcoPage />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/varco">
+          {() => (
+            <Suspense fallback={<PageFallback />}>
+              <PublicVarcoPage />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/cockpit">
+          {() => (
+            <Suspense fallback={<PageFallback />}>
+              <PublicVarcoPage />
             </Suspense>
           )}
         </Route>

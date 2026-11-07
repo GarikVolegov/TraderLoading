@@ -178,17 +178,19 @@ process.on("SIGINT", () => {
 });
 
 process.on("unhandledRejection", (reason) => {
-  systemWatchdog.handleUnhandledRejection(reason);
+  const decision = systemWatchdog.handleUnhandledRejection(reason);
   captureError(reason instanceof Error ? reason : new Error("Unhandled promise rejection"), {
     reason,
     surface: "process",
     kind: "unhandledRejection",
   });
-  logger.error({ reason }, "Unhandled promise rejection");
-  void shutdown("unhandledRejection", 1).finally(async () => {
-    await flushObservability(2_000);
-    process.exit(1);
-  });
+  logger.error({ reason, shouldShutdown: decision.shouldShutdown }, "Unhandled promise rejection");
+  if (decision.shouldShutdown) {
+    void shutdown("unhandledRejection", 1).finally(async () => {
+      await flushObservability(2_000);
+      process.exit(1);
+    });
+  }
 });
 
 process.on("uncaughtException", (err: any) => {

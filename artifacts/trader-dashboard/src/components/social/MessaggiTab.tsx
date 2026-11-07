@@ -706,7 +706,7 @@ export function MessaggiTab({
       );
     if (msg.type === "voice")
       return (
-        <div className={`${base} min-w-[260px] px-3 py-2.5`}>
+        <div className={`${base} min-w-[180px] sm:min-w-[260px] max-w-full px-3 py-2.5`}>
           <audio
             aria-label={uiText("auto.ui.fe60a4fba4")}
             controls
@@ -719,7 +719,7 @@ export function MessaggiTab({
       );
     if (msg.type === "video")
       return (
-        <div className={`${base} overflow-hidden p-0 min-w-[260px]`}>
+        <div className={`${base} overflow-hidden p-0 min-w-[180px] sm:min-w-[260px] max-w-full`}>
           {msg.fileName && (
             <p className="px-3 pt-2 text-xs font-medium truncate">
               {msg.fileName}
@@ -736,7 +736,7 @@ export function MessaggiTab({
       );
     if (msg.type === "file")
       return (
-        <div className={`${base} min-w-[260px] px-3 py-2.5`}>
+        <div className={`${base} min-w-[180px] sm:min-w-[260px] max-w-full px-3 py-2.5`}>
           <div className="flex items-center gap-3">
             {fileIcon(msg.mimeType ?? "")}
             <div className="min-w-0 flex-1">

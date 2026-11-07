@@ -163,7 +163,7 @@ export function LiveBattleTelemetryHUD({
         position: "absolute",
         top: 50,
         right: 12,
-        width: 320,
+        width: "min(320px, calc(100vw - 24px))",
         maxHeight: "calc(100vh - 120px)",
         background: "rgba(12, 13, 17, 0.96)",
         border: "1px solid rgba(197, 160, 89, 0.35)",
@@ -185,7 +185,7 @@ export function LiveBattleTelemetryHUD({
       `}</style>
 
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-white/10 bg-[#16171E]">
+      <div className="mobile-compact-bar flex flex-wrap items-center justify-between gap-2 p-3 border-b border-white/10 bg-[#16171E]">
         <div className="flex items-center gap-2 min-w-0">
           <span className="w-5 h-5 rounded bg-[#C5A059]/20 border border-[#C5A059]/40 flex items-center justify-center text-[#D4AF37] shrink-0">
             <Flame size={12} />

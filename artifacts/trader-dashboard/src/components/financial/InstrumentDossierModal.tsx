@@ -603,11 +603,11 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
 
             {/* Toggle Tabs (se disponibile benchmark per l'asset) */}
             {hasBenchmarkTab && (
-              <div className="flex items-center gap-1 bg-[#07080b] p-1 rounded-lg border border-border/70 shrink-0 font-mono text-[10px]">
+              <div className="mobile-compact-bar flex items-center gap-1 bg-[#07080b] p-1 rounded-lg border border-border/70 shrink-0 font-mono text-[10px] overflow-x-auto scrollbar-none max-w-full">
                 <button
                   type="button"
                   onClick={() => setActiveTab("dossier")}
-                  className={`px-2.5 py-1 rounded font-bold transition-all ${
+                  className={`px-2.5 py-1 rounded font-bold transition-all whitespace-nowrap shrink-0 ${
                     activeTab === "dossier"
                       ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_8px_rgba(197,160,89,0.5)]"
                       : "text-muted-foreground hover:text-foreground"
@@ -619,7 +619,7 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab("benchmark")}
-                  className={`px-2.5 py-1 rounded font-bold transition-all ${
+                  className={`px-2.5 py-1 rounded font-bold transition-all whitespace-nowrap shrink-0 ${
                     activeTab === "benchmark"
                       ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_8px_rgba(197,160,89,0.5)]"
                       : "text-muted-foreground hover:text-foreground"
@@ -635,7 +635,7 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab("crossAsset")}
-                  className={`px-2.5 py-1 rounded font-bold transition-all ${
+                  className={`px-2.5 py-1 rounded font-bold transition-all whitespace-nowrap shrink-0 ${
                     activeTab === "crossAsset"
                       ? "bg-[#C5A059] text-[#07080b] shadow-[0_0_8px_rgba(197,160,89,0.5)]"
                       : "text-muted-foreground hover:text-foreground"
@@ -784,8 +784,8 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
                   </div>
 
                   <div className="rounded-lg border border-border/70 bg-[#07080b] overflow-hidden">
-                    <div className="max-h-[46vh] overflow-y-auto font-mono text-[10px]">
-                      <table className="w-full text-left border-collapse">
+                    <div className="max-h-[46vh] overflow-x-auto overflow-y-auto font-mono text-[10px]">
+                      <table className="w-full min-w-[620px] text-left border-collapse">
                         <thead className="bg-[#11131c] text-muted-foreground uppercase text-[9px] sticky top-0 border-b border-border/60">
                           <tr>
                             <th className="p-2">Ticker</th>
@@ -862,8 +862,8 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
                   </div>
 
                   <div className="rounded-lg border border-border/70 bg-[#07080b] overflow-hidden">
-                    <div className="max-h-[46vh] overflow-y-auto font-mono text-[10px]">
-                      <table className="w-full text-left border-collapse">
+                    <div className="max-h-[46vh] overflow-x-auto overflow-y-auto font-mono text-[10px]">
+                      <table className="w-full min-w-[620px] text-left border-collapse">
                         <thead className="bg-[#11131c] text-muted-foreground uppercase text-[9px] sticky top-0 border-b border-border/60">
                           <tr>
                             <th className="p-2">Ticker</th>
@@ -942,8 +942,8 @@ export const InstrumentDossierModal: React.FC<InstrumentDossierModalProps> = ({
                   </div>
 
                   <div className="rounded-lg border border-border/70 bg-[#07080b] overflow-hidden">
-                    <div className="max-h-[46vh] overflow-y-auto font-mono text-[10px]">
-                      <table className="w-full text-left border-collapse">
+                    <div className="max-h-[46vh] overflow-x-auto overflow-y-auto font-mono text-[10px]">
+                      <table className="w-full min-w-[620px] text-left border-collapse">
                         <thead className="bg-[#11131c] text-muted-foreground uppercase text-[9px] sticky top-0 border-b border-border/60">
                           <tr>
                             <th className="p-2">Ticker</th>

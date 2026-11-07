@@ -1933,6 +1933,7 @@ const dict: Record<string, string> = {
   "landing.nav.description": "Scegli una sezione, cambia lingua o accedi al tuo account.",
   "landing.nav.faq": "FAQ",
   "landing.nav.features": "Il sistema",
+  "landing.nav.varco": "Il Varco (Live)",
   "landing.nav.free": "Gratis",
   "landing.nav.get_started": "Inizia gratis",
   "landing.nav.how": "Il processo",

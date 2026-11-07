@@ -688,7 +688,7 @@ export function CockpitTradeRegisterModal({
               </span>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 pt-1 font-mono text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1 font-mono text-center">
               <div className="p-1.5 rounded bg-black/40 border border-white/5">
                 <span className="text-[9px] text-muted-foreground uppercase block">Entry</span>
                 <input
@@ -696,7 +696,7 @@ export function CockpitTradeRegisterModal({
                   placeholder="A Mercato"
                   value={userEntryPrice}
                   onChange={(e) => setUserEntryPrice(e.target.value)}
-                  className="w-full bg-transparent text-center text-foreground font-bold text-xs focus:outline-none border-b border-[#C5A059]/30 focus:border-[#C5A059]"
+                  className="mobile-compact-input w-full bg-transparent text-center text-foreground font-bold text-xs focus:outline-none border-b border-[#C5A059]/30 focus:border-[#C5A059]"
                 />
               </div>
               <div className="p-1.5 rounded bg-black/40 border border-white/5">
@@ -706,7 +706,7 @@ export function CockpitTradeRegisterModal({
                   placeholder="Uscita"
                   value={userExitPrice}
                   onChange={(e) => setUserExitPrice(e.target.value)}
-                  className="w-full bg-transparent text-center text-foreground font-bold text-xs focus:outline-none border-b border-[#C5A059]/30 focus:border-[#C5A059]"
+                  className="mobile-compact-input w-full bg-transparent text-center text-foreground font-bold text-xs focus:outline-none border-b border-[#C5A059]/30 focus:border-[#C5A059]"
                 />
               </div>
               <div className="p-1.5 rounded bg-black/40 border border-white/5">
@@ -717,7 +717,7 @@ export function CockpitTradeRegisterModal({
                 <span className="text-[9px] text-muted-foreground uppercase block">Target</span>
                 <strong className="text-emerald-400 text-xs truncate block">{target || "Pool"}</strong>
               </div>
-              <div className="p-1.5 rounded bg-black/40 border border-white/5">
+              <div className="p-1.5 rounded bg-black/40 border border-white/5 col-span-2 sm:col-span-1">
                 <span className="text-[9px] text-muted-foreground uppercase block">R:R / Rischio</span>
                 <strong className="text-amber-400 text-xs">{currency}{initialRisk} ({plannedRR}R)</strong>
               </div>
@@ -759,7 +759,7 @@ export function CockpitTradeRegisterModal({
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
               1. Esito del Trade (Com'è andata l'operazione?)
             </Label>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <button
                 type="button"
                 onClick={() => setOutcome("win")}

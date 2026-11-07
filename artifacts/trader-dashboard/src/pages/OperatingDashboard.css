@@ -45,6 +45,11 @@
   .context-dashboard .limen-triad-grid { display:block; }
   .context-live-chart { height:clamp(280px, 52dvh, 540px); }
 }
+@media (max-width: 640px) {
+  .context-conditions { grid-template-columns: 1fr; }
+  .context-conditions > div:nth-child(2) { border-left: 0; border-top: 1px solid var(--context-line); }
+  .context-range-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 /* Sidebar consumes 256px: three columns fit only once the content has room. */
 @media (min-width: 1024px) and (max-width: 1399px) {
   .context-dashboard .limen-triad-grid { grid-template-columns:minmax(230px, .85fr) minmax(0, 1.3fr); height:auto; overflow-y:auto; }

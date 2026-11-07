@@ -57,6 +57,12 @@ export function LandingNavigation({
             ))}
           </nav>
           <div className="landing-header-actions">
+            <Link
+              className="landing-varco-nav-btn whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] hover:bg-[#C5A059]/25 text-xs font-mono font-bold transition-all"
+              href="/varco"
+            >
+              {t("landing.nav.varco")}
+            </Link>
             <Link className="landing-sign-in" href="/sign-in">
               {t("landing.nav.sign_in")}
             </Link>
@@ -146,6 +152,14 @@ export function LandingNavigation({
                   ))}
                 </select>
               </div>
+              <Link
+                href="/varco"
+                onClick={() => setOpen(false)}
+                className="text-[#E8C56A] font-bold flex items-center gap-2"
+              >
+                <ArrowUpRight size={18} aria-hidden="true" />
+                <span>{t("landing.nav.varco")}</span>
+              </Link>
               <Link href="/sign-in" onClick={() => setOpen(false)}>
                 <LogIn size={18} aria-hidden="true" />
                 {t("landing.nav.sign_in")}

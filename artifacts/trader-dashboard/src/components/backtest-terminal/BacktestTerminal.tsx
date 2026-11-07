@@ -52,7 +52,7 @@ import { OfflineStorageModal } from "./OfflineStorageModal";
 import { QuickOrderDrawer } from "./QuickOrderDrawer";
 import { ReplayBiometricVignetteOverlay } from "./ReplayBiometricVignetteOverlay";
 import { computeReplayTelemetry } from "./ReplayBioTelemetryHUD";
-import { useReplayEngine } from "./useReplayEngine";
+import { REPLAY_SPEEDS, useReplayEngine } from "./useReplayEngine";
 import { useReplayAlerts } from "./useReplayAlerts";
 import { useReplayHotkeys } from "./useReplayHotkeys";
 import { BacktestAiSentinelPanel } from "./BacktestAiSentinelPanel";
@@ -255,6 +255,15 @@ function BacktestTerminalSession({
   const [settingsTab, setSettingsTab] = useState<"chart" | "indicators" | "tools" | "templates">("chart");
   const [activeTool, setActiveTool] = useState<DrawingToolId>("cursor");
   const [knowledgeToolId, setKnowledgeToolId] = useState<DrawingToolId | null>(null);
+
+  useEffect(() => {
+    const handleOpenSettings = () => {
+      setSettingsTab("chart");
+      setSettingsOpen(true);
+    };
+    window.addEventListener("open-terminal-settings", handleOpenSettings);
+    return () => window.removeEventListener("open-terminal-settings", handleOpenSettings);
+  }, []);
 
   // ── Tab Navigation per il Pannello Destro AUREUS ──
   type TerminalRightPanelTab = "sentinel" | "automa" | "ticket" | "account" | "journal" | "watchlist" | "news";
@@ -838,8 +847,9 @@ function BacktestTerminalSession({
           style={{
             top: "max(10px, env(safe-area-inset-top))",
             left: "max(12px, env(safe-area-inset-left))",
+            maxWidth: "calc(100vw - 24px)",
           }}
-          className="fixed z-50 flex items-center gap-1.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.85)] font-mono select-none pointer-events-auto"
+          className="fixed z-50 flex items-center gap-1.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.85)] font-mono select-none pointer-events-auto overflow-x-auto"
         >
           {/* Asset & TF Badge */}
           <span className="px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/35 text-[10px] font-bold text-[#E8C56A] uppercase tracking-wider whitespace-nowrap">
@@ -867,18 +877,23 @@ function BacktestTerminalSession({
         <aside
           aria-label="Controlli Replay Destra"
           style={{
-            top: "max(10px, env(safe-area-inset-top))",
+            top: compact
+              ? "calc(max(10px, env(safe-area-inset-top)) + 44px)"
+              : "max(10px, env(safe-area-inset-top))",
             right: "max(12px, env(safe-area-inset-right))",
+            left: compact ? "max(12px, env(safe-area-inset-left))" : undefined,
+            maxWidth: "calc(100vw - 24px)",
           }}
-          className="fixed z-50 flex items-center gap-1.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.85)] font-mono select-none pointer-events-auto"
+          className="fixed z-50 flex items-center justify-between sm:justify-start gap-1.5 rounded-xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.85)] font-mono select-none pointer-events-auto overflow-x-auto"
         >
           {/* Play / Pause button */}
           <button
             type="button"
+            data-touch-size="custom"
             onClick={engine.togglePlay}
             disabled={engine.loading || engine.noData}
             title={engine.playing ? "Pausa Replay" : "Avvia Replay"}
-            className={`flex h-7 px-2.5 items-center gap-1.5 rounded-lg border font-mono text-[10px] font-bold tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex h-7 px-2.5 items-center gap-1.5 rounded-lg border font-mono text-[10px] font-bold tracking-wider transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               engine.playing
                 ? "border-[#C5A059] bg-[#C5A059]/30 text-[#E8C56A] shadow-[0_0_12px_rgba(197,160,89,0.4)]"
                 : "border-white/10 bg-white/5 text-slate-300 hover:text-white"
@@ -891,20 +906,22 @@ function BacktestTerminalSession({
           {/* Step Forward button */}
           <button
             type="button"
+            data-touch-size="custom"
             onClick={engine.stepForward}
             disabled={engine.loading || engine.executing || engine.noData}
             title="Avanza 1 Barra"
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
             <ChevronRight size={14} />
           </button>
 
           {/* Quick Speed Switcher */}
-          <div className="flex items-center gap-0.5">
-            {[1, 2, 5, 10].map((spd) => (
+          <div className="flex items-center gap-0.5 shrink-0">
+            {REPLAY_SPEEDS.map((spd) => (
               <button
                 key={spd}
                 type="button"
+                data-touch-size="custom"
                 onClick={() => engine.changeSpeed(spd)}
                 className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-colors whitespace-nowrap border ${
                   engine.speed === spd
@@ -917,15 +934,16 @@ function BacktestTerminalSession({
             ))}
           </div>
 
-          <div className="h-4 w-px bg-[#C5A059]/25" />
+          <div className="h-4 w-px bg-[#C5A059]/25 shrink-0" />
 
           {/* Quick Order Drawer Lateral Button */}
           <button
             type="button"
+            data-touch-size="custom"
             onClick={() => setQuickOrderDrawerOpen((prev) => !prev)}
             title="Apri Forgia Rapida Ordini"
             aria-expanded={quickOrderDrawerOpen}
-            className={`flex h-7 px-2.5 items-center gap-1.5 rounded-lg border font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex h-7 px-2.5 items-center gap-1.5 rounded-lg border font-mono text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               quickOrderDrawerOpen
                 ? "border-emerald-500 bg-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.35)]"
                 : "border-emerald-500/40 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
@@ -943,9 +961,10 @@ function BacktestTerminalSession({
           {/* Exit Cinema Mode */}
           <button
             type="button"
+            data-touch-size="custom"
             onClick={exitCinema}
             title="Esci da Schermo Intero / Ripristina Vista"
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] hover:bg-[#C5A059]/25 transition-colors cursor-pointer"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] hover:bg-[#C5A059]/25 transition-colors cursor-pointer"
           >
             <Minimize2 size={13} />
           </button>

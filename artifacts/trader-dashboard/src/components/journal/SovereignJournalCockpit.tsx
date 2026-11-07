@@ -350,7 +350,7 @@ export function SovereignJournalCockpit({
         {/* ── RIGHT MACRO-BLOCK (42% Width on Desktop): REAL-TIME TACTICAL DOSSIER ── */}
         <section
           className={cn(
-            "col-span-12 xl:col-span-5 2xl:col-span-5 flex flex-col h-auto xl:h-full min-h-0 overflow-visible xl:overflow-hidden",
+            "col-span-12 xl:col-span-5 2xl:col-span-5 flex flex-col min-h-[680px] xl:h-full xl:min-h-0 overflow-visible xl:overflow-hidden",
             mobileActiveView === "registro" ? "hidden xl:flex" : "flex"
           )}
         >

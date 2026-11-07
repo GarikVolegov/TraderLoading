@@ -644,7 +644,7 @@ export const SessionDetailInspector = memo(function SessionDetailInspector({
   return (
     <div className={cn("flex flex-col h-full min-h-0 overflow-hidden bg-surface-1 rounded-2xl border border-border-subtle shadow-xl select-none p-3 gap-2.5", className)}>
       {/* ── TOP CONTROL BAR: DUAL PERSPECTIVE SWITCHER (STORICO vs IL VARCO LIVE) & HISTORICAL STEPPER ── */}
-      <div className="shrink-0 flex items-center justify-between gap-2 border-b border-white/[0.06] pb-2">
+      <div className="mobile-compact-bar shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-2">
         <div className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-2/60 p-0.5 text-xs font-mono shrink-0">
           <button
             type="button"
@@ -834,7 +834,7 @@ export const SessionDetailInspector = memo(function SessionDetailInspector({
 
           {/* Block 1: Tactical Price Coordinates, Visual Evidence & Precision Radar */}
           <div className="flex flex-col rounded-xl border border-border-subtle/80 bg-surface-0/60 p-2.5 shadow-inner overflow-hidden shrink-0">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-1.5 shrink-0">
+            <div className="mobile-compact-bar flex flex-wrap items-center justify-between gap-1.5 border-b border-white/[0.06] pb-1.5 shrink-0">
               <div className="flex items-center gap-1.5">
                 <img src="/images/emblems/dottrina.png" alt="" className="w-3.5 h-3.5 object-contain shrink-0" />
                 <span className="font-mono text-xs font-bold uppercase tracking-wider text-text-hi whitespace-nowrap">

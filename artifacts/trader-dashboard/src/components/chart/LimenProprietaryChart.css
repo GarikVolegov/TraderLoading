@@ -500,6 +500,19 @@
     padding: 3px 6px;
     gap: 4px;
     flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .limen-chart-header::-webkit-scrollbar {
+    display: none;
+  }
+  .limen-chart-header[data-dropdown-open="true"] {
+    overflow: visible;
+  }
+  .limen-chart-header button {
+    min-height: 26px !important;
+    min-width: 26px !important;
   }
   .limen-chart-ohlc-legend {
     font-size: 9px;
@@ -659,6 +672,38 @@
   backdrop-filter: blur(12px);
   max-width: calc(100% - 32px);
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.limen-replay-floating-dock::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .limen-replay-floating-dock {
+    max-width: calc(100vw - 16px);
+    overflow-x: auto;
+    padding: 4px 10px;
+    gap: 6px;
+    bottom: 32px;
+  }
+  .limen-replay-floating-dock button,
+  .limen-replay-floating-dock input {
+    min-width: 0 !important;
+    min-height: 0 !important;
+  }
+  .limen-replay-dock-btn {
+    width: 26px !important;
+    height: 26px !important;
+  }
+  .limen-replay-lot-step {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  .limen-replay-lot-input {
+    width: 36px !important;
+    height: 20px !important;
+  }
 }
 
 .limen-replay-buy-btn {

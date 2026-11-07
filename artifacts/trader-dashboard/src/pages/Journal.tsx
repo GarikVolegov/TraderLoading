@@ -1463,7 +1463,7 @@ function UnifiedTruthJournal({
   // action={<Button onClick={() => setTab("trades", { new: "1" })}>{t("journal.new_trade")}</Button>}
   // {false && <><SectionTabs value={tab} items={[]} onValueChange={() => {}} /> {tab === "panoramica"} {tab === "trades"} {tab === "piano"} {tab === "revisione"} <RecapTab key="compat" /> <BrokerWorkspace /></>}
   const initialCockpitTab: "dossier" | "registro" =
-    tab === "trades" || tab === "panoramica" ? "registro" : "dossier";
+    tab === "trades" || tab === "panoramica" || tab === "sessioni" ? "registro" : "dossier";
 
   return (
     <SovereignJournalCockpit
@@ -1537,7 +1537,7 @@ export default function Journal() {
 
   return (
     <PageLayout quiet>
-      <div className="h-full w-full overflow-hidden pt-1">
+      <div className="min-h-0 lg:h-full w-full lg:overflow-hidden overflow-y-auto pt-1">
         <AnimatePresence mode="wait">
           <motion.div
             key={tab === "piano" ? "piano" : "unificato"}
@@ -1545,7 +1545,7 @@ export default function Journal() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="h-full w-full"
+            className="min-h-0 lg:h-full w-full"
           >
             {tab === "piano" ? (
               <JournalPlan

@@ -176,7 +176,7 @@ export function CockpitNewsDialog({ market, fallbackEvents = [] }: CockpitNewsDi
       </div>
 
       {/* Events List */}
-      <div className="rounded-xl border border-white/10 bg-[#0E0F14] overflow-hidden max-h-[50vh] overflow-y-auto">
+      <div className="rounded-xl border border-white/10 bg-[#0E0F14] overflow-x-auto max-h-[50vh] overflow-y-auto">
         {events.length === 0 ? (
           <div className="p-8 text-center space-y-2">
             <CheckCircle2 size={32} className="mx-auto text-emerald-400/80" />
@@ -186,7 +186,7 @@ export function CockpitNewsDialog({ market, fallbackEvents = [] }: CockpitNewsDi
             </p>
           </div>
         ) : (
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full min-w-[540px] text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-white/10 bg-white/[0.02] text-muted-foreground font-mono text-[10px] uppercase">
                 <th className="py-2.5 px-3">Orario (IT)</th>

@@ -163,7 +163,7 @@ export function MarketGlobeModal({ isOpen, onClose }: MarketGlobeModalProps) {
 
           {/* Focused Pin Inspector Card (if clicked) */}
           {focusedPin && (
-            <div className="p-3 rounded-xl border border-[#C5A059]/40 bg-[#0d0f14] flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2">
+            <div className="p-3 rounded-xl border border-[#C5A059]/40 bg-[#0d0f14] flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="text-xl shrink-0">{focusedPin.flag}</span>
                 <div className="min-w-0">

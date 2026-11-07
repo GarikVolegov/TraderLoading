@@ -144,9 +144,9 @@ export function CustomLobbyModal({
     >
       <div className="p-5 sm:p-6 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-white/10 pb-3">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#C5A059]/15 border border-[#C5A059]/40 text-[#D4AF37] font-mono text-[9.5px] font-bold uppercase tracking-widest">
                 <Flame size={12} /> Stanza Personalizzata & Tribù
               </span>
@@ -160,7 +160,7 @@ export function CustomLobbyModal({
           </div>
 
           {/* Mode Switch Tabs */}
-          <div className="flex rounded-lg bg-[#14151C] p-1 border border-white/10 font-mono text-[11px]">
+          <div className="mobile-compact-bar flex rounded-lg bg-[#14151C] p-1 border border-white/10 font-mono text-[11px]">
             <button
               type="button"
               onClick={() => setActiveTab("create")}
@@ -247,7 +247,7 @@ export function CustomLobbyModal({
             </div>
 
             {/* Risk Rules & Target */}
-            <div className="grid grid-cols-3 gap-2.5 p-3 rounded-lg bg-[#121318] border border-white/5 font-mono text-[10.5px]">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-lg bg-[#121318] border border-white/5 font-mono text-[10.5px]">
               <div>
                 <label className="text-[#A1A1AA] block mb-1">Max DD Consentito</label>
                 <select
@@ -305,7 +305,7 @@ export function CustomLobbyModal({
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-[11px]">
                 <button
                   type="button"
                   onClick={() => setHasTimeLimit(false)}

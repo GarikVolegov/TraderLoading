@@ -267,6 +267,7 @@ export function DrawingPropertiesModal({
             {onOpenKnowledge && (
               <button
                 type="button"
+                data-touch-size="custom"
                 className="dpm-info-trigger"
                 onClick={() => onOpenKnowledge(knowledgeToolId)}
                 title="Apri spiegazione strumento nel Centro di supporto"
@@ -278,6 +279,7 @@ export function DrawingPropertiesModal({
           </div>
           <button
             type="button"
+            data-touch-size="custom"
             className="dpm-close-btn"
             onClick={onClose}
             aria-label="Chiudi"
@@ -287,7 +289,7 @@ export function DrawingPropertiesModal({
         </div>
 
         {/* ── 4 Tabs: Input | Stile | Coordinate | Visibilità ── */}
-        <div className="dpm-tabs" role="tablist">
+        <div className="dpm-tabs overflow-x-auto" role="tablist">
           {(
             [
               ["input", "Input"],
@@ -299,9 +301,10 @@ export function DrawingPropertiesModal({
             <button
               key={id}
               type="button"
+              data-touch-size="custom"
               role="tab"
               aria-selected={tab === id}
-              className={`dpm-tab ${tab === id ? "is-active" : ""}`}
+              className={`dpm-tab whitespace-nowrap shrink-0 ${tab === id ? "is-active" : ""}`}
               onClick={() => setTab(id)}
             >
               {label}
@@ -1198,7 +1201,7 @@ export function DrawingPropertiesModal({
                       min={1}
                       max={range.max}
                       disabled={!range.enabled}
-                      className="dpm-vis-num"
+                      className="dpm-vis-num mobile-compact-input"
                       value={range.min}
                       onChange={(e) =>
                         updateVisibilityRange(key, {
@@ -1244,7 +1247,7 @@ export function DrawingPropertiesModal({
                       min={range.min}
                       max={maxLimit}
                       disabled={!range.enabled}
-                      className="dpm-vis-num"
+                      className="dpm-vis-num mobile-compact-input"
                       value={range.max}
                       onChange={(e) =>
                         updateVisibilityRange(key, {

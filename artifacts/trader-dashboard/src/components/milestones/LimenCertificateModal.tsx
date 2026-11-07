@@ -120,24 +120,21 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
   const hash = computeCertHash(effectiveCert);
   const serial = `#${effectiveCert.id.toString().padStart(4, "0")}`;
 
-  const honorCardData: HonorCardData = useMemo(
-    () => ({
-      title: `ASCESA A ${gradeDef.title.toUpperCase()}`,
-      subtitle: `« ${motto.motto} » · Investitura Ufficiale nel Protocollo Aureus`,
-      operatorName: effectiveUserName,
-      asset: `RANGO ${roman} · ${gradeDef.code}`,
-      winRate: 100,
-      winTrades: gradeNum,
-      totalTrades: gradeNum,
-      drawdown: 0,
-      maxAllowedDrawdown: 10,
-      totalProfitFormatted: `RANGO ${roman}`,
-      integrityScore: 100,
-      isDisqualified: false,
-      timestamp: effectiveCert.customDate,
-    }),
-    [gradeDef, motto, effectiveUserName, roman, gradeNum, effectiveCert.customDate],
-  );
+  const honorCardData: HonorCardData = {
+    title: `ASCESA A ${gradeDef.title.toUpperCase()}`,
+    subtitle: `« ${motto.motto} » · Investitura Ufficiale nel Protocollo Aureus`,
+    operatorName: effectiveUserName,
+    asset: `RANGO ${roman} · ${gradeDef.code}`,
+    winRate: 100,
+    winTrades: gradeNum,
+    totalTrades: gradeNum,
+    drawdown: 0,
+    maxAllowedDrawdown: 10,
+    totalProfitFormatted: `RANGO ${roman}`,
+    integrityScore: 100,
+    isDisqualified: false,
+    timestamp: effectiveCert.customDate,
+  };
 
   const handleResetDefaults = () => {
     setCustomUserName(cert.userName || "OPERATORE");
@@ -224,13 +221,14 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {/* View Mode Toggle */}
-            <div className="hidden sm:flex items-center rounded border border-[#C5A059]/30 bg-black/40 p-0.5 text-xs font-mono">
+            <div className="mobile-compact-bar flex items-center rounded border border-[#C5A059]/30 bg-black/40 p-0.5 text-[10px] sm:text-xs font-mono">
               <button
                 type="button"
+                data-touch-size="custom"
                 onClick={() => setActiveTab("certificate")}
-                className={`px-2.5 py-1 rounded transition-colors ${
+                className={`px-2 sm:px-2.5 py-1 rounded transition-colors whitespace-nowrap ${
                   activeTab === "certificate"
                     ? "bg-[#C5A059] text-black font-bold"
                     : "text-muted-foreground hover:text-foreground"
@@ -240,8 +238,9 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
               </button>
               <button
                 type="button"
+                data-touch-size="custom"
                 onClick={() => setActiveTab("sigil")}
-                className={`px-2.5 py-1 rounded transition-colors ${
+                className={`px-2 sm:px-2.5 py-1 rounded transition-colors whitespace-nowrap ${
                   activeTab === "sigil"
                     ? "bg-[#C5A059] text-black font-bold"
                     : "text-muted-foreground hover:text-foreground"
@@ -315,13 +314,14 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
                 </span>
                 <span className="text-[#C5A059] font-bold">{gradeDef.code}</span>
               </div>
-              <div className="grid grid-cols-5 gap-1.5 p-1 rounded-md border border-[#C5A059]/20 bg-black/60">
+              <div className="mobile-compact-bar grid grid-cols-5 gap-1.5 p-1 rounded-md border border-[#C5A059]/20 bg-black/60">
                 {LIMEN_GRADES.map((g) => {
                   const isSelected = selectedGrade === g.grade;
                   return (
                     <button
                       key={g.grade}
                       type="button"
+                      data-touch-size="custom"
                       onClick={() => handleSelectGrade(g.grade)}
                       title={g.fullTitle}
                       className={`flex flex-col items-center justify-center py-1.5 px-1 rounded font-mono text-xs font-bold transition-all ${
@@ -487,7 +487,7 @@ export const LimenCertificateModal: React.FC<LimenCertificateModalProps> = ({
               </h4>
 
               {/* Public Shareable Certificate Link */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
                   onClick={handleCopyShareLink}

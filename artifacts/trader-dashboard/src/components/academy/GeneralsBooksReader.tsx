@@ -552,8 +552,8 @@ function PageThemedIllustration({
   figureCaption: string;
 }) {
   return (
-    <div className="flex flex-col h-full w-full justify-center items-center min-h-0 py-2">
-      <div className="relative aspect-square w-full max-w-[260px] sm:max-w-[300px] xl:max-w-[340px] max-h-[340px] rounded-lg border border-[#C5A059]/40 bg-gradient-to-b from-[#14151C] via-[#0E0F14] to-[#0A0A0C] p-2 sm:p-2.5 flex items-center justify-center overflow-hidden shadow-[inset_0_0_30px_rgba(0,0,0,0.8)] shrink-0 group">
+    <div className="flex flex-col h-full w-full justify-center items-center min-h-0 py-1 lg:py-2">
+      <div className="relative aspect-square w-full max-w-[150px] lg:max-w-[260px] xl:max-w-[340px] max-h-[340px] rounded-lg border border-[#C5A059]/40 bg-gradient-to-b from-[#14151C] via-[#0E0F14] to-[#0A0A0C] p-2 sm:p-2.5 flex items-center justify-center overflow-hidden shadow-[inset_0_0_30px_rgba(0,0,0,0.8)] shrink-0 group">
         {imageUrl ? (
           <div className="relative w-full h-full flex items-center justify-center overflow-hidden rounded">
             <img
@@ -815,10 +815,10 @@ export function GeneralsBooksReader({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="relative rounded-2xl border border-[#C5A059]/35 bg-[#0C0D12] text-foreground shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col w-full h-[calc(100dvh-130px)] max-h-[740px] min-h-[540px] justify-between"
+            className="relative rounded-2xl border border-[#C5A059]/35 bg-[#0C0D12] text-foreground shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col w-full h-auto min-h-[540px] lg:h-[calc(100dvh-130px)] lg:max-h-[740px] justify-between"
           >
             {/* Header Superiore fisso */}
-            <div className="shrink-0 h-12 flex items-center justify-between px-6 border-b border-[#C5A059]/25 bg-gradient-to-r from-[#14151C] via-[#0E0F14] to-[#14151C]">
+            <div className="shrink-0 h-12 flex items-center justify-between px-4 sm:px-6 border-b border-[#C5A059]/25 bg-gradient-to-r from-[#14151C] via-[#0E0F14] to-[#14151C]">
               <div>
                 <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C5A059] block">
                   TRATTATO STRATEGICO // CODEX DEI MAESTRI
@@ -833,7 +833,7 @@ export function GeneralsBooksReader({
             </div>
 
             {/* Grid 3 Copertine */}
-            <div className="flex-1 min-h-0 p-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+            <div className="flex-1 min-h-0 p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-stretch overflow-y-auto">
               {GENERALS_BOOKS.map((book) => (
                 <motion.div
                   key={book.id}
@@ -1027,10 +1027,10 @@ export function GeneralsBooksReader({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -6 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="h-full w-full px-6 py-3 sm:px-8 sm:py-4 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch overflow-hidden"
+                  className="h-full w-full px-4 py-3 sm:px-8 sm:py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-stretch overflow-y-auto lg:overflow-hidden"
                 >
                   {/* ANTA SINISTRA (COLONNA IMMAGINE SCHEMATICA INCORNICIATA) */}
-                  <div className="lg:col-span-5 h-full flex flex-col items-center justify-center min-h-0">
+                  <div className="lg:col-span-5 shrink-0 lg:h-full flex flex-col items-center justify-center min-h-0">
                     <PageThemedIllustration
                       type={activePage.figureIllustrationType}
                       imageUrl={activePage.imageUrl}
@@ -1040,7 +1040,7 @@ export function GeneralsBooksReader({
                   </div>
 
                   {/* ANTA DESTRA (COLONNA TITOLO, SOTTOTITOLO, DROPCAP E REGOLE) */}
-                  <div className="lg:col-span-7 h-full flex flex-col justify-between min-h-0 overflow-hidden text-left">
+                  <div className="lg:col-span-7 shrink-0 lg:h-full flex flex-col justify-between min-h-0 lg:overflow-hidden text-left">
                     {/* Header della Pagina fisso */}
                     <div className="border-b border-[#C5A059]/25 pb-2 space-y-0.5 shrink-0">
                       <h3 className="text-lg sm:text-xl xl:text-2xl font-black font-display uppercase tracking-tight text-[#D4AF37] leading-tight">

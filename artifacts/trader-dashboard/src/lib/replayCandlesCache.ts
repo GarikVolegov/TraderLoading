@@ -49,31 +49,59 @@ function getIndexedDB(): IDBFactory | undefined {
   return undefined;
 }
 
-function openDatabase(): Promise<IDBDatabase> {
+let dbInstancePromise: Promise<IDBDatabase | null> | null = null;
+
+function openDatabase(): Promise<IDBDatabase | null> {
+  if (dbInstancePromise) return dbInstancePromise;
+
   const idb = getIndexedDB();
   if (!idb) {
-    return Promise.reject(new Error("IndexedDB non disponibile in questo ambiente"));
+    return Promise.resolve(null);
   }
 
-  return new Promise((resolve, reject) => {
-    const request = idb.open(DB_NAME, DB_VERSION);
+  dbInstancePromise = new Promise<IDBDatabase | null>((resolve) => {
+    try {
+      const request = idb.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "key" });
-      }
-      if (!db.objectStoreNames.contains(STORE_OFFLINE_SESSIONS)) {
-        const store = db.createObjectStore(STORE_OFFLINE_SESSIONS, { keyPath: "id" });
-        store.createIndex("symbol", "symbol", { unique: false });
-        store.createIndex("interval", "interval", { unique: false });
-        store.createIndex("bufferedAt", "bufferedAt", { unique: false });
-      }
-    };
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: "key" });
+        }
+        if (!db.objectStoreNames.contains(STORE_OFFLINE_SESSIONS)) {
+          const store = db.createObjectStore(STORE_OFFLINE_SESSIONS, { keyPath: "id" });
+          store.createIndex("symbol", "symbol", { unique: false });
+          store.createIndex("interval", "interval", { unique: false });
+          store.createIndex("bufferedAt", "bufferedAt", { unique: false });
+        }
+      };
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        db.onclose = () => {
+          dbInstancePromise = null;
+        };
+        db.onerror = () => {
+          dbInstancePromise = null;
+        };
+        db.onversionchange = () => {
+          db.close();
+          dbInstancePromise = null;
+        };
+        resolve(db);
+      };
+
+      request.onerror = () => {
+        dbInstancePromise = null;
+        resolve(null);
+      };
+    } catch {
+      dbInstancePromise = null;
+      resolve(null);
+    }
   });
+
+  return dbInstancePromise;
 }
 
 /**
@@ -133,6 +161,7 @@ export async function getReplayCandlesFromCache(
   // 2. Prova in IndexedDB se supportato
   try {
     const db = await openDatabase();
+    if (!db) return null;
     return await new Promise<ReplayCandlesResponse | null>((resolve) => {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
@@ -159,9 +188,9 @@ export async function getReplayCandlesFromCache(
       };
 
       req.onerror = () => resolve(null);
-      tx.oncomplete = () => db.close();
     });
   } catch {
+    dbInstancePromise = null;
     // Fallback trasparente: nessun errore bloccante se IndexedDB è inibito
     return null;
   }
@@ -199,6 +228,7 @@ export async function saveReplayCandlesToCache(
   // 2. Persisti in IndexedDB in formato compatto compresso (senza duplicare chiavi JSON)
   try {
     const db = await openDatabase();
+    if (!db) return;
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readwrite");
       const store = tx.objectStore(STORE_NAME);
@@ -210,16 +240,11 @@ export async function saveReplayCandlesToCache(
       };
       store.put(storageRecord);
 
-      tx.oncomplete = () => {
-        db.close();
-        resolve();
-      };
-      tx.onerror = () => {
-        db.close();
-        reject(tx.error);
-      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
     });
   } catch {
+    dbInstancePromise = null;
     // Silenzioso: la cache in memoria resta comunque operativa
   }
 }
@@ -232,21 +257,17 @@ export async function clearReplayCandleCache(): Promise<void> {
 
   try {
     const db = await openDatabase();
+    if (!db) return;
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readwrite");
       const store = tx.objectStore(STORE_NAME);
       store.clear();
 
-      tx.oncomplete = () => {
-        db.close();
-        resolve();
-      };
-      tx.onerror = () => {
-        db.close();
-        reject(tx.error);
-      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
     });
   } catch {
+    dbInstancePromise = null;
     // IndexedDB non presente o già pulito
   }
 }

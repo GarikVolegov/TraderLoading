@@ -1349,8 +1349,8 @@ export default function FinancialArchitecture() {
             </div>
 
             {/* Riga 2: Selettore Presets a Piena Larghezza + Chip Top Opportunity */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="grid grid-cols-5 gap-1 p-0.5 bg-[#07080b] rounded border border-border/70 font-mono text-[9px] flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="mobile-compact-bar grid grid-cols-5 gap-1 p-0.5 bg-[#07080b] rounded border border-border/70 font-mono text-[9px] flex-1 min-w-[240px]">
                 <button
                   type="button"
                   onClick={() => handleSelectPreset("DEFENSIVE")}
@@ -1624,7 +1624,7 @@ export default function FinancialArchitecture() {
                 </div>
 
                 {/* Selettore Viste: Proiezione NW / Monte Carlo 1.000T / Donut + Toggle Lordo/Netto & Orizzonti */}
-                <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
+                <div className="mobile-compact-bar flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
                   {/* Segmented View Switcher */}
                   <div className="flex items-center gap-0.5 bg-[#07080b] p-0.5 rounded border border-border/70 font-mono text-[9.5px]">
                     <button

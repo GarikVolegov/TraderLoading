@@ -648,7 +648,7 @@ export function CockpitNextSessionPlanner({
           </div>
 
           {/* Submit Save Button */}
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
             <span className="text-[11px] text-muted-foreground font-mono">
               I piani vengono salvati nell'Agenda e conservati per la sessione successiva.
             </span>
@@ -680,7 +680,7 @@ export function CockpitNextSessionPlanner({
                   key={p.id}
                   className="p-4 rounded-xl border border-white/10 bg-[#12131A] space-y-3 relative group"
                 >
-                  <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2.5">
                     <div className="flex items-center gap-2 text-xs font-mono flex-wrap">
                       <span className="px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/30 font-bold uppercase">
                         {sessionConfig.name} ({sessionConfig.time})
@@ -706,7 +706,7 @@ export function CockpitNextSessionPlanner({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="mobile-compact-bar flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={() => handleApplyToOperativePlan(p)}

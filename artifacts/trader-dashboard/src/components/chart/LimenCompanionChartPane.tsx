@@ -78,6 +78,9 @@ export function LimenCompanionChartPane({
 
   const [interval, setInterval] = useState<string>(() => getCompanionTf(primaryInterval));
   const [candles, setCandles] = useState<CandleBar[]>([]);
+  const candlesRef = useRef<CandleBar[]>([]);
+  candlesRef.current = candles;
+  const loadOlderRef = useRef<() => void>(() => {});
   const [hoverBar, setHoverBar] = useState<CandleBar | null>(null);
   const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 });
   const [revision, setRevision] = useState(0);
@@ -200,8 +203,11 @@ export function LimenCompanionChartPane({
       }
     });
 
-    const handleVisibleRangeChange = () => {
+    const handleVisibleRangeChange = (range: { from: number; to: number } | null) => {
       setRevision((r) => r + 1);
+      if (range && range.from < 100) {
+        loadOlderRef.current();
+      }
     };
     chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
 
@@ -302,6 +308,81 @@ export function LimenCompanionChartPane({
     };
 
     loadData();
+
+    let loadingOlder = false;
+    let hasOlder = true;
+    const parseCompanionBars = (rows: any[]): CandleBar[] =>
+      rows.map((c: any) => ({
+        time: typeof c.time === "number" ? c.time : Math.floor(new Date(c.time).getTime() / 1000),
+        open: Number(c.open),
+        high: Number(c.high),
+        low: Number(c.low),
+        close: Number(c.close),
+      }));
+
+    loadOlderRef.current = () => {
+      const current = candlesRef.current;
+      if (cancelled || loadingOlder || !hasOlder || current.length === 0) return;
+      const oldest = current[0].time;
+      loadingOlder = true;
+      const query = `symbol=${cleanSym}&interval=${apiTf}&to=${oldest}&limit=2500`;
+      const fetchOlderPage = async (): Promise<CandleBar[]> => {
+        try {
+          const res = await fetch(`/api/backtest/candles?${query}&mode=replay`);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data?.candles) && data.candles.length > 0) {
+              return parseCompanionBars(data.candles);
+            }
+          }
+        } catch {
+          // fallback to standard query
+        }
+        const res = await fetch(`/api/backtest/candles?${query}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return Array.isArray(data?.candles) ? parseCompanionBars(data.candles) : [];
+      };
+
+      fetchOlderPage()
+        .then((bars) => {
+          if (cancelled) return;
+          const first = candlesRef.current[0]?.time ?? Infinity;
+          const fresh = bars.filter((b) => b.time < first);
+          if (fresh.length === 0) {
+            if (first < 946684800) hasOlder = false;
+            return;
+          }
+          const merged = [...fresh, ...candlesRef.current];
+          const capped = merged.length > 100000 ? merged.slice(0, 100000) : merged;
+          const previousRange = chartRef.current?.timeScale().getVisibleLogicalRange();
+          if (seriesRef.current) {
+            seriesRef.current.setData(
+              capped.map((b) => ({
+                time: b.time as Time,
+                open: b.open,
+                high: b.high,
+                low: b.low,
+                close: b.close,
+              })),
+            );
+          }
+          if (previousRange) {
+            chartRef.current?.timeScale().setVisibleLogicalRange({
+              from: previousRange.from + fresh.length,
+              to: previousRange.to + fresh.length,
+            });
+          }
+          candlesRef.current = capped;
+          setCandles(capped);
+          setRevision((r) => r + 1);
+        })
+        .catch(() => {})
+        .finally(() => {
+          loadingOlder = false;
+        });
+    };
+
     return () => {
       cancelled = true;
     };

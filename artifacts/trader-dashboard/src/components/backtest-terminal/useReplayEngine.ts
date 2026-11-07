@@ -50,7 +50,7 @@ import type {
 import { useCandleWindow } from "./useCandleWindow";
 import { generateRandomTradingTimestamp, getYearTradingStart } from "./dateTime";
 
-export const REPLAY_SPEEDS = [0.25, 0.5, 1, 2, 4] as const;
+export const REPLAY_SPEEDS = [0.25, 0.5, 1, 2, 4, 10] as const;
 export const REPLAY_TIMEFRAMES = ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"] as const;
 const INITIAL_BALANCE = 10_000;
 const BASE_TICK_MS = 720;
@@ -445,12 +445,6 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     setCursor(next);
     setReplayTime(finalTime);
     ensureAhead(next);
-    if (candles[next] && candles[next].time + intervalSeconds > finalTime) {
-      // A stop inside the displayed candle needs its M1-derived partial OHLC.
-      setCursorReady(false);
-      setAnchorTime(finalTime);
-      setRequestId((id) => id + 1);
-    }
     return true;
   }, [candles, closeAt, cursorReady, ensureAhead, intervalSeconds, normalizedSymbol, pushNotice, stop, ticket.breakevenAtR, ticket.trailingPips]);
 
@@ -940,10 +934,12 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     setTrades((old) => old.map((trade) => (trade.id === id ? { ...trade, tags } : trade)));
   }, []);
 
-  // ── persistence ──────────────────────────────────────────────────────────
+  // ── persistence (debounced 1000ms + flush on pagehide/beforeunload/unmount) ──
+  const pendingPersistRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (typeof window === "undefined" || window_.loading || window_.error || !cursorReady || !currentBar) return;
     const persistNow = () => {
+      pendingPersistRef.current = null;
       try {
         window.localStorage.setItem(
           storageKey,
@@ -973,12 +969,8 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
       }
     };
 
-    if (!playing) {
-      persistNow();
-      return;
-    }
-
-    const timer = window.setTimeout(persistNow, 600);
+    pendingPersistRef.current = persistNow;
+    const timer = window.setTimeout(persistNow, 1000);
     return () => {
       window.clearTimeout(timer);
     };
@@ -1003,6 +995,20 @@ export function useReplayEngine({ sessionKey, symbol, initialInterval }: ReplayE
     settings,
     restored?.initialBalance,
   ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const flushPending = () => {
+      pendingPersistRef.current?.();
+    };
+    window.addEventListener("pagehide", flushPending);
+    window.addEventListener("beforeunload", flushPending);
+    return () => {
+      window.removeEventListener("pagehide", flushPending);
+      window.removeEventListener("beforeunload", flushPending);
+      flushPending();
+    };
+  }, []);
 
   const handleBuy = useCallback(() => buy("buy"), [buy]);
 

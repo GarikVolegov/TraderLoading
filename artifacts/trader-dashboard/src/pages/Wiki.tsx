@@ -198,7 +198,7 @@ export default function Wiki() {
               "--arc-rowpad": density === "compatta" ? "7px" : "11px",
             } as React.CSSProperties
           }
-          className="relative"
+          className="relative lg:h-full lg:overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 pr-0.5"
         >
           <input {...getInputProps()} />
           {isDragActive && (

@@ -862,26 +862,51 @@ export function ReplayChart({
 
   // ── session high / low price lines ─────────────────────────────────────────
   const highLowLinesRef = useRef<{ high: IPriceLine | null; low: IPriceLine | null }>({ high: null, low: null });
+  const highLowValuesRef = useRef<{ high: number | null; low: number | null; epoch: number; chartType: string }>({
+    high: null,
+    low: null,
+    epoch: -1,
+    chartType: "",
+  });
   useEffect(() => {
     const price = priceSeriesRef.current;
     if (!price) return;
-    if (highLowLinesRef.current.high) {
-      price.series.removePriceLine(highLowLinesRef.current.high);
+    const seriesRecreated =
+      highLowValuesRef.current.epoch !== chartEpoch || highLowValuesRef.current.chartType !== chartType;
+    if (seriesRecreated) {
       highLowLinesRef.current.high = null;
-    }
-    if (highLowLinesRef.current.low) {
-      price.series.removePriceLine(highLowLinesRef.current.low);
       highLowLinesRef.current.low = null;
+      highLowValuesRef.current = { high: null, low: null, epoch: chartEpoch, chartType };
     }
-    if (settings.showHighLowLines && displayCandles.length > 0) {
-      let maxH = -Infinity;
-      let minL = Infinity;
-      const recent = displayCandles.slice(-120);
-      for (const bar of recent) {
-        if (bar.high > maxH) maxH = bar.high;
-        if (bar.low < minL) minL = bar.low;
+
+    if (!settings.showHighLowLines || displayCandles.length === 0) {
+      if (highLowLinesRef.current.high) {
+        try { price.series.removePriceLine(highLowLinesRef.current.high); } catch {}
+        highLowLinesRef.current.high = null;
       }
-      if (maxH > -Infinity) {
+      if (highLowLinesRef.current.low) {
+        try { price.series.removePriceLine(highLowLinesRef.current.low); } catch {}
+        highLowLinesRef.current.low = null;
+      }
+      highLowValuesRef.current.high = null;
+      highLowValuesRef.current.low = null;
+      return;
+    }
+
+    let maxH = -Infinity;
+    let minL = Infinity;
+    const recent = displayCandles.slice(-120);
+    for (const bar of recent) {
+      if (bar.high > maxH) maxH = bar.high;
+      if (bar.low < minL) minL = bar.low;
+    }
+    if (maxH > -Infinity) {
+      if (highLowLinesRef.current.high) {
+        if (highLowValuesRef.current.high !== maxH) {
+          highLowLinesRef.current.high.applyOptions({ price: maxH });
+          highLowValuesRef.current.high = maxH;
+        }
+      } else {
         highLowLinesRef.current.high = price.series.createPriceLine({
           price: maxH,
           color: "rgba(16, 185, 129, 0.7)",
@@ -890,8 +915,16 @@ export function ReplayChart({
           axisLabelVisible: true,
           title: "HIGH",
         });
+        highLowValuesRef.current.high = maxH;
       }
-      if (minL < Infinity) {
+    }
+    if (minL < Infinity) {
+      if (highLowLinesRef.current.low) {
+        if (highLowValuesRef.current.low !== minL) {
+          highLowLinesRef.current.low.applyOptions({ price: minL });
+          highLowValuesRef.current.low = minL;
+        }
+      } else {
         highLowLinesRef.current.low = price.series.createPriceLine({
           price: minL,
           color: "rgba(239, 68, 68, 0.7)",
@@ -900,6 +933,7 @@ export function ReplayChart({
           axisLabelVisible: true,
           title: "LOW",
         });
+        highLowValuesRef.current.low = minL;
       }
     }
   }, [displayCandles, settings.showHighLowLines, chartEpoch, chartType]);
@@ -912,6 +946,13 @@ export function ReplayChart({
   const subSeriesRef = useRef<
     Map<string, { paneIndex: number; lines: ISeriesApi<"Line">[]; histogram: ISeriesApi<"Histogram"> | null; levels: IPriceLine[] }>
   >(new Map());
+  const lastIndicatorRenderRef = useRef<{
+    epoch: number;
+    firstTime: number | null;
+    length: number;
+    sig: string;
+  }>({ epoch: -1, firstTime: null, length: 0, sig: "" });
+
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
@@ -921,6 +962,19 @@ export function ReplayChart({
     const activeIds = new Set<string>();
     const activeSubIds = new Set<string>();
     let nextPaneIndex = 1;
+
+    const firstTime = revealed[0]?.time ?? null;
+    const sig = JSON.stringify(indicators.filter((c) => c.on));
+    const prevMeta = lastIndicatorRenderRef.current;
+    const delta = revealed.length - prevMeta.length;
+    const canFastUpdate =
+      prevMeta.epoch === chartEpoch &&
+      prevMeta.firstTime === firstTime &&
+      prevMeta.sig === sig &&
+      prevMeta.length > 0 &&
+      delta >= 0 &&
+      delta <= 10;
+    const fastStartIdx = Math.max(0, prevMeta.length - 1);
 
     const zip = (values: (number | null)[]): { time: Time; value: number }[] => {
       const data: { time: Time; value: number }[] = [];
@@ -938,8 +992,9 @@ export function ReplayChart({
       if (output.pane === "price" && output.lines.length > 0) {
         activeIds.add(config.id);
         let seriesList = registry.get(config.id) ?? [];
+        const recreated = seriesList.length !== output.lines.length;
         // Recreate when the line count changes (e.g. custom → bollinger edit).
-        if (seriesList.length !== output.lines.length) {
+        if (recreated) {
           for (const series of seriesList) chart.removeSeries(series);
           seriesList = output.lines.map(() =>
             chart.addSeries(LineSeries, {
@@ -953,12 +1008,21 @@ export function ReplayChart({
         }
         output.lines.forEach((line, lineIndex) => {
           const series = seriesList[lineIndex];
-          series.applyOptions({
-            color: line.color,
-            lineStyle: line.dashed ? 2 : 0,
-            lineWidth: lineIndex === 0 ? 2 : 1,
-          });
-          series.setData(zip(line.values));
+          if (canFastUpdate && !recreated) {
+            for (let i = fastStartIdx; i < line.values.length && i < revealed.length; i++) {
+              const value = line.values[i];
+              if (value != null) {
+                series.update({ time: revealed[i].time as Time, value });
+              }
+            }
+          } else {
+            series.applyOptions({
+              color: line.color,
+              lineStyle: line.dashed ? 2 : 0,
+              lineWidth: lineIndex === 0 ? 2 : 1,
+            });
+            series.setData(zip(line.values));
+          }
         });
         continue;
       }
@@ -968,12 +1032,12 @@ export function ReplayChart({
         const paneIndex = nextPaneIndex++;
         let entry = subRegistry.get(config.id) ?? null;
         const needsHistogram = output.histogram != null;
-        if (
+        const recreated =
           !entry ||
           entry.paneIndex !== paneIndex ||
           entry.lines.length !== output.lines.length ||
-          (entry.histogram != null) !== needsHistogram
-        ) {
+          (entry.histogram != null) !== needsHistogram;
+        if (recreated) {
           if (entry) {
             for (const series of entry.lines) chart.removeSeries(series);
             if (entry.histogram) chart.removeSeries(entry.histogram);
@@ -1002,30 +1066,52 @@ export function ReplayChart({
 
         output.lines.forEach((line, lineIndex) => {
           const series = entry!.lines[lineIndex];
-          series.applyOptions({
-            color: line.color,
-            lineStyle: line.dashed ? 2 : 0,
-            lineWidth: lineIndex === 0 ? 2 : 1,
-          });
-          series.setData(zip(line.values));
-        });
-        if (entry.histogram && output.histogram) {
-          const histogramData: { time: Time; value: number; color: string }[] = [];
-          for (let i = 0; i < output.histogram.values.length && i < revealed.length; i++) {
-            const value = output.histogram.values[i];
-            if (value != null) {
-              histogramData.push({
-                time: revealed[i].time as Time,
-                value,
-                color: value >= 0 ? output.histogram.positiveColor : output.histogram.negativeColor,
-              });
+          if (canFastUpdate && !recreated) {
+            for (let i = fastStartIdx; i < line.values.length && i < revealed.length; i++) {
+              const value = line.values[i];
+              if (value != null) {
+                series.update({ time: revealed[i].time as Time, value });
+              }
             }
+          } else {
+            series.applyOptions({
+              color: line.color,
+              lineStyle: line.dashed ? 2 : 0,
+              lineWidth: lineIndex === 0 ? 2 : 1,
+            });
+            series.setData(zip(line.values));
           }
-          entry.histogram.setData(histogramData);
+        });
+        if (entry!.histogram && output.histogram) {
+          if (canFastUpdate && !recreated) {
+            for (let i = fastStartIdx; i < output.histogram.values.length && i < revealed.length; i++) {
+              const value = output.histogram.values[i];
+              if (value != null) {
+                entry!.histogram.update({
+                  time: revealed[i].time as Time,
+                  value,
+                  color: value >= 0 ? output.histogram.positiveColor : output.histogram.negativeColor,
+                });
+              }
+            }
+          } else {
+            const histogramData: { time: Time; value: number; color: string }[] = [];
+            for (let i = 0; i < output.histogram.values.length && i < revealed.length; i++) {
+              const value = output.histogram.values[i];
+              if (value != null) {
+                histogramData.push({
+                  time: revealed[i].time as Time,
+                  value,
+                  color: value >= 0 ? output.histogram.positiveColor : output.histogram.negativeColor,
+                });
+              }
+            }
+            entry!.histogram.setData(histogramData);
+          }
         }
         // Reference levels (RSI 30/70, Stoch 20/80) as dashed price lines.
-        if (entry.levels.length === 0 && output.levels && entry.lines[0]) {
-          entry.levels = output.levels.map((level) =>
+        if (entry!.levels.length === 0 && output.levels && entry!.lines[0]) {
+          entry!.levels = output.levels.map((level) =>
             entry!.lines[0].createPriceLine({
               price: level,
               color: "rgba(148,163,184,0.35)",
@@ -1052,7 +1138,13 @@ export function ReplayChart({
         subRegistry.delete(id);
       }
     }
-    if (savedRange) {
+    lastIndicatorRenderRef.current = {
+      epoch: chartEpoch,
+      firstTime,
+      length: revealed.length,
+      sig,
+    };
+    if (!canFastUpdate && savedRange) {
       chart.timeScale().setVisibleLogicalRange(savedRange);
     }
   }, [indicators, revealed, chartEpoch]);

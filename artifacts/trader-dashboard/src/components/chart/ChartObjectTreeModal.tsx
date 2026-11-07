@@ -162,6 +162,7 @@ export function ChartObjectTreeModal({
           </div>
           <button
             type="button"
+            data-touch-size="custom"
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
           >
@@ -260,6 +261,7 @@ export function ChartObjectTreeModal({
                     {onToggleIndicator && (
                       <button
                         type="button"
+                        data-touch-size="custom"
                         onClick={() => onToggleIndicator(ind.id)}
                         className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
                         title={ind.on ? "Nascondi indicatore" : "Mostra indicatore"}
@@ -331,6 +333,7 @@ export function ChartObjectTreeModal({
                         {/* Lock */}
                         <button
                           type="button"
+                          data-touch-size="custom"
                           onClick={() => onUpdateDrawing({ ...d, locked: !isLocked })}
                           className={`p-1 rounded transition-colors ${
                             isLocked ? "text-amber-400 bg-amber-400/10" : "text-slate-400 hover:text-white hover:bg-white/10"
@@ -343,6 +346,7 @@ export function ChartObjectTreeModal({
                         {/* Visibility */}
                         <button
                           type="button"
+                          data-touch-size="custom"
                           onClick={() => onUpdateDrawing({ ...d, hidden: !isHidden })}
                           className={`p-1 rounded transition-colors ${
                             isHidden ? "text-slate-500" : "text-slate-400 hover:text-white hover:bg-white/10"
@@ -355,6 +359,7 @@ export function ChartObjectTreeModal({
                         {/* Delete */}
                         <button
                           type="button"
+                          data-touch-size="custom"
                           onClick={() => onDeleteDrawing(d.id)}
                           className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                           title="Elimina disegno"

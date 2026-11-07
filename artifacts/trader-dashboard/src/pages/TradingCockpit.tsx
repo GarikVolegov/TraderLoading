@@ -34,7 +34,13 @@ import {
   Headphones,
   Wind,
   Copy,
+  SlidersHorizontal,
 } from "lucide-react";
+import { CockpitRevolutOperativeWindow } from "@/components/cockpit/CockpitRevolutOperativeWindow";
+import {
+  CockpitMobileCopilotFlow,
+  CockpitMobileChartChecklistSheet,
+} from "@/components/cockpit/CockpitMobileCopilotFlow";
 import { isUserTypingInEditableElement } from "@/lib/pwaAutoUpdater";
 import { triggerHaptic } from "@/lib/hapticPulse";
 import { useAutoLandscapeCinema } from "@/hooks/useAutoLandscapeCinema";
@@ -1028,6 +1034,15 @@ function CockpitView({
     setBrokerHubInitialTab(tab || "connect");
     setDialog("broker_hub");
   }, []);
+
+  useEffect(() => {
+    const handleOpenDialog = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (d) setDialog(d as any);
+    };
+    window.addEventListener("open-cockpit-dialog", handleOpenDialog);
+    return () => window.removeEventListener("open-cockpit-dialog", handleOpenDialog);
+  }, []);
   const { snapshot: brokerSnapshot } = useBrokerHub();
   const isBrokerConnected = brokerSnapshot.status === "connected" && Boolean(brokerSnapshot.profileId);
   const [journalModalOpen, setJournalModalOpen] = useState(false);
@@ -1253,13 +1268,14 @@ function CockpitView({
       return false;
     }
   });
-  const effectiveLeftCollapsed = isFreeTrial || leftCollapsed;
-
-  useEffect(() => {
-    if (isFreeTrial && mobileTab === "process") {
-      setMobileTab("chart");
+  const effectiveLeftCollapsed = leftCollapsed;
+  const [cockpitViewMode, setCockpitViewMode] = useState<"revolut" | "process">(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      return "process";
     }
-  }, [isFreeTrial, mobileTab]);
+    return "revolut";
+  });
+  const [liveChartPrice, setLiveChartPrice] = useState<number | null>(null);
 
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     try {
@@ -2398,20 +2414,18 @@ function CockpitView({
       )}
 
       <div className="ck-mobile-tabs" role="group" aria-label={ck("cockpit.ui.3a0b9c0415")}>
-        {!isFreeTrial && (
-          <button
-            aria-pressed={mobileTab === "process"}
-            onClick={() => {
-              triggerHaptic("selection");
-              setMobileTab("process");
-            }}
-          >
-            <span>01 · Processo</span>
-            <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-[#E8C56A] border border-white/10">
-              {phase}/4
-            </span>
-          </button>
-        )}
+        <button
+          aria-pressed={mobileTab === "process"}
+          onClick={() => {
+            triggerHaptic("selection");
+            setMobileTab("process");
+          }}
+        >
+          <span>01 · Finestra Operativa</span>
+          <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-[#E8C56A] border border-white/10 whitespace-nowrap">
+            {a.market.replace("USD", "")}
+          </span>
+        </button>
         <button
           aria-pressed={mobileTab === "chart"}
           onClick={() => {
@@ -2419,9 +2433,9 @@ function CockpitView({
             setMobileTab("chart");
           }}
         >
-          <span>{isFreeTrial ? "01 · Grafico" : "02 · Grafico"}</span>
-          <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-[#E8C56A] border border-white/10">
-            {a.market.replace("USD", "")}
+          <span>02 · Grafico</span>
+          <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-[#E8C56A] border border-white/10 whitespace-nowrap">
+            {chartTF}
           </span>
         </button>
         <button
@@ -2431,8 +2445,8 @@ function CockpitView({
             setDialog("protection");
           }}
         >
-          <span>{isFreeTrial ? "02 · Custode" : "03 · Custode"}</span>
-          <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-emerald-400 border border-white/10">
+          <span>03 · Custode</span>
+          <span className="rounded bg-black/50 px-1 py-0.2 text-[8.5px] text-emerald-400 border border-white/10 whitespace-nowrap">
             {_tradesToday}/{_maxTrades}
           </span>
         </button>
@@ -2468,71 +2482,43 @@ function CockpitView({
             title="Trascina dal bordo destro per aprire il Custode"
           />
 
-          {/* ── Mobile Floating Tactical Action Dock (Thumb Zone on Chart) ── */}
-          <aside
-            aria-label="Dock Tattica Mobile"
-            className="fixed right-3 bottom-[var(--bottom-nav-clearance)] mb-3 z-40 flex items-center gap-1.5 p-1.5 rounded-2xl border border-[#C5A059]/40 bg-[#07080b]/95 backdrop-blur-xl shadow-[0_12px_36px_rgba(0,0,0,0.9),0_0_20px_rgba(197,160,89,0.18)] font-mono select-none md:hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
-          >
-            {/* Quick Checklist Button */}
-            {!isFreeTrial && (
-              <button
-                type="button"
-                onClick={() => {
-                  synestheticClick();
-                  setMobileTab("process");
-                }}
-                title="Torna alla Checklist del Processo"
-                className="flex h-8 px-2 items-center gap-1 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:text-white font-bold text-[9.5px] uppercase tracking-wider transition-all active:scale-95 whitespace-nowrap cursor-pointer"
-              >
-                <ChevronLeft size={12} className="text-[#C5A059]" />
-                <span>Fase {phase}/4</span>
-              </button>
-            )}
-
-            {/* Quick Custode Sentinel Button */}
-            <button
-              type="button"
-              onClick={() => {
-                synestheticClick();
-                setDialog("protection");
-              }}
-              title="Apri Custode della Soglia"
-              className="flex h-8 px-2 items-center gap-1 rounded-xl border border-[#C5A059]/40 bg-[#C5A059]/15 text-[#E8C56A] font-bold text-[9.5px] uppercase tracking-wider transition-all active:scale-95 whitespace-nowrap cursor-pointer"
-            >
-              <ShieldCheck size={12} />
-              <span>{_tradesToday}/{_maxTrades}</span>
-            </button>
-
-            {/* Quick Register Trade Button */}
-            <button
-              type="button"
-              onClick={() => {
-                synestheticClick();
-                setTradeRegisterModalOpen(true);
-              }}
-              title="Registra Trade Eseguito"
-              className="flex h-8 px-2.5 items-center gap-1 rounded-xl border border-emerald-500/50 bg-emerald-500/25 text-emerald-300 hover:bg-emerald-500/35 font-bold text-[9.5px] uppercase tracking-wider shadow-[0_0_12px_rgba(16,185,129,0.3)] transition-all active:scale-95 whitespace-nowrap cursor-pointer"
-            >
-              <BookOpen size={12} />
-              <span>Trade</span>
-            </button>
-          </aside>
+          {/* ── Mobile Floating Chart Checklist Dock (#chartChecklistBody + .chart-dock) ── */}
+          <CockpitMobileChartChecklistSheet
+            analysis={a}
+            setAnalysis={set}
+            phase={phase as 1 | 2 | 3 | 4}
+            onSelectPhase={(p) => {
+              if (confirmed) setReviewPhase(p);
+              if (p <= 3) set({ phase: p as 1 | 2 | 3 });
+              if (p === 1) setChartTF(a.mode === "scalp" ? "60" : "240");
+              else if (p === 2) setChartTF("15");
+              else setChartTF(a.execTF === "M5" ? "5" : "1");
+            }}
+            tfs={tfs}
+            isConfirmed={confirmed}
+            tradesToday={_tradesToday}
+            maxTrades={_maxTrades}
+            onOpenDialog={(d) => setDialog(d)}
+            onOpenTradeRegister={() => setTradeRegisterModalOpen(true)}
+            onOpenJournal={() => setJournalModalOpen(true)}
+            onInspectSchematic={(s) => setInspectSchematic(s)}
+          />
         </>
       )}
 
       {isFreeTrial && (
-        <div className="mx-3 mt-2 mb-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-200">
+        <div className="mx-3 mt-2 mb-2 px-3 py-2 rounded-xl bg-[#C5A059]/10 border border-[#C5A059]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[#E8C56A]">
           <div className="flex items-center gap-2">
             <Badge variant="warning" className="text-[10px] uppercase font-bold tracking-wider">
               PROVA GRATUITA (24 ORE)
             </Badge>
-            <span>
-              Tempo residuo: <strong className="font-mono text-foreground">{remainingTime}</strong>. Colonna operativa e architettura patrimoniale oscurate per la prova.
+            <span className="text-slate-300">
+              Tempo residuo: <strong className="font-mono text-white whitespace-nowrap">{remainingTime}</strong>. Finestra Operativa attiva in modalità simulata.
             </span>
           </div>
           <Link
             href="/pro"
-            className="inline-flex items-center justify-center gap-1 px-3 py-1 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold font-mono text-[11px] transition uppercase tracking-wider shrink-0 shadow-sm"
+            className="inline-flex items-center justify-center gap-1 px-3 py-1 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold font-mono text-[11px] transition uppercase tracking-wider shrink-0 shadow-sm whitespace-nowrap"
           >
             Attiva Completo (150 €/mese) →
           </Link>
@@ -2547,8 +2533,7 @@ function CockpitView({
         data-focus={focusMode}
       >
         {/* COLONNA 1 (SINISTRA): IL FLUSSO GUIDATO (Process Wizard) */}
-        {!isFreeTrial && (
-          <aside className="ck-process" aria-label={ck("cockpit.ui.157a305253")}>
+        <aside className="ck-process" aria-label={ck("cockpit.ui.157a305253")}>
           {/* Barra Mobile di Contatto Rapido col Mercato (Asset + Cambio Rapido + Apri Grafico + Registra Trade) */}
           <div className="flex lg:hidden items-center justify-between gap-1 rounded-xl border border-[#C5A059]/30 bg-[#0c0e15] p-1.5 font-mono">
             <div className="flex items-center gap-1 min-w-0">
@@ -2593,7 +2578,11 @@ function CockpitView({
 
           {/* Testata Operativa: Toggle Modalità (Scalp/Swing) + Barra Sovrana Centratura Tattica (Zero Overlap & Zero Overflow) */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
+            <div
+              className={`${
+                cockpitViewMode === "process" ? "hidden lg:flex" : "flex"
+              } items-center justify-between gap-2`}
+            >
               <div className="ck-segment flex-1 min-w-0" role="group" aria-label={ck("cockpit.ui.114e037766")}>
                 {(["scalp", "swing"] as const).map((mode) => (
                   <button
@@ -2675,63 +2664,133 @@ function CockpitView({
                 <kbd className="hidden lg:inline-block px-1 py-0.2 rounded bg-black/60 border border-white/10 text-[8px] text-muted-foreground font-mono shrink-0">D</kbd>
               </button>
             </div>
+
+            {/* Selettore Vista Colonna: Finestra Operativa (Revolut) vs Processo 4 Fasi */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-black/60 border border-[#C5A059]/30">
+              <button
+                type="button"
+                onClick={() => {
+                  synestheticClick();
+                  setCockpitViewMode("revolut");
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  cockpitViewMode === "revolut"
+                    ? "bg-[#C5A059] text-black shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Zap size={11} className={cockpitViewMode === "revolut" ? "text-black fill-current" : "text-[#C5A059]"} />
+                <span>Finestra Operativa</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  synestheticClick();
+                  setCockpitViewMode("process");
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  cockpitViewMode === "process"
+                    ? "bg-[#C5A059] text-black shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <SlidersHorizontal size={11} className={cockpitViewMode === "process" ? "text-black" : "text-[#C5A059]"} />
+                <span>Processo 4 Fasi</span>
+              </button>
+            </div>
           </div>
 
-          {/* Stepper Orizzontale Compatto a 4 step (grid-cols-4 gap-1 text-[11px]) */}
-          <div className="ck-stepper-grid" role="tablist" aria-label="Fasi del Protocollo">
-            {[
-              { step: 1, num: "01", name: "Contesto", ready: cockpitContextReady(a) },
-              { step: 2, num: "02", name: "Svolta", ready: Boolean(a.scenario) },
-              { step: 3, num: "03", name: "Sigillo", ready: Boolean(a.trigger && a.itfSchema && a.ltfSchema && a.targetConfirmed) },
-              { step: 4, num: "04", name: "Target", ready: Boolean(confirmed) },
-            ].map(({ step, num, name, ready: isStepReady }) => {
-              const isActive = phase === step;
-              const isDisabled =
-                (step === 2 && !cockpitContextReady(a)) ||
-                (step === 3 && (!cockpitContextReady(a) || !a.scenario)) ||
-                (step === 4 && !confirmed && !a.targetConfirmed);
+          {/* ── VISTA REVOLUT: FINESTRA OPERATIVA RAPIDA & INTUITIVA ── */}
+          {cockpitViewMode === "revolut" && (
+            <CockpitRevolutOperativeWindow
+              market={a.market}
+              onSelectMarket={onSelectMarket}
+              direction={a.cycle === "down" || a.cycle === "end_down" ? "sell" : "buy"}
+              onDirectionChange={(dir) => {
+                set({ cycle: dir === "buy" ? "up" : "down" });
+              }}
+              entryPrice={localEntry || value?.entry || state.session?.plan?.entry || ""}
+              onEntryChange={(val) => {
+                setLocalEntry(val);
+                persistCockpitInputs(a.market, { entry: val, stop: localStop });
+                if (change) change({ entry: val, stop: localStop });
+              }}
+              stopLoss={localStop || value?.stop || state.session?.plan?.stop || ""}
+              onStopLossChange={(val) => {
+                setLocalStop(val);
+                persistCockpitInputs(a.market, { entry: localEntry, stop: val });
+                if (change) change({ entry: localEntry, stop: val });
+              }}
+              takeProfit={a.target || state.session?.plan?.guidance?.cockpit?.target || ""}
+              onTakeProfitChange={(val) => {
+                set({ target: val, targetConfirmed: Boolean(val) });
+              }}
+              currentPrice={liveChartPrice || undefined}
+              onTradePlanned={(trade) => {
+                const isCurfew = Boolean(
+                  imminentRedNews &&
+                  imminentRedNews.countdownMin <= 15 &&
+                  imminentRedNews.countdownMin >= -5
+                );
 
-              return (
-                <button
-                  key={step}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  disabled={isDisabled}
-                  className={`ck-stepper-btn ${isActive ? "is-active" : ""} ${isStepReady ? "is-done" : ""}`}
-                  onClick={() => {
-                    synestheticClick();
-                    if (confirmed) {
-                      setReviewPhase(step as 1 | 2 | 3 | 4);
-                    }
-                    if (step <= 3) {
-                      set({ phase: step as 1 | 2 | 3 });
-                    }
-                    if (step === 1) setChartTF(a.mode === "scalp" ? "60" : "240");
-                    else if (step === 2) setChartTF("15");
-                    else if (step === 3 || step === 4) setChartTF(a.execTF === "M5" ? "5" : "1");
-                  }}
-                >
-                  <span className="font-mono font-bold text-[11px] block">{num}</span>
-                  <span className="text-[10px] tracking-tight block opacity-90">{name}</span>
-                </button>
-              );
-            })}
-          </div>
+                const operativeKey = `tl_cockpit_operative_plan_${a.market}`;
+                const planToSave = {
+                  asset: a.market,
+                  bias: trade.direction === "buy" ? "long" : "short",
+                  entryPrice: String(trade.entryPrice),
+                  stopLoss: String(trade.stopLoss),
+                  takeProfit1: String(trade.takeProfit),
+                  riskReward: trade.riskReward,
+                  setupName: `Il Varco: Setup ${a.market} (${trade.direction.toUpperCase()}) · 1:${trade.riskReward} R`,
+                  notes: `Posizione proiettata a grafico su Il Varco (${a.market}). Entry: ${trade.entryPrice}, Stop Loss: ${trade.stopLoss}, Target: ${trade.takeProfit}, R:R stimato 1:${trade.riskReward}.`,
+                  status: "confirmed",
+                  updatedAt: new Date().toISOString(),
+                };
+                try {
+                  localStorage.setItem(operativeKey, JSON.stringify(planToSave));
+                  refreshDockState();
+                  window.dispatchEvent(new CustomEvent("tl_cockpit_plan_updated", { detail: { market: a.market } }));
+                } catch {
+                  // ignore
+                }
 
-          {/* ── FINESTRA OPERATIVA CHE TI GUIDA ── */}
-          <CockpitGuidanceBox
-            phase={phase}
-            mode={a.mode}
-            market={a.market}
-            analysis={a}
-            confirmed={confirmed}
-            onOpenExamples={(cat) => {
-              setExampleCategory(cat ?? "ALL");
-              setDialog("examples");
-            }}
-            className="mb-2"
-          />
+                setLocalEntry(String(trade.entryPrice));
+                setLocalStop(String(trade.stopLoss));
+                persistCockpitInputs(a.market, {
+                  entry: String(trade.entryPrice),
+                  stop: String(trade.stopLoss),
+                });
+                if (change) {
+                  change({
+                    entry: String(trade.entryPrice),
+                    stop: String(trade.stopLoss),
+                  });
+                }
+                set({
+                  cycle: trade.direction === "buy" ? "up" : "down",
+                  target: String(trade.takeProfit),
+                  targetConfirmed: true,
+                });
+
+                toast({
+                  title: isCurfew
+                    ? `⚠️ Custode della Soglia: Coprifuoco News Attivo (${imminentRedNews?.country})`
+                    : `Piano Grafico Acquisito · ${trade.direction.toUpperCase()}`,
+                  description: (
+                    <div className="space-y-1 text-xs">
+                      <div>
+                        Entry: <span className="font-mono text-[#F4F4F6]">{trade.entryPrice}</span> · SL: <span className="font-mono text-[#ef4444]">{trade.stopLoss}</span> · TP: <span className="font-mono text-[#10b981]">{trade.takeProfit}</span> (<span className="font-mono font-bold text-[#C5A059]">1:{trade.riskReward} R</span>)
+                      </div>
+                    </div>
+                  ),
+                });
+              }}
+              onOpenRegisterModal={() => setTradeRegisterModalOpen(true)}
+              currency={state.activeMethod?.rules.currency ?? "€"}
+              riskEur={parseFloat(localRisk || String(riskStandard || "100")) || 100}
+              isGuest={isFreeTrial}
+            />
+          )}
 
           {/* ── CUSTODE DELLA SOGLIA: TELEMETRIA LIQUIDITÀ DI SESSIONE (Max/Min, Range Pips & Sweep) ── */}
           {sessionTelemetry && (
@@ -2791,6 +2850,141 @@ function CockpitView({
               </div>
             </div>
           )}
+
+          {/* ── VISTA ARCHITETTO: PROCESSO METODOLOGICO A 4 FASI ── */}
+          {cockpitViewMode === "process" && (
+            <>
+              {/* ── VERSIONE MOBILE: STRUTTURA & SCHEMI TRADING COPILOT PRO ── */}
+              <div className="lg:hidden">
+                <CockpitMobileCopilotFlow
+                  analysis={a}
+                  setAnalysis={set}
+                  phase={phase as 1 | 2 | 3 | 4}
+                  onSelectPhase={(step) => {
+                    if (confirmed) {
+                      setReviewPhase(step);
+                    }
+                    if (step <= 3) {
+                      set({ phase: step as 1 | 2 | 3 });
+                    }
+                    if (step === 1) setChartTF(a.mode === "scalp" ? "60" : "240");
+                    else if (step === 2) setChartTF("15");
+                    else if (step === 3 || step === 4) setChartTF(a.execTF === "M5" ? "5" : "1");
+                  }}
+                  tfs={tfs}
+                  isConfirmed={confirmed}
+                  limitReached={limitReached}
+                  tradesToday={_tradesToday}
+                  maxTrades={_maxTrades}
+                  evidenceCount={state.evidence.length}
+                  plansCount={plansCount}
+                  imminentRedNews={imminentRedNews}
+                  localEntry={localEntry}
+                  localStop={localStop}
+                  localRisk={localRisk}
+                  onEntryChange={onEntryChange}
+                  onStopChange={onStopChange}
+                  onRiskChange={onRiskChange}
+                  mgmtChecks={mgmtChecks}
+                  onUpdateMgmtCheck={updateMgmtCheck}
+                  mgmtNote={mgmtNote}
+                  onUpdateMgmtNote={updateMgmtNote}
+                  onSelectMode={handleSelectMode}
+                  onOpenDialog={(d) => setDialog(d)}
+                  onOpenJournal={() => setJournalModalOpen(true)}
+                  onOpenTradeRegister={() => setTradeRegisterModalOpen(true)}
+                  onConfirmOpenPosition={() => {
+                    try {
+                      localStorage.setItem(`tl_cockpit_opened_at_${a.market}`, String(Date.now()));
+                    } catch {
+                      // ignore
+                    }
+                    handleSealTrade("trade");
+                  }}
+                  onResetSetup={() => executeTradeReset(false)}
+                  onInspectSchematic={(s) => setInspectSchematic(s)}
+                  onSwitchToChart={(tf) => {
+                    if (tf) {
+                      if (tf.includes("H1")) setChartTF("60");
+                      else if (tf.includes("H4") || tf.includes("D1")) setChartTF("240");
+                      else if (tf.includes("M15")) setChartTF("15");
+                      else if (tf.includes("M5")) setChartTF("5");
+                      else if (tf.includes("M1")) setChartTF("1");
+                    }
+                    setMobileTab("chart");
+                  }}
+                  onExportMt5Setup={() => {
+                    const dirLabel = a.cycle === "down" || a.cycle === "end_down" ? "SELL" : "BUY";
+                    const summary = `[AUREUS · IL VARCO] ${a.market} ${dirLabel} | Trigger: ${a.trigger || "JTC"} | Entry: ${localEntry || "Mercato"} | SL: ${localStop || "Struttura"} | TP: ${a.target || "Pool Opposto"} | Rischio: €${localRisk || riskStandard}`;
+                    if (navigator.clipboard) {
+                      void navigator.clipboard.writeText(summary);
+                    }
+                    toast({
+                      title: "Setup Copiato per MT5 / cTrader",
+                      description: summary,
+                    });
+                    handleOpenBrokerHub("connect");
+                  }}
+                />
+              </div>
+
+              {/* ── VERSIONE DESKTOP: STEPPER E CARD ESTESE ── */}
+              <div className="hidden lg:block">
+          {/* Stepper Orizzontale Compatto a 4 step (grid-cols-4 gap-1 text-[11px]) */}
+          <div className="ck-stepper-grid" role="tablist" aria-label="Fasi del Protocollo">
+            {[
+              { step: 1, num: "01", name: "Contesto", ready: cockpitContextReady(a) },
+              { step: 2, num: "02", name: "Svolta", ready: Boolean(a.scenario) },
+              { step: 3, num: "03", name: "Sigillo", ready: Boolean(a.trigger && a.itfSchema && a.ltfSchema && a.targetConfirmed) },
+              { step: 4, num: "04", name: "Target", ready: Boolean(confirmed) },
+            ].map(({ step, num, name, ready: isStepReady }) => {
+              const isActive = phase === step;
+              const isDisabled =
+                (step === 2 && !cockpitContextReady(a)) ||
+                (step === 3 && (!cockpitContextReady(a) || !a.scenario)) ||
+                (step === 4 && !confirmed && !a.targetConfirmed);
+
+              return (
+                <button
+                  key={step}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  disabled={isDisabled}
+                  className={`ck-stepper-btn ${isActive ? "is-active" : ""} ${isStepReady ? "is-done" : ""}`}
+                  onClick={() => {
+                    synestheticClick();
+                    if (confirmed) {
+                      setReviewPhase(step as 1 | 2 | 3 | 4);
+                    }
+                    if (step <= 3) {
+                      set({ phase: step as 1 | 2 | 3 });
+                    }
+                    if (step === 1) setChartTF(a.mode === "scalp" ? "60" : "240");
+                    else if (step === 2) setChartTF("15");
+                    else if (step === 3 || step === 4) setChartTF(a.execTF === "M5" ? "5" : "1");
+                  }}
+                >
+                  <span className="font-mono font-bold text-[11px] block">{num}</span>
+                  <span className="text-[10px] tracking-tight block opacity-90">{name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── FINESTRA OPERATIVA CHE TI GUIDA ── */}
+          <CockpitGuidanceBox
+            phase={phase}
+            mode={a.mode}
+            market={a.market}
+            analysis={a}
+            confirmed={confirmed}
+            onOpenExamples={(cat) => {
+              setExampleCategory(cat ?? "ALL");
+              setDialog("examples");
+            }}
+            className="mb-2"
+          />
 
           {/* Sentinella Visiva del Varco (AI Co-Pilot Checklist & Setup) — Accessibile Esclusivamente da ADMIN */}
           {isAdmin && (
@@ -3900,9 +4094,11 @@ function CockpitView({
               </Link>
             </div>
           )}
+              </div>
+            </>
+          )}
 
         </aside>
-        )}
 
         {/* COLONNA 2 (CENTRO/DESTRA): GRAFICO DOMINANTE E ACTION BAR */}
         <section className="ck-chart-area" aria-label={ck("cockpit.ui.31175df55f")}>
@@ -4003,6 +4199,9 @@ function CockpitView({
               onCandlesUpdate={(candles) => {
                 chartCandlesRef.current = candles;
                 const lastBar = candles[candles.length - 1];
+                if (lastBar && typeof lastBar.close === "number") {
+                  setLiveChartPrice(lastBar.close);
+                }
                 if (isAdmin && continuousAutoScan && lastBar && lastLiveBarTimeRef.current !== lastBar.time) {
                   lastLiveBarTimeRef.current = lastBar.time;
                   if (liveDebounceRef.current) clearTimeout(liveDebounceRef.current);

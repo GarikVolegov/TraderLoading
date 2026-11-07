@@ -86,12 +86,12 @@ export function CommunitySettingsModal({
           </button>
         </div>
 
-        <div className="flex items-center gap-1 px-3 py-2 border-b border-border shrink-0">
+        <div className="mobile-compact-bar flex items-center gap-1 px-3 py-2 border-b border-border shrink-0 overflow-x-auto scrollbar-none">
           {tabs.filter((tb) => tb.show).map((tb) => (
             <button
               key={tb.id}
               onClick={() => setTab(tb.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${tab === tb.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${tab === tb.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
             >
               <tb.icon className="w-3.5 h-3.5" />
               {tb.label}

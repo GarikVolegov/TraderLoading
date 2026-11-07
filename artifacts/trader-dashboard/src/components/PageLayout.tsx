@@ -32,8 +32,10 @@ export function PageLayout({ children, fullWidth, quiet = false, className = "" 
 
   return (
     <div
-      className={`app-page ${className} relative min-h-dvh overflow-x-clip bg-background pb-[var(--bottom-nav-clearance)] pl-[var(--app-inset-left)] ${
-        quiet ? "lg:h-[100dvh] lg:overflow-hidden" : ""
+      className={`app-page ${className} relative bg-background pl-[var(--app-inset-left)] ${
+        quiet
+          ? "min-h-dvh lg:h-dvh overflow-x-clip lg:overflow-hidden pb-[var(--bottom-nav-clearance)] lg:pb-0"
+          : "min-h-dvh overflow-x-clip pb-[var(--bottom-nav-clearance)]"
       }`}
     >
       {/* ── Fixed background layer ─────────────────────────────────────── */}
@@ -61,7 +63,7 @@ export function PageLayout({ children, fullWidth, quiet = false, className = "" 
         className={`app-page-content relative z-10 ${
           fullWidth ? "w-full" : "mx-auto max-w-[1840px]"
         } ${
-          quiet ? "flex flex-col lg:h-full lg:overflow-hidden" : ""
+          quiet ? "flex flex-col min-h-0 lg:h-full lg:overflow-hidden" : ""
         } space-y-2.5 px-3 pt-[calc(var(--safe-top)+3.85rem)] sm:space-y-3 sm:px-5 lg:px-5 lg:pt-[calc(var(--safe-top)+3.65rem)] xl:px-6`}
         variants={skipInnerMotion ? { visible: { opacity: 1 } } : pageVariants}
         initial={skipInnerMotion ? false : "hidden"}

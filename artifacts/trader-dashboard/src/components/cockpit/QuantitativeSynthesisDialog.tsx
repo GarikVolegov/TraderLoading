@@ -381,7 +381,7 @@ export function QuantitativeSynthesisDialog({
           </div>
 
           {/* Metadati di Rilevazione Prezzo (Distanziati e non incollati) */}
-          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[#C5A059]/15 text-[10px] font-mono text-zinc-400">
+          <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-[#C5A059]/15 text-[10px] font-mono text-zinc-400">
             <div className="flex items-center gap-1.5">
               <span className="text-zinc-500">Inizio:</span>
               <span className="text-zinc-300 font-medium whitespace-nowrap">{startDate}</span>
@@ -444,7 +444,7 @@ export function QuantitativeSynthesisDialog({
             </div>
 
             {/* Griglia Comparativa Multi-Timeframe ADR */}
-            <div className="grid grid-cols-5 gap-1.5 mt-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 mt-2.5">
               {[5, 22, 66, 132, 252].map((days, i) => {
                 const r = ranges.find((row) => row.days === days);
                 const label = ["1W", "1M", "3M", "6M", "1Y"][i];
@@ -515,7 +515,7 @@ export function QuantitativeSynthesisDialog({
                 </div>
 
                 {/* 3 Card Istituzionali */}
-                <div className="grid grid-cols-3 gap-2 pt-1 text-center font-mono">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-center font-mono">
                   {/* Non-Commercial (Fondi Speculativi) */}
                   <div className="p-2 rounded-lg bg-black/40 border border-[#C5A059]/20 flex flex-col justify-between">
                     <div>

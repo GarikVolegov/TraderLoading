@@ -1230,7 +1230,7 @@ export function VoiceChannelView({
 
         {/* Cassetto Laterale Atti e File del Canale */}
         {showFilesDrawer && (
-          <div className="w-80 border-l border-[#C5A059]/25 bg-[#0A0B10] flex flex-col shrink-0">
+          <div className="fixed inset-y-0 right-0 z-50 w-[min(88vw,320px)] lg:static lg:w-80 border-l border-[#C5A059]/25 bg-[#0A0B10] flex flex-col shrink-0 shadow-2xl lg:shadow-none">
             <div className="flex items-center justify-between p-3 border-b border-[#C5A059]/20 bg-[#0D0F14]">
               <div className="flex items-center gap-2">
                 <FolderArchive className="w-4 h-4 text-[#E8C56A]" />
@@ -1452,7 +1452,7 @@ export function VoiceChannelView({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setShowRecordingModal(false)}
                 className="px-4 py-2 rounded-xl border border-slate-700 hover:border-slate-500 font-mono text-xs text-slate-300"

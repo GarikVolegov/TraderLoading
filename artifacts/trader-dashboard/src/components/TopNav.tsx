@@ -132,6 +132,8 @@ export function TopNav() {
             <div className="flex lg:hidden items-center gap-1 sm:gap-1.5 min-w-0">
               <button
                 type="button"
+                data-testid="market-globe-trigger"
+                aria-label="Sfera dei Mercati 3D"
                 onClick={() => {
                   triggerHaptic("selection");
                   openMarketGlobe();

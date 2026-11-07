@@ -107,7 +107,7 @@ export function BattleInviteModal({
     >
       <div className="p-5 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-white/10 pb-3">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 rounded-md bg-[#C5A059]/20 border border-[#C5A059]/40 flex items-center justify-center text-[#D4AF37]">
               <UserPlus size={13} />
@@ -122,7 +122,7 @@ export function BattleInviteModal({
             </div>
           </div>
 
-          <div className="flex rounded-lg bg-[#14151C] p-0.5 border border-white/10 font-mono text-[10.5px]">
+          <div className="mobile-compact-bar flex rounded-lg bg-[#14151C] p-0.5 border border-white/10 font-mono text-[10.5px]">
             <button
               type="button"
               onClick={() => setActiveTab("link")}

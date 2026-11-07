@@ -172,8 +172,8 @@ export function CockpitExamplesDialog({ initialCategory, currentMarket }: Cockpi
       </div>
 
       {/* Category Pills & Search */}
-      <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center justify-between">
+        <div className="mobile-compact-bar flex flex-wrap sm:flex-nowrap items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
           {[
             { id: "ALL", label: "Tutti (5)" },
             { id: "swept", label: "Inversione HTF (Sweep)" },
@@ -211,7 +211,7 @@ export function CockpitExamplesDialog({ initialCategory, currentMarket }: Cockpi
       {/* Main Split View: Left List + Right Detail */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 min-h-[380px]">
         {/* Left: Setup List */}
-        <div className="md:col-span-5 space-y-2 max-h-[460px] overflow-y-auto pr-1">
+        <div className="md:col-span-5 space-y-2 max-h-[180px] md:max-h-[460px] overflow-y-auto pr-1">
           {filteredExamples.map((ex) => {
             const isSelected = ex.id === activeExample.id;
             return (

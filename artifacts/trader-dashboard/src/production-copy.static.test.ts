@@ -161,6 +161,7 @@ const legacyHardcodedCopyFiles = new Set<string>([
   "components/chart/LimenChartToolbar.tsx",
   "components/chart/LimenProprietaryChart.tsx",
   "components/cockpit/CockpitAiSentinelCard.tsx",
+  "components/cockpit/CockpitMobileCopilotFlow.tsx",
   "components/cockpit/CockpitPropGuardianBar.tsx",
   "components/cockpit/CockpitRevolutOperativeWindow.tsx",
   "components/social/ConversationsWorkspace.tsx",

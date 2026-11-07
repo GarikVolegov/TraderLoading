@@ -494,6 +494,47 @@
   background: #08090d;
 }
 
+@media (max-width: 640px) {
+  .btm-dialog-v2 {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    height: auto !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+
+  .btm-dialog-v2-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .btm-dialog-v2-sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: none;
+    border-bottom: 1px solid rgba(197, 160, 89, 0.14);
+    padding: 8px;
+    gap: 6px;
+    scrollbar-width: none;
+  }
+
+  .btm-dialog-v2-navbtn,
+  .btm-dialog-v2-nav-item {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .btm-dialog-v2-main {
+    padding: 12px 14px;
+  }
+
+  .btm-v2-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
 .btm-v2-section-head {
   font-family: var(--font-mono, monospace);
   font-size: 10px;

@@ -1431,9 +1431,9 @@ export default function Milestones() {
 
   return (
     <PageLayout quiet>
-      <div className="flex flex-col lg:h-[calc(100vh-100px)] lg:min-h-0 lg:overflow-hidden pt-1">
+      <div className="flex flex-col min-h-0 lg:h-[calc(100vh-100px)] lg:min-h-0 lg:overflow-hidden pt-1">
         {/* Mobile Hub Navigation Strip (< lg) */}
-        <div className="flex lg:hidden items-center justify-between gap-1 p-1 rounded-xl border border-[#C5A059]/25 bg-[#0B0D13] font-mono text-[10.5px] mb-2.5 shrink-0">
+        <div className="mobile-compact-bar flex lg:hidden items-center justify-between gap-1 p-1 rounded-xl border border-[#C5A059]/25 bg-[#0B0D13] font-mono text-[10.5px] mb-2.5 shrink-0">
           <button
             type="button"
             onClick={() => setMobileMilestoneTab("grades")}
@@ -1585,6 +1585,7 @@ export default function Milestones() {
               {/* Direct Download/Print Certificate for Current Grade */}
               <button
                 type="button"
+                data-testid="open-certificate-modal-btn"
                 onClick={() => openCertModal(buildCurrentGradeCert())}
                 className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm font-mono text-[9.5px] font-bold uppercase tracking-wider border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary transition-all shadow-sm whitespace-nowrap"
               >

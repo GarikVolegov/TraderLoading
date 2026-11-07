@@ -289,6 +289,7 @@ export function OfflineStorageModal({ isOpen, onClose, engine }: OfflineStorageM
           </div>
           <button
             type="button"
+            data-touch-size="custom"
             onClick={onClose}
             className="p-1.5 rounded text-[var(--btm-mut)] hover:text-white hover:bg-white/5 transition-colors"
             title="Chiudi (Esc)"
@@ -436,7 +437,7 @@ export function OfflineStorageModal({ isOpen, onClose, engine }: OfflineStorageM
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <div className="flex items-center gap-2">
                 <input
                   type="file"
@@ -563,8 +564,9 @@ export function OfflineStorageModal({ isOpen, onClose, engine }: OfflineStorageM
                       <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
                         <button
                           type="button"
+                          data-touch-size="custom"
                           onClick={() => handleLoadSession(sess)}
-                          className="h-7 px-2.5 rounded bg-[#C5A059]/20 hover:bg-[#C5A059]/35 border border-[#C5A059]/50 text-[#E8C56A] text-[11px] font-mono font-medium transition-colors flex items-center gap-1"
+                          className="h-7 px-2.5 rounded bg-[#C5A059]/20 hover:bg-[#C5A059]/35 border border-[#C5A059]/50 text-[#E8C56A] text-[11px] font-mono font-medium transition-colors flex items-center gap-1 whitespace-nowrap"
                           title="Carica questo pacchetto nel terminale di replay"
                         >
                           <Play size={11} />
@@ -573,6 +575,7 @@ export function OfflineStorageModal({ isOpen, onClose, engine }: OfflineStorageM
 
                         <button
                           type="button"
+                          data-touch-size="custom"
                           onClick={() => handleExport(sess)}
                           className="h-7 w-7 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-[var(--btm-mut)] hover:text-white transition-colors flex items-center justify-center"
                           title="Esporta JSON"
@@ -583,6 +586,7 @@ export function OfflineStorageModal({ isOpen, onClose, engine }: OfflineStorageM
 
                         <button
                           type="button"
+                          data-touch-size="custom"
                           onClick={() => handleDelete(sess.id, sess.name)}
                           className="h-7 w-7 rounded bg-red-950/20 hover:bg-red-950/60 border border-red-500/30 text-red-400 hover:text-red-300 transition-colors flex items-center justify-center"
                           title="Elimina dal buffer locale"
