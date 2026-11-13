@@ -672,7 +672,7 @@ function ProductPreview({
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: `hsl(${TONE.red})` }} />
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: `hsl(${TONE.amber})` }} />
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: `hsl(${TONE.green})` }} />
-          <span className="ml-2 font-mono text-[11px] text-muted-foreground/70">{"app.traderloading.com"}</span>
+          <span className="ml-2 font-mono text-[11px] text-muted-foreground/70">{"app.aureus.trading"}</span>
           <span className="ml-auto inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.1em] text-primary">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
             {"Live"}
@@ -1449,7 +1449,7 @@ export default function LandingPage() {
               <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.1em] text-foreground">{t(col.titleKey)}</p>
               <div className="flex flex-col gap-2.5">
                 {col.items.map((item) => (
-                  <Link key={item.href} href={localizedHref(item.href, language)} className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground">
+                  <Link key={item.labelKey} href={localizedHref(item.href, language)} className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground">
                     {t(item.labelKey)}
                   </Link>
                 ))}
