@@ -88,6 +88,14 @@ const DEFAULT_ORDER = [
 const STORAGE_KEY      = "tl_dashboard_order_command_center_v1";
 const VISIBILITY_KEY   = "tl_dashboard_visibility_command_center_v1";
 
+type MobileDashboardTab = "ops" | "market" | "routine";
+
+const MOBILE_TAB_GROUPS: { id: MobileDashboardTab; step: string; labelKey: string; ids: string[] }[] = [
+  { id: "ops",     step: "01", labelKey: "mobile.dash.ops",     ids: ["tradingview-watchlist", "account", "lot"] },
+  { id: "market",  step: "02", labelKey: "mobile.dash.market",  ids: ["volatility", "sentiment", "cot", "calendar"] },
+  { id: "routine", step: "03", labelKey: "mobile.dash.routine", ids: ["routine", "missions", "checklist", "journal"] },
+];
+
 function loadOrder(): string[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -381,9 +389,20 @@ export default function Dashboard() {
 
   // In edit mode: show all widgets (visible + hidden as ghost).
   // In normal mode: only show visible widgets.
-  const displayOrder = isEditing
+  const visibleOrder = isEditing
     ? order
     : order.filter((id) => !hidden[id]);
+
+  const [mobileTab, setMobileTab] = useState<MobileDashboardTab>("ops");
+
+  const displayOrder = useMemo(() => {
+    if (cols > 1 || isEditing) return visibleOrder;
+    const group = MOBILE_TAB_GROUPS.find((g) => g.id === mobileTab);
+    if (!group) return visibleOrder;
+    const allowed = new Set(group.ids);
+    const filtered = visibleOrder.filter((id) => allowed.has(id));
+    return filtered.length > 0 ? filtered : visibleOrder.filter((id) => id !== "quote");
+  }, [cols, isEditing, visibleOrder, mobileTab]);
 
   // Layout: griglia responsiva uniforme in entrambe le viste. La masonry via CSS
   // `columns` si rompe su Safari/WebKit (altezze mal calcolate, `break-inside` ignorato →
@@ -456,9 +475,67 @@ export default function Dashboard() {
       />
 
       {/* Clock — pinned full-width banner (kit-faithful), outside the reorderable set */}
-      <div className="mb-4">
+      <div className="mb-2.5 sm:mb-4">
         <ClockWidget />
       </div>
+
+      {/* Mobile branded cockpit step-tabs — terminal style, prevents infinite vertical scroll on <640px */}
+      {!isEditing && cols === 1 && (
+        <div className="mb-2.5 space-y-1.5 sm:hidden">
+          <div
+            role="tablist"
+            aria-label={t("mobile.dash.tabs_aria")}
+            className="grid grid-cols-3 gap-1 rounded-md border border-border/50 bg-card/85 p-1 backdrop-blur-md"
+          >
+            {MOBILE_TAB_GROUPS.map((tab) => {
+              const active = mobileTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setMobileTab(tab.id)}
+                  className={`relative flex flex-col items-start rounded-[4px] border px-2 py-1.5 text-left transition-colors ${
+                    active
+                      ? "border-primary/40 bg-primary/10 text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {active && (
+                    <span className="absolute inset-x-1.5 top-0 h-[2px] rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.7)]" />
+                  )}
+                  <span className={`font-mono text-[9px] font-bold tracking-[0.14em] ${active ? "text-primary" : "text-muted-foreground/60"}`}>
+                    {tab.step}
+                  </span>
+                  <span className="w-full truncate font-mono text-[10px] font-bold uppercase tracking-[0.08em]">
+                    {t(tab.labelKey)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => navigate("/backtest")}
+              className="flex items-center justify-between rounded-md border border-border/50 bg-card/75 px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-foreground transition-colors hover:border-primary/40"
+            >
+              <span className="truncate">{t("nav.backtest")}</span>
+              <ArrowUpRight className="h-3 w-3 shrink-0 text-primary" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/journal")}
+              className="flex items-center justify-between rounded-md border border-border/50 bg-card/75 px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-foreground transition-colors hover:border-primary/40"
+            >
+              <span className="truncate">{t("nav.journal")}</span>
+              <ArrowUpRight className="h-3 w-3 shrink-0 text-primary" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit-mode banner */}
       <AnimatePresence>
@@ -497,7 +574,7 @@ export default function Dashboard() {
           ) : (
             <div className="flex items-start gap-4">
               {distributeColumns(displayOrder, cols).map((colIds, ci) => (
-                <div key={ci} className="flex-1 min-w-0 space-y-4">
+                <div key={ci} className="flex-1 min-w-0 space-y-2.5 sm:space-y-4">
                   {colIds.map((id) => renderCell(id, displayOrder.indexOf(id)))}
                 </div>
               ))}

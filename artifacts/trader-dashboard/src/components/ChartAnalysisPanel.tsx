@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { uiText } from "@/contexts/LanguageContext";
 import type {
   ChartAnalysisState,
@@ -14,6 +15,7 @@ interface ChartAnalysisPanelProps {
   onVolumeProfileChange: (settings: VolumeProfileSettings) => void;
   onSessionChange: (id: SessionBoxId, settings: SessionBoxSettings) => void;
   onDefaultDrawingStyleChange: (style: ChartAnalysisState["defaultDrawingStyle"]) => void;
+  onClose?: () => void;
 }
 
 function ToggleRow({
@@ -98,6 +100,7 @@ export function ChartAnalysisPanel({
   onVolumeProfileChange,
   onSessionChange,
   onDefaultDrawingStyleChange,
+  onClose,
 }: ChartAnalysisPanelProps) {
   const { vwap, volumeProfile } = analysisState.indicators;
   const style = analysisState.defaultDrawingStyle;
@@ -107,13 +110,23 @@ export function ChartAnalysisPanel({
   return (
     <div
       data-testid="chart-analysis-panel"
-      className="absolute right-2 top-2 z-20 w-[min(310px,calc(100%-72px))] rounded-lg border border-border/50 bg-background/90 p-3 shadow-xl backdrop-blur-md"
+      className="fixed inset-x-2 bottom-2 z-[70] max-h-[68dvh] overflow-y-auto rounded-xl border border-border/60 bg-background/95 p-3 shadow-2xl backdrop-blur-xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-2 sm:top-2 sm:z-20 sm:max-h-[calc(100%-16px)] sm:w-[min(310px,calc(100%-72px))] sm:rounded-lg"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h4 className="text-sm font-bold leading-tight">{uiText("auto.ui.aa653bb2bd")}</h4>
+          <h4 className="font-mono text-xs font-bold uppercase tracking-wider leading-tight sm:text-sm sm:normal-case sm:tracking-normal">{uiText("auto.ui.aa653bb2bd")}</h4>
           {estimatedVolume && <p className="text-[10px] text-orange-300">{uiText("auto.ui.a6652efb4f")}</p>}
         </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={uiText("mobile.chart.panel_close")}
+            className="sm:hidden flex h-7 w-7 items-center justify-center rounded-md border border-border/50 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       <div data-testid="analysis-state-strip" className="mb-3 grid grid-cols-3 gap-1 rounded-md border border-border/40 bg-card/55 p-1">

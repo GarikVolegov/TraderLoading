@@ -47,7 +47,7 @@ try {
     headers: { "content-type": "application/json", "x-test-user": "user-one" },
     body: JSON.stringify({
       label: "Demo terminal",
-      brokerName: "TraderLoading",
+      brokerName: "AUREUS",
       kind: "demo",
       accountId: "DEMO-1",
       environment: "demo",

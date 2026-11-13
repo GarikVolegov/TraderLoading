@@ -85,7 +85,7 @@ async function startBillingServer(options = {}) {
       manualOverride: false,
       stripeCustomerId: "cus_1234567890",
       stripeSubscriptionId: "sub_1234567890",
-      currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       cancelAtPeriodEnd: false,
     }),
   });
@@ -179,7 +179,7 @@ async function startBillingServer(options = {}) {
       status: "active",
       stripeCustomerId: "cus_123",
       stripeSubscriptionId: "sub_123",
-      currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       cancelAtPeriodEnd: false,
     }),
     cancelSubscription: async (userId: string, subscriptionId: string) => {
@@ -189,7 +189,7 @@ async function startBillingServer(options = {}) {
         status: "active",
         stripeCustomerId: "cus_123",
         stripeSubscriptionId: "sub_123",
-        currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         cancelAtPeriodEnd: true,
       };
     },
@@ -200,7 +200,7 @@ async function startBillingServer(options = {}) {
         status: "active",
         stripeCustomerId: "cus_123",
         stripeSubscriptionId: "sub_123",
-        currentPeriodEnd: new Date("2026-07-10T00:00:00.000Z"),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         cancelAtPeriodEnd: false,
       };
     },

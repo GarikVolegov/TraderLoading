@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { listSettingsFeatureFiles } from "./pages/settingsFeatureSource";
 
-const officialName = "TraderLoading";
+const officialName = "AUREUS";
 const forbiddenNames = /TraderLOADING|TRADERLOADING/;
 const splitAllCapsBrand = /TRADER[\s\S]{0,120}LOADING/;
 
@@ -27,8 +27,8 @@ for (const file of files) {
 }
 
 const index = fs.readFileSync("index.html", "utf8");
-assert.match(index, /<title>TraderLoading[^<]*<\/title>/);
-assert.match(index, /apple-mobile-web-app-title" content="TraderLoading"/);
+assert.match(index, /<title>AUREUS[^<]*<\/title>/);
+assert.match(index, /apple-mobile-web-app-title" content="AUREUS"/);
 
 const manifest = JSON.parse(fs.readFileSync("public/manifest.json", "utf8"));
 assert.equal(manifest.name, officialName);

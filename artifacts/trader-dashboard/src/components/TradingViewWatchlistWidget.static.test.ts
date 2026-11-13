@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 
 const source = readFileSync(new URL("./TradingViewWatchlistWidget.tsx", import.meta.url), "utf8");
 
-// Live mini-embed retained, other embed kinds still excluded
-assert.match(source, /embed-widget-mini-symbol-overview\.js|TRADING_VIEW_MINI_SYMBOL_SCRIPT/);
+// Custom sparkline + WebSocket watchlist retained, third-party quote embeds excluded
+assert.match(source, /\/api\/tools\/watchlist/);
+assert.match(source, /Sparkline/);
 assert.doesNotMatch(source, /embed-widget-market-quotes\.js/);
 assert.doesNotMatch(source, /embed-widget-single-quote\.js/);
 

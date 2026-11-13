@@ -132,13 +132,13 @@ export function ClockWidget() {
     : "border-success/30 bg-success/10";
 
   return (
-    <Card className="relative h-16 overflow-hidden rounded-[0.625rem]">
+    <Card className="relative h-12 sm:h-16 overflow-hidden rounded-[0.625rem]">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-primary shadow-[0_0_16px_hsl(var(--primary)/0.8)]" />
 
       <CardContent className="relative z-10 h-full p-0">
-        <div className="absolute inset-x-3 top-1/2 grid -translate-y-1/2 grid-cols-[minmax(9rem,1fr)_1px_minmax(3.4rem,4.2rem)_minmax(6.6rem,0.72fr)] items-center lg:grid-cols-[minmax(9rem,auto)_1fr_1px_minmax(3.4rem,4.2rem)_minmax(6.6rem,0.72fr)]">
-          <div className="min-w-0 pl-2 pr-5 tabular-nums">
-            <div className="truncate text-left font-sans text-[1.84rem] font-bold leading-none tracking-normal text-foreground drop-shadow-[0_0_10px_rgba(255,255,255,0.12)] sm:text-[2rem]">
+        <div className="absolute inset-x-3 top-1/2 grid -translate-y-1/2 grid-cols-[minmax(7.5rem,1fr)_1px_minmax(3rem,3.8rem)_minmax(5.8rem,0.72fr)] items-center sm:grid-cols-[minmax(9rem,1fr)_1px_minmax(3.4rem,4.2rem)_minmax(6.6rem,0.72fr)] lg:grid-cols-[minmax(9rem,auto)_1fr_1px_minmax(3.4rem,4.2rem)_minmax(6.6rem,0.72fr)]">
+          <div className="min-w-0 pl-1.5 pr-3 sm:pl-2 sm:pr-5 tabular-nums">
+            <div className="truncate text-left font-sans text-[1.45rem] font-bold leading-none tracking-normal text-foreground drop-shadow-[0_0_10px_rgba(255,255,255,0.12)] sm:text-[2rem]">
               {format(time, "HH:mm:ss")}
             </div>
           </div>

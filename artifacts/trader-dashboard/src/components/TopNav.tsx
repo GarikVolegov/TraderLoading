@@ -27,7 +27,7 @@ export function TopNav() {
       className="fixed top-0 left-0 right-0 z-40 lg:left-20"
     >
       <div className="bg-background/80 backdrop-blur-2xl border-b border-border/40 shadow-[0_1px_0_0_rgba(255,255,255,0.03)]">
-          <div className="mx-auto flex h-14 max-w-[1760px] items-center gap-2 px-3 sm:gap-3 sm:px-5 lg:px-5 xl:px-7">
+          <div className="mx-auto flex h-12 sm:h-14 max-w-[1760px] items-center gap-2 px-2.5 sm:gap-3 sm:px-5 lg:px-5 xl:px-7">
 
           {/* Brand — mobile/tablet only */}
           <motion.div
@@ -37,10 +37,8 @@ export function TopNav() {
             className="lg:hidden shrink-0"
           >
             <Link href="/">
-              {/* Hard gradient stop at 46% = the "Trader|Loading" split in the mono wordmark:
-                  "Trader" stays foreground, "Loading" is the brand jade (--primary). */}
-              <span className="text-sm font-bold font-mono tracking-wide whitespace-nowrap bg-gradient-to-r from-foreground from-46% to-primary to-46% bg-clip-text text-transparent cursor-pointer">
-                TraderLoading
+              <span className="text-sm font-bold font-mono uppercase tracking-[0.14em] whitespace-nowrap bg-gradient-to-r from-foreground from-46% to-primary to-46% bg-clip-text text-transparent cursor-pointer">
+                AUREUS
               </span>
             </Link>
           </motion.div>
@@ -71,7 +69,7 @@ export function TopNav() {
               aria-label={isPlaying ? "Disattiva audio focus" : "Attiva audio focus"}
               whileTap={{ scale: 0.88 }}
               onClick={() => setMode(isPlaying ? "off" : "deepfocus")}
-              className={`flex h-11 w-11 items-center justify-center rounded-lg border transition-colors ${
+              className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg border transition-colors ${
                 isPlaying
                   ? "border-primary/30 bg-primary/15 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.15)]"
                   : "border-border/55 bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-primary"
@@ -91,7 +89,7 @@ export function TopNav() {
                 href="/settings"
                 aria-label={t("profile.open_settings")}
                 title={t("profile.settings")}
-                className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-primary/45 bg-card/60 shadow-[0_0_12px_hsl(var(--primary)/0.1)] transition-colors hover:border-primary hover:bg-primary/10"
+                className="relative flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center overflow-hidden rounded-lg border border-primary/45 bg-card/60 shadow-[0_0_12px_hsl(var(--primary)/0.1)] transition-colors hover:border-primary hover:bg-primary/10"
               >
                 <img
                   src={avatarSrc}

@@ -167,6 +167,7 @@ function isAllowedVisibleLiteral(value: string): boolean {
     normalized === ""
     || normalized === "TraderLoadings"
     || normalized === "TraderLoading"
+    || normalized === "AUREUS"
     || technicalTerms.has(normalized)
     || normalized.includes("terminal64.exe")
   );

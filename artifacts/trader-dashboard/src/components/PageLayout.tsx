@@ -6,6 +6,8 @@ interface PageLayoutProps {
   children: ReactNode;
   /** Optional: removes the max-width constraint for full-bleed pages */
   fullWidth?: boolean;
+  /** Optional: removes mobile padding/clearance for edge-to-edge fullscreen views */
+  flushMobile?: boolean;
 }
 
 const pageVariants = {
@@ -20,11 +22,17 @@ const pageVariants = {
   },
 };
 
-export function PageLayout({ children, fullWidth }: PageLayoutProps) {
+export function PageLayout({ children, fullWidth, flushMobile }: PageLayoutProps) {
   const { activeBackgroundUrl, darkness } = useBackground();
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-background pb-[var(--bottom-nav-clearance)] pl-[var(--app-inset-left)]">
+    <div
+      className={`relative min-h-screen overflow-x-hidden bg-background pl-[var(--app-inset-left)] ${
+        flushMobile
+          ? "pb-0 sm:pb-[var(--bottom-nav-clearance)]"
+          : "pb-[var(--bottom-nav-clearance)]"
+      }`}
+    >
       {/* ── Fixed background layer ─────────────────────────────────────── */}
       <div className="fixed inset-0 z-0 pointer-events-none select-none">
         {activeBackgroundUrl ? (
@@ -53,7 +61,11 @@ export function PageLayout({ children, fullWidth }: PageLayoutProps) {
       <motion.div
         className={`relative z-10 ${
           fullWidth ? "w-full" : "mx-auto max-w-[1760px]"
-        } space-y-3 px-3 pt-[3.85rem] sm:space-y-4 sm:px-5 lg:px-5 lg:pt-[3.65rem] xl:px-7`}
+        } ${
+          flushMobile
+            ? "px-0 pt-0 sm:space-y-4 sm:px-5 sm:pt-[3.85rem] lg:px-5 lg:pt-[3.65rem] xl:px-7"
+            : "space-y-2.5 px-2.5 pt-[3.35rem] sm:space-y-4 sm:px-5 sm:pt-[3.85rem] lg:px-5 lg:pt-[3.65rem] xl:px-7"
+        }`}
         variants={pageVariants}
         initial="hidden"
         animate="visible"

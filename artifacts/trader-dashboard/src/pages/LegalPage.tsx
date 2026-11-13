@@ -33,7 +33,7 @@ function PrivacyContent() {
     <>
       <LegalBlock title={uiText("auto.ui.d030bfc02f")}>
         <p>
-          TraderLoading tratta dati di account, email, profilo, preferenze,
+          AUREUS tratta dati di account, email, profilo, preferenze,
           sessioni di accesso, notifiche push, diario di trading, immagini
           caricate volontariamente, routine, backtest, dati community e
           connessioni broker configurate dall'utente.
@@ -91,7 +91,7 @@ function TermsContent() {
     <>
       <LegalBlock title={uiText("auto.ui.8133c4c74f")}>
         <p>
-          TraderLoading e uno strumento di produttivita per trader: journal,
+          AUREUS e uno strumento di produttivita per trader: journal,
           routine, backtest, news macro, notifiche operative e gestione della
           disciplina. Non fornisce consulenza finanziaria, segnali di trading o
           raccomandazioni di investimento.
@@ -143,7 +143,7 @@ export default function LegalPage({ kind }: LegalPageProps) {
           className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
         >
           <LockKeyhole className="h-4 w-4" aria-hidden="true" />
-          TraderLoading
+          AUREUS
         </Link>
 
         <header className="space-y-3 rounded-lg border border-primary/25 bg-primary/5 p-6">
@@ -153,7 +153,7 @@ export default function LegalPage({ kind }: LegalPageProps) {
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
-                TraderLoading
+                AUREUS
               </p>
               <h1 className="font-mono text-3xl font-extrabold">
                 {isPrivacy ? "Privacy Policy" : "Termini di Servizio"}

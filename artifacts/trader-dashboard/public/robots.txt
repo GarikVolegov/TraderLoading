@@ -1,4 +1,4 @@
-# TraderLoading — https://traderloading.com
+# AUREUS — https://traderloading.com
 # Public surface: localized landing (/, /it, /es, /fr, /de) + dedicated SEO
 # pages (e.g. /trading-journal, /backtesting, /macro-news, /risk-management,
 # /pricing, /guide, /about, /contact). Authenticated app routes render no
@@ -26,7 +26,7 @@ Disallow: /pro
 Disallow: /admin
 Disallow: /api/
 
-# AI / generative-engine crawlers — explicitly welcomed so TraderLoading can be
+# AI / generative-engine crawlers — explicitly welcomed so AUREUS can be
 # cited in AI answers (ChatGPT, Perplexity, Claude, Google AI, Bing/Copilot).
 User-agent: GPTBot
 Allow: /

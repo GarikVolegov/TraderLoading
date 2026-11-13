@@ -23,16 +23,19 @@ export function LotCalculatorWidget() {
   return (
     <Card className="overflow-hidden flex flex-col">
       <WidgetHeader
-        icon={<Calculator className="w-4 h-4" />}
+        icon={<Calculator className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
         iconTone="primary"
         title={uiText("lot_calculator.title")}
         subtitle={uiText("lot_calculator.subtitle")}
+        infoText={`${uiText("lot_calculator.how_title")} ${uiText("lot_calculator.how_desc")}`}
       />
 
-      <CardContent className="flex flex-col gap-4">
-        <div className="space-y-4">
+      <CardContent className="flex flex-col gap-2.5 p-3 pt-0 sm:gap-4 sm:p-6 sm:pt-0">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-1 sm:gap-4">
           <div>
-            <label className="text-xs text-muted-foreground mb-2 block">{uiText("auto.ui.e46122f621")}</label>
+            <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs sm:normal-case sm:tracking-normal">
+              {uiText("auto.ui.e46122f621")}
+            </label>
             <Input
               type="number"
               value={riskEuro}
@@ -40,10 +43,13 @@ export function LotCalculatorWidget() {
               placeholder={uiText("auto.ui.a5a9b84cff")}
               step="0.01"
               min="0"
+              className="h-8 text-xs sm:h-9 sm:text-sm"
             />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-2 block">{uiText("auto.ui.88cd2d84dd")}</label>
+            <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs sm:normal-case sm:tracking-normal">
+              {uiText("auto.ui.88cd2d84dd")}
+            </label>
             <Input
               type="number"
               value={stopLossPips}
@@ -51,6 +57,7 @@ export function LotCalculatorWidget() {
               placeholder={uiText("auto.ui.6b16da6cad")}
               step="1"
               min="0"
+              className="h-8 text-xs sm:h-9 sm:text-sm"
             />
           </div>
         </div>
@@ -67,17 +74,11 @@ export function LotCalculatorWidget() {
               size="lg"
               className="text-center border-primary/30 bg-primary/10"
             />
-            <p className="text-xs text-muted-foreground mt-2 text-center">
-              Formula: ({Number(riskEuro).toFixed(2)} € / {Number(stopLossPips).toFixed(0)} pips) / {lotDivisor}
+            <p className="mt-1.5 text-center font-mono text-[10px] text-muted-foreground sm:mt-2 sm:text-xs">
+              ({Number(riskEuro).toFixed(2)} € / {Number(stopLossPips).toFixed(0)} pips) / {lotDivisor}
             </p>
           </motion.div>
         )}
-
-        <div className="rounded-xl bg-card border border-border p-4">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            <strong>{uiText("lot_calculator.how_title")}</strong> {uiText("lot_calculator.how_desc")}
-          </p>
-        </div>
       </CardContent>
     </Card>
   );

@@ -332,9 +332,9 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
             accepted: false,
             reason:
               profile.route === "local_companion"
-                ? "Il TraderLoading Connector non e' sincronizzato. Apri MetaTrader e aggiorna il conto."
+                ? "Il AUREUS Connector non e' sincronizzato. Apri MetaTrader e aggiorna il conto."
                 : profile.route === "smartlink_mt5"
-                  ? "TraderLoading SmartLink non e' sincronizzato. Apri MetaTrader 5 e aggiorna il conto."
+                  ? "AUREUS SmartLink non e' sincronizzato. Apri MetaTrader 5 e aggiorna il conto."
                 : "Broker profile is not connected or snapshot is not synchronized",
           };
           await auditLog.append({ profileId: id, request: normalized.order, result });
@@ -370,9 +370,9 @@ export function createBrokerHubRuntime(options: BrokerHubRuntimeOptions = {}): B
             accepted: false,
             reason:
               profile.route === "local_companion"
-                ? "Il TraderLoading Connector non e' sincronizzato. Apri MetaTrader e aggiorna il conto."
+                ? "Il AUREUS Connector non e' sincronizzato. Apri MetaTrader e aggiorna il conto."
                 : profile.route === "smartlink_mt5"
-                  ? "TraderLoading SmartLink non e' sincronizzato. Apri MetaTrader 5 e aggiorna il conto."
+                  ? "AUREUS SmartLink non e' sincronizzato. Apri MetaTrader 5 e aggiorna il conto."
                 : "Broker profile is not connected or snapshot is not synchronized",
           };
           await auditLog.append({ profileId: id, request, result });

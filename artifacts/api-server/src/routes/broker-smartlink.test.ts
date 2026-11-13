@@ -136,7 +136,7 @@ try {
   assert.equal(started.status.connected, false);
   assert.equal(started.status.terminalDetected, false);
   assert.equal(started.snapshot.status, "connecting");
-  assert.equal(started.snapshot.error, "In attesa di TraderLoading SmartLink.");
+  assert.equal(started.snapshot.error, "In attesa di AUREUS SmartLink.");
   assert.equal(startedProfileId, started.profile.id);
   assert.notEqual(issuedSmartLinkToken, "smartlink");
   assert.equal(issuedSmartLinkToken.length >= 32, true);

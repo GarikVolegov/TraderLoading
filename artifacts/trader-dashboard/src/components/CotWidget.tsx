@@ -76,7 +76,7 @@ export function CotWidget() {
         }
       />
 
-      <CardContent className="p-4 space-y-3 flex-1">
+      <CardContent className="p-3 space-y-2.5 sm:p-4 sm:space-y-3 flex-1">
         {isLoading && (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-primary" />

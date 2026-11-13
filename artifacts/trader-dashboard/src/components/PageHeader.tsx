@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
 import { motion } from "framer-motion";
+import { InfoButton } from "@/components/ui/InfoButton";
 
 interface PageHeaderProps {
   title: string;
@@ -12,12 +13,21 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, action, badge, icon }: PageHeaderProps) {
   return (
     <motion.div
-      className="flex flex-col gap-3 pb-1 max-sm:pb-0 sm:flex-row sm:items-end sm:justify-between"
+      className="flex flex-row items-center justify-between gap-2 pb-0.5 sm:items-end sm:gap-3 sm:pb-1"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Title cluster (accent bar + icon + title + badge + subtitle) — hidden on mobile, shown sm+ */}
+      {/* Mobile compact title cluster (branded small uppercase + optional Info button) */}
+      <div className="flex min-w-0 items-center gap-2 sm:hidden">
+        <span className="h-3.5 w-0.5 shrink-0 rounded-full bg-primary" />
+        <h2 className="truncate font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-foreground">
+          {title}
+        </h2>
+        {subtitle ? <InfoButton title={title} description={subtitle} className="h-5 w-5" /> : null}
+      </div>
+
+      {/* Title cluster (accent bar + icon + title + badge + subtitle) — desktop sm+ */}
       <div className="hidden min-w-0 items-start gap-3 sm:flex sm:items-center">
         {/* Accent bar */}
         <motion.div

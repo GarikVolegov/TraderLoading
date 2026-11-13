@@ -140,32 +140,41 @@ export function TradingViewWatchlistWidget() {
       });
       ws.addEventListener("message", (ev) => {
         try {
-          const msg = JSON.parse(ev.data);
-          if (msg && msg.type === "update" && typeof msg.pair === "string") {
+          const msg = JSON.parse(String(ev.data)) as {
+            type?: string;
+            pair?: string;
+            item?: WatchlistItem;
+          };
+          if (msg && msg.type === "update" && typeof msg.pair === "string" && msg.item) {
+            const nextItem = msg.item;
             // update react-query cache for the current pairsKey
-            queryClient.setQueryData(["tools-watchlist", pairsKey], (old: any) => {
+            queryClient.setQueryData<WatchlistResponse>(["tools-watchlist", pairsKey], (old) => {
               const items = (old?.items ?? []).slice();
-              const idx = items.findIndex((it: any) => it.pair === msg.pair);
+              const idx = items.findIndex((it) => it.pair === msg.pair);
               if (idx >= 0) {
-                items[idx] = msg.item;
+                items[idx] = nextItem;
               } else {
-                items.push(msg.item);
+                items.push(nextItem);
               }
               return { items };
             });
           }
         } catch {
-          // ignore
+          // ignore malformed WS frames
         }
       });
       return () => {
-        try { ws.close(); } catch {}
+        try {
+          ws.close();
+        } catch {
+          // ignore close errors during teardown
+        }
         wsRef.current = null;
       };
     } catch {
       return;
     }
-  }, [pairsKey, pairs.join(",")]);
+  }, [pairsKey, pairs, queryClient]);
 
   // Only claim "Live" when the newest D1 bar is actually recent; otherwise the feed
   // is delayed (e.g. Dukascopy lags ~1 day) and a pulsing badge would be dishonest.

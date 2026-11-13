@@ -374,8 +374,8 @@ router.get("/tornei/certificates/:id/metadata", async (req: Request, res: Respon
     return;
   }
   res.json({
-    name: `TraderLoading ${cert.tier} · ${cert.seasonLabel}`,
-    description: `Certificato ${cert.rarity} del torneo TraderLoading — stagione ${cert.seasonLabel}.`,
+    name: `AUREUS ${cert.tier} · ${cert.seasonLabel}`,
+    description: `Certificato ${cert.rarity} del torneo AUREUS — stagione ${cert.seasonLabel}.`,
     image: `${appBaseUrl()}/api/tornei/certificates/${id}/image.svg`,
     attributes: [
       { trait_type: "Tier", value: cert.tier },

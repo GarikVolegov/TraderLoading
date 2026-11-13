@@ -456,13 +456,13 @@ export function createBrokersRouter(
           broker.recommendedRoute === "smartlink_mt5"
             ? `Collega ${broker.displayName} con SmartLink se hai MetaTrader, oppure con le credenziali broker.`
             : broker.recommendedRoute === "local_companion"
-            ? `Installa o avvia TraderLoading Connector per collegare ${broker.displayName}.`
+            ? `Installa o avvia AUREUS Connector per collegare ${broker.displayName}.`
             : intent.displayStatus,
         safeDisplayStatus:
           broker.recommendedRoute === "smartlink_mt5"
             ? `Collega ${broker.displayName} con SmartLink se hai MetaTrader, oppure con le credenziali broker.`
             : broker.recommendedRoute === "local_companion"
-            ? `Installa o avvia TraderLoading Connector per collegare ${broker.displayName}.`
+            ? `Installa o avvia AUREUS Connector per collegare ${broker.displayName}.`
             : intent.displayStatus,
         recommendedRoute: broker.recommendedRoute,
         availableRoutes: broker.availableRoutes,
@@ -470,7 +470,7 @@ export function createBrokersRouter(
           broker.recommendedRoute === "smartlink_mt5"
             ? "Usa SmartLink se hai MetaTrader 5 gia' installato, oppure inserisci numero conto, server e password."
             : broker.recommendedRoute === "local_companion"
-            ? "Accedi nel terminale ufficiale e abbina TraderLoading Connector."
+            ? "Accedi nel terminale ufficiale e abbina AUREUS Connector."
             : "Segui il collegamento sicuro del broker.",
         requiredAction: broker.recommendedRoute === "smartlink_mt5" || broker.recommendedRoute === "local_companion" ? "start_authorization" : intent.requiredAction,
       });
@@ -511,11 +511,11 @@ export function createBrokersRouter(
           displayStatus:
             broker.recommendedRoute === "smartlink_mt5"
               ? "Usa SmartLink se hai MetaTrader, oppure collega il conto con numero conto, server e password."
-              : "Avvia il TraderLoading Connector e abbina il conto MetaTrader.",
+              : "Avvia il AUREUS Connector e abbina il conto MetaTrader.",
           safeDisplayStatus:
             broker.recommendedRoute === "smartlink_mt5"
               ? "Usa SmartLink se hai MetaTrader, oppure collega il conto con numero conto, server e password."
-              : "Avvia il TraderLoading Connector e abbina il conto MetaTrader.",
+              : "Avvia il AUREUS Connector e abbina il conto MetaTrader.",
           requiredAction: "start_authorization",
           recommendedRoute: broker.recommendedRoute,
           availableRoutes: broker.availableRoutes,
@@ -726,7 +726,7 @@ export function createBrokersRouter(
       const profile = await runtime.saveProfile({
         ownerUserId: getUserId(req),
         label: accountLabel,
-        brokerName: resolvedProfileKind === "demo" ? "TraderLoading" : broker.displayName,
+        brokerName: resolvedProfileKind === "demo" ? "AUREUS" : broker.displayName,
         kind: resolvedProfileKind,
         providerKind: resolvedProfileKind,
         providerUserId: intent.providerUserId,
@@ -1025,7 +1025,7 @@ export function createBrokersRouter(
           expiresAt: pairing.expiresAt,
           instructions: [
             "Apri MetaTrader con il tuo conto broker.",
-            "Avvia TraderLoading Connector.",
+            "Avvia AUREUS Connector.",
             "Inserisci questo codice di pairing nel Connector.",
           ],
         },
@@ -1088,7 +1088,7 @@ export function createBrokersRouter(
           ? "Conto sincronizzato."
           : health === "stale"
             ? "Connector rilevato, dati non ancora aggiornati."
-            : "In attesa del TraderLoading Connector.",
+            : "In attesa del AUREUS Connector.",
       });
     } catch (error) {
       res.status(400).json({ error: message(error) });

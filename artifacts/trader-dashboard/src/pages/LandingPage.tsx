@@ -1019,7 +1019,7 @@ export default function LandingPage() {
                 <Rocket className="h-[18px] w-[18px]" />
               </span>
               <span className="hidden whitespace-nowrap font-mono text-base font-bold tracking-tight text-foreground min-[380px]:inline sm:text-lg">
-                TraderLoading
+                AUREUS
               </span>
             </div>
 
@@ -1440,7 +1440,7 @@ export default function LandingPage() {
               <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-primary/35 bg-primary/15 text-primary">
                 <Rocket className="h-[17px] w-[17px]" />
               </span>
-              <span className="font-mono text-[17px] font-bold text-foreground">TraderLoading</span>
+              <span className="font-mono text-[17px] font-bold uppercase tracking-[0.12em] text-foreground">AUREUS</span>
             </div>
             <p className="m-0 mx-auto max-w-[280px] text-[13.5px] leading-relaxed text-muted-foreground">{t("landing.footer.tagline")}</p>
           </div>
@@ -1459,7 +1459,7 @@ export default function LandingPage() {
         </div>
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 border-t border-border/30 px-4 py-5 text-center sm:flex-row sm:justify-center sm:gap-4 sm:px-6">
           <p className="m-0 text-[13px] text-muted-foreground/70">
-            {`© ${new Date().getFullYear()} TraderLoading. ${t("landing.footer.rights")}`}
+            {`© ${new Date().getFullYear()} AUREUS. ${t("landing.footer.rights")}`}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2.5 sm:gap-3">
             <Link href="/privacy" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { InfoButton } from "@/components/ui/InfoButton";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
 import { useBackground } from "@/contexts/BackgroundContext";
@@ -76,7 +77,14 @@ export function VolatilityWidget() {
             <TrendingUp className="w-4 h-4 text-warning" />
           </div>
           <div>
-            <p className="widget-title">{uiText("auto.ui.de8919508a")}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="widget-title">{uiText("auto.ui.de8919508a")}</p>
+              <InfoButton
+                title={uiText("auto.ui.de8919508a")}
+                description={uiText("vol.adr.subtitle")}
+                className="h-5 w-5 sm:hidden"
+              />
+            </div>
             <p className="widget-subtitle">{uiText("vol.adr.subtitle")}</p>
           </div>
         </div>
@@ -90,7 +98,7 @@ export function VolatilityWidget() {
         </button>
       </div>
 
-      <CardContent className="p-4 space-y-3 flex-1">
+      <CardContent className="p-3 space-y-2.5 sm:p-4 sm:space-y-3 flex-1">
         {volatilityFilter.hasUserSelection && volatilityFilter.unsupportedItems.length > 0 && (
           <p className="text-[9px] text-muted-foreground tabular-nums">
             {volatilityFilter.supportedCount}/{volatilityFilter.requestedCount}

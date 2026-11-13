@@ -85,3 +85,44 @@ export function buildTradingViewMiniSymbolConfig(symbol: string): TradingViewMin
     noTimeScale: true,
   };
 }
+
+export interface WatchlistItem {
+  pair: string;
+  supported: boolean;
+  price: number | null;
+  changePct: number | null;
+  spark: number[];
+  latestBarMs: number | null;
+}
+
+export interface WatchlistResponse {
+  items: WatchlistItem[];
+}
+
+export function formatWatchlistPrice(pair: string, price: number): string {
+  const sym = pair.trim().toUpperCase();
+  const entry = getPairEntry(sym);
+  if (sym.includes("JPY")) return price.toFixed(3);
+  if (entry?.category === "index" || entry?.category === "crypto" || entry?.category === "metal") {
+    return price.toFixed(2);
+  }
+  return price.toFixed(price >= 100 ? 2 : 5);
+}
+
+const WATCHLIST_LIVE_MAX_AGE_MS = 36 * 60 * 60 * 1000;
+
+export function watchlistFreshness(
+  items: WatchlistItem[],
+  nowMs: number,
+): { isLive: boolean; latestBarMs: number | null } {
+  let latestBarMs: number | null = null;
+  for (const item of items) {
+    if (typeof item.latestBarMs === "number" && (latestBarMs === null || item.latestBarMs > latestBarMs)) {
+      latestBarMs = item.latestBarMs;
+    }
+  }
+  return {
+    isLive: latestBarMs !== null && nowMs - latestBarMs <= WATCHLIST_LIVE_MAX_AGE_MS,
+    latestBarMs,
+  };
+}

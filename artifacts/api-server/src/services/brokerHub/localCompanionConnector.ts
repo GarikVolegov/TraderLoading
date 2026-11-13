@@ -12,7 +12,7 @@ import type {
 } from "./types.js";
 import type { CompanionStore } from "./companionStore.js";
 
-function waitingSnapshot(profile: BrokerAccountProfile, error = "In attesa del TraderLoading Connector."): BrokerSnapshot {
+function waitingSnapshot(profile: BrokerAccountProfile, error = "In attesa del AUREUS Connector."): BrokerSnapshot {
   return {
     profileId: profile.id,
     status: "connecting",
@@ -44,7 +44,7 @@ export function createLocalCompanionBrokerConnector(profile: BrokerAccountProfil
     const stored = await store.getSnapshot(profile.id);
     if (!stored) {
       const waitingMessage =
-        profile.route === "smartlink_mt5" ? "In attesa di TraderLoading SmartLink." : "In attesa del TraderLoading Connector.";
+        profile.route === "smartlink_mt5" ? "In attesa di AUREUS SmartLink." : "In attesa del AUREUS Connector.";
       snapshot = waitingSnapshot(profile, health === "stale" ? "MetaTrader non sta inviando dati aggiornati." : waitingMessage);
       return snapshot;
     }
@@ -95,8 +95,8 @@ export function createLocalCompanionBrokerConnector(profile: BrokerAccountProfil
           accepted: false,
           reason:
             profile.route === "smartlink_mt5"
-              ? "TraderLoading SmartLink non e' sincronizzato. Apri MetaTrader 5 e aggiorna il conto."
-              : "Il TraderLoading Connector non e' sincronizzato. Apri MetaTrader e aggiorna il conto.",
+              ? "AUREUS SmartLink non e' sincronizzato. Apri MetaTrader 5 e aggiorna il conto."
+              : "Il AUREUS Connector non e' sincronizzato. Apri MetaTrader e aggiorna il conto.",
         };
       }
       const pending = await store.enqueueOrder(profile.id, order);
@@ -124,8 +124,8 @@ export function createLocalCompanionBrokerConnector(profile: BrokerAccountProfil
           accepted: false,
           reason:
             profile.route === "smartlink_mt5"
-              ? "TraderLoading SmartLink non e' sincronizzato. Apri MetaTrader 5 e aggiorna il conto."
-              : "Il TraderLoading Connector non e' sincronizzato. Apri MetaTrader e aggiorna il conto.",
+              ? "AUREUS SmartLink non e' sincronizzato. Apri MetaTrader 5 e aggiorna il conto."
+              : "Il AUREUS Connector non e' sincronizzato. Apri MetaTrader e aggiorna il conto.",
         };
       }
       const position = next.positions.find((candidate) => candidate.brokerPositionId === positionId || candidate.id === positionId);

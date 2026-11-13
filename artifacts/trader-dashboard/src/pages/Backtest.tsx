@@ -271,7 +271,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
 
   return (
     <div className="space-y-4 min-w-0 overflow-hidden">
-      <div className="flex items-center gap-3">
+      <div className={`${mode === "chart" ? "hidden sm:flex" : "flex"} items-center gap-3`}>
         <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 shrink-0">
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -284,7 +284,7 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
         </div>
       </div>
 
-      <div className="flex gap-1 p-1 rounded-xl bg-secondary/30 border border-border/30">
+      <div className={`${mode === "chart" ? "hidden sm:flex" : "flex"} gap-1 p-1 rounded-xl bg-secondary/30 border border-border/30`}>
         <button
           onClick={() => setMode("chart")}
           className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
@@ -311,6 +311,10 @@ function SessionDetail({ session, onBack }: { session: BacktestSession; onBack: 
             symbol={session.pair}
             interval={session.timeframe}
             persistenceKey={`backtest-session-${session.id}`}
+            onBack={onBack}
+            onSwitchManual={() => setMode("manual")}
+            pendingSaveCount={pendingChartTrades.length}
+            onSavePendingTrades={() => handleSaveChartTrades(pendingChartTrades)}
             onTradesChange={(chartTrades) => {
               const completed = chartTrades.filter((t) => t.exitPrice != null && !savedTradeIds.has(t.id));
               setPendingChartTrades(completed);
@@ -528,7 +532,7 @@ export default function Backtest() {
 
   if (activeSession) {
     return (
-      <PageLayout>
+      <PageLayout flushMobile>
         <ProUpgradeGate feature="backtest" fillViewport>
           <SessionDetail session={activeSession} onBack={() => setActiveSession(null)} />
         </ProUpgradeGate>

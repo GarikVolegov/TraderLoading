@@ -193,7 +193,7 @@ function sanitize(raw: unknown, existing?: BrokerAccountProfile): BrokerAccountP
       ? data.connectionStatus
       : existing?.connectionStatus ?? "offline";
   const route = readRoute(data.route ?? existing?.route, providerKind);
-  const brokerName = readString(data.brokerName, existing?.brokerName ?? (kind === "demo" ? "TraderLoading" : "FP Trading"));
+  const brokerName = readString(data.brokerName, existing?.brokerName ?? (kind === "demo" ? "AUREUS" : "FP Trading"));
   const label = readString(data.label, existing?.label ?? `${brokerName} ${environment}`);
 
   return {

@@ -1,6 +1,6 @@
-# TraderLoading
+# AUREUS
 
-> TraderLoading is a free all-in-one web workspace for retail traders that combines an
+> AUREUS is a free all-in-one web workspace for retail traders that combines an
 > auto-synced trading journal, real-time macro news intelligence, risk management tools
 > and gamified discipline routines. Interface available in English, Italian, Spanish,
 > French and German.
@@ -46,7 +46,7 @@
 - [Risk management](https://traderloading.com/risk-management): position size / lot calculator, session clock, Monte Carlo, daily-loss circuit-breaker
 - [Pricing](https://traderloading.com/pricing): free plan + Pro at €7/month
 - [Guide](https://traderloading.com/guide): overview of every feature
-- [About](https://traderloading.com/about): what TraderLoading is and its mission
+- [About](https://traderloading.com/about): what AUREUS is and its mission
 - [Contact](https://traderloading.com/contact): support contact
 - [Sign up](https://traderloading.com/sign-up): create a free account
 - [Sign in](https://traderloading.com/sign-in): existing users

@@ -92,7 +92,7 @@ export function AuthPageShell({ mode, children }: AuthPageShellProps) {
               <Rocket className="h-5 w-5" aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="font-mono text-base font-bold tracking-tight text-foreground">TraderLoading</p>
+              <p className="font-mono text-base font-bold uppercase tracking-[0.12em] text-foreground">AUREUS</p>
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/75">
                 {t("auth.shell.brand.tagline")}
               </p>

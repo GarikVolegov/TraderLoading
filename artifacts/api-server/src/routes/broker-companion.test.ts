@@ -86,7 +86,7 @@ try {
   assert.equal(pairing.profile.providerKind, "metatrader-local-companion");
   assert.equal(pairing.profile.tradingEnabled, true);
   assert.ok(pairing.pairing.token.length >= 24);
-  assert.ok(pairing.pairing.instructions.some((line) => line.includes("TraderLoading Connector")));
+  assert.ok(pairing.pairing.instructions.some((line) => line.includes("AUREUS Connector")));
 
   const connectorDownloadRes = await fetch(`${base}/companion/downloads/mt5-ea`);
   assert.equal(connectorDownloadRes.status, 200);
@@ -110,7 +110,7 @@ try {
   const initialStatus = (await initialStatusRes.json()) as { health: string; connected: boolean; message: string };
   assert.equal(initialStatus.health, "waiting_for_companion");
   assert.equal(initialStatus.connected, false);
-  assert.equal(initialStatus.message, "In attesa del TraderLoading Connector.");
+  assert.equal(initialStatus.message, "In attesa del AUREUS Connector.");
 
   const profilesAfterPairingRes = await fetch(`${base}/profiles`, { headers: { "x-test-user": "user-one" } });
   const profilesAfterPairing = (await profilesAfterPairingRes.json()) as { activeProfileId: string | null };
@@ -123,7 +123,7 @@ try {
   assert.equal(connectBeforeSnapshotRes.status, 200);
   const connectBeforeSnapshot = (await connectBeforeSnapshotRes.json()) as { snapshot: { status: string; error?: string } };
   assert.equal(connectBeforeSnapshot.snapshot.status, "connecting");
-  assert.equal(connectBeforeSnapshot.snapshot.error, "In attesa del TraderLoading Connector.");
+  assert.equal(connectBeforeSnapshot.snapshot.error, "In attesa del AUREUS Connector.");
 
   const orderBeforeHeartbeatRes = await fetch(`${base}/profiles/${pairing.profile.id}/orders`, {
     method: "POST",
@@ -133,7 +133,7 @@ try {
   assert.equal(orderBeforeHeartbeatRes.status, 200);
   const rejectedOrder = (await orderBeforeHeartbeatRes.json()) as { accepted: boolean; reason: string };
   assert.equal(rejectedOrder.accepted, false);
-  assert.equal(rejectedOrder.reason, "Il TraderLoading Connector non e' sincronizzato. Apri MetaTrader e aggiorna il conto.");
+  assert.equal(rejectedOrder.reason, "Il AUREUS Connector non e' sincronizzato. Apri MetaTrader e aggiorna il conto.");
 
   const heartbeatRes = await fetch(`${base}/companion/heartbeat`, {
     method: "POST",

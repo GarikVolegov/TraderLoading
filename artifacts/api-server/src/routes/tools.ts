@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { getWatchlistItems, parseWatchlistPairs } from "../services/watchlist.js";
 import cron from "node-cron";
 import { getCurrenciesFromPairs } from "@workspace/pair-catalog";
 import { getNewsData } from "./news.js";
@@ -583,7 +584,7 @@ async function fetchCotFromSocrata(): Promise<CotEntry[] | null> {
 
     const res = await fetch(socrataUrl.toString(), {
       headers: {
-        "User-Agent": "TraderLoading/1.0",
+        "User-Agent": "AUREUS/1.0",
         "Accept": "application/json",
       },
       signal: AbortSignal.timeout(15000),
@@ -737,7 +738,7 @@ async function fetchCotFromTxt(onlyCurrencies: Set<string>): Promise<CotEntry[]>
     if (stillMissing().size === 0) break;
     try {
       const response = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; TraderLoading/1.0)" },
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; AUREUS/1.0)" },
         signal: AbortSignal.timeout(20000),
       });
       if (!response.ok) { console.warn(`[tools/cot] ${url} → HTTP ${response.status}`); continue; }
@@ -755,7 +756,7 @@ async function fetchCotFromTxt(onlyCurrencies: Set<string>): Promise<CotEntry[]>
     if (stillMissing().size === 0) break;
     try {
       const response = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; TraderLoading/1.0)" },
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; AUREUS/1.0)" },
         signal: AbortSignal.timeout(15000),
       });
       if (!response.ok) { console.warn(`[tools/cot] ${url} → HTTP ${response.status}`); continue; }
@@ -1564,6 +1565,13 @@ router.post("/tools/macro-news", async (req, res) => {
 // ─── SUPPORTED PAIRS LIST ─────────────────────────────────────────────────────
 router.get("/tools/pairs", (req, res) => {
   res.json({ pairs: Object.keys(YAHOO_VOLATILITY_PAIRS) });
+});
+
+// ─── WATCHLIST SNAPSHOT ───────────────────────────────────────────────────────
+router.get("/tools/watchlist", async (req, res) => {
+  const pairs = parseWatchlistPairs(req.query.pairs);
+  const items = await getWatchlistItems(pairs);
+  res.json({ items });
 });
 
 export default router;

@@ -17,7 +17,7 @@ import {
   Play, Pause, SkipForward, SkipBack, RotateCcw,
   TrendingUp, TrendingDown, X, ChevronRight,
   Eye, EyeOff, Calendar, ChevronLeft, MousePointer2,
-  Wallet, Layers,
+  Wallet, Layers, ArrowLeft, ChevronDown, BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +80,10 @@ interface ChartReplayProps {
   interval: string;
   onTradesChange?: (trades: ReplayTrade[]) => void;
   persistenceKey?: string;
+  onBack?: () => void;
+  onSwitchManual?: () => void;
+  pendingSaveCount?: number;
+  onSavePendingTrades?: () => void;
 }
 
 const SPEEDS = [1, 2, 5, 10];
@@ -104,7 +108,17 @@ function formatPrice(price: number, symbol: string): string {
   return price.toFixed(5);
 }
 
-export default function ChartReplay({ symbol, interval: initialInterval, onTradesChange, persistenceKey }: ChartReplayProps) {
+export default function ChartReplay({
+  symbol,
+  interval: initialInterval,
+  onTradesChange,
+  persistenceKey,
+  onBack,
+  onSwitchManual,
+  pendingSaveCount = 0,
+  onSavePendingTrades,
+}: ChartReplayProps) {
+  const [mobileSheet, setMobileSheet] = useState<null | "timeframe" | "info" | "sltp">(null);
   const storageKey = useMemo(() => persistenceKey ? createReplayStorageKey(persistenceKey) : null, [persistenceKey]);
   const restoredState = useMemo(() => {
     if (!storageKey || typeof window === "undefined") return null;
@@ -896,9 +910,74 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
   }), []);
 
   return (
-    <div data-testid="chart-replay" className="space-y-3 min-w-0 overflow-hidden">
-      <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 overflow-hidden">
-        <div className="flex flex-col gap-1.5 px-3 py-2 border-b border-border/30">
+    <div
+      data-testid="chart-replay"
+      className="space-y-3 min-w-0 overflow-hidden max-sm:fixed max-sm:inset-0 max-sm:z-[60] max-sm:flex max-sm:h-[100dvh] max-sm:flex-col max-sm:space-y-0 max-sm:bg-background"
+    >
+      <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 overflow-hidden max-sm:flex max-sm:flex-1 max-sm:min-h-0 max-sm:flex-col max-sm:rounded-none max-sm:border-0 max-sm:bg-background">
+        {/* Mobile TradingView-style single-row top bar */}
+        <div className="flex sm:hidden items-center justify-between gap-1.5 border-b border-border/40 bg-card/85 px-2 py-1.5 backdrop-blur-md">
+          <div className="flex min-w-0 items-center gap-1.5">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label={uiText("mobile.chart.back")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/40 bg-background/60 text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            )}
+            <span className="truncate font-mono text-xs font-bold text-primary">{symbol}</span>
+            <button
+              type="button"
+              onClick={() => setMobileSheet("timeframe")}
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-primary/35 bg-primary/15 px-2 font-mono text-[10px] font-bold uppercase tracking-wider text-primary"
+            >
+              {activeInterval}
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {!loading && (
+              <span className="mr-1 font-mono text-xs font-bold tabular-nums text-foreground">
+                {formatPrice(currentPrice, symbol)}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowTrades(!showTrades)}
+              aria-label={showTrades ? "Nascondi trade" : "Mostra trade"}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-border/40 bg-background/50"
+            >
+              {showTrades ? <Eye className="h-3.5 w-3.5 text-primary" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMtf((prev) => !prev)}
+              aria-label={uiText("mobile.chart.mtf")}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-border/40 bg-background/50"
+            >
+              <Layers className={`h-3.5 w-3.5 ${showMtf ? "text-primary" : "text-muted-foreground"}`} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileSheet("info")}
+              aria-label={uiText("mobile.chart.stats_options")}
+              className="relative flex h-8 w-8 items-center justify-center rounded-md border border-border/40 bg-background/50 text-foreground"
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              {pendingSaveCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+                  {pendingSaveCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop header */}
+        <div className="hidden sm:flex flex-col gap-1.5 px-3 py-2 border-b border-border/30">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <span className="text-xs font-mono font-bold text-primary">{symbol}</span>
@@ -968,7 +1047,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
           </div>
         </div>
 
-        <div className="px-3 py-2 border-b border-border/30 flex flex-col min-[420px]:flex-row min-[420px]:items-center gap-2 bg-card/40">
+        <div className="hidden sm:flex px-3 py-2 border-b border-border/30 flex-col min-[420px]:flex-row min-[420px]:items-center gap-2 bg-card/40">
             <Calendar className="w-4 h-4 text-primary shrink-0" />
             <span className="text-xs text-muted-foreground shrink-0">{uiText("auto.ui.15a469ac0a")}</span>
             <input
@@ -1010,7 +1089,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
           </div>
         )}
 
-        <div className="relative min-h-[320px] sm:min-h-[420px] lg:min-h-[560px]" style={{ height: "clamp(320px, 58vh, 780px)" }}>
+        <div className="relative min-h-[320px] sm:min-h-[420px] lg:min-h-[560px] max-sm:flex-1 max-sm:min-h-0 sm:h-[clamp(320px,58vh,780px)]">
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
@@ -1060,6 +1139,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
                 <ChartAnalysisPanel
                   analysisState={analysisState}
                   estimatedVolume={analysisEstimatedVolume}
+                  onClose={() => setShowAnalysisPanel(false)}
                   onVwapChange={(vwap) => updateAnalysisState((prev) => ({
                     ...prev,
                     indicators: { ...prev.indicators, vwap },
@@ -1118,7 +1198,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
         )}
 
         {!loading && !error && (
-          <div className="px-3 py-2 border-t border-border/30 space-y-2">
+          <div className="hidden sm:block px-3 py-2 border-t border-border/30 space-y-2">
             <div className="flex items-center gap-2">
               <div className="flex-1 h-1.5 rounded-full bg-secondary/40 overflow-hidden">
                 <div
@@ -1211,8 +1291,110 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
         )}
       </div>
 
+      {/* Mobile TradingView-style compact bottom dock */}
       {!loading && !error && (
-        <div className="space-y-2">
+        <div className="sm:hidden shrink-0 border-t border-border/40 bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom,0px)]">
+          <div className="h-[2px] w-full bg-secondary/40 overflow-hidden">
+            <div className="h-full bg-primary transition-all duration-200" style={{ width: `${progress}%` }} />
+          </div>
+          <div className="flex items-center justify-between gap-1 px-2 py-1 border-b border-border/25">
+            <div className="flex items-center gap-0.5">
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => goBack(10)} disabled={revealedCount <= START_VISIBLE}>
+                <SkipBack className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => goBack(1)} disabled={revealedCount <= START_VISIBLE}>
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant={isPlaying ? "default" : "ghost"}
+                size="sm"
+                className={`h-8 w-10 p-0 ${isPlaying ? "bg-primary text-primary-foreground" : ""}`}
+                onClick={() => setIsPlaying(!isPlaying)}
+                disabled={revealedCount >= replayCandles.length}
+              >
+                {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => advanceCandle(1)} disabled={isPlaying || revealedCount >= replayCandles.length}>
+                <SkipForward className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => advanceCandle(10)} disabled={isPlaying || revealedCount >= replayCandles.length}>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length])}
+                className="h-7 rounded-md border border-primary/35 bg-primary/15 px-2 font-mono text-[10px] font-bold text-primary"
+              >
+                {speed}x
+              </button>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-orange-400" onClick={handleReset}>
+                <RotateCcw className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="px-2 py-1.5">
+            {!openTrade ? (
+              <div className="flex items-center gap-1.5">
+                <Button
+                  onClick={handleSell}
+                  className="h-9 flex-1 bg-red-600 hover:bg-red-700 text-white font-mono text-xs font-bold uppercase tracking-wider"
+                >
+                  <TrendingDown className="w-3.5 h-3.5 mr-1" />
+                  SELL
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setLotSize(LOT_SIZES[(LOT_SIZES.indexOf(lotSize) + 1) % LOT_SIZES.length])}
+                  className="h-9 shrink-0 rounded-md border border-border/50 bg-background/60 px-2.5 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground"
+                >
+                  {lotSize}
+                </button>
+                <Button
+                  onClick={handleBuy}
+                  className="h-9 flex-1 bg-green-600 hover:bg-green-700 text-white font-mono text-xs font-bold uppercase tracking-wider"
+                >
+                  <TrendingUp className="w-3.5 h-3.5 mr-1" />
+                  BUY
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase ${
+                      openTrade.direction === "buy" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                    }`}>
+                      {openTrade.direction}
+                    </span>
+                    <span className={`font-mono text-xs font-bold tabular-nums ${(openPnL ?? 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {(openPnL ?? 0) >= 0 ? "+" : ""}{openPnL?.toFixed(1)}p
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button variant="outline" size="sm" className="h-8 px-2.5 font-mono text-[10px] uppercase tracking-wider" onClick={() => setMobileSheet("sltp")}>
+                    {"SL/TP"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 font-mono text-[10px] font-bold uppercase tracking-wider text-orange-400 border-orange-500/40"
+                    onClick={handleCloseTrade}
+                  >
+                    {uiText("mobile.chart.close_trade")}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div className="hidden sm:block space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <Wallet className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -1265,7 +1447,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
       )}
 
       {openTrade && (
-        <div className="rounded-2xl bg-card/60 backdrop-blur-sm border border-primary/30 p-4 space-y-3">
+        <div className="hidden sm:block rounded-2xl bg-card/60 backdrop-blur-sm border border-primary/30 p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <span className={`px-2.5 py-1 rounded-lg text-sm font-bold ${
@@ -1370,7 +1552,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
       )}
 
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="rounded-xl bg-card/40 border border-border/30 p-2 text-center">
             <div className="text-[10px] text-muted-foreground">Trade</div>
             <div className="text-sm font-bold font-mono">{stats.total}</div>
@@ -1397,7 +1579,7 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
       )}
 
       {trades.length > 0 && (
-        <div className="rounded-2xl bg-card/40 border border-border/30 overflow-hidden">
+        <div className="hidden sm:block rounded-2xl bg-card/40 border border-border/30 overflow-hidden">
           <button
             onClick={() => setShowTradePanel(!showTradePanel)}
             className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-bold text-muted-foreground uppercase tracking-wider hover:bg-white/5 transition-colors"
@@ -1435,6 +1617,224 @@ export default function ChartReplay({ symbol, interval: initialInterval, onTrade
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Mobile bottom sheets (Timeframe & Date, Info & Stats, SL/TP) */}
+      {mobileSheet && (
+        <div
+          className="sm:hidden fixed inset-0 z-[75] flex items-end bg-black/60 backdrop-blur-xs"
+          onClick={() => setMobileSheet(null)}
+        >
+          <div
+            className="w-full max-h-[75dvh] overflow-y-auto rounded-t-xl border-t border-border/60 bg-card/95 p-3 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] shadow-2xl space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
+                {mobileSheet === "timeframe" ? uiText("mobile.chart.tf_title") : mobileSheet === "sltp" ? uiText("mobile.chart.sltp_title") : uiText("mobile.chart.session_title")}
+              </span>
+              <button
+                type="button"
+                onClick={() => setMobileSheet(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-border/50 text-muted-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {mobileSheet === "timeframe" && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-4 gap-1.5">
+                  {TIMEFRAMES.map((tf) => (
+                    <button
+                      key={tf}
+                      type="button"
+                      onClick={() => {
+                        handleChangeInterval(tf);
+                        setMobileSheet(null);
+                      }}
+                      className={`h-9 rounded-md font-mono text-xs font-bold transition-colors ${
+                        activeInterval === tf
+                          ? "border border-primary/50 bg-primary/20 text-primary"
+                          : "border border-border/40 bg-background/60 text-muted-foreground"
+                      }`}
+                    >
+                      {tf}
+                    </button>
+                  ))}
+                </div>
+                <div className="space-y-1.5 border-t border-border/30 pt-2.5">
+                  <label className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {uiText("auto.ui.15a469ac0a")}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      aria-label={uiText("auto.ui.be3542d584")}
+                      type="date"
+                      value={startDate}
+                      min={dataRange.min}
+                      max={dataRange.max}
+                      onChange={(e) => handleApplyDate(e.target.value)}
+                      className="flex-1 h-9 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
+                    />
+                    {startDate && (
+                      <Button variant="outline" size="sm" className="h-9 text-xs text-orange-400" onClick={() => handleApplyDate("")}>
+                        {uiText("auto.ui.44c57abd88")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {mobileSheet === "sltp" && openTrade && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase tracking-wider text-red-400">Stop Loss</label>
+                    <div className="flex gap-1">
+                      <Input
+                        type="number"
+                        step="any"
+                        value={slInput}
+                        onChange={(e) => handleSLInputChange(e.target.value)}
+                        placeholder={formatPrice(currentPrice, symbol)}
+                        className="h-9 text-xs font-mono border-red-500/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSetSL();
+                          setMobileSheet(null);
+                        }}
+                        className="px-2.5 rounded-md border border-red-500/40 text-red-400"
+                      >
+                        <MousePointer2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-mono text-[10px] uppercase tracking-wider text-green-400">Take Profit</label>
+                    <div className="flex gap-1">
+                      <Input
+                        type="number"
+                        step="any"
+                        value={tpInput}
+                        onChange={(e) => handleTPInputChange(e.target.value)}
+                        placeholder={formatPrice(currentPrice, symbol)}
+                        className="h-9 text-xs font-mono border-green-500/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSetTP();
+                          setMobileSheet(null);
+                        }}
+                        className="px-2.5 rounded-md border border-green-500/40 text-green-400"
+                      >
+                        <MousePointer2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {mobileSheet === "info" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-md border border-border/40 bg-background/50 px-3 py-2">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{uiText("mobile.chart.balance")}</span>
+                  <span className={`font-mono text-sm font-bold ${balance >= START_BALANCE ? "text-green-400" : "text-red-400"}`}>
+                    ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                {pendingSaveCount > 0 && onSavePendingTrades && (
+                  <Button
+                    onClick={() => {
+                      onSavePendingTrades();
+                      setMobileSheet(null);
+                    }}
+                    className="w-full h-9 font-mono text-xs uppercase tracking-wider"
+                  >
+                    {uiText("mobile.chart.save_trades", { count: pendingSaveCount })}
+                  </Button>
+                )}
+
+                {onSwitchManual && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      onSwitchManual();
+                      setMobileSheet(null);
+                    }}
+                    className="w-full h-9 font-mono text-xs uppercase tracking-wider"
+                  >
+                    {uiText("mobile.chart.switch_manual")}
+                  </Button>
+                )}
+
+                <div className="space-y-1.5">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{uiText("mobile.chart.ma")}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {analysisState.indicators.movingAverages.map((ma) => (
+                      <button
+                        key={ma.id}
+                        type="button"
+                        onClick={() => toggleMovingAverage(ma.id)}
+                        className={`rounded-md border px-2 py-1 font-mono text-[10px] font-bold ${
+                          ma.enabled ? "border-primary/40 bg-primary/10" : "border-border/40 text-muted-foreground"
+                        }`}
+                        style={ma.enabled ? { color: ma.color } : undefined}
+                      >
+                        {ma.type.toUpperCase()}{ma.period}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {stats && (
+                  <div className="grid grid-cols-4 gap-1.5">
+                    <div className="rounded-md bg-background/60 border border-border/30 p-1.5 text-center">
+                      <div className="text-[9px] font-mono uppercase text-muted-foreground">Trade</div>
+                      <div className="text-xs font-bold font-mono">{stats.total}</div>
+                    </div>
+                    <div className="rounded-md bg-background/60 border border-border/30 p-1.5 text-center">
+                      <div className="text-[9px] font-mono uppercase text-muted-foreground">Win Rate</div>
+                      <div className="text-xs font-bold font-mono">{stats.winRate}%</div>
+                    </div>
+                    <div className="rounded-md bg-background/60 border border-border/30 p-1.5 text-center">
+                      <div className="text-[9px] font-mono uppercase text-muted-foreground">{uiText("auto.ui.800c4c5f30")}</div>
+                      <div className="text-xs font-bold font-mono">{stats.totalPips}</div>
+                    </div>
+                    <div className="rounded-md bg-background/60 border border-border/30 p-1.5 text-center">
+                      <div className="text-[9px] font-mono uppercase text-muted-foreground">P&L</div>
+                      <div className="text-xs font-bold font-mono">${stats.totalDollar}</div>
+                    </div>
+                  </div>
+                )}
+
+                {trades.length > 0 && (
+                  <div className="max-h-40 overflow-y-auto divide-y divide-border/20 rounded-md border border-border/30 bg-background/40">
+                    {trades.map((t) => (
+                      <div key={t.id} className="flex items-center justify-between px-2.5 py-1.5 text-[11px]">
+                        <span className={`font-mono font-bold uppercase ${t.direction === "buy" ? "text-green-400" : "text-red-400"}`}>
+                          {t.direction}
+                        </span>
+                        <span className="font-mono text-muted-foreground">
+                          {formatPrice(t.entryPrice, symbol)} → {t.exitPrice != null ? formatPrice(t.exitPrice, symbol) : "—"}
+                        </span>
+                        <span className={`font-mono font-bold ${(t.pips ?? 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          {(t.pips ?? 0) >= 0 ? "+" : ""}{t.pips?.toFixed(1)}p
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

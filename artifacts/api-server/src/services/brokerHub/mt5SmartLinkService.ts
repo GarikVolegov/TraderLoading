@@ -147,7 +147,7 @@ export function createMt5SmartLinkService(): Mt5SmartLinkService {
           connected: false,
           terminalDetected: true,
           terminalPath: input.terminalPath,
-          message: "SmartLink locale non trovato. Reinstalla TraderLoading Connector.",
+          message: "SmartLink locale non trovato. Reinstalla AUREUS Connector.",
         },
       };
     }
